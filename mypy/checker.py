@@ -576,9 +576,18 @@ class TypeChecker(StatementVisitor[None]):
                             ref_type = mypy.types.TypeType(ref_type)
                         erased = erase_to_bound(arg_type)
                         if not is_subtype_ignoring_tvars(ref_type, erased):
-                            self.fail("The erased type of self '{}' "
-                                      "is not a supertype of its class '{}'"
-                                      .format(erased, ref_type), defn)
+                            if typ.arg_names[i] in ['self', 'cls']:
+                                if erased != arg_type:
+                                    self.fail("The erased type of self '{}' "
+                                              "is not a supertype of its class '{}'"
+                                              .format(erased, ref_type), defn)
+                                else:
+                                    self.fail("Invalid type for self, or extra argument type "
+                                              "in function annotation", defn)
+                                    self.note('(Hint: typically annotations omit the type for self)', defn)
+                            else:
+                                self.fail("Self argument missing for a non-static method "
+                                          "(or an invalid type for self)", defn)
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
@@ -2320,6 +2329,10 @@ class TypeChecker(StatementVisitor[None]):
 
     def warn(self, msg: str, context: Context) -> None:
         """Produce a warning message."""
+        self.msg.warn(msg, context)
+
+    def note(self, msg: str, context: Context) -> None:
+        """Produce a note."""
         self.msg.warn(msg, context)
 
     def iterable_item_type(self, instance: Instance) -> Type:

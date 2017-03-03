@@ -356,3 +356,13 @@ reveal_type(A().member)  # E: Revealed type is '__main__.A*'
 reveal_type(B().member)  # E: Revealed type is '__main__.B*'
 
 [builtins fixtures/property.pyi]
+
+[case testSelfTypeNotSelfType]
+# Friendlier error messages for common mistakes. See #2950
+class A:
+    def f(x: int) -> None: ...
+    def g(self: None) -> None: ...
+[out]
+main:3: error: Self argument missing for a non-static method (or an invalid type for self)
+main:4: error: Invalid type for self, or extra argument type in function annotation
+main:4: warning: (Hint: typically annotations omit the type for self)
