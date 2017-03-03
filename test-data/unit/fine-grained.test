@@ -364,3 +364,18 @@ def h() -> None:
 main:3: error: "module" has no attribute "g"
 ==
 main:3: error: "module" has no attribute "g"
+
+[case testFixErrorAndReintroduce]
+import m
+def h() -> None:
+    m.g()
+[file m.py]
+[file m.py.2]
+def g() -> None: pass
+[file m.py.3]
+[builtins fixtures/fine_grained.pyi]
+[out]
+main:3: error: "module" has no attribute "g"
+==
+==
+main:3: error: "module" has no attribute "g"

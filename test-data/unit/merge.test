@@ -383,9 +383,11 @@ def f(a: A) -> None:
     a
     1
 [out]
+## target
 IntExpr:3: builtins.int<0>
 NameExpr:4: target.A<1>
 ==>
+## target
 NameExpr:3: target.A<1>
 IntExpr:4: builtins.int<0>
 
@@ -406,6 +408,7 @@ class A:
         self.x = A()
         self.x
 [out]
+## target
 CallExpr:3: target.A<0>
 MemberExpr:3: target.A<0>
 NameExpr:3: def () -> target.A<0>
@@ -418,6 +421,7 @@ NameExpr:5: target.A<0>
 MemberExpr:6: builtins.int<1>
 NameExpr:6: target.A<0>
 ==>
+## target
 IntExpr:3: builtins.int<1>
 MemberExpr:3: builtins.int<1>
 NameExpr:3: target.A<0>
@@ -442,10 +446,12 @@ class A:
     def f(self) -> A:
         return self.f()
 [out]
+## target
 CallExpr:3: target.A<0>
 MemberExpr:3: def () -> target.A<0>
 NameExpr:3: target.A<0>
 ==>
+## target
 CallExpr:4: target.A<0>
 MemberExpr:4: def () -> target.A<0>
 NameExpr:4: target.A<0>

@@ -18,8 +18,22 @@ from mypy.server.trigger import make_trigger
 
 def get_dependencies(prefix: str, node: Node,
                      type_map: Dict[Expression, Type]) -> Dict[str, Set[str]]:
+    """Get all dependencies of a node, recursively."""
     visitor = DependencyVisitor(prefix, type_map)
     node.accept(visitor)
+    return visitor.map
+
+
+def get_dependencies_of_target(prefix: str, node: Node,
+                               type_map: Dict[Expression, Type]) -> Dict[str, Set[str]]:
+    """Get dependencies of a target -- don't recursive into nested targets."""
+    visitor = DependencyVisitor(prefix, type_map)
+    if isinstance(node, MypyFile):
+        for defn in node.defs:
+            if not isinstance(defn, (ClassDef, FuncDef)):
+                defn.accept(visitor)
+    else:
+        node.accept(visitor)
     return visitor.map
 
 

@@ -46,18 +46,19 @@ Major todo items:
 - Support multiple type checking passes
 """
 
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
 
 from mypy.build import BuildManager, State
 from mypy.checker import DeferredNode
 from mypy.errors import Errors
-from mypy.nodes import MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var
+from mypy.nodes import (
+    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase,
+)
 from mypy.types import Type
 from mypy.server.astdiff import compare_symbol_tables, is_identical_type
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
-from mypy.server.deps import get_dependencies
-from mypy.server.subexpr import get_subexpressions
+from mypy.server.deps import get_dependencies, get_dependencies_of_target
 from mypy.server.target import module_prefix
 from mypy.server.trigger import make_trigger
 
@@ -68,7 +69,7 @@ class FineGrainedBuildManager:
                  graph: Dict[str, State]) -> None:
         self.manager = manager
         self.graph = graph
-        self.deps = get_all_dependencies(manager)
+        self.deps = get_all_dependencies(manager, graph)
         self.previous_targets_with_errors = manager.errors.targets()
 
     def update(self, changed_modules: List[str]) -> List[str]:
@@ -91,29 +92,31 @@ class FineGrainedBuildManager:
             A list of errors.
         """
         manager = self.manager
+        graph = self.graph
         old_modules = dict(manager.modules)
         manager.errors.reset()
-        new_modules = build_incremental_step(manager, changed_modules)
+        new_modules, new_type_maps = build_incremental_step(manager, changed_modules)
         # TODO: What to do with stale dependencies?
-        update_dependencies(new_modules, self.deps, manager.all_types)
         triggered = calculate_active_triggers(manager, old_modules, new_modules)
-        replace_modules_with_new_variants(manager, old_modules, new_modules)
-        propagate_changes_using_dependencies(manager, self.graph, self.deps, triggered,
+        replace_modules_with_new_variants(manager, graph, old_modules, new_modules, new_type_maps)
+        update_dependencies(new_modules, self.deps, graph)
+        propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              set(changed_modules),
                                              self.previous_targets_with_errors)
         self.previous_targets_with_errors = manager.errors.targets()
         return manager.errors.messages()
 
 
-def get_all_dependencies(manager: BuildManager) -> Dict[str, Set[str]]:
+def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
     deps = {}  # type: Dict[str, Set[str]]
-    update_dependencies(manager.modules, deps, manager.all_types)
+    update_dependencies(manager.modules, deps, graph)
     return deps
 
 
 def build_incremental_step(manager: BuildManager,
-                           changed_modules: List[str]) -> Dict[str, MypyFile]:
+                           changed_modules: List[str]) -> Tuple[Dict[str, MypyFile],
+                                                                Dict[str, Dict[Expression, Type]]]:
     """Build new versions of changed modules only.
 
     Return the new ASTs for the changed modules. They will be totally
@@ -141,16 +144,16 @@ def build_incremental_step(manager: BuildManager,
     # TODO: state.write_cache()?
     # TODO: state.mark_as_rechecked()?
 
-    return {id: state.tree}
+    return {id: state.tree}, {id: state.type_checker.type_map}
 
 
 def update_dependencies(new_modules: Dict[str, MypyFile],
                         deps: Dict[str, Set[str]],
-                        type_map: Dict[Expression, Type]) -> None:
+                        graph: Dict[str, State]) -> None:
     for id, node in new_modules.items():
         module_deps = get_dependencies(prefix=id,
                                        node=node,
-                                       type_map=type_map)
+                                       type_map=graph[id].type_checker.type_map)
         for trigger, targets in module_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
@@ -171,8 +174,10 @@ def calculate_active_triggers(manager: BuildManager,
 
 def replace_modules_with_new_variants(
         manager: BuildManager,
+        graph: Dict[str, State],
         old_modules: Dict[str, MypyFile],
-        new_modules: Dict[str, MypyFile]) -> None:
+        new_modules: Dict[str, MypyFile],
+        new_type_maps: Dict[str, Dict[Expression, Type]]) -> None:
     """Replace modules with newly builds versions.
 
     Retain the identities of externally visible AST nodes in the
@@ -183,15 +188,10 @@ def replace_modules_with_new_variants(
     propagate_changes_using_dependencies).
     """
     for id in new_modules:
-        if id in old_modules:
-            # Remove nodes of old modules from the type map.
-            all_types = manager.all_types
-            for expr in get_subexpressions(old_modules[id]):
-                if expr in all_types:
-                    del all_types[expr]
         merge_asts(old_modules[id], old_modules[id].names,
                    new_modules[id], new_modules[id].names)
         manager.modules[id] = old_modules[id]
+        graph[id].type_checker.type_map = new_type_maps[id]
 
 
 def propagate_changes_using_dependencies(
@@ -201,7 +201,6 @@ def propagate_changes_using_dependencies(
         triggered: Set[str],
         up_to_date_modules: Set[str],
         targets_with_errors: Set[str]) -> None:
-    # TODO: Multiple propagation passes
     # TODO: Multiple type checking passes
     # TODO: Restrict the number of iterations to some maximum to avoid infinite loops
 
@@ -221,7 +220,7 @@ def propagate_changes_using_dependencies(
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
-            triggered |= reprocess_nodes(manager, graph, id, nodes)
+            triggered |= reprocess_nodes(manager, graph, id, nodes, deps)
         # Changes elsewhere may require us to reprocess modules that were
         # previously considered up to date. For example, there may be a
         # dependency loop that loops back to an originally processed module.
@@ -267,9 +266,14 @@ def find_targets_recursive(
 
 def reprocess_nodes(manager: BuildManager,
                     graph: Dict[str, State],
-                    id: str,
-                    nodes: List[DeferredNode]) -> Set[str]:
-    file_node = manager.modules[id]
+                    module_id: str,
+                    nodes: Set[DeferredNode],
+                    deps: Dict[str, Set[str]]) -> Set[str]:
+    """Reprocess a set of nodes within a single module.
+
+    Return fired triggers.
+    """
+    file_node = manager.modules[module_id]
     for deferred in nodes:
         node = deferred.node
         # Strip semantic analysis information
@@ -291,7 +295,7 @@ def reprocess_nodes(manager: BuildManager,
                      for name, node in info.names.items()
                      if isinstance(node.node, Var)}
     # Type check
-    graph[id].type_checker.check_second_pass(list(nodes))  # TODO: check return value
+    graph[module_id].type_checker.check_second_pass(list(nodes))  # TODO: check return value
     new_triggered = set()
     if info:
         # Check if we need to propagate any attribute type changes further.
@@ -302,7 +306,23 @@ def reprocess_nodes(manager: BuildManager,
                      not is_identical_type(member_node.node.type, old_types[name]))):
                 # Type checking a method changed an attribute type.
                 new_triggered.add(make_trigger('{}.{}'.format(info.fullname(), name)))
+    update_deps(module_id, nodes, graph, deps)
     return new_triggered
+
+
+def update_deps(module_id: str,
+                nodes: Set[DeferredNode],
+                graph: Dict[str, State],
+                deps: Dict[str, Set[str]]) -> None:
+    for deferred in nodes:
+        node = deferred.node
+        prefix = module_id
+        if isinstance(node, FuncBase) and node.info:
+            prefix += '.{}'.format(node.info.name())
+        type_map = graph[module_id].type_checker.type_map
+        new_deps = get_dependencies_of_target(prefix, node, type_map)
+        for trigger, targets in new_deps.items():
+            deps.setdefault(trigger, set()).update(targets)
 
 
 def lookup_target(modules: Dict[str, MypyFile], target: str) -> DeferredNode:

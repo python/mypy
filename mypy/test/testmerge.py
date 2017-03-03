@@ -5,9 +5,11 @@ import shutil
 from typing import List, Tuple, Dict
 
 from mypy import build
-from mypy.build import BuildManager, BuildSource
+from mypy.build import BuildManager, BuildSource, State
 from mypy.errors import Errors, CompileError
-from mypy.nodes import Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression
+from mypy.nodes import (
+    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression
+)
 from mypy.options import Options
 from mypy.server.astmerge import merge_asts
 from mypy.server.subexpr import get_subexpressions
@@ -61,7 +63,7 @@ class ASTMergeSuite(DataSuite):
             kind = AST
 
         main_src = '\n'.join(testcase.input)
-        messages, manager = self.build(main_src)
+        messages, manager, graph = self.build(main_src)
 
         a = []
         if messages:
@@ -70,29 +72,31 @@ class ASTMergeSuite(DataSuite):
         shutil.copy(os.path.join(test_temp_dir, 'target.py.next'),
                     os.path.join(test_temp_dir, 'target.py'))
 
-        a.extend(self.dump(manager.modules, manager.all_types, kind))
+        a.extend(self.dump(manager.modules, graph, kind))
 
         old_modules = dict(manager.modules)
         old_subexpr = get_subexpressions(old_modules['target'])
 
-        new_file = self.build_increment(manager, 'target')
+        new_file, new_types = self.build_increment(manager, 'target')
         replace_modules_with_new_variants(manager,
+                                          graph,
                                           old_modules,
-                                          {'target': new_file})
+                                          {'target': new_file},
+                                          {'target': new_types})
 
         a.append('==>')
-        a.extend(self.dump(manager.modules, manager.all_types, kind))
+        a.extend(self.dump(manager.modules, graph, kind))
 
         for expr in old_subexpr:
             # Verify that old AST nodes are removed from the expression type map.
-            assert expr not in manager.all_types
+            assert expr not in new_types
 
         assert_string_arrays_equal(
             testcase.output, a,
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
 
-    def build(self, source: str) -> Tuple[List[str], BuildManager]:
+    def build(self, source: str) -> Tuple[List[str], BuildManager, Dict[str, State]]:
         options = Options()
         options.use_builtins_fixtures = True
         options.show_traceback = True
@@ -102,14 +106,18 @@ class ASTMergeSuite(DataSuite):
                                  alt_lib_path=test_temp_dir)
         except CompileError as e:
             # TODO: Is it okay to return None?
-            return e.messages, None
-        return result.errors, result.manager
+            return e.messages, None, {}
+        return result.errors, result.manager, result.graph
 
-    def build_increment(self, manager: BuildManager, module_id: str) -> MypyFile:
-        module_dict = build_incremental_step(manager, [module_id])
-        return module_dict[module_id]
+    def build_increment(self, manager: BuildManager,
+                        module_id: str) -> Tuple[MypyFile,
+                                                 Dict[Expression, Type]]:
+        module_dict, type_maps = build_incremental_step(manager, [module_id])
+        return module_dict[module_id], type_maps[module_id]
 
-    def dump(self, modules: Dict[str, MypyFile], type_map: Dict[Expression, Type],
+    def dump(self,
+             modules: Dict[str, MypyFile],
+             graph: Dict[str, State],
              kind: str) -> List[str]:
         if kind == AST:
             return self.dump_asts(modules)
@@ -118,7 +126,7 @@ class ASTMergeSuite(DataSuite):
         elif kind == SYMTABLE:
             return self.dump_symbol_tables(modules)
         elif kind == TYPES:
-            return self.dump_types(type_map)
+            return self.dump_types(graph)
         assert False, 'Invalid kind %s' % kind
 
     def dump_asts(self, modules: Dict[str, MypyFile]) -> List[str]:
@@ -172,14 +180,18 @@ class ASTMergeSuite(DataSuite):
                       type_str_conv=self.type_str_conv)
         return s.splitlines()
 
-    def dump_types(self, type_map: Dict[Expression, Type]) -> List[str]:
+    def dump_types(self, graph: Dict[str, State]) -> List[str]:
         a = []
         # To make the results repeatable, we try to generate unique and
         # deterministic sort keys.
-        for expr in sorted(type_map, key=lambda n: (n.line, short_type(n),
-                                                    str(n) + str(type_map[n]))):
-            typ = type_map[expr]
-            a.append('{}:{}: {}'.format(short_type(expr),
-                                        expr.line,
-                                        typ.accept(self.type_str_conv)))
+        for module_id in sorted(graph):
+            type_map = graph[module_id].type_checker.type_map
+            if type_map:
+                a.append('## {}'.format(module_id))
+                for expr in sorted(type_map, key=lambda n: (n.line, short_type(n),
+                                                            str(n) + str(type_map[n]))):
+                    typ = type_map[expr]
+                    a.append('{}:{}: {}'.format(short_type(expr),
+                                                expr.line,
+                                                typ.accept(self.type_str_conv)))
         return a
