@@ -914,10 +914,13 @@ class SemanticAnalyzer(NodeVisitor):
             defn.info.mro = [defn.info, self.object_type().type]
             return
         calculate_class_mro(defn, self.fail_blocker)
-        # If there are cyclic imports, we may be missing 'object' in
-        # the MRO. Fix MRO if needed.
-        if info.mro and info.mro[-1].fullname() != 'builtins.object':
-            info.mro.append(self.object_type().type)
+        # If there are cyclic imports, we may not have 'object' at the
+        # end of MRO, and/or have an 'object' in the middle of MRO
+        # fix this by making sure there is only one 'object' and
+        # that it is at the end
+        object_type = self.object_type().type
+        if info.mro and info.mro[-1] != object_type:
+            info.mro = [t for t in info.mro if t != object_type] + [object_type]
 
     def expr_to_analyzed_type(self, expr: Expression) -> Type:
         if isinstance(expr, CallExpr):
