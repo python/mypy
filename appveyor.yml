@@ -31,6 +31,7 @@ test_script:
     - ps: if ($env:PYTHON_VERSION -Match "3.6.x" -And $env:PYTHON_ARCH -Match "64") { iex "$env:PYTHON\\python.exe -m flake8" }
 
 after_test:
+  - "%PYTHON%\\python.exe -m pip install wheel"
   - "%PYTHON%\\python.exe setup.py bdist_wheel -p win32"
   - "%PYTHON%\\python.exe setup.py bdist_wheel -p win_amd64"
 
