@@ -117,7 +117,7 @@ class IdenticalTypeVisitor(TypeVisitor[bool]):
     * If one of the types is not valid for whatever reason, they are
       considered different.
 
-    * Sometimes require types to be structurally identical, even if the
+    * Sometimes require types to be structurally identical, even if they
       are semantically the same type.
     """
 

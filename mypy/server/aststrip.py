@@ -1,4 +1,4 @@
-"""Strip AST from from semantic and type information."""
+"""Strip AST from semantic and type information."""
 
 from typing import Union
 
