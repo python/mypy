@@ -1157,6 +1157,9 @@ x = (1, 2)
 b'%s' % (b'xyz',)
 b'%(name)s' % {'name': 'jane'}
 b'%c' % (123)
+b'%b' % (b'abc',)
+b'%a' % (b'bytes',)
+b'%a' % ('str',)
 
 [case testUnicodeInterpolation_python2]
 u'%s' % (u'abc',)
