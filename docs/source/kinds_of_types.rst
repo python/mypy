@@ -968,15 +968,17 @@ will be a value of type ``Awaitable[T]``.
 
    .. code-block:: python
 
-      from typing import Generator
+      from typing import AwaitableGenerator
       import asyncio
 
       @asyncio.coroutine
-      def serialize(obj: object) -> Generator[None, None, str]:
+      def serialize(obj: object) -> AwaitableGenerator[None, None, str]:
           # todo: add yield/yield from to turn this into a generator
           if False:
               yield
           return "placeholder"
+          
+Notice that the return type here is an ``AwaitableGenerator`` instead of ``Generator``.  This is so that mypy recognizes that the returned object is, indeed, awaitable, which is not considered to be true for a regular ``Generator``.
 
 You may also choose to create a subclass of ``Awaitable`` instead:
 
