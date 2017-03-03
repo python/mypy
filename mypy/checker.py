@@ -572,23 +572,27 @@ class TypeChecker(StatementVisitor[None]):
                     if (isinstance(defn, FuncDef) and ref_type is not None and i == 0
                             and not defn.is_static
                             and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
-                        if defn.is_class or defn.name() in ('__new__', '__init_subclass__'):
+                        isclass = defn.is_class or defn.name() in ('__new__', '__init_subclass__')
+                        if isclass:
                             ref_type = mypy.types.TypeType(ref_type)
                         erased = erase_to_bound(arg_type)
                         if not is_subtype_ignoring_tvars(ref_type, erased):
+                            note = None
                             if typ.arg_names[i] in ['self', 'cls']:
-                                if erased != arg_type or defn.name() in ('__new__', '__init_subclass__'):
-                                    self.fail("The erased type of self '{}' "
-                                              "is not a supertype of its class '{}'"
-                                              .format(erased, ref_type), defn)
+                                if erased != arg_type or isclass:
+                                    msg = ("The erased type of self '{}' "
+                                           "is not a supertype of its class '{}'"
+                                           ).format(erased, ref_type)
                                 else:
-                                    self.fail("Invalid type for self, or extra argument type "
-                                              "in function annotation", defn)
-                                    self.note('(Hint: typically annotations omit the type for self)',
-                                              defn)
+                                    msg = ("Invalid type for self, or extra argument type "
+                                           "in function annotation")
+                                    note = '(Hint: typically annotations omit the type for self)'
                             else:
-                                self.fail("Self argument missing for a non-static method "
-                                          "(or an invalid type for self)", defn)
+                                msg = ("Self argument missing for a non-static method "
+                                       "(or an invalid type for self)")
+                            self.fail(msg, defn)
+                            if note:
+                                self.note(note, defn)
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
