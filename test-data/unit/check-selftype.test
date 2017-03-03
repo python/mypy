@@ -271,7 +271,7 @@ class C:
         return cls()
 
 class D:
-    def foo(self: str) -> str:  # E: The erased type of self 'builtins.str' is not a supertype of its class '__main__.D'
+    def foo(self: Q) -> Q:  # E: The erased type of self '__main__.B' is not a supertype of its class '__main__.D'
         return self
 
     @staticmethod
@@ -279,7 +279,7 @@ class D:
         return self
 
     @classmethod
-    def cfoo(cls: Type[str]) -> str:  # E: The erased type of self 'Type[builtins.str]' is not a supertype of its class 'Type[__main__.D]'
+    def cfoo(cls: Type[Q]) -> Q:  # E: The erased type of self 'Type[__main__.B]' is not a supertype of its class 'Type[__main__.D]'
         return cls()
 
 [builtins fixtures/classmethod.pyi]
@@ -365,4 +365,4 @@ class A:
 [out]
 main:3: error: Self argument missing for a non-static method (or an invalid type for self)
 main:4: error: Invalid type for self, or extra argument type in function annotation
-main:4: warning: (Hint: typically annotations omit the type for self)
+main:4: note: (Hint: typically annotations omit the type for self)

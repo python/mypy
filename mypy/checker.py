@@ -577,14 +577,15 @@ class TypeChecker(StatementVisitor[None]):
                         erased = erase_to_bound(arg_type)
                         if not is_subtype_ignoring_tvars(ref_type, erased):
                             if typ.arg_names[i] in ['self', 'cls']:
-                                if erased != arg_type:
+                                if erased != arg_type or defn.name() in ('__new__', '__init_subclass__'):
                                     self.fail("The erased type of self '{}' "
                                               "is not a supertype of its class '{}'"
                                               .format(erased, ref_type), defn)
                                 else:
                                     self.fail("Invalid type for self, or extra argument type "
                                               "in function annotation", defn)
-                                    self.note('(Hint: typically annotations omit the type for self)', defn)
+                                    self.note('(Hint: typically annotations omit the type for self)',
+                                              defn)
                             else:
                                 self.fail("Self argument missing for a non-static method "
                                           "(or an invalid type for self)", defn)
@@ -2333,7 +2334,7 @@ class TypeChecker(StatementVisitor[None]):
 
     def note(self, msg: str, context: Context) -> None:
         """Produce a note."""
-        self.msg.warn(msg, context)
+        self.msg.note(msg, context)
 
     def iterable_item_type(self, instance: Instance) -> Type:
         iterable = map_instance_to_supertype(
