@@ -24,12 +24,13 @@ from mypy.version import __version__
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
-def main(script_path: str, argv: List[str] = None) -> None:
+def main(script_path: str, args: List[str] = None) -> None:
     """Main entry point to the type checker.
 
     Args:
         script_path: Path to the 'mypy' script (used for finding data files).
-        argv: Used instead of sys.argv if given.
+        args: Custom command-line arguments.  If not given, sys.argv[1:] will
+        be used.
     """
     t0 = time.time()
     if script_path:
@@ -37,9 +38,9 @@ def main(script_path: str, argv: List[str] = None) -> None:
     else:
         bin_dir = None
     sys.setrecursionlimit(2 ** 14)
-    if argv is None:
-        argv = sys.argv[1:]
-    sources, options = process_options(argv)
+    if args is None:
+        args = sys.argv[1:]
+    sources, options = process_options(args)
     serious = False
     try:
         res = type_check_only(sources, bin_dir, options)

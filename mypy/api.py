@@ -41,7 +41,7 @@ from typing import List, Tuple
 from mypy.main import main
 
 
-def run(params: List[str]) -> Tuple[str, str, int]:
+def run(args: List[str]) -> Tuple[str, str, int]:
     old_stdout = sys.stdout
     new_stdout = StringIO()
     sys.stdout = new_stdout
@@ -51,7 +51,7 @@ def run(params: List[str]) -> Tuple[str, str, int]:
     sys.stderr = new_stderr
 
     try:
-        main(None, argv=params)
+        main(None, args=args)
         exit_status = 0
     except SystemExit as system_exit:
         exit_status = system_exit.code
