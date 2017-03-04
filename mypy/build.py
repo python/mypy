@@ -787,6 +787,9 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # Ignore cache if (relevant) options aren't the same.
     cached_options = m.options
     current_options = manager.options.clone_for_module(id).select_options_affecting_cache()
+    if manager.options.quick_and_dirty:
+        # In quick_and_dirty mode allow non-quick_and_dirty cache files.
+        cached_options['quick_and_dirty'] = True
     if cached_options != current_options:
         manager.trace('Metadata abandoned for {}: options differ'.format(id))
         return None
@@ -1702,7 +1705,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             deps.update(graph[id].dependencies)
         deps -= ascc
         stale_deps = {id for id in deps if not graph[id].is_interface_fresh()}
-        fresh = fresh and not stale_deps
+        if not manager.options.quick_and_dirty:
+            fresh = fresh and not stale_deps
         undeps = set()
         if fresh:
             # Check if any dependencies that were suppressed according
@@ -1717,7 +1721,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # All cache files are fresh.  Check that no dependency's
             # cache file is newer than any scc node's cache file.
             oldest_in_scc = min(graph[id].meta.data_mtime for id in scc)
-            viable = {id for id in deps if not graph[id].is_interface_fresh()}
+            viable = {id for id in stale_deps if graph[id].meta is not None}
             newest_in_deps = 0 if not viable else max(graph[dep].meta.data_mtime for dep in viable)
             if manager.options.verbosity >= 3:  # Dump all mtimes for extreme debugging.
                 all_ids = sorted(ascc | viable, key=lambda id: graph[id].meta.data_mtime)
@@ -1735,7 +1739,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                     manager.trace(" %5s %.0f %s" % (key, graph[id].meta.data_mtime, id))
             # If equal, give the benefit of the doubt, due to 1-sec time granularity
             # (on some platforms).
-            if oldest_in_scc < newest_in_deps:
+            if manager.options.quick_and_dirty and stale_deps:
+                fresh_msg = "fresh(ish)"
+            elif oldest_in_scc < newest_in_deps:
                 fresh = False
                 fresh_msg = "out of date by %.0f seconds" % (newest_in_deps - oldest_in_scc)
             else:
@@ -1753,7 +1759,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
         scc_str = " ".join(scc)
         if fresh:
-            manager.log("Queuing fresh SCC (%s)" % scc_str)
+            manager.log("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
             fresh_scc_queue.append(scc)
         else:
             if len(fresh_scc_queue) > 0:
@@ -1775,7 +1781,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 manager.log("Processing SCC singleton (%s) as %s" % (scc_str, fresh_msg))
             else:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
-            process_stale_scc(graph, scc)
+            process_stale_scc(graph, scc, manager)
 
     sccs_left = len(fresh_scc_queue)
     if sccs_left:
@@ -1842,26 +1848,46 @@ def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
         graph[id].calculate_mros()
 
 
-def process_stale_scc(graph: Graph, scc: List[str]) -> None:
-    """Process the modules in one SCC from source code."""
-    for id in scc:
+def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
+    """Process the modules in one SCC from source code.
+
+    Exception: If quick_and_dirty is set, use the cache for fresh modules.
+    """
+    if manager.options.quick_and_dirty:
+        fresh = [id for id in scc if graph[id].is_fresh()]
+        fresh_set = set(fresh)  # To avoid running into O(N**2)
+        stale = [id for id in scc if id not in fresh_set]
+        if fresh:
+            manager.log("  Fresh ids: %s" % (", ".join(fresh)))
+        if stale:
+            manager.log("  Stale ids: %s" % (", ".join(stale)))
+    else:
+        fresh = []
+        stale = scc
+    for id in fresh:
+        graph[id].load_tree()
+    for id in stale:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
         graph[id].fix_suppressed_dependencies(graph)
-    for id in scc:
+    for id in stale:
         graph[id].semantic_analysis()
-    for id in scc:
+    for id in fresh:
+        graph[id].fix_cross_refs()
+    for id in stale:
         graph[id].semantic_analysis_pass_three()
-    for id in scc:
+    for id in fresh:
+        graph[id].calculate_mros()
+    for id in stale:
         graph[id].type_check_first_pass()
     more = True
     while more:
         more = False
-        for id in scc:
+        for id in stale:
             if graph[id].type_check_second_pass():
                 more = True
-    for id in scc:
+    for id in stale:
         graph[id].finish_passes()
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
