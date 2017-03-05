@@ -96,14 +96,15 @@ collections_type_aliases = {
     'typing.Deque': '__mypy_collections__.deque',
 }
 
+reverse_collection_aliases = dict((name.replace('__mypy_collections__', 'collections'), alias)
+                                  for alias, name in
+                                  collections_type_aliases.items())  # type: Dict[str, str]
 
 nongen_builtins = {'builtins.tuple': 'typing.Tuple',
                    'builtins.frozenset': 'typing.FrozenSet',
-                   'builtins.enumerate': '',
-                   'collections.defaultdict': 'typing.DefaultDict',
-                   'collections.Counter': 'typing.Counter',
-                   'collections.ChainMap': 'typing.ChainMap'}
+                   'builtins.enumerate': ''}
 nongen_builtins.update(reverse_type_aliases)
+nongen_builtins.update(reverse_collection_aliases)
 
 
 # See [Note Literals and literal_hash] below
