@@ -50,8 +50,11 @@ def main(script_path: str) -> None:
         util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
     if a:
         f = sys.stderr if serious else sys.stdout
-        for m in a:
-            f.write(m + '\n')
+        try:
+            for m in a:
+                f.write(m + '\n')
+        except BrokenPipeError:
+            pass
         sys.exit(1)
 
 
@@ -486,7 +489,6 @@ def crawl_up(arg: str) -> Tuple[str, str]:
     """
     dir, mod = os.path.split(arg)
     mod = strip_py(mod) or mod
-    assert '.' not in mod
     while dir and get_init_file(dir):
         dir, base = os.path.split(dir)
         if not base:

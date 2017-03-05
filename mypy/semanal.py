@@ -66,8 +66,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
-    get_member_expr_fullname,
-
+    collections_type_aliases, get_member_expr_fullname,
 )
 from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
@@ -1280,9 +1279,10 @@ class SemanticAnalyzer(NodeVisitor):
             # Node refers to an aliased type such as typing.List; normalize.
             node = self.lookup_qualified(type_aliases[node.fullname], ctx)
             normalized = True
-        if node.fullname == 'typing.DefaultDict':
+        if node.fullname in collections_type_aliases:
+            # Similar, but for types from the collections module like typing.DefaultDict
             self.add_module_symbol('collections', '__mypy_collections__', False, ctx)
-            node = self.lookup_qualified('__mypy_collections__.defaultdict', ctx)
+            node = self.lookup_qualified(collections_type_aliases[node.fullname], ctx)
             normalized = True
         if normalized:
             node = SymbolTableNode(node.kind, node.node,

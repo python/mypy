@@ -3,6 +3,39 @@ Revision history
 
 List of major changes to this document:
 
+- March 2017
+    * Publish ``mypy`` version 0.500 on PyPI.
+
+    * Add :ref:`noreturn`.
+
+    * Add :ref:`generic-subclasses`.
+
+    * Add :ref:`variance-of-generics`.
+
+    * Add :ref:`invariance-vs-covariance`.
+
+    * Updates to :ref:`python-36`.
+
+    * Updates to :ref:`integrating-mypy`.
+
+    * Updates to :ref:`command-line`:
+
+      * Add option ``--warn-return-any``.
+
+      * Add option ``--strict-boolean``.
+
+      * Add option ``--strict``.
+
+    * Updates to :ref:`config-file`:
+
+      * ``warn_no_return`` is on by default.
+
+      * Read settings from ``setup.cfg`` if ``mypy.ini`` does not exist.
+
+      * Add option ``warn_return_any``.
+
+      * Add option ``strict_boolean``.
+
 - January 2017
     * Publish ``mypy`` version 0.470 on PyPI.
 

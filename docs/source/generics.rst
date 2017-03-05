@@ -99,6 +99,8 @@ Python objects, and they have no extra runtime overhead or magic due
 to being generic, other than a metaclass that overloads the indexing
 operator.
 
+.. _generic-subclasses:
+
 Defining sub-classes of generic classes
 ***************************************
 

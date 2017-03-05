@@ -180,6 +180,8 @@ not support ``sort()``) as a list and sort it in-place:
         # Type of x is List[int] here.
         x.sort()  # Okay!
 
+.. _invariance-vs-covariance:
+
 Invariance vs covariance
 ------------------------
 

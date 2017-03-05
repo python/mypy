@@ -89,6 +89,13 @@ type_aliases = {
 reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
                             for alias, name in type_aliases.items())  # type: Dict[str, str]
 
+collections_type_aliases = {
+    'typing.ChainMap': '__mypy_collections__.ChainMap',
+    'typing.Counter': '__mypy_collections__.Counter',
+    'typing.DefaultDict': '__mypy_collections__.defaultdict',
+    'typing.Deque': '__mypy_collections__.deque',
+}
+
 
 nongen_builtins = {'builtins.tuple': 'typing.Tuple',
                    'builtins.frozenset': 'typing.FrozenSet',
