@@ -102,3 +102,26 @@ a:hover.lineno, a:active.lineno {
 .line-any {
     background-color: #faa;
 }
+
+.type-char {
+    position : relative;
+    border-bottom : 1px dotted black;
+}
+
+.type-char:hover .type-tooltip {
+    visibility: visible;
+}
+
+.type-char .type-tooltip {
+    visibility: hidden;
+    background-color : #f80;
+    position : absolute;
+    z-index : 1;
+    padding : 5px 0;
+    text-align : center;
+    border-radius : 6px;
+}
+
+.type-char .type-tooltip {
+    top : 200%;
+}

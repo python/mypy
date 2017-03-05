@@ -70,7 +70,22 @@
               <td class="table-code">
                 <pre>
                   <xsl:for-each select="line">
-                    <span class="line-{@precision}"><xsl:value-of select="@content"/></span><xsl:text>&#10;</xsl:text>
+                    <span class="line-{@precision}">
+		      <xsl:for-each select="char">
+			<xsl:if test="@typestr!=''">
+			  <span class="type-char">
+			    <xsl:value-of select="@content"/>
+			    <span class="type-tooltip">
+			      <xsl:value-of select="@typestr"/>
+			    </span>
+			  </span>
+			</xsl:if>
+			<xsl:if test="@typestr=''">
+			  <xsl:value-of select="@content"/>
+			</xsl:if>
+		    </xsl:for-each>
+		    </span>
+		    <xsl:text>&#10;</xsl:text>
                   </xsl:for-each>
                 </pre>
               </td>

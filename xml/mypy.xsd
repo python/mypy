@@ -34,6 +34,15 @@
       <xs:sequence>
         <xs:element name="line" minOccurs="0" maxOccurs="unbounded">
           <xs:complexType>
+	    <xs:sequence>
+	      <xs:element name="char" minOccurs="0" maxOccurs="unbounded">
+		<xs:complexType>
+		  <xs:attribute name="column" type="xs:integer" use="required"/>
+		  <xs:attribute name="typestr" type="xs:string" use="required"/>
+		  <xs:attribute name="content" type="xs:string" use="required"/>
+		</xs:complexType>
+	      </xs:element>
+	    </xs:sequence>
             <xs:attribute name="number" type="xs:integer" use="required"/>
             <xs:attribute name="precision" type="precision" use="required"/>
             <xs:attribute name="content" type="xs:string" use="required"/>
