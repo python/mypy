@@ -229,8 +229,8 @@ def process_options(args: List[str],
                              " from non-Any typed functions")
     add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
                         help="warn about unneeded '# type: ignore' comments")
-    add_invertible_flag('--show-error-context', default=True,
-                        dest='hide_error_context',
+    add_invertible_flag('--show-error-context', default=False,
+                        dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
     add_invertible_flag('--no-fast-parser', default=True, dest='fast_parser',
                         help="disable the fast parser (not recommended)")

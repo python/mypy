@@ -82,8 +82,8 @@ class Options:
         # Apply strict None checking
         self.strict_optional = False
 
-        # Hide "note: In function "foo":" messages.
-        self.hide_error_context = True
+        # Show "note: In function "foo":" messages.
+        self.show_error_context = False
 
         # Files in which to allow strict-Optional related errors
         # TODO: Kill this in favor of show_none_errors

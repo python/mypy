@@ -100,13 +100,13 @@ class Errors:
     # Collection of reported only_once messages.
     only_once_messages = None  # type: Set[str]
 
-    # Set to False to show "In function "foo":" messages.
-    hide_error_context = True  # type: bool
+    # Set to True to show "In function "foo":" messages.
+    show_error_context = False  # type: bool
 
     # Set to True to show column numbers in error messages
     show_column_numbers = False  # type: bool
 
-    def __init__(self, hide_error_context: bool = True,
+    def __init__(self, show_error_context: bool = False,
                  show_column_numbers: bool = False) -> None:
         self.error_info = []
         self.import_ctx = []
@@ -116,11 +116,11 @@ class Errors:
         self.used_ignored_lines = defaultdict(set)
         self.ignored_files = set()
         self.only_once_messages = set()
-        self.hide_error_context = hide_error_context
+        self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
 
     def copy(self) -> 'Errors':
-        new = Errors(self.hide_error_context, self.show_column_numbers)
+        new = Errors(self.show_error_context, self.show_column_numbers)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
@@ -306,7 +306,7 @@ class Errors:
 
         for e in errors:
             # Report module import context, if different from previous message.
-            if self.hide_error_context:
+            if not self.show_error_context:
                 pass
             elif e.import_ctx != prev_import_context:
                 last = len(e.import_ctx) - 1
@@ -329,7 +329,7 @@ class Errors:
             file = self.simplify_path(e.file)
 
             # Report context within a source file.
-            if self.hide_error_context:
+            if not self.show_error_context:
                 pass
             elif (e.function_or_member != prev_function_or_member or
                     e.type != prev_type):
