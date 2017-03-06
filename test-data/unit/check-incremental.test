@@ -1858,3 +1858,37 @@ warn_no_return = False
 [[mypy-a]
 warn_no_return = True
 [rechecked]
+
+[case testQuickAndDirty1]
+# flags: --quick-and-dirty
+import b, c
+[file a.py]
+def a(): pass
+[file b.py]
+import a
+import c
+[file c.py]
+import a
+import b
+[file a.py.next]
+def a(x): pass
+[rechecked a]
+[stale a]
+
+[case testQuickAndDirty2]
+# flags: --quick-and-dirty
+import b, c
+[file a.py]
+def a(): pass
+[file b.py]
+import a
+import c
+[file c.py]
+import a
+import b
+[file b.py.next]
+import a
+import c
+x = 0
+[rechecked b]
+[stale b]
