@@ -572,13 +572,28 @@ class TypeChecker(StatementVisitor[None]):
                     if (isinstance(defn, FuncDef) and ref_type is not None and i == 0
                             and not defn.is_static
                             and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
-                        if defn.is_class or defn.name() in ('__new__', '__init_subclass__'):
+                        isclass = defn.is_class or defn.name() in ('__new__', '__init_subclass__')
+                        if isclass:
                             ref_type = mypy.types.TypeType(ref_type)
                         erased = erase_to_bound(arg_type)
                         if not is_subtype_ignoring_tvars(ref_type, erased):
-                            self.fail("The erased type of self '{}' "
-                                      "is not a supertype of its class '{}'"
-                                      .format(erased, ref_type), defn)
+                            note = None
+                            if typ.arg_names[i] in ['self', 'cls']:
+                                if (self.options.python_version[0] < 3
+                                        and is_same_type(erased, arg_type) and not isclass):
+                                    msg = ("Invalid type for self, or extra argument type "
+                                           "in function annotation")
+                                    note = '(Hint: typically annotations omit the type for self)'
+                                else:
+                                    msg = ("The erased type of self '{}' "
+                                           "is not a supertype of its class '{}'"
+                                           ).format(erased, ref_type)
+                            else:
+                                msg = ("Self argument missing for a non-static method "
+                                       "(or an invalid type for self)")
+                            self.fail(msg, defn)
+                            if note:
+                                self.note(note, defn)
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
@@ -2337,6 +2352,10 @@ class TypeChecker(StatementVisitor[None]):
     def warn(self, msg: str, context: Context) -> None:
         """Produce a warning message."""
         self.msg.warn(msg, context)
+
+    def note(self, msg: str, context: Context) -> None:
+        """Produce a note."""
+        self.msg.note(msg, context)
 
     def iterable_item_type(self, instance: Instance) -> Type:
         iterable = map_instance_to_supertype(
