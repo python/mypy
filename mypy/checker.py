@@ -579,14 +579,15 @@ class TypeChecker(StatementVisitor[None]):
                         if not is_subtype_ignoring_tvars(ref_type, erased):
                             note = None
                             if typ.arg_names[i] in ['self', 'cls']:
-                                if not is_same_type(erased, arg_type) or isclass:
-                                    msg = ("The erased type of self '{}' "
-                                           "is not a supertype of its class '{}'"
-                                           ).format(erased, ref_type)
-                                else:
+                                if (self.options.python_version[0] < 3
+                                        and is_same_type(erased, arg_type) and not isclass):
                                     msg = ("Invalid type for self, or extra argument type "
                                            "in function annotation")
                                     note = '(Hint: typically annotations omit the type for self)'
+                                else:
+                                    msg = ("The erased type of self '{}' "
+                                           "is not a supertype of its class '{}'"
+                                           ).format(erased, ref_type)
                             else:
                                 msg = ("Self argument missing for a non-static method "
                                        "(or an invalid type for self)")

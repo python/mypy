@@ -361,8 +361,6 @@ reveal_type(B().member)  # E: Revealed type is '__main__.B*'
 # Friendlier error messages for common mistakes. See #2950
 class A:
     def f(x: int) -> None: ...
-    def g(self: None) -> None: ...
+    # def g(self: None) -> None: ... see in check-python2.test
 [out]
 main:3: error: Self argument missing for a non-static method (or an invalid type for self)
-main:4: error: Invalid type for self, or extra argument type in function annotation
-main:4: note: (Hint: typically annotations omit the type for self)

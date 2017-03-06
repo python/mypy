@@ -299,3 +299,12 @@ M = None  # type: Any
 class MM(M): pass
 class A(object):
     __metaclass__ = MM
+
+[case testSelfTypeNotSelfType2]
+class A:
+    def g(self):
+        # type: (None) -> None
+        pass
+[out]
+main:2: error: Invalid type for self, or extra argument type in function annotation
+main:2: note: (Hint: typically annotations omit the type for self)
