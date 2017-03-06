@@ -579,7 +579,7 @@ class TypeChecker(StatementVisitor[None]):
                         if not is_subtype_ignoring_tvars(ref_type, erased):
                             note = None
                             if typ.arg_names[i] in ['self', 'cls']:
-                                if erased != arg_type or isclass:
+                                if not is_same_type(erased, arg_type) or isclass:
                                     msg = ("The erased type of self '{}' "
                                            "is not a supertype of its class '{}'"
                                            ).format(erased, ref_type)
