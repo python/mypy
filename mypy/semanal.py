@@ -1143,9 +1143,6 @@ class SemanticAnalyzer(NodeVisitor):
                 fields.append(name)
                 types.append(AnyType() if stmt.type is None else self.anal_type(stmt.type))
                 # ...despite possible minor failures that allow further analyzis.
-                if name.startswith('_'):
-                    self.fail('TypedDict field name cannot start with an underscore: {}'
-                              .format(name), stmt)
                 if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
                     self.fail(TPDICT_CLASS_ERROR, stmt)
                 elif not isinstance(stmt.rvalue, TempNode):
@@ -2162,10 +2159,6 @@ class SemanticAnalyzer(NodeVisitor):
                 "TypedDict() expects a dictionary literal as the second argument", call)
         dictexpr = args[1]
         items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
-        underscore = [item for item in items if item.startswith('_')]
-        if underscore:
-            self.fail("TypedDict() item names cannot start with an underscore: "
-                      + ', '.join(underscore), call)
         return items, types, ok
 
     def parse_typeddict_fields_with_types(self, dict_items: List[Tuple[Expression, Expression]],
