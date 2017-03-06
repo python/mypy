@@ -115,6 +115,7 @@ f'foobar'
 f'{"foobar"}'
 f'foo{"bar"}'
 f'.{1}.'
+f'{type(1)}'
 a: str
 a = f'foobar'
 a = f'{"foobar"}'
