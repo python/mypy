@@ -112,7 +112,7 @@ f(*it2) # E: Argument 1 to "f" has incompatible type *Iterable[str]; expected "i
 [builtins fixtures/for.pyi]
 
 [case testCallVarargsFunctionWithIterableAndPositional]
-# flags: --fast-parser
+
 from typing import Iterable
 it1 = None  # type: Iterable[int]
 def f(*x: int) -> None: pass
@@ -122,7 +122,7 @@ f(*it1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
 [builtins fixtures/for.pyi]
 
 [case testCallVarargsFunctionWithTupleAndPositional]
-# flags: --fast-parser
+
 def f(*x: int) -> None: pass
 it1 = (1, 2)
 f(*it1, 1, 2)

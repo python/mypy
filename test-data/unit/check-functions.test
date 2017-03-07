@@ -177,7 +177,7 @@ ff = g
 gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg('a', int), Arg('b', str)], None])
 
 [case testLackOfNamesFastparse]
-# flags: --fast-parser
+
 
 def f(__a: int, __b: str) -> None: pass
 def g(a: int, b: str) -> None: pass
@@ -1641,7 +1641,7 @@ f(__a=1) # E: Unexpected keyword argument "__a" for "f"
 main:1: note: "f" defined here
 
 [case testPositionalOnlyArgFastparse]
-# flags: --fast-parser
+
 
 def f(__a: int) -> None: pass
 
@@ -1663,7 +1663,7 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 [builtins fixtures/bool.pyi]
 
 [case testMagicMethodPositionalOnlyArgFastparse]
-# flags: --fast-parser
+
 
 class A(object):
     def __eq__(self, other) -> bool: return True # We are all equal.
@@ -1680,6 +1680,6 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 def f(a, (b, c), d): pass
 
 [case testTupleArgumentsFastparse]
-# flags: --fast-parser --python-version 2.7
+# flags: --python-version 2.7
 
 def f(a, (b, c), d): pass

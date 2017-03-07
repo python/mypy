@@ -1025,7 +1025,7 @@ def f() -> None:
 [builtins fixtures/bool.pyi]
 
 [case testUnreachableAssertFalse2]
-# flags: --fast-parser
+
 def f() -> None:
     # The old parser doesn't understand the syntax below
     assert False, "hi"

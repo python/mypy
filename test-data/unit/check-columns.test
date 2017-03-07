@@ -19,7 +19,7 @@ main:5:8: error: Incompatible return value type (got "A", expected "B")
 main:6:4: error: Incompatible return value type (got "B", expected "A")
 
 [case testColumnsNestedFunctionsWithFastParse]
-# flags: --show-column-numbers --fast-parser
+# flags: --show-column-numbers
 import typing
 def f() -> 'A':
     def g() -> 'B':

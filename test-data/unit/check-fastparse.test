@@ -1,31 +1,31 @@
 [case testFastParseSyntaxError]
-# flags: --fast-parser
+
 1 +  # E: invalid syntax
 
 [case testFastParseTypeCommentSyntaxError]
-# flags: --fast-parser
+
 x = None # type: a : b  # E: syntax error in type comment
 
 [case testFastParseInvalidTypeComment]
-# flags: --fast-parser
+
 x = None # type: a + b  # E: invalid type comment or annotation
 
 -- Function type comments are attributed to the function def line.
 -- This happens in both parsers.
 [case testFastParseFunctionAnnotationSyntaxError]
-# flags: --fast-parser
+
 def f():  # E: syntax error in type comment
   # type: None -> None
   pass
 
 [case testFastParseInvalidFunctionAnnotation]
-# flags: --fast-parser
+
 def f(x):  # E: invalid type comment or annotation
   # type: (a + b) -> None
   pass
 
 [case testFastParseInvalidTypes2]
-# flags: --fast-parser --py2
+# flags: --py2
 # All of these should not crash
 from typing import Callable, Tuple, Iterable
 
@@ -61,7 +61,7 @@ def f7(x): # E: invalid type comment or annotation
 
 
 [case testFastParseInvalidTypes3]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 # All of these should not crash
 from typing import Callable, Tuple, Iterable
 
@@ -90,7 +90,7 @@ def f6(x: Callable[..., int].x) -> None: pass # E: invalid type comment or annot
 def f7(x: Tuple[1]) -> None: pass # E: invalid type comment or annotation
 
 [case testFastParseProperty]
-# flags: --fast-parser
+
 class C:
   @property
   def x(self) -> str: pass
@@ -99,7 +99,7 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testFastParseConditionalProperty]
-# flags: --fast-parser
+
 class C:
   if bool():
     @property
@@ -109,7 +109,7 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testFastParsePerArgumentAnnotations]
-# flags: --fast-parser
+
 class A: pass
 class B: pass
 class C: pass
@@ -133,7 +133,7 @@ def f(a,        # type: A
 [out]
 
 [case testFastParsePerArgumentAnnotationsWithReturn]
-# flags: --fast-parser
+
 class A: pass
 class B: pass
 class C: pass
@@ -159,7 +159,7 @@ def f(a,        # type: A
 [out]
 
 [case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
-# flags: --fast-parser
+
 def f(*, # type: int  # E: bare * has associated type comment
       x  # type: str
       ):
@@ -169,7 +169,7 @@ def f(*, # type: int  # E: bare * has associated type comment
 [out]
 
 [case testFastParsePerArgumentAnnotationsWithReturnAndBareStar]
-# flags: --fast-parser
+
 def f(*,
       x  # type: str
       ):
@@ -180,7 +180,7 @@ def f(*,
 [out]
 
 [case testFastParsePerArgumentAnnotations_python2]
-# flags: --fast-parser
+
 class A: pass
 class B: pass
 class C: pass
@@ -197,7 +197,7 @@ def f(a,        # type: A
 [out]
 
 [case testFastParsePerArgumentAnnotationsWithReturn_python2]
-# flags: --fast-parser
+
 class A: pass
 class B: pass
 class C: pass
@@ -216,19 +216,19 @@ def f(a,        # type: A
 [out]
 
 [case testFasterParseTooManyArgumentsAnnotation]
-# flags: --fast-parser
+
 def f():  # E: Type signature has too many arguments
     # type: (int) -> None
     pass
 
 [case testFasterParseTooFewArgumentsAnnotation]
-# flags: --fast-parser
+
 def f(x):  # E: Type signature has too few arguments
     # type: () -> None
     pass
 
 [case testFasterParseTypeCommentError_python2]
-# flags: --fast-parser
+
 from typing import Tuple
 def f(a):
     # type: (Tuple(int, int)) -> int
@@ -237,21 +237,21 @@ def f(a):
 main:3: error: invalid type comment or annotation
 
 [case testFastParseMatMul]
-# flags: --fast-parser
+
 from typing import Any
 x = None  # type: Any
 x @ 1
 x @= 1
 
 [case testIncorrectTypeCommentIndex]
-# flags: --fast-parser
+
 from typing import Dict
 x = None # type: Dict[x: y]
 [out]
 main:3: error: syntax error in type comment
 
 [case testPrintStatementTrailingCommaFastParser_python2]
-# flags: --fast-parser
+
 print 0,
 print 1, 2,
 
@@ -264,7 +264,7 @@ def g():  # E: Type signature has too many arguments
     pass
 
 [case testFastParseMalformedAssert]
-# flags: --fast-parser
+
 assert 1, 2
 assert (1, 2)  # W: Assertion is always true, perhaps remove parentheses?
 assert (1, 2), 3  # W: Assertion is always true, perhaps remove parentheses?
@@ -272,7 +272,7 @@ assert ()
 assert (1,)  # W: Assertion is always true, perhaps remove parentheses?
 
 [case testFastParseAssertMessage]
-# flags: --fast-parser
+
 assert 1
 assert 1, 2
 assert 1, 1+2
@@ -280,7 +280,7 @@ assert 1, 1+'test'  # E: Unsupported operand types for + ("int" and "str")
 assert 1, f()  # E: Name 'f' is not defined
 
 [case testFastParserConsistentFunctionTypes]
-# flags: --fast-parser
+
 def f(x, y, z):
   # type: (int, int, int) -> int
   pass
@@ -316,7 +316,7 @@ def f(x: int):  # E: Function has duplicate type signatures
   pass
 
 [case testFastParserDuplicateNames]
-# flags: --fast-parser
+
 def f(x, y, z):
   pass
 
@@ -338,7 +338,7 @@ def k(*, y, z, y):  # E: duplicate argument 'y' in function definition
 lambda x, y, x: ...  # E: duplicate argument 'x' in function definition
 
 [case testFastParserDuplicateNames_python2]
-# flags: --fast-parser
+
 def f(x, y, z):
   pass
 
