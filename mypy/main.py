@@ -166,16 +166,12 @@ def process_options(args: List[str],
                                      fromfile_prefix_chars='@',
                                      formatter_class=AugmentedHelpFormatter)
 
-    strict_flag_names = []  # type: List[str]
-    strict_flag_assignments = []  # type: List[Tuple[str, bool]]
-
     def add_invertible_flag(flag: str,
                             *,
                             inverse: str = None,
                             default: bool,
                             dest: str = None,
-                            help: str,
-                            strict_flag: bool = False
+                            help: str
                             ) -> None:
         if inverse is None:
             inverse = invert_flag_name(flag)
@@ -188,9 +184,6 @@ def process_options(args: List[str],
                                   action='store_true' if default else 'store_false',
                                   dest=dest,
                                   help=argparse.SUPPRESS)
-        if strict_flag:
-            strict_flag_names.append(flag)
-            strict_flag_assignments.append((dest, not default))
 
     # Unless otherwise specified, arguments will be parsed directly onto an
     # Options object.  Options that require further processing should have
@@ -211,27 +204,27 @@ def process_options(args: List[str],
                         help="silently ignore imports of missing modules")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
-    add_invertible_flag('--disallow-untyped-calls', default=False, strict_flag=True,
+    add_invertible_flag('--disallow-untyped-calls', default=False,
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
-    add_invertible_flag('--disallow-untyped-defs', default=False, strict_flag=True,
+    add_invertible_flag('--disallow-untyped-defs', default=False,
                         help="disallow defining functions without type annotations"
                         " or with incomplete type annotations")
-    add_invertible_flag('--check-untyped-defs', default=False, strict_flag=True,
+    add_invertible_flag('--check-untyped-defs', default=False,
                         help="type check the interior of functions without type annotations")
-    add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
+    add_invertible_flag('--disallow-subclassing-any', default=False,
                         help="disallow subclassing values of type 'Any' when defining classes")
     add_invertible_flag('--warn-incomplete-stub', default=False,
                         help="warn if missing type annotation in typeshed, only relevant with"
                         " --check-untyped-defs enabled")
-    add_invertible_flag('--warn-redundant-casts', default=False, strict_flag=True,
+    add_invertible_flag('--warn-redundant-casts', default=False,
                         help="warn about casting an expression to its inferred type")
     add_invertible_flag('--no-warn-no-return', dest='warn_no_return', default=True,
                         help="do not warn about functions that end without returning")
-    add_invertible_flag('--warn-return-any', default=False, strict_flag=True,
+    add_invertible_flag('--warn-return-any', default=False,
                         help="warn about returning values of type Any"
                              " from non-Any typed functions")
-    add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
+    add_invertible_flag('--warn-unused-ignores', default=False,
                         help="warn about unneeded '# type: ignore' comments")
     add_invertible_flag('--show-error-context', default=False,
                         dest='show_error_context',
@@ -243,7 +236,7 @@ def process_options(args: List[str],
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
-    add_invertible_flag('--strict-optional', default=False, strict_flag=True,
+    add_invertible_flag('--strict-optional', default=False,
                         help="enable experimental strict Optional checks")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
@@ -271,10 +264,10 @@ def process_options(args: List[str],
     parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
                         dest='special-opts:find_occurrences',
                         help="print out all usages of a class member (experimental)")
-    add_invertible_flag('--strict-boolean', default=False, strict_flag=True,
+    add_invertible_flag('--strict-boolean', default=False,
                         help='enable strict boolean checks in conditions')
     strict_help = "Strict mode. Enables the following flags: {}".format(
-        ", ".join(strict_flag_names))
+        ", ".join(Options.STRICT_FLAG_NAMES))
     parser.add_argument('--strict', action='store_true', dest='special-opts:strict',
                         help=strict_help)
     # hidden options
@@ -341,9 +334,10 @@ def process_options(args: List[str],
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
+    cli_defaults = parser.parse_args(args=())
     if getattr(dummy, 'special-opts:strict'):
-        for dest, value in strict_flag_assignments:
-            setattr(options, dest, value)
+        for dest in Options.STRICT_FLAG_NAMES:
+            setattr(options, dest, not getattr(cli_defaults, dest))
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
@@ -535,6 +529,7 @@ def get_init_file(dir: str) -> Optional[str]:
 # exists to specify types for values initialized to None or container
 # types.
 config_types = {
+    'strict': bool,
     # TODO: Check validity of python version
     'python_version': lambda s: tuple(map(int, s.split('.'))),
     'strict_optional_whitelist': lambda s: s.split(),
@@ -619,6 +614,7 @@ def parse_section(prefix: str, template: Options,
 
     Returns a dict of option values encountered, and a dict of report directories.
     """
+    config_defaults = Options()  # or move defaults in Options from instance to class attr
     results = {}  # type: Dict[str, object]
     report_dirs = {}  # type: Dict[str, str]
     for key in section:
@@ -651,6 +647,12 @@ def parse_section(prefix: str, template: Options,
                 continue
         except ValueError as err:
             print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
+            continue
+        if key == 'strict':
+            for dest in Options.STRICT_FLAG_NAMES:
+                if prefix.split(': ')[1] != '[mypy]' and dest not in Options.PER_MODULE_OPTIONS:
+                    continue
+                results[dest] = not getattr(config_defaults, dest)
             continue
         if key == 'silent_imports':
             print("%s: silent_imports has been replaced by "

@@ -31,6 +31,18 @@ class Options:
         "strict_boolean",
     }
 
+    STRICT_FLAG_NAMES = (
+        "disallow_untyped_calls",
+        "disallow_untyped_defs",
+        "check_untyped_defs",
+        "disallow_subclassing_any",
+        "warn_redundant_casts",
+        "warn_return_any",
+        "warn_unused_ignores",
+        "strict_optional",
+        "strict_boolean",
+    )
+
     OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional"}
 
     def __init__(self) -> None:
