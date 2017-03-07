@@ -84,6 +84,7 @@ class A:
 TypeInfo<0>(
   Name(target.A)
   Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
   Names(
     f<2>
     g<3>))
@@ -91,6 +92,7 @@ TypeInfo<0>(
 TypeInfo<0>(
   Name(target.A)
   Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
   Names(
     f<2>
     h<4>))
@@ -275,6 +277,7 @@ class A:
 TypeInfo<0>(
   Name(target.A)
   Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
   Names(
     f<2>
     x<3> (builtins.int<4>)
@@ -283,6 +286,7 @@ TypeInfo<0>(
 TypeInfo<0>(
   Name(target.A)
   Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
   Names(
     f<2>
     x<3> (builtins.int<4>)
@@ -499,3 +503,44 @@ __main__:
     target: MypyFile<0>
 target:
     g: FuncDef<2>
+
+[case testMergeWithBaseClass_typeinfo]
+import target
+[file target.py]
+class A: pass
+class B(A):
+    def f(self) -> None: pass
+[file target.py.next]
+class C: pass
+class A: pass
+class B(A):
+    def f(self) -> None: pass
+[out]
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names())
+TypeInfo<2>(
+  Name(target.B)
+  Bases(target.A<0>)
+  Mro(target.B<2>, target.A<0>, builtins.object<1>)
+  Names(
+    f<3>))
+==>
+TypeInfo<4>(
+  Name(target.C)
+  Bases(builtins.object<1>)
+  Mro(target.C<4>, builtins.object<1>)
+  Names())
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names())
+TypeInfo<2>(
+  Name(target.B)
+  Bases(target.A<0>)
+  Mro(target.B<2>, target.A<0>, builtins.object<1>)
+  Names(
+    f<3>))

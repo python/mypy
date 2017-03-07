@@ -97,6 +97,11 @@ class NodeReplaceVisitor(TraverserVisitor):
         # TODO additional things like the MRO
         node.defs.body = self.replace_statements(node.defs.body)
         replace_nodes_in_symbol_table(node.info.names, self.replacements)
+        info = node.info
+        for i, item in enumerate(info.mro):
+            info.mro[i] = self.fixup(info.mro[i])
+        for i, base in enumerate(info.bases):
+            self.fixup_type(info.bases[i])
         super().visit_class_def(node)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:

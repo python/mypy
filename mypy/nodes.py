@@ -2132,6 +2132,7 @@ class TypeInfo(SymbolNode):
     def dump(self,
              str_conv: 'mypy.strconv.StrConv' = None,
              type_str_conv: 'mypy.types.TypeStrVisitor' = None) -> str:
+        """Return a string dump of the contents of the TypeInfo."""
         if not str_conv:
             str_conv = mypy.strconv.StrConv()
         base = None  # type: str
@@ -2145,6 +2146,8 @@ class TypeInfo(SymbolNode):
         if self.bases:
             base = 'Bases({})'.format(', '.join(type_str(base)
                                                 for base in self.bases))
+        mro = 'Mro({})'.format(', '.join(item.fullname() + str_conv.format_id(item)
+                                         for item in self.mro))
         names = []
         for name in sorted(self.names):
             description = name + str_conv.format_id(self.names[name].node)
@@ -2155,6 +2158,7 @@ class TypeInfo(SymbolNode):
         return mypy.strconv.dump_tagged(
             ['Name({})'.format(self.fullname()),
              base,
+             mro,
              ('Names', names)],
             head,
             str_conv=str_conv)
