@@ -123,3 +123,44 @@ class A: pass
 [file next.py]
 [out]
 __main__.A
+
+[case testAddBaseClass]
+class A: pass
+[file next.py]
+class B: pass
+class A(B): pass
+[out]
+__main__.A
+__main__.B
+
+[case testChangeBaseClass]
+class A: pass
+class B: pass
+class C(A): pass
+[file next.py]
+class A: pass
+class B: pass
+class C(B): pass
+[out]
+__main__.C
+
+[case testRemoveBaseClass]
+class A: pass
+class B(A): pass
+[file next.py]
+class A: pass
+class B: pass
+[out]
+__main__.B
+
+[case testRemoveClassFromMiddleOfMro]
+class A: pass
+class B(A): pass
+class C(B): pass
+[file next.py]
+class A: pass
+class B: pass
+class C(B): pass
+[out]
+__main__.B
+__main__.C
