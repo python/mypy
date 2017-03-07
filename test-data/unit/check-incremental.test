@@ -1892,3 +1892,14 @@ import c
 x = 0
 [rechecked b]
 [stale b]
+
+[case testQuickAndDirty3]
+# flags: --quick-and-dirty
+# flags2: --incremental
+import a, b
+[file a.py]
+import b
+[file b.py]
+import a
+[rechecked a, b, builtins]
+[stale a, b, builtins]
