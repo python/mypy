@@ -77,9 +77,9 @@ class NodeFixer(NodeVisitor[None]):
                     value.node = self.modules[cross_ref]
                 else:
                     stnode = lookup_qualified_stnode(self.modules, cross_ref)
-                    assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
-                    value.node = stnode.node
-                    value.type_override = stnode.type_override
+                    if stnode is not None:
+                        value.node = stnode.node
+                        value.type_override = stnode.type_override
             else:
                 if isinstance(value.node, TypeInfo):
                     # TypeInfo has no accept().  TODO: Add it?
@@ -238,11 +238,12 @@ def lookup_qualified(modules: Dict[str, MypyFile], name: str) -> SymbolNode:
         return stnode.node
 
 
-def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> SymbolTableNode:
+def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> Optional[SymbolTableNode]:
     head = name
     rest = []
     while True:
-        assert '.' in head, "Cannot find %s" % (name,)
+        if '.' not in head:
+            return None
         head, tail = head.rsplit('.', 1)
         rest.append(tail)
         mod = modules.get(head)
@@ -250,9 +251,11 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> SymbolTa
             break
     names = mod.names
     while True:
-        assert rest, "Cannot find %s" % (name,)
+        if not rest:
+            return None
         key = rest.pop()
-        assert key in names, "Cannot find %s for %s" % (key, name)
+        if key not in names:
+            return None
         stnode = names[key]
         if not rest:
             return stnode
