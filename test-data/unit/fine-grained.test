@@ -379,3 +379,44 @@ main:3: error: "module" has no attribute "g"
 ==
 ==
 main:3: error: "module" has no attribute "g"
+
+[case testAddBaseClassMethodCausingInvalidOverride]
+import m
+class B(m.A):
+    def f(self) -> None: pass
+[file m.py]
+class A: pass
+[file m.py.2]
+class A:
+    def f(self) -> int: pass
+[out]
+==
+main:3: error: Return type of "f" incompatible with supertype "A"
+
+[case testModifyBaseClassMethodCausingInvalidOverride]
+import m
+class B(m.A):
+    def f(self) -> None: pass
+[file m.py]
+class A:
+    def f(self) -> None: pass
+[file m.py.2]
+class A:
+    def f(self) -> int: pass
+[out]
+==
+main:3: error: Return type of "f" incompatible with supertype "A"
+
+[case testAddBaseClassAttributeCausingErrorInSubclass-skip]
+import m
+class B(m.A):
+    def f(self) -> None:
+        self.x = 1
+[file m.py]
+class A: pass
+[file m.py.2]
+class A:
+    def g(self) -> None:
+        self.x = 'a'
+[out]
+TODO

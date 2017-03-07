@@ -71,6 +71,36 @@ class A:
 [out]
 __main__.A.y
 
+[case testAddAttribute]
+class A: pass
+[file next.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[out]
+__main__.A.f
+__main__.A.x
+
+[case testAddAttribute2]
+class A:
+    def f(self) -> None: pass
+[file next.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[out]
+__main__.A.x
+
+[case testRemoveAttribute]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[file next.py]
+class A: pass
+[out]
+__main__.A.f
+__main__.A.x
+
 [case testAddMethod]
 class A:
     def f(self) -> None: pass
