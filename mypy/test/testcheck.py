@@ -26,8 +26,6 @@ from mypy import experiments
 
 # List of files that contain test case descriptions.
 files = [
-]
-fast_parser_files = [
     'check-basic.test',
     'check-callable.test',
     'check-classes.test',
@@ -76,8 +74,6 @@ fast_parser_files = [
     'check-underscores.test',
     'check-classvar.test',
 ]
-
-files.extend(fast_parser_files)
 
 
 class TypeCheckSuite(DataSuite):
@@ -157,8 +153,6 @@ class TypeCheckSuite(DataSuite):
             options.strict_optional = True
         if incremental:
             options.incremental = True
-        if os.path.split(testcase.file)[1] in fast_parser_files:
-            options.fast_parser = True
 
         sources = []
         for module_name, program_path, program_text in module_data:

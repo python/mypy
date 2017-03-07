@@ -691,12 +691,6 @@ Mypy supports it already:
 
     p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
 
-.. note::
-
-   The Python 3.6 syntax requires the ``--fast-parser`` flag. You must also have the
-   `typed_ast <https://pypi.python.org/pypi/typed-ast>`_ package
-   installed and have at least version 0.6.1.  Use ``pip3 install -U typed_ast``.
-
 .. _type-of-class:
 
 The type of class objects
@@ -871,15 +865,6 @@ annotated the first example as the following:
 
 Typing async/await
 ******************
-
-.. note::
-
-   Currently, you must pass in the ``--fast-parser`` flag if you want to run
-   mypy against code containing the ``async/await`` keywords. The fast parser
-   will be enabled by default in a future version of mypy.
-
-   Note that mypy will understand coroutines created using the ``@asyncio.coroutine``
-   decorator both with and without the fast parser enabled.
 
 Mypy supports the ability to type coroutines that use the ``async/await``
 syntax introduced in Python 3.5. For more information regarding coroutines and
