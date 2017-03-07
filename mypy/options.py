@@ -101,6 +101,9 @@ class Options:
         # Write junit.xml to given file
         self.junit_xml = None  # type: Optional[str]
 
+        # Fast parser is on by default
+        self.fast_parser = True
+
         # Caching options
         self.incremental = False
         self.cache_dir = defaults.CACHE_DIR
@@ -125,7 +128,6 @@ class Options:
         self.use_builtins_fixtures = False
 
         # -- experimental options --
-        self.fast_parser = True
         self.shadow_file = None  # type: Optional[Tuple[str, str]]
         self.show_column_numbers = False  # type: bool
         self.dump_graph = False
