@@ -2112,46 +2112,38 @@ class C:
 import a, b
 [file a.py]
 import b
-class C: pass
+def f(x: b.S) -> b.S: return x
 [file b.py]
 import a
-C = a.C
+S = str
 [file a.py.next]
 import b
-class C:
-    def f(self): pass
-[rechecked a]
-[stale a]
+def f(x: b.S) -> int: return 0
 
 [case testQuickAndDirty15]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
-from typing import NamedTuple
 import b
-C = NamedTuple('C', (('a', int),))
+def f(x: b.P) -> b.P: return x
 [file b.py]
-from a import C
-[file a.py.next]
 from typing import NamedTuple
+import a
+P = NamedTuple('P', (('x', int),))
+[file a.py.next]
 import b
-C = NamedTuple('C', (('a', int), ('b', int)))
-[rechecked a]
-[stale a]
+def f(x: b.P) -> int: return 0
 
 [case testQuickAndDirty16]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
-from typing import TypeVar
 import b
-T = TypeVar('T')
+def f(x: b.T) -> b.T: return x
 [file b.py]
-from a import T
-def f(x: T) -> T: return x
-[file a.py.next]
 from typing import TypeVar
+import a
+T = TypeVar('T')
+[file a.py.next]
 import b
-T = TypeVar('T', bound=int)
-[rechecked a]
-[stale a]
+def f(x: b.T) -> int: return 0
