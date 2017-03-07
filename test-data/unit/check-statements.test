@@ -44,7 +44,7 @@ import typing
 def f() -> None:
     return None
 def g() -> None:
-    return f()  # E: No return value expected
+    return f()
 [out]
 
 [case testReturnInGenerator]
