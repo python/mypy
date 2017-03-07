@@ -2007,7 +2007,7 @@ tmp/b.py:3: error: Revealed type is 'def () -> builtins.int'
 
 -- (The behavior for blockers is actually no different than in regular incremental mode)
 [case testQuickAndDirty9]
-# noflags: --quick-and-dirty
+# flags: --quick-and-dirty
 import a, b
 [file a.py]
 import b
@@ -2026,7 +2026,7 @@ tmp/a.py:3: error: Duplicate base class "B"
 [stale a, b]
 
 [case testQuickAndDirty10]
-# noflags: --quick-and-dirty
+# flags: --quick-and-dirty
 import a, b
 [file a.py]
 import b
@@ -2043,3 +2043,115 @@ class C(B, B): pass  # blocker
 tmp/a.py:3: error: Duplicate base class "B"
 [rechecked a, b]
 [stale a, b]
+
+[case testQuickAndDirty11]
+# flags: --quick-and-dirty
+import a, b, c, d
+[file a.py]
+import d
+def f(): pass
+[file b.py]
+from a import f
+[file c.py]
+from b import f
+[file d.py]
+from c import f
+[file a.py.next]
+import d
+def g(): pass  # renamed f to g
+[file c.py.next]
+from a import g
+
+[case testQuickAndDirty12]
+# flags: --quick-and-dirty
+import a, b, c, d
+[file a.py]
+import d
+class C:
+    def f(self): pass
+[file b.py]
+from a import C
+[file c.py]
+from b import C
+[file d.py]
+from c import C
+C().f()
+[file a.py.next]
+import d
+class C:
+    def g(self): pass  # renamed f to g
+[file c.py.next]
+from a import C
+[out1]
+[out2]
+
+[case testQuickAndDirty13]
+# flags: --quick-and-dirty
+import a, b, c
+[file a.py]
+import c
+class C:
+    x = 0
+[file b.py]
+import a
+x = a.C.x  # type: int
+[file c.py]
+import b
+x = b.x
+[file a.py.next]
+import c
+class C:
+    pass  # Removed x
+[out1]
+[out2]
+[rechecked a]
+[stale a]
+
+[case testQuickAndDirty14]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+class C: pass
+[file b.py]
+import a
+C = a.C
+[file a.py.next]
+import b
+class C:
+    def f(self): pass
+[rechecked a]
+[stale a]
+
+[case testQuickAndDirty15]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+from typing import NamedTuple
+import b
+C = NamedTuple('C', (('a', int),))
+[file b.py]
+from a import C
+[file a.py.next]
+from typing import NamedTuple
+import b
+C = NamedTuple('C', (('a', int), ('b', int)))
+[rechecked a]
+[stale a]
+
+[case testQuickAndDirty16]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+from typing import TypeVar
+import b
+T = TypeVar('T')
+[file b.py]
+from a import T
+def f(x: T) -> T: return x
+[file a.py.next]
+from typing import TypeVar
+import b
+T = TypeVar('T', bound=int)
+[rechecked a]
+[stale a]
