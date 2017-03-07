@@ -284,27 +284,33 @@ def reprocess_nodes(manager: BuildManager,
     Return fired triggers.
     """
     file_node = manager.modules[module_id]
+    # Strip semantic analysis information.
     for deferred in nodes:
-        node = deferred.node
-        # Strip semantic analysis information
-        strip_target(node)
-        # We don't redo the first pass, because it only does local things.
-        semantic_analyzer = manager.semantic_analyzer
+        strip_target(deferred.node)
+    semantic_analyzer = manager.semantic_analyzer
+    # Second pass of semantic analysis. We don't redo the first pass, because it only
+    # does local things that won't go stale.
+    for deferred in nodes:
         with semantic_analyzer.file_context(
                 file_node=file_node,
                 fnam=file_node.path,
                 options=manager.options,
                 active_type=deferred.active_typeinfo):
-            # Second pass
-            manager.semantic_analyzer.refresh_partial(node)
-            # Third pass
-            manager.semantic_analyzer_pass3.refresh_partial(node)
+            manager.semantic_analyzer.refresh_partial(deferred.node)
+    # Third pass of semantic analysis.
+    for deferred in nodes:
+        with semantic_analyzer.file_context(
+                file_node=file_node,
+                fnam=file_node.path,
+                options=manager.options,
+                active_type=deferred.active_typeinfo):
+            manager.semantic_analyzer_pass3.refresh_partial(deferred.node)
     info = deferred.active_typeinfo
     if info:
         old_types = {name: node.node.type
                      for name, node in info.names.items()
                      if isinstance(node.node, Var)}
-    # Type check
+    # Type check.
     graph[module_id].type_checker.check_second_pass(list(nodes))  # TODO: check return value
     new_triggered = set()
     if info:
