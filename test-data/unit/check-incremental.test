@@ -6,6 +6,11 @@
 -- errors expected in the second run should be in the `[out2]` section. If a
 -- section is omitted, it is expected there are no errors on that run.
 --
+-- As always, extra flags may be specified using
+-- # flags: --some-flag
+-- If the second run requires different flags, those can be specified using
+-- # flags2: --another-flag
+--
 -- Any files that we expect to be rechecked should be annotated in the [rechecked]
 -- annotation, and any files expect to be stale (aka have a modified interface)
 -- should be annotated in the [stale] annotation. Note that a file that ends up
@@ -1903,3 +1908,19 @@ import b
 import a
 [rechecked a, b, builtins]
 [stale a, b, builtins]
+
+[case testQuickAndDirty4]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+def foo() -> int: return ''
+[file b.py]
+import a
+[file a.py.next]
+def foo() -> int: return 0
+[out1]
+tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
+[out2]
+[rechecked a]
+[stale a]

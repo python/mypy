@@ -1516,7 +1516,14 @@ class State:
         return valid_refs
 
     def write_cache(self) -> None:
-        if self.path and self.options.incremental and not self.manager.errors.is_errors():
+        ok = self.path and self.options.incremental
+        if ok:
+            if self.manager.options.quick_and_dirty:
+                is_errors = self.manager.errors.is_errors_for_file(self.path)
+            else:
+                is_errors = self.manager.errors.is_errors()
+            ok = not is_errors
+        if ok:
             dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
             new_interface_hash = write_cache(
                 self.id, self.path, self.tree,
