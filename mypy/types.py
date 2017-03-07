@@ -53,11 +53,9 @@ class Type(mypy.nodes.Context):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'Type':
         classname = data['.class']
-        glo = globals()
-        if classname in glo:
-            cl = glo[classname]
-            if 'deserialize' in cl.__dict__:
-                return cl.deserialize(data)
+        method = deserialize_map.get(classname)
+        if method is not None:
+            return method(data)
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
@@ -1771,3 +1769,12 @@ def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -
         return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1],
                                 line=line, column=column)
     return tp
+
+
+deserialize_map = {
+    key: obj.deserialize  # type: ignore
+    for key, obj in globals().items()
+    if isinstance(obj, type)
+       and issubclass(obj, Type)
+       and obj is not Type
+    }
