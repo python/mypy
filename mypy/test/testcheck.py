@@ -308,7 +308,7 @@ class TypeCheckSuite(DataSuite):
     def parse_options(self, program_text: str, testcase: DataDrivenTestCase,
                       incremental: int) -> Options:
         options = Options()
-        flags = re.search('# flags1?: (.*)$', program_text, flags=re.MULTILINE)
+        flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
         if incremental == 2:
             flags2 = re.search('# flags2: (.*)$', program_text, flags=re.MULTILINE)
             if flags2:

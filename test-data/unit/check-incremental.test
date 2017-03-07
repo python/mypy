@@ -5,8 +5,14 @@
 -- Errors expected in the first run should be in the `[out1]` section, and
 -- errors expected in the second run should be in the `[out2]` section. If a
 -- section is omitted, it is expected there are no errors on that run.
+-- (Note that [out] is equivalent to [out1].)
 --
--- As always, extra flags may be specified using
+-- The list of modules to be checked can be specified using
+-- # cmd: mypy -m mod1 mod2 mod3
+-- To check a different list on the second run, use
+-- # cmd2: mypy -m mod1 mod3
+--
+-- Extra command line flags may be specified using
 -- # flags: --some-flag
 -- If the second run requires different flags, those can be specified using
 -- # flags2: --another-flag
@@ -1924,3 +1930,116 @@ tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
 [out2]
 [rechecked a]
 [stale a]
+
+[case testQuickAndDirty5]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+[file b.py]
+import a
+[file a.py.next]
+import b
+def foo() -> int: return ''
+[out1]
+[out2]
+tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
+[rechecked a]
+[stale]
+
+[case testQuickAndDirty6]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+def foo() -> int: return ''
+[file b.py]
+import a
+[file a.py.next]
+import b
+def foo() -> int: return 0.5
+[out1]
+tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
+[out2]
+tmp/a.py:2: error: Incompatible return value type (got "float", expected "int")
+[rechecked a]
+[stale]
+
+[case testQuickAndDirty7]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+[file b.py]
+import a
+class C: pass
+def f() -> int: pass
+[file a.py.next]
+import b
+reveal_type(b.C)
+reveal_type(b.f)
+[out1]
+[out2]
+tmp/a.py:2: error: Revealed type is 'def () -> b.C'
+tmp/a.py:3: error: Revealed type is 'def () -> builtins.int'
+[rechecked a]
+[stale]
+
+[case testQuickAndDirty8]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+class C: pass
+def f() -> int: pass
+[file b.py]
+import a
+[file b.py.next]
+import a
+reveal_type(a.C)
+reveal_type(a.f)
+[out1]
+[out2]
+tmp/b.py:2: error: Revealed type is 'def () -> a.C'
+tmp/b.py:3: error: Revealed type is 'def () -> builtins.int'
+[rechecked b]
+[stale]
+
+-- (The behavior for blockers is actually no different than in regular incremental mode)
+[case testQuickAndDirty9]
+# noflags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+class B: pass
+class C(B, B): pass  # blocker
+[file b.py]
+import a
+[file a.py.next]
+import b
+class B: pass
+class C(B): pass
+[out1]
+tmp/a.py:3: error: Duplicate base class "B"
+[out2]
+[rechecked a, b]
+[stale a, b]
+
+[case testQuickAndDirty10]
+# noflags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+class B: pass
+class C(B): pass
+[file b.py]
+import a
+[file a.py.next]
+import b
+class B: pass
+class C(B, B): pass  # blocker
+[out1]
+[out2]
+tmp/a.py:3: error: Duplicate base class "B"
+[rechecked a, b]
+[stale a, b]
