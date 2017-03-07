@@ -63,6 +63,10 @@ from mypy.server.target import module_prefix
 from mypy.server.trigger import make_trigger
 
 
+# If True, print out debug logging output.
+DEBUG = False
+
+
 class FineGrainedBuildManager:
     def __init__(self,
                  manager: BuildManager,
@@ -91,6 +95,8 @@ class FineGrainedBuildManager:
         Returns:
             A list of errors.
         """
+        if DEBUG:
+            print('==== update ====')
         manager = self.manager
         graph = self.graph
         old_modules = dict(manager.modules)
@@ -215,6 +221,8 @@ def propagate_changes_using_dependencies(
             if id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
+                if DEBUG:
+                    print('process', target)
                 todo[id].add(lookup_target(manager.modules, target))
         triggered = set()
         # TODO: Preserve order (set is not optimal)
@@ -258,6 +266,8 @@ def find_targets_recursive(
                     continue
                 if module_id not in result:
                     result[module_id] = set()
+                if DEBUG:
+                    print('process', target)
                 deferred = lookup_target(modules, target)
                 result[module_id].add(deferred)
 
