@@ -2356,7 +2356,5 @@ def get_member_expr_fullname(expr: MemberExpr) -> str:
 deserialize_map = {
     key: obj.deserialize  # type: ignore
     for key, obj in globals().items()
-    if isinstance(obj, type)
-       and issubclass(obj, SymbolNode)
-       and obj is not SymbolNode
-    }
+    if isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
+}

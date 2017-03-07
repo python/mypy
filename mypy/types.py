@@ -1774,7 +1774,5 @@ def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -
 deserialize_map = {
     key: obj.deserialize  # type: ignore
     for key, obj in globals().items()
-    if isinstance(obj, type)
-       and issubclass(obj, Type)
-       and obj is not Type
-    }
+    if isinstance(obj, type) and issubclass(obj, Type) and obj is not Type
+}
