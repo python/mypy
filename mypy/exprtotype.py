@@ -5,7 +5,7 @@ from mypy.nodes import (
     ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr,
     get_member_expr_fullname
 )
-from mypy.parsetype import parse_str_as_type, TypeParseError
+from mypy.fastparse import parse_type_comment
 from mypy.types import Type, UnboundType, TypeList, EllipsisType
 
 
@@ -49,8 +49,8 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
     elif isinstance(expr, (StrExpr, BytesExpr, UnicodeExpr)):
         # Parse string literal type.
         try:
-            result = parse_str_as_type(expr.value, expr.line)
-        except TypeParseError:
+            result = parse_type_comment(expr.value, expr.line, None)
+        except SyntaxError:
             raise TypeTranslationError()
         return result
     elif isinstance(expr, EllipsisExpr):
