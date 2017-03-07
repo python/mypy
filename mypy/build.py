@@ -1878,10 +1878,10 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
         graph[id].fix_suppressed_dependencies(graph)
-    for id in stale:
-        graph[id].semantic_analysis()
     for id in fresh:
         graph[id].fix_cross_refs()
+    for id in stale:
+        graph[id].semantic_analysis()
     for id in stale:
         graph[id].semantic_analysis_pass_three()
     for id in fresh:
