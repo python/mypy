@@ -5,7 +5,7 @@ from typing import Dict, List, Set
 from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
-    ImportFrom, LDEF
+    ImportFrom, TypeInfo, Var, LDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -63,6 +63,9 @@ class DependencyVisitor(TraverserVisitor):
             for trigger in get_type_dependencies(signature):
                 self.add_dependency(trigger)
                 self.add_dependency(trigger, target=make_trigger(target))
+        if o.info:
+            for base in non_trivial_bases(o.info):
+                self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
         super().visit_func_def(o)
         self.pop()
 
@@ -74,6 +77,14 @@ class DependencyVisitor(TraverserVisitor):
         # TODO: Add dependencies based on MRO and other attributes.
         super().visit_class_def(o)
         self.is_class = old_is_class
+        info = o.info
+        for name, node in info.names.items():
+            if isinstance(node.node, Var):
+                for base in non_trivial_bases(info):
+                    # If the type of an attribute changes in a base class, we make references
+                    # to the attribute in the subclass stale.
+                    self.add_dependency(make_trigger(base.fullname() + '.' + name),
+                                        target=make_trigger(info.fullname() + '.' + name))
         self.pop()
 
     def visit_import(self, o: Import) -> None:
@@ -200,3 +211,8 @@ class TypeDependenciesVisitor(TypeVisitor[List[str]]):
 
     def visit_void(self, typ: Void) -> List[str]:
         return []
+
+
+def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
+    return [base for base in info.mro[1:]
+            if base.fullname() != 'builtins.object']

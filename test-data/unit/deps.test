@@ -69,3 +69,43 @@ def f() -> None: pass
 [out]
 <n.f> -> m.g
 <n> -> m, m.g
+
+[case testInheritanceSimple]
+class A:
+    pass
+class B(A):
+    pass
+[out]
+<m.A> -> m.A, m.B
+<m.B> -> m.B
+
+[case testInheritanceWithMethodAndAttribute]
+class A:
+    pass
+class B(A):
+    def f(self) -> None:
+        self.x = 1
+[out]
+<m.A.f> -> m.B.f
+<m.A.x> -> <m.B.x>
+<m.A> -> m.A, m.B
+<m.B.x> -> m.B.f
+<m.B> -> m.B
+
+[case testInheritanceWithMethodAndAttributeAndDeepHierarchy]
+class A:
+    pass
+class B(A):
+    pass
+class C(B):
+    def f(self) -> None:
+        self.x = 1
+[out]
+<m.A.f> -> m.C.f
+<m.A.x> -> <m.C.x>
+<m.A> -> m.A, m.B
+<m.B.f> -> m.C.f
+<m.B.x> -> <m.C.x>
+<m.B> -> m.B, m.C
+<m.C.x> -> m.C.f
+<m.C> -> m.C
