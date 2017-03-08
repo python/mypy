@@ -124,6 +124,7 @@ class A:
 <m.B.x> -> m.B.f
 <m.B> -> m.B
 <n.A.f> -> m.B.f
+<n.A.g> -> <m.B.g>
 <n.A.x> -> <m.B.x>
 <n.A> -> m.B
 <n> -> m, m.B
