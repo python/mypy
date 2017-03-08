@@ -52,7 +52,7 @@ from mypy.build import BuildManager, State
 from mypy.checker import DeferredNode
 from mypy.errors import Errors
 from mypy.nodes import (
-    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase,
+    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef
 )
 from mypy.types import Type
 from mypy.server.astdiff import compare_symbol_tables, is_identical_type
@@ -225,7 +225,7 @@ def propagate_changes_using_dependencies(
                     todo[id] = set()
                 if DEBUG:
                     print('process', target)
-                todo[id].add(lookup_target(manager.modules, target))
+                todo[id].update(lookup_target(manager.modules, target))
         triggered = set()
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
@@ -271,7 +271,7 @@ def find_targets_recursive(
                 if DEBUG:
                     print('process', target)
                 deferred = lookup_target(modules, target)
-                result[module_id].add(deferred)
+                result[module_id].update(deferred)
 
     return result
 
@@ -343,10 +343,11 @@ def update_deps(module_id: str,
             deps.setdefault(trigger, set()).update(targets)
 
 
-def lookup_target(modules: Dict[str, MypyFile], target: str) -> DeferredNode:
+def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNode]:
     """Look up a target by fully-qualified name."""
     components = target.split('.')
     node = modules[components[0]]  # type: SymbolNode
+    prev = None  # type: SymbolNode
     active_class = None
     active_class_name = None
     for c in components[1:]:
@@ -355,6 +356,17 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> DeferredNode:
             active_class_name = node.name()
         # TODO: Is it possible for the assertion to fail?
         assert isinstance(node, (MypyFile, TypeInfo))
+        prev = node
         node = node.names[c].node
+    if isinstance(node, TypeInfo):
+        # A ClassDef target covers the body of the class and everything defined
+        # within it.  To get the body we include the entire surrounding target,
+        # typically a module top-level, since we don't support processing class
+        # bodies as separate entitites for simplicity.
+        result = [DeferredNode(prev, None, None)]  # TODO: Nested classes
+        for name, node in node.names.items():
+            if isinstance(node, FuncDef):
+                result.extend(lookup_target(modules, target + '.' + name))
+        return result
     assert isinstance(node, (FuncDef, MypyFile))
-    return DeferredNode(node, active_class_name, active_class)
+    return [DeferredNode(node, active_class_name, active_class)]

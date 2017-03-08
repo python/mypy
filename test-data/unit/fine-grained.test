@@ -479,3 +479,23 @@ class A:
 [out]
 ==
 main:4: error: Too few arguments for "g" of "A"
+
+[case testRemoveBaseClass]
+import m
+class A(m.B):
+    def f(self) -> None:
+        self.g()
+        self.x
+        self.y = 1
+[file m.py]
+class C:
+    def g(self) -> None:
+        self.x = 1
+class B(C): pass
+[file m.py.2]
+class C: pass
+class B: pass
+[out]
+==
+main:4: error: "A" has no attribute "g"
+main:5: error: "A" has no attribute "x"
