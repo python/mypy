@@ -544,3 +544,28 @@ TypeInfo<2>(
   Mro(target.B<2>, target.A<0>, builtins.object<1>)
   Names(
     f<3>))
+
+[case testModuleAttribute]
+import target
+[file target.py]
+x = 1
+[file target.py.next]
+x = 2
+[out]
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  AssignmentStmt:1<2>(
+    NameExpr(x [target.x<3>])
+    IntExpr(1)
+    builtins.int<4>))
+==>
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  AssignmentStmt:1<5>(
+    NameExpr(x [target.x<3>])
+    IntExpr(2)
+    builtins.int<4>))

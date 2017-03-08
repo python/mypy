@@ -37,12 +37,23 @@ class A: pass
 [out]
 <m.A> -> m.A, m.f
 
-[case testAccessModuleAttribute-skip]
+[case testAccessModuleAttribute]
 x = 1
 def f() -> None:
     x
 [out]
 <m.x> -> m, m.f
+<builtins.int> -> m
+
+[case testAccessModuleAttribute2]
+import n
+def f() -> None:
+    n.x
+[file n.py]
+x = 1
+[out]
+<n.x> -> m.f
+<n> -> m, m.f
 
 [case testImport]
 import n

@@ -557,3 +557,16 @@ def g(x: int) -> None: pass
 [out]
 ==
 m/__init__.py:3: error: Too few arguments for "g"
+
+[case testModuleAttributeTypeChanges]
+import m
+def f() -> None:
+    x = 1
+    x = m.x
+[file m.py]
+x = 1
+[file m.py.2]
+x = ''
+[out]
+==
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
