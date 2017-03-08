@@ -104,6 +104,8 @@ class FineGrainedBuildManager:
         new_modules, new_type_maps = build_incremental_step(manager, changed_modules)
         # TODO: What to do with stale dependencies?
         triggered = calculate_active_triggers(manager, old_modules, new_modules)
+        if DEBUG:
+            print('triggered:', sorted(triggered))
         replace_modules_with_new_variants(manager, graph, old_modules, new_modules, new_type_maps)
         update_dependencies(new_modules, self.deps, graph)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,

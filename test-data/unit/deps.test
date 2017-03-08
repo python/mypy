@@ -109,3 +109,21 @@ class C(B):
 <m.B> -> m.B, m.C
 <m.C.x> -> m.C.f
 <m.C> -> m.C
+
+[case testInheritAttributeFromAnotherModule]
+import n
+class B(n.A):
+    def f(sel) -> None:
+        a = 1
+        a = sel.x
+[file n.py]
+class A:
+    def g(self) -> None:
+        self.x = 1
+[out]
+<m.B.x> -> m.B.f
+<m.B> -> m.B
+<n.A.f> -> m.B.f
+<n.A.x> -> <m.B.x>
+<n.A> -> m.B
+<n> -> m, m.B
