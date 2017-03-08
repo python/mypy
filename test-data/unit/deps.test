@@ -141,3 +141,56 @@ class B(A):
 <m.A> -> m.A, m.B
 <m.B.g> -> m.B.f
 <m.B> -> m.B
+
+[case testPackage]
+import a.b
+def f() -> None:
+    a.b.g()
+[file a/__init__.py]
+[file a/b.py]
+def g() -> None: pass
+[out]
+<a.b.g> -> m.f
+<a.b> -> m, m.f
+<a> -> m.f
+
+[case testClassInPackage]
+import a.b
+def f(x: a.b.A) -> None:
+    x.g()
+    x.y
+[file a/__init__.py]
+[file a/b.py]
+class A:
+    def g(self) -> None:
+        self.y = 1
+[out]
+<a.b.A.g> -> m.f
+<a.b.A.y> -> m.f
+<a.b.A> -> <m.f>, m.f
+<a.b> -> m
+
+[case testPackage__init__]
+import a
+def f() -> None:
+    a.g()
+[file a/__init__.py]
+def g() -> None: pass
+[out]
+<a.g> -> m.f
+<a> -> m, m.f
+
+[case testClassInPackage__init__]
+import a
+def f(x: a.A) -> None:
+    x.g()
+    x.y
+[file a/__init__.py]
+class A:
+    def g(self) -> None:
+        self.y = 1
+[out]
+<a.A.g> -> m.f
+<a.A.y> -> m.f
+<a.A> -> <m.f>, m.f
+<a> -> m

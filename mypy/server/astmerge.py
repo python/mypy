@@ -43,7 +43,7 @@ def replacement_map_from_symbol_table(
     replacements = {}
     for name, node in old.items():
         if (name in new and (node.kind == MDEF
-                             or module_prefix(node.node.fullname()) == prefix)):
+                             or get_prefix(node.node.fullname()) == prefix)):
             new_node = new[name]
             if (type(new_node.node) == type(node.node)  # noqa
                     and new_node.node.fullname() == node.node.fullname()
@@ -220,5 +220,6 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
                 node.node.info = cast(TypeInfo, replacements.get(node.node.info, node.node.info))
 
 
-def module_prefix(fullname: str) -> str:
+def get_prefix(fullname: str) -> str:
+    """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
     return fullname.rsplit('.', 1)[0]

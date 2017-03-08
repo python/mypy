@@ -46,7 +46,7 @@ Major todo items:
 - Support multiple type checking passes
 """
 
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Iterable
 
 from mypy.build import BuildManager, State
 from mypy.checker import DeferredNode
@@ -59,7 +59,7 @@ from mypy.server.astdiff import compare_symbol_tables, is_identical_type
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.deps import get_dependencies, get_dependencies_of_target
-from mypy.server.target import module_prefix
+from mypy.server.target import module_prefix, split_target
 from mypy.server.trigger import make_trigger
 
 
@@ -110,7 +110,8 @@ class FineGrainedBuildManager:
         update_dependencies(new_modules, self.deps, graph)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              set(changed_modules),
-                                             self.previous_targets_with_errors)
+                                             self.previous_targets_with_errors,
+                                             graph)
         self.previous_targets_with_errors = manager.errors.targets()
         return manager.errors.messages()
 
@@ -208,7 +209,8 @@ def propagate_changes_using_dependencies(
         deps: Dict[str, Set[str]],
         triggered: Set[str],
         up_to_date_modules: Set[str],
-        targets_with_errors: Set[str]) -> None:
+        targets_with_errors: Set[str],
+        modules: Iterable[str]) -> None:
     # TODO: Multiple type checking passes
     # TODO: Restrict the number of iterations to some maximum to avoid infinite loops
 
@@ -219,7 +221,7 @@ def propagate_changes_using_dependencies(
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
         for target in targets_with_errors:
-            id = module_prefix(target)
+            id = module_prefix(modules, target)
             if id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
@@ -262,7 +264,7 @@ def find_targets_recursive(
             if target.startswith('<'):
                 worklist |= deps.get(target, set()) - processed
             else:
-                module_id = target.split('.', 1)[0]
+                module_id = module_prefix(modules, target)
                 if module_id in up_to_date_modules:
                     # Already processed.
                     continue
@@ -345,12 +347,16 @@ def update_deps(module_id: str,
 
 def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNode]:
     """Look up a target by fully-qualified name."""
-    components = target.split('.')
-    node = modules[components[0]]  # type: SymbolNode
+    module, rest = split_target(modules, target)
+    if rest:
+        components = rest.split('.')
+    else:
+        components = []
+    node = modules[module]  # type: SymbolNode
     prev = None  # type: SymbolNode
     active_class = None
     active_class_name = None
-    for c in components[1:]:
+    for c in components:
         if isinstance(node, TypeInfo):
             active_class = node
             active_class_name = node.name()

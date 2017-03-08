@@ -499,3 +499,31 @@ class B: pass
 ==
 main:4: error: "A" has no attribute "g"
 main:5: error: "A" has no attribute "x"
+
+[case testChangeInPackage]
+import m.n
+def f() -> None:
+    m.n.g()
+[file m/__init__.py]
+[file m/n.py]
+def g() -> None: pass
+[file m/n.py.2]
+def g(x: int) -> None: pass
+[out]
+==
+main:3: error: Too few arguments for "g"
+
+[case testTriggerTargetInPackage]
+import m.n
+[file m/__init__.py]
+[file m/n.py]
+import a
+def f() -> None:
+    a.g()
+[file a.py]
+def g() -> None: pass
+[file a.py.2]
+def g(x: int) -> None: pass
+[out]
+==
+m/n.py:3: error: Too few arguments for "g"

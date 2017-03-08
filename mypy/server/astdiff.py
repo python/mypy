@@ -37,8 +37,9 @@ def compare_symbol_tables(name_prefix: str, table1: SymbolTable, table2: SymbolT
             node1 = table1[name].node
             node2 = table2[name].node
 
-            if node1.fullname() and module_name(node1.fullname()) != name_prefix:
+            if node1.fullname() and get_prefix(node1.fullname()) != name_prefix:
                 # Only look inside things defined in the current module.
+                # TODO: This probably doesn't work generally...
                 continue
 
             if isinstance(node1, TypeInfo) and isinstance(node2, TypeInfo):
@@ -92,7 +93,8 @@ def is_same_mro(mro1: List[TypeInfo], mro2: List[TypeInfo]) -> bool:
             and all(x.fullname() == y.fullname() for x, y in zip(mro1, mro2)))
 
 
-def module_name(id: str) -> str:
+def get_prefix(id: str) -> str:
+    """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
     return id.rsplit('.', 1)[0]
 
 
