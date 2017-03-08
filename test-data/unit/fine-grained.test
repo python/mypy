@@ -464,3 +464,18 @@ class A: pass
 [out]
 ==
 main:5: error: "B" has no attribute "x"
+
+[case testTestSignatureOfInheritedMethod]
+import m
+class B(m.A):
+    def f(self) -> None:
+        self.g()
+[file m.py]
+class A:
+    def g(self) -> None: pass
+[file m.py.2]
+class A:
+    def g(self, a: 'A') -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "g" of "A"

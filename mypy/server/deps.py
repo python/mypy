@@ -87,9 +87,8 @@ class DependencyVisitor(TraverserVisitor):
                                         target=make_trigger(info.fullname() + '.' + name))
         for base in non_trivial_bases(info):
             for name, node in base.names.items():
-                if isinstance(node.node, Var):
-                    self.add_dependency(make_trigger(base.fullname() + '.' + name),
-                                        target=make_trigger(info.fullname() + '.' + name))
+                self.add_dependency(make_trigger(base.fullname() + '.' + name),
+                                    target=make_trigger(info.fullname() + '.' + name))
         self.pop()
 
     def visit_import(self, o: Import) -> None:
