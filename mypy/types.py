@@ -47,11 +47,13 @@ class Type(mypy.nodes.Context):
     def __repr__(self) -> str:
         return self.accept(TypeStrVisitor())
 
-    def serialize(self) -> JsonDict:
+    def serialize(self) -> Union[JsonDict, str]:
         raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'Type':
+        if isinstance(data, str):
+            return Instance.deserialize(data)
         classname = data['.class']
         method = deserialize_map.get(classname)
         if method is not None:
@@ -437,17 +439,23 @@ class Instance(Type):
 
     type_ref = None  # type: str
 
-    def serialize(self) -> JsonDict:
+    def serialize(self) -> Union[JsonDict, str]:
+        assert self.type is not None
+        type_ref = self.type.alt_fullname or self.type.fullname()
+        if not self.args:
+            return type_ref
         data = {'.class': 'Instance',
                 }  # type: JsonDict
-        assert self.type is not None
-        data['type_ref'] = self.type.alt_fullname or self.type.fullname()
-        if self.args:
-            data['args'] = [arg.serialize() for arg in self.args]
+        data['type_ref'] = type_ref
+        data['args'] = [arg.serialize() for arg in self.args]
         return data
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'Instance':
+    def deserialize(cls, data: Union[JsonDict, str]) -> 'Instance':
+        if isinstance(data, str):
+            inst = Instance(None, [])
+            inst.type_ref = data
+            return inst
         assert data['.class'] == 'Instance'
         args = []  # type: List[Type]
         if 'args' in data:
