@@ -109,6 +109,7 @@ def find_steps() -> List[List[Tuple[str, str]]]:
                 assert num >= 2
                 name = re.sub(r'\.py.*', '', filename)
                 module = '.'.join(dnparts + [name])
+                module = re.sub(r'\.__init__$', '', module)
                 path = os.path.join(dn, filename)
                 steps.setdefault(num, []).append((module, path))
     max_step = max(steps)

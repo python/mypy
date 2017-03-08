@@ -527,3 +527,33 @@ def g(x: int) -> None: pass
 [out]
 ==
 m/n.py:3: error: Too few arguments for "g"
+
+[case testChangeInPackage__init__]
+import m
+import m.n
+def f() -> None:
+    m.g()
+[file m/__init__.py]
+def g() -> None: pass
+[file m/__init__.py.2]
+def g(x: int) -> None: pass
+[file m/n.py]
+[out]
+==
+main:3: error: Too few arguments for "g"
+
+[case testTriggerTargetInPackage__init__]
+import m
+import m.n
+[file m/__init__.py]
+import a
+def f() -> None:
+    a.g()
+[file a.py]
+def g() -> None: pass
+[file a.py.2]
+def g(x: int) -> None: pass
+[file m/n.py]
+[out]
+==
+m/__init__.py:3: error: Too few arguments for "g"
