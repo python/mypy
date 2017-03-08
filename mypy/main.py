@@ -239,7 +239,10 @@ def process_options(args: List[str],
     add_invertible_flag('--no-fast-parser', default=True, dest='fast_parser',
                         help="disable the fast parser (not recommended)")
     parser.add_argument('-i', '--incremental', action='store_true',
-                        help="enable experimental module cache")
+                        help="enable module cache")
+    parser.add_argument('--quick-and-dirty', action='store_true',
+                        help="use cache even if dependencies out of date "
+                        "(implies --incremental)")
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
@@ -404,6 +407,10 @@ def process_options(args: List[str],
             report_type = flag[:-7].replace('_', '-')
             report_dir = val
             options.report_dirs[report_type] = report_dir
+
+    # Let quick_and_dirty imply incremental.
+    if options.quick_and_dirty:
+        options.incremental = True
 
     # Set target.
     if special_opts.modules:

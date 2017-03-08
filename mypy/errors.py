@@ -76,6 +76,9 @@ class Errors:
     # Current error context: nested import context/stack, as a list of (path, line) pairs.
     import_ctx = None  # type: List[Tuple[str, int]]
 
+    # Set of files with errors.
+    error_files = None  # type: Set[str]
+
     # Path name prefix that is removed from all paths, if set.
     ignore_prefix = None  # type: str
 
@@ -110,6 +113,7 @@ class Errors:
                  show_column_numbers: bool = False) -> None:
         self.error_info = []
         self.import_ctx = []
+        self.error_files = set()
         self.type_name = [None]
         self.function_or_member = [None]
         self.ignored_lines = OrderedDict()
@@ -230,6 +234,7 @@ class Errors:
                 return
             self.only_once_messages.add(info.message)
         self.error_info.append(info)
+        self.error_files.add(file)
 
     def generate_unused_ignore_notes(self) -> None:
         for file, ignored_lines in self.ignored_lines.items():
@@ -256,6 +261,10 @@ class Errors:
     def is_blockers(self) -> bool:
         """Are the any errors that are blockers?"""
         return any(err for err in self.error_info if err.blocker)
+
+    def is_errors_for_file(self, file: str) -> bool:
+        """Are there any errors for the given file?"""
+        return file in self.error_files
 
     def raise_error(self) -> None:
         """Raise a CompileError with the generated messages.
