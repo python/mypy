@@ -1321,10 +1321,12 @@ class State:
         self.manager.modules[self.id] = self.tree
 
     def fix_cross_refs(self) -> None:
-        fixup_module_pass_one(self.tree, self.manager.modules, self.manager.options.quick_and_dirty)
+        fixup_module_pass_one(self.tree, self.manager.modules,
+                              self.manager.options.quick_and_dirty)
 
     def calculate_mros(self) -> None:
-        fixup_module_pass_two(self.tree, self.manager.modules, self.manager.options.quick_and_dirty)
+        fixup_module_pass_two(self.tree, self.manager.modules,
+                              self.manager.options.quick_and_dirty)
 
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
