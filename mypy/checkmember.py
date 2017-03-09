@@ -88,7 +88,9 @@ def analyze_member_access(name: str,
             else:
                 signature = bind_self(signature, original_type)
             typ = map_instance_to_supertype(typ, method.info)
-            return expand_type_by_instance(signature, typ)
+            member_type = expand_type_by_instance(signature, typ)
+            freeze_type_vars(member_type)
+            return member_type
         else:
             # Not a method.
             return analyze_member_var_access(name, typ, info, node,
@@ -298,6 +300,16 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
             not_ready_callback(var.name(), node)
         # Implicit 'Any' type.
         return AnyType()
+
+
+def freeze_type_vars(member_type: Type) -> None:
+    if isinstance(member_type, CallableType):
+        for v in member_type.variables:
+            v.id.meta_level = 0
+    if isinstance(member_type, Overloaded):
+        for it in member_type.items():
+            for v in it.variables:
+                v.id.meta_level = 0
 
 
 def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: MessageBuilder,

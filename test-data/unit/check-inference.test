@@ -756,6 +756,34 @@ b = k1
 b = k2
 [builtins fixtures/list.pyi]
 
+[case testAmbiguousUnionContextAndMultipleInheritance]
+from typing import TypeVar, Union, Generic
+
+_T = TypeVar('_T')
+
+class T(Generic[_T]): pass
+class U(Generic[_T]): pass
+class V(T[_T], U[_T]): pass
+
+def wait_for(fut: Union[T[_T], U[_T]]) -> _T: ...
+
+reveal_type(wait_for(V[str]()))  # E: Revealed type is 'builtins.str*'
+
+[case testAmbiguousUnionContextAndMultipleInheritance2]
+from typing import TypeVar, Union, Generic
+
+_T = TypeVar('_T')
+_S = TypeVar('_S')
+
+class T(Generic[_T, _S]): pass
+class U(Generic[_T, _S]): pass
+class V(T[_T, _S], U[_T, _S]): pass
+
+def wait_for(fut: Union[T[_T, _S], U[_T, _S]]) -> T[_T, _S]: ...
+
+reveal_type(wait_for(V[int, str]()))  \
+    # E: Revealed type is '__main__.T[builtins.int*, builtins.str*]'
+
 
 -- Literal expressions
 -- -------------------

@@ -89,6 +89,13 @@ type_aliases = {
 reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
                             for alias, name in type_aliases.items())  # type: Dict[str, str]
 
+collections_type_aliases = {
+    'typing.ChainMap': '__mypy_collections__.ChainMap',
+    'typing.Counter': '__mypy_collections__.Counter',
+    'typing.DefaultDict': '__mypy_collections__.defaultdict',
+    'typing.Deque': '__mypy_collections__.deque',
+}
+
 
 # See [Note Literals and literal_hash] below
 Key = tuple
@@ -210,11 +217,9 @@ class SymbolNode(Node):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolNode':
         classname = data['.class']
-        glo = globals()
-        if classname in glo:
-            cl = glo[classname]
-            if issubclass(cl, cls) and 'deserialize' in cl.__dict__:
-                return cl.deserialize(data)
+        method = deserialize_map.get(classname)
+        if method is not None:
+            return method(data)
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
@@ -2019,7 +2024,10 @@ class TypeInfo(SymbolNode):
             return declared
         if self._fullname == 'builtins.type':
             return mypy.types.Instance(self, [])
-        candidates = [s.declared_metaclass for s in self.mro if s.declared_metaclass is not None]
+        candidates = [s.declared_metaclass
+                      for s in self.mro
+                      if s.declared_metaclass is not None
+                      and s.declared_metaclass.type is not None]
         for c in candidates:
             if c.type.mro is None:
                 continue
@@ -2028,7 +2036,8 @@ class TypeInfo(SymbolNode):
         return None
 
     def is_metaclass(self) -> bool:
-        return self.has_base('builtins.type') or self.fullname() == 'abc.ABCMeta'
+        return (self.has_base('builtins.type') or self.fullname() == 'abc.ABCMeta' or
+                self.fallback_to_any)
 
     def _calculate_is_enum(self) -> bool:
         """
@@ -2329,3 +2338,25 @@ def get_flags(node: Node, names: List[str]) -> List[str]:
 def set_flags(node: Node, flags: List[str]) -> None:
     for name in flags:
         setattr(node, name, True)
+
+
+def get_member_expr_fullname(expr: MemberExpr) -> str:
+    """Return the qualified name representation of a member expression.
+
+    Return a string of form foo.bar, foo.bar.baz, or similar, or None if the
+    argument cannot be represented in this form.
+    """
+    if isinstance(expr.expr, NameExpr):
+        initial = expr.expr.name
+    elif isinstance(expr.expr, MemberExpr):
+        initial = get_member_expr_fullname(expr.expr)
+    else:
+        return None
+    return '{}.{}'.format(initial, expr.name)
+
+
+deserialize_map = {
+    key: obj.deserialize  # type: ignore
+    for key, obj in globals().items()
+    if isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
+}

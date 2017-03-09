@@ -147,6 +147,25 @@ ee_def = specific_1 # E: Incompatible types in assignment (expression has type C
 
 [builtins fixtures/dict.pyi]
 
+[case testSubtypingFunctionsDecorated]
+from typing import Any
+
+# untyped decorator
+def deco(f): pass
+
+class A:
+    @deco
+    def f(self) -> Any:
+        pass
+
+class B(A):
+    @deco
+    def f(self) -> Any:
+        pass
+
+[builtins fixtures/list.pyi]
+
+
 [case testLackOfNames]
 def f(__a: int, __b: str) -> None: pass
 def g(a: int, b: str) -> None: pass
