@@ -222,3 +222,13 @@ def f() -> None:
 <m.A.__init__> -> m.f
 <m.A> -> m.A, m.f
 <builtins.int> -> <m.A.__init__>, m.A.__init__
+
+[case testImportFrom]
+from n import f
+
+def g() -> None:
+    f()
+[file n.py]
+def f() -> None: pass
+[out]
+<n.f> -> m, m.g

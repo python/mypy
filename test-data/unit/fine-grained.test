@@ -677,3 +677,86 @@ class B(A): pass
 [out]
 ==
 main:4: error: Too few arguments for "B"
+
+[case testImportFrom]
+from m import f
+
+def g() -> None:
+    f()
+[file m.py]
+def f() -> None: pass
+[file m.py.2]
+def f(x: int) -> None: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+==
+main:4: error: Too few arguments for "f"
+
+[case testImportFrom2]
+from m import f
+f()
+[file m.py]
+def f() -> None: pass
+[file m.py.2]
+def f(x: int) -> None: pass
+[out]
+==
+main:2: error: Too few arguments for "f"
+
+[case testImportFromTargetsClass]
+from m import C
+
+def f(c: C) -> None:
+    c.g()
+[file m.py]
+class C:
+    def g(self) -> None: pass
+[file m.py.2]
+class C:
+    def g(self, x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "g" of "C"
+
+[case testImportFromTargetsVariable]
+from m import x
+
+def f() -> None:
+    y = 1
+    y = x
+[file m.py]
+x = 1
+[file m.py.2]
+x = ''
+[out]
+==
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testImportFromSubmoduleOfPackage]
+from m import n
+
+def f() -> None:
+    n.g()
+[file m/__init__.py]
+[file m/n.py]
+def g() -> None: pass
+[file m/n.py.2]
+def g(x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "g"
+
+[case testImportedFunctionGetsImported]
+from m import f
+
+def g() -> None:
+    f()
+[file m.py]
+from n import f
+[file n.py]
+def f() -> None: pass
+[file n.py.2]
+def f(x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "f"

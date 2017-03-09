@@ -99,7 +99,10 @@ class DependencyVisitor(TraverserVisitor):
             self.add_dependency(make_trigger(id), self.current())
 
     def visit_import_from(self, o: ImportFrom) -> None:
-        raise NotImplementedError
+        assert o.relative == 0  # Relative imports not supported
+        for name, as_name in o.names:
+            assert as_name is None or as_name == name
+            self.add_dependency(make_trigger(o.id + '.' + name))
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         super().visit_assignment_stmt(o)
