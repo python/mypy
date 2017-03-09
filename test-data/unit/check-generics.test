@@ -449,7 +449,7 @@ A[int, str, int]() # E: Type application has too many types (2 expected)
 a = None # type: A
 class A: pass
 a[A]()  # E: Value of type "A" is not indexable
-A[A]()  # E: Type application targets a non-generic function or class
+A[A]()  # E: The type "A" is not generic and not indexable
 [out]
 
 [case testTypeApplicationArgTypes]
@@ -505,7 +505,7 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
-type[int] # this was crashing, see #2302 (comment)  # E: Type application targets a non-generic function or class
+type[int] # this was crashing, see #2302 (comment)  # E: The type "type" is not generic and not indexable
 [out]
 
 

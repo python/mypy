@@ -271,7 +271,7 @@ class C:
         return cls()
 
 class D:
-    def foo(self: str) -> str:  # E: The erased type of self 'builtins.str' is not a supertype of its class '__main__.D'
+    def foo(self: Q) -> Q:  # E: The erased type of self '__main__.B' is not a supertype of its class '__main__.D'
         return self
 
     @staticmethod
@@ -279,7 +279,7 @@ class D:
         return self
 
     @classmethod
-    def cfoo(cls: Type[str]) -> str:  # E: The erased type of self 'Type[builtins.str]' is not a supertype of its class 'Type[__main__.D]'
+    def cfoo(cls: Type[Q]) -> Q:  # E: The erased type of self 'Type[__main__.B]' is not a supertype of its class 'Type[__main__.D]'
         return cls()
 
 [builtins fixtures/classmethod.pyi]
@@ -356,3 +356,11 @@ reveal_type(A().member)  # E: Revealed type is '__main__.A*'
 reveal_type(B().member)  # E: Revealed type is '__main__.B*'
 
 [builtins fixtures/property.pyi]
+
+[case testSelfTypeNotSelfType]
+# Friendlier error messages for common mistakes. See #2950
+class A:
+    def f(x: int) -> None: ...
+    # def g(self: None) -> None: ... see in check-python2.test
+[out]
+main:3: error: Self argument missing for a non-static method (or an invalid type for self)

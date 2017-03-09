@@ -345,9 +345,9 @@ Here are some more useful flags:
 
 - ``--config-file CONFIG_FILE`` causes configuration settings to be
   read from the given file.  By default settings are read from ``mypy.ini``
-  in the current directory.  Settings override mypy's built-in defaults
-  and command line flags can override settings.  See :ref:`config-file`
-  for the syntax of configuration files.
+  or ``setup.cfg`` in the current directory.  Settings override mypy's
+  built-in defaults and command line flags can override settings.
+  See :ref:`config-file` for the syntax of configuration files.
 
 - ``--junit-xml JUNIT_XML`` will make mypy generate a JUnit XML test
   result document with type checking results. This can make it easier
@@ -365,6 +365,10 @@ Here are some more useful flags:
   for functions with ``None`` or ``Any`` return types. Mypy
   also currently ignores functions with an empty body or a body that is
   just ellipsis (``...``), since these can be valid as abstract methods.
+  This option is on by default.
+
+- ``--warn-return-any`` causes mypy to generate a warning when returning a value
+  with type ``Any`` from a function declared with a non- ``Any`` return type.
 
 - ``--strict-boolean`` will make using non-boolean expressions in conditions
   an error. This means ``if x`` and ``while x`` are disallowed when ``x`` has any

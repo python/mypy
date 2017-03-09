@@ -534,6 +534,22 @@ if isinstance(v, (B, C)):
     v.method3('xyz') # E: Some element of union has no attribute "method3"
 [builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceNeverWidens]
+from typing import Union
+
+class A: pass
+class B: pass
+class C: pass
+
+a = A()  # type: A
+assert isinstance(a, (A, B))
+reveal_type(a)  # E: Revealed type is '__main__.A'
+
+b = A()  # type: Union[A, B]
+assert isinstance(b, (A, B, C))
+reveal_type(b)  # E: Revealed type is 'Union[__main__.A, __main__.B]'
+[builtins fixtures/isinstance.pyi]
+
 [case testMemberAssignmentChanges-skip]
 from typing import Union
 

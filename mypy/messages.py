@@ -27,6 +27,7 @@ NO_RETURN_VALUE_EXPECTED = 'No return value expected'
 MISSING_RETURN_STATEMENT = 'Missing return statement'
 INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'
 INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
+RETURN_ANY = 'Returning Any from function with declared return type "{}"'
 RETURN_VALUE_EXPECTED = 'Return value expected'
 NO_RETURN_EXPECTED = 'Return statement in function which does not return'
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'
@@ -82,6 +83,7 @@ TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
 MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
+GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -392,8 +394,13 @@ class MessageBuilder:
                 self.format(typ)), context)
         elif member == '__getitem__':
             # Indexed get.
-            self.fail('Value of type {} is not indexable'.format(
-                self.format(typ)), context)
+            # TODO: Fix this consistently in self.format
+            if isinstance(typ, CallableType) and typ.is_type_obj():
+                self.fail('The type {} is not generic and not indexable'.format(
+                    self.format(typ)), context)
+            else:
+                self.fail('Value of type {} is not indexable'.format(
+                    self.format(typ)), context)
         elif member == '__setitem__':
             # Indexed set.
             self.fail('Unsupported target for indexed assignment', context)
@@ -807,6 +814,9 @@ class MessageBuilder:
 
     def cant_assign_to_method(self, context: Context) -> None:
         self.fail(CANNOT_ASSIGN_TO_METHOD, context)
+
+    def cant_assign_to_classvar(self, name: str, context: Context) -> None:
+        self.fail('Cannot assign to class variable "%s" via instance' % name, context)
 
     def read_only_property(self, name: str, type: TypeInfo,
                            context: Context) -> None:

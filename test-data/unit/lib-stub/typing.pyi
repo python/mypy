@@ -17,6 +17,7 @@ _promote = 0
 NamedTuple = 0
 Type = 0
 no_type_check = 0
+ClassVar = 0
 
 # Type aliases.
 List = 0

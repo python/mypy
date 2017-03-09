@@ -1009,13 +1009,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 e.name, original_type, e, is_lvalue, False, False,
                 self.named_type, self.not_ready_callback, self.msg,
                 original_type=original_type, chk=self.chk)
-            if isinstance(member_type, CallableType):
-                for v in member_type.variables:
-                    v.id.meta_level = 0
-            if isinstance(member_type, Overloaded):
-                for it in member_type.items():
-                    for v in it.variables:
-                        v.id.meta_level = 0
             if is_lvalue:
                 return member_type
             else:
@@ -1868,6 +1861,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         # at the end of the chain.  That's not an error.
                         return AnyType()
                     if not self.chk.in_checked_function():
+                        return AnyType()
+                    if self.chk.scope.active_class() is not None:
+                        self.chk.fail('super() outside of a method is not supported', e)
                         return AnyType()
                     args = self.chk.scope.top_function().arguments
                     # An empty args with super() is an error; we need something in declared_self

@@ -24,11 +24,13 @@ from mypy.version import __version__
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
-def main(script_path: str) -> None:
+def main(script_path: str, args: List[str] = None) -> None:
     """Main entry point to the type checker.
 
     Args:
         script_path: Path to the 'mypy' script (used for finding data files).
+        args: Custom command-line arguments.  If not given, sys.argv[1:] will
+        be used.
     """
     t0 = time.time()
     if script_path:
@@ -36,7 +38,9 @@ def main(script_path: str) -> None:
     else:
         bin_dir = None
     sys.setrecursionlimit(2 ** 14)
-    sources, options = process_options(sys.argv[1:])
+    if args is None:
+        args = sys.argv[1:]
+    sources, options = process_options(args)
     serious = False
     try:
         res = type_check_only(sources, bin_dir, options)
@@ -50,8 +54,11 @@ def main(script_path: str) -> None:
         util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
     if a:
         f = sys.stderr if serious else sys.stdout
-        for m in a:
-            f.write(m + '\n')
+        try:
+            for m in a:
+                f.write(m + '\n')
+        except BrokenPipeError:
+            pass
         sys.exit(1)
 
 
@@ -221,15 +228,21 @@ def process_options(args: List[str],
                         help="warn about casting an expression to its inferred type")
     add_invertible_flag('--no-warn-no-return', dest='warn_no_return', default=True,
                         help="do not warn about functions that end without returning")
+    add_invertible_flag('--warn-return-any', default=False, strict_flag=True,
+                        help="warn about returning values of type Any"
+                             " from non-Any typed functions")
     add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
                         help="warn about unneeded '# type: ignore' comments")
-    add_invertible_flag('--show-error-context', default=True,
-                        dest='hide_error_context',
+    add_invertible_flag('--show-error-context', default=False,
+                        dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
     add_invertible_flag('--no-fast-parser', default=True, dest='fast_parser',
                         help="disable the fast parser (not recommended)")
     parser.add_argument('-i', '--incremental', action='store_true',
-                        help="enable experimental module cache")
+                        help="enable module cache")
+    parser.add_argument('--quick-and-dirty', action='store_true',
+                        help="use cache even if dependencies out of date "
+                        "(implies --incremental)")
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
@@ -321,16 +334,13 @@ def process_options(args: List[str],
     # filename for the config file and know if the user requested all strict options.
     dummy = argparse.Namespace()
     parser.parse_args(args, dummy)
-    config_file = defaults.CONFIG_FILE
-    if dummy.config_file:
-        config_file = dummy.config_file
-        if not os.path.exists(config_file):
-            parser.error("Cannot file config file '%s'" % config_file)
+    config_file = dummy.config_file
+    if config_file is not None and not os.path.exists(config_file):
+        parser.error("Cannot file config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
     options = Options()
-    if config_file and os.path.exists(config_file):
-        parse_config_file(options, config_file)
+    parse_config_file(options, config_file)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
@@ -397,6 +407,10 @@ def process_options(args: List[str],
             report_type = flag[:-7].replace('_', '-')
             report_dir = val
             options.report_dirs[report_type] = report_dir
+
+    # Let quick_and_dirty imply incremental.
+    if options.quick_and_dirty:
+        options.incremental = True
 
     # Set target.
     if special_opts.modules:
@@ -486,7 +500,6 @@ def crawl_up(arg: str) -> Tuple[str, str]:
     """
     dir, mod = os.path.split(arg)
     mod = strip_py(mod) or mod
-    assert '.' not in mod
     while dir and get_init_file(dir):
         dir, base = os.path.split(dir)
         if not base:
@@ -541,23 +554,44 @@ config_types = {
     'almost_silent': bool,
 }
 
+SHARED_CONFIG_FILES = ('setup.cfg',)
 
-def parse_config_file(options: Options, filename: str) -> None:
+
+def parse_config_file(options: Options, filename: Optional[str]) -> None:
     """Parse a config file into an Options object.
 
     Errors are written to stderr but are not fatal.
+
+    If filename is None, fall back to default config file and then
+    to setup.cfg.
     """
+    config_files = None  # type: Tuple[str, ...]
+    if filename is not None:
+        config_files = (filename,)
+    else:
+        config_files = (defaults.CONFIG_FILE,) + SHARED_CONFIG_FILES
+
     parser = configparser.RawConfigParser()
-    try:
-        parser.read(filename)
-    except configparser.Error as err:
-        print("%s: %s" % (filename, err), file=sys.stderr)
+
+    for config_file in config_files:
+        if not os.path.exists(config_file):
+            continue
+        try:
+            parser.read(config_file)
+        except configparser.Error as err:
+            print("%s: %s" % (config_file, err), file=sys.stderr)
+        else:
+            file_read = config_file
+            break
+    else:
         return
+
     if 'mypy' not in parser:
-        print("%s: No [mypy] section in config file" % filename, file=sys.stderr)
+        if filename or file_read not in SHARED_CONFIG_FILES:
+            print("%s: No [mypy] section in config file" % file_read, file=sys.stderr)
     else:
         section = parser['mypy']
-        prefix = '%s: [%s]' % (filename, 'mypy')
+        prefix = '%s: [%s]' % (file_read, 'mypy')
         updates, report_dirs = parse_section(prefix, options, section)
         for k, v in updates.items():
             setattr(options, k, v)
@@ -565,7 +599,7 @@ def parse_config_file(options: Options, filename: str) -> None:
 
     for name, section in parser.items():
         if name.startswith('mypy-'):
-            prefix = '%s: [%s]' % (filename, name)
+            prefix = '%s: [%s]' % (file_read, name)
             updates, report_dirs = parse_section(prefix, options, section)
             if report_dirs:
                 print("%s: Per-module sections should not specify reports (%s)" %

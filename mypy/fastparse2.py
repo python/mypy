@@ -44,16 +44,23 @@ from mypy.fastparse import TypeConverter, parse_type_comment
 
 try:
     from typed_ast import ast27
-    from typed_ast import ast35
+    from typed_ast import ast3
 except ImportError:
     if sys.version_info.minor > 2:
-        print('You must install the typed_ast package before you can run mypy'
-              ' with `--fast-parser`.\n'
-              'You can do this with `python3 -m pip install typed-ast`.',
-              file=sys.stderr)
+        try:
+            from typed_ast import ast35  # type: ignore
+        except ImportError:
+            print('The typed_ast package is not installed.\n'
+                  'You can install it with `python3 -m pip install typed-ast`.',
+                  file=sys.stderr)
+        else:
+            print('You need a more recent version of the typed_ast package.\n'
+                  'You can update to the latest version with '
+                  '`python3 -m pip install -U typed-ast`.',
+                  file=sys.stderr)
     else:
-        print('The typed_ast package required by --fast-parser is only compatible with'
-              ' Python 3.3 and greater.')
+        print('Mypy requires the typed_ast package, which is only compatible with\n'
+              'Python 3.3 and greater.', file=sys.stderr)
     sys.exit(1)
 
 T = TypeVar('T', bound=Union[ast27.expr, ast27.stmt])
@@ -291,11 +298,11 @@ class ASTConverter(ast27.NodeTransformer):
             return_type = None
         elif n.type_comment is not None and len(n.type_comment) > 0:
             try:
-                func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
-                assert isinstance(func_type_ast, ast35.FunctionType)
+                func_type_ast = ast3.parse(n.type_comment, '<func_type>', 'func_type')
+                assert isinstance(func_type_ast, ast3.FunctionType)
                 # for ellipsis arg
                 if (len(func_type_ast.argtypes) == 1 and
-                        isinstance(func_type_ast.argtypes[0], ast35.Ellipsis)):
+                        isinstance(func_type_ast.argtypes[0], ast3.Ellipsis)):
                     arg_types = [a.type_annotation if a.type_annotation is not None else AnyType()
                                 for a in args]
                 else:

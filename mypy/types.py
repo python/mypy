@@ -53,11 +53,9 @@ class Type(mypy.nodes.Context):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'Type':
         classname = data['.class']
-        glo = globals()
-        if classname in glo:
-            cl = glo[classname]
-            if 'deserialize' in cl.__dict__:
-                return cl.deserialize(data)
+        method = deserialize_map.get(classname)
+        if method is not None:
+            return method(data)
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
@@ -422,12 +420,12 @@ class Instance(Type):
     The list of type variables may be empty.
     """
 
-    type = None  # type: mypy.nodes.TypeInfo
+    type = None  # type: Optional[mypy.nodes.TypeInfo]
     args = None  # type: List[Type]
     erased = False  # True if result of type variable substitution
     invalid = False  # True if recovered after incorrect number of type arguments error
 
-    def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
+    def __init__(self, typ: Optional[mypy.nodes.TypeInfo], args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
         self.type = typ
         self.args = args
@@ -1781,3 +1779,31 @@ def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -
         return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1],
                                 line=line, column=column)
     return tp
+
+
+def get_type_vars(typ: Type) -> List[TypeVarType]:
+    """Get all type variables that are present in an already analyzed type,
+    without duplicates, in order of textual appearance.
+    Similar to TypeAnalyser.get_type_var_names.
+    """
+    all_vars = []  # type: List[TypeVarType]
+    for t in get_typ_args(typ):
+        if isinstance(t, TypeVarType):
+            all_vars.append(t)
+        else:
+            all_vars.extend(get_type_vars(t))
+    # Remove duplicates while preserving order
+    included = set()  # type: Set[TypeVarId]
+    tvars = []
+    for var in all_vars:
+        if var.id not in included:
+            tvars.append(var)
+            included.add(var.id)
+    return tvars
+
+
+deserialize_map = {
+    key: obj.deserialize  # type: ignore
+    for key, obj in globals().items()
+    if isinstance(obj, type) and issubclass(obj, Type) and obj is not Type
+}
