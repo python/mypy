@@ -570,3 +570,50 @@ x = ''
 [out]
 ==
 main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testTwoStepsDueToModuleAttribute]
+import m
+x = m.f()
+
+def g() -> None:
+    y = 1
+    y = x # E
+[file m.py]
+def f() -> int: pass
+[file m.py.2]
+def f() -> str: pass
+[out]
+==
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testTwoStepsDueToMultipleNamespaces]
+import m
+
+x = m.f()
+
+def g() -> None:
+    xx = 1
+    xx = x
+
+class A:
+    def a(self) -> None:
+        self.y = m.f()
+    def b(self) -> None:
+        yy = 1
+        yy = self.y
+
+class B:
+    def c(self) -> None:
+        self.z = m.f()
+    def b(self) -> None:
+        zz = 1
+        zz = self.z
+[file m.py]
+def f() -> int: pass
+[file m.py.2]
+def f() -> str: pass
+[out]
+==
+main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:14: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:21: error: Incompatible types in assignment (expression has type "str", variable has type "int")

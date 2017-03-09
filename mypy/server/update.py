@@ -46,7 +46,7 @@ Major todo items:
 - Support multiple type checking passes
 """
 
-from typing import Dict, List, Set, Tuple, Iterable
+from typing import Dict, List, Set, Tuple, Iterable, Union
 
 from mypy.build import BuildManager, State
 from mypy.checker import DeferredNode
@@ -288,10 +288,12 @@ def reprocess_nodes(manager: BuildManager,
     Return fired triggers.
     """
     file_node = manager.modules[module_id]
+
     # Strip semantic analysis information.
     for deferred in nodes:
         strip_target(deferred.node)
     semantic_analyzer = manager.semantic_analyzer
+
     # Second pass of semantic analysis. We don't redo the first pass, because it only
     # does local things that won't go stale.
     for deferred in nodes:
@@ -301,6 +303,7 @@ def reprocess_nodes(manager: BuildManager,
                 options=manager.options,
                 active_type=deferred.active_typeinfo):
             manager.semantic_analyzer.refresh_partial(deferred.node)
+
     # Third pass of semantic analysis.
     for deferred in nodes:
         with semantic_analyzer.file_context(
@@ -309,24 +312,53 @@ def reprocess_nodes(manager: BuildManager,
                 options=manager.options,
                 active_type=deferred.active_typeinfo):
             manager.semantic_analyzer_pass3.refresh_partial(deferred.node)
-    info = deferred.active_typeinfo
-    if info:
-        old_types = {name: node.node.type
-                     for name, node in info.names.items()
-                     if isinstance(node.node, Var)}
+
+    # Keep track of potentially affected attribute types before type checking.
+    old_types_map = get_enclosing_namespace_types(nodes)
+
     # Type check.
     graph[module_id].type_checker.check_second_pass(list(nodes))  # TODO: check return value
-    new_triggered = set()
-    if info:
-        # Check if we need to propagate any attribute type changes further.
-        # TODO: Also consider module-level attribute type changes here.
-        for name, member_node in info.names.items():
-            if (name in old_types and
-                    (not isinstance(member_node.node, Var) or
-                     not is_identical_type(member_node.node.type, old_types[name]))):
-                # Type checking a method changed an attribute type.
-                new_triggered.add(make_trigger('{}.{}'.format(info.fullname(), name)))
+
+    # Check if any attribute types were changed and need to be propagated further.
+    new_triggered = get_triggered_namespace_items(old_types_map)
+
+    # Dependencies may have changed.
     update_deps(module_id, nodes, graph, deps)
+
+    return new_triggered
+
+
+NamespaceNode = Union[TypeInfo, MypyFile]
+
+
+def get_enclosing_namespace_types(nodes: Set[DeferredNode]) -> Dict[NamespaceNode,
+                                                                    Dict[str, Type]]:
+    types = {}  # type: Dict[NamespaceNode, Dict[str, Type]]
+    for deferred in nodes:
+        info = deferred.active_typeinfo
+        if info:
+            target = info  # type: NamespaceNode
+        elif isinstance(deferred.node, MypyFile):
+            target = deferred.node
+        else:
+            target = None
+        if target and target not in types:
+            local_types = {name: node.node.type
+                         for name, node in target.names.items()
+                         if isinstance(node.node, Var)}
+            types[target] = local_types
+    return types
+
+
+def get_triggered_namespace_items(old_types_map: Dict[NamespaceNode, Dict[str, Type]]) -> Set[str]:
+    new_triggered = set()
+    for namespace_node, old_types in old_types_map.items():
+        for name, node in namespace_node.names.items():
+            if (name in old_types and
+                    (not isinstance(node.node, Var) or
+                     not is_identical_type(node.node.type, old_types[name]))):
+                # Type checking a method changed an attribute type.
+                new_triggered.add(make_trigger('{}.{}'.format(namespace_node.fullname(), name)))
     return new_triggered
 
 
