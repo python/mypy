@@ -660,6 +660,57 @@ except (E1_1, E1_2) as e2:
     c = e2 # type: E1_2 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_2")
 [builtins fixtures/exception.pyi]
 
+[case testExceptWithMultipleTypes4]
+from typing import Tuple, Type, Union
+
+class E1(BaseException): pass
+class E2(BaseException): pass
+class E3(BaseException): pass
+
+def variadic(exc: Tuple[Type[E1], ...]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # E: Revealed type is '__main__.E1'
+
+def union(exc: Union[Type[E1], Type[E2]]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # E: Revealed type is 'Union[__main__.E1, __main__.E2]'
+
+def tuple_in_union(exc: Union[Type[E1], Tuple[Type[E2], Type[E3]]]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # E: Revealed type is 'Union[__main__.E1, __main__.E2, __main__.E3]'
+
+def variadic_in_union(exc: Union[Type[E1], Tuple[Type[E2], ...]]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # E: Revealed type is 'Union[__main__.E1, __main__.E2]'
+
+def nested_union(exc: Union[Type[E1], Union[Type[E2], Type[E3]]]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # E: Revealed type is 'Union[__main__.E1, __main__.E2, __main__.E3]'
+
+def error_in_union(exc: Union[Type[E1], int]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Exception type must be derived from BaseException
+        pass
+
+def error_in_variadic(exc: Tuple[int, ...]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Exception type must be derived from BaseException
+        pass
+
+[builtins fixtures/tuple.pyi]
+
 [case testExceptWithAnyTypes]
 from typing import Any
 

@@ -5,7 +5,7 @@ from typing import cast, Callable, List, Optional, TypeVar
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
     Overloaded, TypeVarType, UnionType, PartialType,
-    DeletedType, NoneTyp, TypeType, function_type
+    DeletedType, NoneTyp, TypeType, function_type, get_type_vars,
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
@@ -270,6 +270,8 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
         if is_lvalue and var.is_property and not var.is_settable_property:
             # TODO allow setting attributes in subclass (although it is probably an error)
             msg.read_only_property(name, info, node)
+        if is_lvalue and var.is_classvar:
+            msg.cant_assign_to_classvar(name, node)
         if var.is_initialized_in_class and isinstance(t, FunctionLike) and not t.is_type_obj():
             if is_lvalue:
                 if var.is_property:
@@ -394,6 +396,8 @@ def analyze_class_attribute_access(itype: Instance,
     if t:
         if isinstance(t, PartialType):
             return handle_partial_attribute_type(t, is_lvalue, msg, node.node)
+        if not is_method and (isinstance(t, TypeVarType) or get_type_vars(t)):
+            msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, context)
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
         return add_class_tvars(t, itype, is_classmethod, builtin_type, original_type)
     elif isinstance(node.node, Var):

@@ -227,11 +227,9 @@ class SymbolNode(Node):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolNode':
         classname = data['.class']
-        glo = globals()
-        if classname in glo:
-            cl = glo[classname]
-            if issubclass(cl, cls) and 'deserialize' in cl.__dict__:
-                return cl.deserialize(data)
+        method = deserialize_map.get(classname)
+        if method is not None:
+            return method(data)
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
@@ -654,13 +652,15 @@ class Var(SymbolNode):
     is_classmethod = False
     is_property = False
     is_settable_property = False
+    is_classvar = False
     # Set to true when this variable refers to a module we were unable to
     # parse for some reason (eg a silenced module)
     is_suppressed_import = False
 
     FLAGS = [
         'is_self', 'is_ready', 'is_initialized_in_class', 'is_staticmethod',
-        'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import'
+        'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
+        'is_classvar'
     ]
 
     def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
@@ -2366,3 +2366,10 @@ def get_member_expr_fullname(expr: MemberExpr) -> str:
     else:
         return None
     return '{}.{}'.format(initial, expr.name)
+
+
+deserialize_map = {
+    key: obj.deserialize  # type: ignore
+    for key, obj in globals().items()
+    if isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
+}

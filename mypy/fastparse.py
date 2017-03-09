@@ -862,14 +862,16 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         # JoinedStr(expr* values)
         @with_line
         def visit_JoinedStr(self, n: ast3.JoinedStr) -> Expression:
-            result_expression = StrExpr('')  # type: Expression
-            for value_expr in self.translate_expr_list(n.values):
-                string_method = MemberExpr(value_expr, '__str__')
-                string_method.set_line(value_expr)
-                stringified_value_expr = CallExpr(string_method, [], [])
-                stringified_value_expr.set_line(value_expr)
-                result_expression = OpExpr('+', result_expression, stringified_value_expr)
-                result_expression.set_line(value_expr)
+            arg_count = len(n.values)
+            format_string = StrExpr('{}' * arg_count)
+            format_string.set_line(n.lineno, n.col_offset)
+            format_method = MemberExpr(format_string, 'format')
+            format_method.set_line(format_string)
+            format_args = self.translate_expr_list(n.values)
+            format_arg_kinds = [ARG_POS] * arg_count
+            result_expression = CallExpr(format_method,
+                                         format_args,
+                                         format_arg_kinds)
             return result_expression
 
         # FormattedValue(expr value)

@@ -1851,6 +1851,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         return AnyType()
                     if not self.chk.in_checked_function():
                         return AnyType()
+                    if self.chk.scope.active_class() is not None:
+                        self.chk.fail('super() outside of a method is not supported', e)
+                        return AnyType()
                     args = self.chk.scope.top_function().arguments
                     # An empty args with super() is an error; we need something in declared_self
                     if not args:

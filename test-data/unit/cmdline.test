@@ -115,6 +115,18 @@ def f():
     except ZeroDivisionError, err:
         print err
 
+[case testErrorContextConfig]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+show_error_context=True
+[file main.py]
+def f() -> None:
+  0 + ""
+[out]
+main.py: note: In function "f":
+main.py:2: error: Unsupported operand types for + ("int" and "str")
+
 [case testAltConfigFile]
 # cmd: mypy --config-file config.ini main.py
 [file config.ini]
@@ -131,7 +143,6 @@ def f():
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
 [[mypy]
-hide_error_context = True
 disallow_untyped_defs = True
 [[mypy-y*]
 disallow_untyped_defs = False
@@ -161,7 +172,6 @@ x.py:1: error: Function is missing a type annotation
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file mypy.ini]
 [[mypy]
-hide_error_context = True
 [[mypy-*x*]
 disallow_untyped_defs = True
 [[mypy-*y*]
@@ -190,7 +200,6 @@ xx.py:1: error: Function is missing a type annotation
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
 [[mypy]
-hide_error_context = True
 [[mypy-x*,z*]
 disallow_untyped_defs = True
 [file x.py]

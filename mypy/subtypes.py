@@ -521,6 +521,12 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
     Any types. Any instance type t is also a proper subtype of t.
     """
     # FIX tuple types
+    if isinstance(s, UnionType):
+        if isinstance(t, UnionType):
+            return all([is_proper_subtype(item, s) for item in t.items])
+        else:
+            return any([is_proper_subtype(t, item) for item in s.items])
+
     if isinstance(t, Instance):
         if isinstance(s, Instance):
             if not t.type.has_base(s.type.fullname()):

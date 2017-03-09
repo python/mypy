@@ -14,6 +14,7 @@ class complex: pass
 class bool: pass
 class str:
     def __add__(self, s: str) -> str: pass
+    def format(self, *args) -> str: pass
 class bytes: pass
 class bytearray: pass
 class tuple: pass
