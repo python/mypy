@@ -540,7 +540,7 @@ def g(x: int) -> None: pass
 [file m/n.py]
 [out]
 ==
-main:3: error: Too few arguments for "g"
+main:4: error: Too few arguments for "g"
 
 [case testTriggerTargetInPackage__init__]
 import m
