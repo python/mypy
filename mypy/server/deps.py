@@ -5,7 +5,7 @@ from typing import Dict, List, Set
 from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
-    ImportFrom, TypeInfo, Var, LDEF
+    ImportFrom, CallExpr, TypeInfo, Var, LDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -89,6 +89,8 @@ class DependencyVisitor(TraverserVisitor):
             for name, node in base.names.items():
                 self.add_dependency(make_trigger(base.fullname() + '.' + name),
                                     target=make_trigger(info.fullname() + '.' + name))
+            self.add_dependency(make_trigger(base.fullname() + '.__init__'),
+                                target=make_trigger(info.fullname() + '.__init__'))
         self.pop()
 
     def visit_import(self, o: Import) -> None:
@@ -137,6 +139,16 @@ class DependencyVisitor(TraverserVisitor):
             else:
                 # TODO: Handle more types
                 raise NotImplementedError
+
+    def visit_call_expr(self, e: CallExpr) -> None:
+        super().visit_call_expr(e)
+        callee_type = self.type_map.get(e.callee)
+        print(callee_type)
+        if isinstance(callee_type, FunctionLike) and callee_type.is_type_obj():
+            print('here')
+            class_name = callee_type.type_object().fullname()
+            print(class_name)
+            self.add_dependency(make_trigger(class_name + '.__init__'))
 
     # Helpers
 

@@ -194,3 +194,12 @@ class C(B): pass
 [out]
 __main__.B
 __main__.C
+
+[case testDifferenceInConstructor]
+class A:
+    def __init__(self) -> None: pass
+[file next.py]
+class A:
+    def __init__(self, x: int) -> None: pass
+[out]
+__main__.A.__init__

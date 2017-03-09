@@ -35,6 +35,7 @@ def f() -> None:
     A()
 class A: pass
 [out]
+<m.A.__init__> -> m.f
 <m.A> -> m.A, m.f
 
 [case testAccessModuleAttribute]
@@ -87,6 +88,7 @@ class A:
 class B(A):
     pass
 [out]
+<m.A.__init__> -> <m.B.__init__>
 <m.A> -> m.A, m.B
 <m.B> -> m.B
 
@@ -97,6 +99,7 @@ class B(A):
     def f(self) -> None:
         self.x = 1
 [out]
+<m.A.__init__> -> <m.B.__init__>
 <m.A.f> -> m.B.f
 <m.A.x> -> <m.B.x>
 <m.A> -> m.A, m.B
@@ -112,9 +115,11 @@ class C(B):
     def f(self) -> None:
         self.x = 1
 [out]
+<m.A.__init__> -> <m.B.__init__>, <m.C.__init__>
 <m.A.f> -> m.C.f
 <m.A.x> -> <m.C.x>
 <m.A> -> m.A, m.B
+<m.B.__init__> -> <m.C.__init__>
 <m.B.f> -> m.C.f
 <m.B.x> -> <m.C.x>
 <m.B> -> m.B, m.C
@@ -134,6 +139,7 @@ class A:
 [out]
 <m.B.x> -> m.B.f
 <m.B> -> m.B
+<n.A.__init__> -> <m.B.__init__>
 <n.A.f> -> m.B.f
 <n.A.g> -> <m.B.g>
 <n.A.x> -> <m.B.x>
@@ -147,6 +153,7 @@ class B(A):
     def f(self) -> None:
         self.g()
 [out]
+<m.A.__init__> -> <m.B.__init__>
 <m.A.f> -> m.B.f
 <m.A.g> -> <m.B.g>
 <m.A> -> m.A, m.B
@@ -205,3 +212,13 @@ class A:
 <a.A.y> -> m.f
 <a.A> -> <m.f>, m.f
 <a> -> m
+
+[case testConstructor]
+class A:
+    def __init__(self, x: int) -> None: pass
+def f() -> None:
+    A(1)
+[out]
+<m.A.__init__> -> m.f
+<m.A> -> m.A, m.f
+<builtins.int> -> <m.A.__init__>, m.A.__init__

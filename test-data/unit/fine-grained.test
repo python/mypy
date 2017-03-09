@@ -617,3 +617,63 @@ def f() -> str: pass
 main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:14: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:21: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testConstructorSignatureChanged]
+import m
+
+def f() -> None:
+    m.A()
+[file m.py]
+class A:
+    def __init__(self) -> None: pass
+[file m.py.2]
+class A:
+    def __init__(self, x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "A"
+
+[case testConstructorAdded]
+import m
+
+def f() -> None:
+    m.A()
+[file m.py]
+class A: pass
+[file m.py.2]
+class A:
+    def __init__(self, x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "A"
+
+[case testConstructorDeleted]
+import m
+
+def f() -> None:
+    m.A(1)
+[file m.py]
+class A:
+    def __init__(self, x: int) -> None: pass
+[file m.py.2]
+class A: pass
+[out]
+==
+main:4: error: Too many arguments for "A"
+
+[case testBaseClassConstructorChanged]
+import m
+
+def f() -> None:
+    m.B()
+[file m.py]
+class A:
+    def __init__(self) -> None: pass
+class B(A): pass
+[file m.py.2]
+class A:
+    def __init__(self, x: int) -> None: pass
+class B(A): pass
+[out]
+==
+main:4: error: Too few arguments for "B"
