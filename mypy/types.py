@@ -1771,6 +1771,27 @@ def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -
     return tp
 
 
+def get_type_vars(typ: Type) -> List[TypeVarType]:
+    """Get all type variables that are present in an already analyzed type,
+    without duplicates, in order of textual appearance.
+    Similar to TypeAnalyser.get_type_var_names.
+    """
+    all_vars = []  # type: List[TypeVarType]
+    for t in get_typ_args(typ):
+        if isinstance(t, TypeVarType):
+            all_vars.append(t)
+        else:
+            all_vars.extend(get_type_vars(t))
+    # Remove duplicates while preserving order
+    included = set()  # type: Set[TypeVarId]
+    tvars = []
+    for var in all_vars:
+        if var.id not in included:
+            tvars.append(var)
+            included.add(var.id)
+    return tvars
+
+
 deserialize_map = {
     key: obj.deserialize  # type: ignore
     for key, obj in globals().items()

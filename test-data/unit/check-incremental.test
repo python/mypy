@@ -1870,6 +1870,43 @@ warn_no_return = False
 warn_no_return = True
 [rechecked]
 
+[case testIncrementalClassVar]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar
+A().x = 0
+[out1]
+main:4: error: Cannot assign to class variable "x" via instance
+[out2]
+main:4: error: Cannot assign to class variable "x" via instance
+
+[case testIncrementalClassVarGone]
+import m
+m.A().x = 0
+[file m.py]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+[file m.py.next]
+class A:
+    x = None  # type: int
+[out1]
+main:2: error: Cannot assign to class variable "x" via instance
+
+[case testCachingClassVar]
+import b
+[file a.py]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+[file b.py]
+import a
+[file b.py.next]
+import a
+a.A().x = 0
+[out2]
+tmp/b.py:2: error: Cannot assign to class variable "x" via instance
+
 [case testQuickAndDirty1]
 # flags: --quick-and-dirty
 import b, c

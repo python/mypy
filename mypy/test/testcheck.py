@@ -74,6 +74,7 @@ fast_parser_files = [
     'check-varargs.test',
     'check-newsyntax.test',
     'check-underscores.test',
+    'check-classvar.test',
 ]
 
 files.extend(fast_parser_files)
