@@ -51,9 +51,13 @@ class Type(mypy.nodes.Context):
         raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'Type':
+    def deserialize_ex(cls, data: Union[JsonDict, str]) -> 'Type':
         if isinstance(data, str):
             return Instance.deserialize(data)
+        return cls.deserialize(data)
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'Type':
         classname = data['.class']
         method = deserialize_map.get(classname)
         if method is not None:
@@ -172,8 +176,8 @@ class TypeVarDef(mypy.nodes.Context):
         return TypeVarDef(data['name'],
                           data['id'],
                           None if data['values'] is None
-                          else [Type.deserialize(v) for v in data['values']],
-                          Type.deserialize(data['upper_bound']),
+                          else [Type.deserialize_ex(v) for v in data['values']],
+                          Type.deserialize_ex(data['upper_bound']),
                           data['variance'],
                           )
 
@@ -221,7 +225,7 @@ class UnboundType(Type):
     def deserialize(cls, data: JsonDict) -> 'UnboundType':
         assert data['.class'] == 'UnboundType'
         return UnboundType(data['name'],
-                           [Type.deserialize(a) for a in data['args']])
+                           [Type.deserialize_ex(a) for a in data['args']])
 
 
 class ErrorType(Type):
@@ -256,7 +260,7 @@ class TypeList(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TypeList':
         assert data['.class'] == 'TypeList'
-        return TypeList([Type.deserialize(t) for t in data['items']])
+        return TypeList([Type.deserialize_ex(t) for t in data['items']])
 
 
 class AnyType(Type):
@@ -461,7 +465,7 @@ class Instance(Type):
         if 'args' in data:
             args_list = data['args']
             assert isinstance(args_list, list)
-            args = [Type.deserialize(arg) for arg in args_list]
+            args = [Type.deserialize_ex(arg) for arg in args_list]
         inst = Instance(None, args)
         inst.type_ref = data['type_ref']  # Will be fixed up by fixup.py later.
         return inst
@@ -516,8 +520,8 @@ class TypeVarType(Type):
         assert data['.class'] == 'TypeVarType'
         tvdef = TypeVarDef(data['name'],
                            data['id'],
-                           [Type.deserialize(v) for v in data['values']],
-                           Type.deserialize(data['upper_bound']),
+                           [Type.deserialize_ex(v) for v in data['values']],
+                           Type.deserialize_ex(data['upper_bound']),
                            data['variance'])
         return TypeVarType(tvdef)
 
@@ -787,11 +791,11 @@ class CallableType(FunctionLike):
     def deserialize(cls, data: JsonDict) -> 'CallableType':
         assert data['.class'] == 'CallableType'
         # TODO: Set definition to the containing SymbolNode?
-        return CallableType([(None if t is None else Type.deserialize(t))
+        return CallableType([(None if t is None else Type.deserialize_ex(t))
                              for t in data['arg_types']],
                             data['arg_kinds'],
                             data['arg_names'],
-                            Type.deserialize(data['ret_type']),
+                            Type.deserialize_ex(data['ret_type']),
                             Instance.deserialize(data['fallback']),
                             name=data['name'],
                             variables=[TypeVarDef.deserialize(v) for v in data['variables']],
@@ -893,7 +897,7 @@ class TupleType(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TupleType':
         assert data['.class'] == 'TupleType'
-        return TupleType([Type.deserialize(t) for t in data['items']],
+        return TupleType([Type.deserialize_ex(t) for t in data['items']],
                          Instance.deserialize(data['fallback']),
                          implicit=data['implicit'])
 
@@ -942,7 +946,8 @@ class TypedDictType(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TypedDictType':
         assert data['.class'] == 'TypedDictType'
-        return TypedDictType(OrderedDict([(n, Type.deserialize(t)) for (n, t) in data['items']]),
+        return TypedDictType(OrderedDict([(n, Type.deserialize_ex(t))
+                                          for (n, t) in data['items']]),
                              Instance.deserialize(data['fallback']))
 
     def as_anonymous(self) -> 'TypedDictType':
@@ -1092,7 +1097,7 @@ class UnionType(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'UnionType':
         assert data['.class'] == 'UnionType'
-        return UnionType([Type.deserialize(t) for t in data['items']])
+        return UnionType([Type.deserialize_ex(t) for t in data['items']])
 
 
 class PartialType(Type):
@@ -1192,7 +1197,7 @@ class TypeType(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TypeType':
         assert data['.class'] == 'TypeType'
-        return TypeType(Type.deserialize(data['item']))
+        return TypeType(Type.deserialize_ex(data['item']))
 
 
 #
