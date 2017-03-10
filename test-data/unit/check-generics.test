@@ -994,7 +994,7 @@ BuiltinAlias[int]() # E: "list" is not subscriptable
 
 #check that error is reported only once, and type is still stored
 T = TypeVar('T')
-BadGenList = list[T] # E: "list" is not subscriptable, use "typing.List" instead
+BadGenList = list[T] # E: "list" is not subscriptable
 
 reveal_type(BadGenList[int]()) # E: Revealed type is 'builtins.list[builtins.int*]'
 reveal_type(BadGenList()) # E: Revealed type is 'builtins.list[Any]'

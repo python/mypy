@@ -1113,11 +1113,15 @@ DDint = collections.defaultdict[T, int]
 
 d = DDint[str]()
 d[0] = 1
+
+def f(d: collections.defaultdict[int, str]) -> None:
+    ...
 [out]
-_program.py:5: error: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
-_program.py:6: error: "Counter" is not subscriptable, use "typing.Counter" instead
-_program.py:9: error: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
+_program.py:5: error: "defaultdict" is not subscriptable
+_program.py:6: error: "Counter" is not subscriptable
+_program.py:9: error: "defaultdict" is not subscriptable
 _program.py:12: error: Invalid index type "int" for "dict"; expected type "str"
+_program.py:14: error: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
 
 [case testCollectionsAliases]
 import typing as t

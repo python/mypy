@@ -1398,7 +1398,7 @@ class SemanticAnalyzer(NodeVisitor):
                 res = analyze_type_alias(s.rvalue,
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
-                                         self.fail, allow_unnormalized=self.is_stub_file)
+                                         self.fail, allow_unnormalized=True)
                 if res and (not isinstance(res, Instance) or res.args):
                     # TODO: What if this gets reassigned?
                     name = s.lvalues[0]
