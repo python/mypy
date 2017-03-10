@@ -565,7 +565,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                       [],
                       body,
                       (None if data['type'] is None
-                       else mypy.types.FunctionLike.deserialize(data['type'])))
+                       else cast(mypy.types.FunctionLike,
+                                 mypy.types.deserialize_type(data['type']))))
         ret._fullname = data['fullname']
         set_flags(ret, data['flags'])
         # NOTE: ret.info is set in the fixup phase.

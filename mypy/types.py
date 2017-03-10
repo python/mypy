@@ -549,10 +549,6 @@ class FunctionLike(Type):
     # Corresponding instance type (e.g. builtins.type)
     fallback = None  # type: Instance
 
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'FunctionLike':
-        return cast(FunctionLike, deserialize_type(data))
-
 
 _dummy = object()  # type: Any
 
