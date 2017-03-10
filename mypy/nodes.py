@@ -2009,7 +2009,10 @@ class TypeInfo(SymbolNode):
         self._fullname = defn.fullname
         self.is_abstract = False
         self.abstract_attributes = []
-        if defn.type_vars:
+        self.add_type_vars()
+
+    def add_type_vars(self) -> None:
+        if self.defn.type_vars:
             for vd in defn.type_vars:
                 self.type_vars.append(vd.name)
 

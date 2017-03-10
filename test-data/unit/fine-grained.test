@@ -813,3 +813,38 @@ def f() -> str: pass
 [out]
 ==
 main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testBaseClassDeleted]
+import m
+
+class A(m.C):
+    def f(self) -> None:
+        self.g()  # No error here because m.C becomes an Any base class
+    def g(self) -> None:
+        self.x
+[file m.py]
+class C:
+    def g(self) -> None: pass
+[file m.py.2]
+[out]
+main:7: error: "A" has no attribute "x"
+==
+main:3: error: Name 'm.C' is not defined
+
+[case testBaseClassOfNestedClassDeleted]
+import m
+
+class A:
+    class B(m.C):
+        def f(self) -> None:
+            self.g()  # No error here because m.C becomes an Any base class
+        def g(self) -> None:
+            self.x
+[file m.py]
+class C:
+    def g(self) -> None: pass
+[file m.py.2]
+[out]
+main:8: error: "B" has no attribute "x"
+==
+main:4: error: Name 'm.C' is not defined

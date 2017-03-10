@@ -279,8 +279,18 @@ class SemanticAnalyzer(NodeVisitor):
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         for d in file_node.defs:
-            if not isinstance(d, (FuncItem, ClassDef)):
+            if isinstance(d, ClassDef):
+                self.refresh_class_def(d)
+            elif not isinstance(d, FuncItem):
                 self.accept(d)
+
+    def refresh_class_def(self, defn: ClassDef) -> None:
+        with self.analyze_class_body(defn):
+            for d in defn.defs.body:
+                if isinstance(d, ClassDef):
+                    self.refresh_class_def(d)
+                elif not isinstance(d, FuncItem):
+                    self.accept(d)
 
     @contextmanager
     def file_context(self, file_node: MypyFile, fnam: str, options: Options,
@@ -693,6 +703,12 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
+        with self.analyze_class_body(defn):
+            # Analyze class body.
+            defn.defs.accept(self)
+
+    @contextmanager
+    def analyze_class_body(self, defn: ClassDef) -> Iterator[None]:
         self.clean_up_bases_and_infer_type_variables(defn)
         if self.analyze_typeddict_classdef(defn):
             return
@@ -714,8 +730,7 @@ class SemanticAnalyzer(NodeVisitor):
 
             self.enter_class(defn)
 
-            # Analyze class body.
-            defn.defs.accept(self)
+            yield
 
             self.calculate_abstract_status(defn.info)
             self.setup_type_promotion(defn)

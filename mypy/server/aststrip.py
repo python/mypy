@@ -30,6 +30,15 @@ class NodeStripVisitor(TraverserVisitor):
         for node in file_node.defs:
             if not isinstance(node, (FuncItem, ClassDef)):
                 node.accept(self)
+            elif isinstance(node, ClassDef):
+                self.strip_class_body(node)
+
+    def strip_class_body(self, node: ClassDef) -> None:
+        """Strip class body and type info, but don't strip methods."""
+        node.info.type_vars = []
+        node.info.bases = []
+        node.info.abstract_attributes = []
+        node.info.add_type_vars()
 
     def visit_func_def(self, node: FuncDef) -> None:
         node.expanded = []

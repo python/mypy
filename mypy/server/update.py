@@ -385,7 +385,7 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
     else:
         components = []
     node = modules[module]  # type: SymbolNode
-    prev = None  # type: SymbolNode
+    file = None  # type: MypyFile
     active_class = None
     active_class_name = None
     for c in components:
@@ -394,14 +394,15 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
             active_class_name = node.name()
         # TODO: Is it possible for the assertion to fail?
         assert isinstance(node, (MypyFile, TypeInfo))
-        prev = node
+        if isinstance(node, MypyFile):
+            file = node
         node = node.names[c].node
     if isinstance(node, TypeInfo):
         # A ClassDef target covers the body of the class and everything defined
         # within it.  To get the body we include the entire surrounding target,
         # typically a module top-level, since we don't support processing class
         # bodies as separate entitites for simplicity.
-        result = [DeferredNode(prev, None, None)]  # TODO: Nested classes
+        result = [DeferredNode(file, None, None)]
         for name, node in node.names.items():
             if isinstance(node, FuncDef):
                 result.extend(lookup_target(modules, target + '.' + name))
