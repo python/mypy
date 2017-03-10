@@ -170,9 +170,15 @@ class ASTMergeSuite(DataSuite):
         for id in sorted(modules):
             if id == 'builtins':
                 continue
-            for name, node in modules[id].names.items():
-                if isinstance(node.node, TypeInfo):
-                    a.extend(self.dump_typeinfo(node.node))
+            a.extend(self.dump_typeinfos_recursive(modules[id].names))
+        return a
+
+    def dump_typeinfos_recursive(self, names: SymbolTable) -> List[str]:
+        a = []
+        for name, node in names.items():
+            if isinstance(node.node, TypeInfo):
+                a.extend(self.dump_typeinfo(node.node))
+                a.extend(self.dump_typeinfos_recursive(node.node.names))
         return a
 
     def dump_typeinfo(self, info: TypeInfo) -> List[str]:

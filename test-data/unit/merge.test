@@ -569,3 +569,40 @@ MypyFile:1<1>(
     NameExpr(x [target.x<3>])
     IntExpr(2)
     builtins.int<4>))
+
+[case testNestedClassMethod_typeinfo]
+import target
+[file target.py]
+class A:
+    class B:
+        def f(self) -> None: pass
+[file target.py.next]
+class A:
+    class B:
+        def f(self) -> None: pass
+[out]
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names(
+    B<2>))
+TypeInfo<2>(
+  Name(target.A.B)
+  Bases(builtins.object<1>)
+  Mro(target.A.B<2>, builtins.object<1>)
+  Names(
+    f<3>))
+==>
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names(
+    B<2>))
+TypeInfo<2>(
+  Name(target.A.B)
+  Bases(builtins.object<1>)
+  Mro(target.A.B<2>, builtins.object<1>)
+  Names(
+    f<3>))
