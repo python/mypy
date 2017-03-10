@@ -760,3 +760,56 @@ def f(x: int) -> None: pass
 [out]
 ==
 main:4: error: Too few arguments for "f"
+
+[case testNestedClassMethodSignatureChanges]
+from m import A
+
+def f(x: A.B) -> None:
+    x.g()
+[file m.py]
+class A:
+    class B:
+        def g(self) -> None: pass
+[file m.py.2]
+class A:
+    class B:
+        def g(self, x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "g" of "B"
+
+[case testNestedClassAttributeTypeChanges]
+from m import A
+
+def f(x: A.B) -> None:
+    z = 1
+    z = x.y
+[file m.py]
+class A:
+    class B:
+        def g(self) -> None:
+            self.y = 1
+[file m.py.2]
+class A:
+    class B:
+        def g(self) -> None:
+            self.y = ''
+[out]
+==
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testReprocessMethodInNestedClass]
+from m import f
+
+class A:
+    class B:
+        def g(self) -> None:
+            x = 1
+            x = f()
+[file m.py]
+def f() -> int: pass
+[file m.py.2]
+def f() -> str: pass
+[out]
+==
+main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
