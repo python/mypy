@@ -2739,7 +2739,7 @@ class SemanticAnalyzer(NodeVisitor):
             # list, dict, set are not directly subscriptable
             n = self.lookup_type_node(expr.base)
             if n and not n.normalized and n.fullname in nongen_builtins:
-                self.fail(no_subscript_builtin_alias(n.fullname), expr)
+                self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
         else:
             expr.index.accept(self)
 

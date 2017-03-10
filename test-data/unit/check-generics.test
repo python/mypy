@@ -981,7 +981,7 @@ reveal_type(Bad) # E: Revealed type is 'Any'
 [case testNoSubscriptionOfBuiltinAliases]
 from typing import List, TypeVar
 
-list[int]() # E: "list" is not subscriptable, use "typing.List" instead
+list[int]() # E: "list" is not subscriptable
 
 ListAlias = List
 def fun() -> ListAlias[int]:
@@ -990,7 +990,7 @@ def fun() -> ListAlias[int]:
 reveal_type(fun())  # E: Revealed type is 'builtins.list[builtins.int]'
 
 BuiltinAlias = list
-BuiltinAlias[int]() # E: "list" is not subscriptable, use "typing.List" instead
+BuiltinAlias[int]() # E: "list" is not subscriptable
 
 #check that error is reported only once, and type is still stored
 T = TypeVar('T')

@@ -74,10 +74,10 @@ def analyze_type_alias(node: Expression,
     return type.accept(analyzer)
 
 
-def no_subscript_builtin_alias(name: str) -> str:
+def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
     msg = '"{}" is not subscriptable'.format(name.split('.')[-1])
     replacement = nongen_builtins[name]
-    if replacement:
+    if replacement and propose_alt:
         msg += ', use "{}" instead'.format(replacement)
     return msg
 

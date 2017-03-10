@@ -84,6 +84,7 @@ type_aliases = {
     'typing.List': '__builtins__.list',
     'typing.Dict': '__builtins__.dict',
     'typing.Set': '__builtins__.set',
+    'typing.FrozenSet': '__builtins__.frozenset',
 }
 
 reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
@@ -101,7 +102,6 @@ reverse_collection_aliases = dict((name.replace('__mypy_collections__', 'collect
                                   collections_type_aliases.items())  # type: Dict[str, str]
 
 nongen_builtins = {'builtins.tuple': 'typing.Tuple',
-                   'builtins.frozenset': 'typing.FrozenSet',
                    'builtins.enumerate': ''}
 nongen_builtins.update(reverse_type_aliases)
 nongen_builtins.update(reverse_collection_aliases)
