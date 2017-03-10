@@ -203,3 +203,65 @@ class A:
     def __init__(self, x: int) -> None: pass
 [out]
 __main__.A.__init__
+
+[case testChangeSignatureOfMethodInNestedClass]
+class A:
+    class B:
+        def f(self) -> int: pass
+[file next.py]
+class A:
+    class B:
+        def f(self) -> str: pass
+[out]
+__main__.A.B.f
+
+[case testChangeTypeOfAttributeInNestedClass]
+class A:
+    class B:
+        def f(self) -> None:
+            self.x = 1
+[file next.py]
+class A:
+    class B:
+        def f(self) -> None:
+            self.x = ''
+[out]
+__main__.A.B.x
+
+[case testAddMethodToNestedClass]
+class A:
+    class B: pass
+[file next.py]
+class A:
+    class B:
+        def f(self) -> str: pass
+[out]
+__main__.A.B.f
+
+[case testAddNestedClass]
+class A: pass
+[file next.py]
+class A:
+    class B:
+        def f(self) -> None: pass
+[out]
+__main__.A.B
+
+[case testRemoveNestedClass]
+class A:
+    class B:
+        def f(self) -> None: pass
+[file next.py]
+class A: pass
+[out]
+__main__.A.B
+
+[case testChangeNestedClassToMethod]
+class A:
+    class B: pass
+[file next.py]
+class A:
+    def B(self) -> None: pass
+
+[out]
+__main__.A.B

@@ -135,13 +135,12 @@ class DependencyVisitor(TraverserVisitor):
             typ = self.type_map[e.expr]
             if isinstance(typ, Instance):
                 member = '%s.%s' % (typ.type.fullname(), e.name)
-                trigger = make_trigger(member)
-                self.add_dependency(trigger)
+                self.add_dependency(make_trigger(member))
             elif isinstance(typ, (AnyType, NoneTyp)):
                 pass  # No dependency needed
-            else:
-                # TODO: Handle more types
-                raise NotImplementedError
+            elif isinstance(typ, FunctionLike) and typ.is_type_obj():
+                member = '%s.%s' % (typ.type_object().fullname(), e.name)
+                self.add_dependency(make_trigger(member))
 
     def visit_call_expr(self, e: CallExpr) -> None:
         super().visit_call_expr(e)

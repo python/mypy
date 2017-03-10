@@ -232,3 +232,50 @@ def g() -> None:
 def f() -> None: pass
 [out]
 <n.f> -> m, m.g
+
+[case testNestedClass]
+def f() -> None:
+    b = A.B()
+    b.f()
+class A:
+    class B:
+        def f(self) -> None: pass
+[out]
+<m.A.B.__init__> -> m.f
+<m.A.B.f> -> m.f
+<m.A.B> -> m.A.B, m.f
+<m.A> -> m.A, m.f
+
+[case testNestedClassAttribute]
+def f() -> None:
+    b = A.B()
+    b.x
+class A:
+    class B:
+        def f(self) -> None:
+            self.x = 1
+[out]
+<m.A.B.__init__> -> m.f
+<m.A.B.x> -> m.A.B.f, m.f
+<m.A.B> -> m.A.B, m.f
+<m.A> -> m.A, m.f
+
+[case testNestedClassInAnnotation]
+def f(x: A.B) -> None:
+    pass
+class A:
+    class B: pass
+[out]
+<m.A.B> -> <m.f>, m.A.B, m.f
+<m.A> -> m.A
+
+[case testNestedClassInAnnotation2]
+def f(x: A.B) -> None:
+    x.f()
+class A:
+    class B:
+        def f(self) -> None: pass
+[out]
+<m.A.B.f> -> m.f
+<m.A.B> -> <m.f>, m.A.B, m.f
+<m.A> -> m.A
