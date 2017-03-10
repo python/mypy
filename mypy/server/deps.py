@@ -145,11 +145,8 @@ class DependencyVisitor(TraverserVisitor):
     def visit_call_expr(self, e: CallExpr) -> None:
         super().visit_call_expr(e)
         callee_type = self.type_map.get(e.callee)
-        print(callee_type)
         if isinstance(callee_type, FunctionLike) and callee_type.is_type_obj():
-            print('here')
             class_name = callee_type.type_object().fullname()
-            print(class_name)
             self.add_dependency(make_trigger(class_name + '.__init__'))
 
     # Helpers
