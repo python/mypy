@@ -405,7 +405,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         assert data['.class'] == 'OverloadedFuncDef'
         res = OverloadedFuncDef([Decorator.deserialize(d) for d in data['items']])
         if data.get('type') is not None:
-            res.type = mypy.types.Type.deserialize(data['type'])
+            res.type = mypy.types.deserialize_type(data['type'])
         res._fullname = data['fullname']
         res.is_property = data['is_property']
         # NOTE: res.info will be set in the fixup phase.
@@ -565,7 +565,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                       [],
                       body,
                       (None if data['type'] is None
-                       else mypy.types.FunctionLike.deserialize(data['type'])))
+                       else cast(mypy.types.FunctionLike,
+                                 mypy.types.deserialize_type(data['type']))))
         ret._fullname = data['fullname']
         set_flags(ret, data['flags'])
         # NOTE: ret.info is set in the fixup phase.
@@ -686,7 +687,7 @@ class Var(SymbolNode):
     def deserialize(cls, data: JsonDict) -> 'Var':
         assert data['.class'] == 'Var'
         name = data['name']
-        type = None if data['type'] is None else mypy.types.Type.deserialize(data['type'])
+        type = None if data['type'] is None else mypy.types.deserialize_type(data['type'])
         v = Var(name, type)
         v._fullname = data['fullname']
         set_flags(v, data['flags'])
@@ -1748,8 +1749,8 @@ class TypeVarExpr(SymbolNode, Expression):
         assert data['.class'] == 'TypeVarExpr'
         return TypeVarExpr(data['name'],
                            data['fullname'],
-                           [mypy.types.Type.deserialize(v) for v in data['values']],
-                           mypy.types.Type.deserialize(data['upper_bound']),
+                           [mypy.types.deserialize_type(v) for v in data['values']],
+                           mypy.types.deserialize_type(data['upper_bound']),
                            data['variance'])
 
 
@@ -2116,7 +2117,7 @@ class TypeInfo(SymbolNode):
         ti.type_vars = data['type_vars']
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None
-                       else mypy.types.Type.deserialize(data['_promote']))
+                       else mypy.types.deserialize_type(data['_promote']))
         ti.declared_metaclass = (None if data['declared_metaclass'] is None
                                  else mypy.types.Instance.deserialize(data['declared_metaclass']))
         # NOTE: ti.metaclass_type and ti.mro will be set in the fixup phase.
@@ -2247,7 +2248,7 @@ class SymbolTableNode:
                 node = SymbolNode.deserialize(data['node'])
             typ = None
             if 'type_override' in data:
-                typ = mypy.types.Type.deserialize(data['type_override'])
+                typ = mypy.types.deserialize_type(data['type_override'])
             stnode = SymbolTableNode(kind, node, typ=typ)
         if 'tvar_def' in data:
             stnode.tvar_def = mypy.types.TypeVarDef.deserialize(data['tvar_def'])
