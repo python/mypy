@@ -1585,14 +1585,17 @@ class GeneratorExpr(Expression):
     left_expr = None  # type: Expression
     sequences = None  # type: List[Expression]
     condlists = None  # type: List[List[Expression]]
+    is_async = None  # type: List[bool]
     indices = None  # type: List[Lvalue]
 
     def __init__(self, left_expr: Expression, indices: List[Lvalue],
-                 sequences: List[Expression], condlists: List[List[Expression]]) -> None:
+                 sequences: List[Expression], condlists: List[List[Expression]],
+                 is_async: List[bool]) -> None:
         self.left_expr = left_expr
         self.sequences = sequences
         self.condlists = condlists
         self.indices = indices
+        self.is_async = is_async
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_generator_expr(self)
@@ -1629,15 +1632,18 @@ class DictionaryComprehension(Expression):
     value = None  # type: Expression
     sequences = None  # type: List[Expression]
     condlists = None  # type: List[List[Expression]]
+    is_async = None  # type: List[bool]
     indices = None  # type: List[Lvalue]
 
     def __init__(self, key: Expression, value: Expression, indices: List[Lvalue],
-                 sequences: List[Expression], condlists: List[List[Expression]]) -> None:
+                 sequences: List[Expression], condlists: List[List[Expression]],
+                 is_async: List[bool]) -> None:
         self.key = key
         self.value = value
         self.sequences = sequences
         self.condlists = condlists
         self.indices = indices
+        self.is_async = is_async
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dictionary_comprehension(self)

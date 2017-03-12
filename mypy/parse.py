@@ -1472,7 +1472,7 @@ class Parser:
         tok = self.current()
         indices, sequences, condlists = self.parse_comp_for()
 
-        gen = GeneratorExpr(left_expr, indices, sequences, condlists)
+        gen = GeneratorExpr(left_expr, indices, sequences, condlists, [False for _ in indices])
         gen.set_line(tok)
         return gen
 
@@ -1560,7 +1560,8 @@ class Parser:
     def parse_dict_comprehension(self, key: Expression, value: Expression,
                                  colon: Token) -> DictionaryComprehension:
         indices, sequences, condlists = self.parse_comp_for()
-        dic = DictionaryComprehension(key, value, indices, sequences, condlists)
+        dic = DictionaryComprehension(key, value, indices, sequences, condlists,
+                                      [False for _ in indices])
         dic.set_line(colon)
         self.expect('}')
         return dic

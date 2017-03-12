@@ -776,7 +776,8 @@ class ASTConverter(ast27.NodeTransformer):
                                        self.visit(n.value),
                                        targets,
                                        iters,
-                                       ifs_list)
+                                       ifs_list,
+                                       [False for _ in n.generators])
 
     # GeneratorExp(expr elt, comprehension* generators)
     @with_line
@@ -787,7 +788,8 @@ class ASTConverter(ast27.NodeTransformer):
         return GeneratorExpr(self.visit(n.elt),
                              targets,
                              iters,
-                             ifs_list)
+                             ifs_list,
+                             [False for _ in n.generators])
 
     # Yield(expr? value)
     @with_line
