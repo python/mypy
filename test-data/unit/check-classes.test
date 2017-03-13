@@ -2562,7 +2562,7 @@ class B(object, A): # E: Cannot determine consistent method resolution order (MR
     __iter__ = readlines
 
 [case testDynamicMetaclass]
-# flags: --fast-parser
+
 class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
     pass
 

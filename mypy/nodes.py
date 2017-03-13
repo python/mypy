@@ -7,7 +7,6 @@ from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
 )
 
-from mypy.lex import Token
 import mypy.strconv
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
 from mypy.util import dump_tagged, short_type
@@ -118,10 +117,10 @@ class Node(Context):
             return repr(self)
         return ans
 
-    def set_line(self, target: Union[Token, 'Node', int], column: int = None) -> None:
-        """If target is a node or token, pull line (and column) information
+    def set_line(self, target: Union['Node', int], column: int = None) -> None:
+        """If target is a node, pull line (and column) information
         into this node. If column is specified, this will override any column
-        information coming from a node/token.
+        information coming from a node.
         """
         if isinstance(target, int):
             self.line = target
@@ -456,7 +455,7 @@ class Argument(Node):
         assign = AssignmentStmt([lvalue], rvalue)
         return assign
 
-    def set_line(self, target: Union[Token, Node, int], column: int = None) -> None:
+    def set_line(self, target: Union[Node, int], column: int = None) -> None:
         super().set_line(target, column)
 
         if self.initializer:
@@ -511,7 +510,7 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(self, target: Union[Token, Node, int], column: int = None) -> None:
+    def set_line(self, target: Union[Node, int], column: int = None) -> None:
         super().set_line(target, column)
         for arg in self.arguments:
             arg.set_line(self.line, self.column)

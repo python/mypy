@@ -116,7 +116,7 @@ f(None)
 [out]
 
 [case testInferOptionalFromDefaultNoneWithFastParser]
-# flags: --fast-parser
+
 def f(x: int = None) -> None:
   x + 1  # E: Unsupported left operand type for + (some union)
 f(None)
@@ -130,7 +130,7 @@ f(None)
 [out]
 
 [case testInferOptionalFromDefaultNoneCommentWithFastParser]
-# flags: --fast-parser
+
 def f(x=None):
   # type: (int) -> None
   x + 1  # E: Unsupported left operand type for + (some union)

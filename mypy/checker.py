@@ -1869,9 +1869,8 @@ class TypeChecker(StatementVisitor[None]):
         if s.msg is not None:
             self.expr_checker.accept(s.msg)
 
-        if self.options.fast_parser:
-            if isinstance(s.expr, TupleExpr) and len(s.expr.items) > 0:
-                self.warn(messages.MALFORMED_ASSERT, s)
+        if isinstance(s.expr, TupleExpr) and len(s.expr.items) > 0:
+            self.warn(messages.MALFORMED_ASSERT, s)
 
         # If this is asserting some isinstance check, bind that type in the following code
         true_map, _ = self.find_isinstance_check(s.expr)

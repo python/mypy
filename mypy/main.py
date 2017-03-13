@@ -236,8 +236,6 @@ def process_options(args: List[str],
     add_invertible_flag('--show-error-context', default=False,
                         dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
-    add_invertible_flag('--no-fast-parser', default=True, dest='fast_parser',
-                        help="disable the fast parser (not recommended)")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable module cache")
     parser.add_argument('--quick-and-dirty', action='store_true',
@@ -305,6 +303,11 @@ def process_options(args: List[str],
                         help=argparse.SUPPRESS)
     parser.add_argument('--almost-silent', action='store_true',
                         dest='special-opts:almost_silent',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--fast-parser', action='store_true', dest='special-opts:fast_parser',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--no-fast-parser', action='store_true',
+                        dest='special-opts:no_fast_parser',
                         help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
@@ -376,6 +379,11 @@ def process_options(args: List[str],
         print("Warning: -f/--dirty-stubs is deprecated and no longer necessary. Mypy no longer "
               "checks the git status of stubs.",
               file=sys.stderr)
+    if special_opts.fast_parser:
+        print("Warning: --fast-parser is now the default (and only) parser.")
+    if special_opts.no_fast_parser:
+        print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
+              "is now mypy's default and only parser.")
 
     # Check for invalid argument combinations.
     if require_targets:

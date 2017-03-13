@@ -781,7 +781,7 @@ a = None  # type: Sized
 a = ()
 
 [case testTupleWithStarExpr1]
-# flags: --fast-parser
+
 a = (1, 2)
 b = (*a, '')
 reveal_type(b)  # E: Revealed type is 'Tuple[builtins.int, builtins.int, builtins.str]'
@@ -917,7 +917,7 @@ f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected Tuple[Any, ..
 [builtins fixtures/tuple.pyi]
 
 [case testTupleSingleton]
-# flags: --fast-parser
+
 from typing import Tuple
 def f(a: Tuple[()]) -> None: pass
 f(())

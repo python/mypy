@@ -217,7 +217,7 @@ def foo():
 [out]
 
 [case testImportBuiltins]
-# flags: --fast-parser
+
 import __builtin__
 __builtin__.str
 

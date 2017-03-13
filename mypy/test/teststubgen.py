@@ -126,8 +126,6 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
         try:
             if testcase.name.endswith('_import'):
                 generate_stub_for_module(name, out_dir, quiet=True)
-            elif testcase.name.endswith('_fast_parser'):
-                generate_stub(path, out_dir, fast_parser=True)
             else:
                 generate_stub(path, out_dir)
             a = load_output(out_dir)

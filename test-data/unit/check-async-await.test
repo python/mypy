@@ -2,20 +2,20 @@
 -- ---------------------------------------
 
 [case testAsyncDefPass]
-# flags: --fast-parser
+
 async def f() -> int:
     pass
 [builtins fixtures/async_await.pyi]
 
 [case testAsyncDefReturn]
-# flags: --fast-parser
+
 async def f() -> int:
     return 0
 reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
 [builtins fixtures/async_await.pyi]
 
 [case testAsyncDefMissingReturn]
-# flags: --fast-parser --warn-no-return
+# flags: --warn-no-return
 async def f() -> int:
     make_this_not_trivial = 1
 [builtins fixtures/async_await.pyi]
@@ -23,7 +23,7 @@ async def f() -> int:
 main:2: error: Missing return statement
 
 [case testAsyncDefReturnWithoutValue]
-# flags: --fast-parser
+
 async def f() -> int:
     make_this_not_trivial = 1
     return
@@ -32,7 +32,7 @@ async def f() -> int:
 main:4: error: Return value expected
 
 [case testAwaitCoroutine]
-# flags: --fast-parser
+
 async def f() -> int:
     x = await f()
     reveal_type(x)  # E: Revealed type is 'builtins.int*'
@@ -41,7 +41,7 @@ async def f() -> int:
 [out]
 
 [case testAwaitDefaultContext]
-# flags: --fast-parser
+
 from typing import TypeVar
 T = TypeVar('T')
 async def f(x: T) -> T:
@@ -52,7 +52,7 @@ async def f(x: T) -> T:
 main:6: error: Revealed type is 'T`-1'
 
 [case testAwaitAnyContext]
-# flags: --fast-parser
+
 from typing import Any, TypeVar
 T = TypeVar('T')
 async def f(x: T) -> T:
@@ -63,7 +63,7 @@ async def f(x: T) -> T:
 main:6: error: Revealed type is 'Any'
 
 [case testAwaitExplicitContext]
-# flags: --fast-parser
+
 from typing import TypeVar
 T = TypeVar('T')
 async def f(x: T) -> T:
@@ -75,7 +75,7 @@ main:5: error: Argument 1 to "f" has incompatible type "T"; expected "int"
 main:6: error: Revealed type is 'builtins.int'
 
 [case testAwaitGeneratorError]
-# flags: --fast-parser
+
 from typing import Any, Generator
 def g() -> Generator[int, None, str]:
     yield 0
@@ -87,7 +87,7 @@ async def f() -> int:
 main:7: error: Incompatible types in await (actual type Generator[int, None, str], expected type "Awaitable")
 
 [case testAwaitIteratorError]
-# flags: --fast-parser
+
 from typing import Any, Iterator
 def g() -> Iterator[Any]:
     yield
@@ -98,7 +98,7 @@ async def f() -> int:
 main:6: error: Incompatible types in await (actual type Iterator[Any], expected type "Awaitable")
 
 [case testAwaitArgumentError]
-# flags: --fast-parser
+
 def g() -> int:
     return 0
 async def f() -> int:
@@ -109,7 +109,7 @@ async def f() -> int:
 main:5: error: Incompatible types in await (actual type "int", expected type "Awaitable")
 
 [case testAwaitResultError]
-# flags: --fast-parser
+
 async def g() -> int:
     return 0
 async def f() -> str:
@@ -120,7 +120,7 @@ async def f() -> str:
 main:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAwaitReturnError]
-# flags: --fast-parser
+
 async def g() -> int:
     return 0
 async def f() -> str:
@@ -131,7 +131,7 @@ async def f() -> str:
 main:6: error: Incompatible return value type (got "int", expected "str")
 
 [case testAsyncFor]
-# flags: --fast-parser
+
 from typing import AsyncIterator
 class C(AsyncIterator[int]):
     async def __anext__(self) -> int: return 0
@@ -142,7 +142,7 @@ async def f() -> None:
 [out]
 
 [case testAsyncForError]
-# flags: --fast-parser
+
 from typing import AsyncIterator
 async def f() -> None:
     async for x in [1]:
@@ -153,7 +153,7 @@ main:4: error: AsyncIterable expected
 main:4: error: List[int] has no attribute "__aiter__"
 
 [case testAsyncForTypeComments]
-# flags: --fast-parser
+
 from typing import AsyncIterator, Union
 class C(AsyncIterator[int]):
     async def __anext__(self) -> int: return 0
@@ -242,7 +242,7 @@ main:21: error: asyncify[int] has no attribute "__iter__"; maybe "__aiter__"?
 [builtins fixtures/async_await.pyi]
 
 [case testAsyncWith]
-# flags: --fast-parser
+
 class C:
     async def __aenter__(self) -> int: pass
     async def __aexit__(self, x, y, z) -> None: pass
@@ -253,7 +253,7 @@ async def f() -> None:
 
 
 [case testAsyncWithError]
-# flags: --fast-parser
+
 class C:
     def __enter__(self) -> int: pass
     def __exit__(self, x, y, z) -> None: pass
@@ -266,7 +266,7 @@ main:6: error: "C" has no attribute "__aenter__"; maybe "__enter__"?
 main:6: error: "C" has no attribute "__aexit__"; maybe "__exit__"?
 
 [case testAsyncWithErrorBadAenter]
-# flags: --fast-parser
+
 class C:
     def __aenter__(self) -> int: pass
     async def __aexit__(self, x, y, z) -> None: pass
@@ -277,7 +277,7 @@ async def f() -> None:
 [out]
 
 [case testAsyncWithErrorBadAenter2]
-# flags: --fast-parser
+
 class C:
     def __aenter__(self) -> None: pass
     async def __aexit__(self, x, y, z) -> None: pass
@@ -288,7 +288,7 @@ async def f() -> None:
 [out]
 
 [case testAsyncWithErrorBadAexit]
-# flags: --fast-parser
+
 class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> int: pass
@@ -299,7 +299,7 @@ async def f() -> None:
 [out]
 
 [case testAsyncWithErrorBadAexit2]
-# flags: --fast-parser
+
 class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> None: pass
@@ -310,7 +310,7 @@ async def f() -> None:
 [out]
 
 [case testAsyncWithTypeComments]
-# flags: --fast-parser
+
 class C:
     async def __aenter__(self) -> int: pass
     async def __aexit__(self, x, y, z) -> None: pass
@@ -326,7 +326,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 
 [case testNoYieldInAsyncDef]
-# flags: --fast-parser
+
 async def f():
     yield None
 async def g():
@@ -340,7 +340,7 @@ main:5: error: 'yield' in async function
 main:7: error: 'yield' in async function
 
 [case testNoYieldFromInAsyncDef]
-# flags: --fast-parser
+
 async def f():
     yield from []
 async def g():
@@ -351,12 +351,12 @@ main:3: error: 'yield from' in async function
 main:5: error: 'yield from' in async function
 
 [case testNoAsyncDefInPY2_python2]
-# flags: --fast-parser
+
 async def f():  # E: invalid syntax
     pass
 
 [case testYieldFromNoAwaitable]
-# flags: --fast-parser
+
 from typing import Any, Generator
 async def f() -> str:
     return ''
@@ -368,7 +368,7 @@ def g() -> Generator[Any, None, str]:
 main:6: error: "yield from" can't be applied to Awaitable[str]
 
 [case testAwaitableSubclass]
-# flags: --fast-parser
+
 from typing import Any, AsyncIterator, Awaitable, Generator
 class A(Awaitable[int]):
     def __await__(self) -> Generator[Any, None, int]:
@@ -395,7 +395,7 @@ async def main() -> None:
 [out]
 
 [case testYieldTypeCheckInDecoratedCoroutine]
-# flags: --fast-parser
+
 from typing import Generator
 from types import coroutine
 @coroutine
@@ -415,7 +415,7 @@ def f() -> Generator[int, str, int]:
 -- ------------------------------------------
 
 [case testFullCoroutineMatrix]
-# flags: --fast-parser
+
 from typing import Any, AsyncIterator, Awaitable, Generator, Iterator
 from types import coroutine
 
