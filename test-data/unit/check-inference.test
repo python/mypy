@@ -664,6 +664,14 @@ lb = [b]
 l = lb # E: Incompatible types in assignment (expression has type List[bool], variable has type List[A])
 [builtins fixtures/for.pyi]
 
+[case testGenericFunctionWithTypeTypeAsCallable]
+from typing import Callable, Type, TypeVar
+T = TypeVar('T')
+def f(x: Callable[..., T]) -> T: return x()
+class A: pass
+x = None  # type: Type[A]
+y = f(x)
+reveal_type(y)  # E: Revealed type is '__main__.A*'
 
 -- Generic function inference with unions
 -- --------------------------------------
