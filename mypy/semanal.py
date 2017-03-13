@@ -472,10 +472,10 @@ class SemanticAnalyzer(NodeVisitor):
                     # Some of them were overloads, but not all.
                     for idx in non_overload_indexes:
                         if self.is_stub_file:
-                            self.fail("Implementations of overloaded functions "
-                                      "not allowed in stub files", defn.items[idx])
+                            self.fail("Implementation of overloaded function "
+                                      "not allowed in stub file", defn.items[idx])
                         else:
-                            self.fail("Implementations of overloaded functions "
+                            self.fail("Implementation of overloaded function "
                                       "must come last", defn.items[idx])
                 else:
                     for idx in non_overload_indexes[1:]:
