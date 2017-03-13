@@ -336,6 +336,20 @@ class D:
 f([D])  # E: List item 0 has incompatible type
 [builtins fixtures/list.pyi]
 
+[case testSubtypingTypeTypeAsCallable]
+from typing import Callable, Type
+class A: pass
+x = None  # type: Callable[..., A]
+y = None  # type: Type[A]
+x = y
+
+[case testSubtypingCallableAsTypeType]
+from typing import Callable, Type
+class A: pass
+x = None  # type: Callable[..., A]
+y = None  # type: Type[A]
+y = x  # E: Incompatible types in assignment (expression has type Callable[..., A], variable has type Type[A])
+
 -- Default argument values
 -- -----------------------
 
