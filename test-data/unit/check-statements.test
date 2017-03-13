@@ -61,6 +61,12 @@ def f() -> Generator[int, None, str]:
     return  # E: Return value expected
 [out]
 
+[case testNoReturnInGenerator]
+from typing import Generator
+def f() -> Generator[int, None, str]:  # E: Missing return statement
+    yield 1
+[out]
+
 [case testEmptyReturnInNoneTypedGenerator]
 from typing import Generator
 def f() -> Generator[int, None, None]:
@@ -161,6 +167,42 @@ while None:
     continue
 [builtins fixtures/bool.pyi]
 [out]
+
+[case testForStatementTypeComments]
+
+from typing import List, Union
+x = []  # type: List[int]
+
+for y in x:  # type: str  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    pass
+
+for z in x:  # type: int
+    pass
+
+for w in x:  # type: Union[int, str]
+    reveal_type(w)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+for v in x:  # type: int, int  # E: Invalid tuple literal type
+    pass
+[builtins fixtures/list.pyi]
+
+[case testForStatementMultipleTypeComments]
+
+from typing import List, Tuple
+x = []  # type: List[Tuple[int, int]]
+
+for y in x:  # type: int, int  # E: Invalid tuple literal type
+    pass
+
+for z in x:  # type: Tuple[int, int]
+    pass
+
+for w,v in x:  # type: int, str  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    pass
+
+for a, b in x:  # type: int, int, int  # E: Incompatible number of tuple items
+    pass
+[builtins fixtures/list.pyi]
 
 
 -- Operator assignment
@@ -618,6 +660,57 @@ except (E1_1, E1_2) as e2:
     c = e2 # type: E1_2 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_2")
 [builtins fixtures/exception.pyi]
 
+[case testExceptWithMultipleTypes4]
+from typing import Tuple, Type, Union
+
+class E1(BaseException): pass
+class E2(BaseException): pass
+class E3(BaseException): pass
+
+def variadic(exc: Tuple[Type[E1], ...]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # E: Revealed type is '__main__.E1'
+
+def union(exc: Union[Type[E1], Type[E2]]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # E: Revealed type is 'Union[__main__.E1, __main__.E2]'
+
+def tuple_in_union(exc: Union[Type[E1], Tuple[Type[E2], Type[E3]]]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # E: Revealed type is 'Union[__main__.E1, __main__.E2, __main__.E3]'
+
+def variadic_in_union(exc: Union[Type[E1], Tuple[Type[E2], ...]]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # E: Revealed type is 'Union[__main__.E1, __main__.E2]'
+
+def nested_union(exc: Union[Type[E1], Union[Type[E2], Type[E3]]]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # E: Revealed type is 'Union[__main__.E1, __main__.E2, __main__.E3]'
+
+def error_in_union(exc: Union[Type[E1], int]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Exception type must be derived from BaseException
+        pass
+
+def error_in_variadic(exc: Tuple[int, ...]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Exception type must be derived from BaseException
+        pass
+
+[builtins fixtures/tuple.pyi]
+
 [case testExceptWithAnyTypes]
 from typing import Any
 
@@ -686,6 +779,7 @@ def f(*a: BaseException) -> int:
     except BaseException as err: pass
     try: pass
     except BaseException as err: f(err)
+    return 0
 x = f()
 [builtins fixtures/exception.pyi]
 
@@ -696,6 +790,7 @@ def f(*a: BaseException) -> int:
     x
     try: pass
     except BaseException as err: f(err)
+    return 0
 x = f()
 [builtins fixtures/exception.pyi]
 
@@ -706,6 +801,7 @@ def f(*a: BaseException) -> int:
     try: pass
     except BaseException as err: f(err)
     x
+    return 0
 x = f()
 [builtins fixtures/exception.pyi]
 
@@ -726,6 +822,7 @@ def f(*arg: BaseException) -> int:
         f(err)
         b = err.b
         reveal_type(b)
+    return 0
 x = f()
 [builtins fixtures/exception.pyi]
 [out]
@@ -749,6 +846,7 @@ def f(*arg: BaseException) -> int:
         f(err)
         b = err.b
         reveal_type(b)
+    return 0
 x = f()
 [builtins fixtures/exception.pyi]
 [out]
@@ -772,6 +870,7 @@ def f(*arg: BaseException) -> int:
         b = err.b
         reveal_type(b)
     x
+    return 0
 x = f()
 [builtins fixtures/exception.pyi]
 [out]
@@ -927,6 +1026,19 @@ c.a + 1
 del c.a
 c.a + 1
 [builtins fixtures/ops.pyi]
+
+[case testDelStatementWithConditions]
+x = 5
+del x
+if x: ...  # E: Trying to read deleted variable 'x'
+
+def f(x):
+    return x
+
+if 0: ...
+elif f(x): ...  # E: Trying to read deleted variable 'x'
+
+while x == 5: ...  # E: Trying to read deleted variable 'x'
 
 -- Yield statement
 -- ---------------
@@ -1193,6 +1305,86 @@ with A() as (a, b):
     a = b # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/tuple.pyi]
 
+[case testWithStmtTypeComment]
+
+from typing import Union
+class A:
+    def __enter__(self) -> int: pass
+    def __exit__(self, x, y, z): pass
+
+with A():  # type: int  # E: Invalid type comment
+    pass
+
+with A() as a:  # type: int
+    pass
+
+with A() as b:  # type: str  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    pass
+
+with A() as c:  # type: int, int  # E: Invalid tuple literal type
+    pass
+
+with A() as d:  # type: Union[int, str]
+    reveal_type(d)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+[case testWithStmtTupleTypeComment]
+
+from typing import Tuple
+class A:
+    def __enter__(self) -> Tuple[int, int]: pass
+    def __exit__(self, x, y, z): pass
+
+with A():
+    pass
+
+with A() as a:  # type: Tuple[int, int]
+    pass
+
+with A() as b:  # type: Tuple[int, str]  # E: Incompatible types in assignment (expression has type "Tuple[int, int]", variable has type "Tuple[int, str]")
+    pass
+
+with A() as (c, d):  # type: int, int
+    pass
+
+with A() as (e, f):  # type: Tuple[int, int]
+    pass
+
+with A() as (g, h):  # type: int  # E: Tuple type expected for multiple variables
+    pass
+
+with A() as (i, j):  # type: int, int, str  # E: Incompatible number of tuple items
+    pass
+
+with A() as (k, l):  # type: int, str  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testWithStmtComplexTypeComment]
+
+from typing import Tuple
+class A:
+    def __enter__(self) -> Tuple[int, int]: pass
+    def __exit__(self, x, y, z): pass
+
+class B:
+    def __enter__(self) -> str: pass
+    def __exit__(self, x, y, z): pass
+
+with A() as a, A() as (b, c), B() as d:  # type: Tuple[int, int], (int, int), str
+    pass
+
+with A() as e, A() as (f, g), B() as h:  # type: Tuple[int, int], Tuple[int, int], str
+    pass
+
+with A() as i, A() as (j, k), B() as l:  # type: (int, int), (int, int), str  # E: Invalid tuple literal type
+    pass
+
+with A(), A(), B() as m, A() as n, B(), B() as o:  # type: int, Tuple[int, int]  # E: Incompatible number of types for `with` targets
+    pass
+
+with A(), B(), B() as p, A(), A():  # type: str
+    pass
+[builtins fixtures/tuple.pyi]
 
 -- Chained assignment
 -- ------------------

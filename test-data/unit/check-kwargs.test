@@ -134,7 +134,7 @@ class A: pass
 class B: pass
 
 [case testKeywordOnlyArgumentsFastparse]
-# flags: --fast-parser
+
 import typing
 def f(a: 'A', *, b: 'B' = None) -> None: pass
 def g(a: 'A', *, b: 'B') -> None: pass

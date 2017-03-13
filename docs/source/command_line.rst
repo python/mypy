@@ -15,8 +15,8 @@ flag (or its long form ``--help``)::
               [--check-untyped-defs] [--disallow-subclassing-any]
               [--warn-incomplete-stub] [--warn-redundant-casts]
               [--warn-no-return] [--warn-unused-ignores] [--show-error-context]
-              [--fast-parser] [-i] [--cache-dir DIR] [--strict-optional]
-              [--strict-optional-whitelist [GLOB [GLOB ...]]]
+              [-i] [--cache-dir DIR] [--strict-optional]
+              [--strict-optional-whitelist [GLOB [GLOB ...]]] [--strict]
               [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
               [--inferstats] [--custom-typing MODULE]
               [--custom-typeshed-dir DIR] [--scripts-are-modules]
@@ -303,10 +303,6 @@ Here are some more useful flags:
   to speed up type checking. Incremental mode can help when most parts
   of your program haven't changed since the previous mypy run.
 
-- ``--fast-parser`` enables an experimental parser implemented in C that
-  is faster than the default parser and supports multi-line comment
-  function annotations (see :ref:`multi_line_annotation` for the details).
-
 - ``--python-version X.Y`` will make mypy typecheck your code as if it were
   run under Python version X.Y. Without this option, mypy will default to using
   whatever version of Python is running mypy. Note that the ``-2`` and
@@ -345,9 +341,9 @@ Here are some more useful flags:
 
 - ``--config-file CONFIG_FILE`` causes configuration settings to be
   read from the given file.  By default settings are read from ``mypy.ini``
-  in the current directory.  Settings override mypy's built-in defaults
-  and command line flags can override settings.  See :ref:`config-file`
-  for the syntax of configuration files.
+  or ``setup.cfg`` in the current directory.  Settings override mypy's
+  built-in defaults and command line flags can override settings.
+  See :ref:`config-file` for the syntax of configuration files.
 
 - ``--junit-xml JUNIT_XML`` will make mypy generate a JUnit XML test
   result document with type checking results. This can make it easier
@@ -365,11 +361,18 @@ Here are some more useful flags:
   for functions with ``None`` or ``Any`` return types. Mypy
   also currently ignores functions with an empty body or a body that is
   just ellipsis (``...``), since these can be valid as abstract methods.
+  This option is on by default.
+
+- ``--warn-return-any`` causes mypy to generate a warning when returning a value
+  with type ``Any`` from a function declared with a non- ``Any`` return type.
 
 - ``--strict-boolean`` will make using non-boolean expressions in conditions
   an error. This means ``if x`` and ``while x`` are disallowed when ``x`` has any
   type other than ``bool``. Instead use explicit checks like ``if x > 0`` or
   ``while x is not None``.
+
+- ``--strict`` mode enables all optional error checking flags.  You can see the
+  list of flags enabled by strict mode in the full ``mypy -h`` output.
 
 For the remaining flags you can read the full ``mypy -h`` output.
 
@@ -383,20 +386,21 @@ Integrating mypy into another Python application
 ************************************************
 
 It is possible to integrate mypy into another Python 3 application by
-importing ``mypy.api`` and calling the ``run`` function with exactly the string
-you would have passed to mypy from the command line.
+importing ``mypy.api`` and calling the ``run`` function with a parameter of type ``List[str]``, containing
+what normally would have been the command line arguments to mypy.
 
-Function ``run`` returns a tuple of strings:
-``(<normal_report>, <error_report>)``, in which ``<normal_report>`` is what mypy
-normally writes to ``sys.stdout`` and ``<error_report>`` is what mypy normally
-writes to ``sys.stderr``.
+Function ``run`` returns a ``Tuple[str, str, int]``, namely
+``(<normal_report>, <error_report>, <exit_status>)``, in which ``<normal_report>``
+is what mypy normally writes to ``sys.stdout``, ``<error_report>`` is what mypy
+normally writes to ``sys.stderr`` and ``exit_status`` is the exit status mypy normally
+returns to the operating system.
 
-A trivial example of this is the following::
+A trivial example of using the api is the following::
 
     import sys
     from mypy import api
 
-    result = api.run(' '.join(sys.argv[1:]))
+    result = api.run(sys.argv[1:])
 
     if result[0]:
         print('\nType checking report:\n')
@@ -405,3 +409,5 @@ A trivial example of this is the following::
     if result[1]:
         print('\nError report:\n')
         print(result[1])  # stderr
+
+    print ('\nExit status:', result[2])

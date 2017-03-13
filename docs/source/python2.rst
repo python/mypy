@@ -66,12 +66,6 @@ overly long type comments and it's often tricky to see which argument
 type corresponds to which argument. The alternative, multi-line
 annotation syntax makes long annotations easier to read and write.
 
-.. note::
-
-    Multi-line comment annotations currently only work when using the
-    ``--fast-parser`` command line option.  This is not enabled by
-    default because the option isn’t supported on Windows yet.
-
 Here is an example (from PEP 484):
 
 .. code-block:: python

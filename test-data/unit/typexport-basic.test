@@ -314,7 +314,7 @@ from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
   def f(self) -> T:
-    self.f()
+    return self.f()
 [out]
 CallExpr(5) : T`1
 MemberExpr(5) : def () -> T`1
@@ -1027,12 +1027,12 @@ NameExpr(7) : S
 
 [case testBinaryOperatorWithAnyLeftOperand]
 ## OpExpr
-from typing import Any
+from typing import Any, cast
 class B:
     def __add__(self, x: int) -> str: pass
 class A:
     def __radd__(self, x: B) -> int: pass
-Any(1) + A()
+cast(Any, 1) + A()
 B() + A()
 [out]
 OpExpr(7) : Any
@@ -1040,10 +1040,10 @@ OpExpr(8) : builtins.int
 
 [case testBinaryOperatorWithAnyRightOperand]
 ## OpExpr
-from typing import Any
+from typing import Any, cast
 class A:
     def __add__(self, x: str) -> int: pass
-A() + Any(1)
+A() + cast(Any, 1)
 [out]
 OpExpr(5) : Any
 

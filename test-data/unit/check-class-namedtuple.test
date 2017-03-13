@@ -1,12 +1,12 @@
 [case testNewNamedTupleOldPythonVersion]
-# flags: --fast-parser --python-version 3.5
+# flags: --python-version 3.5
 from typing import NamedTuple
 
 class E(NamedTuple):  # E: NamedTuple class syntax is only supported in Python 3.6
     pass
 
 [case testNewNamedTupleNoUnderscoreFields]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -15,7 +15,7 @@ class X(NamedTuple):
     _z: int  # E: NamedTuple field name cannot start with an underscore: _z
 
 [case testNewNamedTupleAccessingAttributes]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -28,7 +28,7 @@ x.y
 x.z # E: "X" has no attribute "z"
 
 [case testNewNamedTupleAttributesAreReadOnly]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -43,7 +43,7 @@ a: A
 a.x = 5 # E: Property "x" defined in "A" is read-only
 
 [case testNewNamedTupleCreateWithPositionalArguments]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -57,7 +57,7 @@ x = X(1) # E: Too few arguments for "X"
 x = X(1, '2', 3)  # E: Too many arguments for "X"
 
 [case testNewNamedTupleShouldBeSingleBase]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class A: ...
@@ -65,7 +65,7 @@ class X(NamedTuple, A):  # E: NamedTuple should be a single base
     pass
 
 [case testCreateNewNamedTupleWithKeywordArguments]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -78,7 +78,7 @@ x = X(x=1, z=1) # E: Unexpected keyword argument "z" for "X"
 x = X(y='x') # E: Missing positional argument "x" in call to "X"
 
 [case testNewNamedTupleCreateAndUseAsTuple]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -90,7 +90,7 @@ a, b = x
 a, b, c = x  # E: Need more than 2 values to unpack (3 expected)
 
 [case testNewNamedTupleWithItemTypes]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class N(NamedTuple):
@@ -106,7 +106,7 @@ x, y = n
 x = y  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNewNamedTupleConstructorArgumentTypes]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class N(NamedTuple):
@@ -119,7 +119,7 @@ N(1, 'x')
 N(b='x', a=1)
 
 [case testNewNamedTupleAsBaseClass]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class N(NamedTuple):
@@ -136,7 +136,7 @@ i, s = x
 s, s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testNewNamedTupleSelfTypeWithNamedTupleAsBase]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class A(NamedTuple):
@@ -155,7 +155,7 @@ class B(A):
 [out]
 
 [case testNewNamedTupleTypeReferenceToClassDerivedFrom]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class A(NamedTuple):
@@ -177,7 +177,7 @@ class B(A):
 [out]
 
 [case testNewNamedTupleSubtyping]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple, Tuple
 
 class A(NamedTuple):
@@ -197,7 +197,7 @@ t = b
 a = b
 
 [case testNewNamedTupleSimpleTypeInference]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple, Tuple
 
 class A(NamedTuple):
@@ -214,7 +214,7 @@ a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[int]
 [builtins fixtures/list.pyi]
 
 [case testNewNamedTupleMissingClassAttribute]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class MyNamedTuple(NamedTuple):
@@ -224,14 +224,14 @@ class MyNamedTuple(NamedTuple):
 MyNamedTuple.x # E: "MyNamedTuple" has no attribute "x"
 
 [case testNewNamedTupleEmptyItems]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class A(NamedTuple):
     ...
 
 [case testNewNamedTupleForwardRef]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class A(NamedTuple):
@@ -243,7 +243,7 @@ a = A(B())
 a = A(1)  # E: Argument 1 to "A" has incompatible type "int"; expected "B"
 
 [case testNewNamedTupleProperty]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class A(NamedTuple):
@@ -260,7 +260,7 @@ C(2).b
 [builtins fixtures/property.pyi]
 
 [case testNewNamedTupleAsDict]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple, Any
 
 class X(NamedTuple):
@@ -273,7 +273,7 @@ reveal_type(x._asdict())  # E: Revealed type is 'builtins.dict[builtins.str, Any
 [builtins fixtures/dict.pyi]
 
 [case testNewNamedTupleReplaceTyped]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -286,7 +286,7 @@ x._replace(x=5)
 x._replace(y=5)  # E: Argument 1 to X._replace has incompatible type "int"; expected "str"
 
 [case testNewNamedTupleFields]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -300,7 +300,7 @@ reveal_type(X._field_defaults)  # E: Revealed type is 'builtins.dict[builtins.st
 [builtins fixtures/dict.pyi]
 
 [case testNewNamedTupleUnit]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -311,7 +311,7 @@ x._replace()
 x._fields[0]  # E: Tuple index out of range
 
 [case testNewNamedTupleJoinNamedTuple]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -326,7 +326,7 @@ reveal_type([X(3, 'b'), Y(1, 'a')])  # E: Revealed type is 'builtins.list[Tuple[
 [builtins fixtures/list.pyi]
 
 [case testNewNamedTupleJoinTuple]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -339,7 +339,7 @@ reveal_type([X(1, 'a'), (3, 'b')])  # E: Revealed type is 'builtins.list[Tuple[b
 [builtins fixtures/list.pyi]
 
 [case testNewNamedTupleWithTooManyArguments]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -348,7 +348,7 @@ class X(NamedTuple):
     def f(self): pass  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
 
 [case testNewNamedTupleWithInvalidItems2]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 import typing
 
 class X(typing.NamedTuple):
@@ -368,7 +368,7 @@ main:9: error: Non-default NamedTuple fields cannot follow default fields
 [builtins fixtures/list.pyi]
 
 [case testNewNamedTupleWithoutTypesSpecified]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -376,7 +376,7 @@ class X(NamedTuple):
     y = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
 
 [case testTypeUsingTypeCNamedTuple]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple, Type
 
 class N(NamedTuple):

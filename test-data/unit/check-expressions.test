@@ -648,9 +648,9 @@ s = None  # type: str
 s = A() + B() # E: Unsupported operand types for + ("A" and "B")
 
 [case testBinaryOperatorWithAnyRightOperand]
-from typing import Any
+from typing import Any, cast
 class A: pass
-A() + Any(1)
+A() + cast(Any, 1)
 
 [case testReverseComparisonOperator]
 
@@ -858,9 +858,9 @@ b = cast(Any, a)
 [case testAnyCast]
 from typing import cast, Any
 a, b = None, None # type: (A, B)
-a = Any(a())     # Fail
-a = Any(b)
-b = Any(a)
+a = cast(Any, a())     # Fail
+a = cast(Any, b)
+b = cast(Any, a)
 class A: pass
 class B: pass
 [out]
@@ -895,7 +895,6 @@ main:6: error: "f" does not return a value
 
 [case testNoneReturnTypeWithStatements]
 import typing
-raise f() # Fail
 if f():   # Fail
     pass
 elif f(): # Fail
@@ -904,14 +903,15 @@ while f(): # Fail
     pass
 def g() -> object:
     return f() # Fail
+raise f() # Fail
 
 def f() -> None: pass
 [builtins fixtures/exception.pyi]
 [out]
 main:2: error: "f" does not return a value
-main:3: error: "f" does not return a value
-main:5: error: "f" does not return a value
-main:7: error: "f" does not return a value
+main:4: error: "f" does not return a value
+main:6: error: "f" does not return a value
+main:9: error: "f" does not return a value
 main:10: error: "f" does not return a value
 
 [case testNoneReturnTypeWithExpressions]
@@ -1148,6 +1148,10 @@ main:4: error: Incompatible types in string interpolation (expression has type "
 def foo(a: bytes, b: bytes):
     b'%s:%s' % (a, b)
 foo(b'a', b'b') == b'a:b'
+
+[case testStringInterpolationStarArgs]
+x = (1, 2)
+"%d%d" % (*x,)
 
 [case testBytePercentInterpolationSupported]
 b'%s' % (b'xyz',)
@@ -1636,12 +1640,12 @@ None < None  # E: Unsupported left operand type for < (None)
 [builtins fixtures/ops.pyi]
 
 [case testDictWithStarExpr]
-# flags: --fast-parser
+
 b = {'z': 26, *a}  # E: invalid syntax
 [builtins fixtures/dict.pyi]
 
 [case testDictWithStarStarExpr]
-# flags: --fast-parser
+
 from typing import Dict
 a = {'a': 1}
 b = {'z': 26, **a}

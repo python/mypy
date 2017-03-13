@@ -210,6 +210,12 @@ class TypeOpsSuite(Suite):
         assert_true(is_proper_subtype(fx.t, fx.t))
         assert_false(is_proper_subtype(fx.t, fx.s))
 
+        assert_true(is_proper_subtype(fx.a, UnionType([fx.a, fx.b])))
+        assert_true(is_proper_subtype(UnionType([fx.a, fx.b]),
+                                      UnionType([fx.a, fx.b, fx.c])))
+        assert_false(is_proper_subtype(UnionType([fx.a, fx.b]),
+                                       UnionType([fx.b, fx.c])))
+
     def test_is_proper_subtype_covariance(self) -> None:
         fx_co = self.fx_co
 

@@ -100,7 +100,7 @@ if os.name == 'nt':
 # "pip3 install git+git://github.com/python/mypy.git"
 # (as suggested by README.md).
 install_requires = []
-install_requires.append('typed-ast >= 0.6.3')
+install_requires.append('typed-ast >= 1.0.0, < 1.1.0')
 if sys.version_info < (3, 5):
     install_requires.append('typing >= 3.5.3')
 

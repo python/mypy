@@ -109,8 +109,8 @@ MypyFile:1(
     StrExpr(foo))
   ExpressionStmt:3(
     StrExpr(foobar))
-  ExpressionStmt:4(
-    StrExpr(\nfoo\u000abar))
+  ExpressionStmt:5(
+    StrExpr(\u000afoo\u000abar))
   ExpressionStmt:6(
     StrExpr(fo''bar))
   ExpressionStmt:7(
@@ -119,8 +119,8 @@ MypyFile:1(
     StrExpr(foo))
   ExpressionStmt:9(
     StrExpr(foobar))
-  ExpressionStmt:10(
-    StrExpr(\nfoo\u000abar))
+  ExpressionStmt:11(
+    StrExpr(\u000afoo\u000abar))
   ExpressionStmt:12(
     StrExpr(fo""bar)))
 
@@ -130,9 +130,9 @@ r"x\n\""
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    StrExpr(x\n'))
+    StrExpr(x\n\'))
   ExpressionStmt:2(
-    StrExpr(x\n")))
+    StrExpr(x\n\")))
 --" fix syntax highlight
 
 [case testBytes]
@@ -147,7 +147,7 @@ MypyFile:1(
   ExpressionStmt:2(
     BytesExpr(foobar))
   ExpressionStmt:3(
-    BytesExpr(x\n')))
+    BytesExpr(x\\n\\')))
 
 [case testEscapesInStrings]
 '\r\n\t\x2f\u123f'
@@ -157,7 +157,7 @@ MypyFile:1(
   ExpressionStmt:1(
     StrExpr(\u000d\u000a\u0009/\u123f))
   ExpressionStmt:2(
-    BytesExpr(\u000d\u000a\u0009/\\u123f)))
+    BytesExpr(\r\n\t/\\\u123f)))
 -- Note \\u in the b'...' case (\u sequence not translated)
 
 [case testEscapedQuote]
@@ -176,7 +176,7 @@ MypyFile:1(
   ExpressionStmt:1(
     StrExpr(\u0000\u0001\u007fS4))
   ExpressionStmt:2(
-    BytesExpr(\u0001\u013e)))
+    BytesExpr(\x01>)))
 
 [case testUnicodeLiteralInPython3]
 u'foo'
@@ -301,19 +301,23 @@ MypyFile:1(
     Then(
       ExpressionStmt:2(
         IntExpr(2)))
-    If(
-      IntExpr(3))
-    Then(
-      ExpressionStmt:4(
-        IntExpr(4)))
-    If(
-      IntExpr(5))
-    Then(
-      ExpressionStmt:6(
-        IntExpr(6)))
     Else(
-      ExpressionStmt:8(
-        IntExpr(7)))))
+      IfStmt:3(
+        If(
+          IntExpr(3))
+        Then(
+          ExpressionStmt:4(
+            IntExpr(4)))
+        Else(
+          IfStmt:5(
+            If(
+              IntExpr(5))
+            Then(
+              ExpressionStmt:6(
+                IntExpr(6)))
+            Else(
+              ExpressionStmt:8(
+                IntExpr(7)))))))))
 
 [case testWhile]
 while 1:
@@ -431,16 +435,6 @@ MypyFile:1(
         NameExpr(a)
         NameExpr(None)
         Any?))))
-
-[case testLocalVarWithTypeOnNextLine]
-x = 0
-  # type: int
-[out]
-MypyFile:1(
-  AssignmentStmt:1(
-    NameExpr(x)
-    IntExpr(0)
-    int?))
 
 [case testFunctionDefWithType]
 def f(y: str) -> int:
@@ -948,18 +942,6 @@ MypyFile:1(
       NameExpr(x)
       NameExpr(y))))
 
-[case testNotAsRightOperand]
-x in not y
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    ComparisonExpr:1(
-      in
-      NameExpr(x)
-      UnaryExpr:1(
-        not
-        NameExpr(y)))))
-
 [case testNotIn]
 x not in y
 not x not in y
@@ -988,12 +970,15 @@ MypyFile:1(
         NameExpr(z)))))
 
 [case testNotAsBinaryOp]
-x not y # E: Parse error before "y"
-x not is y # E: Parse error before is
+x not y # E: invalid syntax
+[out]
+
+[case testNotIs]
+x not is y # E: invalid syntax
 [out]
 
 [case testBinaryNegAsBinaryOp]
-1 ~ 2 # E: Parse error before ~
+1 ~ 2 # E: invalid syntax
 [out]
 
 [case testDictionaryExpression]
@@ -1188,7 +1173,7 @@ MypyFile:1(
         IntExpr(3)))))
 
 [case testGeneratorExpression]
-x for y in z
+(x for y in z)
 [out]
 MypyFile:1(
   ExpressionStmt:1(
@@ -1198,7 +1183,7 @@ MypyFile:1(
       NameExpr(z))))
 
 [case testGeneratorExpressionNested]
-x for y, (p, q) in z
+(x for y, (p, q) in z)
 [out]
 MypyFile:1(
   ExpressionStmt:1(
@@ -1265,25 +1250,25 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(x)
-      SliceExpr:1(
+      SliceExpr:-1(
         IntExpr(1)
         IntExpr(2))))
   ExpressionStmt:2(
     IndexExpr:2(
       NameExpr(x)
-      SliceExpr:2(
+      SliceExpr:-1(
         <empty>
         IntExpr(1))))
   ExpressionStmt:3(
     IndexExpr:3(
       NameExpr(x)
-      SliceExpr:3(
+      SliceExpr:-1(
         IntExpr(1)
         <empty>)))
   ExpressionStmt:4(
     IndexExpr:4(
       NameExpr(x)
-      SliceExpr:4(
+      SliceExpr:-1(
         <empty>
         <empty>))))
 
@@ -1298,35 +1283,35 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(x)
-      SliceExpr:1(
+      SliceExpr:-1(
         IntExpr(1)
         IntExpr(2)
         IntExpr(3))))
   ExpressionStmt:2(
     IndexExpr:2(
       NameExpr(x)
-      SliceExpr:2(
+      SliceExpr:-1(
         IntExpr(1)
         <empty>
         IntExpr(2))))
   ExpressionStmt:3(
     IndexExpr:3(
       NameExpr(x)
-      SliceExpr:3(
+      SliceExpr:-1(
         <empty>
         IntExpr(1)
         IntExpr(2))))
   ExpressionStmt:4(
     IndexExpr:4(
       NameExpr(x)
-      SliceExpr:4(
+      SliceExpr:-1(
         <empty>
         <empty>
         IntExpr(2))))
   ExpressionStmt:5(
     IndexExpr:5(
       NameExpr(x)
-      SliceExpr:5(
+      SliceExpr:-1(
         IntExpr(1)
         IntExpr(2)))))
 
@@ -1541,7 +1526,7 @@ MypyFile:1(
       PassStmt:2())))
 
 [case testGeneratorWithCondition]
-x for y in z if 0
+(x for y in z if 0)
 [out]
 MypyFile:1(
   ExpressionStmt:1(
@@ -2967,9 +2952,9 @@ MypyFile:1(
       PassStmt:8())))
 
 [case testStarExprInGeneratorExpr]
-x for y, *p in z
-x for *p, y in z
-x for y, *p, q in z
+(x for y, *p in z)
+(x for *p, y in z)
+(x for y, *p, q in z)
 [out]
 MypyFile:1(
   ExpressionStmt:1(
@@ -3034,7 +3019,7 @@ MypyFile:1(
       __class__)))
 
 [case testFunctionWithManyKindsOfArgs]
-def f(x, *args, *, y=None, **kw): pass
+def f(x, *args,  y=None, **kw): pass
 [out]
 MypyFile:1(
   FuncDef:1(
@@ -3145,10 +3130,10 @@ MypyFile:1(
       NameExpr(f)
       Args(
         NameExpr(y))
+      VarArg
       KwArgs(
         x
-        IntExpr(1))
-      VarArg)))
+        IntExpr(1)))))
 
 [case testConditionalExpressionInSetComprehension]
 { 1 if x else 2 for x in y }
@@ -3214,11 +3199,11 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(a)
-      TupleExpr:1(
-        SliceExpr:1(
+      TupleExpr:-1(
+        SliceExpr:-1(
           <empty>
           <empty>)
-        SliceExpr:1(
+        SliceExpr:-1(
           <empty>
           <empty>)))))
 
@@ -3229,11 +3214,11 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(a)
-      TupleExpr:1(
-        SliceExpr:1(
+      TupleExpr:-1(
+        SliceExpr:-1(
           IntExpr(1)
           IntExpr(2))
-        SliceExpr:1(
+        SliceExpr:-1(
           <empty>
           <empty>)))))
 
@@ -3244,8 +3229,8 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(a)
-      TupleExpr:1(
-        SliceExpr:1(
+      TupleExpr:-1(
+        SliceExpr:-1(
           IntExpr(1)
           IntExpr(2)
           IntExpr(3))

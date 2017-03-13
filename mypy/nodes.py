@@ -7,9 +7,8 @@ from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
 )
 
-from mypy.lex import Token
 import mypy.strconv
-from mypy.visitor import NodeVisitor, ExpressionVisitor
+from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
 from mypy.util import dump_tagged, short_type
 
 
@@ -89,6 +88,13 @@ type_aliases = {
 reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
                             for alias, name in type_aliases.items())  # type: Dict[str, str]
 
+collections_type_aliases = {
+    'typing.ChainMap': '__mypy_collections__.ChainMap',
+    'typing.Counter': '__mypy_collections__.Counter',
+    'typing.DefaultDict': '__mypy_collections__.defaultdict',
+    'typing.Deque': '__mypy_collections__.deque',
+}
+
 
 # See [Note Literals and literal_hash] below
 Key = tuple
@@ -111,10 +117,10 @@ class Node(Context):
             return repr(self)
         return ans
 
-    def set_line(self, target: Union[Token, 'Node', int], column: int = None) -> None:
-        """If target is a node or token, pull line (and column) information
+    def set_line(self, target: Union['Node', int], column: int = None) -> None:
+        """If target is a node, pull line (and column) information
         into this node. If column is specified, this will override any column
-        information coming from a node/token.
+        information coming from a node.
         """
         if isinstance(target, int):
             self.line = target
@@ -139,6 +145,8 @@ class Node(Context):
 
 class Statement(Node):
     """A statement node."""
+    def accept(self, visitor: StatementVisitor[T]) -> T:
+        raise RuntimeError('Not implemented')
 
 
 class Expression(Node):
@@ -208,11 +216,9 @@ class SymbolNode(Node):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolNode':
         classname = data['.class']
-        glo = globals()
-        if classname in glo:
-            cl = glo[classname]
-            if issubclass(cl, cls) and 'deserialize' in cl.__dict__:
-                return cl.deserialize(data)
+        method = deserialize_map.get(classname)
+        if method is not None:
+            return method(data)
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
@@ -313,7 +319,7 @@ class Import(ImportBase):
         super().__init__()
         self.ids = ids
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import(self)
 
 
@@ -330,7 +336,7 @@ class ImportFrom(ImportBase):
         self.names = names
         self.relative = relative
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_from(self)
 
 
@@ -344,7 +350,7 @@ class ImportAll(ImportBase):
         self.id = id
         self.relative = relative
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
 
 
@@ -382,7 +388,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     def name(self) -> str:
         return self.items[0].func.name()
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
 
     def serialize(self) -> JsonDict:
@@ -398,7 +404,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         assert data['.class'] == 'OverloadedFuncDef'
         res = OverloadedFuncDef([Decorator.deserialize(d) for d in data['items']])
         if data.get('type') is not None:
-            res.type = mypy.types.Type.deserialize(data['type'])
+            res.type = mypy.types.deserialize_type(data['type'])
         res._fullname = data['fullname']
         res.is_property = data['is_property']
         # NOTE: res.info will be set in the fixup phase.
@@ -439,7 +445,7 @@ class Argument(Node):
         assign = AssignmentStmt([lvalue], rvalue)
         return assign
 
-    def set_line(self, target: Union[Token, Node, int], column: int = None) -> None:
+    def set_line(self, target: Union[Node, int], column: int = None) -> None:
         super().set_line(target, column)
 
         if self.initializer:
@@ -494,7 +500,7 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(self, target: Union[Token, Node, int], column: int = None) -> None:
+    def set_line(self, target: Union[Node, int], column: int = None) -> None:
         super().set_line(target, column)
         for arg in self.arguments:
             arg.set_line(self.line, self.column)
@@ -530,7 +536,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     def name(self) -> str:
         return self._name
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_func_def(self)
 
     def serialize(self) -> JsonDict:
@@ -558,7 +564,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                       [],
                       body,
                       (None if data['type'] is None
-                       else mypy.types.FunctionLike.deserialize(data['type'])))
+                       else cast(mypy.types.FunctionLike,
+                                 mypy.types.deserialize_type(data['type']))))
         ret._fullname = data['fullname']
         set_flags(ret, data['flags'])
         # NOTE: ret.info is set in the fixup phase.
@@ -595,7 +602,7 @@ class Decorator(SymbolNode, Statement):
     def fullname(self) -> str:
         return self.func.fullname()
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_decorator(self)
 
     def serialize(self) -> JsonDict:
@@ -635,13 +642,15 @@ class Var(SymbolNode):
     is_classmethod = False
     is_property = False
     is_settable_property = False
+    is_classvar = False
     # Set to true when this variable refers to a module we were unable to
     # parse for some reason (eg a silenced module)
     is_suppressed_import = False
 
     FLAGS = [
         'is_self', 'is_ready', 'is_initialized_in_class', 'is_staticmethod',
-        'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import'
+        'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
+        'is_classvar'
     ]
 
     def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
@@ -659,7 +668,7 @@ class Var(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_var(self)
 
     def serialize(self) -> JsonDict:
@@ -677,7 +686,7 @@ class Var(SymbolNode):
     def deserialize(cls, data: JsonDict) -> 'Var':
         assert data['.class'] == 'Var'
         name = data['name']
-        type = None if data['type'] is None else mypy.types.Type.deserialize(data['type'])
+        type = None if data['type'] is None else mypy.types.deserialize_type(data['type'])
         v = Var(name, type)
         v._fullname = data['fullname']
         set_flags(v, data['flags'])
@@ -711,7 +720,7 @@ class ClassDef(Statement):
         self.metaclass = metaclass
         self.decorators = []
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
 
     def is_generic(self) -> bool:
@@ -746,7 +755,7 @@ class GlobalDecl(Statement):
     def __init__(self, names: List[str]) -> None:
         self.names = names
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_global_decl(self)
 
 
@@ -758,7 +767,7 @@ class NonlocalDecl(Statement):
     def __init__(self, names: List[str]) -> None:
         self.names = names
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_nonlocal_decl(self)
 
 
@@ -772,7 +781,7 @@ class Block(Statement):
     def __init__(self, body: List[Statement]) -> None:
         self.body = body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_block(self)
 
 
@@ -786,7 +795,7 @@ class ExpressionStmt(Statement):
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_expression_stmt(self)
 
 
@@ -813,7 +822,7 @@ class AssignmentStmt(Statement):
         self.type = type
         self.new_syntax = new_syntax
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_assignment_stmt(self)
 
 
@@ -829,7 +838,7 @@ class OperatorAssignmentStmt(Statement):
         self.lvalue = lvalue
         self.rvalue = rvalue
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_operator_assignment_stmt(self)
 
 
@@ -843,13 +852,15 @@ class WhileStmt(Statement):
         self.body = body
         self.else_body = else_body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_while_stmt(self)
 
 
 class ForStmt(Statement):
     # Index variables
     index = None  # type: Lvalue
+    # Type given by type comments for index, can be None
+    index_type = None  # type: mypy.types.Type
     # Expression to iterate
     expr = None  # type: Expression
     body = None  # type: Block
@@ -857,13 +868,14 @@ class ForStmt(Statement):
     is_async = False  # True if `async for ...` (PEP 492, Python 3.5)
 
     def __init__(self, index: Lvalue, expr: Expression, body: Block,
-                 else_body: Block) -> None:
+                 else_body: Block, index_type: 'mypy.types.Type' = None) -> None:
         self.index = index
+        self.index_type = index_type
         self.expr = expr
         self.body = body
         self.else_body = else_body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_for_stmt(self)
 
 
@@ -873,7 +885,7 @@ class ReturnStmt(Statement):
     def __init__(self, expr: Optional[Expression]) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_return_stmt(self)
 
 
@@ -885,7 +897,7 @@ class AssertStmt(Statement):
         self.expr = expr
         self.msg = msg
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_assert_stmt(self)
 
 
@@ -895,22 +907,22 @@ class DelStmt(Statement):
     def __init__(self, expr: Lvalue) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_del_stmt(self)
 
 
 class BreakStmt(Statement):
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_break_stmt(self)
 
 
 class ContinueStmt(Statement):
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_continue_stmt(self)
 
 
 class PassStmt(Statement):
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_pass_stmt(self)
 
 
@@ -925,7 +937,7 @@ class IfStmt(Statement):
         self.body = body
         self.else_body = else_body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_if_stmt(self)
 
 
@@ -937,7 +949,7 @@ class RaiseStmt(Statement):
         self.expr = expr
         self.from_expr = from_expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_raise_stmt(self)
 
 
@@ -959,23 +971,26 @@ class TryStmt(Statement):
         self.else_body = else_body
         self.finally_body = finally_body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_try_stmt(self)
 
 
 class WithStmt(Statement):
     expr = None  # type: List[Expression]
     target = None  # type: List[Lvalue]
+    # Type given by type comments for target, can be None
+    target_type = None  # type: mypy.types.Type
     body = None  # type: Block
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
     def __init__(self, expr: List[Expression], target: List[Lvalue],
-                 body: Block) -> None:
+                 body: Block, target_type: 'mypy.types.Type' = None) -> None:
         self.expr = expr
         self.target = target
+        self.target_type = target_type
         self.body = body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_with_stmt(self)
 
 
@@ -992,7 +1007,7 @@ class PrintStmt(Statement):
         self.newline = newline
         self.target = target
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_print_stmt(self)
 
 
@@ -1010,7 +1025,7 @@ class ExecStmt(Statement):
         self.variables1 = variables1
         self.variables2 = variables2
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_exec_stmt(self)
 
 
@@ -1569,14 +1584,17 @@ class GeneratorExpr(Expression):
     left_expr = None  # type: Expression
     sequences = None  # type: List[Expression]
     condlists = None  # type: List[List[Expression]]
+    is_async = None  # type: List[bool]
     indices = None  # type: List[Lvalue]
 
     def __init__(self, left_expr: Expression, indices: List[Lvalue],
-                 sequences: List[Expression], condlists: List[List[Expression]]) -> None:
+                 sequences: List[Expression], condlists: List[List[Expression]],
+                 is_async: List[bool]) -> None:
         self.left_expr = left_expr
         self.sequences = sequences
         self.condlists = condlists
         self.indices = indices
+        self.is_async = is_async
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_generator_expr(self)
@@ -1613,15 +1631,18 @@ class DictionaryComprehension(Expression):
     value = None  # type: Expression
     sequences = None  # type: List[Expression]
     condlists = None  # type: List[List[Expression]]
+    is_async = None  # type: List[bool]
     indices = None  # type: List[Lvalue]
 
     def __init__(self, key: Expression, value: Expression, indices: List[Lvalue],
-                 sequences: List[Expression], condlists: List[List[Expression]]) -> None:
+                 sequences: List[Expression], condlists: List[List[Expression]],
+                 is_async: List[bool]) -> None:
         self.key = key
         self.value = value
         self.sequences = sequences
         self.condlists = condlists
         self.indices = indices
+        self.is_async = is_async
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dictionary_comprehension(self)
@@ -1733,8 +1754,8 @@ class TypeVarExpr(SymbolNode, Expression):
         assert data['.class'] == 'TypeVarExpr'
         return TypeVarExpr(data['name'],
                            data['fullname'],
-                           [mypy.types.Type.deserialize(v) for v in data['values']],
-                           mypy.types.Type.deserialize(data['upper_bound']),
+                           [mypy.types.deserialize_type(v) for v in data['values']],
+                           mypy.types.deserialize_type(data['upper_bound']),
                            data['variance'])
 
 
@@ -1870,6 +1891,10 @@ class TypeInfo(SymbolNode):
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to this class.
     mro = None  # type: List[TypeInfo]
+
+    declared_metaclass = None  # type: Optional[mypy.types.Instance]
+    metaclass_type = None  # type: mypy.types.Instance
+
     subtypes = None  # type: Set[TypeInfo] # Direct subclasses encountered so far
     names = None  # type: SymbolTable      # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
@@ -1999,6 +2024,27 @@ class TypeInfo(SymbolNode):
         self.mro = mro
         self.is_enum = self._calculate_is_enum()
 
+    def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
+        declared = self.declared_metaclass
+        if declared is not None and not declared.type.has_base('builtins.type'):
+            return declared
+        if self._fullname == 'builtins.type':
+            return mypy.types.Instance(self, [])
+        candidates = [s.declared_metaclass
+                      for s in self.mro
+                      if s.declared_metaclass is not None
+                      and s.declared_metaclass.type is not None]
+        for c in candidates:
+            if c.type.mro is None:
+                continue
+            if all(other.type in c.type.mro for other in candidates):
+                return c
+        return None
+
+    def is_metaclass(self) -> bool:
+        return (self.has_base('builtins.type') or self.fullname() == 'abc.ABCMeta' or
+                self.fallback_to_any)
+
     def _calculate_is_enum(self) -> bool:
         """
         If this is "enum.Enum" itself, then yes, it's an enum.
@@ -2054,6 +2100,8 @@ class TypeInfo(SymbolNode):
                 'type_vars': self.type_vars,
                 'bases': [b.serialize() for b in self.bases],
                 '_promote': None if self._promote is None else self._promote.serialize(),
+                'declared_metaclass': (None if self.declared_metaclass is None
+                                       else self.declared_metaclass.serialize()),
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
                 'typeddict_type':
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
@@ -2074,7 +2122,10 @@ class TypeInfo(SymbolNode):
         ti.type_vars = data['type_vars']
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None
-                       else mypy.types.Type.deserialize(data['_promote']))
+                       else mypy.types.deserialize_type(data['_promote']))
+        ti.declared_metaclass = (None if data['declared_metaclass'] is None
+                                 else mypy.types.Instance.deserialize(data['declared_metaclass']))
+        # NOTE: ti.metaclass_type and ti.mro will be set in the fixup phase.
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None
@@ -2202,7 +2253,7 @@ class SymbolTableNode:
                 node = SymbolNode.deserialize(data['node'])
             typ = None
             if 'type_override' in data:
-                typ = mypy.types.Type.deserialize(data['type_override'])
+                typ = mypy.types.deserialize_type(data['type_override'])
             stnode = SymbolTableNode(kind, node, typ=typ)
         if 'tvar_def' in data:
             stnode.tvar_def = mypy.types.TypeVarDef.deserialize(data['tvar_def'])
@@ -2293,3 +2344,25 @@ def get_flags(node: Node, names: List[str]) -> List[str]:
 def set_flags(node: Node, flags: List[str]) -> None:
     for name in flags:
         setattr(node, name, True)
+
+
+def get_member_expr_fullname(expr: MemberExpr) -> str:
+    """Return the qualified name representation of a member expression.
+
+    Return a string of form foo.bar, foo.bar.baz, or similar, or None if the
+    argument cannot be represented in this form.
+    """
+    if isinstance(expr.expr, NameExpr):
+        initial = expr.expr.name
+    elif isinstance(expr.expr, MemberExpr):
+        initial = get_member_expr_fullname(expr.expr)
+    else:
+        return None
+    return '{}.{}'.format(initial, expr.name)
+
+
+deserialize_map = {
+    key: obj.deserialize  # type: ignore
+    for key, obj in globals().items()
+    if isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
+}

@@ -11,7 +11,7 @@ def f(x) -> int: pass
 main:2: error: Function is missing a type annotation for one or more arguments
 
 [case testUnannotatedArgumentWithFastParser]
-# flags: --fast-parser --disallow-untyped-defs
+# flags: --disallow-untyped-defs
 def f(x) -> int: pass
 [out]
 main:2: error: Function is missing a type annotation for one or more arguments
@@ -28,7 +28,7 @@ def f(x: int): pass
 main:2: error: Function is missing a return type annotation
 
 [case testUnannotatedReturnWithFastParser]
-# flags: --fast-parser --disallow-untyped-defs
+# flags: --disallow-untyped-defs
 def f(x: int): pass
 [out]
 main:2: error: Function is missing a return type annotation
@@ -135,6 +135,63 @@ def f() -> int:
     else:
         return 0
 [builtins fixtures/bool.pyi]
+
+[case testNoReturnDisallowsReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def f() -> NoReturn:
+  if bool():
+    return 5  # E: Return statement in function which does not return
+  else:
+    return  # E: Return statement in function which does not return
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnWithoutImplicitReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def no_return() -> NoReturn: pass
+def f() -> NoReturn:
+  no_return()
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnDisallowsImplicitReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def f() -> NoReturn:  # N: Implicit return in function which does not return
+  non_trivial_function = 1
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnNoWarnNoReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def no_return() -> NoReturn: pass
+def f() -> int:
+  if bool():
+    return 0
+  else:
+    no_return()
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnInExpr]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def no_return() -> NoReturn: pass
+def f() -> int:
+  return 0
+reveal_type(f() or no_return())  # E: Revealed type is 'builtins.int'
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnVariable]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type NoReturn)
+[builtins fixtures/dict.pyi]
 
 [case testShowErrorContextFunction]
 # flags: --show-error-context

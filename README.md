@@ -83,7 +83,8 @@ If you want to run the latest version of the code, you can install from git:
 
 
 Now, if Python on your system is configured properly (else see
-"Troubleshooting" below), you can type-check a program like this:
+"Troubleshooting" below), you can type-check the [statically typed parts] of a
+program like this:
 
     $ mypy PROGRAM
 
@@ -91,6 +92,8 @@ You can always use a Python interpreter to run your statically typed
 programs, even if they have type errors:
 
     $ python3 PROGRAM
+
+[statically typed parts]: http://mypy.readthedocs.io/en/latest/basics.html#function-signatures
 
 
 Web site and documentation
@@ -113,8 +116,9 @@ this:
 
     $ python3 -m pip install -U mypy
 
-Except on Windows, it's best to always use the `--fast-parser`
-option to mypy; this requires installing `typed-ast`:
+This should automatically installed the appropriate version of
+mypy's parser, typed-ast.  If for some reason it does not, you
+can install it manually:
 
     $ python3 -m pip install -U typed-ast
 

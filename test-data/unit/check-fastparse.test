@@ -1,31 +1,96 @@
 [case testFastParseSyntaxError]
-# flags: --fast-parser
+
 1 +  # E: invalid syntax
 
 [case testFastParseTypeCommentSyntaxError]
-# flags: --fast-parser
+
 x = None # type: a : b  # E: syntax error in type comment
 
 [case testFastParseInvalidTypeComment]
-# flags: --fast-parser
-x = None # type: a + b  # E: invalid type comment
+
+x = None # type: a + b  # E: invalid type comment or annotation
 
 -- Function type comments are attributed to the function def line.
 -- This happens in both parsers.
 [case testFastParseFunctionAnnotationSyntaxError]
-# flags: --fast-parser
+
 def f():  # E: syntax error in type comment
   # type: None -> None
   pass
 
 [case testFastParseInvalidFunctionAnnotation]
-# flags: --fast-parser
-def f(x):  # E: invalid type comment
+
+def f(x):  # E: invalid type comment or annotation
   # type: (a + b) -> None
   pass
 
+[case testFastParseInvalidTypes2]
+# flags: --py2
+# All of these should not crash
+from typing import Callable, Tuple, Iterable
+
+x = None # type: Tuple[int, str].x # E: invalid type comment or annotation
+x = None # type: Iterable[x].x # E: invalid type comment or annotation
+x = None # type: Tuple[x][x] # E: invalid type comment or annotation
+x = None # type: Iterable[x][x] # E: invalid type comment or annotation
+x = None # type: Callable[..., int][x] # E: invalid type comment or annotation
+x = None # type: Callable[..., int].x # E: invalid type comment or annotation
+x = None # type: Tuple[1] # E: invalid type comment or annotation
+
+def f1(x): # E: invalid type comment or annotation
+    # type: (Tuple[int, str].x) -> None
+    pass
+def f2(x): # E: invalid type comment or annotation
+    # type: (Iterable[x].x) -> None
+    pass
+def f3(x): # E: invalid type comment or annotation
+    # type: (Tuple[x][x]) -> None
+    pass
+def f4(x): # E: invalid type comment or annotation
+    # type: (Iterable[x][x]) -> None
+    pass
+def f5(x): # E: invalid type comment or annotation
+    # type: (Callable[..., int][x]) -> None
+    pass
+def f6(x): # E: invalid type comment or annotation
+    # type: (Callable[..., int].x) -> None
+    pass
+def f7(x): # E: invalid type comment or annotation
+    # type: (Tuple[1]) -> None
+    pass
+
+
+[case testFastParseInvalidTypes3]
+# flags: --python-version 3.6
+# All of these should not crash
+from typing import Callable, Tuple, Iterable
+
+x: Tuple[int, str].x # E: invalid type comment or annotation
+x: Iterable[x].x # E: invalid type comment or annotation
+x: Tuple[x][x] # E: invalid type comment or annotation
+x: Iterable[x][x] # E: invalid type comment or annotation
+x: Callable[..., int][x] # E: invalid type comment or annotation
+x: Callable[..., int].x # E: invalid type comment or annotation
+x: Tuple[1] # E: invalid type comment or annotation
+
+x = None # type: Tuple[int, str].x # E: invalid type comment or annotation
+x = None # type: Iterable[x].x # E: invalid type comment or annotation
+x = None # type: Tuple[x][x] # E: invalid type comment or annotation
+x = None # type: Iterable[x][x] # E: invalid type comment or annotation
+x = None # type: Callable[..., int][x] # E: invalid type comment or annotation
+x = None # type: Callable[..., int].x # E: invalid type comment or annotation
+x = None # type: Tuple[1] # E: invalid type comment or annotation
+
+def f1(x: Tuple[int, str].x) -> None: pass # E: invalid type comment or annotation
+def f2(x: Iterable[x].x) -> None: pass # E: invalid type comment or annotation
+def f3(x: Tuple[x][x]) -> None: pass # E: invalid type comment or annotation
+def f4(x: Iterable[x][x]) -> None: pass # E: invalid type comment or annotation
+def f5(x: Callable[..., int][x]) -> None: pass # E: invalid type comment or annotation
+def f6(x: Callable[..., int].x) -> None: pass # E: invalid type comment or annotation
+def f7(x: Tuple[1]) -> None: pass # E: invalid type comment or annotation
+
 [case testFastParseProperty]
-# flags: --fast-parser
+
 class C:
   @property
   def x(self) -> str: pass
@@ -34,7 +99,7 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testFastParseConditionalProperty]
-# flags: --fast-parser
+
 class C:
   if bool():
     @property
@@ -44,7 +109,7 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testFastParsePerArgumentAnnotations]
-# flags: --fast-parser
+
 class A: pass
 class B: pass
 class C: pass
@@ -68,7 +133,7 @@ def f(a,        # type: A
 [out]
 
 [case testFastParsePerArgumentAnnotationsWithReturn]
-# flags: --fast-parser
+
 class A: pass
 class B: pass
 class C: pass
@@ -94,7 +159,7 @@ def f(a,        # type: A
 [out]
 
 [case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
-# flags: --fast-parser
+
 def f(*, # type: int  # E: bare * has associated type comment
       x  # type: str
       ):
@@ -104,7 +169,7 @@ def f(*, # type: int  # E: bare * has associated type comment
 [out]
 
 [case testFastParsePerArgumentAnnotationsWithReturnAndBareStar]
-# flags: --fast-parser
+
 def f(*,
       x  # type: str
       ):
@@ -115,7 +180,7 @@ def f(*,
 [out]
 
 [case testFastParsePerArgumentAnnotations_python2]
-# flags: --fast-parser
+
 class A: pass
 class B: pass
 class C: pass
@@ -132,7 +197,7 @@ def f(a,        # type: A
 [out]
 
 [case testFastParsePerArgumentAnnotationsWithReturn_python2]
-# flags: --fast-parser
+
 class A: pass
 class B: pass
 class C: pass
@@ -151,42 +216,42 @@ def f(a,        # type: A
 [out]
 
 [case testFasterParseTooManyArgumentsAnnotation]
-# flags: --fast-parser
+
 def f():  # E: Type signature has too many arguments
     # type: (int) -> None
     pass
 
 [case testFasterParseTooFewArgumentsAnnotation]
-# flags: --fast-parser
+
 def f(x):  # E: Type signature has too few arguments
     # type: () -> None
     pass
 
 [case testFasterParseTypeCommentError_python2]
-# flags: --fast-parser
+
 from typing import Tuple
 def f(a):
     # type: (Tuple(int, int)) -> int
     pass
 [out]
-main:3: error: invalid type comment
+main:3: error: invalid type comment or annotation
 
 [case testFastParseMatMul]
-# flags: --fast-parser
+
 from typing import Any
 x = None  # type: Any
 x @ 1
 x @= 1
 
 [case testIncorrectTypeCommentIndex]
-# flags: --fast-parser
+
 from typing import Dict
 x = None # type: Dict[x: y]
 [out]
 main:3: error: syntax error in type comment
 
 [case testPrintStatementTrailingCommaFastParser_python2]
-# flags: --fast-parser
+
 print 0,
 print 1, 2,
 
@@ -199,7 +264,7 @@ def g():  # E: Type signature has too many arguments
     pass
 
 [case testFastParseMalformedAssert]
-# flags: --fast-parser
+
 assert 1, 2
 assert (1, 2)  # W: Assertion is always true, perhaps remove parentheses?
 assert (1, 2), 3  # W: Assertion is always true, perhaps remove parentheses?
@@ -207,9 +272,95 @@ assert ()
 assert (1,)  # W: Assertion is always true, perhaps remove parentheses?
 
 [case testFastParseAssertMessage]
-# flags: --fast-parser
+
 assert 1
 assert 1, 2
 assert 1, 1+2
 assert 1, 1+'test'  # E: Unsupported operand types for + ("int" and "str")
 assert 1, f()  # E: Name 'f' is not defined
+
+[case testFastParserConsistentFunctionTypes]
+
+def f(x, y, z):
+  # type: (int, int, int) -> int
+  pass
+
+def f(x,  # type: int  # E: Function has duplicate type signatures
+      y,  # type: int
+      z   # type: int
+    ):
+    # type: (int, int, int) -> int
+    pass
+
+def f(x,  # type: int
+      y,  # type: int
+      z   # type: int
+    ):
+    # type: (...) -> int
+    pass
+
+def f(x, y, z):
+  # type: (int, int, int) -> int
+  pass
+
+def f(x) -> int:  # E: Function has duplicate type signatures
+  # type: (int) -> int
+  pass
+
+def f(x: int, y: int, z: int):
+  # type: (...) -> int
+  pass
+
+def f(x: int):  # E: Function has duplicate type signatures
+  # type: (int) -> int
+  pass
+
+[case testFastParserDuplicateNames]
+
+def f(x, y, z):
+  pass
+
+def g(x, y, x):  # E: duplicate argument 'x' in function definition
+  pass
+
+def h(x, y, *x):  # E: duplicate argument 'x' in function definition
+  pass
+
+def i(x, y, *z, **z):  # E: duplicate argument 'z' in function definition
+  pass
+
+def j(x: int, y: int, *, x: int = 3):  # E: duplicate argument 'x' in function definition
+  pass
+
+def k(*, y, z, y):  # E: duplicate argument 'y' in function definition
+  pass
+
+lambda x, y, x: ...  # E: duplicate argument 'x' in function definition
+
+[case testFastParserDuplicateNames_python2]
+
+def f(x, y, z):
+  pass
+
+def g(x, y, x):  # E: duplicate argument 'x' in function definition
+  pass
+
+def h(x, y, *x):  # E: duplicate argument 'x' in function definition
+  pass
+
+def i(x, y, *z, **z):  # E: duplicate argument 'z' in function definition
+  pass
+
+def j(x, (y, y), z):  # E: duplicate argument 'y' in function definition
+  pass
+
+def k(x, (y, x)):  # E: duplicate argument 'x' in function definition
+  pass
+
+def l((x, y), (z, x)):  # E: duplicate argument 'x' in function definition
+  pass
+
+def m(x, ((x, y), z)):  # E: duplicate argument 'x' in function definition
+  pass
+
+lambda x, (y, x): None  # E: duplicate argument 'x' in function definition

@@ -2,7 +2,7 @@ import fnmatch
 import pprint
 import sys
 
-from typing import Any, Mapping, Optional, Tuple, List, Pattern
+from typing import Any, Mapping, Optional, Tuple, List, Pattern, Dict
 
 from mypy import defaults
 
@@ -26,11 +26,12 @@ class Options:
         "strict_optional_whitelist",
         "show_none_errors",
         "warn_no_return",
+        "warn_return_any",
         "ignore_errors",
         "strict_boolean",
     }
 
-    OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional"}
+    OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional", "quick_and_dirty"}
 
     def __init__(self) -> None:
         # -- build options --
@@ -63,7 +64,11 @@ class Options:
         self.warn_redundant_casts = False
 
         # Warn about falling off the end of a function returning non-None
-        self.warn_no_return = False
+        self.warn_no_return = True
+
+        # Warn about returning objects of type Any when the function is
+        # declared with a precise type
+        self.warn_return_any = False
 
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
@@ -77,8 +82,8 @@ class Options:
         # Apply strict None checking
         self.strict_optional = False
 
-        # Hide "note: In function "foo":" messages.
-        self.hide_error_context = True
+        # Show "note: In function "foo":" messages.
+        self.show_error_context = False
 
         # Files in which to allow strict-Optional related errors
         # TODO: Kill this in favor of show_none_errors
@@ -95,6 +100,12 @@ class Options:
 
         # Write junit.xml to given file
         self.junit_xml = None  # type: Optional[str]
+
+        # Caching options
+        self.incremental = False
+        self.cache_dir = defaults.CACHE_DIR
+        self.debug_cache = False
+        self.quick_and_dirty = False
 
         # Per-module options (raw)
         self.per_module_options = {}  # type: Dict[Pattern[str], Dict[str, object]]
@@ -114,10 +125,6 @@ class Options:
         self.use_builtins_fixtures = False
 
         # -- experimental options --
-        self.fast_parser = False
-        self.incremental = False
-        self.cache_dir = defaults.CACHE_DIR
-        self.debug_cache = False
         self.shadow_file = None  # type: Optional[Tuple[str, str]]
         self.show_column_numbers = False  # type: bool
         self.dump_graph = False

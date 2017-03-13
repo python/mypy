@@ -24,18 +24,23 @@ from mypy.version import __version__
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
-def main(script_path: str) -> None:
+def main(script_path: str, args: List[str] = None) -> None:
     """Main entry point to the type checker.
 
     Args:
         script_path: Path to the 'mypy' script (used for finding data files).
+        args: Custom command-line arguments.  If not given, sys.argv[1:] will
+        be used.
     """
     t0 = time.time()
     if script_path:
         bin_dir = find_bin_directory(script_path)
     else:
         bin_dir = None
-    sources, options = process_options(sys.argv[1:])
+    sys.setrecursionlimit(2 ** 14)
+    if args is None:
+        args = sys.argv[1:]
+    sources, options = process_options(args)
     serious = False
     try:
         res = type_check_only(sources, bin_dir, options)
@@ -49,8 +54,11 @@ def main(script_path: str) -> None:
         util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
     if a:
         f = sys.stderr if serious else sys.stdout
-        for m in a:
-            f.write(m + '\n')
+        try:
+            for m in a:
+                f.write(m + '\n')
+        except BrokenPipeError:
+            pass
         sys.exit(1)
 
 
@@ -126,6 +134,29 @@ class AugmentedHelpFormatter(argparse.HelpFormatter):
         super().__init__(prog=prog, max_help_position=28)
 
 
+# Define pairs of flag prefixes with inverse meaning.
+flag_prefix_pairs = [
+    ('allow', 'disallow'),
+    ('show', 'hide'),
+]
+flag_prefix_map = {}  # type: Dict[str, str]
+for a, b in flag_prefix_pairs:
+    flag_prefix_map[a] = b
+    flag_prefix_map[b] = a
+
+
+def invert_flag_name(flag: str) -> str:
+    split = flag[2:].split('-', 1)
+    if len(split) == 2:
+        prefix, rest = split
+        if prefix in flag_prefix_map:
+            return '--{}-{}'.format(flag_prefix_map[prefix], rest)
+        elif prefix == 'no':
+            return '--{}'.format(rest)
+
+    return '--no-{}'.format(flag[2:])
+
+
 def process_options(args: List[str],
                     require_targets: bool = True
                     ) -> Tuple[List[BuildSource], Options]:
@@ -134,6 +165,32 @@ def process_options(args: List[str],
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      fromfile_prefix_chars='@',
                                      formatter_class=AugmentedHelpFormatter)
+
+    strict_flag_names = []  # type: List[str]
+    strict_flag_assignments = []  # type: List[Tuple[str, bool]]
+
+    def add_invertible_flag(flag: str,
+                            *,
+                            inverse: str = None,
+                            default: bool,
+                            dest: str = None,
+                            help: str,
+                            strict_flag: bool = False
+                            ) -> None:
+        if inverse is None:
+            inverse = invert_flag_name(flag)
+        arg = parser.add_argument(flag,  # type: ignore  # incorrect stub for add_argument
+                                  action='store_false' if default else 'store_true',
+                                  dest=dest,
+                                  help=help + " (inverse: {})".format(inverse))
+        dest = arg.dest
+        arg = parser.add_argument(inverse,  # type: ignore  # incorrect stub for add_argument
+                                  action='store_true' if default else 'store_false',
+                                  dest=dest,
+                                  help=argparse.SUPPRESS)
+        if strict_flag:
+            strict_flag_names.append(flag)
+            strict_flag_assignments.append((dest, not default))
 
     # Unless otherwise specified, arguments will be parsed directly onto an
     # Options object.  Options that require further processing should have
@@ -154,37 +211,40 @@ def process_options(args: List[str],
                         help="silently ignore imports of missing modules")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
-    parser.add_argument('--disallow-untyped-calls', action='store_true',
+    add_invertible_flag('--disallow-untyped-calls', default=False, strict_flag=True,
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
-    parser.add_argument('--disallow-untyped-defs', action='store_true',
+    add_invertible_flag('--disallow-untyped-defs', default=False, strict_flag=True,
                         help="disallow defining functions without type annotations"
                         " or with incomplete type annotations")
-    parser.add_argument('--check-untyped-defs', action='store_true',
+    add_invertible_flag('--check-untyped-defs', default=False, strict_flag=True,
                         help="type check the interior of functions without type annotations")
-    parser.add_argument('--disallow-subclassing-any', action='store_true',
+    add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
                         help="disallow subclassing values of type 'Any' when defining classes")
-    parser.add_argument('--warn-incomplete-stub', action='store_true',
+    add_invertible_flag('--warn-incomplete-stub', default=False,
                         help="warn if missing type annotation in typeshed, only relevant with"
                         " --check-untyped-defs enabled")
-    parser.add_argument('--warn-redundant-casts', action='store_true',
+    add_invertible_flag('--warn-redundant-casts', default=False, strict_flag=True,
                         help="warn about casting an expression to its inferred type")
-    parser.add_argument('--warn-no-return', action='store_true',
-                        help="warn about functions that end without returning")
-    parser.add_argument('--warn-unused-ignores', action='store_true',
+    add_invertible_flag('--no-warn-no-return', dest='warn_no_return', default=True,
+                        help="do not warn about functions that end without returning")
+    add_invertible_flag('--warn-return-any', default=False, strict_flag=True,
+                        help="warn about returning values of type Any"
+                             " from non-Any typed functions")
+    add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
                         help="warn about unneeded '# type: ignore' comments")
-    parser.add_argument('--show-error-context', action='store_false',
-                        dest='hide_error_context',
+    add_invertible_flag('--show-error-context', default=False,
+                        dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
-    parser.add_argument('--fast-parser', action='store_true',
-                        help="enable fast parser (recommended except on Windows)")
     parser.add_argument('-i', '--incremental', action='store_true',
-                        help="enable experimental module cache")
+                        help="enable module cache")
+    parser.add_argument('--quick-and-dirty', action='store_true',
+                        help="use cache even if dependencies out of date "
+                        "(implies --incremental)")
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
-    parser.add_argument('--strict-optional', action='store_true',
-                        dest='strict_optional',
+    add_invertible_flag('--strict-optional', default=False, strict_flag=True,
                         help="enable experimental strict Optional checks")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
@@ -207,15 +267,17 @@ def process_options(args: List[str],
     parser.add_argument('--config-file',
                         help="Configuration file, must have a [mypy] section "
                         "(defaults to {})".format(defaults.CONFIG_FILE))
-    parser.add_argument('--show-column-numbers', action='store_true',
-                        dest='show_column_numbers',
+    add_invertible_flag('--show-column-numbers', default=False,
                         help="Show column numbers in error messages")
     parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
                         dest='special-opts:find_occurrences',
                         help="print out all usages of a class member (experimental)")
-    parser.add_argument('--strict-boolean', action='store_true',
-                        dest='strict_boolean',
+    add_invertible_flag('--strict-boolean', default=False, strict_flag=True,
                         help='enable strict boolean checks in conditions')
+    strict_help = "Strict mode. Enables the following flags: {}".format(
+        ", ".join(strict_flag_names))
+    parser.add_argument('--strict', action='store_true', dest='special-opts:strict',
+                        help=strict_help)
     # hidden options
     # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
     # Useful for tools to make transformations to a file to get more
@@ -229,9 +291,6 @@ def process_options(args: List[str],
     parser.add_argument('--debug-cache', action='store_true', help=argparse.SUPPRESS)
     # --dump-graph will dump the contents of the graph of SCCs and exit.
     parser.add_argument('--dump-graph', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument('--hide-error-context', action='store_true',
-                        dest='hide_error_context',
-                        help=argparse.SUPPRESS)
     # deprecated options
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
                         dest='special-opts:dirty_stubs',
@@ -244,6 +303,11 @@ def process_options(args: List[str],
                         help=argparse.SUPPRESS)
     parser.add_argument('--almost-silent', action='store_true',
                         dest='special-opts:almost_silent',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--fast-parser', action='store_true', dest='special-opts:fast_parser',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--no-fast-parser', action='store_true',
+                        dest='special-opts:no_fast_parser',
                         help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
@@ -270,19 +334,22 @@ def process_options(args: List[str],
                             help="type-check given files or directories")
 
     # Parse arguments once into a dummy namespace so we can get the
-    # filename for the config file.
+    # filename for the config file and know if the user requested all strict options.
     dummy = argparse.Namespace()
     parser.parse_args(args, dummy)
-    config_file = defaults.CONFIG_FILE
-    if dummy.config_file:
-        config_file = dummy.config_file
-        if not os.path.exists(config_file):
-            parser.error("Cannot file config file '%s'" % config_file)
+    config_file = dummy.config_file
+    if config_file is not None and not os.path.exists(config_file):
+        parser.error("Cannot file config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
     options = Options()
-    if config_file and os.path.exists(config_file):
-        parse_config_file(options, config_file)
+    parse_config_file(options, config_file)
+
+    # Set strict flags before parsing (if strict mode enabled), so other command
+    # line options can override.
+    if getattr(dummy, 'special-opts:strict'):
+        for dest, value in strict_flag_assignments:
+            setattr(options, dest, value)
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
@@ -312,6 +379,11 @@ def process_options(args: List[str],
         print("Warning: -f/--dirty-stubs is deprecated and no longer necessary. Mypy no longer "
               "checks the git status of stubs.",
               file=sys.stderr)
+    if special_opts.fast_parser:
+        print("Warning: --fast-parser is now the default (and only) parser.")
+    if special_opts.no_fast_parser:
+        print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
+              "is now mypy's default and only parser.")
 
     # Check for invalid argument combinations.
     if require_targets:
@@ -343,6 +415,10 @@ def process_options(args: List[str],
             report_type = flag[:-7].replace('_', '-')
             report_dir = val
             options.report_dirs[report_type] = report_dir
+
+    # Let quick_and_dirty imply incremental.
+    if options.quick_and_dirty:
+        options.incremental = True
 
     # Set target.
     if special_opts.modules:
@@ -432,7 +508,6 @@ def crawl_up(arg: str) -> Tuple[str, str]:
     """
     dir, mod = os.path.split(arg)
     mod = strip_py(mod) or mod
-    assert '.' not in mod
     while dir and get_init_file(dir):
         dir, base = os.path.split(dir)
         if not base:
@@ -487,23 +562,44 @@ config_types = {
     'almost_silent': bool,
 }
 
+SHARED_CONFIG_FILES = ('setup.cfg',)
 
-def parse_config_file(options: Options, filename: str) -> None:
+
+def parse_config_file(options: Options, filename: Optional[str]) -> None:
     """Parse a config file into an Options object.
 
     Errors are written to stderr but are not fatal.
+
+    If filename is None, fall back to default config file and then
+    to setup.cfg.
     """
+    config_files = None  # type: Tuple[str, ...]
+    if filename is not None:
+        config_files = (filename,)
+    else:
+        config_files = (defaults.CONFIG_FILE,) + SHARED_CONFIG_FILES
+
     parser = configparser.RawConfigParser()
-    try:
-        parser.read(filename)
-    except configparser.Error as err:
-        print("%s: %s" % (filename, err), file=sys.stderr)
+
+    for config_file in config_files:
+        if not os.path.exists(config_file):
+            continue
+        try:
+            parser.read(config_file)
+        except configparser.Error as err:
+            print("%s: %s" % (config_file, err), file=sys.stderr)
+        else:
+            file_read = config_file
+            break
+    else:
         return
+
     if 'mypy' not in parser:
-        print("%s: No [mypy] section in config file" % filename, file=sys.stderr)
+        if filename or file_read not in SHARED_CONFIG_FILES:
+            print("%s: No [mypy] section in config file" % file_read, file=sys.stderr)
     else:
         section = parser['mypy']
-        prefix = '%s: [%s]' % (filename, 'mypy')
+        prefix = '%s: [%s]' % (file_read, 'mypy')
         updates, report_dirs = parse_section(prefix, options, section)
         for k, v in updates.items():
             setattr(options, k, v)
@@ -511,7 +607,7 @@ def parse_config_file(options: Options, filename: str) -> None:
 
     for name, section in parser.items():
         if name.startswith('mypy-'):
-            prefix = '%s: [%s]' % (filename, name)
+            prefix = '%s: [%s]' % (file_read, name)
             updates, report_dirs = parse_section(prefix, options, section)
             if report_dirs:
                 print("%s: Per-module sections should not specify reports (%s)" %

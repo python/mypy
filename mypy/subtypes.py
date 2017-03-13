@@ -151,6 +151,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return all(self.check_type_parameter(lefta, righta, tvar.variance)
                        for lefta, righta, tvar in
                        zip(t.args, right.args, right.type.defn.type_vars))
+        if isinstance(right, TypeType):
+            item = right.item
+            if isinstance(item, TupleType):
+                item = item.fallback
+            return isinstance(item, Instance) and is_subtype(left, item.type.metaclass_type)
         else:
             return False
 
@@ -268,12 +273,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return is_subtype(left.item, right.item)
         if isinstance(right, CallableType):
             # This is unsound, we don't check the __init__ signature.
-            return right.is_type_obj() and is_subtype(left.item, right.ret_type)
-        if (isinstance(right, Instance) and
-                right.type.fullname() in ('builtins.type', 'builtins.object')):
-            # Treat builtins.type the same as Type[Any];
-            # treat builtins.object the same as Any.
-            return True
+            return is_subtype(left.item, right.ret_type)
+        if isinstance(right, Instance):
+            if right.type.fullname() in ('builtins.type', 'builtins.object'):
+                # Treat builtins.type the same as Type[Any];
+                # treat builtins.object the same as Any.
+                return True
+            item = left.item
+            return isinstance(item, Instance) and is_subtype(item, right.type.metaclass_type)
         return False
 
 
@@ -514,6 +521,12 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
     Any types. Any instance type t is also a proper subtype of t.
     """
     # FIX tuple types
+    if isinstance(s, UnionType):
+        if isinstance(t, UnionType):
+            return all([is_proper_subtype(item, s) for item in t.items])
+        else:
+            return any([is_proper_subtype(t, item) for item in s.items])
+
     if isinstance(t, Instance):
         if isinstance(s, Instance):
             if not t.type.has_base(s.type.fullname()):

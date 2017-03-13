@@ -2,8 +2,9 @@ import os.path
 import sys
 import traceback
 from collections import OrderedDict, defaultdict
+from contextlib import contextmanager
 
-from typing import Tuple, List, TypeVar, Set, Dict
+from typing import Tuple, List, TypeVar, Set, Dict, Iterator
 
 from mypy.options import Options
 
@@ -75,6 +76,9 @@ class Errors:
     # Current error context: nested import context/stack, as a list of (path, line) pairs.
     import_ctx = None  # type: List[Tuple[str, int]]
 
+    # Set of files with errors.
+    error_files = None  # type: Set[str]
+
     # Path name prefix that is removed from all paths, if set.
     ignore_prefix = None  # type: str
 
@@ -99,27 +103,28 @@ class Errors:
     # Collection of reported only_once messages.
     only_once_messages = None  # type: Set[str]
 
-    # Set to False to show "In function "foo":" messages.
-    hide_error_context = True  # type: bool
+    # Set to True to show "In function "foo":" messages.
+    show_error_context = False  # type: bool
 
     # Set to True to show column numbers in error messages
     show_column_numbers = False  # type: bool
 
-    def __init__(self, hide_error_context: bool = True,
+    def __init__(self, show_error_context: bool = False,
                  show_column_numbers: bool = False) -> None:
         self.error_info = []
         self.import_ctx = []
+        self.error_files = set()
         self.type_name = [None]
         self.function_or_member = [None]
         self.ignored_lines = OrderedDict()
         self.used_ignored_lines = defaultdict(set)
         self.ignored_files = set()
         self.only_once_messages = set()
-        self.hide_error_context = hide_error_context
+        self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
 
     def copy(self) -> 'Errors':
-        new = Errors(self.hide_error_context, self.show_column_numbers)
+        new = Errors(self.show_error_context, self.show_column_numbers)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
@@ -162,12 +167,25 @@ class Errors:
     def pop_function(self) -> None:
         self.function_or_member.pop()
 
+    @contextmanager
+    def enter_function(self, name: str) -> Iterator[None]:
+        self.push_function(name)
+        yield
+        self.pop_function()
+
     def push_type(self, name: str) -> None:
         """Set the short name of the current type (it can be None)."""
         self.type_name.append(name)
 
     def pop_type(self) -> None:
         self.type_name.pop()
+
+    @contextmanager
+    def enter_type(self, name: str) -> Iterator[None]:
+        """Set the short name of the current type (it can be None)."""
+        self.push_type(name)
+        yield
+        self.pop_type()
 
     def import_context(self) -> List[Tuple[str, int]]:
         """Return a copy of the import context."""
@@ -216,6 +234,7 @@ class Errors:
                 return
             self.only_once_messages.add(info.message)
         self.error_info.append(info)
+        self.error_files.add(file)
 
     def generate_unused_ignore_notes(self) -> None:
         for file, ignored_lines in self.ignored_lines.items():
@@ -242,6 +261,10 @@ class Errors:
     def is_blockers(self) -> bool:
         """Are the any errors that are blockers?"""
         return any(err for err in self.error_info if err.blocker)
+
+    def is_errors_for_file(self, file: str) -> bool:
+        """Are there any errors for the given file?"""
+        return file in self.error_files
 
     def raise_error(self) -> None:
         """Raise a CompileError with the generated messages.
@@ -292,7 +315,7 @@ class Errors:
 
         for e in errors:
             # Report module import context, if different from previous message.
-            if self.hide_error_context:
+            if not self.show_error_context:
                 pass
             elif e.import_ctx != prev_import_context:
                 last = len(e.import_ctx) - 1
@@ -315,7 +338,7 @@ class Errors:
             file = self.simplify_path(e.file)
 
             # Report context within a source file.
-            if self.hide_error_context:
+            if not self.show_error_context:
                 pass
             elif (e.function_or_member != prev_function_or_member or
                     e.type != prev_type):

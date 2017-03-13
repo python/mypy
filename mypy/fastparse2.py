@@ -17,7 +17,7 @@ two in a typesafe way.
 from functools import wraps
 import sys
 
-from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
+from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set
 from mypy.sharedparse import special_function_elide_names, argument_elide_name
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
@@ -34,25 +34,33 @@ from mypy.nodes import (
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
 )
 from mypy.types import (
-    Type, CallableType, AnyType, UnboundType,
+    Type, CallableType, AnyType, UnboundType, EllipsisType
 )
 from mypy import defaults
 from mypy import experiments
+from mypy import messages
 from mypy.errors import Errors
 from mypy.fastparse import TypeConverter, parse_type_comment
 
 try:
     from typed_ast import ast27
-    from typed_ast import ast35
+    from typed_ast import ast3
 except ImportError:
     if sys.version_info.minor > 2:
-        print('You must install the typed_ast package before you can run mypy'
-              ' with `--fast-parser`.\n'
-              'You can do this with `python3 -m pip install typed-ast`.',
-              file=sys.stderr)
+        try:
+            from typed_ast import ast35  # type: ignore
+        except ImportError:
+            print('The typed_ast package is not installed.\n'
+                  'You can install it with `python3 -m pip install typed-ast`.',
+                  file=sys.stderr)
+        else:
+            print('You need a more recent version of the typed_ast package.\n'
+                  'You can update to the latest version with '
+                  '`python3 -m pip install -U typed-ast`.',
+                  file=sys.stderr)
     else:
-        print('The typed_ast package required by --fast-parser is only compatible with'
-              ' Python 3.3 and greater.')
+        print('Mypy requires the typed_ast package, which is only compatible with\n'
+              'Python 3.3 and greater.', file=sys.stderr)
     sys.exit(1)
 
 T = TypeVar('T', bound=Union[ast27.expr, ast27.stmt])
@@ -73,8 +81,10 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
 
     The pyversion (major, minor) argument determines the Python syntax variant.
     """
+    raise_on_error = False
     if errors is None:
         errors = Errors()
+        raise_on_error = True
     errors.set_file('<input>' if fnam is None else fnam)
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
@@ -88,14 +98,14 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
         assert isinstance(tree, MypyFile)
         tree.path = fnam
         tree.is_stub = is_stub_file
-        return tree
     except SyntaxError as e:
-        if errors:
-            errors.report(e.lineno, e.offset, e.msg)
-        else:
-            raise
+        errors.report(e.lineno, e.offset, e.msg)
+        tree = MypyFile([], [], False, set())
 
-    return MypyFile([], [], False, set())
+    if raise_on_error and errors.is_errors():
+        errors.raise_error()
+
+    return tree
 
 
 def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
@@ -112,6 +122,15 @@ def find(f: Callable[[V], bool], seq: Sequence[V]) -> V:
         if f(item):
             return item
     return None
+
+
+def is_no_type_check_decorator(expr: ast27.expr) -> bool:
+    if isinstance(expr, ast27.Name):
+        return expr.id == 'no_type_check'
+    elif isinstance(expr, ast27.Attribute):
+        if isinstance(expr.value, ast27.Name):
+            return expr.value.id == 'typing' and expr.attr == 'no_type_check'
+    return False
 
 
 class ASTConverter(ast27.NodeTransformer):
@@ -274,16 +293,22 @@ class ASTConverter(ast27.NodeTransformer):
             arg_names = [None] * len(arg_names)
 
         arg_types = None  # type: List[Type]
-        if n.type_comment is not None and len(n.type_comment) > 0:
+        if (n.decorator_list and any(is_no_type_check_decorator(d) for d in n.decorator_list)):
+            arg_types = [None] * len(args)
+            return_type = None
+        elif n.type_comment is not None and len(n.type_comment) > 0:
             try:
-                func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
-                assert isinstance(func_type_ast, ast35.FunctionType)
+                func_type_ast = ast3.parse(n.type_comment, '<func_type>', 'func_type')
+                assert isinstance(func_type_ast, ast3.FunctionType)
                 # for ellipsis arg
                 if (len(func_type_ast.argtypes) == 1 and
-                        isinstance(func_type_ast.argtypes[0], ast35.Ellipsis)):
+                        isinstance(func_type_ast.argtypes[0], ast3.Ellipsis)):
                     arg_types = [a.type_annotation if a.type_annotation is not None else AnyType()
                                 for a in args]
                 else:
+                    # PEP 484 disallows both type annotations and type comments
+                    if any(a.type_annotation is not None for a in args):
+                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
                     arg_types = [a if a is not None else AnyType() for
                                 a in converter.translate_expr_list(func_type_ast.argtypes)]
                 return_type = converter.visit(func_type_ast.returns)
@@ -293,7 +318,7 @@ class ASTConverter(ast27.NodeTransformer):
                     arg_types.insert(0, AnyType())
             except SyntaxError:
                 self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
-                arg_types = [AnyType() for _ in args]
+                arg_types = [AnyType()] * len(args)
                 return_type = AnyType()
         else:
             arg_types = [a.type_annotation for a in args]
@@ -307,7 +332,10 @@ class ASTConverter(ast27.NodeTransformer):
 
         func_type = None
         if any(arg_types) or return_type:
-            if len(arg_types) > len(arg_kinds):
+            if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
+                self.fail("Ellipses cannot accompany other argument types "
+                          "in function type signature.", n.lineno, 0)
+            elif len(arg_types) > len(arg_kinds):
                 self.fail('Type signature has too many arguments', n.lineno, 0)
             elif len(arg_types) < len(arg_kinds):
                 self.fail('Type signature has too few arguments', n.lineno, 0)
@@ -359,6 +387,14 @@ class ASTConverter(ast27.NodeTransformer):
         converter = TypeConverter(self.errors, line=line)
         decompose_stmts = []  # type: List[Statement]
 
+        def extract_names(arg: ast27.expr) -> List[str]:
+            if isinstance(arg, ast27.Name):
+                return [arg.id]
+            elif isinstance(arg, ast27.Tuple):
+                return [name for elt in arg.elts for name in extract_names(elt)]
+            else:
+                return []
+
         def convert_arg(index: int, arg: ast27.expr) -> Var:
             if isinstance(arg, ast27.Name):
                 v = arg.id
@@ -380,6 +416,7 @@ class ASTConverter(ast27.NodeTransformer):
 
         args = [(convert_arg(i, arg), get_type(i)) for i, arg in enumerate(n.args)]
         defaults = self.translate_expr_list(n.defaults)
+        names = [name for arg in n.args for name in extract_names(arg)]  # type: List[str]
 
         new_args = []  # type: List[Argument]
         num_no_defaults = len(args) - len(defaults)
@@ -394,11 +431,20 @@ class ASTConverter(ast27.NodeTransformer):
         # *arg
         if n.vararg is not None:
             new_args.append(Argument(Var(n.vararg), get_type(len(args)), None, ARG_STAR))
+            names.append(n.vararg)
 
         # **kwarg
         if n.kwarg is not None:
             typ = get_type(len(args) + (0 if n.vararg is None else 1))
             new_args.append(Argument(Var(n.kwarg), typ, None, ARG_STAR2))
+            names.append(n.kwarg)
+
+        seen_names = set()  # type: Set[str]
+        for name in names:
+            if name in seen_names:
+                self.fail("duplicate argument '{}' in function definition".format(name), line, 0)
+                break
+            seen_names.add(name)
 
         return new_args, decompose_stmts
 
@@ -464,10 +510,15 @@ class ASTConverter(ast27.NodeTransformer):
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     @with_line
     def visit_For(self, n: ast27.For) -> ForStmt:
+        if n.type_comment is not None:
+            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
+        else:
+            target_type = None
         return ForStmt(self.visit(n.target),
                        self.visit(n.iter),
                        self.as_block(n.body, n.lineno),
-                       self.as_block(n.orelse, n.lineno))
+                       self.as_block(n.orelse, n.lineno),
+                       target_type)
 
     # While(expr test, stmt* body, stmt* orelse)
     @with_line
@@ -486,9 +537,14 @@ class ASTConverter(ast27.NodeTransformer):
     # With(withitem* items, stmt* body, string? type_comment)
     @with_line
     def visit_With(self, n: ast27.With) -> WithStmt:
+        if n.type_comment is not None:
+            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
+        else:
+            target_type = None
         return WithStmt([self.visit(n.context_expr)],
                         [self.visit(n.optional_vars)],
-                        self.as_block(n.body, n.lineno))
+                        self.as_block(n.body, n.lineno),
+                        target_type)
 
     @with_line
     def visit_Raise(self, n: ast27.Raise) -> RaiseStmt:
@@ -720,7 +776,8 @@ class ASTConverter(ast27.NodeTransformer):
                                        self.visit(n.value),
                                        targets,
                                        iters,
-                                       ifs_list)
+                                       ifs_list,
+                                       [False for _ in n.generators])
 
     # GeneratorExp(expr elt, comprehension* generators)
     @with_line
@@ -731,7 +788,8 @@ class ASTConverter(ast27.NodeTransformer):
         return GeneratorExpr(self.visit(n.elt),
                              targets,
                              iters,
-                             ifs_list)
+                             ifs_list,
+                             [False for _ in n.generators])
 
     # Yield(expr? value)
     @with_line
