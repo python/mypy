@@ -31,7 +31,7 @@ class Options:
         "strict_boolean",
     }
 
-    OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional"}
+    OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional", "quick_and_dirty"}
 
     def __init__(self) -> None:
         # -- build options --
@@ -82,8 +82,8 @@ class Options:
         # Apply strict None checking
         self.strict_optional = False
 
-        # Hide "note: In function "foo":" messages.
-        self.hide_error_context = True
+        # Show "note: In function "foo":" messages.
+        self.show_error_context = False
 
         # Files in which to allow strict-Optional related errors
         # TODO: Kill this in favor of show_none_errors
@@ -100,6 +100,15 @@ class Options:
 
         # Write junit.xml to given file
         self.junit_xml = None  # type: Optional[str]
+
+        # Fast parser is on by default
+        self.fast_parser = True
+
+        # Caching options
+        self.incremental = False
+        self.cache_dir = defaults.CACHE_DIR
+        self.debug_cache = False
+        self.quick_and_dirty = False
 
         # Per-module options (raw)
         self.per_module_options = {}  # type: Dict[Pattern[str], Dict[str, object]]
@@ -119,10 +128,6 @@ class Options:
         self.use_builtins_fixtures = False
 
         # -- experimental options --
-        self.fast_parser = True
-        self.incremental = False
-        self.cache_dir = defaults.CACHE_DIR
-        self.debug_cache = False
         self.shadow_file = None  # type: Optional[Tuple[str, str]]
         self.show_column_numbers = False  # type: bool
         self.dump_graph = False

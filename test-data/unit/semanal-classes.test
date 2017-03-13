@@ -325,7 +325,7 @@ MypyFile:1(
         A
         PassStmt:2())
       ExpressionStmt:3(
-        NameExpr(A [l])))))
+        NameExpr(A [__main__.A@2])))))
 
 [case testReferenceToClassWithinClass]
 class A:
@@ -374,7 +374,7 @@ MypyFile:1(
       AssignmentStmt:3(
         NameExpr(x [l])
         NameExpr(None [builtins.None])
-        A))))
+        __main__.A@2))))
 
 [case testAccessToLocalInOuterScopeWithinNestedClass]
 def f(x):

@@ -83,6 +83,7 @@ TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
 MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
+GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -813,6 +814,9 @@ class MessageBuilder:
 
     def cant_assign_to_method(self, context: Context) -> None:
         self.fail(CANNOT_ASSIGN_TO_METHOD, context)
+
+    def cant_assign_to_classvar(self, name: str, context: Context) -> None:
+        self.fail('Cannot assign to class variable "%s" via instance' % name, context)
 
     def read_only_property(self, name: str, type: TypeInfo,
                            context: Context) -> None:

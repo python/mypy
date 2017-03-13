@@ -365,6 +365,7 @@ Here are some more useful flags:
   for functions with ``None`` or ``Any`` return types. Mypy
   also currently ignores functions with an empty body or a body that is
   just ellipsis (``...``), since these can be valid as abstract methods.
+  This option is on by default.
 
 - ``--warn-return-any`` causes mypy to generate a warning when returning a value
   with type ``Any`` from a function declared with a non- ``Any`` return type.

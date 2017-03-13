@@ -115,6 +115,18 @@ def f():
     except ZeroDivisionError, err:
         print err
 
+[case testErrorContextConfig]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+show_error_context=True
+[file main.py]
+def f() -> None:
+  0 + ""
+[out]
+main.py: note: In function "f":
+main.py:2: error: Unsupported operand types for + ("int" and "str")
+
 [case testAltConfigFile]
 # cmd: mypy --config-file config.ini main.py
 [file config.ini]
@@ -131,7 +143,6 @@ def f():
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
 [[mypy]
-hide_error_context = True
 disallow_untyped_defs = True
 [[mypy-y*]
 disallow_untyped_defs = False
@@ -161,7 +172,6 @@ x.py:1: error: Function is missing a type annotation
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file mypy.ini]
 [[mypy]
-hide_error_context = True
 [[mypy-*x*]
 disallow_untyped_defs = True
 [[mypy-*y*]
@@ -190,7 +200,6 @@ xx.py:1: error: Function is missing a type annotation
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
 [[mypy]
-hide_error_context = True
 [[mypy-x*,z*]
 disallow_untyped_defs = True
 [file x.py]
@@ -477,3 +486,31 @@ reveal_type(missing.x)  # Expect Any
 ignore_missing_imports = True
 [out]
 main.py:2: error: Revealed type is 'Any'
+
+[case testDotInFilenameOKScript]
+# cmd: mypy a.b.py c.d.pyi
+[file a.b.py]
+undef
+[file c.d.pyi]
+whatever
+[out]
+c.d.pyi:1: error: Name 'whatever' is not defined
+a.b.py:1: error: Name 'undef' is not defined
+
+[case testDotInFilenameOKFolder]
+# cmd: mypy my.folder
+[file my.folder/tst.py]
+undef
+[out]
+my.folder/tst.py:1: error: Name 'undef' is not defined
+
+[case testDotInFilenameNoImport]
+# cmd: mypy main.py
+[file main.py]
+import a.b
+[file a.b.py]
+whatever
+[out]
+main.py:1: error: Cannot find module named 'a'
+main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main.py:1: error: Cannot find module named 'a.b'

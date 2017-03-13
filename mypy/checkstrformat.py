@@ -8,7 +8,7 @@ from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType
 )
 from mypy.nodes import (
-    StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression
+    StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr
 )
 if False:
     # break import cycle only needed for mypy
@@ -140,7 +140,8 @@ class StringFormatterChecker:
                     check_type(rhs_type.items[0])
                 else:
                     check_node(replacements)
-            elif isinstance(replacements, TupleExpr):
+            elif (isinstance(replacements, TupleExpr)
+                  and not any(isinstance(item, StarExpr) for item in replacements.items)):
                 for checks, rep_node in zip(checkers, replacements.items):
                     check_node, check_type = checks
                     check_node(rep_node)

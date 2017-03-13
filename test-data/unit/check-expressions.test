@@ -1150,6 +1150,10 @@ def foo(a: bytes, b: bytes):
     b'%s:%s' % (a, b)
 foo(b'a', b'b') == b'a:b'
 
+[case testStringInterpolationStarArgs]
+x = (1, 2)
+"%d%d" % (*x,)
+
 [case testBytePercentInterpolationSupported]
 b'%s' % (b'xyz',)
 b'%(name)s' % {'name': 'jane'}
