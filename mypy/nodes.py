@@ -541,15 +541,17 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         return visitor.visit_func_def(self)
 
     def serialize(self) -> JsonDict:
-        if self.type is None:
+        if self.type is not None:
+            type_field = self.type
+        else:
             fallback = mypy.types.Instance(None, [])
             fallback.type_ref = 'builtins.function'
-            self.type = mypy.types.callable_type(self, fallback)
+            type_field = mypy.types.callable_type(self, fallback)
 
         return {'.class': 'FuncDef',
                 'name': self._name,
                 'fullname': self._fullname,
-                'type': self.type.serialize(),
+                'type': type_field.serialize(),
                 'flags': get_flags(self, FuncDef.FLAGS),
                 # TODO: Do we need expanded, original_def?
                 }
