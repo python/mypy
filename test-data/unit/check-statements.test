@@ -169,7 +169,7 @@ while None:
 [out]
 
 [case testForStatementTypeComments]
-# flags: --fast-parser
+
 from typing import List, Union
 x = []  # type: List[int]
 
@@ -187,7 +187,7 @@ for v in x:  # type: int, int  # E: Invalid tuple literal type
 [builtins fixtures/list.pyi]
 
 [case testForStatementMultipleTypeComments]
-# flags: --fast-parser
+
 from typing import List, Tuple
 x = []  # type: List[Tuple[int, int]]
 
@@ -1306,7 +1306,7 @@ with A() as (a, b):
 [builtins fixtures/tuple.pyi]
 
 [case testWithStmtTypeComment]
-# flags: --fast-parser
+
 from typing import Union
 class A:
     def __enter__(self) -> int: pass
@@ -1328,7 +1328,7 @@ with A() as d:  # type: Union[int, str]
     reveal_type(d)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
 
 [case testWithStmtTupleTypeComment]
-# flags: --fast-parser
+
 from typing import Tuple
 class A:
     def __enter__(self) -> Tuple[int, int]: pass
@@ -1360,7 +1360,7 @@ with A() as (k, l):  # type: int, str  # E: Incompatible types in assignment (ex
 [builtins fixtures/tuple.pyi]
 
 [case testWithStmtComplexTypeComment]
-# flags: --fast-parser
+
 from typing import Tuple
 class A:
     def __enter__(self) -> Tuple[int, int]: pass

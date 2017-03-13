@@ -95,8 +95,11 @@ def parse_type_comment(type_comment: str, line: int, errors: Errors) -> Optional
     try:
         typ = ast3.parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
-        errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR)
-        return None
+        if errors is not None:
+            errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR)
+            return None
+        else:
+            raise
     else:
         assert isinstance(typ, ast3.Expression)
         return TypeConverter(errors, line=line).visit(typ.body)

@@ -15,7 +15,7 @@ flag (or its long form ``--help``)::
               [--check-untyped-defs] [--disallow-subclassing-any]
               [--warn-incomplete-stub] [--warn-redundant-casts]
               [--warn-no-return] [--warn-unused-ignores] [--show-error-context]
-              [--fast-parser] [-i] [--cache-dir DIR] [--strict-optional]
+              [-i] [--cache-dir DIR] [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]] [--strict]
               [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
               [--inferstats] [--custom-typing MODULE]
@@ -302,10 +302,6 @@ Here are some more useful flags:
   type checking. When enabled, mypy caches results from previous runs
   to speed up type checking. Incremental mode can help when most parts
   of your program haven't changed since the previous mypy run.
-
-- ``--fast-parser`` enables an experimental parser implemented in C that
-  is faster than the default parser and supports multi-line comment
-  function annotations (see :ref:`multi_line_annotation` for the details).
 
 - ``--python-version X.Y`` will make mypy typecheck your code as if it were
   run under Python version X.Y. Without this option, mypy will default to using

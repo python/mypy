@@ -101,9 +101,6 @@ class Options:
         # Write junit.xml to given file
         self.junit_xml = None  # type: Optional[str]
 
-        # Fast parser is on by default
-        self.fast_parser = True
-
         # Caching options
         self.incremental = False
         self.cache_dir = defaults.CACHE_DIR

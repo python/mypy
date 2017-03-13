@@ -1640,12 +1640,12 @@ None < None  # E: Unsupported left operand type for < (None)
 [builtins fixtures/ops.pyi]
 
 [case testDictWithStarExpr]
-# flags: --fast-parser
+
 b = {'z': 26, *a}  # E: invalid syntax
 [builtins fixtures/dict.pyi]
 
 [case testDictWithStarStarExpr]
-# flags: --fast-parser
+
 from typing import Dict
 a = {'a': 1}
 b = {'z': 26, **a}

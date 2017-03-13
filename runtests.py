@@ -175,10 +175,8 @@ def add_basic(driver: Driver) -> None:
 
 
 def add_selftypecheck(driver: Driver) -> None:
-    driver.add_mypy_package('package mypy', 'mypy', '--fast-parser',
-                            '--config-file', 'mypy_self_check.ini')
-    driver.add_mypy_package('package mypy', 'mypy', '--fast-parser',
-                            '--config-file', 'mypy_strict_optional.ini')
+    driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_self_check.ini')
+    driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_strict_optional.ini')
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
@@ -295,7 +293,7 @@ def add_stdlibsamples(driver: Driver) -> None:
 
 def add_samples(driver: Driver) -> None:
     for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
-        driver.add_mypy('file %s' % f, f, '--fast-parser')
+        driver.add_mypy('file %s' % f, f)
 
 
 def usage(status: int) -> None:

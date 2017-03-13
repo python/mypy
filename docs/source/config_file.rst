@@ -93,9 +93,6 @@ The following global flags may only be set in the global section
 - ``dump_inference_stats`` (Boolean, default False) dumps stats about
   type inference.
 
-- ``fast_parser`` (Boolean, default False) enables the experimental
-  fast parser.
-
 - ``incremental`` (Boolean, default False) enables the experimental
   module cache.
 
