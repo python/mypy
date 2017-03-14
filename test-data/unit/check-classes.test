@@ -2159,7 +2159,7 @@ T2 = TypeVar('T2', bound=Type[Any])
 class C1(Generic[T1]): ...
 class C2(Generic[T2]): ...
 
-C1[Type[Any]], C2[type] # both these sould not fail
+C1[Type[Any]], C2[type] # both these should not fail
 [builtins fixtures/list.pyi]
 [out]
 
