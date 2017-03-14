@@ -7,7 +7,6 @@ from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
 )
 
-from mypy.lex import Token
 import mypy.strconv
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
 from mypy.util import dump_tagged, short_type
@@ -89,6 +88,13 @@ type_aliases = {
 reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
                             for alias, name in type_aliases.items())  # type: Dict[str, str]
 
+collections_type_aliases = {
+    'typing.ChainMap': '__mypy_collections__.ChainMap',
+    'typing.Counter': '__mypy_collections__.Counter',
+    'typing.DefaultDict': '__mypy_collections__.defaultdict',
+    'typing.Deque': '__mypy_collections__.deque',
+}
+
 
 # See [Note Literals and literal_hash] below
 Key = tuple
@@ -111,10 +117,10 @@ class Node(Context):
             return repr(self)
         return ans
 
-    def set_line(self, target: Union[Token, 'Node', int], column: int = None) -> None:
-        """If target is a node or token, pull line (and column) information
+    def set_line(self, target: Union['Node', int], column: int = None) -> None:
+        """If target is a node, pull line (and column) information
         into this node. If column is specified, this will override any column
-        information coming from a node/token.
+        information coming from a node.
         """
         if isinstance(target, int):
             self.line = target
@@ -210,11 +216,9 @@ class SymbolNode(Node):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolNode':
         classname = data['.class']
-        glo = globals()
-        if classname in glo:
-            cl = glo[classname]
-            if issubclass(cl, cls) and 'deserialize' in cl.__dict__:
-                return cl.deserialize(data)
+        method = deserialize_map.get(classname)
+        if method is not None:
+            return method(data)
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
@@ -410,7 +414,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         if data.get('impl') is not None:
             res.impl = cast(OverloadPart, SymbolNode.deserialize(data['impl']))
         if data.get('type') is not None:
-            res.type = mypy.types.Type.deserialize(data['type'])
+            res.type = mypy.types.deserialize_type(data['type'])
         res._fullname = data['fullname']
         res.is_property = data['is_property']
         # NOTE: res.info will be set in the fixup phase.
@@ -451,7 +455,7 @@ class Argument(Node):
         assign = AssignmentStmt([lvalue], rvalue)
         return assign
 
-    def set_line(self, target: Union[Token, Node, int], column: int = None) -> None:
+    def set_line(self, target: Union[Node, int], column: int = None) -> None:
         super().set_line(target, column)
 
         if self.initializer:
@@ -506,7 +510,7 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(self, target: Union[Token, Node, int], column: int = None) -> None:
+    def set_line(self, target: Union[Node, int], column: int = None) -> None:
         super().set_line(target, column)
         for arg in self.arguments:
             arg.set_line(self.line, self.column)
@@ -573,7 +577,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                       [],
                       body,
                       (None if data['type'] is None
-                       else mypy.types.FunctionLike.deserialize(data['type'])))
+                       else cast(mypy.types.FunctionLike,
+                                 mypy.types.deserialize_type(data['type']))))
         ret._fullname = data['fullname']
         set_flags(ret, data['flags'])
         # NOTE: ret.info is set in the fixup phase.
@@ -654,13 +659,15 @@ class Var(SymbolNode):
     is_classmethod = False
     is_property = False
     is_settable_property = False
+    is_classvar = False
     # Set to true when this variable refers to a module we were unable to
     # parse for some reason (eg a silenced module)
     is_suppressed_import = False
 
     FLAGS = [
         'is_self', 'is_ready', 'is_initialized_in_class', 'is_staticmethod',
-        'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import'
+        'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
+        'is_classvar'
     ]
 
     def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
@@ -696,7 +703,7 @@ class Var(SymbolNode):
     def deserialize(cls, data: JsonDict) -> 'Var':
         assert data['.class'] == 'Var'
         name = data['name']
-        type = None if data['type'] is None else mypy.types.Type.deserialize(data['type'])
+        type = None if data['type'] is None else mypy.types.deserialize_type(data['type'])
         v = Var(name, type)
         v._fullname = data['fullname']
         set_flags(v, data['flags'])
@@ -1594,14 +1601,17 @@ class GeneratorExpr(Expression):
     left_expr = None  # type: Expression
     sequences = None  # type: List[Expression]
     condlists = None  # type: List[List[Expression]]
+    is_async = None  # type: List[bool]
     indices = None  # type: List[Lvalue]
 
     def __init__(self, left_expr: Expression, indices: List[Lvalue],
-                 sequences: List[Expression], condlists: List[List[Expression]]) -> None:
+                 sequences: List[Expression], condlists: List[List[Expression]],
+                 is_async: List[bool]) -> None:
         self.left_expr = left_expr
         self.sequences = sequences
         self.condlists = condlists
         self.indices = indices
+        self.is_async = is_async
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_generator_expr(self)
@@ -1638,15 +1648,18 @@ class DictionaryComprehension(Expression):
     value = None  # type: Expression
     sequences = None  # type: List[Expression]
     condlists = None  # type: List[List[Expression]]
+    is_async = None  # type: List[bool]
     indices = None  # type: List[Lvalue]
 
     def __init__(self, key: Expression, value: Expression, indices: List[Lvalue],
-                 sequences: List[Expression], condlists: List[List[Expression]]) -> None:
+                 sequences: List[Expression], condlists: List[List[Expression]],
+                 is_async: List[bool]) -> None:
         self.key = key
         self.value = value
         self.sequences = sequences
         self.condlists = condlists
         self.indices = indices
+        self.is_async = is_async
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dictionary_comprehension(self)
@@ -1758,8 +1771,8 @@ class TypeVarExpr(SymbolNode, Expression):
         assert data['.class'] == 'TypeVarExpr'
         return TypeVarExpr(data['name'],
                            data['fullname'],
-                           [mypy.types.Type.deserialize(v) for v in data['values']],
-                           mypy.types.Type.deserialize(data['upper_bound']),
+                           [mypy.types.deserialize_type(v) for v in data['values']],
+                           mypy.types.deserialize_type(data['upper_bound']),
                            data['variance'])
 
 
@@ -2034,7 +2047,10 @@ class TypeInfo(SymbolNode):
             return declared
         if self._fullname == 'builtins.type':
             return mypy.types.Instance(self, [])
-        candidates = [s.declared_metaclass for s in self.mro if s.declared_metaclass is not None]
+        candidates = [s.declared_metaclass
+                      for s in self.mro
+                      if s.declared_metaclass is not None
+                      and s.declared_metaclass.type is not None]
         for c in candidates:
             if c.type.mro is None:
                 continue
@@ -2043,7 +2059,8 @@ class TypeInfo(SymbolNode):
         return None
 
     def is_metaclass(self) -> bool:
-        return self.has_base('builtins.type') or self.fullname() == 'abc.ABCMeta'
+        return (self.has_base('builtins.type') or self.fullname() == 'abc.ABCMeta' or
+                self.fallback_to_any)
 
     def _calculate_is_enum(self) -> bool:
         """
@@ -2122,7 +2139,7 @@ class TypeInfo(SymbolNode):
         ti.type_vars = data['type_vars']
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None
-                       else mypy.types.Type.deserialize(data['_promote']))
+                       else mypy.types.deserialize_type(data['_promote']))
         ti.declared_metaclass = (None if data['declared_metaclass'] is None
                                  else mypy.types.Instance.deserialize(data['declared_metaclass']))
         # NOTE: ti.metaclass_type and ti.mro will be set in the fixup phase.
@@ -2253,7 +2270,7 @@ class SymbolTableNode:
                 node = SymbolNode.deserialize(data['node'])
             typ = None
             if 'type_override' in data:
-                typ = mypy.types.Type.deserialize(data['type_override'])
+                typ = mypy.types.deserialize_type(data['type_override'])
             stnode = SymbolTableNode(kind, node, typ=typ)
         if 'tvar_def' in data:
             stnode.tvar_def = mypy.types.TypeVarDef.deserialize(data['tvar_def'])
@@ -2344,3 +2361,25 @@ def get_flags(node: Node, names: List[str]) -> List[str]:
 def set_flags(node: Node, flags: List[str]) -> None:
     for name in flags:
         setattr(node, name, True)
+
+
+def get_member_expr_fullname(expr: MemberExpr) -> str:
+    """Return the qualified name representation of a member expression.
+
+    Return a string of form foo.bar, foo.bar.baz, or similar, or None if the
+    argument cannot be represented in this form.
+    """
+    if isinstance(expr.expr, NameExpr):
+        initial = expr.expr.name
+    elif isinstance(expr.expr, MemberExpr):
+        initial = get_member_expr_fullname(expr.expr)
+    else:
+        return None
+    return '{}.{}'.format(initial, expr.name)
+
+
+deserialize_map = {
+    key: obj.deserialize  # type: ignore
+    for key, obj in globals().items()
+    if isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
+}

@@ -116,8 +116,9 @@ this:
 
     $ python3 -m pip install -U mypy
 
-Except on Windows, it's best to always use the `--fast-parser`
-option to mypy; this requires installing `typed-ast`:
+This should automatically installed the appropriate version of
+mypy's parser, typed-ast.  If for some reason it does not, you
+can install it manually:
 
     $ python3 -m pip install -U typed-ast
 

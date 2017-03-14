@@ -6,6 +6,7 @@ import shutil
 import sys
 import tempfile
 import time
+from types import ModuleType
 
 from typing import List, Tuple
 
@@ -16,7 +17,7 @@ from mypy.test import config
 from mypy.parse import parse
 from mypy.errors import CompileError
 from mypy.stubgen import generate_stub, generate_stub_for_module
-from mypy.stubgenc import infer_method_sig
+from mypy.stubgenc import generate_c_type_stub, infer_method_sig
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring
@@ -125,8 +126,6 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
         try:
             if testcase.name.endswith('_import'):
                 generate_stub_for_module(name, out_dir, quiet=True)
-            elif testcase.name.endswith('_fast_parser'):
-                generate_stub(path, out_dir, fast_parser=True)
             else:
                 generate_stub(path, out_dir)
             a = load_output(out_dir)
@@ -184,3 +183,9 @@ class StubgencSuite(Suite):
     def test_infer_unary_op_sig(self) -> None:
         for op in ('neg', 'pos'):
             assert_equal(infer_method_sig('__%s__' % op), '()')
+
+    def test_generate_c_type_stub_no_crash_for_object(self) -> None:
+        output = []  # type: List[str]
+        mod = ModuleType('module', '')  # any module is fine
+        generate_c_type_stub(mod, 'alias', object, output)
+        assert_equal(output[0], 'class alias:')

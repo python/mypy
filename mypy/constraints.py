@@ -12,6 +12,7 @@ from mypy.types import (
 from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
 import mypy.subtypes
+from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
 
 
@@ -203,15 +204,33 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
         valid_options = [option for option in options if option is not None]
     if len(valid_options) == 1:
         return valid_options[0]
-    # Otherwise, there are either no valid options or multiple valid options.
-    # Give up and deduce nothing.
+    elif (len(valid_options) > 1 and
+          all(is_same_constraints(valid_options[0], c)
+              for c in valid_options[1:])):
+        # Multiple sets of constraints that are all the same. Just pick any one of them.
+        # TODO: More generally, if a given (variable, direction) pair appears in
+        #       every option, combine the bounds with meet/join.
+        return valid_options[0]
+
+    # Otherwise, there are either no valid options or multiple, inconsistent valid
+    # options. Give up and deduce nothing.
     return []
 
-    # TODO: In the latter case, it could happen that every valid
-    # option requires the same constraint on the same variable. Then
-    # we could include that that constraint in the result. Or more
-    # generally, if a given (variable, direction) pair appears in
-    # every option, combine the bounds with meet/join.
+
+def is_same_constraints(x: List[Constraint], y: List[Constraint]) -> bool:
+    for c1 in x:
+        if not any(is_same_constraint(c1, c2) for c2 in y):
+            return False
+    for c1 in y:
+        if not any(is_same_constraint(c1, c2) for c2 in x):
+            return False
+    return True
+
+
+def is_same_constraint(c1: Constraint, c2: Constraint) -> bool:
+    return (c1.type_var == c2.type_var
+            and c1.op == c2.op
+            and is_same_type(c1.target, c2.target))
 
 
 def simplify_away_incomplete_types(types: List[Type]) -> List[Type]:
@@ -362,6 +381,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return res
         elif isinstance(self.actual, Overloaded):
             return self.infer_against_overloaded(self.actual, template)
+        elif isinstance(self.actual, TypeType):
+            return infer_constraints(template.ret_type, self.actual.item, self.direction)
         else:
             return []
 
@@ -423,9 +444,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         return res
 
     def visit_type_type(self, template: TypeType) -> List[Constraint]:
-        if isinstance(self.actual, CallableType) and self.actual.is_type_obj():
+        if isinstance(self.actual, CallableType):
             return infer_constraints(template.item, self.actual.ret_type, self.direction)
-        elif isinstance(self.actual, Overloaded) and self.actual.is_type_obj():
+        elif isinstance(self.actual, Overloaded):
             return infer_constraints(template.item, self.actual.items()[0].ret_type,
                                      self.direction)
         elif isinstance(self.actual, TypeType):

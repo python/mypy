@@ -164,7 +164,7 @@ class Random(_random.Random):
     def __setstate__(self, state: Any) -> None:  # for pickle
         self.setstate(state)
 
-    def __reduce__(self) -> object:
+    def __reduce__(self) -> tuple:
         return self.__class__, (), self.getstate()
 
 ## -------------------- integer methods  -------------------

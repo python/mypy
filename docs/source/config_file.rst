@@ -93,9 +93,6 @@ The following global flags may only be set in the global section
 - ``dump_inference_stats`` (Boolean, default False) dumps stats about
   type inference.
 
-- ``fast_parser`` (Boolean, default False) enables the experimental
-  fast parser.
-
 - ``incremental`` (Boolean, default False) enables the experimental
   module cache.
 
@@ -165,12 +162,15 @@ overridden by the pattern sections matching the module name.
 - ``ignore_errors`` (Boolean, default False) ignores all non-fatal
   errors.
 
-- ``warn_no_return`` (Boolean, default False) shows errors for
+- ``warn_no_return`` (Boolean, default True) shows errors for
   missing return statements on some execution paths.
 
 - ``warn_return_any`` (Boolean, default False) shows a warning when
   returning a value with type ``Any`` from a function declared with a
   non- ``Any`` return type.
+
+- ``strict_boolean`` (Boolean, default False) makes using non-boolean
+  expressions in conditions an error.
 
 
 Example

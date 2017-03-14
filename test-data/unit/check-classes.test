@@ -303,6 +303,12 @@ class B(A):
     def g(self) -> None:
         def f(self) -> str: pass
 
+[case testOverride__init_subclass__WithDifferentSignature]
+class A:
+    def __init_subclass__(cls, x: int) -> None: pass
+class B(A):
+    def __init_subclass__(cls) -> None: pass
+
 
 -- Constructors
 -- ------------
@@ -589,6 +595,24 @@ x = C.x
 [out]
 main:2: error: Need type annotation for variable
 
+[case testAccessingGenericClassAttribute]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+class A(Generic[T]):
+    x = None  # type: T
+A.x  # E: Access to generic instance variables via class is ambiguous
+A[int].x  # E: Access to generic instance variables via class is ambiguous
+
+[case testAccessingNestedGenericClassAttribute]
+from typing import Generic, List, TypeVar, Union
+T = TypeVar('T')
+U = TypeVar('U')
+class A(Generic[T, U]):
+    x = None  # type: Union[T, List[U]]
+A.x  # E: Access to generic instance variables via class is ambiguous
+A[int, int].x  # E: Access to generic instance variables via class is ambiguous
+[builtins fixtures/list.pyi]
+
 
 -- Nested classes
 -- --------------
@@ -642,6 +666,21 @@ b = A.B()
 b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 b = A.B(b) # E: Too many arguments for "B"
 
+[case testAliasNestedClass]
+class Outer:
+    class Inner:
+        def make_int(self) -> int: return 1
+    reveal_type(Inner().make_int)  # E: Revealed type is 'def () -> builtins.int'
+    some_int = Inner().make_int()
+
+reveal_type(Outer.Inner.make_int)  # E: Revealed type is 'def (self: __main__.Outer.Inner) -> builtins.int'
+reveal_type(Outer().some_int) # E: Revealed type is 'builtins.int'
+Bar = Outer.Inner
+reveal_type(Bar.make_int)  # E: Revealed type is 'def (self: __main__.Outer.Inner) -> builtins.int'
+x = Bar()  # type: Bar
+def produce() -> Bar:
+    reveal_type(Bar().make_int)  # E: Revealed type is 'def () -> builtins.int'
+    return Bar()
 
 -- Declaring attribute type in method
 -- ----------------------------------
@@ -1963,6 +2002,21 @@ def new_pro_user(user_class: Type[ProUser]):
     new_user(user_class)
 [out]
 
+[case testAllowCovariantArgsInConstructor]
+from typing import Generic, TypeVar
+
+T_co = TypeVar('T_co', covariant=True)
+
+class C(Generic[T_co]):
+    def __init__(self, x: T_co) -> None: # This should be allowed
+        self.x = x
+    def meth(self) -> None:
+        reveal_type(self.x) # E: Revealed type is 'T_co`1'
+
+reveal_type(C(1).x) # E: Revealed type is 'builtins.int*'
+[builtins fixtures/property.pyi]
+[out]
+
 [case testTypeUsingTypeCErrorCovariance]
 from typing import Type, TypeVar
 class User: pass
@@ -2156,6 +2210,43 @@ def foo(c: Type[C], d: Type[D]) -> None:
 [builtins fixtures/list.pyi]
 [out]
 main:7: error: Revealed type is 'builtins.list[Type[__main__.B]]'
+
+[case testTypeEquivalentTypeAny]
+from typing import Type, Any
+
+a = None # type: Type[Any]
+b = a # type: type
+
+x = None # type: type
+y = x # type: Type[Any]
+
+class C: ...
+
+p = None # type: type
+q = p # type: Type[C]
+
+[builtins fixtures/list.pyi]
+[out]
+
+[case testTypeEquivalentTypeAny2]
+from typing import Type, Any, TypeVar, Generic
+
+class C: ...
+x = None # type: type
+y = None # type: Type[Any]
+z = None # type: Type[C]
+
+lst = [x, y, z]
+reveal_type(lst) # E: Revealed type is 'builtins.list[builtins.type*]'
+
+T1 = TypeVar('T1', bound=type)
+T2 = TypeVar('T2', bound=Type[Any])
+class C1(Generic[T1]): ...
+class C2(Generic[T2]): ...
+
+C1[Type[Any]], C2[type] # both these should not fail
+[builtins fixtures/list.pyi]
+[out]
 
 [case testTypeMatchesOverloadedFunctions]
 from foo import *
@@ -2523,7 +2614,7 @@ class B(object, A): # E: Cannot determine consistent method resolution order (MR
     __iter__ = readlines
 
 [case testDynamicMetaclass]
-# flags: --fast-parser
+
 class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
     pass
 
@@ -2957,3 +3048,54 @@ class M1(M):
 
 class A(metaclass=M1): pass
 reveal_type(A.foo())  # E: Revealed type is '__main__.A*'
+
+[case testMetaclassAndSkippedImport]
+# flags: --ignore-missing-imports
+from missing import M
+class A(metaclass=M):
+    y = 0
+reveal_type(A.y) # E: Revealed type is 'builtins.int'
+A.x # E: "A" has no attribute "x"
+
+[case testAnyMetaclass]
+from typing import Any
+M = None  # type: Any
+class A(metaclass=M):
+    y = 0
+reveal_type(A.y) # E: Revealed type is 'builtins.int'
+A.x # E: "A" has no attribute "x"
+
+[case testInvalidVariableAsMetaclass]
+from typing import Any
+M = 0  # type: int
+MM = 0
+class A(metaclass=M): # E: Invalid metaclass 'M'
+    y = 0
+class B(metaclass=MM): # E: Invalid metaclass 'MM'
+    y = 0
+reveal_type(A.y) # E: Revealed type is 'builtins.int'
+A.x # E: "A" has no attribute "x"
+
+[case testAnyAsBaseOfMetaclass]
+from typing import Any, Type
+M = None  # type: Any
+class MM(M): pass
+
+class A(metaclass=MM):
+    y = 0
+    @classmethod
+    def f(cls) -> None: pass
+    def g(self) -> None: pass
+
+def h(a: Type[A], b: Type[object]) -> None:
+    h(a, a)
+    h(b, a) # E: Argument 1 to "h" has incompatible type Type[object]; expected Type[A]
+    a.f(1) # E: Too many arguments for "f" of "A"
+    reveal_type(a.y) # E: Revealed type is 'builtins.int'
+
+x = A # type: MM
+reveal_type(A.y) # E: Revealed type is 'builtins.int'
+reveal_type(A.x) # E: Revealed type is 'Any'
+A.f(1) # E: Too many arguments for "f" of "A"
+A().g(1) # E: Too many arguments for "g" of "A"
+[builtins fixtures/classmethod.pyi]

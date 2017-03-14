@@ -155,13 +155,18 @@ p = Point(x=42, y=1337, z='whatever')
 reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, z=builtins.str, _fallback=typing.Mapping[builtins.str, builtins.object])'
 [builtins fixtures/dict.pyi]
 
-[case testCannotCreateTypedDictWithClassUnderscores]
+[case testCanCreateTypedDictTypeWithUnderscoreItemName]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int, '_fallback': object})
+[builtins fixtures/dict.pyi]
+
+[case testCanCreateTypedDictWithClassUnderscores]
 # flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class Point(TypedDict):
     x: int
-    _y: int  # E: TypedDict field name cannot start with an underscore: _y
+    _y: int
 
 p: Point
 reveal_type(p) # E: Revealed type is 'TypedDict(x=builtins.int, _y=builtins.int, _fallback=__main__.Point)'

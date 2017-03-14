@@ -66,11 +66,13 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
+    collections_type_aliases, get_member_expr_fullname,
 )
 from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
+from mypy.messages import CANNOT_ASSIGN_TO_TYPE
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
@@ -541,6 +543,7 @@ class SemanticAnalyzer(NodeVisitor):
         if defn.type:
             # Signature must be analyzed in the surrounding scope so that
             # class-level imported names and type variables are in scope.
+            self.check_classvar_in_signature(defn.type)
             defn.type = self.anal_type(defn.type)
             self.check_function_signature(defn)
             if isinstance(defn, FuncDef):
@@ -580,6 +583,20 @@ class SemanticAnalyzer(NodeVisitor):
 
         self.leave()
         self.function_stack.pop()
+
+    def check_classvar_in_signature(self, typ: Type) -> None:
+        t = None  # type: Type
+        if isinstance(typ, Overloaded):
+            for t in typ.items():
+                self.check_classvar_in_signature(t)
+            return
+        if not isinstance(typ, CallableType):
+            return
+        for t in typ.arg_types + [typ.ret_type]:
+            if self.is_classvar(t):
+                self.fail_invalid_classvar(t)
+                # Show only one error per signature
+                break
 
     def add_func_type_variables_to_symbol_table(
             self, defn: FuncItem) -> List[SymbolTableNode]:
@@ -907,7 +924,15 @@ class SemanticAnalyzer(NodeVisitor):
             kind = MDEF
             if self.is_func_scope():
                 kind = LDEF
-            self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
+            node = SymbolTableNode(kind, defn.info)
+            self.add_symbol(defn.name, node, defn)
+            if kind == LDEF:
+                # We need to preserve local classes, let's store them
+                # in globals under mangled unique names
+                local_name = defn.info._fullname + '@' + str(defn.line)
+                defn.info._fullname = self.cur_mod_id + '.' + local_name
+                defn.fullname = defn.info._fullname
+                self.globals[local_name] = node
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes.
@@ -1015,13 +1040,45 @@ class SemanticAnalyzer(NodeVisitor):
         return False
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
+        error_context = defn  # type: Context
+        if defn.metaclass is None and self.options.python_version[0] == 2:
+            # Look for "__metaclass__ = <metaclass>" in Python 2.
+            for body_node in defn.defs.body:
+                if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
+                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
+                    return
+                elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
+                    lvalue = body_node.lvalues[0]
+                    if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
+                        error_context = body_node.rvalue
+                        if isinstance(body_node.rvalue, NameExpr):
+                            name = body_node.rvalue.name
+                        elif isinstance(body_node.rvalue, MemberExpr):
+                            name = get_member_expr_fullname(body_node.rvalue)
+                        else:
+                            name = None
+                        if name:
+                            defn.metaclass = name
+                        else:
+                            self.fail(
+                                "Dynamic metaclass not supported for '%s'" % defn.name,
+                                body_node
+                            )
+                            return
         if defn.metaclass:
             if defn.metaclass == '<error>':
-                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn)
+                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, error_context)
                 return
-            sym = self.lookup_qualified(defn.metaclass, defn)
+            sym = self.lookup_qualified(defn.metaclass, error_context)
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
+                return
+            if isinstance(sym.node, Var) and isinstance(sym.node.type, AnyType):
+                # 'Any' metaclass -- just ignore it.
+                #
+                # TODO: A better approach would be to record this information
+                #       and assume that the type object supports arbitrary
+                #       attributes, similar to an 'Any' base class.
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
                 self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
@@ -1160,9 +1217,6 @@ class SemanticAnalyzer(NodeVisitor):
                 fields.append(name)
                 types.append(AnyType() if stmt.type is None else self.anal_type(stmt.type))
                 # ...despite possible minor failures that allow further analyzis.
-                if name.startswith('_'):
-                    self.fail('TypedDict field name cannot start with an underscore: {}'
-                              .format(name), stmt)
                 if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
                     self.fail(TPDICT_CLASS_ERROR, stmt)
                 elif not isinstance(stmt.rvalue, TempNode):
@@ -1291,9 +1345,10 @@ class SemanticAnalyzer(NodeVisitor):
         if node.fullname in type_aliases:
             # Node refers to an aliased type such as typing.List; normalize.
             node = self.lookup_qualified(type_aliases[node.fullname], ctx)
-        if node.fullname == 'typing.DefaultDict':
+        if node.fullname in collections_type_aliases:
+            # Similar, but for types from the collections module like typing.DefaultDict
             self.add_module_symbol('collections', '__mypy_collections__', False, ctx)
-            node = self.lookup_qualified('__mypy_collections__.defaultdict', ctx)
+            node = self.lookup_qualified(collections_type_aliases[node.fullname], ctx)
         return node
 
     def correct_relative_import(self, node: Union[ImportFrom, ImportAll]) -> str:
@@ -1364,23 +1419,11 @@ class SemanticAnalyzer(NodeVisitor):
     def anal_type(self, t: Type, allow_tuple_literal: bool = False,
                   aliasing: bool = False) -> Type:
         if t:
-            if allow_tuple_literal:
-                # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
-                # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
-                if isinstance(t, TupleType):
-                    # Unlike TypeAnalyser, also allow implicit tuple types (without Tuple[...]).
-                    star_count = sum(1 for item in t.items if isinstance(item, StarType))
-                    if star_count > 1:
-                        self.fail('At most one star type allowed in a tuple', t)
-                        return TupleType([AnyType() for _ in t.items],
-                                         self.builtin_type('builtins.tuple'), t.line)
-                    items = [self.anal_type(item, True)
-                             for item in t.items]
-                    return TupleType(items, self.builtin_type('builtins.tuple'), t.line)
             a = TypeAnalyser(self.lookup_qualified,
                              self.lookup_fully_qualified,
                              self.fail,
-                             aliasing=aliasing)
+                             aliasing=aliasing,
+                             allow_tuple_literal=allow_tuple_literal)
             return t.accept(a)
         else:
             return None
@@ -1388,6 +1431,7 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
             self.analyze_lvalue(lval, explicit_type=s.type is not None)
+        self.check_classvar(s)
         s.rvalue.accept(self)
         if s.type:
             allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
@@ -1606,8 +1650,10 @@ class SemanticAnalyzer(NodeVisitor):
         return isinstance(node, Var) and node.is_self
 
     def check_lvalue_validity(self, node: Union[Expression, SymbolNode], ctx: Context) -> None:
-        if isinstance(node, (TypeInfo, TypeVarExpr)):
+        if isinstance(node, TypeVarExpr):
             self.fail('Invalid assignment target', ctx)
+        elif isinstance(node, TypeInfo):
+            self.fail(CANNOT_ASSIGN_TO_TYPE, ctx)
 
     def store_declared_types(self, lvalue: Lvalue, typ: Type) -> None:
         if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):
@@ -2178,10 +2224,6 @@ class SemanticAnalyzer(NodeVisitor):
                 "TypedDict() expects a dictionary literal as the second argument", call)
         dictexpr = args[1]
         items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
-        underscore = [item for item in items if item.startswith('_')]
-        if underscore:
-            self.fail("TypedDict() item names cannot start with an underscore: "
-                      + ', '.join(underscore), call)
         return items, types, ok
 
     def parse_typeddict_fields_with_types(self, dict_items: List[Tuple[Expression, Expression]],
@@ -2216,6 +2258,32 @@ class SemanticAnalyzer(NodeVisitor):
         info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), fallback)
 
         return info
+
+    def check_classvar(self, s: AssignmentStmt) -> None:
+        lvalue = s.lvalues[0]
+        if len(s.lvalues) != 1 or not isinstance(lvalue, RefExpr):
+            return
+        if not self.is_classvar(s.type):
+            return
+        if self.is_class_scope() and isinstance(lvalue, NameExpr):
+            node = lvalue.node
+            if isinstance(node, Var):
+                node.is_classvar = True
+        elif not isinstance(lvalue, MemberExpr) or self.is_self_member_ref(lvalue):
+            # In case of member access, report error only when assigning to self
+            # Other kinds of member assignments should be already reported
+            self.fail_invalid_classvar(lvalue)
+
+    def is_classvar(self, typ: Type) -> bool:
+        if not isinstance(typ, UnboundType):
+            return False
+        sym = self.lookup_qualified(typ.name, typ)
+        if not sym or not sym.node:
+            return False
+        return sym.node.fullname() == 'typing.ClassVar'
+
+    def fail_invalid_classvar(self, context: Context) -> None:
+        self.fail('ClassVar can only be used for assignments in class body', context)
 
     def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:
@@ -2319,6 +2387,8 @@ class SemanticAnalyzer(NodeVisitor):
         # Bind index variables and check if they define new names.
         self.analyze_lvalue(s.index, explicit_type=s.index_type is not None)
         if s.index_type:
+            if self.is_classvar(s.index_type):
+                self.fail_invalid_classvar(s.index)
             allow_tuple_literal = isinstance(s.index, (TupleExpr, ListExpr))
             s.index_type = self.anal_type(s.index_type, allow_tuple_literal)
             self.store_declared_types(s.index, s.index_type)
@@ -2394,6 +2464,8 @@ class SemanticAnalyzer(NodeVisitor):
                 # Since we have a target, pop the next type from types
                 if types:
                     t = types.pop(0)
+                    if self.is_classvar(t):
+                        self.fail_invalid_classvar(n)
                     allow_tuple_literal = isinstance(n, (TupleExpr, ListExpr))
                     t = self.anal_type(t, allow_tuple_literal)
                     new_types.append(t)
@@ -2642,7 +2714,7 @@ class SemanticAnalyzer(NodeVisitor):
                 expr.node = n.node
             else:
                 # We only catch some errors here; the rest will be
-                # catched during type checking.
+                # caught during type checking.
                 #
                 # This way we can report a larger number of errors in
                 # one type checker run. If we reported errors here,
@@ -2654,14 +2726,14 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail("Module%s has no attribute %r (it's now called %r)" % (
                         mod_name, expr.name, obsolete_name_mapping[full_name]), expr)
         elif isinstance(base, RefExpr) and isinstance(base.node, TypeInfo):
-            # This branch handles the case C.bar where C is a class
-            # and bar is a module resulting from `import bar` inside
-            # class C.  Here base.node is a TypeInfo, and again we
-            # look up the name in its namespace.  This is done only
-            # when bar is a module; other things (e.g. methods)
-            # are handled by other code in checkmember.
             n = base.node.names.get(expr.name)
-            if n is not None and n.kind == MODULE_REF:
+            if n is not None and (n.kind == MODULE_REF or isinstance(n.node, TypeInfo)):
+                # This branch handles the case C.bar where C is a class and
+                # bar is a type definition or a module resulting from
+                # `import bar` inside class C. Here base.node is a TypeInfo,
+                # and again we look up the name in its namespace.
+                # This is done only when bar is a module or a type; other
+                # things (e.g. methods) are handled by other code in checkmember.
                 n = self.normalize_type_alias(n, expr)
                 if not n:
                     return
