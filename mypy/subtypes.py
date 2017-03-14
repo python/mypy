@@ -7,6 +7,7 @@ from mypy.types import (
 )
 import mypy.applytype
 import mypy.constraints
+from mypy.erasetype import erase_type
 # Circular import; done in the function instead.
 # import mypy.solve
 from mypy import messages, sametypes
@@ -496,13 +497,22 @@ def unify_generic_callable(type: CallableType, target: CallableType,
 
 
 def restrict_subtype_away(t: Type, s: Type) -> Type:
-    """Return a supertype of (t intersect not s)
+    """Return t minus s.
 
-    Currently just remove elements of a union type.
+    If we can't determine a precise result, return a supertype of the
+    ideal result (just t is a valid result).
+
+    This is used for type inference of runtime type checks such as
+    isinstance.
+
+    Currently this just removes elements of a union type.
     """
     if isinstance(t, UnionType):
-        new_items = [item for item in t.items if (not is_subtype(item, s)
-                                                  or isinstance(item, AnyType))]
+        # Since runtime type checks will ignore type arguments, erase the types.
+        erased_s = erase_type(s)
+        new_items = [item for item in t.items
+                     if (not is_proper_subtype(erase_type(item), erased_s)
+                         or isinstance(item, AnyType))]
         return UnionType.make_union(new_items)
     else:
         return t
@@ -624,6 +634,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 if not right.args:
                     return False
                 iter_type = right.args[0]
+                if is_named_instance(right, 'builtins.tuple') and isinstance(iter_type, AnyType):
+                    # Special case plain 'tuple' which is needed for isinstance(x, tuple).
+                    return True
                 return all(is_proper_subtype(li, iter_type) for li in left.items)
             return is_proper_subtype(left.fallback, right)
         elif isinstance(right, TupleType):

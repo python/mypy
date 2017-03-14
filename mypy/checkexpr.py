@@ -2213,7 +2213,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if expr.literal >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
             if restriction:
-                return narrow_declared_type(known_type, restriction)
+                ans = narrow_declared_type(known_type, restriction)
+                return ans
         return known_type
 
 
