@@ -19,7 +19,7 @@ from mypy import git
 
 git.verify_git_integrity_or_abort(".")
 
-if 'bdist_wheel' in sys.argv[1:]:
+if any(dist_arg in sys.argv[1:] for dist_arg in ('bdist_wheel', 'sdist')):
     version = base_version
 else:
     version = __version__
