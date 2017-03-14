@@ -2681,7 +2681,7 @@ class SemanticAnalyzer(NodeVisitor):
             # bar in its namespace.  This must be done for all types of bar.
             file = base.node
             assert isinstance(file, (MypyFile, type(None)))
-            n = file.names.get(expr.name, None) if file is not None else None
+            n = file.names.get(expr.name, None) if file is not None else None  # type: ignore
             if n:
                 n = self.normalize_type_alias(n, expr)
                 if not n:
@@ -2697,8 +2697,9 @@ class SemanticAnalyzer(NodeVisitor):
                 # one type checker run. If we reported errors here,
                 # the build would terminate after semantic analysis
                 # and we wouldn't be able to report any type errors.
-                full_name = '%s.%s' % (file.fullname() if file is not None else None, expr.name)
-                mod_name = " '%s'" % file.fullname() if file is not None else ''
+                full_name = '%s.%s' % (file.fullname() if file is not None  # type: ignore
+                                       else None, expr.name)
+                mod_name = " '%s'" % file.fullname() if file is not None else ''  # type: ignore
                 if full_name in obsolete_name_mapping:
                     self.fail("Module%s has no attribute %r (it's now called %r)" % (
                         mod_name, expr.name, obsolete_name_mapping[full_name]), expr)

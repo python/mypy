@@ -2739,9 +2739,14 @@ def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> T
 
             types.append(type)
 
-    if len(types) == 0:
-        return None
-    elif len(types) == 1:
+        elif isinstance(type, TypeType):
+            types.append(type.item)
+
+        else:  # we didn't see an actual type, but rather a variable whose value is unknown to us
+            return None
+
+    assert len(types) != 0
+    if len(types) == 1:
         return types[0]
     else:
         return UnionType(types)
