@@ -1360,3 +1360,11 @@ def f(x: object) -> None:
     reveal_type(b)  # E: Revealed type is '__main__.A'
 [builtins fixtures/isinstance.pyi]
 [out]
+
+[case testIsInstanceWithTypeVariable]
+from typing import *
+def f(x: Union[int, str], typ: type) -> None:
+    if isinstance(x, (typ, int)):
+        x + 1  # E: Unsupported operand types for + (likely involving Union)
+[builtins fixtures/isinstancelist.pyi]
+
