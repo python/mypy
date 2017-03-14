@@ -65,7 +65,7 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
-    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
+    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
     collections_type_aliases, get_member_expr_fullname,
 )
 from mypy.typevars import has_no_typevars, fill_typevars
@@ -79,7 +79,9 @@ from mypy.types import (
     TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
 )
 from mypy.nodes import implicit_module_attrs
-from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
+from mypy.typeanal import (
+    TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
+)
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
@@ -1248,7 +1250,8 @@ class SemanticAnalyzer(NodeVisitor):
                 symbol = SymbolTableNode(node.kind, node.node,
                                          self.cur_mod_id,
                                          node.type_override,
-                                         module_public=module_public)
+                                         module_public=module_public,
+                                         normalized=node.normalized)
                 self.add_symbol(imported_id, symbol, imp)
             elif module and not missing:
                 # Missing attribute.
@@ -1284,13 +1287,19 @@ class SemanticAnalyzer(NodeVisitor):
 
     def normalize_type_alias(self, node: SymbolTableNode,
                              ctx: Context) -> SymbolTableNode:
+        normalized = False
         if node.fullname in type_aliases:
             # Node refers to an aliased type such as typing.List; normalize.
             node = self.lookup_qualified(type_aliases[node.fullname], ctx)
+            normalized = True
         if node.fullname in collections_type_aliases:
             # Similar, but for types from the collections module like typing.DefaultDict
             self.add_module_symbol('collections', '__mypy_collections__', False, ctx)
             node = self.lookup_qualified(collections_type_aliases[node.fullname], ctx)
+            normalized = True
+        if normalized:
+            node = SymbolTableNode(node.kind, node.node,
+                                   node.mod_id, node.type_override, normalized=True)
         return node
 
     def correct_relative_import(self, node: Union[ImportFrom, ImportAll]) -> str:
@@ -1326,7 +1335,8 @@ class SemanticAnalyzer(NodeVisitor):
                             continue
                     self.add_symbol(name, SymbolTableNode(node.kind, node.node,
                                                           self.cur_mod_id,
-                                                          node.type_override), i)
+                                                          node.type_override,
+                                                          normalized=node.normalized), i)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
@@ -1365,7 +1375,8 @@ class SemanticAnalyzer(NodeVisitor):
                              self.lookup_fully_qualified,
                              self.fail,
                              aliasing=aliasing,
-                             allow_tuple_literal=allow_tuple_literal)
+                             allow_tuple_literal=allow_tuple_literal,
+                             allow_unnormalized=self.is_stub_file)
             return t.accept(a)
         else:
             return None
@@ -1388,7 +1399,7 @@ class SemanticAnalyzer(NodeVisitor):
                 res = analyze_type_alias(s.rvalue,
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
-                                         self.fail)
+                                         self.fail, allow_unnormalized=True)
                 if res and (not isinstance(res, Instance) or res.args):
                     # TODO: What if this gets reassigned?
                     name = s.lvalues[0]
@@ -1465,7 +1476,9 @@ class SemanticAnalyzer(NodeVisitor):
                         # TODO: We should record the fact that this is a variable
                         #       that refers to a type, rather than making this
                         #       just an alias for the type.
-                        self.globals[lvalue.name].node = node
+                        sym = self.lookup_type_node(rvalue)
+                        if sym:
+                            self.globals[lvalue.name] = sym
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
@@ -2705,7 +2718,7 @@ class SemanticAnalyzer(NodeVisitor):
             res = analyze_type_alias(expr,
                                      self.lookup_qualified,
                                      self.lookup_fully_qualified,
-                                     self.fail)
+                                     self.fail, allow_unnormalized=self.is_stub_file)
             expr.analyzed = TypeAliasExpr(res, fallback=self.alias_fallback(res),
                                           in_runtime=True)
         elif refers_to_class_or_function(expr.base):
@@ -2726,8 +2739,22 @@ class SemanticAnalyzer(NodeVisitor):
                 types.append(typearg)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
+            # list, dict, set are not directly subscriptable
+            n = self.lookup_type_node(expr.base)
+            if n and not n.normalized and n.fullname in nongen_builtins:
+                self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
         else:
             expr.index.accept(self)
+
+    def lookup_type_node(self, expr: Expression) -> Optional[SymbolTableNode]:
+        try:
+            t = expr_to_unanalyzed_type(expr)
+        except TypeTranslationError:
+            return None
+        if isinstance(t, UnboundType):
+            n = self.lookup_qualified(t.name, expr)
+            return n
+        return None
 
     def visit_slice_expr(self, expr: SliceExpr) -> None:
         if expr.begin_index:
