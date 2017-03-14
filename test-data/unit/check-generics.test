@@ -1308,20 +1308,6 @@ class A:
 A.B[int]()
 reveal_type(A.B[int]().meth) # E: Revealed type is 'def () -> builtins.int*'
 
-[case testGenericInnerGenericClass-skip]
-# Fixing this requires changing binding rules for type variables
-# (avoid disable_typevars in semanal.py)
-class G(Generic[T]):
-    def foo(self) -> T: ...
-
-class Out(Generic[T]):
-    def bar(self) -> T: ...
-    class Inner(G[T]):
-        def foo(self) -> T: ...
-reveal_type(Out[int].bar) # E: Revealed type is 'def [T] (self: __main__.Out[builtins.int]) -> builtins.int'
-reveal_type(Out[int].Inner.foo) # E: Revealed type is 'builtins.int'
-reveal_type(Out[int].Inner().foo()) # E: Revealed type is 'builtins.int'
-
 [case testGenericClassInnerFunctionTypeVariable]
 from typing import TypeVar, Generic
 T = TypeVar('T')
