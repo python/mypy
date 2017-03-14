@@ -2736,12 +2736,9 @@ def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> T
                 # Type variables may be present -- erase them, which is the best
                 # we can do (outside disallowing them here).
                 type = erase_typevars(type.items()[0].ret_type)
-
             types.append(type)
-
         elif isinstance(type, TypeType):
             types.append(type.item)
-
         else:  # we didn't see an actual type, but rather a variable whose value is unknown to us
             return None
 
