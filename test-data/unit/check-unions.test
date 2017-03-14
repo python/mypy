@@ -280,3 +280,18 @@ from typing import Union
 class A: pass
 def f(x: Union[int, str, A]):
     x + object() # E: Unsupported left operand type for + (some union)
+
+[case testNarrowingDownNamedTupleUnion]
+from typing import NamedTuple, Union
+
+A = NamedTuple('A', [('y', int)])
+B = NamedTuple('B', [('x', int)])
+C = NamedTuple('C', [('x', int)])
+
+def foo(a: Union[A, B, C]):
+    if isinstance(a, (B, C)):
+        reveal_type(a) # E: Revealed type is 'Union[Tuple[builtins.int, fallback=__main__.B], Tuple[builtins.int, fallback=__main__.C]]'
+        a.x
+        a.y # E: Some element of union has no attribute "y"
+        b = a # type: Union[B, C]
+[builtins fixtures/isinstance.pyi]
