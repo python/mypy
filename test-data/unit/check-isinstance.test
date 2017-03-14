@@ -31,6 +31,13 @@ z = [a.y for b in y for a in b]
 
 [builtins fixtures/list.pyi]
 
+[case testIsinstanceNestedTuple]
+from typing import Union, List, Tuple
+def f(x: Union[int, str, List, Tuple]) -> None:
+    if isinstance(x, (str, (int, tuple))):
+        x[1]  # E: Value of type "Union[int, str, tuple]" is not indexable
+[builtins fixtures/isinstancelist.pyi]
+
 [case testClassAttributeInitialization-skip]
 class A:
     x = None # type: int
