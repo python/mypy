@@ -1296,6 +1296,18 @@ a = A().g(1)
 a = 1
 a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
+[case testGenericInnerClass]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A:
+    class B(Generic[T]):
+        def meth(self) -> T:  ...
+    B[int]()
+    reveal_type(B[int]().meth) # E: Revealed type is 'def () -> builtins.int*'
+
+A.B[int]()
+reveal_type(A.B[int]().meth) # E: Revealed type is 'def () -> builtins.int*'
+
 [case testGenericClassInnerFunctionTypeVariable]
 from typing import TypeVar, Generic
 T = TypeVar('T')
