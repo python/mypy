@@ -666,10 +666,16 @@ b = A.B(b) # E: Too many arguments for "B"
 class Outer:
     class Inner:
         def make_int(self) -> int: return 1
+    reveal_type(Inner().make_int)  # E: Revealed type is 'def () -> builtins.int'
+    some_int = Inner().make_int()
 
+reveal_type(Outer.Inner.make_int)  # E: Revealed type is 'def (self: __main__.Outer.Inner) -> builtins.int'
+reveal_type(Outer().some_int) # E: Revealed type is 'builtins.int'
 Bar = Outer.Inner
+reveal_type(Bar.make_int)  # E: Revealed type is 'def (self: __main__.Outer.Inner) -> builtins.int'
 x = Bar()  # type: Bar
 def produce() -> Bar:
+    reveal_type(Bar().make_int)  # E: Revealed type is 'def () -> builtins.int'
     return Bar()
 
 -- Declaring attribute type in method
