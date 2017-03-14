@@ -26,8 +26,6 @@ from mypy import experiments
 
 # List of files that contain test case descriptions.
 files = [
-]
-fast_parser_files = [
     'check-basic.test',
     'check-callable.test',
     'check-classes.test',
@@ -74,9 +72,8 @@ fast_parser_files = [
     'check-varargs.test',
     'check-newsyntax.test',
     'check-underscores.test',
+    'check-classvar.test',
 ]
-
-files.extend(fast_parser_files)
 
 
 class TypeCheckSuite(DataSuite):
@@ -149,15 +146,13 @@ class TypeCheckSuite(DataSuite):
                             os.utime(target, times=(new_time, new_time))
 
         # Parse options after moving files (in case mypy.ini is being moved).
-        options = self.parse_options(original_program_text, testcase)
+        options = self.parse_options(original_program_text, testcase, incremental)
         options.use_builtins_fixtures = True
         options.show_traceback = True
         if 'optional' in testcase.file:
             options.strict_optional = True
         if incremental:
             options.incremental = True
-        if os.path.split(testcase.file)[1] in fast_parser_files:
-            options.fast_parser = True
 
         sources = []
         for module_name, program_path, program_text in module_data:
@@ -305,9 +300,14 @@ class TypeCheckSuite(DataSuite):
         else:
             return [('__main__', 'main', program_text)]
 
-    def parse_options(self, program_text: str, testcase: DataDrivenTestCase) -> Options:
+    def parse_options(self, program_text: str, testcase: DataDrivenTestCase,
+                      incremental: int) -> Options:
         options = Options()
         flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
+        if incremental == 2:
+            flags2 = re.search('# flags2: (.*)$', program_text, flags=re.MULTILINE)
+            if flags2:
+                flags = flags2
 
         flag_list = None
         if flags:

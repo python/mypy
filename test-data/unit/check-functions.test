@@ -147,6 +147,25 @@ ee_def = specific_1 # E: Incompatible types in assignment (expression has type C
 
 [builtins fixtures/dict.pyi]
 
+[case testSubtypingFunctionsDecorated]
+from typing import Any
+
+# untyped decorator
+def deco(f): pass
+
+class A:
+    @deco
+    def f(self) -> Any:
+        pass
+
+class B(A):
+    @deco
+    def f(self) -> Any:
+        pass
+
+[builtins fixtures/list.pyi]
+
+
 [case testLackOfNames]
 def f(__a: int, __b: str) -> None: pass
 def g(a: int, b: str) -> None: pass
@@ -158,7 +177,7 @@ ff = g
 gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg('a', int), Arg('b', str)], None])
 
 [case testLackOfNamesFastparse]
-# flags: --fast-parser
+
 
 def f(__a: int, __b: str) -> None: pass
 def g(a: int, b: str) -> None: pass
@@ -316,6 +335,20 @@ class D:
     def __init__(self, a, b): pass
 f([D])  # E: List item 0 has incompatible type
 [builtins fixtures/list.pyi]
+
+[case testSubtypingTypeTypeAsCallable]
+from typing import Callable, Type
+class A: pass
+x = None  # type: Callable[..., A]
+y = None  # type: Type[A]
+x = y
+
+[case testSubtypingCallableAsTypeType]
+from typing import Callable, Type
+class A: pass
+x = None  # type: Callable[..., A]
+y = None  # type: Type[A]
+y = x  # E: Incompatible types in assignment (expression has type Callable[..., A], variable has type Type[A])
 
 -- Default argument values
 -- -----------------------
@@ -1622,7 +1655,7 @@ f(__a=1) # E: Unexpected keyword argument "__a" for "f"
 main:1: note: "f" defined here
 
 [case testPositionalOnlyArgFastparse]
-# flags: --fast-parser
+
 
 def f(__a: int) -> None: pass
 
@@ -1644,7 +1677,7 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 [builtins fixtures/bool.pyi]
 
 [case testMagicMethodPositionalOnlyArgFastparse]
-# flags: --fast-parser
+
 
 class A(object):
     def __eq__(self, other) -> bool: return True # We are all equal.
@@ -1661,6 +1694,6 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 def f(a, (b, c), d): pass
 
 [case testTupleArgumentsFastparse]
-# flags: --fast-parser --python-version 2.7
+# flags: --python-version 2.7
 
 def f(a, (b, c), d): pass

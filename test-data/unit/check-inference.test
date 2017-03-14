@@ -664,6 +664,14 @@ lb = [b]
 l = lb # E: Incompatible types in assignment (expression has type List[bool], variable has type List[A])
 [builtins fixtures/for.pyi]
 
+[case testGenericFunctionWithTypeTypeAsCallable]
+from typing import Callable, Type, TypeVar
+T = TypeVar('T')
+def f(x: Callable[..., T]) -> T: return x()
+class A: pass
+x = None  # type: Type[A]
+y = f(x)
+reveal_type(y)  # E: Revealed type is '__main__.A*'
 
 -- Generic function inference with unions
 -- --------------------------------------
@@ -756,6 +764,34 @@ b = k1
 b = k2
 [builtins fixtures/list.pyi]
 
+[case testAmbiguousUnionContextAndMultipleInheritance]
+from typing import TypeVar, Union, Generic
+
+_T = TypeVar('_T')
+
+class T(Generic[_T]): pass
+class U(Generic[_T]): pass
+class V(T[_T], U[_T]): pass
+
+def wait_for(fut: Union[T[_T], U[_T]]) -> _T: ...
+
+reveal_type(wait_for(V[str]()))  # E: Revealed type is 'builtins.str*'
+
+[case testAmbiguousUnionContextAndMultipleInheritance2]
+from typing import TypeVar, Union, Generic
+
+_T = TypeVar('_T')
+_S = TypeVar('_S')
+
+class T(Generic[_T, _S]): pass
+class U(Generic[_T, _S]): pass
+class V(T[_T, _S], U[_T, _S]): pass
+
+def wait_for(fut: Union[T[_T, _S], U[_T, _S]]) -> T[_T, _S]: ...
+
+reveal_type(wait_for(V[int, str]()))  \
+    # E: Revealed type is '__main__.T[builtins.int*, builtins.str*]'
+
 
 -- Literal expressions
 -- -------------------
@@ -785,7 +821,7 @@ s = s_s() # E: Incompatible types in assignment (expression has type Set[str], v
 [builtins fixtures/set.pyi]
 
 [case testSetWithStarExpr]
-# flags: --fast-parser
+
 s = {1, 2, *(3, 4)}
 t = {1, 2, *s}
 reveal_type(s)  # E: Revealed type is 'builtins.set[builtins.int*]'

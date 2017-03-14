@@ -30,6 +30,7 @@ semanal_files = ['semanal-basic.test',
                  'semanal-abstractclasses.test',
                  'semanal-namedtuple.test',
                  'semanal-typeddict.test',
+                 'semanal-classvar.test',
                  'semanal-python2.test']
 
 

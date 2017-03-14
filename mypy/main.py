@@ -24,11 +24,13 @@ from mypy.version import __version__
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
-def main(script_path: str) -> None:
+def main(script_path: str, args: List[str] = None) -> None:
     """Main entry point to the type checker.
 
     Args:
         script_path: Path to the 'mypy' script (used for finding data files).
+        args: Custom command-line arguments.  If not given, sys.argv[1:] will
+        be used.
     """
     t0 = time.time()
     if script_path:
@@ -36,7 +38,9 @@ def main(script_path: str) -> None:
     else:
         bin_dir = None
     sys.setrecursionlimit(2 ** 14)
-    sources, options = process_options(sys.argv[1:])
+    if args is None:
+        args = sys.argv[1:]
+    sources, options = process_options(args)
     serious = False
     try:
         res = type_check_only(sources, bin_dir, options)
@@ -50,8 +54,11 @@ def main(script_path: str) -> None:
         util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
     if a:
         f = sys.stderr if serious else sys.stdout
-        for m in a:
-            f.write(m + '\n')
+        try:
+            for m in a:
+                f.write(m + '\n')
+        except BrokenPipeError:
+            pass
         sys.exit(1)
 
 
@@ -226,13 +233,14 @@ def process_options(args: List[str],
                              " from non-Any typed functions")
     add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
                         help="warn about unneeded '# type: ignore' comments")
-    add_invertible_flag('--show-error-context', default=True,
-                        dest='hide_error_context',
+    add_invertible_flag('--show-error-context', default=False,
+                        dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
-    add_invertible_flag('--no-fast-parser', default=True, dest='fast_parser',
-                        help="disable the fast parser (not recommended)")
     parser.add_argument('-i', '--incremental', action='store_true',
-                        help="enable experimental module cache")
+                        help="enable module cache")
+    parser.add_argument('--quick-and-dirty', action='store_true',
+                        help="use cache even if dependencies out of date "
+                        "(implies --incremental)")
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
@@ -295,6 +303,11 @@ def process_options(args: List[str],
                         help=argparse.SUPPRESS)
     parser.add_argument('--almost-silent', action='store_true',
                         dest='special-opts:almost_silent',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--fast-parser', action='store_true', dest='special-opts:fast_parser',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--no-fast-parser', action='store_true',
+                        dest='special-opts:no_fast_parser',
                         help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
@@ -366,6 +379,11 @@ def process_options(args: List[str],
         print("Warning: -f/--dirty-stubs is deprecated and no longer necessary. Mypy no longer "
               "checks the git status of stubs.",
               file=sys.stderr)
+    if special_opts.fast_parser:
+        print("Warning: --fast-parser is now the default (and only) parser.")
+    if special_opts.no_fast_parser:
+        print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
+              "is now mypy's default and only parser.")
 
     # Check for invalid argument combinations.
     if require_targets:
@@ -397,6 +415,10 @@ def process_options(args: List[str],
             report_type = flag[:-7].replace('_', '-')
             report_dir = val
             options.report_dirs[report_type] = report_dir
+
+    # Let quick_and_dirty imply incremental.
+    if options.quick_and_dirty:
+        options.incremental = True
 
     # Set target.
     if special_opts.modules:
@@ -486,7 +508,6 @@ def crawl_up(arg: str) -> Tuple[str, str]:
     """
     dir, mod = os.path.split(arg)
     mod = strip_py(mod) or mod
-    assert '.' not in mod
     while dir and get_init_file(dir):
         dir, base = os.path.split(dir)
         if not base:

@@ -44,16 +44,23 @@ from mypy.fastparse import TypeConverter, parse_type_comment
 
 try:
     from typed_ast import ast27
-    from typed_ast import ast3  # type: ignore  # typeshed PR #931
+    from typed_ast import ast3
 except ImportError:
     if sys.version_info.minor > 2:
-        print('You must install the typed_ast package before you can run mypy'
-              ' with `--fast-parser`.\n'
-              'You can do this with `python3 -m pip install typed-ast`.',
-              file=sys.stderr)
+        try:
+            from typed_ast import ast35  # type: ignore
+        except ImportError:
+            print('The typed_ast package is not installed.\n'
+                  'You can install it with `python3 -m pip install typed-ast`.',
+                  file=sys.stderr)
+        else:
+            print('You need a more recent version of the typed_ast package.\n'
+                  'You can update to the latest version with '
+                  '`python3 -m pip install -U typed-ast`.',
+                  file=sys.stderr)
     else:
-        print('The typed_ast package required by --fast-parser is only compatible with'
-              ' Python 3.3 and greater.')
+        print('Mypy requires the typed_ast package, which is only compatible with\n'
+              'Python 3.3 and greater.', file=sys.stderr)
     sys.exit(1)
 
 T = TypeVar('T', bound=Union[ast27.expr, ast27.stmt])
@@ -769,7 +776,8 @@ class ASTConverter(ast27.NodeTransformer):
                                        self.visit(n.value),
                                        targets,
                                        iters,
-                                       ifs_list)
+                                       ifs_list,
+                                       [False for _ in n.generators])
 
     # GeneratorExp(expr elt, comprehension* generators)
     @with_line
@@ -780,7 +788,8 @@ class ASTConverter(ast27.NodeTransformer):
         return GeneratorExpr(self.visit(n.elt),
                              targets,
                              iters,
-                             ifs_list)
+                             ifs_list,
+                             [False for _ in n.generators])
 
     # Yield(expr? value)
     @with_line

@@ -1,0 +1,266 @@
+[case testAssignmentOnClass]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+A.x = 2
+
+[case testAssignmentOnInstance]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+A().x = 2
+[out]
+main:4: error: Cannot assign to class variable "x" via instance
+
+[case testAssignmentOnSubclassInstance]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+class B(A):
+    pass
+B().x = 2
+[out]
+main:6: error: Cannot assign to class variable "x" via instance
+
+[case testOverrideOnSelf]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+    def __init__(self) -> None:
+        self.x = 0
+[out]
+main:5: error: Cannot assign to class variable "x" via instance
+
+[case testOverrideOnSelfInSubclass]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+class B(A):
+    def __init__(self) -> None:
+        self.x = 0
+[out]
+main:6: error: Cannot assign to class variable "x" via instance
+
+[case testReadingFromInstance]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+A().x
+reveal_type(A().x)
+[out]
+main:5: error: Revealed type is 'builtins.int'
+
+[case testReadingFromSelf]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+    def __init__(self) -> None:
+        reveal_type(self.x)
+[out]
+main:5: error: Revealed type is 'builtins.int'
+
+[case testTypecheckSimple]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+y = A.x  # type: int
+
+[case testTypecheckWithUserType]
+from typing import ClassVar
+class A:
+    pass
+class B:
+    x = A()  # type: ClassVar[A]
+
+[case testTypeCheckOnAssignment]
+from typing import ClassVar
+class A:
+    pass
+class B:
+    pass
+class C:
+    x = None  # type: ClassVar[A]
+C.x = B()
+[out]
+main:8: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+
+[case testTypeCheckWithOverridden]
+from typing import ClassVar
+class A:
+    pass
+class B(A):
+    pass
+class C:
+    x = A()  # type: ClassVar[A]
+C.x = B()
+
+[case testRevealType]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+reveal_type(A.x)
+[out]
+main:4: error: Revealed type is 'builtins.int'
+
+[case testInfer]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+y = A.x
+reveal_type(y)
+[out]
+main:5: error: Revealed type is 'builtins.int'
+
+[case testAssignmentOnUnion]
+from typing import ClassVar, Union
+class A:
+    x = None  # type: int
+class B:
+    x = None  # type: ClassVar[int]
+c = A()  # type: Union[A, B]
+c.x = 1
+[out]
+main:7: error: Cannot assign to class variable "x" via instance
+
+[case testAssignmentOnInstanceFromType]
+from typing import ClassVar, Type
+class A:
+    x = None  # type: ClassVar[int]
+def f(a: Type[A]) -> None:
+    a().x = 0
+[out]
+main:5: error: Cannot assign to class variable "x" via instance
+
+[case testAssignmentOnInstanceFromSubclassType]
+from typing import ClassVar, Type
+class A:
+    x = None  # type: ClassVar[int]
+class B(A):
+    pass
+def f(b: Type[B]) -> None:
+    b().x = 0
+[out]
+main:7: error: Cannot assign to class variable "x" via instance
+
+[case testClassVarWithList]
+from typing import ClassVar, List
+class A:
+    x = None  # type: ClassVar[List[int]]
+A.x = ['a']
+A().x.append(1)
+A().x.append('')
+[builtins fixtures/list.pyi]
+[out]
+main:4: error: List item 0 has incompatible type "str"
+main:6: error: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+
+[case testClassVarWithUnion]
+from typing import ClassVar, Union
+class A:
+    x = None  # type: ClassVar[Union[int, str]]
+class B:
+    pass
+A.x = 0
+A.x = 'a'
+A.x = B()
+reveal_type(A().x)
+[out]
+main:8: error: Incompatible types in assignment (expression has type "B", variable has type "Union[int, str]")
+main:9: error: Revealed type is 'Union[builtins.int, builtins.str]'
+
+[case testOverrideWithNarrowedUnion]
+from typing import ClassVar, Union
+class A: pass
+class B: pass
+class C: pass
+class D:
+    x = None  # type: ClassVar[Union[A, B, C]]
+class E(D):
+    x = None  # type: ClassVar[Union[A, B]]
+
+[case testOverrideWithExtendedUnion]
+from typing import ClassVar, Union
+class A: pass
+class B: pass
+class C: pass
+class D:
+    x = None  # type: ClassVar[Union[A, B]]
+class E(D):
+    x = None  # type: ClassVar[Union[A, B, C]]
+[out]
+main:8: error: Incompatible types in assignment (expression has type "Union[A, B, C]", base class "D" defined the type as "Union[A, B]")
+
+[case testAssignmentToCallableRet]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+def f() -> A:
+    return A()
+f().x = 0
+[out]
+main:6: error: Cannot assign to class variable "x" via instance
+
+[case testOverrideWithIncomatibleType]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+class B(A):
+    x = None  # type: ClassVar[str]
+[out]
+main:5: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+
+[case testOverrideWithNormalAttribute]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+class B(A):
+    x = 2  # type: int
+[out]
+main:5: error: Cannot override class variable (previously declared on base class "A") with instance variable
+
+[case testOverrideWithAttributeWithClassVar]
+from typing import ClassVar
+class A:
+    x = 1  # type: int
+class B(A):
+    x = 2  # type: ClassVar[int]
+[out]
+main:5: error: Cannot override instance variable (previously declared on base class "A") with class variable
+
+[case testOverrideClassVarManyBases]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+class B:
+    x = 2  # type: int
+class C(A, B):
+    x = 3  # type: ClassVar[int]
+[out]
+main:7: error: Cannot override instance variable (previously declared on base class "B") with class variable
+
+[case testOverrideClassVarWithClassVar]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+class B(A):
+    x = 2  # type: ClassVar[int]
+
+[case testOverrideOnABCSubclass]
+from abc import ABCMeta
+from typing import ClassVar
+class A(metaclass=ABCMeta):
+    x = None  # type: ClassVar[int]
+class B(A):
+    x = 0  # type: ClassVar[int]
+
+[case testAcrossModules]
+import m
+reveal_type(m.A().x)
+m.A().x = 0
+[file m.py]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+[out]
+main:2: error: Revealed type is 'builtins.int'
+main:3: error: Cannot assign to class variable "x" via instance
