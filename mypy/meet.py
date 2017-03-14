@@ -25,21 +25,25 @@ def meet_types(s: Type, t: Type) -> Type:
     return t.accept(TypeMeetVisitor(s))
 
 
-def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
-    if s == t:
-        return s
-    if isinstance(s, UnionType):
-        return UnionType.make_simplified_union([meet_types(x, t) for x in s.items])
-    elif not is_overlapping_types(s, t, use_promotions=True):
+def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
+    """Return the declared type narrowed down to another type."""
+    # TODO: What are the reasons for not just using meet_types()?
+    if declared == narrowed:
+        return declared
+    if isinstance(declared, UnionType):
+        return UnionType.make_simplified_union([narrow_declared_type(x, narrowed)
+                                                for x in declared.items])
+    elif not is_overlapping_types(declared, narrowed, use_promotions=True):
         if experiments.STRICT_OPTIONAL:
             return UninhabitedType()
         else:
             return NoneTyp()
-    else:
-        if default_right:
-            return t
-        else:
-            return s
+    elif isinstance(narrowed, UnionType):
+        return UnionType.make_simplified_union([narrow_declared_type(declared, x)
+                                                for x in narrowed.items])
+    elif isinstance(narrowed, AnyType):
+        return narrowed
+    return meet_types(declared, narrowed)
 
 
 def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool:

@@ -995,11 +995,7 @@ class UnionType(Type):
                     all_items.append(typ)
             items = all_items
 
-        if any(isinstance(typ, AnyType) for typ in items):
-            return AnyType()
-
-        from mypy.subtypes import is_subtype
-        from mypy.sametypes import is_same_type
+        from mypy.subtypes import is_proper_subtype
 
         removed = set()  # type: Set[int]
         for i, ti in enumerate(items):
@@ -1008,9 +1004,7 @@ class UnionType(Type):
             cbt = cbf = False
             for j, tj in enumerate(items):
                 if (i != j
-                    and is_subtype(tj, ti)
-                    and (not (isinstance(tj, Instance) and tj.type.fallback_to_any)
-                         or is_same_type(ti, tj))):
+                    and is_proper_subtype(tj, ti)):
                     removed.add(j)
                     cbt = cbt or tj.can_be_true
                     cbf = cbf or tj.can_be_false

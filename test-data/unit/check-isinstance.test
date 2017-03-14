@@ -399,6 +399,7 @@ def f(x: Union[List[int], List[str], int]) -> None:
             a + 'x' # E: Unsupported operand types for + ("int" and "str")
 
         # type of a?
+        reveal_type(x) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
         x + 1 # E: Unsupported operand types for + (likely involving Union)
     else:
         x[0] # E: Value of type "int" is not indexable

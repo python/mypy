@@ -2388,9 +2388,9 @@ class A: pass
 class B(A): pass
 
 @overload
-def f(a: Type[A]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(a: Type[B]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
-def f(a: Type[B]) -> str: pass
+def f(a: Type[A]) -> str: pass
 [builtins fixtures/classmethod.pyi]
 [out]
 

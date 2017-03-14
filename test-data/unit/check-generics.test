@@ -779,7 +779,7 @@ if not isinstance(s, str):
 
 z = None # type: TNode # Same as TNode[Any]
 z.x
-z.foo() # Any simplifies Union to Any now. This test should be updated after #2197
+z.foo() # E: Some element of union has no attribute "foo"
 
 [builtins fixtures/isinstance.pyi]
 

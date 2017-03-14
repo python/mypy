@@ -508,12 +508,17 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
         return t
 
 
-def is_proper_subtype(t: Type, s: Type) -> bool:
+def is_proper_subtype(left: Type, right: Type) -> bool:
     """Check if t is a proper subtype of s?
 
     For proper subtypes, there's no need to rely on compatibility due to
     Any types. Any instance type t is also a proper subtype of t.
     """
+    if isinstance(right, UnionType) and not isinstance(left, UnionType):
+        return any([is_proper_subtype(left, item)
+                    for item in right.items])
+    return left.accept(ProperSubtypeVisitor(right))
+
     # FIX tuple types
     if isinstance(s, UnionType):
         if isinstance(t, UnionType):
@@ -542,6 +547,122 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
         return False
     else:
         return sametypes.is_same_type(t, s)
+
+
+class ProperSubtypeVisitor(TypeVisitor[bool]):
+    def __init__(self, right: Type) -> None:
+        self.right = right
+
+    def visit_unbound_type(self, left: UnboundType) -> bool:
+        return True
+
+    def visit_error_type(self, left: ErrorType) -> bool:
+        return False
+
+    def visit_type_list(self, left: TypeList) -> bool:
+        assert False, 'Should not happen'
+
+    def visit_any(self, left: AnyType) -> bool:
+        return isinstance(self.right, AnyType)
+
+    def visit_void(self, left: Void) -> bool:
+        return True
+
+    def visit_none_type(self, left: NoneTyp) -> bool:
+        if experiments.STRICT_OPTIONAL:
+            return (isinstance(self.right, NoneTyp) or
+                    is_named_instance(self.right, 'builtins.object'))
+        else:
+            return not isinstance(self.right, Void)
+
+    def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
+        return not isinstance(self.right, Void)
+
+    def visit_erased_type(self, left: ErasedType) -> bool:
+        return True
+
+    def visit_deleted_type(self, left: DeletedType) -> bool:
+        return True
+
+    def visit_instance(self, left: Instance) -> bool:
+        if isinstance(self.right, Instance):
+            if not left.type.has_base(self.right.type.fullname()):
+                return False
+
+            def check_argument(leftarg: Type, rightarg: Type, variance: int) -> bool:
+                if variance == COVARIANT:
+                    return is_proper_subtype(leftarg, rightarg)
+                elif variance == CONTRAVARIANT:
+                    return is_proper_subtype(rightarg, leftarg)
+                else:
+                    return sametypes.is_same_type(leftarg, rightarg)
+
+            # Map left type to corresponding right instances.
+            left = map_instance_to_supertype(left, self.right.type)
+
+            return all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
+                       zip(left.args, self.right.args, self.right.type.defn.type_vars))
+        return False
+
+    def visit_type_var(self, left: TypeVarType) -> bool:
+        if isinstance(self.right, TypeVarType) and left.id == self.right.id:
+            return True
+        return is_proper_subtype(left.upper_bound, self.right)
+
+    def visit_callable_type(self, left: CallableType) -> bool:
+        # TODO: Implement this properly
+        return is_subtype(left, self.right)
+
+    def visit_tuple_type(self, left: TupleType) -> bool:
+        right = self.right
+        if isinstance(right, Instance):
+            if (is_named_instance(right, 'builtins.tuple') or
+                    is_named_instance(right, 'typing.Iterable') or
+                    is_named_instance(right, 'typing.Container') or
+                    is_named_instance(right, 'typing.Sequence') or
+                    is_named_instance(right, 'typing.Reversible')):
+                if not right.args:
+                    return False
+                iter_type = right.args[0]
+                return all(is_proper_subtype(li, iter_type) for li in left.items)
+            return is_proper_subtype(left.fallback, right)
+        elif isinstance(right, TupleType):
+            if len(left.items) != len(right.items):
+                return False
+            for l, r in zip(left.items, right.items):
+                if not is_proper_subtype(l, r):
+                    return False
+            return is_proper_subtype(left.fallback, right.fallback)
+        return False
+
+    def visit_typeddict_type(self, left: TypedDictType) -> bool:
+        # TODO: Does it make sense to support TypedDict here?
+        return False
+
+    def visit_overloaded(self, left: Overloaded) -> bool:
+        # TODO: What's the right thing to do here?
+        return False
+
+    def visit_union_type(self, left: UnionType) -> bool:
+        return all([is_proper_subtype(item, self.right) for item in left.items])
+
+    def visit_partial_type(self, left: PartialType) -> bool:
+        # TODO: What's the right thing to do here?
+        return False
+
+    def visit_type_type(self, left: TypeType) -> bool:
+        right = self.right
+        if isinstance(right, TypeType):
+            return is_proper_subtype(left.item, right.item)
+        if isinstance(right, CallableType):
+            # This is unsound, we don't check the __init__ signature.
+            return right.is_type_obj() and is_proper_subtype(left.item, right.ret_type)
+        if isinstance(right, Instance):
+            if right.type.fullname() in ('builtins.type', 'builtins.object'):
+                return True
+            item = left.item
+            return isinstance(item, Instance) and is_proper_subtype(item, right.type.metaclass_type)
+        return False
 
 
 def is_more_precise(t: Type, s: Type) -> bool:
