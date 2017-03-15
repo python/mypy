@@ -69,16 +69,9 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     TODO: Don't consider callables always overlapping.
     TODO: Don't consider type variables with values always overlapping.
     """
-    # TODO(benkuhn): another option for the fix would be to add the following lines here:
-
-    # # Any overlaps with everything
-    # if isinstance(t, AnyType) or isinstance(s, AnyType):
-    #     return True
-
-    # This passes all the tests locally, and if I understand the mechanics of type overlap
-    # correctly, this would prevent similar classes of bugs from occurring in the future. But I'm
-    # guessing that there's a good reason these lines aren't already there, so I'm defaulting to a
-    # smaller-scoped fix.
+    # Any overlaps with everything
+    if isinstance(t, AnyType) or isinstance(s, AnyType):
+        return True
 
     # Since we are effectively working with the erased types, we only
     # need to handle occurrences of TypeVarType at the top level.
@@ -117,8 +110,6 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
         else:
             return False
     if experiments.STRICT_OPTIONAL:
-        if isinstance(t, AnyType) or isinstance(s, AnyType):
-            return True
         if isinstance(t, NoneTyp) != isinstance(s, NoneTyp):
             # NoneTyp does not overlap with other non-Union types under strict Optional checking
             return False
