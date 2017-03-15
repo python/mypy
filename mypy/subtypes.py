@@ -529,35 +529,6 @@ def is_proper_subtype(left: Type, right: Type) -> bool:
                     for item in right.items])
     return left.accept(ProperSubtypeVisitor(right))
 
-    # FIX tuple types
-    if isinstance(s, UnionType):
-        if isinstance(t, UnionType):
-            return all([is_proper_subtype(item, s) for item in t.items])
-        else:
-            return any([is_proper_subtype(t, item) for item in s.items])
-
-    if isinstance(t, Instance):
-        if isinstance(s, Instance):
-            if not t.type.has_base(s.type.fullname()):
-                return False
-
-            def check_argument(left: Type, right: Type, variance: int) -> bool:
-                if variance == COVARIANT:
-                    return is_proper_subtype(left, right)
-                elif variance == CONTRAVARIANT:
-                    return is_proper_subtype(right, left)
-                else:
-                    return sametypes.is_same_type(left, right)
-
-            # Map left type to corresponding right instances.
-            t = map_instance_to_supertype(t, s.type)
-
-            return all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
-                       zip(t.args, s.args, s.type.defn.type_vars))
-        return False
-    else:
-        return sametypes.is_same_type(t, s)
-
 
 class ProperSubtypeVisitor(TypeVisitor[bool]):
     def __init__(self, right: Type) -> None:
@@ -674,7 +645,8 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
             if right.type.fullname() in ('builtins.type', 'builtins.object'):
                 return True
             item = left.item
-            return isinstance(item, Instance) and is_proper_subtype(item, right.type.metaclass_type)
+            return isinstance(item, Instance) and is_proper_subtype(item,
+                                                                    right.type.metaclass_type)
         return False
 
 

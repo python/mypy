@@ -1003,8 +1003,8 @@ class UnionType(Type):
             # Keep track of the truishness info for deleted subtypes which can be relevant
             cbt = cbf = False
             for j, tj in enumerate(items):
-                if (i != j
-                    and is_proper_subtype(tj, ti)):
+                if (i != j and is_proper_subtype(tj, ti)):
+                    # We found a redundant item in the union.
                     removed.add(j)
                     cbt = cbt or tj.can_be_true
                     cbf = cbf or tj.can_be_false

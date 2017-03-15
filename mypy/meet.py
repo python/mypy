@@ -27,7 +27,6 @@ def meet_types(s: Type, t: Type) -> Type:
 
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     """Return the declared type narrowed down to another type."""
-    # TODO: What are the reasons for not just using meet_types()?
     if declared == narrowed:
         return declared
     if isinstance(declared, UnionType):
@@ -43,7 +42,9 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
                                                 for x in narrowed.items])
     elif isinstance(narrowed, AnyType):
         return narrowed
-    return meet_types(declared, narrowed)
+    elif isinstance(declared, (Instance, TupleType)):
+        return meet_types(declared, narrowed)
+    return narrowed
 
 
 def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool:
