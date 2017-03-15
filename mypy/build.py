@@ -1397,7 +1397,8 @@ class State:
         # this before processing imports, since this may mark some
         # import statements as unreachable.
         first = FirstPass(manager.semantic_analyzer)
-        first.visit_file(self.tree, self.xpath, self.id, self.options)
+        with self.wrap_context():
+            first.visit_file(self.tree, self.xpath, self.id, self.options)
 
         # Initialize module symbol table, which was populated by the
         # semantic analyzer.

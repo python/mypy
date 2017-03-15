@@ -17,6 +17,121 @@ class A: pass
 class B: pass
 [builtins fixtures/isinstance.pyi]
 
+[case testOverloadNeedsImplementation]
+from typing import overload, Any
+@overload  # E: An overloaded function outside a stub file must have an implementation
+def f(x: 'A') -> 'B': ...
+@overload
+def f(x: 'B') -> 'A': ...
+
+reveal_type(f(A())) # E: Revealed type is '__main__.B'
+reveal_type(f(B())) # E: Revealed type is '__main__.A'
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
+[case testSingleOverloadNoImplementation]
+from typing import overload, Any
+@overload  # E: Single overload definition, multiple required
+def f(x: 'A') -> 'B': ...
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
+
+[case testOverloadByAnyOtherName]
+from typing import overload as rose
+from typing import Any
+@rose
+def f(x: 'A') -> 'B': ...
+@rose
+def f(x: 'B') -> 'A': ...
+
+def f(x: Any) -> Any:
+    pass
+
+reveal_type(f(A())) # E: Revealed type is '__main__.B'
+reveal_type(f(B())) # E: Revealed type is '__main__.A'
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeCheckOverloadWithDecoratedImplementation]
+from typing import overload, Any
+
+def deco(fun): ...
+
+@overload
+def f(x: 'A') -> 'B': ...
+@overload
+def f(x: 'B') -> 'A': ...
+
+@deco
+def f(x: Any) -> Any:
+    pass
+
+reveal_type(f(A())) # E: Revealed type is '__main__.B'
+reveal_type(f(B())) # E: Revealed type is '__main__.A'
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
+[case testOverloadDecoratedImplementationNotLast]
+from typing import overload, Any
+
+def deco(fun): ...
+
+@overload
+def f(x: 'A') -> 'B': ...
+
+@deco  # E: The implementation for an overloaded function must come last
+def f(x: Any) -> Any:
+    pass
+
+@overload
+def f(x: 'B') -> 'A': ...
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
+[case testOverloadImplementationNotLast]
+from typing import overload, Any
+
+@overload
+def f(x: 'A') -> 'B': ...
+
+def f(x: Any) -> Any:  # E: The implementation for an overloaded function must come last
+    pass
+
+@overload
+def f(x: 'B') -> 'A': ...
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
+[case testDecoratedRedefinitionIsNotOverload]
+from typing import overload, Any
+
+def deco(fun): ...
+
+@deco
+def f(x: 'A') -> 'B': ...
+@deco  # E: Name 'f' already defined
+def f(x: 'B') -> 'A': ...
+@deco  # E: Name 'f' already defined
+def f(x: Any) -> Any: ...
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
+
 [case testTypeCheckOverloadWithImplementationPy2]
 # flags: --python-version 2.7
 
@@ -898,7 +1013,7 @@ def f(a: int) -> None: pass
 def f(a: int) -> None: pass
 [out]
 tmp/foo.pyi:2: error: Single overload definition, multiple required
-tmp/foo.pyi:4: error: Implementations of overloaded functions not allowed in stub files
+tmp/foo.pyi:4: error: An implementation for an overloaded function is not allowed in a stub file
 
 
 [case testSingleOverload2]
@@ -922,8 +1037,8 @@ def f(a: int) -> None: pass
 @overload
 def f(a: str) -> None: pass
 [out]
-tmp/foo.pyi:5: error: Name 'f' already defined
 tmp/foo.pyi:2: error: Single overload definition, multiple required
+tmp/foo.pyi:5: error: Name 'f' already defined
 tmp/foo.pyi:5: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloadsMissingFirstOverload]
@@ -947,8 +1062,8 @@ def f(a: int) -> None: pass
 1
 def f(a: str) -> None: pass
 [out]
-tmp/foo.pyi:5: error: Name 'f' already defined
 tmp/foo.pyi:2: error: Single overload definition, multiple required
+tmp/foo.pyi:5: error: Name 'f' already defined
 
 [case testOverloadTuple]
 from foo import *

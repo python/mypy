@@ -652,7 +652,7 @@ def f() -> None:
     x = 1
     def p(): pass # fail
 [out]
-main:3: error: Overload outside a stub must have implementation
+main:3: error: An overloaded function outside a stub file must have an implementation
 main:8: error: Name 'p' already defined
 
 [case testNestedFunctionInMethod]
@@ -1062,7 +1062,7 @@ def f(x: 'int['): pass # E: syntax error in type comment
 [case testInconsistentOverload]
 from typing import overload
 def dec(x): pass
-@dec  # E: Implementations of overloaded functions must come last
+@dec  # E: The implementation for an overloaded function must come last
 def f(): pass
 @overload
 def f(): pass
@@ -1071,7 +1071,7 @@ def f(): pass
 [case testInconsistentOverload2]
 from typing import overload
 def dec(x): pass
-@dec  # E: Implementations of overloaded functions must come last
+@dec  # E: The implementation for an overloaded function must come last
 def f(): pass
 @overload
 def f(): pass
@@ -1154,7 +1154,7 @@ class A:
 [case testOverloadedProperty2]
 from typing import overload
 class A:
-    @overload  # E: Overload outside a stub must have implementation
+    @overload  # E: An overloaded function outside a stub file must have an implementation
     def f(self) -> int: pass
     @property  # E: Decorated property not supported
     @overload

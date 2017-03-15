@@ -230,15 +230,10 @@ class ASTConverter(ast27.NodeTransformer):
         current_overload = []  # type: List[OverloadPart]
         current_overload_name = None
         for stmt in stmts:
-            if (isinstance(stmt, Decorator)
+            if (current_overload_name is not None
+                    and isinstance(stmt, (Decorator, FuncDef))
                     and stmt.name() == current_overload_name):
                 current_overload.append(stmt)
-            elif (isinstance(stmt, FuncDef)
-                  and stmt.name() == current_overload_name
-                  and stmt.name() is not None):
-                ret.append(OverloadedFuncDef(current_overload + [stmt]))
-                current_overload = []
-                current_overload_name = None
             else:
                 if len(current_overload) == 1:
                     ret.append(current_overload[0])

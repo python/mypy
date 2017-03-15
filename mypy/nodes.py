@@ -376,10 +376,14 @@ OverloadPart = Union['FuncDef', 'Decorator']
 
 
 class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
-    """A logical node representing all the variants of an overloaded function.
+    """A logical node representing all the variants of a multi-declaration function.
+
+    A multi-declaration function is often an @overload, but can also be a
+    @property with a setter and a/or a deleter.
 
     This node has no explicit representation in the source program.
     Overloaded variants must be consecutive in the source file.
+
     """
 
     items = None  # type: List[OverloadPart]
@@ -549,9 +553,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_func_def(self)
 
-    def get_body(self) -> Optional['Block']:
-        return self.body
-
     def serialize(self) -> JsonDict:
         # We're deliberating omitting arguments and storing only arg_names and
         # arg_kinds for space-saving reasons (arguments is not used in later
@@ -612,9 +613,6 @@ class Decorator(SymbolNode, Statement):
 
     def name(self) -> str:
         return self.func.name()
-
-    def get_body(self) -> Optional['Block']:
-        return self.func.body
 
     def fullname(self) -> str:
         return self.func.fullname()

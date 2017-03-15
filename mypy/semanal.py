@@ -432,51 +432,57 @@ class SemanticAnalyzer(NodeVisitor):
         # Decide whether to analyze this as a property or an overload.  If an
         # overload, and we're outside a stub, find the impl and set it.  Remove
         # the impl from the item list, it's special.
-        t = []  # type: List[CallableType]
+        types = []  # type: List[CallableType]
         non_overload_indexes = []
-        for i, item in enumerate(defn.items):
-            # TODO support decorated overloaded functions properly
-            item.is_overload = True
-            item.accept(self)
 
-            if isinstance(item, Decorator):
-                item.func.is_overload = True
-                callable = function_type(item.func, self.builtin_type('builtins.function'))
-                assert isinstance(callable, CallableType)
-                if item.func.is_property and i == 0:
-                    # This defines a property, probably with a setter and/or
-                    # deleter.
-                    t.append(callable)
-                    self.analyze_property_with_multi_part_definition(defn)
-                    break
-                elif not any(refers_to_fullname(dec, 'typing.overload')
-                             for dec in item.decorators):
+        # See if the first item is a property (and not an overload)
+        first_item = defn.items[0]
+        first_item.is_overload = True
+        first_item.accept(self)
+
+        if isinstance(first_item, Decorator) and first_item.func.is_property:
+            first_item.func.is_overload = True
+            self.analyze_property_with_multi_part_definition(defn)
+            typ = function_type(first_item.func, self.builtin_type('builtins.function'))
+            assert isinstance(typ, CallableType)
+            types = [typ]
+        else:
+            for i, item in enumerate(defn.items):
+                if i != 0:
+                    # The first item was already visited
+                    item.is_overload = True
+                    item.accept(self)
+                # TODO support decorated overloaded functions properly
+                if isinstance(item, Decorator):
+                    item.func.is_overload = True
+                    callable = function_type(item.func, self.builtin_type('builtins.function'))
+                    assert isinstance(callable, CallableType)
+                    if not any(refers_to_fullname(dec, 'typing.overload')
+                               for dec in item.decorators):
+                        if i == len(defn.items) - 1 and not self.is_stub_file:
+                            # Last item outside a stub is impl
+                            defn.impl = item
+                        else:
+                            # Oops it wasn't an overload after all. A clear error
+                            # will vary based on where in the list it is, record
+                            # that.
+                            non_overload_indexes.append(i)
+                    else:
+                        types.append(callable)
+                elif isinstance(item, FuncDef):
                     if i == len(defn.items) - 1 and not self.is_stub_file:
-                        # Last item outside a stub is impl
                         defn.impl = item
                     else:
-                        # Oops it wasn't an overload after all. A clear error
-                        # will vary based on where in the list it is, record
-                        # that.
                         non_overload_indexes.append(i)
-                else:
-                    t.append(callable)
-            elif isinstance(item, FuncDef):
-                if i == len(defn.items) - 1 and not self.is_stub_file:
-                    defn.impl = item
-                else:
-                    non_overload_indexes.append(i)
-        else:
-            # No break, so it was an overload.
             if non_overload_indexes:
-                if t:
+                if types:
                     # Some of them were overloads, but not all.
                     for idx in non_overload_indexes:
                         if self.is_stub_file:
-                            self.fail("Implementations of overloaded functions "
-                                      "not allowed in stub files", defn.items[idx])
+                            self.fail("An implementation for an overloaded function "
+                                      "is not allowed in a stub file", defn.items[idx])
                         else:
-                            self.fail("Implementations of overloaded functions "
+                            self.fail("The implementation for an overloaded function "
                                       "must come last", defn.items[idx])
                 else:
                     for idx in non_overload_indexes[1:]:
@@ -494,11 +500,11 @@ class SemanticAnalyzer(NodeVisitor):
 
             elif not self.is_stub_file and not non_overload_indexes:
                 self.fail(
-                    "Overload outside a stub must have implementation",
+                    "An overloaded function outside a stub file must have an implementation",
                     defn)
 
-        if t:
-            defn.type = Overloaded(t)
+        if types:
+            defn.type = Overloaded(types)
             defn.type.line = defn.line
 
         if self.is_class_scope():
@@ -3279,6 +3285,8 @@ class FirstPass(NodeVisitor):
                 sem.errors.push_function(func.name())
                 sem.enter()
                 impl.func.body.accept(self)
+            else:
+                assert False, "Implementation of an overload needs to be FuncDef or Decorator"
             sem.leave()
             sem.errors.pop_function()
             sem.function_stack.pop()

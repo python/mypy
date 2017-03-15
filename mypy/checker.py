@@ -308,7 +308,7 @@ class TypeChecker(StatementVisitor[None]):
                     assert False, "Impl isn't the right type"
                 # This can happen if we've got an overload with a different
                 # decorator too -- we gave up on the types.
-                if impl_type is None or sig1 is None:
+                if impl_type is None or isinstance(impl_type, AnyType) or sig1 is None:
                     return
 
                 assert isinstance(impl_type, CallableType)
@@ -2140,9 +2140,7 @@ class TypeChecker(StatementVisitor[None]):
         e.func.accept(self)
         sig = self.function_type(e.func)  # type: Type
         # Process decorators from the inside out.
-        for i in range(len(e.decorators)):
-            n = len(e.decorators) - 1 - i
-            d = e.decorators[n]
+        for d in reversed(e.decorators):
             if isinstance(d, NameExpr) and d.fullname == 'typing.overload':
                 self.fail('Single overload definition, multiple required', e)
                 continue

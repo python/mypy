@@ -925,6 +925,8 @@ a = A()
 a.f = a.f
 a.f.x # E: "int" has no attribute "x"
 a.f = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+a.f = 1
+reveal_type(a.f)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/property.pyi]
 
 [case testPropertyWithDeleterButNoSetter]
