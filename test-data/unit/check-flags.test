@@ -2,14 +2,18 @@
 # flags: --disallow-untyped-defs
 def f(x): pass
 [out]
-main: note: In function "f":
 main:2: error: Function is missing a type annotation
 
 [case testUnannotatedArgument]
 # flags: --disallow-untyped-defs
 def f(x) -> int: pass
 [out]
-main: note: In function "f":
+main:2: error: Function is missing a type annotation for one or more arguments
+
+[case testUnannotatedArgumentWithFastParser]
+# flags: --disallow-untyped-defs
+def f(x) -> int: pass
+[out]
 main:2: error: Function is missing a type annotation for one or more arguments
 
 [case testNoArgumentFunction]
@@ -21,7 +25,12 @@ def f() -> int: pass
 # flags: --disallow-untyped-defs
 def f(x: int): pass
 [out]
-main: note: In function "f":
+main:2: error: Function is missing a return type annotation
+
+[case testUnannotatedReturnWithFastParser]
+# flags: --disallow-untyped-defs
+def f(x: int): pass
+[out]
 main:2: error: Function is missing a return type annotation
 
 [case testLambda]
@@ -34,7 +43,6 @@ lambda x: x
 def f():
     1 + "str"
 [out]
-main: note: In function "f":
 main:2: error: Function is missing a type annotation
 
 [case testSubclassingAny]
@@ -53,7 +61,7 @@ class Foo(ActualClass, FakeClass): pass  # E: Class cannot subclass 'FakeClass' 
 [out]
 
 [case testSubclassingAnySilentImports]
-# flags: --disallow-subclassing-any --silent-imports
+# flags: --disallow-subclassing-any --follow-imports=skip
 # cmd: mypy -m main
 
 [file main.py]
@@ -67,7 +75,7 @@ class BaseClass: pass
 tmp/main.py:2: error: Class cannot subclass 'BaseClass' (has type 'Any')
 
 [case testSubclassingAnySilentImports2]
-# flags: --disallow-subclassing-any --silent-imports
+# flags: --disallow-subclassing-any --follow-imports=skip
 # cmd: mypy -m main
 
 [file main.py]
@@ -93,4 +101,262 @@ def i() -> int:
   """with docstring"""
   ...
 def j() -> int:
+  u"""with unicode docstring"""
+  pass
+def k() -> int:
   """docstring only"""
+
+[case testWarnNoReturnWorksWithAlwaysTrue]
+# flags: --warn-no-return
+PY3 = True
+def f() -> int:
+    if PY3:
+        return 0
+    else:
+        return 0
+[builtins fixtures/bool.pyi]
+
+[case testWarnNoReturnWorksWithAlwaysFalse]
+# flags: --warn-no-return
+PY2 = False
+def f() -> int:
+    if PY2:
+        return 0
+    else:
+        return 0
+[builtins fixtures/bool.pyi]
+
+[case testWarnNoReturnWorksWithMypyTrue]
+# flags: --warn-no-return
+MYPY = False
+def f() -> int:
+    if MYPY:
+        return 0
+    else:
+        return 0
+[builtins fixtures/bool.pyi]
+
+[case testNoReturnDisallowsReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def f() -> NoReturn:
+  if bool():
+    return 5  # E: Return statement in function which does not return
+  else:
+    return  # E: Return statement in function which does not return
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnWithoutImplicitReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def no_return() -> NoReturn: pass
+def f() -> NoReturn:
+  no_return()
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnDisallowsImplicitReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def f() -> NoReturn:  # N: Implicit return in function which does not return
+  non_trivial_function = 1
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnNoWarnNoReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def no_return() -> NoReturn: pass
+def f() -> int:
+  if bool():
+    return 0
+  else:
+    no_return()
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnInExpr]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def no_return() -> NoReturn: pass
+def f() -> int:
+  return 0
+reveal_type(f() or no_return())  # E: Revealed type is 'builtins.int'
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnVariable]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type NoReturn)
+[builtins fixtures/dict.pyi]
+
+[case testShowErrorContextFunction]
+# flags: --show-error-context
+def f() -> None:
+  0 + ""
+[out]
+main: note: In function "f":
+main:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testShowErrorContextClass]
+# flags: --show-error-context
+class A:
+  0 + ""
+[out]
+main: note: In class "A":
+main:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testShowErrorContextMember]
+# flags: --show-error-context
+class A:
+  def f(self, x: int) -> None:
+    self.f("")
+[out]
+main: note: In member "f" of class "A":
+main:4: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+
+[case testShowErrorContextModule]
+# flags: --show-error-context
+import m
+[file m.py]
+0 + ""
+[out]
+main:2: note: In module imported here:
+tmp/m.py:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testShowErrorContextTopLevel]
+# flags: --show-error-context
+def f() -> None:
+  0 + ""
+0 + ""
+[out]
+main: note: In function "f":
+main:3: error: Unsupported operand types for + ("int" and "str")
+main: note: At top level:
+main:4: error: Unsupported operand types for + ("int" and "str")
+
+[case testShowErrorContextFromHere]
+# flags: --show-error-context
+import a
+[file a.py]
+import b
+[file b.py]
+0 + ""
+[out]
+tmp/a.py:1: note: In module imported here,
+main:2: note: ... from here:
+tmp/b.py:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testFollowImportsNormal]
+# flags: --follow-imports=normal
+from mod import x
+x + ""
+[file mod.py]
+1 + ""
+x = 0
+[out]
+tmp/mod.py:1: error: Unsupported operand types for + ("int" and "str")
+main:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testFollowImportsSilent]
+# flags: --follow-imports=silent
+from mod import x
+x + ""  # E: Unsupported operand types for + ("int" and "str")
+[file mod.py]
+1 + ""
+x = 0
+
+[case testFollowImportsSkip]
+# flags: --follow-imports=skip
+from mod import x
+x + ""
+[file mod.py]
+this deliberate syntax error will not be reported
+[out]
+
+[case testFollowImportsError]
+# flags: --follow-imports=error
+from mod import x
+x + ""
+[file mod.py]
+deliberate syntax error
+[out]
+main:2: note: Import of 'mod' ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testIgnoreMissingImportsFalse]
+from mod import x
+[out]
+main:1: error: Cannot find module named 'mod'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testIgnoreMissingImportsTrue]
+# flags: --ignore-missing-imports
+from mod import x
+[out]
+
+[case testStrictBoolean]
+# flags: --strict-boolean
+if True:
+  pass
+if 'test':  # E: Condition must be a boolean
+  pass
+elif 1:  # E: Condition must be a boolean
+  pass
+
+def f() -> bool:
+  return True
+
+if f:  # E: Condition must be a boolean
+  pass
+
+if f():
+  pass
+
+class A:
+  def __call__(self) -> bool:
+    return False
+
+if A:  # E: Condition must be a boolean
+  pass
+
+if A():  # E: Condition must be a boolean
+  pass
+
+if A()():
+  pass
+[builtins fixtures/bool.pyi]
+
+[case testStrictBooleanTernary]
+# flags: --strict-boolean
+x = 1 if 'test' else 2  # E: Condition must be a boolean
+y = 1 if not 'test' else 2
+[builtins fixtures/bool.pyi]
+
+[case testStrictBooleanWhile]
+# flags: --strict-boolean
+while 5:  # E: Condition must be a boolean
+  pass
+
+while False:
+  pass
+[builtins fixtures/bool.pyi]
+
+[case testStrictBooleanComplexTypes]
+# flags: --strict-boolean
+from typing import Any, Type, Union
+
+x = True  # type: Any
+y = True  # type: Union[bool, int]
+z = int  # type: Type[int]
+
+if x:
+  pass
+if y:  # E: Condition must be a boolean
+  pass
+if z:  # E: Condition must be a boolean
+  pass
+[builtins fixtures/bool.pyi]

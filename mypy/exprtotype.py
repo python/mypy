@@ -2,9 +2,10 @@
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr,
-    ListExpr, StrExpr, BytesExpr, EllipsisExpr
+    ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr,
+    get_member_expr_fullname
 )
-from mypy.parsetype import parse_str_as_type, TypeParseError
+from mypy.fastparse import parse_type_comment
 from mypy.types import Type, UnboundType, TypeList, EllipsisType
 
 
@@ -37,35 +38,22 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
             else:
                 args = [expr.index]
             base.args = [expr_to_unanalyzed_type(arg) for arg in args]
+            if not base.args:
+                base.empty_tuple_index = True
             return base
         else:
             raise TypeTranslationError()
     elif isinstance(expr, ListExpr):
         return TypeList([expr_to_unanalyzed_type(t) for t in expr.items],
                         line=expr.line, column=expr.column)
-    elif isinstance(expr, (StrExpr, BytesExpr)):
+    elif isinstance(expr, (StrExpr, BytesExpr, UnicodeExpr)):
         # Parse string literal type.
         try:
-            result = parse_str_as_type(expr.value, expr.line)
-        except TypeParseError:
+            result = parse_type_comment(expr.value, expr.line, None)
+        except SyntaxError:
             raise TypeTranslationError()
         return result
     elif isinstance(expr, EllipsisExpr):
         return EllipsisType(expr.line)
     else:
         raise TypeTranslationError()
-
-
-def get_member_expr_fullname(expr: MemberExpr) -> str:
-    """Return the qualified name representation of a member expression.
-
-    Return a string of form foo.bar, foo.bar.baz, or similar, or None if the
-    argument cannot be represented in this form.
-    """
-    if isinstance(expr.expr, NameExpr):
-        initial = expr.expr.name
-    elif isinstance(expr.expr, MemberExpr):
-        initial = get_member_expr_fullname(expr.expr)
-    else:
-        return None
-    return '{}.{}'.format(initial, expr.name)

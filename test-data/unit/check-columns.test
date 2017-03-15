@@ -2,7 +2,7 @@
 # flags: --show-column-numbers
 1 +
 [out]
-main:2:3: error: Parse error before end of line
+main:2:4: error: invalid syntax
 
 
 [case testColumnsNestedFunctions]
@@ -15,13 +15,11 @@ def f() -> 'A':
 class A: pass
 class B: pass
 [out]
-main: note: In function "g":
 main:5:8: error: Incompatible return value type (got "A", expected "B")
-main: note: In function "f":
 main:6:4: error: Incompatible return value type (got "B", expected "A")
 
 [case testColumnsNestedFunctionsWithFastParse]
-# flags: --show-column-numbers --fast-parser
+# flags: --show-column-numbers
 import typing
 def f() -> 'A':
     def g() -> 'B':
@@ -30,9 +28,7 @@ def f() -> 'A':
 class A: pass
 class B: pass
 [out]
-main: note: In function "g":
 main:5:8: error: Incompatible return value type (got "A", expected "B")
-main: note: In function "f":
 main:6:4: error: Incompatible return value type (got "B", expected "A")
 
 
@@ -44,9 +40,9 @@ class A:
         pass
 A().f()
 A().f(1)
-A().f('') # E:5: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-A().f(1, 1) # E:5: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
-A().f(1, 'hello', 'hi') # E:5: Too many arguments for "f" of "A"
+A().f('') # E:0: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f(1, 1) # E:0: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
+A().f(1, 'hello', 'hi') # E:0: Too many arguments for "f" of "A"
 
 [case testColumnsMultipleStatementsPerLine]
 # flags: --show-column-numbers
@@ -68,6 +64,5 @@ def f(x: object, n: int, s: str) -> None:
     n = x # E:4: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 

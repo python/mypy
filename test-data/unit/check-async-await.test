@@ -2,30 +2,46 @@
 -- ---------------------------------------
 
 [case testAsyncDefPass]
-# flags: --fast-parser
+
 async def f() -> int:
     pass
 [builtins fixtures/async_await.pyi]
 
 [case testAsyncDefReturn]
-# flags: --fast-parser
+
 async def f() -> int:
     return 0
 reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
 [builtins fixtures/async_await.pyi]
 
+[case testAsyncDefMissingReturn]
+# flags: --warn-no-return
+async def f() -> int:
+    make_this_not_trivial = 1
+[builtins fixtures/async_await.pyi]
+[out]
+main:2: error: Missing return statement
+
+[case testAsyncDefReturnWithoutValue]
+
+async def f() -> int:
+    make_this_not_trivial = 1
+    return
+[builtins fixtures/async_await.pyi]
+[out]
+main:4: error: Return value expected
+
 [case testAwaitCoroutine]
-# flags: --fast-parser
+
 async def f() -> int:
     x = await f()
     reveal_type(x)  # E: Revealed type is 'builtins.int*'
     return x
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 
 [case testAwaitDefaultContext]
-# flags: --fast-parser
+
 from typing import TypeVar
 T = TypeVar('T')
 async def f(x: T) -> T:
@@ -33,11 +49,10 @@ async def f(x: T) -> T:
     reveal_type(y)
     return y
 [out]
-main: note: In function "f":
 main:6: error: Revealed type is 'T`-1'
 
 [case testAwaitAnyContext]
-# flags: --fast-parser
+
 from typing import Any, TypeVar
 T = TypeVar('T')
 async def f(x: T) -> T:
@@ -45,23 +60,22 @@ async def f(x: T) -> T:
     reveal_type(y)
     return y
 [out]
-main: note: In function "f":
 main:6: error: Revealed type is 'Any'
 
 [case testAwaitExplicitContext]
-# flags: --fast-parser
+
 from typing import TypeVar
 T = TypeVar('T')
 async def f(x: T) -> T:
     y = await f(x)  # type: int
     reveal_type(y)
+    return x
 [out]
-main: note: In function "f":
 main:5: error: Argument 1 to "f" has incompatible type "T"; expected "int"
 main:6: error: Revealed type is 'builtins.int'
 
 [case testAwaitGeneratorError]
-# flags: --fast-parser
+
 from typing import Any, Generator
 def g() -> Generator[int, None, str]:
     yield 0
@@ -70,11 +84,10 @@ async def f() -> int:
     x = await g()
     return x
 [out]
-main: note: In function "f":
 main:7: error: Incompatible types in await (actual type Generator[int, None, str], expected type "Awaitable")
 
 [case testAwaitIteratorError]
-# flags: --fast-parser
+
 from typing import Any, Iterator
 def g() -> Iterator[Any]:
     yield
@@ -82,11 +95,10 @@ async def f() -> int:
     x = await g()
     return x
 [out]
-main: note: In function "f":
 main:6: error: Incompatible types in await (actual type Iterator[Any], expected type "Awaitable")
 
 [case testAwaitArgumentError]
-# flags: --fast-parser
+
 def g() -> int:
     return 0
 async def f() -> int:
@@ -94,22 +106,21 @@ async def f() -> int:
     return x
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 main:5: error: Incompatible types in await (actual type "int", expected type "Awaitable")
 
 [case testAwaitResultError]
-# flags: --fast-parser
+
 async def g() -> int:
     return 0
 async def f() -> str:
     x = await g()  # type: str
+    return x
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 main:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAwaitReturnError]
-# flags: --fast-parser
+
 async def g() -> int:
     return 0
 async def f() -> str:
@@ -117,11 +128,10 @@ async def f() -> str:
     return x
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 main:6: error: Incompatible return value type (got "int", expected "str")
 
 [case testAsyncFor]
-# flags: --fast-parser
+
 from typing import AsyncIterator
 class C(AsyncIterator[int]):
     async def __anext__(self) -> int: return 0
@@ -130,22 +140,109 @@ async def f() -> None:
         reveal_type(x)  # E: Revealed type is 'builtins.int*'
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 
 [case testAsyncForError]
-# flags: --fast-parser
+
 from typing import AsyncIterator
 async def f() -> None:
     async for x in [1]:
         pass
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 main:4: error: AsyncIterable expected
 main:4: error: List[int] has no attribute "__aiter__"
 
+[case testAsyncForTypeComments]
+
+from typing import AsyncIterator, Union
+class C(AsyncIterator[int]):
+    async def __anext__(self) -> int: return 0
+async def f() -> None:
+    async for x in C():  # type: str  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+        pass
+
+    async for y in C():  # type: int
+        pass
+
+    async for z in C():  # type: Union[int, str]
+        reveal_type(z)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/async_await.pyi]
+
+[case testAsyncForComprehension]
+# flags: --fast-parser --python-version 3.6
+from typing import Generic, Iterable, TypeVar, AsyncIterator, Tuple
+
+T = TypeVar('T')
+
+class asyncify(Generic[T], AsyncIterator[T]):
+    def __init__(self, iterable: Iterable[T]) -> None:
+        self.iterable = iter(iterable)
+    def __aiter__(self) -> AsyncIterator[T]:
+        return self
+    async def __anext__(self) -> T:
+        try:
+            return next(self.iterable)
+        except StopIteration:
+            raise StopAsyncIteration
+
+async def listcomp(obj: Iterable[int]):
+    lst = [i async for i in asyncify(obj)]
+    reveal_type(lst)  # E: Revealed type is 'builtins.list[builtins.int*]'
+    lst2 = [i async for i in asyncify(obj) for j in obj]
+    reveal_type(lst2)  # E: Revealed type is 'builtins.list[builtins.int*]'
+
+async def setcomp(obj: Iterable[int]):
+    lst = {i async for i in asyncify(obj)}
+    reveal_type(lst)  # E: Revealed type is 'builtins.set[builtins.int*]'
+
+async def dictcomp(obj: Iterable[Tuple[int, str]]):
+    lst = {i: j async for i, j in asyncify(obj)}
+    reveal_type(lst)  # E: Revealed type is 'builtins.dict[builtins.int*, builtins.str*]'
+
+async def generatorexp(obj: Iterable[int]):
+    lst = (i async for i in asyncify(obj))
+    reveal_type(lst)  # E: Revealed type is 'typing.AsyncIterator[builtins.int*]'
+    lst2 = (i async for i in asyncify(obj) for i in obj)
+    reveal_type(lst2)  # E: Revealed type is 'typing.AsyncIterator[builtins.int*]'
+
+[builtins fixtures/async_await.pyi]
+
+[case testAsyncForComprehensionErrors]
+# flags: --fast-parser --python-version 3.6
+from typing import Generic, Iterable, TypeVar, AsyncIterator, Tuple
+
+T = TypeVar('T')
+
+class asyncify(Generic[T], AsyncIterator[T]):
+    def __init__(self, iterable: Iterable[T]) -> None:
+        self.iterable = iter(iterable)
+    def __aiter__(self) -> AsyncIterator[T]:
+        return self
+    async def __anext__(self) -> T:
+        try:
+            return next(self.iterable)
+        except StopIteration:
+            raise StopAsyncIteration
+
+async def wrong_iterable(obj: Iterable[int]):
+    [i async for i in obj]
+    [i for i in asyncify(obj)]
+    {i: i async for i in obj}
+    {i: i for i in asyncify(obj)}
+
+[out]
+main:18: error: AsyncIterable expected
+main:18: error: Iterable[int] has no attribute "__aiter__"; maybe "__iter__"?
+main:19: error: Iterable expected
+main:19: error: asyncify[int] has no attribute "__iter__"; maybe "__aiter__"?
+main:20: error: AsyncIterable expected
+main:20: error: Iterable[int] has no attribute "__aiter__"; maybe "__iter__"?
+main:21: error: Iterable expected
+main:21: error: asyncify[int] has no attribute "__iter__"; maybe "__aiter__"?
+[builtins fixtures/async_await.pyi]
+
 [case testAsyncWith]
-# flags: --fast-parser
+
 class C:
     async def __aenter__(self) -> int: pass
     async def __aexit__(self, x, y, z) -> None: pass
@@ -153,11 +250,10 @@ async def f() -> None:
     async with C() as x:
         reveal_type(x)  # E: Revealed type is 'builtins.int*'
 [builtins fixtures/async_await.pyi]
-[out]
-main: note: In function "f":
+
 
 [case testAsyncWithError]
-# flags: --fast-parser
+
 class C:
     def __enter__(self) -> int: pass
     def __exit__(self, x, y, z) -> None: pass
@@ -166,12 +262,11 @@ async def f() -> None:
         pass
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 main:6: error: "C" has no attribute "__aenter__"; maybe "__enter__"?
 main:6: error: "C" has no attribute "__aexit__"; maybe "__exit__"?
 
 [case testAsyncWithErrorBadAenter]
-# flags: --fast-parser
+
 class C:
     def __aenter__(self) -> int: pass
     async def __aexit__(self, x, y, z) -> None: pass
@@ -180,10 +275,9 @@ async def f() -> None:
         pass
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 
 [case testAsyncWithErrorBadAenter2]
-# flags: --fast-parser
+
 class C:
     def __aenter__(self) -> None: pass
     async def __aexit__(self, x, y, z) -> None: pass
@@ -192,10 +286,9 @@ async def f() -> None:
         pass
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 
 [case testAsyncWithErrorBadAexit]
-# flags: --fast-parser
+
 class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> int: pass
@@ -204,10 +297,9 @@ async def f() -> None:
         pass
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 
 [case testAsyncWithErrorBadAexit2]
-# flags: --fast-parser
+
 class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> None: pass
@@ -216,10 +308,25 @@ async def f() -> None:
         pass
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
+
+[case testAsyncWithTypeComments]
+
+class C:
+    async def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+async def f() -> None:
+    async with C() as x:  # type: int
+        pass
+
+    async with C() as y, C() as z:  # type: str, int  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+        pass
+
+    async with C() as a:  # type: int, int  # E: Invalid tuple literal type
+        pass
+[builtins fixtures/async_await.pyi]
 
 [case testNoYieldInAsyncDef]
-# flags: --fast-parser
+
 async def f():
     yield None
 async def g():
@@ -228,33 +335,28 @@ async def h():
     x = yield
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 main:3: error: 'yield' in async function
-main: note: In function "g":
 main:5: error: 'yield' in async function
-main: note: In function "h":
 main:7: error: 'yield' in async function
 
 [case testNoYieldFromInAsyncDef]
-# flags: --fast-parser
+
 async def f():
     yield from []
 async def g():
     x = yield from []
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 main:3: error: 'yield from' in async function
-main: note: In function "g":
 main:5: error: 'yield from' in async function
 
 [case testNoAsyncDefInPY2_python2]
-# flags: --fast-parser
+
 async def f():  # E: invalid syntax
     pass
 
 [case testYieldFromNoAwaitable]
-# flags: --fast-parser
+
 from typing import Any, Generator
 async def f() -> str:
     return ''
@@ -263,11 +365,10 @@ def g() -> Generator[Any, None, str]:
     return x
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "g":
 main:6: error: "yield from" can't be applied to Awaitable[str]
 
 [case testAwaitableSubclass]
-# flags: --fast-parser
+
 from typing import Any, AsyncIterator, Awaitable, Generator
 class A(Awaitable[int]):
     def __await__(self) -> Generator[Any, None, int]:
@@ -292,10 +393,9 @@ async def main() -> None:
         reveal_type(z)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "main":
 
 [case testYieldTypeCheckInDecoratedCoroutine]
-# flags: --fast-parser
+
 from typing import Generator
 from types import coroutine
 @coroutine
@@ -309,14 +409,13 @@ def f() -> Generator[int, str, int]:
         return ''  # E: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/async_await.pyi]
 [out]
-main: note: In function "f":
 
 
 -- The full matrix of coroutine compatibility
 -- ------------------------------------------
 
 [case testFullCoroutineMatrix]
-# flags: --fast-parser --hide-error-context
+
 from typing import Any, AsyncIterator, Awaitable, Generator, Iterator
 from types import coroutine
 

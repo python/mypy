@@ -7,6 +7,7 @@ import time
 import traceback
 
 from typing import List, Tuple, Any, Callable, Union, cast
+from types import TracebackType
 
 
 # TODO remove global state
@@ -311,7 +312,11 @@ def run_single_test(name: str, test: Any) -> Tuple[bool, bool]:
     return False, False
 
 
-def handle_failure(name, exc_type, exc_value, exc_traceback) -> None:
+def handle_failure(name: str,
+                   exc_type: type,
+                   exc_value: BaseException,
+                   exc_traceback: TracebackType,
+                   ) -> None:
     # Report failed test case.
     if is_verbose:
         sys.stderr.write('\n\n')

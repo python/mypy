@@ -207,7 +207,6 @@ class A(Generic[T]):
 x = None # type: B
 class B: pass
 [out]
-main: note: In member "f" of class "A":
 main:7: error: Argument 1 to "f" of "A" has incompatible type "B"; expected "T"
 main:8: error: Incompatible types in assignment (expression has type A[T], variable has type A[B])
 
@@ -228,7 +227,6 @@ class A(Generic[S, T]):
 
 class B: pass
 [out]
-main: note: In member "f" of class "A":
 main:8: error: Incompatible types in assignment (expression has type "T", variable has type "S")
 main:9: error: Incompatible types in assignment (expression has type "S", variable has type "T")
 main:10: error: Incompatible types in assignment (expression has type A[S, T], variable has type A[S, B])
@@ -252,8 +250,8 @@ class A(Generic[T]):
         a = object()    # Fail
         b = self.f() # type: object
         b = self.f()
+        return None
 [out]
-main: note: In member "f" of class "A":
 main:5: error: Incompatible types in assignment (expression has type "object", variable has type "T")
 main:6: error: Incompatible types in assignment (expression has type "object", variable has type "T")
 
@@ -288,7 +286,7 @@ class C: pass
 main:8: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 main:9: error: Unsupported operand types for + ("A" and "C")
 main:10: error: Incompatible types in assignment (expression has type "B", variable has type "C")
-main:11: error: Invalid index type "B" for "A"
+main:11: error: Invalid index type "B" for "A"; expected type "C"
 
 [case testOperatorAssignmentWithIndexLvalue1]
 from typing import TypeVar, Generic
@@ -312,7 +310,7 @@ class C:
 [out]
 main:7: error: Unsupported operand types for + ("C" and "B")
 main:7: error: Incompatible types in assignment (expression has type "B", target has type "C")
-main:8: error: Invalid index type "C" for "A"
+main:8: error: Invalid index type "C" for "A"; expected type "B"
 
 [case testOperatorAssignmentWithIndexLvalue2]
 from typing import TypeVar, Generic
@@ -333,9 +331,9 @@ class B: pass
 class C:
     def __add__(self, o: 'C') -> 'C': pass
 [out]
-main:7: error: Invalid index type "B" for "A"
-main:8: error: Invalid index type "C" for "A"
-main:9: error: Invalid index type "B" for "A"
+main:7: error: Invalid index type "B" for "A"; expected type "C"
+main:8: error: Invalid index type "C" for "A"; expected type "B"
+main:9: error: Invalid index type "B" for "A"; expected type "C"
 
 
 -- Nested generic types
@@ -393,7 +391,6 @@ def f(s: S, t: T) -> p[T, A]:
     p_t_a = None  # type: p[T, A]
     return p_t_a
 [out]
-main: note: In function "f":
 
 [case testTypeCheckingGenericMethodBody]
 from typing import TypeVar, Generic
@@ -415,7 +412,6 @@ class A(Generic[T]):
         p_s_t = None  # type: p[S, T]
         return p_s_t
 [out]
-main: note: In member "f" of class "A":
 
 [case testProhibitTypeApplicationToGenericFunctions]
 from typing import TypeVar
@@ -453,7 +449,7 @@ A[int, str, int]() # E: Type application has too many types (2 expected)
 a = None # type: A
 class A: pass
 a[A]()  # E: Value of type "A" is not indexable
-A[A]()  # E: Type application targets a non-generic function or class
+A[A]()  # E: The type "A" is not generic and not indexable
 [out]
 
 [case testTypeApplicationArgTypes]
@@ -486,7 +482,7 @@ class C(Generic[T, S]):
     def __init__(self, x: T, y: S) -> None:
         ...
 
-class D(C[int, T], Generic[T]): ...
+class D(C[int, T]): ...
 
 D[str](1, 'a')
 D[str](1, 1)  # E: Argument 2 to "D" has incompatible type "int"; expected "str"
@@ -509,7 +505,7 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
-type[int] # this was crashing, see #2302 (comment)  # E: Type application targets a non-generic function or class
+type[int] # this was crashing, see #2302 (comment)  # E: The type "type" is not generic and not indexable
 [out]
 
 
@@ -588,12 +584,10 @@ z = None # type: str
 reveal_type(wrap(z)) # E: Revealed type is '__main__.Node[builtins.int, builtins.str*]'
 
 [out]
-main: note: In function "output_bad":
 main:13: error: Argument 2 to "Node" has incompatible type "int"; expected "str"
-main: note: At top level:
 
 [case testGenericTypeAliasesWrongAliases]
-# flags: --show-column-numbers --fast-parser --python-version 3.6
+# flags: --show-column-numbers --python-version 3.6
 from typing import TypeVar, Generic, List, Callable, Tuple, Union
 T = TypeVar('T')
 S = TypeVar('S')
@@ -712,9 +706,9 @@ class Node(Generic[T]):
 
 TupledNode = Node[Tuple[T, T]]
 
-class D(Generic[T], TupledNode[T]):
+class D(TupledNode[T]):
     ...
-class L(Generic[T], List[TupledNode[T]]):
+class L(List[TupledNode[T]]):
     ...
 
 def f_bad(x: T) -> D[T]:
@@ -732,9 +726,7 @@ reveal_type(f('a'))  # E: Revealed type is '__main__.D[builtins.str*]'
 
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f_bad":
 main:15: error: Argument 1 to "D" has incompatible type "int"; expected "Tuple[T, T]"
-main: note: At top level:
 
 [case testGenericTypeAliasesSubclassingBad]
 from typing import TypeVar, Generic, Tuple, Union
@@ -747,9 +739,10 @@ TupledNode = Node[Tuple[T, T]]
 UNode = Union[int, Node[T]]
 
 class C(TupledNode): ... # Same as TupledNode[Any]
-class D(TupledNode[T]): ... # E: Invalid type "__main__.T"
+class D(TupledNode[T]): ...
 class E(Generic[T], UNode[T]): ... # E: Invalid base class
 
+reveal_type(D((1, 1))) # E: Revealed type is '__main__.D[builtins.int*]'
 [builtins fixtures/list.pyi]
 
 [case testGenericTypeAliasesUnion]
@@ -985,6 +978,144 @@ Bad = A[int] # type: ignore
 reveal_type(Bad) # E: Revealed type is 'Any'
 [out]
 
+[case testNoSubscriptionOfBuiltinAliases]
+from typing import List, TypeVar
+
+list[int]() # E: "list" is not subscriptable
+
+ListAlias = List
+def fun() -> ListAlias[int]:
+    pass
+
+reveal_type(fun())  # E: Revealed type is 'builtins.list[builtins.int]'
+
+BuiltinAlias = list
+BuiltinAlias[int]() # E: "list" is not subscriptable
+
+#check that error is reported only once, and type is still stored
+T = TypeVar('T')
+BadGenList = list[T] # E: "list" is not subscriptable
+
+reveal_type(BadGenList[int]()) # E: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(BadGenList()) # E: Revealed type is 'builtins.list[Any]'
+
+[builtins fixtures/list.pyi]
+[out]
+
+
+-- Simplified declaration of generics
+-- ----------------------------------
+
+[case testSimplifiedGenericSimple]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class B(Generic[T]):
+    def b(self) -> T: ...
+
+class C(Generic[T]):
+    def c(self) -> T: ...
+
+class D(B[T], C[S]): ...
+
+reveal_type(D[str, int]().b()) # E: Revealed type is 'builtins.str*'
+reveal_type(D[str, int]().c()) # E: Revealed type is 'builtins.int*'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testSimplifiedGenericCallable]
+from typing import TypeVar, Generic, Callable
+T = TypeVar('T')
+S = TypeVar('S')
+class B(Generic[T]):
+    def b(self) -> T: ...
+
+class D(B[Callable[[T], S]]): ...
+
+reveal_type(D[str, int]().b()) # E: Revealed type is 'def (builtins.str*) -> builtins.int*'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testSimplifiedGenericComplex]
+from typing import TypeVar, Generic, Tuple
+T = TypeVar('T')
+S = TypeVar('S')
+U = TypeVar('U')
+
+class A(Generic[T, S]):
+    pass
+
+class B(Generic[T, S]):
+    def m(self) -> Tuple[T, S]:
+        pass
+
+class C(A[S, B[T, int]], B[U, A[int, T]]):
+    pass
+
+c = C[object, int, str]()
+reveal_type(c.m()) # E: Revealed type is 'Tuple[builtins.str*, __main__.A*[builtins.int, builtins.int*]]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+
+[case testSimplifiedGenericOrder]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+
+class B(Generic[T]):
+    def b(self) -> T: ...
+
+class C(Generic[T]):
+    def c(self) -> T: ...
+
+class D(B[T], C[S], Generic[S, T]): ...
+
+reveal_type(D[str, int]().b()) # E: Revealed type is 'builtins.int*'
+reveal_type(D[str, int]().c()) # E: Revealed type is 'builtins.str*'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testSimplifiedGenericDuplicate]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+
+class A(Generic[T, T]): # E: Duplicate type variables in Generic[...]
+    pass
+
+a = A[int]()
+[builtins fixtures/list.pyi]
+[out]
+
+[case testSimplifiedGenericNotAll]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+
+class A(Generic[T]):
+    pass
+class B(Generic[T]):
+    pass
+
+class C(A[T], B[S], Generic[T]): # E: If Generic[...] is present it should list all type variables
+    pass
+
+c = C[int, str]()
+[builtins fixtures/list.pyi]
+[out]
+
+[case testSimplifiedGenericInvalid]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+
+class A(Generic[T]):
+    pass
+
+class B(A[S]): # E: Name 'S' is not defined
+    pass
+[builtins fixtures/list.pyi]
+[out]
+
 
 -- Multiple assignment with lists
 -- ------------------------------
@@ -1034,7 +1165,7 @@ class A: pass
 from typing import TypeVar, Generic, Iterable
 T = TypeVar('T')
 class object: pass
-class list(Iterable[T], Generic[T]):
+class list(Iterable[T]):
   def __setitem__(self, x: int, v: T) -> None: pass
 class int: pass
 class type: pass
@@ -1179,7 +1310,6 @@ def f() -> None:
     a = 1
     a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
-main: note: In function "f":
 
 [case testClassLevelTypeVariable]
 from typing import TypeVar
@@ -1189,6 +1319,18 @@ class A:
 a = A().g(1)
 a = 1
 a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testGenericInnerClass]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A:
+    class B(Generic[T]):
+        def meth(self) -> T:  ...
+    B[int]()
+    reveal_type(B[int]().meth) # E: Revealed type is 'def () -> builtins.int*'
+
+A.B[int]()
+reveal_type(A.B[int]().meth) # E: Revealed type is 'def () -> builtins.int*'
 
 [case testGenericClassInnerFunctionTypeVariable]
 from typing import TypeVar, Generic
@@ -1202,7 +1344,6 @@ class A(Generic[T]):
         g(self.a)
         g(n) # E: Argument 1 to "g" has incompatible type "int"; expected "T"
 [out]
-main: note: In member "f" of class "A":
 
 
 -- Callable subtyping with generic functions
@@ -1282,7 +1423,6 @@ def outer(t: T) -> None:
     y5 = f3
     y5 = f4
 [out]
-main: note: In function "outer":
 
 [case testSubtypingWithGenericFunctionUsingTypevarWithValues]
 from typing import TypeVar, Callable
@@ -1339,7 +1479,6 @@ def f(a: T, b: T) -> T:
         return b
 [builtins fixtures/ops.pyi]
 [out]
-main: note: In function "f":
 main:4: error: Unsupported left operand type for < ("T")
 
 
@@ -1430,3 +1569,46 @@ class A:
     @classmethod
     def f(cls) -> None: pass
 [builtins fixtures/classmethod.pyi]
+
+[case testGenericOperatorMethodOverlapping]
+from typing import TypeVar, Generic, Tuple
+T = TypeVar('T')
+T2 = TypeVar('T2')
+S = TypeVar('S', bound=str)
+S2 = TypeVar('S2', bound=str)
+class G(Generic[T]):
+    pass
+class A:
+    def __or__(self, x: G[T]) -> G[T]: pass
+    def __ior__(self, x: G[T2]) -> G[T2]: pass
+class B:
+    def __or__(self, x: G[T]) -> G[T]: pass
+    def __ior__(self, x: G[S]) -> G[S]: pass \
+        # E: Signatures of "__ior__" and "__or__" are incompatible
+class C:
+    def __or__(self, x: G[S]) -> G[S]: pass
+    def __ior__(self, x: G[S2]) -> G[S2]: pass
+
+[case testGenericOperatorMethodOverlapping2]
+from typing import TypeVar, Generic, Tuple
+X = TypeVar('X')
+T = TypeVar('T', int, str)
+T2 = TypeVar('T2', int, str)
+S = TypeVar('S', float, str)
+S2 = TypeVar('S2', float, str)
+class G(Generic[X]):
+    pass
+class A:
+    def __or__(self, x: G[T]) -> G[T]: pass
+    def __ior__(self, x: G[T2]) -> G[T2]: pass
+class B:
+    def __or__(self, x: G[T]) -> G[T]: pass
+    def __ior__(self, x: G[S]) -> G[S]: pass \
+        # E: Signatures of "__ior__" and "__or__" are incompatible
+class C:
+    def __or__(self, x: G[S]) -> G[S]: pass
+    def __ior__(self, x: G[S2]) -> G[S2]: pass
+class D:
+    def __or__(self, x: G[X]) -> G[X]: pass
+    def __ior__(self, x: G[S2]) -> G[S2]: pass \
+        # E: Signatures of "__ior__" and "__or__" are incompatible

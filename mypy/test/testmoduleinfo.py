@@ -5,7 +5,7 @@ from mypy.myunit import (
 
 
 class ModuleInfoSuite(Suite):
-    def test_is_in_module_collection(self):
+    def test_is_in_module_collection(self) -> None:
         assert_true(moduleinfo.is_in_module_collection({'foo'}, 'foo'))
         assert_true(moduleinfo.is_in_module_collection({'foo'}, 'foo.bar'))
         assert_false(moduleinfo.is_in_module_collection({'foo'}, 'fo'))

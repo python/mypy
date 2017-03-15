@@ -38,8 +38,7 @@ from m import a # type: ignore
 [file m.py]
 +
 [out]
-main:1: note: In module imported here:
-tmp/m.py:1: error: Parse error before end of line
+tmp/m.py:1: error: invalid syntax
 
 [case testIgnoreAppliesOnlyToMissing]
 import a # type: ignore
@@ -60,8 +59,7 @@ from m import * # type: ignore
 [file m.py]
 +
 [out]
-main:1: note: In module imported here:
-tmp/m.py:1: error: Parse error before end of line
+tmp/m.py:1: error: invalid syntax
 
 [case testIgnoreAssignmentTypeError]
 x = 1
@@ -123,7 +121,6 @@ class C(B):
         self.f(1) # E: Too many arguments for "f" of "C"
         self.g(1)
 [out]
-main: note: In member "f" of class "C":
 
 [case testIgnoredModuleDefinesBaseClass2]
 import m # type: ignore
@@ -159,7 +156,6 @@ class D(C, B):
         self.f(1) # E: Too many arguments for "f" of "D"
         self.g(1)
 [out]
-main: note: In member "f" of class "D":
 
 [case testIgnoredModuleDefinesBaseClassWithInheritance2]
 from m import B # type: ignore
@@ -170,7 +166,6 @@ class D(C):
         self.f(1) # E: Too many arguments for "f" of "D"
         self.g(1)
 [out]
-main: note: In member "f" of class "D":
 
 [case testIgnoreWithFollowingIndentedComment]
 if 1:  # type: ignore
@@ -211,6 +206,13 @@ def f() -> None: pass
 [out]
 main:3: error: Unexpected keyword argument "kw" for "f"
 tmp/m.py:2: note: "f" defined here
+
+[case testIgnoreUnexpectedKeywordArgument]
+import m
+m.f(kw=1)  # type: ignore
+[file m.py]
+def f() -> None: pass
+[out]
 
 [case testCannotIgnoreBlockingError]
 yield  # type: ignore  # E: 'yield' outside function

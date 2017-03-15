@@ -32,6 +32,7 @@ Mypy is a static type checker for Python.
    python36
    faq
    cheat_sheet
+   cheat_sheet_py3
    revision_history
 
 Indices and tables

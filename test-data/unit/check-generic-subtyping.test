@@ -175,7 +175,6 @@ class A(B[C]):
         # E: Argument 1 of "f" incompatible with supertype "B"
     def g(self, a: C) -> None: pass
 [out]
-main: note: In class "A":
 
 [case testOverridingMethodInGenericTypeInheritingSimpleType]
 from typing import TypeVar, Generic
@@ -189,7 +188,6 @@ class A(B, Generic[T]):
         # E: Argument 1 of "f" incompatible with supertype "B"
     def g(self, a: 'C') -> None: pass
 [out]
-main: note: In class "A":
 
 [case testOverridingMethodInGenericTypeInheritingGenericType]
 from typing import TypeVar, Generic
@@ -203,7 +201,6 @@ class A(B[S], Generic[T, S]):
         # E: Argument 1 of "f" incompatible with supertype "B"
     def g(self, a: S) -> None: pass
 [out]
-main: note: In class "A":
 
 [case testOverridingMethodInMultilevelHierarchyOfGenericTypes]
 from typing import TypeVar, Generic
@@ -222,7 +219,6 @@ class A(B[S], Generic[T, S]):
         # E: Argument 1 of "f" incompatible with supertype "C"
     def g(self, a: S) -> None: pass
 [out]
-main: note: In class "A":
 
 [case testOverrideGenericMethodInNonGenericClass]
 from typing import TypeVar
@@ -252,7 +248,6 @@ class C(A):
     def f(self, x: List[T], y: List[T]) -> None: pass # E: Signature of "f" incompatible with supertype "A"
 [builtins fixtures/list.pyi]
 [out]
-main: note: In class "C":
 
 [case testOverrideGenericMethodInNonGenericClassGeneralize]
 from typing import TypeVar
@@ -270,9 +265,7 @@ class C(A):
 class D(A):
     def f(self, x: T1, y: S) -> None: pass # TODO: This error could be more specific.
 [out]
-main: note: In class "C":
 main:12: error: Argument 2 of "f" incompatible with supertype "A"
-main: note: In class "D":
 main:14: error: Signature of "f" incompatible with supertype "A"
 
 
@@ -339,7 +332,6 @@ class A(B):
 
 class C: pass
 [out]
-main: note: In member "g" of class "A":
 
 [case testInheritanceFromGenericWithImplicitDynamicAndOverriding]
 from typing import TypeVar, Generic, Tuple
@@ -368,7 +360,6 @@ class A(B[S], Generic[T, S]):
         super().f(t)   # E: Argument 1 to "f" of "B" has incompatible type "T"; expected "S"
         super().f(s)
 [out]
-main: note: In member "g" of class "A":
 
 [case testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy]
 from typing import TypeVar, Generic
@@ -385,7 +376,6 @@ class A(B[S], Generic[T, S]):
         super().f(t)   # E: Argument 1 to "f" of "C" has incompatible type "T"; expected "S"
         super().f(s)
 [out]
-main: note: In member "g" of class "A":
 
 
 -- Type of inherited constructor
@@ -485,7 +475,6 @@ class B(A, I[D]): pass # Fail
 class C: pass
 class D: pass
 [out]
-main: note: In class "B":
 main:5: error: Class "B" has base "I" duplicated inconsistently
 
 [case testSubtypingAndABCExtension]
@@ -526,7 +515,6 @@ class A(I[C]):
 class C: pass
 class D: pass
 [out]
-main: note: In class "A":
 
 
 -- Extending a generic ABC with deep type hierarchy
@@ -559,7 +547,6 @@ class C: pass
 class D: pass
 [out]
 main:7: error: Incompatible types in assignment (expression has type "A", variable has type I[D])
-main: note: In class "A":
 
 [case testSubclassingGenericABCWithDeepHierarchy2]
 from typing import Any, TypeVar, Generic
@@ -576,7 +563,6 @@ class A(B):
 class C: pass
 class D: pass
 [out]
-main: note: In class "A":
 
 
 -- Implicit Any types and subclassing generic ABC
@@ -707,8 +693,6 @@ s, s = Nums() # E: Incompatible types in assignment (expression has type "int", 
 
 [case testCovariant]
 from typing import TypeVar, Generic
-True = 1
-
 T = TypeVar('T', covariant=True)
 
 class G(Generic[T]): pass
@@ -722,12 +706,11 @@ c = None  # type: G[C]
 
 b = a  # E: Incompatible types in assignment (expression has type G[A], variable has type G[B])
 b = c
+[builtins fixtures/bool.pyi]
 [out]
 
 [case testContravariant]
 from typing import TypeVar, Generic
-True = 1
-
 T = TypeVar('T', contravariant=True)
 
 class G(Generic[T]): pass
@@ -741,12 +724,11 @@ c = None  # type: G[C]
 
 b = a
 b = c  # E: Incompatible types in assignment (expression has type G[C], variable has type G[B])
+[builtins fixtures/bool.pyi]
 [out]
 
 [case testInvariant]
 from typing import TypeVar, Generic
-True = 1
-
 T = TypeVar('T')  # invariant (default)
 
 class G(Generic[T]): pass
@@ -760,4 +742,5 @@ c = None  # type: G[C]
 
 b = a  # E: Incompatible types in assignment (expression has type G[A], variable has type G[B])
 b = c  # E: Incompatible types in assignment (expression has type G[C], variable has type G[B])
+[builtins fixtures/bool.pyi]
 [out]

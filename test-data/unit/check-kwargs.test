@@ -56,8 +56,7 @@ class A: pass
 [case testGivingSameKeywordArgumentTwice]
 import typing
 def f(a: 'A', b: 'B') -> None: pass
-f(a=A(), b=B(), a=A()) # E: "f" gets multiple values for keyword argument "a"
-f(b=B(), a=A(), b=B()) # E: "f" gets multiple values for keyword argument "b"
+f(a=A(), b=B(), a=A()) # E: keyword argument repeated
 class A: pass
 class B: pass
 
@@ -94,12 +93,6 @@ f(x=f(), z=None()) # E: None not callable
 f(f, zz=None()) # E: None not callable
 f(x=None)
 
-[case testDuplicateKeywordArgumentWithDynamicallyTypedCallable]
-from typing import Any
-f = None # type: Any
-# Postpone checking to runtime
-f(x=None, x=None)
-
 [case testKeywordArgumentWithFunctionObject]
 from typing import Callable
 f = None # type: Callable[[A, B], None]
@@ -115,10 +108,57 @@ main:4: error: Unexpected keyword argument "b"
 [case testKeywordOnlyArguments]
 import typing
 def f(a: 'A', *, b: 'B' = None) -> None: pass
+def g(a: 'A', *, b: 'B') -> None: pass
+def h(a: 'A', *, b: 'B', aa: 'A') -> None: pass
+def i(a: 'A', *, b: 'B', aa: 'A' = None) -> None: pass
 f(A(), b=B())
 f(b=B(), a=A())
 f(A())
 f(A(), B()) # E: Too many positional arguments for "f"
+g(A(), b=B())
+g(b=B(), a=A())
+g(A()) # E: Missing named argument "b" for function "g"
+g(A(), B()) # E: Too many positional arguments for "g"
+h(A()) # E: Missing named argument "b" for function "h" # E: Missing named argument "aa" for function "h"
+h(A(), b=B()) # E: Missing named argument "aa" for function "h"
+h(A(), aa=A()) # E: Missing named argument "b" for function "h"
+h(A(), b=B(), aa=A())
+h(A(), aa=A(), b=B())
+i(A()) # E: Missing named argument "b" for function "i"
+i(A(), b=B())
+i(A(), aa=A()) # E: Missing named argument "b" for function "i"
+i(A(), b=B(), aa=A())
+i(A(), aa=A(), b=B())
+
+class A: pass
+class B: pass
+
+[case testKeywordOnlyArgumentsFastparse]
+
+import typing
+def f(a: 'A', *, b: 'B' = None) -> None: pass
+def g(a: 'A', *, b: 'B') -> None: pass
+def h(a: 'A', *, b: 'B', aa: 'A') -> None: pass
+def i(a: 'A', *, b: 'B', aa: 'A' = None) -> None: pass
+f(A(), b=B())
+f(b=B(), a=A())
+f(A())
+f(A(), B()) # E: Too many positional arguments for "f"
+g(A(), b=B())
+g(b=B(), a=A())
+g(A()) # E: Missing named argument "b" for function "g"
+g(A(), B()) # E: Too many positional arguments for "g"
+h(A()) # E: Missing named argument "b" for function "h" # E: Missing named argument "aa" for function "h"
+h(A(), b=B()) # E: Missing named argument "aa" for function "h"
+h(A(), aa=A()) # E: Missing named argument "b" for function "h"
+h(A(), b=B(), aa=A())
+h(A(), aa=A(), b=B())
+i(A()) # E: Missing named argument "b" for function "i"
+i(A(), b=B())
+i(A(), aa=A()) # E: Missing named argument "b" for function "i"
+i(A(), b=B(), aa=A())
+i(A(), aa=A(), b=B())
+
 class A: pass
 class B: pass
 
@@ -133,7 +173,7 @@ f(a, **b)
 
 [case testKeywordArgAfterVarArgs]
 import typing
-def f(*a: 'A', b: 'B' = None,) -> None: pass
+def f(*a: 'A', b: 'B' = None) -> None: pass
 f()
 f(A())
 f(A(), A())
@@ -181,7 +221,6 @@ def f( **kwargs: 'A') -> None:
 class A: pass
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testKwargsArgumentInFunctionBodyWithImplicitAny]
 from typing import Dict, Any
@@ -192,7 +231,6 @@ def f(**kwargs) -> None:
 class A: pass
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testCallingFunctionThatAcceptsVarKwargs]
 import typing
@@ -274,26 +312,6 @@ f(z=1)
 f(x=1, y=1)
 f(x='', y=1) # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 f(x=1, y='') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
-[builtins fixtures/dict.pyi]
-
-[case testFunctionWithBareAsteriskAndVarArgs]
-class A: pass
-class B: pass
-def f(x: int, *args: str, *, y: A = None, **kw: B) -> None: pass
-f(1)
-f(1, '', '')
-f(1, y=A(), z=B())
-f(1, '', '', y=A(), z=B())
-f(1, '', '', z=B(), y=A())
-[builtins fixtures/dict.pyi]
-
-[case testFunctionWithBareAsteriskAndVarArgs2]
-class A: pass
-class B: pass
-def f(x: int, *args: str, *, y: A = None, **kw: B) -> None: pass
-f(1, 2) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
-f(1, y=1) # E: Argument 2 to "f" has incompatible type "int"; expected "A"
-f(1, z=1) # E: Argument 2 to "f" has incompatible type "int"; expected "B"
 [builtins fixtures/dict.pyi]
 
 [case testCallsWithStars]

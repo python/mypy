@@ -1,13 +1,22 @@
 .. _common_issues:
 
-Dealing with common issues
-==========================
+Common issues
+=============
 
-Statically typed function bodies are often identical to normal Python
-code, but sometimes you need to do things slightly differently. This
-section has examples of cases when you need to update your code
-to use static typing, and ideas for working
-around issues if the type checker gets confused about your code.
+This section has examples of cases when you need to update your code
+to use static typing, and ideas for working around issues if mypy
+doesn't work as expected. Statically typed code is often identical to
+normal Python code, but sometimes you need to do things slightly
+differently.
+
+Can't install mypy using pip
+----------------------------
+
+If installation fails, you've probably hit one of these issues:
+
+* Mypy needs Python 3.3 or later to run.
+* You may have to run pip like this:
+  ``python3 -m pip install mypy``.
 
 .. _annotations_needed:
 
@@ -17,7 +26,7 @@ No errors reported for obviously wrong code
 There are several common reasons why obviously wrong code is not
 flagged as an error.
 
-- **No annotations on function containing the errors.** Functions that
+- **The function containing the error is not annotated.** Functions that
   do not have any annotations (neither for any argument nor for the
   return type) are not type-checked, and even the most blatant type
   errors (e.g. ``2 + 'a'``) pass silently.  The solution is to add
@@ -62,14 +71,19 @@ flagged as an error.
   e.g. the ``pow()`` builtin returns ``Any`` (see `typeshed issue 285
   <https://github.com/python/typeshed/issues/285>`_ for the reason).
 
-  Another source of unexpected ``Any`` values is the
-  :ref:`"silent-imports" <silent-imports>` flag, which causes
-  everything imported from a module that cannot be located to have the
-  type ``Any`` (including classes inheriting from such).  Sometimes
-  the :ref:`"disallow-subclassing-any" <disallow-subclassing-any>`
-  flag is helpful in diagnosing this.  (Read up about these and other
-  useful flags like :ref:`"almost-silent" <almost-silent>` in
-  :ref:`command-line`.)
+- **Some imports may be silently ignored**.  Another source of
+  unexpected ``Any`` values are the :ref:`"--ignore-missing-imports"
+  <ignore-missing-imports>` and :ref:`"--follow-imports=skip"
+  <follow-imports>` flags.  When you use ``--ignore-missing-imports``,
+  any imported module that cannot be found is silently replaced with
+  ``Any``.  When using ``--follow-imports=skip`` the same is true for
+  modules for which a ``.py`` file is found but that are not specified
+  on the command line.  (If a ``.pyi`` stub is found it is always
+  processed normally, regardless of the value of
+  ``--follow-imports``.)  To help debug the former situation (no
+  module found at all) leave out ``--ignore-missing-imports``; to get
+  clarity about the latter use ``--follow-imports=error``.  You can
+  read up about these and other useful flags in :ref:`command-line`.
 
 .. _silencing_checker:
 
@@ -165,6 +179,52 @@ not support ``sort()``) as a list and sort it in-place:
         x = list(x)
         # Type of x is List[int] here.
         x.sort()  # Okay!
+
+.. _invariance-vs-covariance:
+
+Invariance vs covariance
+------------------------
+
+Most mutable generic collections are invariant, and mypy considers all
+user-defined generic classes invariant by default
+(see :ref:`variance-of-generics` for motivation). This could lead to some
+unexpected errors when combined with type inference. For example:
+
+.. code-block:: python
+
+   class A: ...
+   class B(A): ...
+
+   lst = [A(), A()]  # Inferred type is List[A]
+   new_lst = [B(), B()]  # inferred type is List[B]
+   lst = new_lst  # mypy will complain about this, because List is invariant
+
+Possible strategies in such situations are:
+
+* Use an explicit type annotation:
+
+  .. code-block:: python
+
+     new_lst: List[A] = [B(), B()]
+     lst = new_lst  # OK
+
+* Make a copy of the right hand side:
+
+  .. code-block:: python
+
+     lst = list(new_lst) # Also OK
+
+* Use immutable collections as annotations whenever possible:
+
+  .. code-block:: python
+
+     def f_bad(x: List[A]) -> A:
+         return x[0]
+     f_bad(new_lst) # Fails
+
+     def f_good(x: Sequence[A]) -> A:
+         return x[0]
+     f_good(new_lst) # OK
 
 Declaring a supertype as variable type
 --------------------------------------
@@ -299,7 +359,7 @@ Displaying the type of an expression
 
 You can use ``reveal_type(expr)`` to ask mypy to display the inferred
 static type of an expression. This can be useful when you don't quite
-understand how mypy handles a particlar piece of code. Example:
+understand how mypy handles a particular piece of code. Example:
 
 .. code-block:: python
 
@@ -354,3 +414,19 @@ File ``bar.py``:
 
    The ``TYPE_CHECKING`` constant defined by the ``typing`` module
    is ``False`` at runtime but ``True`` while type checking.
+
+Python 3.5.1 doesn't have ``typing.TYPE_CHECKING``. An alternative is
+to define a constant named ``MYPY`` that has the value ``False``
+at runtime. Mypy considers it to be ``True`` when type checking.
+Here's the above example modified to use ``MYPY``:
+
+.. code-block:: python
+
+   from typing import List
+
+   MYPY = False
+   if MYPY:
+       import bar
+
+   def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
+       return [arg]

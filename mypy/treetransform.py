@@ -246,13 +246,14 @@ class TransformVisitor(NodeVisitor[Node]):
         return ForStmt(self.expr(node.index),
                        self.expr(node.expr),
                        self.block(node.body),
-                       self.optional_block(node.else_body))
+                       self.optional_block(node.else_body),
+                       self.optional_type(node.index_type))
 
     def visit_return_stmt(self, node: ReturnStmt) -> ReturnStmt:
         return ReturnStmt(self.optional_expr(node.expr))
 
     def visit_assert_stmt(self, node: AssertStmt) -> AssertStmt:
-        return AssertStmt(self.expr(node.expr))
+        return AssertStmt(self.expr(node.expr), self.optional_expr(node.msg))
 
     def visit_del_stmt(self, node: DelStmt) -> DelStmt:
         return DelStmt(self.expr(node.expr))
@@ -286,7 +287,8 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_with_stmt(self, node: WithStmt) -> WithStmt:
         return WithStmt(self.expressions(node.expr),
                         self.optional_expressions(node.target),
-                        self.block(node.body))
+                        self.block(node.body),
+                        self.optional_type(node.target_type))
 
     def visit_print_stmt(self, node: PrintStmt) -> PrintStmt:
         return PrintStmt(self.expressions(node.args),
@@ -437,10 +439,11 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_dictionary_comprehension(self, node: DictionaryComprehension
                                        ) -> DictionaryComprehension:
         return DictionaryComprehension(self.expr(node.key), self.expr(node.value),
-                             [self.expr(index) for index in node.indices],
-                             [self.expr(s) for s in node.sequences],
-                             [[self.expr(cond) for cond in conditions]
-                              for conditions in node.condlists])
+                                       [self.expr(index) for index in node.indices],
+                                       [self.expr(s) for s in node.sequences],
+                                       [[self.expr(cond) for cond in conditions]
+                                        for conditions in node.condlists],
+                                       node.is_async)
 
     def visit_generator_expr(self, node: GeneratorExpr) -> GeneratorExpr:
         return self.duplicate_generator(node)
@@ -450,7 +453,8 @@ class TransformVisitor(NodeVisitor[Node]):
                              [self.expr(index) for index in node.indices],
                              [self.expr(s) for s in node.sequences],
                              [[self.expr(cond) for cond in conditions]
-                              for conditions in node.condlists])
+                              for conditions in node.condlists],
+                             node.is_async)
 
     def visit_slice_expr(self, node: SliceExpr) -> SliceExpr:
         return SliceExpr(self.optional_expr(node.begin_index),

@@ -77,6 +77,15 @@ else:
   reveal_type(x)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/bool.pyi]
 
+[case testAnyCanBeNone]
+from typing import Optional, Any
+x = None  # type:  Any
+if x is None:
+  reveal_type(x)  # E: Revealed type is 'builtins.None'
+else:
+  reveal_type(x)  # E: Revealed type is 'Any'
+[builtins fixtures/bool.pyi]
+
 [case testOrCases]
 from typing import Optional
 x = None  # type: Optional[str]
@@ -103,7 +112,7 @@ reveal_type(z2)  # E: Revealed type is 'Union[builtins.int, builtins.str, builti
 
 [case testLambdaReturningNone]
 f = lambda: None
-x = f()
+x = f()  # E: Function does not return a value
 
 [case testNoneArgumentType]
 def f(x: None) -> None: pass
@@ -114,15 +123,13 @@ def f(x: int = None) -> None:
   x + 1  # E: Unsupported left operand type for + (some union)
 f(None)
 [out]
-main: note: In function "f":
 
 [case testInferOptionalFromDefaultNoneWithFastParser]
-# flags: --fast-parser
+
 def f(x: int = None) -> None:
   x + 1  # E: Unsupported left operand type for + (some union)
 f(None)
 [out]
-main: note: In function "f":
 
 [case testInferOptionalFromDefaultNoneComment]
 def f(x=None):
@@ -130,16 +137,14 @@ def f(x=None):
   x + 1  # E: Unsupported left operand type for + (some union)
 f(None)
 [out]
-main: note: In function "f":
 
 [case testInferOptionalFromDefaultNoneCommentWithFastParser]
-# flags: --fast-parser
+
 def f(x=None):
   # type: (int) -> None
   x + 1  # E: Unsupported left operand type for + (some union)
 f(None)
 [out]
-main: note: In function "f":
 
 [case testInferOptionalType]
 x = None
@@ -181,7 +186,7 @@ x = {None: None}
 x["bar"] = 1
 [builtins fixtures/dict.pyi]
 [out]
-main:2: error: Invalid index type "str" for "dict"
+main:2: error: Invalid index type "str" for "dict"; expected type None
 main:2: error: Incompatible types in assignment (expression has type "int", target has type None)
 
 [case testInferNonOptionalDictType]
@@ -204,7 +209,6 @@ class C:
     def __init__(self) -> None:
         self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
 [out]
-main: note: In member "__init__" of class "C":
 
 [case testMultipleAssignmentNoneClassVariableInInit]
 from typing import Optional
@@ -214,7 +218,6 @@ class C:
         self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
         self.y = None  # E: Incompatible types in assignment (expression has type None, variable has type "str")
 [out]
-main: note: In member "__init__" of class "C":
 
 [case testOverloadWithNone]
 from typing import overload
@@ -245,9 +248,7 @@ def f(a: Optional[int], b: Optional[int]) -> None:
 def g(a: int, b: Optional[int]) -> None:
     reveal_type(a or b)
 [out]
-main: note: In function "f":
 main:3: error: Revealed type is 'Union[builtins.int, builtins.None]'
-main: note: In function "g":
 main:5: error: Revealed type is 'Union[builtins.int, builtins.None]'
 
 [case testOptionalTypeOrTypeComplexUnion]
@@ -255,7 +256,6 @@ from typing import Union
 def f(a: Union[int, str, None]) -> None:
     reveal_type(a or 'default')
 [out]
-main: note: In function "f":
 main:3: error: Revealed type is 'Union[builtins.int, builtins.str]'
 
 [case testOptionalTypeOrTypeNoTriggerPlain]
@@ -263,7 +263,6 @@ from typing import Optional
 def f(a: Optional[int], b: int) -> int:
     return b or a
 [out]
-main: note: In function "f":
 main:3: error: Incompatible return value type (got "Optional[int]", expected "int")
 
 [case testOptionalTypeOrTypeNoTriggerTypeVar]
@@ -272,7 +271,6 @@ T = TypeVar('T')
 def f(a: Optional[T], b: T) -> T:
     return b or a
 [out]
-main: note: In function "f":
 main:4: error: Incompatible return value type (got "Optional[T]", expected "T")
 
 [case testNoneOrStringIsString]
@@ -407,7 +405,6 @@ x = None  # type: Optional[int]
 x + 1
 1 + "foo"
 [out]
-main:3: note: In module imported here:
 tmp/b.py:4: error: Unsupported operand types for + ("int" and "str")
 
 [case testOptionalWhitelistPermitsWhitelistedFiles]
@@ -424,7 +421,6 @@ from typing import Optional
 x = None  # type: Optional[int]
 x + 1
 [out]
-main:2: note: In module imported here:
 tmp/a.py:3: error: Unsupported left operand type for + (some union)
 
 [case testNoneContextInference]
@@ -506,8 +502,7 @@ def f() -> None:
 def g() -> int:
   1 + 1  #
 [out]
-main: note: In function "g":
-main:5: note: Missing return statement
+main:5: error: Missing return statement
 
 [case testGenericTypeAliasesOptional]
 from typing import TypeVar, Generic, Optional
@@ -532,3 +527,29 @@ if x is not None:
     x.x = 1 # OK here
 
 [builtins fixtures/ops.pyi]
+
+[case testOptionalLambdaInference]
+from typing import Optional, Callable
+f = None # type: Optional[Callable[[int], None]]
+f = lambda x: None
+f(0)
+[builtins fixtures/function.pyi]
+
+[case testUnionSimplificationWithStrictOptional]
+from typing import Any, TypeVar, Union
+class C(Any): pass
+T = TypeVar('T')
+S = TypeVar('S')
+def u(x: T, y: S) -> Union[S, T]: pass
+a = None # type: Any
+
+# Test both orders
+reveal_type(u(C(), None))  # E: Revealed type is 'Union[builtins.None, __main__.C*]'
+reveal_type(u(None, C()))  # E: Revealed type is 'Union[__main__.C*, builtins.None]'
+
+# This will be fixed later
+reveal_type(u(a, None))  # E: Revealed type is 'Any'
+reveal_type(u(None, a))  # E: Revealed type is 'Any'
+
+reveal_type(u(1, None))  # E: Revealed type is 'Union[builtins.None, builtins.int*]'
+reveal_type(u(None, 1))  # E: Revealed type is 'Union[builtins.int*, builtins.None]'

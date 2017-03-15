@@ -315,7 +315,7 @@ MypyFile:1(
         A
         PassStmt:2())
       ExpressionStmt:3(
-        NameExpr(A [l])))))
+        NameExpr(A [__main__.A@2])))))
 
 [case testReferenceToClassWithinClass]
 class A:
@@ -364,7 +364,7 @@ MypyFile:1(
       AssignmentStmt:3(
         NameExpr(x [l])
         NameExpr(None [builtins.None])
-        A))))
+        __main__.A@2))))
 
 [case testAccessToLocalInOuterScopeWithinNestedClass]
 def f(x):
@@ -550,7 +550,7 @@ class A(None): pass
 class B(Any): pass
 class C(Callable[[], int]): pass
 [out]
-main:2: error: Invalid base class
+main: error: Invalid base class
 main:4: error: Invalid base class
 
 [case testTupleAsBaseClass]

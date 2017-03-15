@@ -43,7 +43,6 @@ g(B.copy(B()))
 [builtins fixtures/bool.pyi]
 
 [case testSelfTypeReturn]
-# flags: --hide-error-context
 from typing import TypeVar, Type
 
 R = TypeVar('R')
@@ -76,7 +75,6 @@ class C:
 [builtins fixtures/bool.pyi]
 
 [case testSelfTypeClass]
-# flags: --hide-error-context
 from typing import TypeVar, Type
 
 T = TypeVar('T', bound='A')
@@ -110,9 +108,9 @@ reveal_type(B.new())  # E: Revealed type is '__main__.B*'
 
 [case testSelfTypeOverride]
 from typing import TypeVar, cast
- 
+
 T = TypeVar('T', bound='A', covariant=True)
- 
+
 class A:
     def copy(self: T) -> T: pass
 
@@ -126,16 +124,15 @@ class C(A):
 reveal_type(C().copy)  # E: Revealed type is 'def () -> __main__.C*'
 reveal_type(C().copy())  # E: Revealed type is '__main__.C*'
 reveal_type(cast(A, C()).copy)  # E: Revealed type is 'def () -> __main__.A*'
-reveal_type(cast(A, C()).copy())  # E: Revealed type is '__main__.A*' 
+reveal_type(cast(A, C()).copy())  # E: Revealed type is '__main__.A*'
 
 [builtins fixtures/bool.pyi]
 
 [case testSelfTypeSuper]
-# flags: --hide-error-context
 from typing import TypeVar, cast
- 
+
 T = TypeVar('T', bound='A', covariant=True)
- 
+
 class A:
     def copy(self: T) -> T: pass
 
@@ -149,9 +146,8 @@ class B(A):
 [builtins fixtures/bool.pyi]
 
 [case testSelfTypeRecursiveBinding]
-# flags: --hide-error-context
 from typing import TypeVar, Callable, Type
- 
+
 T = TypeVar('T', bound='A', covariant=True)
 class A:
     # TODO: This is potentially unsafe, as we use T in an argument type
@@ -176,9 +172,8 @@ reveal_type(B.new)  # E: Revealed type is 'def (factory: def (__main__.B*) -> __
 [builtins fixtures/classmethod.pyi]
 
 [case testSelfTypeBound]
-# flags: --hide-error-context
 from typing import TypeVar, Callable, cast
- 
+
 TA = TypeVar('TA', bound='A', covariant=True)
 
 class A:
@@ -204,16 +199,14 @@ class B(A):
 
 -- # TODO: fail for this
 -- [case testSelfTypeBare]
--- # flags: --hide-error-context
 -- from typing import TypeVar, Type
--- 
+--
 -- T = TypeVar('T', bound='E')
--- 
+--
 -- class E:
 --     def copy(self: T, other: T) -> T: pass
 
 [case testSelfTypeClone]
-# flags: --hide-error-context
 from typing import TypeVar, Type
 
 T = TypeVar('T', bound='C')
@@ -250,7 +243,6 @@ class B(A):
         super(B, self).__init__()
 
 [case testSelfTypeNonsensical]
-# flags: --hide-error-context
 from typing import TypeVar, Type
 
 T = TypeVar('T', bound=str)
@@ -270,7 +262,7 @@ class B:
     @classmethod
     def cfoo(cls: Type[Q]) -> Q:
         return cls()
-    
+
 class C:
     def foo(self: C) -> C: return self
 
@@ -279,21 +271,20 @@ class C:
         return cls()
 
 class D:
-    def foo(self: str) -> str:  # E: The erased type of self 'builtins.str' is not a supertype of its class '__main__.D'
-        return self    
+    def foo(self: Q) -> Q:  # E: The erased type of self '__main__.B' is not a supertype of its class '__main__.D'
+        return self
 
     @staticmethod
     def bar(self: str) -> str:
         return self
 
     @classmethod
-    def cfoo(cls: Type[str]) -> str:  # E: The erased type of self 'Type[builtins.str]' is not a supertype of its class 'Type[__main__.D]'
+    def cfoo(cls: Type[Q]) -> Q:  # E: The erased type of self 'Type[__main__.B]' is not a supertype of its class 'Type[__main__.D]'
         return cls()
 
 [builtins fixtures/classmethod.pyi]
 
 [case testSelfTypeLambdaDefault]
-# flags: --hide-error-context
 from typing import Callable
 class C:
     @classmethod
@@ -309,30 +300,44 @@ class C:
 [builtins fixtures/classmethod.pyi]
 
 [case testSelfTypeNew]
-# flags: --hide-error-context
 from typing import TypeVar, Type
 
-T = TypeVar('T', bound=A)    
-class A: 
+T = TypeVar('T', bound=A)
+class A:
     def __new__(cls: Type[T]) -> T:
         return cls()
+
+    def __init_subclass__(cls: Type[T]) -> None:
+        pass
 
 class B:
     def __new__(cls: Type[T]) -> T:  # E: The erased type of self 'Type[__main__.A]' is not a supertype of its class 'Type[__main__.B]'
         return cls()
 
-class C: 
+    def __init_subclass__(cls: Type[T]) -> None:  # E: The erased type of self 'Type[__main__.A]' is not a supertype of its class 'Type[__main__.B]'
+        pass
+
+class C:
     def __new__(cls: Type[C]) -> C:
         return cls()
+
+    def __init_subclass__(cls: Type[C]) -> None:
+        pass
 
 class D:
     def __new__(cls: D) -> D:  # E: The erased type of self '__main__.D' is not a supertype of its class 'Type[__main__.D]'
         return cls
 
+    def __init_subclass__(cls: D) -> None:  # E: The erased type of self '__main__.D' is not a supertype of its class 'Type[__main__.D]'
+        pass
+
 class E:
     def __new__(cls) -> E:
         reveal_type(cls)  # E: Revealed type is 'def () -> __main__.E'
         return cls()
+
+    def __init_subclass__(cls) -> None:
+        reveal_type(cls)  # E: Revealed type is 'def () -> __main__.E'
 
 [case testSelfTypeProperty]
 from typing import TypeVar
@@ -351,3 +356,11 @@ reveal_type(A().member)  # E: Revealed type is '__main__.A*'
 reveal_type(B().member)  # E: Revealed type is '__main__.B*'
 
 [builtins fixtures/property.pyi]
+
+[case testSelfTypeNotSelfType]
+# Friendlier error messages for common mistakes. See #2950
+class A:
+    def f(x: int) -> None: ...
+    # def g(self: None) -> None: ... see in check-python2.test
+[out]
+main:3: error: Self argument missing for a non-static method (or an invalid type for self)

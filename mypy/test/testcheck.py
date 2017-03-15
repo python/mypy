@@ -6,7 +6,6 @@ import shutil
 import sys
 import time
 import typed_ast
-import typed_ast.ast35
 
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -28,16 +27,13 @@ from mypy import experiments
 # List of files that contain test case descriptions.
 files = [
     'check-basic.test',
+    'check-callable.test',
     'check-classes.test',
-    'check-expressions.test',
     'check-statements.test',
     'check-generics.test',
-    'check-tuples.test',
     'check-dynamic-typing.test',
-    'check-functions.test',
     'check-inference.test',
     'check-inference-context.test',
-    'check-varargs.test',
     'check-kwargs.test',
     'check-overloading.test',
     'check-type-checks.test',
@@ -45,15 +41,14 @@ files = [
     'check-multiple-inheritance.test',
     'check-super.test',
     'check-modules.test',
-    'check-generic-subtyping.test',
     'check-typevar-values.test',
-    'check-python2.test',
     'check-unsupported.test',
     'check-unreachable-code.test',
     'check-unions.test',
     'check-isinstance.test',
     'check-lists.test',
     'check-namedtuple.test',
+    'check-typeddict.test',
     'check-type-aliases.test',
     'check-ignore.test',
     'check-type-promotion.test',
@@ -67,19 +62,22 @@ files = [
     'check-async-await.test',
     'check-newtype.test',
     'check-class-namedtuple.test',
-    'check-columns.test',
     'check-selftype.test',
+    'check-python2.test',
+    'check-columns.test',
+    'check-functions.test',
+    'check-tuples.test',
+    'check-expressions.test',
+    'check-generic-subtyping.test',
+    'check-varargs.test',
+    'check-newsyntax.test',
+    'check-underscores.test',
+    'check-classvar.test',
 ]
-
-if 'annotation' in typed_ast.ast35.Assign._fields:
-    files.append('check-newsyntax.test')
-
-if 'contains_underscores' in typed_ast.ast35.Num._fields:
-    files.append('check-underscores.test')
 
 
 class TypeCheckSuite(DataSuite):
-    def __init__(self, *, update_data=False):
+    def __init__(self, *, update_data: bool = False) -> None:
         self.update_data = update_data
 
     @classmethod
@@ -107,7 +105,11 @@ class TypeCheckSuite(DataSuite):
             finally:
                 experiments.STRICT_OPTIONAL = False
         else:
-            self.run_case_once(testcase)
+            try:
+                old_strict_optional = experiments.STRICT_OPTIONAL
+                self.run_case_once(testcase)
+            finally:
+                experiments.STRICT_OPTIONAL = old_strict_optional
 
     def clear_cache(self) -> None:
         dn = defaults.CACHE_DIR
@@ -115,19 +117,12 @@ class TypeCheckSuite(DataSuite):
         if os.path.exists(dn):
             shutil.rmtree(dn)
 
-    def run_case_once(self, testcase: DataDrivenTestCase, incremental=0) -> None:
+    def run_case_once(self, testcase: DataDrivenTestCase, incremental: int = 0) -> None:
         find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental)
 
-        options = self.parse_options(original_program_text, testcase)
-        options.use_builtins_fixtures = True
-        options.show_traceback = True
-        if 'optional' in testcase.file:
-            options.strict_optional = True
-
         if incremental:
-            options.incremental = True
             if incremental == 1:
                 # In run 1, copy program text to program file.
                 for module_name, program_path, program_text in module_data:
@@ -136,10 +131,10 @@ class TypeCheckSuite(DataSuite):
                             f.write(program_text)
                         break
             elif incremental == 2:
-                # In run 2, copy *.py.next files to *.py files.
+                # In run 2, copy *.next files to * files.
                 for dn, dirs, files in os.walk(os.curdir):
                     for file in files:
-                        if file.endswith('.py.next'):
+                        if file.endswith('.next'):
                             full = os.path.join(dn, file)
                             target = full[:-5]
                             shutil.copy(full, target)
@@ -149,6 +144,15 @@ class TypeCheckSuite(DataSuite):
                             # change. We manually set the mtime to circumvent this.
                             new_time = os.stat(target).st_mtime + 1
                             os.utime(target, times=(new_time, new_time))
+
+        # Parse options after moving files (in case mypy.ini is being moved).
+        options = self.parse_options(original_program_text, testcase, incremental)
+        options.use_builtins_fixtures = True
+        options.show_traceback = True
+        if 'optional' in testcase.file:
+            options.strict_optional = True
+        if incremental:
+            options.incremental = True
 
         sources = []
         for module_name, program_path, program_text in module_data:
@@ -183,7 +187,7 @@ class TypeCheckSuite(DataSuite):
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if incremental and res:
-            if not options.silent_imports and testcase.output is None:
+            if options.follow_imports == 'normal' and testcase.output is None:
                 self.verify_cache(module_data, a, res.manager)
             if incremental == 2:
                 self.check_module_equivalence(
@@ -296,9 +300,14 @@ class TypeCheckSuite(DataSuite):
         else:
             return [('__main__', 'main', program_text)]
 
-    def parse_options(self, program_text: str, testcase: DataDrivenTestCase) -> Options:
+    def parse_options(self, program_text: str, testcase: DataDrivenTestCase,
+                      incremental: int) -> Options:
         options = Options()
         flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
+        if incremental == 2:
+            flags2 = re.search('# flags2: (.*)$', program_text, flags=re.MULTILINE)
+            if flags2:
+                flags = flags2
 
         flag_list = None
         if flags:

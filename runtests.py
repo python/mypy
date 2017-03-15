@@ -28,9 +28,12 @@ from typing import Dict, List, Optional, Set, Iterable
 
 from mypy.waiter import Waiter, LazySubprocess
 from mypy import util
+from mypy.test.config import test_data_prefix
+from mypy.test.testpythoneval import python_eval_files, python_34_eval_files
 
 import itertools
 import os
+import re
 
 
 # Ideally, all tests would be `discover`able so that they can be driven
@@ -148,11 +151,11 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
-    def add_flake8(self, name: str, file: str, cwd: Optional[str] = None) -> None:
-        name = 'lint %s' % name
+    def add_flake8(self, cwd: Optional[str] = None) -> None:
+        name = 'lint'
         if not self.allow(name):
             return
-        largs = ['flake8', file]
+        largs = ['flake8', '-j{}'.format(self.waiter.limit)]
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
@@ -164,21 +167,16 @@ class Driver:
 def add_basic(driver: Driver) -> None:
     if False:
         driver.add_mypy('file setup.py', 'setup.py')
-    driver.add_flake8('file setup.py', 'setup.py')
     driver.add_mypy('file runtests.py', 'runtests.py')
-    driver.add_flake8('file runtests.py', 'runtests.py')
     driver.add_mypy('legacy entry script', 'scripts/mypy')
-    driver.add_flake8('legacy entry script', 'scripts/mypy')
     driver.add_mypy('legacy myunit script', 'scripts/myunit')
-    driver.add_flake8('legacy myunit script', 'scripts/myunit')
     # needs typed_ast installed:
     driver.add_mypy('fast-parse', '--fast-parse', 'test-data/samples/hello.py')
 
 
 def add_selftypecheck(driver: Driver) -> None:
-    driver.add_mypy_package('package mypy', 'mypy', '--fast-parser', '--warn-no-return')
-    driver.add_mypy_package('package mypy', 'mypy', '--fast-parser',
-                            '--config-file', 'mypy_strict_optional.ini')
+    driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_self_check.ini')
+    driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_strict_optional.ini')
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
@@ -203,11 +201,10 @@ def add_imports(driver: Driver) -> None:
         mod = file_to_module(f)
         if not mod.endswith('.__main__'):
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
-        driver.add_flake8('module %s' % mod, f)
 
 
-PYTEST_FILES = ['mypy/test/{}.py'.format(name) for name in [
-    'testcheck',
+PYTEST_FILES = [os.path.join('mypy', 'test', '{}.py'.format(name)) for name in [
+    'testcheck', 'testextensions',
 ]]
 
 
@@ -233,9 +230,27 @@ def add_myunit(driver: Driver) -> None:
 
 
 def add_pythoneval(driver: Driver) -> None:
-    driver.add_python_mod('eval-test', 'mypy.myunit',
-                          '-m', 'mypy.test.testpythoneval', *driver.arglist,
-                         coverage=True)
+    cases = set()
+    case_re = re.compile(r'^\[case ([^\]]+)\]$')
+    for file in python_eval_files + python_34_eval_files:
+        with open(os.path.join(test_data_prefix, file), 'r') as f:
+            for line in f:
+                m = case_re.match(line)
+                if m:
+                    case_name = m.group(1)
+                    assert case_name[:4] == 'test'
+                    cases.add(case_name[4:5])
+
+    for prefix in sorted(cases):
+        driver.add_python_mod(
+            'eval-test-' + prefix,
+            'mypy.myunit',
+            '-m',
+            'mypy.test.testpythoneval',
+            'test_testpythoneval_PythonEvaluationSuite.test' + prefix + '*',
+            *driver.arglist,
+            coverage=True
+        )
 
 
 def add_cmdline(driver: Driver) -> None:
@@ -278,7 +293,7 @@ def add_stdlibsamples(driver: Driver) -> None:
 
 def add_samples(driver: Driver) -> None:
     for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
-        driver.add_mypy('file %s' % f, f, '--fast-parser')
+        driver.add_mypy('file %s' % f, f)
 
 
 def usage(status: int) -> None:
@@ -390,6 +405,7 @@ def main() -> None:
     add_stubs(driver)
     add_stdlibsamples(driver)
     add_samples(driver)
+    driver.add_flake8()
 
     if list_only:
         driver.list_tasks()

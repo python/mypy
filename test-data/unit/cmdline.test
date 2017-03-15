@@ -115,6 +115,18 @@ def f():
     except ZeroDivisionError, err:
         print err
 
+[case testErrorContextConfig]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+show_error_context=True
+[file main.py]
+def f() -> None:
+  0 + ""
+[out]
+main.py: note: In function "f":
+main.py:2: error: Unsupported operand types for + ("int" and "str")
+
 [case testAltConfigFile]
 # cmd: mypy --config-file config.ini main.py
 [file config.ini]
@@ -131,7 +143,6 @@ def f():
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
 [[mypy]
-hide_error_context = True
 disallow_untyped_defs = True
 [[mypy-y*]
 disallow_untyped_defs = False
@@ -161,7 +172,6 @@ x.py:1: error: Function is missing a type annotation
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file mypy.ini]
 [[mypy]
-hide_error_context = True
 [[mypy-*x*]
 disallow_untyped_defs = True
 [[mypy-*y*]
@@ -190,7 +200,6 @@ xx.py:1: error: Function is missing a type annotation
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
 [[mypy]
-hide_error_context = True
 [[mypy-x*,z*]
 disallow_untyped_defs = True
 [file x.py]
@@ -229,9 +238,9 @@ mypy.ini: [mypy]: Unrecognized report type: bad_report
 # cmd: mypy -c pass
 [file mypy.ini]
 [[mypy]
-silent_imports = nah
+ignore_missing_imports = nah
 [out]
-mypy.ini: [mypy]: silent_imports: Not a boolean: nah
+mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 
 [case testConfigErrorNotPerFile]
 # cmd: mypy -c pass
@@ -319,5 +328,189 @@ baz(bar(foo(42)))
 baz(bar(foo('oof')))
 [out]
 file.py:1: error: Cannot find module named 'no_stubs'
-file.py:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+file.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
+
+[case testIgnoreErrorsConfig]
+# cmd: mypy x.py y.py
+[file mypy.ini]
+[[mypy]
+[[mypy-x]
+ignore_errors = True
+[file x.py]
+"" + 0
+[file y.py]
+"" + 0
+[out]
+y.py:1: error: Unsupported operand types for + ("str" and "int")
+
+[case testConfigFollowImportsNormal]
+# cmd: mypy main.py
+[file main.py]
+from a import x
+x + 0
+x + ''  # E
+import a
+a.x + 0
+a.x + ''  # E
+a.y  # E
+a + 0  # E
+[file mypy.ini]
+[[mypy]
+follow_imports = normal
+[file a.py]
+x = 0
+x += ''  # Error reported here
+[out]
+a.py:2: error: Unsupported operand types for + ("int" and "str")
+main.py:3: error: Unsupported operand types for + ("int" and "str")
+main.py:6: error: Unsupported operand types for + ("int" and "str")
+main.py:7: error: "module" has no attribute "y"
+main.py:8: error: Unsupported operand types for + ("module" and "int")
+
+[case testConfigFollowImportsSilent]
+# cmd: mypy main.py
+[file main.py]
+from a import x
+x + ''
+import a
+a.x + ''
+a.y
+a + 0
+[file mypy.ini]
+[[mypy]
+follow_imports = silent
+[file a.py]
+x = 0
+x += ''  # No error reported
+[out]
+main.py:2: error: Unsupported operand types for + ("int" and "str")
+main.py:4: error: Unsupported operand types for + ("int" and "str")
+main.py:5: error: "module" has no attribute "y"
+main.py:6: error: Unsupported operand types for + ("module" and "int")
+
+[case testConfigFollowImportsSkip]
+# cmd: mypy main.py
+[file main.py]
+from a import x
+reveal_type(x)  # Expect Any
+import a
+reveal_type(a.x)  # Expect Any
+[file mypy.ini]
+[[mypy]
+follow_imports = skip
+[file a.py]
+/  # No error reported
+[out]
+main.py:2: error: Revealed type is 'Any'
+main.py:4: error: Revealed type is 'Any'
+
+[case testConfigFollowImportsError]
+# cmd: mypy main.py
+[file main.py]
+from a import x
+reveal_type(x)  # Expect Any
+import a  # Error reported here
+reveal_type(a.x)  # Expect Any
+[file mypy.ini]
+[[mypy]
+follow_imports = error
+[file a.py]
+/  # No error reported
+[out]
+main.py:1: note: Import of 'a' ignored
+main.py:1: note: (Using --follow-imports=error, module not passed on command line)
+main.py:2: error: Revealed type is 'Any'
+main.py:4: error: Revealed type is 'Any'
+
+[case testConfigFollowImportsSelective]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+[[mypy-normal]
+follow_imports = normal
+[[mypy-silent]
+follow_imports = silent
+[[mypy-skip]
+follow_imports = skip
+[[mypy-error]
+follow_imports = error
+[file main.py]
+import normal
+import silent
+import skip
+import error
+reveal_type(normal.x)
+reveal_type(silent.x)
+reveal_type(skip)
+reveal_type(error)
+[file normal.py]
+x = 0
+x += ''
+[file silent.py]
+x = 0
+x += ''
+[file skip.py]
+bla bla
+[file error.py]
+bla bla
+[out]
+main.py:4: note: Import of 'error' ignored
+main.py:4: note: (Using --follow-imports=error, module not passed on command line)
+normal.py:2: error: Unsupported operand types for + ("int" and "str")
+main.py:5: error: Revealed type is 'builtins.int'
+main.py:6: error: Revealed type is 'builtins.int'
+main.py:7: error: Revealed type is 'Any'
+main.py:8: error: Revealed type is 'Any'
+
+[case testConfigSilentMissingImportsOff]
+# cmd: mypy main.py
+[file main.py]
+import missing  # Expect error here
+reveal_type(missing.x)  # Expect Any
+[file mypy.ini]
+[[mypy]
+ignore_missing_imports = False
+[out]
+main.py:1: error: Cannot find module named 'missing'
+main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main.py:2: error: Revealed type is 'Any'
+
+[case testConfigSilentMissingImportsOn]
+# cmd: mypy main.py
+[file main.py]
+import missing  # No error here
+reveal_type(missing.x)  # Expect Any
+[file mypy.ini]
+[[mypy]
+ignore_missing_imports = True
+[out]
+main.py:2: error: Revealed type is 'Any'
+
+[case testDotInFilenameOKScript]
+# cmd: mypy a.b.py c.d.pyi
+[file a.b.py]
+undef
+[file c.d.pyi]
+whatever
+[out]
+c.d.pyi:1: error: Name 'whatever' is not defined
+a.b.py:1: error: Name 'undef' is not defined
+
+[case testDotInFilenameOKFolder]
+# cmd: mypy my.folder
+[file my.folder/tst.py]
+undef
+[out]
+my.folder/tst.py:1: error: Name 'undef' is not defined
+
+[case testDotInFilenameNoImport]
+# cmd: mypy main.py
+[file main.py]
+import a.b
+[file a.b.py]
+whatever
+[out]
+main.py:1: error: Cannot find module named 'a'
+main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main.py:1: error: Cannot find module named 'a.b'

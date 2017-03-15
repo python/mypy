@@ -22,4 +22,6 @@ class function: pass
 
 class ellipsis: pass
 
+def print(*args, end=''): pass
+
 # Definition of None is implicit

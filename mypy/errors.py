@@ -2,8 +2,9 @@ import os.path
 import sys
 import traceback
 from collections import OrderedDict, defaultdict
+from contextlib import contextmanager
 
-from typing import Tuple, List, TypeVar, Set, Dict
+from typing import Tuple, List, TypeVar, Set, Dict, Iterator
 
 from mypy.options import Options
 
@@ -33,7 +34,7 @@ class ErrorInfo:
     # The column number related to this error with file.
     column = 0   # -1 if unknown
 
-    # Either 'error' or 'note'.
+    # Either 'error', 'note', or 'warning'.
     severity = ''
 
     # The error message.
@@ -47,7 +48,8 @@ class ErrorInfo:
 
     def __init__(self, import_ctx: List[Tuple[str, int]], file: str, typ: str,
                  function_or_member: str, line: int, column: int, severity: str,
-                 message: str, blocker: bool, only_once: bool) -> None:
+                 message: str, blocker: bool, only_once: bool,
+                 origin: Tuple[str, int] = None) -> None:
         self.import_ctx = import_ctx
         self.file = file
         self.type = typ
@@ -58,6 +60,7 @@ class ErrorInfo:
         self.message = message
         self.blocker = blocker
         self.only_once = only_once
+        self.origin = origin or (file, line)
 
 
 class Errors:
@@ -72,6 +75,9 @@ class Errors:
 
     # Current error context: nested import context/stack, as a list of (path, line) pairs.
     import_ctx = None  # type: List[Tuple[str, int]]
+
+    # Set of files with errors.
+    error_files = None  # type: Set[str]
 
     # Path name prefix that is removed from all paths, if set.
     ignore_prefix = None  # type: str
@@ -91,29 +97,34 @@ class Errors:
     # Lines on which an error was actually ignored.
     used_ignored_lines = None  # type: Dict[str, Set[int]]
 
+    # Files where all errors should be ignored.
+    ignored_files = None  # type: Set[str]
+
     # Collection of reported only_once messages.
     only_once_messages = None  # type: Set[str]
 
-    # Set to True to suppress "In function "foo":" messages.
-    hide_error_context = False  # type: bool
+    # Set to True to show "In function "foo":" messages.
+    show_error_context = False  # type: bool
 
     # Set to True to show column numbers in error messages
     show_column_numbers = False  # type: bool
 
-    def __init__(self, hide_error_context: bool = False,
+    def __init__(self, show_error_context: bool = False,
                  show_column_numbers: bool = False) -> None:
         self.error_info = []
         self.import_ctx = []
+        self.error_files = set()
         self.type_name = [None]
         self.function_or_member = [None]
         self.ignored_lines = OrderedDict()
         self.used_ignored_lines = defaultdict(set)
+        self.ignored_files = set()
         self.only_once_messages = set()
-        self.hide_error_context = hide_error_context
+        self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
 
     def copy(self) -> 'Errors':
-        new = Errors(self.hide_error_context, self.show_column_numbers)
+        new = Errors(self.show_error_context, self.show_column_numbers)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
@@ -142,8 +153,12 @@ class Errors:
         #    processed.
         self.file = file
 
-    def set_file_ignored_lines(self, file: str, ignored_lines: Set[int] = None) -> None:
+    def set_file_ignored_lines(self, file: str,
+                               ignored_lines: Set[int] = None,
+                               ignore_all: bool = False) -> None:
         self.ignored_lines[file] = ignored_lines
+        if ignore_all:
+            self.ignored_files.add(file)
 
     def push_function(self, name: str) -> None:
         """Set the current function or member short name (it can be None)."""
@@ -152,12 +167,25 @@ class Errors:
     def pop_function(self) -> None:
         self.function_or_member.pop()
 
+    @contextmanager
+    def enter_function(self, name: str) -> Iterator[None]:
+        self.push_function(name)
+        yield
+        self.pop_function()
+
     def push_type(self, name: str) -> None:
         """Set the short name of the current type (it can be None)."""
         self.type_name.append(name)
 
     def pop_type(self) -> None:
         self.type_name.pop()
+
+    @contextmanager
+    def enter_type(self, name: str) -> Iterator[None]:
+        """Set the short name of the current type (it can be None)."""
+        self.push_type(name)
+        yield
+        self.pop_type()
 
     def import_context(self) -> List[Tuple[str, int]]:
         """Return a copy of the import context."""
@@ -168,7 +196,8 @@ class Errors:
         self.import_ctx = ctx[:]
 
     def report(self, line: int, column: int, message: str, blocker: bool = False,
-               severity: str = 'error', file: str = None, only_once: bool = False) -> None:
+               severity: str = 'error', file: str = None, only_once: bool = False,
+               origin_line: int = None) -> None:
         """Report message at the given line using the current error context.
 
         Args:
@@ -178,6 +207,7 @@ class Errors:
             severity: 'error', 'note' or 'warning'
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
+            origin_line: if non-None, override current context as origin
         """
         type = self.type_name[-1]
         if len(self.function_or_member) > 2:
@@ -186,21 +216,25 @@ class Errors:
             file = self.file
         info = ErrorInfo(self.import_context(), file, type,
                          self.function_or_member[-1], line, column, severity, message,
-                         blocker, only_once)
+                         blocker, only_once,
+                         origin=(self.file, origin_line) if origin_line else None)
         self.add_error_info(info)
 
     def add_error_info(self, info: ErrorInfo) -> None:
-        if (info.file in self.ignored_lines and
-                info.line in self.ignored_lines[info.file] and
-                not info.blocker):
-            # Annotation requests us to ignore all errors on this line.
-            self.used_ignored_lines[info.file].add(info.line)
-            return
+        (file, line) = info.origin
+        if not info.blocker:  # Blockers cannot be ignored
+            if file in self.ignored_lines and line in self.ignored_lines[file]:
+                # Annotation requests us to ignore all errors on this line.
+                self.used_ignored_lines[file].add(line)
+                return
+            if file in self.ignored_files:
+                return
         if info.only_once:
             if info.message in self.only_once_messages:
                 return
             self.only_once_messages.add(info.message)
         self.error_info.append(info)
+        self.error_files.add(file)
 
     def generate_unused_ignore_notes(self) -> None:
         for file, ignored_lines in self.ignored_lines.items():
@@ -227,6 +261,10 @@ class Errors:
     def is_blockers(self) -> bool:
         """Are the any errors that are blockers?"""
         return any(err for err in self.error_info if err.blocker)
+
+    def is_errors_for_file(self, file: str) -> bool:
+        """Are there any errors for the given file?"""
+        return file in self.error_files
 
     def raise_error(self) -> None:
         """Raise a CompileError with the generated messages.
@@ -277,7 +315,7 @@ class Errors:
 
         for e in errors:
             # Report module import context, if different from previous message.
-            if self.hide_error_context:
+            if not self.show_error_context:
                 pass
             elif e.import_ctx != prev_import_context:
                 last = len(e.import_ctx) - 1
@@ -300,7 +338,7 @@ class Errors:
             file = self.simplify_path(e.file)
 
             # Report context within a source file.
-            if self.hide_error_context:
+            if not self.show_error_context:
                 pass
             elif (e.function_or_member != prev_function_or_member or
                     e.type != prev_type):

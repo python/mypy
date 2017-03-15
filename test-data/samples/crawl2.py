@@ -17,7 +17,7 @@ import re
 import sys
 import time
 import urllib.parse
-from typing import Any, Awaitable, IO, Optional, Sequence, Set, Tuple
+from typing import Any, Awaitable, IO, Optional, Sequence, Set, Tuple, List, Dict
 
 
 ARGS = argparse.ArgumentParser(description="Web crawler")
@@ -848,5 +848,5 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO) # type: ignore
     main()

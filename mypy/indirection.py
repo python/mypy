@@ -87,6 +87,9 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     def visit_tuple_type(self, t: types.TupleType) -> Set[str]:
         return self._visit(*t.items) | self._visit(t.fallback)
 
+    def visit_typeddict_type(self, t: types.TypedDictType) -> Set[str]:
+        return self._visit(*t.items.values()) | self._visit(t.fallback)
+
     def visit_star_type(self, t: types.StarType) -> Set[str]:
         return set()
 
