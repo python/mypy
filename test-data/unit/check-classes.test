@@ -2217,6 +2217,20 @@ C1[Type[Any]], C2[type] # both these should not fail
 [builtins fixtures/list.pyi]
 [out]
 
+[case testTypeEquivalentTypeAnyEdgeCase]
+class C:
+    pass
+
+class M(type):
+    def __init__(cls, x) -> None:
+        type.__init__(cls, x)
+
+class Mbad(type):
+    def __init__(cls, x) -> None:
+        type.__init__(C(), x) # E: Argument 1 to "__init__" of "type" has incompatible type "C"; expected "type"
+[builtins fixtures/primitives.pyi]
+[out]
+
 [case testTypeMatchesOverloadedFunctions]
 from typing import Type, overload, Union
 
