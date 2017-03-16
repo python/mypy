@@ -261,6 +261,12 @@ may provide the necessary dependencies.
 To use the feature, pass e.g. `--txt-report "$(mktemp -d)"`.
 
 
+Writing tests
+-------------
+
+See [Unit Test README.md](test-data/unit/README.md)
+
+
 Development status
 ------------------
 

@@ -1,0 +1,95 @@
+Tests
+=====
+
+
+Unit tests
+----------
+
+To add a simple unit test for a new feature you developed, open or create a
+`test-data/unit/check-*.test` file with a name that roughly relates to the
+feature you added.
+
+Add the test in this format anywhere in the file:
+
+    [case testNewSyntaxBasics]
+    # flags: --python-version 3.6
+    x: int
+    x = 5
+    y: int = 5
+    
+    a: str
+    a = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    b: str = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    
+    zzz: int
+    zzz: str  # E: Name 'zzz' already defined
+
+- no code here is executed, just type checked
+- `# flags: ` indicates which flags to use for this unit test
+- `# E: abc...` indicates that this line should result in type check error
+with text "abc..."
+- note a space after `E:` and `flags:`
+- lines without `# E: ` should cause no type check errors
+- optional `[builtins]` tells the type checker to use stubs from the indicated
+file (see Fixtures section below)
+- optional `[out]` is an alternative to the "# E:" notation: it indicates that
+any text after it contains the expected type checking error messages.
+usually, "E: " is preferred because it makes it easier to associate the
+errors with the code generating them at a glance, and to change the code of
+the test without having to change line numbers in `[out]`
+- an empty `[out]` section has no effect
+
+
+Fixtures
+--------
+
+The unit tests use minimal stubs for builtins, so a lot of operations are not
+possible. You should generally define any needed classes within the test case
+instead of relying on builtins, though clearly this is not always an option
+(see below for more about stubs in test cases). This way tests run much
+faster and don't break if the stubs change. If your test crashes mysteriously
+even though the code works when run manually, you should make sure you have
+all the stubs you need for your test case, including built-in classes such as
+`list` or `dict`, as these are not included by default.
+
+    - The builtins used by default in unit tests live in
+    `test-data/unit/lib-stub`.
+
+    - Individual test cases can override the stubs by using `[builtins
+    fixtures/foo.py]`; this targets files in `test-data/unit/fixtures`; feel
+    free to modify existing files there or create new ones as you deem fit.
+
+    - You are also free to add additional stubs to this directory, but
+    generally don't update files in `lib-stub` without first discussing the
+    addition with other mypy developers, as additions could slow down the test
+    suite.
+
+
+Test suites
+-----------
+
+The file `runtests.py` runs all the tests. Test suites for individual
+components are in the files `mypy/test/test*.py`. You can run many of these
+individually by doing `runtests.py testfoobar`. Type checker test cases
+(`testcheck.py`) have been migrated to pytest and you can run them using
+`py.test mypy`. (We are planning to migrate all test cases to pytest
+eventually -- any help is appreciated here.)
+
+Many test suites store test case descriptions in text files
+(`test-data/unit/*.test`). The module `mypy.test.data` parses these
+descriptions. The package `mypy.myunit` contains the test framework used for
+the non-checker test cases.
+
+Notes about test cases:
+
+    - Python evaluation test cases are a little different from unit tests
+    (`mypy/test/testpythoneval.py`, `test-data/unit/pythoneval.test`). These
+    type check programs and run them. Unlike the unit tests, these use the
+    full builtins and library stubs instead of minimal ones. Run them using
+    `runtests.py testpythoneval`.
+
+More things (this should be expanded):
+
+    - You can run just a subset of tests by giving a wildcard argument, e.g.
+    `runtests.py unit-test -a "*Overload*"` to run all unit tests with
+    `Overload` as a substring.
