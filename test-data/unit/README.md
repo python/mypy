@@ -25,13 +25,13 @@ Add the test in this format anywhere in the file:
     zzz: str  # E: Name 'zzz' already defined
 
 - no code here is executed, just type checked
-- `# flags: ` indicates which flags to use for this unit test
+- optional `# flags: ` indicates which flags to use for this unit test
 - `# E: abc...` indicates that this line should result in type check error
 with text "abc..."
 - note a space after `E:` and `flags:`
 - lines without `# E: ` should cause no type check errors
-- optional `[builtins]` tells the type checker to use stubs from the indicated
-file (see Fixtures section below)
+- optional `[builtins fixtures/...]` tells the type checker to use
+stubs from the indicated file (see Fixtures section below)
 - optional `[out]` is an alternative to the "# E:" notation: it indicates that
 any text after it contains the expected type checking error messages.
 usually, "E: " is preferred because it makes it easier to associate the
@@ -56,7 +56,7 @@ all the stubs you need for your test case, including built-in classes such as
     `test-data/unit/lib-stub`.
 
     - Individual test cases can override the stubs by using `[builtins
-    fixtures/foo.py]`; this targets files in `test-data/unit/fixtures`; feel
+    fixtures/foo.pyi]`; this targets files in `test-data/unit/fixtures`; feel
     free to modify existing files there or create new ones as you deem fit.
 
     - You are also free to add additional stubs to this directory, but
@@ -136,6 +136,20 @@ Python evaluation test cases are a little different from unit tests
 type check programs and run them. Unlike the unit tests, these use the
 full builtins and library stubs instead of minimal ones. Run them using
 `runtests.py testpythoneval`.
+
+`runtests.py` by default runs tests in parallel using as many processes as
+there are logical cores the `runtests.py` process is allowed to use (on
+Windows this information isn't available, so 2 processes are used by
+default). You can change the number of workers using `-j` option.
+
+All pytest tests run as a single test from the perspective of `runtests.py`,
+and so `-j` option has no effect on them. Instead, `pytest` itself determines
+the number of processes to use. The default (set in `./pytest.ini`) is the
+number of logical cores; this can be overridden using `-n` option.
+
+Note that running more processes than logical cores is likely to
+significantly decrease performance; the relevant count is the number of
+processes used by `runtests.py` plus those used by `pytest`.
 
 
 Coverage reports
