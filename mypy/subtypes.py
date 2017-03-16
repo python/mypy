@@ -160,7 +160,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
             item = right.item
             if isinstance(item, TupleType):
                 item = item.fallback
-            return isinstance(item, Instance) and is_subtype(left, item.type.metaclass_type)
+            if isinstance(item, Instance):
+                return is_subtype(left, item.type.metaclass_type)
+            elif isinstance(item, AnyType):
+                # Special case: all metaclasses are subtypes of Type[Any]
+                mro = left.type.mro or []
+                return any(base.fullname() == 'builtins.type' for base in mro)
+            else:
+                return False
         else:
             return False
 
