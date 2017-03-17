@@ -407,17 +407,17 @@ def main() -> None:
     driver.prepend_path('PYTHONPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [join(driver.cwd, 'lib-typing', v) for v in driver.versions])
 
+    driver.add_flake8()
+    add_pytest(driver)
     add_pythoneval(driver)
     add_cmdline(driver)
     add_basic(driver)
     add_selftypecheck(driver)
-    add_pytest(driver)
     add_myunit(driver)
     add_imports(driver)
     add_stubs(driver)
     add_stdlibsamples(driver)
     add_samples(driver)
-    driver.add_flake8()
 
     if list_only:
         driver.list_tasks()
