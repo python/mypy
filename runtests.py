@@ -51,6 +51,7 @@ class Driver:
         self.pyt_arglist = pyt_arglist
         self.verbosity = verbosity
         self.waiter = Waiter(verbosity=verbosity, limit=parallel_limit, xfail=xfail)
+        self.sequential = Waiter(verbosity=verbosity, limit=1, xfail=xfail)
         self.versions = get_versions()
         self.cwd = os.getcwd()
         self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
@@ -109,7 +110,7 @@ class Driver:
         else:
             args = [sys.executable, '-m', 'pytest'] + pytest_args
 
-        self.waiter.add(LazySubprocess(full_name, args, env=self.env))
+        self.sequential.add(LazySubprocess(full_name, args, env=self.env))
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
@@ -157,12 +158,13 @@ class Driver:
         name = 'lint'
         if not self.allow(name):
             return
-        largs = ['flake8', '-j{}'.format(self.waiter.limit)]
+        largs = ['flake8', '-j1']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
     def list_tasks(self) -> None:
-        for id, task in enumerate(self.waiter.queue):
+        for id, task in enumerate(itertools.chain(self.sequential.queue,
+                                                  self.waiter.queue)):
             print('{id}:{task}'.format(id=id, task=task.name))
 
 
@@ -211,8 +213,7 @@ PYTEST_FILES = [os.path.join('mypy', 'test', '{}.py'.format(name)) for name in [
 
 
 def add_pytest(driver: Driver) -> None:
-    for f in PYTEST_FILES:
-        driver.add_pytest(f, [f] + driver.arglist + driver.pyt_arglist, True)
+    driver.add_pytest('pytest', PYTEST_FILES + driver.arglist + driver.pyt_arglist, True)
 
 
 def add_myunit(driver: Driver) -> None:
@@ -423,7 +424,7 @@ def main() -> None:
         driver.list_tasks()
         return
 
-    exit_code = driver.waiter.run()
+    exit_code = driver.sequential.run() & driver.waiter.run()
     t1 = time.perf_counter()
     print('total runtime:', t1 - t0, 'sec')
 
