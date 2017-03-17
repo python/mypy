@@ -42,11 +42,13 @@ import re
 class Driver:
 
     def __init__(self, whitelist: List[str], blacklist: List[str],
-            arglist: List[str], verbosity: int, parallel_limit: int,
+            arglist: List[str], pyt_arglist: List[str],
+            verbosity: int, parallel_limit: int,
             xfail: List[str], coverage: bool) -> None:
         self.whitelist = whitelist
         self.blacklist = blacklist
         self.arglist = arglist
+        self.pyt_arglist = pyt_arglist
         self.verbosity = verbosity
         self.waiter = Waiter(verbosity=verbosity, limit=parallel_limit, xfail=xfail)
         self.versions = get_versions()
@@ -210,7 +212,7 @@ PYTEST_FILES = [os.path.join('mypy', 'test', '{}.py'.format(name)) for name in [
 
 def add_pytest(driver: Driver) -> None:
     for f in PYTEST_FILES:
-        driver.add_pytest(f, [f] + driver.arglist, True)
+        driver.add_pytest(f, [f] + driver.arglist + driver.pyt_arglist, True)
 
 
 def add_myunit(driver: Driver) -> None:
@@ -297,7 +299,8 @@ def add_samples(driver: Driver) -> None:
 
 
 def usage(status: int) -> None:
-    print('Usage: %s [-h | -v | -q | [-x] FILTER | -a ARG] ... [-- FILTER ...]' % sys.argv[0])
+    print('Usage: %s [-h | -v | -q | [-x] FILTER | -a ARG | -p ARG] ... [-- FILTER ...]'
+          % sys.argv[0])
     print()
     print('Run mypy tests. If given no arguments, run all tests.')
     print()
@@ -312,6 +315,7 @@ def usage(status: int) -> None:
     print('  -q, --quiet            decrease driver verbosity')
     print('  -jN                    run N tasks at once (default: one per CPU)')
     print('  -a, --argument ARG     pass an argument to myunit tasks')
+    print('  -p, --pytest_arg ARG   pass an argument to pytest tasks')
     print('                         (-v: verbose; glob pattern: filter by test name)')
     print('  -l, --list             list included tasks (after filtering) and exit')
     print('  FILTER                 include tasks matching FILTER')
@@ -337,6 +341,8 @@ def sanity() -> None:
 
 
 def main() -> None:
+    import time
+    t0 = time.perf_counter()
     sanity()
 
     verbosity = 0
@@ -344,13 +350,14 @@ def main() -> None:
     whitelist = []  # type: List[str]
     blacklist = []  # type: List[str]
     arglist = []  # type: List[str]
+    pyt_arglist = []  # type: List[str]
     list_only = False
     coverage = False
 
     allow_opts = True
     curlist = whitelist
     for a in sys.argv[1:]:
-        if curlist is not arglist and allow_opts and a.startswith('-'):
+        if not (curlist is arglist or curlist is pyt_arglist) and allow_opts and a.startswith('-'):
             if curlist is not whitelist:
                 break
             if a == '--':
@@ -368,6 +375,8 @@ def main() -> None:
                 curlist = blacklist
             elif a == '-a' or a == '--argument':
                 curlist = arglist
+            elif a == '-p' or a == '--pytest_arg':
+                curlist = pyt_arglist
             elif a == '-l' or a == '--list':
                 list_only = True
             elif a == '-c' or a == '--coverage':
@@ -383,12 +392,15 @@ def main() -> None:
         sys.exit('-x must be followed by a filter')
     if curlist is arglist:
         sys.exit('-a must be followed by an argument')
+    if curlist is pyt_arglist:
+        sys.exit('-p must be followed by an argument')
     # empty string is a substring of all names
     if not whitelist:
         whitelist.append('')
 
-    driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
-            verbosity=verbosity, parallel_limit=parallel_limit, xfail=[], coverage=coverage)
+    driver = Driver(whitelist=whitelist, blacklist=blacklist,
+                    arglist=arglist, pyt_arglist=pyt_arglist, verbosity=verbosity,
+                    parallel_limit=parallel_limit, xfail=[], coverage=coverage)
 
     driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
     driver.prepend_path('MYPYPATH', [driver.cwd])
@@ -412,6 +424,8 @@ def main() -> None:
         return
 
     exit_code = driver.waiter.run()
+    t1 = time.perf_counter()
+    print('total runtime:', t1 - t0, 'sec')
 
     if verbosity >= 1:
         times = driver.waiter.times2 if verbosity >= 2 else driver.waiter.times1
