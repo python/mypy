@@ -1059,9 +1059,10 @@ b'%a' % 1  # E: Format character 'a' is only supported in Python 3
 # flags: --python-version 3.4
 b'%b' % 1  # E: Unsupported left operand type for % ("bytes")
 
-[case testBytesInterpolationB]
+[case testBytesInterpolation]
 b'%b' % 1  # E: Incompatible types in string interpolation (expression has type "int", placeholder has type "bytes")
 b'%b' % b'1'
+b'%a' % 3
 
 [case testStringInterpolationWidth]
 '%2f' % 3.14
