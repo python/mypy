@@ -17,6 +17,8 @@ if False:
 from mypy import messages
 from mypy.messages import MessageBuilder
 
+FormatStringExpr = Union[StrExpr, BytesExpr, UnicodeExpr]
+
 
 class ConversionSpecifier:
     def __init__(self, key: str, flags: str, width: str, precision: str, type: str) -> None:
@@ -57,27 +59,31 @@ class StringFormatterChecker:
 
     # TODO: In Python 3, the bytes formatting has a more restricted set of options
     # compared to string formatting.
-    # TODO: Bytes formatting in Python 3 is only supported in 3.5 and up.
     def check_str_interpolation(self,
-                                str: Union[StrExpr, BytesExpr, UnicodeExpr],
+                                expr: FormatStringExpr,
                                 replacements: Expression) -> Type:
         """Check the types of the 'replacements' in a string interpolation
         expression: str % replacements
         """
-        specifiers = self.parse_conversion_specifiers(str.value)
-        has_mapping_keys = self.analyze_conversion_specifiers(specifiers, str)
+        specifiers = self.parse_conversion_specifiers(expr.value)
+        has_mapping_keys = self.analyze_conversion_specifiers(specifiers, expr)
+        if isinstance(expr, BytesExpr) and (3, 0) <= self.chk.options.python_version < (3, 5):
+            self.msg.fail('Bytes formatting is only supported in Python 3.5 and later',
+                          replacements)
+            return AnyType()
+
         if has_mapping_keys is None:
             pass  # Error was reported
         elif has_mapping_keys:
-            self.check_mapping_str_interpolation(specifiers, replacements)
+            self.check_mapping_str_interpolation(specifiers, replacements, expr)
         else:
-            self.check_simple_str_interpolation(specifiers, replacements)
+            self.check_simple_str_interpolation(specifiers, replacements, expr)
 
-        if isinstance(str, BytesExpr):
+        if isinstance(expr, BytesExpr):
             return self.named_type('builtins.bytes')
-        elif isinstance(str, UnicodeExpr):
+        elif isinstance(expr, UnicodeExpr):
             return self.named_type('builtins.unicode')
-        elif isinstance(str, StrExpr):
+        elif isinstance(expr, StrExpr):
             return self.named_type('builtins.str')
         else:
             assert False
@@ -115,8 +121,8 @@ class StringFormatterChecker:
         return has_key
 
     def check_simple_str_interpolation(self, specifiers: List[ConversionSpecifier],
-                                       replacements: Expression) -> None:
-        checkers = self.build_replacement_checkers(specifiers, replacements)
+                                       replacements: Expression, expr: FormatStringExpr) -> None:
+        checkers = self.build_replacement_checkers(specifiers, replacements, expr)
         if checkers is None:
             return
 
@@ -151,7 +157,8 @@ class StringFormatterChecker:
                     check_type(rep_type)
 
     def check_mapping_str_interpolation(self, specifiers: List[ConversionSpecifier],
-                                       replacements: Expression) -> None:
+                                        replacements: Expression,
+                                        expr: FormatStringExpr) -> None:
         if (isinstance(replacements, DictExpr) and
                 all(isinstance(k, (StrExpr, BytesExpr))
                     for k, v in replacements.items)):
@@ -168,7 +175,7 @@ class StringFormatterChecker:
                     self.msg.key_not_in_mapping(specifier.key, replacements)
                     return
                 rep_type = mapping[specifier.key]
-                expected_type = self.conversion_type(specifier.type, replacements)
+                expected_type = self.conversion_type(specifier.type, replacements, expr)
                 if expected_type is None:
                     return
                 self.chk.check_subtype(rep_type, expected_type, replacements,
@@ -184,19 +191,20 @@ class StringFormatterChecker:
                                    'expression has type', 'expected type for mapping is')
 
     def build_replacement_checkers(self, specifiers: List[ConversionSpecifier],
-                                   context: Context) -> List[Tuple[Callable[[Expression], None],
-                                                                   Callable[[Type], None]]]:
+                                   context: Context, expr: FormatStringExpr
+                                   ) -> List[Tuple[Callable[[Expression], None],
+                                                   Callable[[Type], None]]]:
         checkers = []  # type: List[Tuple[Callable[[Expression], None], Callable[[Type], None]]]
         for specifier in specifiers:
-            checker = self.replacement_checkers(specifier, context)
+            checker = self.replacement_checkers(specifier, context, expr)
             if checker is None:
                 return None
             checkers.extend(checker)
         return checkers
 
-    def replacement_checkers(self, specifier: ConversionSpecifier,
-                             context: Context) -> List[Tuple[Callable[[Expression], None],
-                                                             Callable[[Type], None]]]:
+    def replacement_checkers(self, specifier: ConversionSpecifier, context: Context,
+                             expr: FormatStringExpr) -> List[Tuple[Callable[[Expression], None],
+                                                                   Callable[[Type], None]]]:
         """Returns a list of tuples of two functions that check whether a replacement is
         of the right type for the specifier. The first functions take a node and checks
         its type in the right type context. The second function just checks a type.
@@ -208,12 +216,12 @@ class StringFormatterChecker:
         if specifier.precision == '*':
             checkers.append(self.checkers_for_star(context))
         if specifier.type == 'c':
-            c = self.checkers_for_c_type(specifier.type, context)
+            c = self.checkers_for_c_type(specifier.type, context, expr)
             if c is None:
                 return None
             checkers.append(c)
         elif specifier.type != '%':
-            c = self.checkers_for_regular_type(specifier.type, context)
+            c = self.checkers_for_regular_type(specifier.type, context, expr)
             if c is None:
                 return None
             checkers.append(c)
@@ -237,12 +245,13 @@ class StringFormatterChecker:
         return check_expr, check_type
 
     def checkers_for_regular_type(self, type: str,
-                                  context: Context) -> Tuple[Callable[[Expression], None],
-                                                             Callable[[Type], None]]:
+                                  context: Context,
+                                  expr: FormatStringExpr) -> Tuple[Callable[[Expression], None],
+                                                                   Callable[[Type], None]]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type'. Return None in case of an
         """
-        expected_type = self.conversion_type(type, context)
+        expected_type = self.conversion_type(type, context, expr)
         if expected_type is None:
             return None
 
@@ -258,12 +267,13 @@ class StringFormatterChecker:
         return check_expr, check_type
 
     def checkers_for_c_type(self, type: str,
-                            context: Context) -> Tuple[Callable[[Expression], None],
-                                                       Callable[[Type], None]]:
+                            context: Context,
+                            expr: FormatStringExpr) -> Tuple[Callable[[Expression], None],
+                                                             Callable[[Type], None]]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type' that is a character type
         """
-        expected_type = self.conversion_type(type, context)
+        expected_type = self.conversion_type(type, context, expr)
         if expected_type is None:
             return None
 
@@ -281,14 +291,28 @@ class StringFormatterChecker:
 
         return check_expr, check_type
 
-    def conversion_type(self, p: str, context: Context) -> Type:
+    def conversion_type(self, p: str, context: Context, expr: FormatStringExpr) -> Type:
         """Return the type that is accepted for a string interpolation
         conversion specifier type.
 
         Note that both Python's float (e.g. %f) and integer (e.g. %d)
         specifier types accept both float and integers.
         """
-        if p in ['s', 'r']:
+        if p == 'b':
+            if self.chk.options.python_version < (3, 5):
+                self.msg.fail("Format character 'b' is only supported in Python 3.5 and later",
+                              context)
+                return None
+            if not isinstance(expr, BytesExpr):
+                self.msg.fail("Format character 'b' is only supported on bytes patterns", context)
+                return None
+            return self.named_type('builtins.bytes')
+        elif p == 'a':
+            if self.chk.options.python_version < (3, 0):
+                self.msg.fail("Format character 'a' is only supported in Python 3", context)
+                return None
+            return AnyType()
+        elif p in ['s', 'r']:
             return AnyType()
         elif p in ['d', 'i', 'o', 'u', 'x', 'X',
                    'e', 'E', 'f', 'F', 'g', 'G']:
