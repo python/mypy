@@ -619,9 +619,13 @@ class MessageBuilder:
                   format(capitalize(callable_name(callee)),
                          callee.arg_names[index]), context)
 
-    def does_not_return_value(self, unusable_type: Type, context: Context) -> None:
+    def does_not_return_value(self, callee_type: Type, context: Context) -> None:
         """Report an error about use of an unusable type."""
-        self.fail('Function does not return a value', context)
+        if isinstance(callee_type, FunctionLike) and callee_type.get_name() is not None:
+            self.fail('{} does not return a value'.format(
+                capitalize(callee_type.get_name())), context)
+        else:
+            self.fail('Function does not return a value', context)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""

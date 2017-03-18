@@ -173,7 +173,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 return val
 
-    def visit_call_expr(self, e: CallExpr) -> Type:
+    def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         """Type check a call expression."""
         if e.analyzed:
             # It's really a special form that only looks like a call.
@@ -192,6 +192,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ret_type = self.check_call_expr_with_callee_type(callee_type, e)
         if isinstance(ret_type, UninhabitedType):
             self.chk.binder.unreachable()
+        if not allow_none_return and isinstance(ret_type, NoneTyp):
+            self.chk.msg.does_not_return_value(callee_type, e)
         return ret_type
 
     def check_typeddict_call(self, callee: TypedDictType,
@@ -1516,12 +1518,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
-        source_type = self.accept(expr.expr, type_context=AnyType())
+        source_type = self.accept(expr.expr, type_context=AnyType(), allow_none_return=True)
         target_type = expr.type
         if self.chk.options.warn_redundant_casts and is_same_type(source_type, target_type):
             self.msg.redundant_cast(target_type, expr)
         return target_type
-
 
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
         """Type check a reveal_type expression."""
@@ -2006,11 +2007,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     # Helpers
     #
 
-    def accept(self, node: Expression, type_context: Type = None) -> Type:
-        """Type check a node in the given type context."""
+    def accept(self,
+               node: Expression,
+               type_context: Type = None,
+               allow_none_return: bool = False
+               ) -> Type:
+        """Type check a node in the given type context.  If allow_none_return
+        is True and this expression is a call, allow it to return None.  This
+        applies only to this expression and not any subexpressions.
+        """
         self.type_context.append(type_context)
         try:
-            typ = node.accept(self)
+            if allow_none_return and isinstance(node, CallExpr):
+                typ = self.visit_call_expr(node, allow_none_return=True)
+            else:
+                typ = node.accept(self)
         except Exception as err:
             report_internal_error(err, self.chk.errors.file,
                                   node.line, self.chk.errors, self.chk.options)

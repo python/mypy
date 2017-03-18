@@ -506,6 +506,9 @@ class FunctionLike(Type):
     @abstractmethod
     def with_name(self, name: str) -> 'FunctionLike': pass
 
+    @abstractmethod
+    def get_name(self) -> str: pass
+
     # Corresponding instance type (e.g. builtins.type)
     fallback = None  # type: Instance
 
@@ -631,6 +634,9 @@ class CallableType(FunctionLike):
     def with_name(self, name: str) -> 'CallableType':
         """Return a copy of this type with the specified name."""
         return self.copy_modified(ret_type=self.ret_type, name=name)
+
+    def get_name(self) -> str:
+        return self.name
 
     def max_fixed_args(self) -> int:
         n = len(self.arg_types)
@@ -778,7 +784,7 @@ class Overloaded(FunctionLike):
         return self._items
 
     def name(self) -> str:
-        return self._items[0].name
+        return self.get_name()
 
     def is_type_obj(self) -> bool:
         # All the items must have the same type object status, so it's
@@ -795,6 +801,9 @@ class Overloaded(FunctionLike):
         for it in self._items:
             ni.append(it.with_name(name))
         return Overloaded(ni)
+
+    def get_name(self) -> str:
+        return self._items[0].name
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_overloaded(self)

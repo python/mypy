@@ -1737,7 +1737,12 @@ class TypeChecker(StatementVisitor[None]):
                         del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
-        self.expr_checker.accept(s.expr)
+        # Special-case call exprs so we can support warnings on return value of
+        # None-returning functions
+        if isinstance(s.expr, CallExpr):
+            self.expr_checker.accept(s.expr, allow_none_return=True)
+        else:
+            self.expr_checker.accept(s.expr)
 
     def visit_return_stmt(self, s: ReturnStmt) -> None:
         """Type check a return statement."""
@@ -1758,13 +1763,16 @@ class TypeChecker(StatementVisitor[None]):
                 return
 
             if s.expr:
+                is_lambda = isinstance(self.scope.top_function(), FuncExpr)
+                declared_none_return = isinstance(return_type, NoneTyp)
                 # Return with a value.
-                typ = self.expr_checker.accept(s.expr, return_type)
+                typ = self.expr_checker.accept(s.expr,
+                                               return_type,
+                                               allow_none_return=is_lambda or declared_none_return)
 
                 if defn.is_async_generator:
                     self.fail("'return' with value in async generator is not allowed", s)
                     return
-
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the
@@ -1773,10 +1781,10 @@ class TypeChecker(StatementVisitor[None]):
                         self.warn(messages.RETURN_ANY.format(return_type), s)
                     return
 
-                if self.is_unusable_type(return_type):
-                    # Lambdas are allowed to have a unusable returns.
+                if declared_none_return:
+                    # Lambdas are allowed to have None returns.
                     # Functions returning a value of type None are allowed to have a None return.
-                    if isinstance(self.scope.top_function(), FuncExpr) or isinstance(typ, NoneTyp):
+                    if is_lambda or isinstance(typ, NoneTyp):
                         return
                     self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                 else:
@@ -2105,7 +2113,7 @@ class TypeChecker(StatementVisitor[None]):
             m.line = s.line
             c = CallExpr(m, [e.index], [nodes.ARG_POS], [None])
             c.line = s.line
-            c.accept(self.expr_checker)
+            self.expr_checker.accept(c, allow_none_return=True)
         else:
             s.expr.accept(self.expr_checker)
             for elt in flatten(s.expr):
