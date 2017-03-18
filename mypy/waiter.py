@@ -136,13 +136,15 @@ class Waiter:
 
         # we likely add only a few tasks, so it's ok to put them in front even if they fast
         # much worse if we put them in the back, and one of them turns out to be slow
-        self.times: Dict[str, float] = defaultdict(lambda: float('inf'))
+        self.times = defaultdict(lambda: float('inf'))  # type: Dict[str, float]
         try:
             with open(self.TIMING_FILENAME) as fp:
                 times = json.load(fp)
             self.times.update(times)
+            self.found_timing_file = True
         except Exception:
             print('cannot find runtest timing file')
+            self.found_timing_file = False
 
     def add(self, cmd: LazySubprocess) -> int:
         rv = len(self.queue)
@@ -292,11 +294,12 @@ class Waiter:
             print('*** OK ***')
             sys.stdout.flush()
 
-        try:
-            with open(self.TIMING_FILENAME, 'w') as fp:
-                json.dump(self.times, fp)
-        except Exception:
-            print('cannot save runtest timing file')
+        if not self.found_timing_file:
+            try:
+                with open(self.TIMING_FILENAME, 'w') as fp:
+                    json.dump(self.times, fp)
+            except Exception:
+                print('cannot save runtest timing file')
 
         return 0
 

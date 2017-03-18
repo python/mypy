@@ -158,7 +158,7 @@ class Driver:
         name = 'lint'
         if not self.allow(name):
             return
-        largs = ['flake8', '-j1']
+        largs = ['flake8', '-j0']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
