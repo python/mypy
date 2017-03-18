@@ -427,7 +427,7 @@ class Argument(Node):
     variable = None  # type: Var
     type_annotation = None  # type: Optional[mypy.types.Type]
     initializer = None  # type: Optional[Expression]
-    kind = None  # type: int
+    kind = None  # type: int  # must be an ARG_* constant
     initialization_statement = None  # type: Optional[AssignmentStmt]
 
     def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
