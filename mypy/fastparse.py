@@ -72,7 +72,8 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
         assert pyversion[0] >= 3 or is_stub_file
-        ast = ast3.parse(source, fnam, 'exec', feature_version=pyversion[1])
+        feature_version = pyversion[1] if not is_stub_file else defaults.PYTHON3_VERSION[1]
+        ast = ast3.parse(source, fnam, 'exec', feature_version=feature_version)
 
         tree = ASTConverter(pyversion=pyversion,
                             is_stub=is_stub_file,

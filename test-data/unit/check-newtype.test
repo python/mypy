@@ -300,7 +300,7 @@ b = NewType('b', float)  # this line throws two errors
 c = NewType('c', str)   # type: str
 [out]
 main:4: error: Cannot redefine 'a' as a NewType
-main:7: error: Invalid assignment target
+main:7: error: Cannot assign to a type
 main:7: error: Cannot redefine 'b' as a NewType
 main:9: error: Cannot declare the type of a NewType declaration
 

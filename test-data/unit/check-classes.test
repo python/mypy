@@ -662,6 +662,21 @@ b = A.B()
 b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 b = A.B(b) # E: Too many arguments for "B"
 
+[case testAliasNestedClass]
+class Outer:
+    class Inner:
+        def make_int(self) -> int: return 1
+    reveal_type(Inner().make_int)  # E: Revealed type is 'def () -> builtins.int'
+    some_int = Inner().make_int()
+
+reveal_type(Outer.Inner.make_int)  # E: Revealed type is 'def (self: __main__.Outer.Inner) -> builtins.int'
+reveal_type(Outer().some_int) # E: Revealed type is 'builtins.int'
+Bar = Outer.Inner
+reveal_type(Bar.make_int)  # E: Revealed type is 'def (self: __main__.Outer.Inner) -> builtins.int'
+x = Bar()  # type: Bar
+def produce() -> Bar:
+    reveal_type(Bar().make_int)  # E: Revealed type is 'def () -> builtins.int'
+    return Bar()
 
 -- Declaring attribute type in method
 -- ----------------------------------
@@ -2164,6 +2179,57 @@ def foo(c: Type[C], d: Type[D]) -> None:
 [builtins fixtures/list.pyi]
 [out]
 main:7: error: Revealed type is 'builtins.list[Type[__main__.B]]'
+
+[case testTypeEquivalentTypeAny]
+from typing import Type, Any
+
+a = None # type: Type[Any]
+b = a # type: type
+
+x = None # type: type
+y = x # type: Type[Any]
+
+class C: ...
+
+p = None # type: type
+q = p # type: Type[C]
+
+[builtins fixtures/list.pyi]
+[out]
+
+[case testTypeEquivalentTypeAny2]
+from typing import Type, Any, TypeVar, Generic
+
+class C: ...
+x = None # type: type
+y = None # type: Type[Any]
+z = None # type: Type[C]
+
+lst = [x, y, z]
+reveal_type(lst) # E: Revealed type is 'builtins.list[builtins.type*]'
+
+T1 = TypeVar('T1', bound=type)
+T2 = TypeVar('T2', bound=Type[Any])
+class C1(Generic[T1]): ...
+class C2(Generic[T2]): ...
+
+C1[Type[Any]], C2[type] # both these should not fail
+[builtins fixtures/list.pyi]
+[out]
+
+[case testTypeEquivalentTypeAnyEdgeCase]
+class C:
+    pass
+
+class M(type):
+    def __init__(cls, x) -> None:
+        type.__init__(cls, x)
+
+class Mbad(type):
+    def __init__(cls, x) -> None:
+        type.__init__(C(), x) # E: Argument 1 to "__init__" of "type" has incompatible type "C"; expected "type"
+[builtins fixtures/primitives.pyi]
+[out]
 
 [case testTypeMatchesOverloadedFunctions]
 from typing import Type, overload, Union

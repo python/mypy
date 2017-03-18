@@ -77,6 +77,15 @@ else:
   reveal_type(x)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/bool.pyi]
 
+[case testAnyCanBeNone]
+from typing import Optional, Any
+x = None  # type:  Any
+if x is None:
+  reveal_type(x)  # E: Revealed type is 'builtins.None'
+else:
+  reveal_type(x)  # E: Revealed type is 'Any'
+[builtins fixtures/bool.pyi]
+
 [case testOrCases]
 from typing import Optional
 x = None  # type: Optional[str]

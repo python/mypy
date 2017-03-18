@@ -978,6 +978,30 @@ Bad = A[int] # type: ignore
 reveal_type(Bad) # E: Revealed type is 'Any'
 [out]
 
+[case testNoSubscriptionOfBuiltinAliases]
+from typing import List, TypeVar
+
+list[int]() # E: "list" is not subscriptable
+
+ListAlias = List
+def fun() -> ListAlias[int]:
+    pass
+
+reveal_type(fun())  # E: Revealed type is 'builtins.list[builtins.int]'
+
+BuiltinAlias = list
+BuiltinAlias[int]() # E: "list" is not subscriptable
+
+#check that error is reported only once, and type is still stored
+T = TypeVar('T')
+BadGenList = list[T] # E: "list" is not subscriptable
+
+reveal_type(BadGenList[int]()) # E: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(BadGenList()) # E: Revealed type is 'builtins.list[Any]'
+
+[builtins fixtures/list.pyi]
+[out]
+
 
 -- Simplified declaration of generics
 -- ----------------------------------
@@ -1295,6 +1319,18 @@ class A:
 a = A().g(1)
 a = 1
 a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testGenericInnerClass]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A:
+    class B(Generic[T]):
+        def meth(self) -> T:  ...
+    B[int]()
+    reveal_type(B[int]().meth) # E: Revealed type is 'def () -> builtins.int*'
+
+A.B[int]()
+reveal_type(A.B[int]().meth) # E: Revealed type is 'def () -> builtins.int*'
 
 [case testGenericClassInnerFunctionTypeVariable]
 from typing import TypeVar, Generic

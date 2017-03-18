@@ -22,6 +22,10 @@ from os.path import dirname, basename
 
 from typing import (AbstractSet, Dict, Iterable, Iterator, List,
                     NamedTuple, Optional, Set, Tuple, Union)
+# Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
+MYPY = False
+if MYPY:
+    from typing import Deque
 
 from mypy.nodes import (MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
@@ -1618,7 +1622,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # The deque is used to implement breadth-first traversal.
     # TODO: Consider whether to go depth-first instead.  This may
     # affect the order in which we process files within import cycles.
-    new = collections.deque()  # type: collections.deque[State]
+    new = collections.deque()  # type: Deque[State]
     entry_points = set()  # type: Set[str]
     # Seed the graph with the initial root sources.
     for bs in sources:

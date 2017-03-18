@@ -168,7 +168,7 @@ class SubtypingSuite(Suite):
             self.fx.callable_var_arg(0, self.fx.b, self.fx.d))
 
     def test_type_callable_subtyping(self) -> None:
-        self.assert_strict_subtype(
+        self.assert_subtype(
             self.fx.callable_type(self.fx.d, self.fx.a), self.fx.type_type)
 
         self.assert_strict_subtype(

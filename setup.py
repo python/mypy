@@ -14,12 +14,15 @@ if sys.version_info < (3, 2, 0):
 # alternative forms of installing, as suggested by README.md).
 from setuptools import setup
 from setuptools.command.build_py import build_py
-from mypy.version import base_version
+from mypy.version import base_version, __version__
 from mypy import git
 
 git.verify_git_integrity_or_abort(".")
 
-version = base_version
+if any(dist_arg in sys.argv[1:] for dist_arg in ('bdist_wheel', 'sdist')):
+    version = base_version
+else:
+    version = __version__
 description = 'Optional static typing for Python'
 long_description = '''
 Mypy -- Optional Static Typing for Python

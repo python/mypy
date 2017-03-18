@@ -52,6 +52,11 @@ def is_subtype(left: Type, right: Type,
         return any(is_subtype(left, item, type_parameter_checker,
                               ignore_pos_arg_names=ignore_pos_arg_names)
                    for item in right.items)
+    # Treat builtins.type the same as Type[Any]
+    elif is_named_instance(left, 'builtins.type'):
+            return is_subtype(TypeType(AnyType()), right)
+    elif is_named_instance(right, 'builtins.type'):
+            return is_subtype(left, TypeType(AnyType()))
     else:
         return left.accept(SubtypeVisitor(right, type_parameter_checker,
                                           ignore_pos_arg_names=ignore_pos_arg_names))
@@ -155,7 +160,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
             item = right.item
             if isinstance(item, TupleType):
                 item = item.fallback
-            return isinstance(item, Instance) and is_subtype(left, item.type.metaclass_type)
+            if isinstance(item, Instance):
+                return is_subtype(left, item.type.metaclass_type)
+            elif isinstance(item, AnyType):
+                # Special case: all metaclasses are subtypes of Type[Any]
+                mro = left.type.mro or []
+                return any(base.fullname() == 'builtins.type' for base in mro)
+            else:
+                return False
         else:
             return False
 
@@ -233,8 +245,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, Instance):
             return is_subtype(left.fallback, right)
-        elif isinstance(right, CallableType) or is_named_instance(
-                right, 'builtins.type'):
+        elif isinstance(right, CallableType):
             for item in left.items():
                 if is_subtype(item, right, self.check_type_parameter,
                               ignore_pos_arg_names=self.ignore_pos_arg_names):
@@ -275,8 +286,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # This is unsound, we don't check the __init__ signature.
             return is_subtype(left.item, right.ret_type)
         if isinstance(right, Instance):
-            if right.type.fullname() in ('builtins.type', 'builtins.object'):
-                # Treat builtins.type the same as Type[Any];
+            if right.type.fullname() == 'builtins.object':
                 # treat builtins.object the same as Any.
                 return True
             item = left.item

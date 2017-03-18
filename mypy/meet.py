@@ -69,6 +69,10 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     TODO: Don't consider callables always overlapping.
     TODO: Don't consider type variables with values always overlapping.
     """
+    # Any overlaps with everything
+    if isinstance(t, AnyType) or isinstance(s, AnyType):
+        return True
+
     # Since we are effectively working with the erased types, we only
     # need to handle occurrences of TypeVarType at the top level.
     if isinstance(t, TypeVarType):
