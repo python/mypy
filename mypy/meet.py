@@ -253,6 +253,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         elif (isinstance(self.s, Instance) and
               self.s.type.fullname() == 'builtins.tuple' and self.s.args):
             return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
+        elif (isinstance(self.s, Instance) and t.fallback.type == self.s.type):
+            # Uh oh, a broken named tuple type (https://github.com/python/mypy/issues/3016).
+            # Do something reasonable until that bug is fixed.
+            return t
         else:
             return self.default(self.s)
 
