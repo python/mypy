@@ -374,7 +374,7 @@ class TypeChecker(StatementVisitor[None]):
             # Awaitable: ty is Any.
             return AnyType()
         elif return_type.args:
-            # AwaitableGenerator, Generator, Iterator, or Iterable; ty is args[0].
+            # AwaitableGenerator, Generator, AsyncGenerator, Iterator, or Iterable; ty is args[0].
             ret_type = return_type.args[0]
             # TODO not best fix, better have dedicated yield token
             if isinstance(ret_type, NoneTyp):
@@ -1771,6 +1771,11 @@ class TypeChecker(StatementVisitor[None]):
             if s.expr:
                 # Return with a value.
                 typ = self.expr_checker.accept(s.expr, return_type)
+
+                if defn.is_async_generator:
+                    self.fail("'return' with value in async generator is not allowed", s)
+                    return
+
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the
@@ -1779,7 +1784,7 @@ class TypeChecker(StatementVisitor[None]):
                         self.warn(messages.RETURN_ANY.format(return_type), s)
                     return
 
-                if self.is_unusable_type(return_type) or defn.is_async_generator:
+                if self.is_unusable_type(return_type):
                     # Lambdas are allowed to have a unusable returns.
                     # Functions returning a value of type None are allowed to have a Void return.
                     if isinstance(self.scope.top_function(), FuncExpr) or isinstance(typ, NoneTyp):

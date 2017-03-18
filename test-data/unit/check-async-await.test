@@ -414,7 +414,7 @@ def f() -> Generator[int, str, int]:
 -- ---------------------------------------------------------------------
 
 [case testAsyncGenerator]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def f() -> int:
@@ -424,6 +424,8 @@ async def g() -> AsyncGenerator[int, None]:
     value = await f()
     reveal_type(value)  # E: Revealed type is 'builtins.int*'
     yield value
+
+    yield 'not an int'
     # return without a value is fine
     return
 reveal_type(g)  # E: Revealed type is 'def () -> typing.AsyncGenerator[builtins.int, void]'
@@ -435,8 +437,23 @@ async def h() -> None:
 
 [builtins fixtures/dict.pyi]
 
+[case testAsyncGeneratorReturnIterator]
+# flags: --python-version 3.6
+from typing import AsyncIterator
+
+async def gen() -> AsyncIterator[int]:
+    yield 3
+
+    yield 'not an int'
+
+async def use_gen() -> None:
+    async for item in gen():
+        reveal_type(item)  # E: Revealed type is 'builtins.int*'
+
+[builtins fixtures/dict.pyi]
+
 [case testAsyncGeneratorManualIter]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def genfunc() -> AsyncGenerator[int, None]:
@@ -524,9 +541,20 @@ async def gen() -> AsyncGenerator[int, None]:
 # flags: --fast-parser --python-version 3.6
 from typing import AsyncGenerator
 
-async def gen() -> AsyncGenerator[int, None]:
+async def return_int() -> AsyncGenerator[int, None]:
     yield 1
     return 42  # E: No return value expected
+
+async def return_none() -> AsyncGenerator[int, None]:
+    yield 1
+    return None
+
+def f() -> None:
+    return
+
+async def return_f() -> AsyncGenerator[int, None]:
+    yield 1
+    return f()
 
 [builtins fixtures/dict.pyi]
 
