@@ -1047,6 +1047,21 @@ a = None # type: Any
 
 [case testStringInterpolationInvalidPlaceholder]
 '%W' % 1  # E: Unsupported format character 'W'
+'%b' % 1  # E: Format character 'b' is only supported on bytes patterns
+
+[case testStringInterPolationPython2]
+# flags: --python-version 2.7
+b'%b' % 1  # E: Format character 'b' is only supported in Python 3.5 and later
+b'%s' % 1
+b'%a' % 1  # E: Format character 'a' is only supported in Python 3
+
+[case testBytesInterpolationBefore35]
+# flags: --python-version 3.4
+b'%b' % 1  # E: Unsupported left operand type for % ("bytes")
+
+[case testBytesInterpolationB]
+b'%b' % 1  # E: Incompatible types in string interpolation (expression has type "int", placeholder has type "bytes")
+b'%b' % b'1'
 
 [case testStringInterpolationWidth]
 '%2f' % 3.14
