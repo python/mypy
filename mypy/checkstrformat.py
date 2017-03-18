@@ -68,7 +68,8 @@ class StringFormatterChecker:
         specifiers = self.parse_conversion_specifiers(expr.value)
         has_mapping_keys = self.analyze_conversion_specifiers(specifiers, expr)
         if isinstance(expr, BytesExpr) and (3, 0) <= self.chk.options.python_version < (3, 5):
-            self.msg.fail('Bytes formatting is only supported in Python 3.5 and later', context)
+            self.msg.fail('Bytes formatting is only supported in Python 3.5 and later',
+                          replacements)
             return AnyType()
 
         if has_mapping_keys is None:
@@ -190,9 +191,9 @@ class StringFormatterChecker:
                                    'expression has type', 'expected type for mapping is')
 
     def build_replacement_checkers(self, specifiers: List[ConversionSpecifier],
-                                   context: Context,
-                                   expr: FormatStringExpr) -> List[Tuple[Callable[[Expression], None],
-                                                                         Callable[[Type], None]]]:
+                                   context: Context, expr: FormatStringExpr
+                                   ) -> List[Tuple[Callable[[Expression], None],
+                                                   Callable[[Type], None]]]:
         checkers = []  # type: List[Tuple[Callable[[Expression], None], Callable[[Type], None]]]
         for specifier in specifiers:
             checker = self.replacement_checkers(specifier, context, expr)
@@ -299,17 +300,19 @@ class StringFormatterChecker:
         """
         if p == 'b':
             if self.chk.options.python_version < (3, 5):
-                self.msg.fail("Format character 'b' is only supported in Python 3.5 and later", context)
-                return AnyType()
+                self.msg.fail("Format character 'b' is only supported in Python 3.5 and later",
+                              context)
+                return None
             if not isinstance(expr, BytesExpr):
                 self.msg.fail("Format character 'b' is only supported on bytes patterns", context)
-                return AnyType()
+                return None
             return self.named_type('builtins.bytes')
         elif p == 'a':
             if self.chk.options.python_version < (3, 0):
                 self.msg.fail("Format character 'a' is only supported in Python 3", context)
+                return None
             return AnyType()
-        if p in ['s', 'r']:
+        elif p in ['s', 'r']:
             return AnyType()
         elif p in ['d', 'i', 'o', 'u', 'x', 'X',
                    'e', 'E', 'f', 'F', 'g', 'G']:
