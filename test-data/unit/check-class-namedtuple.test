@@ -412,8 +412,9 @@ reveal_type(HasNone(1))  # E: Revealed type is 'Tuple[builtins.int, builtins.int
 class Parameterized(NamedTuple):
     x: int
     y: List[int] = [1] + [2]
+    z: List[int] = []
 
-reveal_type(Parameterized(1))  # E: Revealed type is 'Tuple[builtins.int, builtins.list[builtins.int], fallback=__main__.Parameterized]'
+reveal_type(Parameterized(1))  # E: Revealed type is 'Tuple[builtins.int, builtins.list[builtins.int], builtins.list[builtins.int], fallback=__main__.Parameterized]'
 Parameterized(1, ['not an int'])  # E: List item 0 has incompatible type "str"
 
 class Default:
@@ -477,3 +478,7 @@ class Y(X):
 
 reveal_type(Y('a'))  # E: Revealed type is 'Tuple[builtins.str, builtins.int, fallback=__main__.Y]'
 Y(y=1, x='1').method()
+
+class CallsBaseInit(X):
+    def __init__(self, x: str) -> None:
+        super().__init__(x)
