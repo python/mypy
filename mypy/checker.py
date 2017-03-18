@@ -6,7 +6,7 @@ from contextlib import contextmanager
 import sys
 
 from typing import (
-    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, MutableMapping
+    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator
 )
 
 from mypy.errors import Errors, report_internal_error
@@ -2616,18 +2616,18 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     return result
 
 
-def convert_to_types(m: MutableMapping[Expression, Type]) -> None:
-    for k in m:
-        x = m[k]
-        if isinstance(x, UnionType):
-            m[k] = UnionType([TypeType(t) for t in x.items])
-        elif isinstance(x, Instance):
-            m[k] = TypeType(m[k])
+def convert_to_typetype(type_map: TypeMap) -> TypeMap:
+    converted_type_map: TypeMap = {}
+    for expr, typ in type_map.items():
+        if isinstance(typ, UnionType):
+            converted_type_map[expr] = UnionType([TypeType(t) for t in typ.items])
+        elif isinstance(typ, Instance):
+            converted_type_map[expr] = TypeType(typ)
         else:
             # TODO: verify this is ok
             # unknown object, don't know how to convert
-            m.clear()
-            return
+            return {}
+    return converted_type_map
 
 
 def find_isinstance_check(node: Expression,
@@ -2659,17 +2659,23 @@ def find_isinstance_check(node: Expression,
             expr = node.args[0]
             if expr.literal == LITERAL_TYPE:
                 vartype = type_map[expr]
-                type = get_issubclass_type(node.args[1], type_map)
+                type = get_isinstance_type(node.args[1], type_map)
                 if isinstance(vartype, UnionType):
-                    vartype = UnionType([t.item for t in vartype.items])  # type: ignore
+                    union_list = []
+                    for t in vartype.items:
+                        if isinstance(t, TypeType):
+                            union_list.append(t.item)
+                        else:
+                            #  this an error; should be caught earlier, so we should never be here
+                            return {}, {}
+                    vartype = UnionType(union_list)
                 elif isinstance(vartype, TypeType):
                     vartype = vartype.item
                 else:
                     # TODO: verify this is ok
                     return {}, {}  # unknown type
                 yes_map, no_map = conditional_type_map(expr, vartype, type)
-                convert_to_types(yes_map)
-                convert_to_types(no_map)
+                yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
                 return yes_map, no_map
         elif refers_to_fullname(node.callee, 'builtins.callable'):
             expr = node.args[0]
@@ -2775,30 +2781,6 @@ def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> L
         # refuse to do any type inference for now
         return None
     return types
-
-
-def get_issubclass_type(expr: Expression, type_map: Dict[Expression, Type]) -> Type:
-    all_types = [type_map[e] for e in flatten(expr)]
-
-    types = []  # type: List[Type]
-
-    for type in all_types:
-        if isinstance(type, FunctionLike):
-            if type.is_type_obj():
-                # Type variables may be present -- erase them, which is the best
-                # we can do (outside disallowing them here).
-                type = erase_typevars(type.items()[0].ret_type)
-            types.append(type)
-        elif isinstance(type, TypeType):
-            types.append(type.item)
-        else:  # we didn't see an actual type, but rather a variable whose value is unknown to us
-            return None
-
-    assert len(types) != 0
-    if len(types) == 1:
-        return types[0]
-    else:
-        return UnionType(types)
 
 
 def expand_func(defn: FuncItem, map: Dict[TypeVarId, Type]) -> FuncItem:

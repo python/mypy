@@ -1412,9 +1412,41 @@ def f(x: Union[int, A], a: Type[A]) -> None:
 
 [builtins fixtures/isinstancelist.pyi]
 
+
 [case testIssubclass]
 from typing import Type, ClassVar
 
+class Goblin:
+    aggressive: bool = True
+    level: int
+
+class GoblinAmbusher(Goblin):
+    job: ClassVar[str] = 'Ranger'
+
+
+def test_issubclass(cls: Type[Goblin]) -> None:
+    if issubclass(cls, GoblinAmbusher):
+        cls.aggressive
+        cls.level
+        cls.job
+        ga = cls()
+        ga.level = 15
+        ga.job
+        ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
+    else:
+        cls.aggressive
+        cls.level
+        cls.job  # E: Type[Goblin] has no attribute "job"
+        g = cls()
+        g.level = 15
+        g.job  # E: "Goblin" has no attribute "job"
+
+
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testIssubclassDeepHierarchy]
+from typing import Type, ClassVar
 
 class Mob:
     pass
@@ -1426,11 +1458,7 @@ class Goblin(Mob):
 class GoblinAmbusher(Goblin):
     job: ClassVar[str] = 'Ranger'
 
-class GoblinDigger(Goblin):
-    job: ClassVar[str] = 'Thief'
-
-
-def test_issubclass1(cls: Type[Mob]) -> None:
+def test_issubclass(cls: Type[Mob]) -> None:
     if issubclass(cls, Goblin):
         cls.aggressive
         cls.level
@@ -1471,6 +1499,27 @@ def test_issubclass1(cls: Type[Mob]) -> None:
         ga.job
         ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
 
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testIssubclassTuple]
+from typing import Type, ClassVar
+
+class Mob:
+    pass
+
+class Goblin(Mob):
+    aggressive: bool = True
+    level: int
+
+class GoblinAmbusher(Goblin):
+    job: ClassVar[str] = 'Ranger'
+
+class GoblinDigger(Goblin):
+    job: ClassVar[str] = 'Thief'
+
+
+def test_issubclass(cls: Type[Mob]) -> None:
     if issubclass(cls, (Goblin, GoblinAmbusher)):
         cls.aggressive
         cls.level
@@ -1512,23 +1561,22 @@ def test_issubclass1(cls: Type[Mob]) -> None:
         g.job
         g.job = "Warrior" # E: Cannot assign to class variable "job" via instance
 
+[builtins fixtures/isinstancelist.pyi]
 
-def test_issubclass2(cls: Type[Goblin]) -> None:
-    if issubclass(cls, GoblinAmbusher):
-        cls.aggressive
-        cls.level
-        cls.job
-        ga = cls()
-        ga.level = 15
-        ga.job
-        ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
+
+[case testIssubclassBuiltins]
+from typing import List, Type
+
+class MyList(List): pass
+class MyIntList(List[int]): pass
+
+def f(cls: Type):
+    if issubclass(cls, MyList):
+        cls()[0]
     else:
-        cls.aggressive
-        cls.level
-        cls.job  # E: Type[Goblin] has no attribute "job"
-        g = cls()
-        g.level = 15
-        g.job  # E: "Goblin" has no attribute "job"
+        cls()[0]  # E:
 
+    if issubclass(cls, MyIntList):
+        cls()[0] + 1
 
 [builtins fixtures/isinstancelist.pyi]
