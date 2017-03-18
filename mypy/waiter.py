@@ -12,6 +12,8 @@ from subprocess import Popen, STDOUT
 import sys
 import tempfile
 import time
+import json
+from collections import defaultdict
 
 
 class WaiterError(Exception):
@@ -32,7 +34,7 @@ class LazySubprocess:
 
     def start(self) -> None:
         self.outfile = tempfile.TemporaryFile()
-        self.start_time = time.time()
+        self.start_time = time.perf_counter()
         self.process = Popen(self.args, cwd=self.cwd, env=self.env,
                              stdout=self.outfile, stderr=STDOUT)
         self.pid = self.process.pid
@@ -107,6 +109,9 @@ class Waiter:
     if not waiter.run():
         print('error')
     """
+
+    TIMING_FILENAME = 'runtest_timing.json'
+
     def __init__(self, limit: int = 0, *, verbosity: int = 0, xfail: List[str] = []) -> None:
         self.verbosity = verbosity
         self.queue = []  # type: List[LazySubprocess]
@@ -128,6 +133,16 @@ class Waiter:
         self._note = None  # type: Noter
         self.times1 = {}  # type: Dict[str, float]
         self.times2 = {}  # type: Dict[str, float]
+
+        # we likely add only a few tasks, so it's ok to put them in front even if they fast
+        # much worse if we put them in the back, and one of them turns out to be slow
+        self.times: Dict[str, float] = defaultdict(lambda: float('inf'))
+        try:
+            with open(self.TIMING_FILENAME) as fp:
+                times = json.load(fp)
+            self.times.update(times)
+        except Exception:
+            print('cannot find runtest timing file')
 
     def add(self, cmd: LazySubprocess) -> int:
         rv = len(self.queue)
@@ -161,12 +176,13 @@ class Waiter:
 
     def _poll_current(self) -> Tuple[int, int]:
         while True:
-            time.sleep(.05)
+            time.sleep(.01)
             for pid in self.current:
                 cmd = self.current[pid][1]
                 code = cmd.process.poll()
                 if code is not None:
-                    cmd.end_time = time.time()
+                    cmd.end_time = time.perf_counter()
+                    self.times[cmd.name] = cmd.end_time - cmd.start_time
                     return pid, code
 
     def _wait_next(self) -> Tuple[List[str], int, int]:
@@ -239,6 +255,10 @@ class Waiter:
         if self.verbosity == 0:
             self._note = Noter(len(self.queue))
         print('SUMMARY  %d tasks selected' % len(self.queue))
+
+        self.queue = sorted(self.queue, key=lambda c: self.times[c.name], reverse=True)
+        print([t.name for t in self.queue][:5])
+
         sys.stdout.flush()
         # Failed tasks.
         all_failures = []  # type: List[str]
@@ -271,6 +291,12 @@ class Waiter:
                 len(self.queue), total_tests))
             print('*** OK ***')
             sys.stdout.flush()
+
+        try:
+            with open(self.TIMING_FILENAME, 'w') as fp:
+                json.dump(self.times, fp)
+        except Exception:
+            print('cannot save runtest timing file')
 
         return 0
 
