@@ -4,12 +4,11 @@ Verify that various things in stubs are consistent with how things behave
 at runtime.
 """
 
-import importlib
 import json
 import subprocess
 import sys
 from typing import Dict, Any
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 from mypy import build
 from mypy.build import default_data_dir, default_lib_path, find_modules_recursive
@@ -28,19 +27,13 @@ skipped = {
 }
 
 
-class Errors:
-    def __init__(self, id):
-        self.id = id
-        self.num_errors = 0
-
-    def fail(self, msg):
-        print('{}: {}'.format(self.id, msg))
-        self.num_errors += 1
+Error = namedtuple('Error', ('name', 'error_type', 'message'))
 
 
 def test_stub(id: str) -> None:
-    result = build_stubs(id)
-    verify_stubs(result.files, prefix=id)
+    result, errors = build_stubs(id)
+    errors += list(verify_stubs(result.files, prefix=id))
+    return errors
 
 
 def verify_stubs(files: Dict[str, MypyFile], prefix: str) -> None:
@@ -52,12 +45,11 @@ def verify_stubs(files: Dict[str, MypyFile], prefix: str) -> None:
             # There's some issue with processing this module; skip for now
             continue
         dumped = dump_module(id)
-        verify_stub(id, node.names, dumped)
+        yield from verify_stub(id, node.names, dumped)
 
 
 # symbols is typeshed, dumped is runtime
-def verify_stub(id, symbols, dumped):
-    errors = Errors(id)
+def verify_stub(name, symbols, dumped):
     symbols = defaultdict(lambda: None, symbols)
     dumped = defaultdict(lambda: None, dumped)
 
@@ -70,22 +62,25 @@ def verify_stub(id, symbols, dumped):
 
     for name, (typeshed, runtime) in all_symbols.items():
         if runtime is None:
-            errors.fail('"{}" defined in stub but not at runtime'.format(name))
+            yield Error(name, 'not_in_runtime',
+                '"{}" defined in stub but not at runtime'.format(name))
         elif typeshed is None:
-            errors.fail('"{}" defined at runtime but not in stub'.format(name))
+            yield Error(name, 'not_in_stub',
+                '"{}" defined at runtime but not in stub'.format(name))
         else:
-            verify_node(name, typeshed, runtime, errors)
+            verify_node(name, typeshed, runtime)
 
 
-def verify_node(name, node, dump, errors):
+def verify_node(name, node, dump):
     if isinstance(node.node, TypeInfo):
         if not isinstance(dump, dict) or dump['type'] != 'class':
-            errors.fail('"{}" is a class in stub but not at runtime'.format(name))
+            yield Error(name, 'class_not_in_stub',
+                '"{}" is a class in stub but not at runtime'.format(name))
             return
         all_attrs = {x[0] for x in dump['attributes']}
         for attr, attr_node in node.node.names.items():
             if isinstance(attr_node.node, FuncItem) and attr not in all_attrs:
-                errors.fail(
+                yield Error(name, 'method_not_in_stub',
                     ('"{}.{}" defined as a method in stub but not defined '
                      'at runtime in class object').format(
                         name, attr))
@@ -103,6 +98,7 @@ def dump_module(id: str) -> Dict[str, Any]:
 
 
 def build_stubs(id):
+    errors = []
     data_dir = default_data_dir(None)
     options = Options()
     options.python_version = (3, 6)
@@ -111,8 +107,8 @@ def build_stubs(id):
                                 custom_typeshed_dir=None)
     sources = find_modules_recursive(id, lib_path)
     if not sources:
-        sys.exit('Error: Cannot find module {}'.format(repr(id)))
-    msg = []
+        errors.append(Error(repr(id), 'no_typeshed',
+            'could not find typeshed {}'.format(repr(id))))
     try:
         res = build.build(sources=sources,
                           options=options)
@@ -123,8 +119,9 @@ def build_stubs(id):
         for m in msg:
             print(m)
         sys.exit(1)
-    return res
+    return res, errors
 
 
 if __name__ == '__main__':
-    test_stub(sys.argv[1])
+    for error in test_stub(sys.argv[1]):
+        print(error.message)
