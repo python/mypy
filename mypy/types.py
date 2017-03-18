@@ -188,8 +188,6 @@ class UnboundType(Type):
     args = None  # type: List[Type]
     # should this type be wrapped in an Optional?
     optional = False
-    # is this type a return type?
-    is_ret_type = False
 
     # special case for X[()]
     empty_tuple_index = False
@@ -200,14 +198,12 @@ class UnboundType(Type):
                  line: int = -1,
                  column: int = -1,
                  optional: bool = False,
-                 is_ret_type: bool = False,
                  empty_tuple_index: bool = False) -> None:
         if not args:
             args = []
         self.name = name
         self.args = args
         self.optional = optional
-        self.is_ret_type = is_ret_type
         self.empty_tuple_index = empty_tuple_index
         super().__init__(line, column)
 
@@ -319,29 +315,24 @@ class UninhabitedType(Type):
 class NoneTyp(Type):
     """The type of 'None'.
 
-    This type can be written by users as 'None'. When used as a return type,
-    `is_ret_type` is set to true, which signifies the result should not be
-    used.
+    This type can be written by users as 'None'.
     """
 
     can_be_true = False
 
-    def __init__(self, is_ret_type: bool = False, line: int = -1, column: int = -1) -> None:
+    def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.is_ret_type = is_ret_type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_none_type(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'NoneTyp',
-                'is_ret_type': self.is_ret_type,
-                }
+        return {'.class': 'NoneTyp'}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'NoneTyp':
         assert data['.class'] == 'NoneTyp'
-        return NoneTyp(is_ret_type=data['is_ret_type'])
+        return NoneTyp()
 
 
 class ErasedType(Type):

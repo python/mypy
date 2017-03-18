@@ -194,6 +194,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.binder.unreachable()
         if not allow_none_return and isinstance(ret_type, NoneTyp):
             self.chk.msg.does_not_return_value(callee_type, e)
+            return AnyType(implicit=True)
         return ret_type
 
     def check_typeddict_call(self, callee: TypedDictType,
@@ -835,9 +836,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                   callee_type: Type, n: int, m: int, callee: CallableType,
                   context: Context, messages: MessageBuilder) -> None:
         """Check the type of a single argument in a call."""
-        if self.chk.is_unusable_type(caller_type):
-            messages.does_not_return_value(caller_type, context)
-        elif isinstance(caller_type, DeletedType):
+        if isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
@@ -1191,7 +1190,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if result is None:
                 result = sub_result
             else:
-                self.check_usable_type(sub_result, e)
                 result = join.join_types(result, sub_result)
 
         return result
@@ -1342,9 +1340,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         right_type = self.analyze_cond_branch(right_map, e.right, left_type)
 
-        self.check_usable_type(left_type, context)
-        self.check_usable_type(right_type, context)
-
         if right_map is None:
             # The boolean expression is statically known to be the left value
             assert left_map is not None  # find_isinstance_check guarantees this
@@ -1384,7 +1379,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         operand_type = self.accept(e.expr)
         op = e.op
         if op == 'not':
-            self.check_usable_type(operand_type, e)
             result = self.bool_type()  # type: Type
         elif op == '-':
             method_type = self.analyze_external_member_access('__neg__',
@@ -1678,7 +1672,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # context?  Counterargument: Why would anyone write
                 # (1, *(2, 3)) instead of (1, 2, 3) except in a test?
                 tt = self.accept(item.expr)
-                self.check_usable_type(tt, e)
                 if isinstance(tt, TupleType):
                     items.extend(tt.items)
                     j += len(tt.items)
@@ -1692,7 +1685,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     tt = self.accept(item, type_context_items[j])
                     j += 1
-                self.check_usable_type(tt, e)
                 items.append(tt)
         fallback_item = join.join_type_list(items)
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
@@ -1953,7 +1945,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
-        self.check_usable_type(cond_type, e)
         if self.chk.options.strict_boolean:
             is_bool = (isinstance(cond_type, Instance)
                 and cond_type.type.fullname() == 'builtins.bool')
@@ -2032,10 +2023,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType()
         else:
             return typ
-
-    def check_usable_type(self, typ: Type, context: Context) -> None:
-        """Generate an error if type is not a usable type."""
-        self.chk.check_usable_type(typ, context)
 
     def named_type(self, name: str) -> Instance:
         """Return an instance type with type given by the name and no type
@@ -2182,7 +2169,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(actual_item_type, AnyType):
                 return AnyType()
             else:
-                return NoneTyp(is_ret_type=True)
+                return NoneTyp()
 
     def visit_temp_node(self, e: TempNode) -> Type:
         return e.type

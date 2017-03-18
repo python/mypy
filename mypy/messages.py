@@ -372,8 +372,6 @@ class MessageBuilder:
         if (isinstance(typ, Instance) and
                 typ.type.has_readable_member(member)):
             self.fail('Member "{}" is not assignable'.format(member), context)
-        elif self.check_unusable_type(typ, context):
-            pass
         elif member == '__contains__':
             self.fail('Unsupported right operand type for in ({})'.format(
                 self.format(typ)), context)
@@ -438,9 +436,6 @@ class MessageBuilder:
 
         Types can be Type objects or strings.
         """
-        if (self.check_unusable_type(left_type, context) or
-                self.check_unusable_type(right_type, context)):
-            return
         left_str = ''
         if isinstance(left_type, str):
             left_str = left_type
@@ -462,13 +457,12 @@ class MessageBuilder:
 
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
-        if not self.check_unusable_type(typ, context):
-            if self.disable_type_names:
-                msg = 'Unsupported left operand type for {} (some union)'.format(op)
-            else:
-                msg = 'Unsupported left operand type for {} ({})'.format(
-                    op, self.format(typ))
-            self.fail(msg, context)
+        if self.disable_type_names:
+            msg = 'Unsupported left operand type for {} (some union)'.format(op)
+        else:
+            msg = 'Unsupported left operand type for {} ({})'.format(
+                op, self.format(typ))
+        self.fail(msg, context)
 
     def not_callable(self, typ: Type, context: Context) -> Type:
         self.fail('{} not callable'.format(self.format(typ)), context)
@@ -737,17 +731,6 @@ class MessageBuilder:
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
-
-    def check_unusable_type(self, typ: Type, context: Context) -> bool:
-        """If type is a type which is not meant to be used (like
-        NoneTyp(is_ret_type=True)), report an error such as '.. does not
-        return a value' and return True. Otherwise, return False.
-        """
-        if isinstance(typ, NoneTyp) and typ.is_ret_type:
-            self.does_not_return_value(typ, context)
-            return True
-        else:
-            return False
 
     def too_few_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not enough arguments for format string', context)

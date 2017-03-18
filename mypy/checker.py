@@ -409,7 +409,7 @@ class TypeChecker(StatementVisitor[None]):
         else:
             # `return_type` is a supertype of Generator, so callers won't be able to send it
             # values.  IOW, tc is None.
-            return NoneTyp(is_ret_type=True)
+            return NoneTyp()
 
     def get_generator_return_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it returns (tr)."""
@@ -1543,10 +1543,7 @@ class TypeChecker(StatementVisitor[None]):
     def infer_variable_type(self, name: Var, lvalue: Lvalue,
                             init_type: Type, context: Context) -> None:
         """Infer the type of initialized variables from initializer type."""
-        if self.is_unusable_type(init_type):
-            self.check_usable_type(init_type, context)
-            self.set_inference_error_fallback_type(name, lvalue, init_type, context)
-        elif isinstance(init_type, DeletedType):
+        if isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
         elif not is_valid_inferred_type(init_type):
             # We cannot use the type of the initialization expression for full type
@@ -1815,7 +1812,6 @@ class TypeChecker(StatementVisitor[None]):
         with self.binder.frame_context(can_skip=False, fall_through=0):
             for e, b in zip(s.expr, s.body):
                 t = self.expr_checker.accept(e)
-                self.check_usable_type(t, e)
 
                 if isinstance(t, DeletedType):
                     self.msg.deleted_as_rvalue(t, s)
@@ -2055,8 +2051,6 @@ class TypeChecker(StatementVisitor[None]):
         echk = self.expr_checker
         iterable = echk.accept(expr)
 
-        self.check_usable_type(iterable, expr)
-
         self.check_subtype(iterable,
                            self.named_generic_type('typing.AsyncIterable',
                                                    [AnyType()]),
@@ -2074,7 +2068,6 @@ class TypeChecker(StatementVisitor[None]):
         echk = self.expr_checker
         iterable = echk.accept(expr)
 
-        self.check_usable_type(iterable, expr)
         if isinstance(iterable, TupleType):
             joined = UninhabitedType()  # type: Type
             for item in iterable.items:
@@ -2242,21 +2235,18 @@ class TypeChecker(StatementVisitor[None]):
         if is_subtype(subtype, supertype):
             return True
         else:
-            if self.is_unusable_type(subtype):
-                self.msg.does_not_return_value(subtype, context)
-            else:
-                if self.should_suppress_optional_error([subtype]):
-                    return False
-                extra_info = []  # type: List[str]
-                if subtype_label is not None or supertype_label is not None:
-                    subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
-                    if subtype_label is not None:
-                        extra_info.append(subtype_label + ' ' + subtype_str)
-                    if supertype_label is not None:
-                        extra_info.append(supertype_label + ' ' + supertype_str)
-                if extra_info:
-                    msg += ' (' + ', '.join(extra_info) + ')'
-                self.fail(msg, context)
+            if self.should_suppress_optional_error([subtype]):
+                return False
+            extra_info = []  # type: List[str]
+            if subtype_label is not None or supertype_label is not None:
+                subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
+                if subtype_label is not None:
+                    extra_info.append(subtype_label + ' ' + subtype_str)
+                if supertype_label is not None:
+                    extra_info.append(supertype_label + ' ' + supertype_str)
+            if extra_info:
+                msg += ' (' + ', '.join(extra_info) + ')'
+            self.fail(msg, context)
             return False
 
     def contains_none(self, t: Type) -> bool:
@@ -2375,18 +2365,6 @@ class TypeChecker(StatementVisitor[None]):
             if var in partial_types:
                 return partial_types
         return None
-
-    def is_unusable_type(self, typ: Type) -> bool:
-        """Is this type an unusable type?
-
-        The unusable type is NoneTyp(is_ret_type=True).
-        """
-        return isinstance(typ, NoneTyp) and typ.is_ret_type
-
-    def check_usable_type(self, typ: Type, context: Context) -> None:
-        """Generate an error if the type is not a usable type."""
-        if self.is_unusable_type(typ):
-            self.msg.does_not_return_value(typ, context)
 
     def temp_node(self, t: Type, context: Context = None) -> TempNode:
         """Create a temporary node with the given, fixed type."""

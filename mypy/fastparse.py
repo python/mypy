@@ -342,9 +342,6 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)
 
-        if isinstance(return_type, UnboundType):
-            return_type.is_ret_type = True
-
         func_type = None
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):

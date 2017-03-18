@@ -45,7 +45,7 @@ class TypesSuite(Suite):
                          AnyType(), self.function)
         assert_equal(str(c), 'def (X?, Y?) -> Any')
 
-        c2 = CallableType([], [], [], NoneTyp(is_ret_type=True), None)
+        c2 = CallableType([], [], [], NoneTyp(), None)
         assert_equal(str(c2), 'def ()')
 
     def test_callable_type_with_default_args(self) -> None:
@@ -87,7 +87,7 @@ class TypesSuite(Suite):
 
         v = [TypeVarDef('Y', -1, None, self.fx.o),
              TypeVarDef('X', -2, None, self.fx.o)]
-        c2 = CallableType([], [], [], NoneTyp(is_ret_type=True), self.function, name=None, variables=v)
+        c2 = CallableType([], [], [], NoneTyp(), self.function, name=None, variables=v)
         assert_equal(str(c2), 'def [Y, X] ()')
 
 

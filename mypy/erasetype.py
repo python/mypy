@@ -63,7 +63,7 @@ class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         # We must preserve the fallback type for overload resolution to work.
-        ret_type = NoneTyp(is_ret_type=True)  # type: Type
+        ret_type = NoneTyp()  # type: Type
         return CallableType([], [], [], ret_type, t.fallback)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
