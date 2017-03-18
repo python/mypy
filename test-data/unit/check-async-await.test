@@ -412,7 +412,7 @@ def f() -> Generator[int, str, int]:
 
 [case testAsyncGenerator]
 # flags: --python-version 3.6
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Generator
 
 async def f() -> int:
     return 42
@@ -431,6 +431,9 @@ reveal_type(g())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int, voi
 async def h() -> None:
     async for item in g():
         reveal_type(item)  # E: Revealed type is 'builtins.int*'
+
+async def wrong_return() -> Generator[int, None, None]:  # E: The return type of an async generator function should be "AsyncGenerator" or one of its supertypes
+    yield 3
 
 [builtins fixtures/dict.pyi]
 
