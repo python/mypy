@@ -2679,7 +2679,7 @@ class SemanticAnalyzer(NodeVisitor):
             # This branch handles the case foo.bar where foo is a module.
             # In this case base.node is the module's MypyFile and we look up
             # bar in its namespace.  This must be done for all types of bar.
-            file = cast(Optional[MypyFile], base.node)
+            file = cast(Optional[MypyFile], base.node)  # can't use isinstance due to issue #2999
             n = file.names.get(expr.name, None) if file is not None else None
             if n:
                 n = self.normalize_type_alias(n, expr)
@@ -2696,8 +2696,7 @@ class SemanticAnalyzer(NodeVisitor):
                 # one type checker run. If we reported errors here,
                 # the build would terminate after semantic analysis
                 # and we wouldn't be able to report any type errors.
-                full_name = '%s.%s' % (file.fullname() if file is not None
-                                       else None, expr.name)
+                full_name = '%s.%s' % (file.fullname() if file is not None else None, expr.name)
                 mod_name = " '%s'" % file.fullname() if file is not None else ''
                 if full_name in obsolete_name_mapping:
                     self.fail("Module%s has no attribute %r (it's now called %r)" % (

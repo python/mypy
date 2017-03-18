@@ -1362,9 +1362,11 @@ def f(x: object) -> None:
 [out]
 
 [case testIsInstanceWithUnknownType]
-from typing import *
+from typing import Union
 def f(x: Union[int, str], typ: type) -> None:
     if isinstance(x, (typ, int)):
         x + 1  # E: Unsupported operand types for + (likely involving Union)
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    else:
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
 [builtins fixtures/isinstancelist.pyi]
-
