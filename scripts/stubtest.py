@@ -4,8 +4,7 @@ Verify that various things in stubs are consistent with how things behave
 at runtime.
 """
 
-import json
-import subprocess
+import importlib
 import sys
 from typing import Dict, Any
 from collections import defaultdict, namedtuple
@@ -15,6 +14,8 @@ from mypy.build import default_data_dir, default_lib_path, find_modules_recursiv
 from mypy.errors import CompileError
 from mypy.nodes import MypyFile, TypeInfo, FuncItem
 from mypy.options import Options
+
+import dumpmodule
 
 
 skipped = {
@@ -88,13 +89,8 @@ def verify_node(name, node, dump):
 
 
 def dump_module(id: str) -> Dict[str, Any]:
-    try:
-        o = subprocess.check_output(
-            ['python', 'scripts/dumpmodule.py', id])
-    except subprocess.CalledProcessError:
-        print('Failure to dump module contents of "{}"'.format(id))
-        sys.exit(1)
-    return json.loads(o.decode('ascii'))
+    m = importlib.import_module(id)
+    return dumpmodule.module_to_json(m)
 
 
 def build_stubs(id):
