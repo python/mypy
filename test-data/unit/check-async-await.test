@@ -326,18 +326,15 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 
 [case testNoYieldInAsyncDef]
+# flags: --python-version 3.5
 
 async def f():
-    yield None
+    yield None  # E: 'yield' in async function
 async def g():
-    yield
+    yield  # E: 'yield' in async function
 async def h():
-    x = yield
+    x = yield  # E: 'yield' in async function
 [builtins fixtures/async_await.pyi]
-[out]
-main:3: error: 'yield' in async function
-main:5: error: 'yield' in async function
-main:7: error: 'yield' in async function
 
 [case testNoYieldFromInAsyncDef]
 
