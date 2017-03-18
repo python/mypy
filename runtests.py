@@ -61,9 +61,9 @@ class Driver:
         if not paths:
             return
         if old_val is not None:
-            new_val = ':'.join(itertools.chain(paths, [old_val]))
+            new_val = os.pathsep.join(itertools.chain(paths, [old_val]))
         else:
-            new_val = ':'.join(paths)
+            new_val = os.pathsep.join(paths)
         self.env[name] = new_val
 
     def allow(self, name: str) -> bool:
