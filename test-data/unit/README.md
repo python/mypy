@@ -139,7 +139,7 @@ full builtins and library stubs instead of minimal ones. Run them using
 
 `runtests.py` by default runs tests in parallel using as many processes as
 there are logical cores the `runtests.py` process is allowed to use (on
-Windows this information isn't available, so 2 processes are used by
+some platforms this information isn't available, so 2 processes are used by
 default). You can change the number of workers using `-j` option.
 
 All pytest tests run as a single test from the perspective of `runtests.py`,
@@ -163,5 +163,3 @@ Debian-derived system the command
 may provide the necessary dependencies.
 
 To use the feature, pass e.g. `--txt-report "$(mktemp -d)"`.
-
-
