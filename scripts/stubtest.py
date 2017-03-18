@@ -9,6 +9,7 @@ import json
 import subprocess
 import sys
 from typing import Dict, Any
+from collections import defaultdict
 
 from mypy import build
 from mypy.build import default_data_dir, default_lib_path, find_modules_recursive
@@ -54,19 +55,26 @@ def verify_stubs(files: Dict[str, MypyFile], prefix: str) -> None:
         verify_stub(id, node.names, dumped)
 
 
+# symbols is typeshed, dumped is runtime
 def verify_stub(id, symbols, dumped):
     errors = Errors(id)
-    for name, node in symbols.items():
-        if name.startswith('_'):
-            # Private attribute
-            continue
-        if not node.module_public:
-            # Again, a private attribute
-            continue
-        if name not in dumped:
+    symbols = defaultdict(lambda: None, symbols)
+    dumped = defaultdict(lambda: None, dumped)
+
+    all_symbols = {
+        name: (symbols[name], dumped[name])
+        for name in (set(symbols) | set(dumped))
+        if not name.startswith('_')  # private attributes
+        and (symbols[name] is None or symbols[name].module_public)
+    }
+
+    for name, (typeshed, runtime) in all_symbols.items():
+        if runtime is None:
             errors.fail('"{}" defined in stub but not at runtime'.format(name))
+        elif typeshed is None:
+            errors.fail('"{}" defined at runtime but not in stub'.format(name))
         else:
-            verify_node(name, node, dumped[name], errors)
+            verify_node(name, typeshed, runtime, errors)
 
 
 def verify_node(name, node, dump, errors):
