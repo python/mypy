@@ -31,6 +31,22 @@ z = [a.y for b in y for a in b]
 
 [builtins fixtures/list.pyi]
 
+[case testIsinstanceNestedTuple]
+from typing import Union, List, Tuple, Dict
+def f(x: Union[int, str, List]) -> None:
+    if isinstance(x, (str, (int,))):
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+        x[1]  # E: Value of type "Union[int, str]" is not indexable
+    else:
+        reveal_type(x)  # E: Revealed type is 'builtins.list[Any]'
+        x[1]
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[Any]]'
+    if isinstance(x, (str, (list,))):
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.str, builtins.list[Any]]'
+        x[1]
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[Any]]'
+[builtins fixtures/isinstancelist.pyi]
+
 [case testClassAttributeInitialization-skip]
 class A:
     x = None # type: int

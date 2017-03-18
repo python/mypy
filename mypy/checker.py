@@ -2726,12 +2726,7 @@ def flatten(t: Expression) -> List[Expression]:
 
 
 def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> Type:
-    type = type_map[expr]
-
-    if isinstance(type, TupleType):
-        all_types = type.items
-    else:
-        all_types = [type]
+    all_types = [type_map[e] for e in flatten(expr)]
 
     types = []  # type: List[Type]
 
