@@ -3,6 +3,7 @@
 import itertools
 import fnmatch
 from contextlib import contextmanager
+import sys
 
 from typing import (
     Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator
@@ -311,12 +312,19 @@ class TypeChecker(StatementVisitor[None]):
     # for functions decorated with `@types.coroutine` or
     # `@asyncio.coroutine`.  Its single parameter corresponds to tr.
     #
+    # PEP 525 adds a new type, the asynchronous generator, which was
+    # first released in Python 3.6. Async generators are `async def`
+    # functions that can also `yield` values. They can be parameterized
+    # with two types, ty and tc, because they cannot return a value.
+    #
     # There are several useful methods, each taking a type t and a
     # flag c indicating whether it's for a generator or coroutine:
     #
     # - is_generator_return_type(t, c) returns whether t is a Generator,
     #   Iterator, Iterable (if not c), or Awaitable (if c), or
     #   AwaitableGenerator (regardless of c).
+    # - is_async_generator_return_type(t) returns whether t is an
+    #   AsyncGenerator.
     # - get_generator_yield_type(t, c) returns ty.
     # - get_generator_receive_type(t, c) returns tc.
     # - get_generator_return_type(t, c) returns tr.
@@ -338,11 +346,24 @@ class TypeChecker(StatementVisitor[None]):
                 return True
         return isinstance(typ, Instance) and typ.type.fullname() == 'typing.AwaitableGenerator'
 
+    def is_async_generator_return_type(self, typ: Type) -> bool:
+        """Is `typ` a valid type for an async generator?
+
+        True if `typ` is a supertype of AsyncGenerator.
+        """
+        try:
+            agt = self.named_generic_type('typing.AsyncGenerator', [AnyType(), AnyType()])
+        except KeyError:
+            # we're running on a version of typing that doesn't have AsyncGenerator yet
+            return False
+        return is_subtype(agt, typ)
+
     def get_generator_yield_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it yields (ty)."""
         if isinstance(return_type, AnyType):
             return AnyType()
-        elif not self.is_generator_return_type(return_type, is_coroutine):
+        elif (not self.is_generator_return_type(return_type, is_coroutine)
+                and not self.is_async_generator_return_type(return_type)):
             # If the function doesn't have a proper Generator (or
             # Awaitable) return type, anything is permissible.
             return AnyType()
@@ -353,7 +374,7 @@ class TypeChecker(StatementVisitor[None]):
             # Awaitable: ty is Any.
             return AnyType()
         elif return_type.args:
-            # AwaitableGenerator, Generator, Iterator, or Iterable; ty is args[0].
+            # AwaitableGenerator, Generator, AsyncGenerator, Iterator, or Iterable; ty is args[0].
             ret_type = return_type.args[0]
             # TODO not best fix, better have dedicated yield token
             if isinstance(ret_type, NoneTyp):
@@ -373,7 +394,8 @@ class TypeChecker(StatementVisitor[None]):
         """Given a declared generator return type (t), return the type its yield receives (tc)."""
         if isinstance(return_type, AnyType):
             return AnyType()
-        elif not self.is_generator_return_type(return_type, is_coroutine):
+        elif (not self.is_generator_return_type(return_type, is_coroutine)
+                and not self.is_async_generator_return_type(return_type)):
             # If the function doesn't have a proper Generator (or
             # Awaitable) return type, anything is permissible.
             return AnyType()
@@ -386,6 +408,8 @@ class TypeChecker(StatementVisitor[None]):
         elif (return_type.type.fullname() in ('typing.Generator', 'typing.AwaitableGenerator')
               and len(return_type.args) >= 3):
             # Generator: tc is args[1].
+            return return_type.args[1]
+        elif return_type.type.fullname() == 'typing.AsyncGenerator' and len(return_type.args) >= 2:
             return return_type.args[1]
         else:
             # `return_type` is a supertype of Generator, so callers won't be able to send it
@@ -537,8 +561,12 @@ class TypeChecker(StatementVisitor[None]):
 
                 # Check that Generator functions have the appropriate return type.
                 if defn.is_generator:
-                    if not self.is_generator_return_type(typ.ret_type, defn.is_coroutine):
-                        self.fail(messages.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
+                    if defn.is_async_generator:
+                        if not self.is_async_generator_return_type(typ.ret_type):
+                            self.fail(messages.INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR, typ)
+                    else:
+                        if not self.is_generator_return_type(typ.ret_type, defn.is_coroutine):
+                            self.fail(messages.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
 
                     # Python 2 generators aren't allowed to return values.
                     if (self.options.python_version[0] == 2 and
@@ -1743,6 +1771,11 @@ class TypeChecker(StatementVisitor[None]):
             if s.expr:
                 # Return with a value.
                 typ = self.expr_checker.accept(s.expr, return_type)
+
+                if defn.is_async_generator:
+                    self.fail("'return' with value in async generator is not allowed", s)
+                    return
+
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the

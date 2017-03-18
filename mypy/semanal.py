@@ -324,11 +324,15 @@ class SemanticAnalyzer(NodeVisitor):
             self.errors.push_function(defn.name())
             self.analyze_function(defn)
             if defn.is_coroutine and isinstance(defn.type, CallableType):
-                # A coroutine defined as `async def foo(...) -> T: ...`
-                # has external return type `Awaitable[T]`.
-                defn.type = defn.type.copy_modified(
-                    ret_type = self.named_type_or_none('typing.Awaitable',
-                                                       [defn.type.ret_type]))
+                if defn.is_async_generator:
+                    # Async generator types are handled elsewhere
+                    pass
+                else:
+                    # A coroutine defined as `async def foo(...) -> T: ...`
+                    # has external return type `Awaitable[T]`.
+                    defn.type = defn.type.copy_modified(
+                        ret_type = self.named_type_or_none('typing.Awaitable',
+                                                           [defn.type.ret_type]))
             self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef) -> None:
@@ -2861,7 +2865,11 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("'yield' outside function", expr, True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
-                self.fail("'yield' in async function", expr, True, blocker=True)
+                if self.options.python_version < (3, 6):
+                    self.fail("'yield' in async function", expr, True, blocker=True)
+                else:
+                    self.function_stack[-1].is_generator = True
+                    self.function_stack[-1].is_async_generator = True
             else:
                 self.function_stack[-1].is_generator = True
         if expr.expr:

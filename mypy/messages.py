@@ -34,6 +34,9 @@ INVALID_EXCEPTION = 'Exception must be derived from BaseException'
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
     'The return type of a generator function should be "Generator" or one of its supertypes'
+INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR = \
+    'The return type of an async generator function should be "AsyncGenerator" or one of its ' \
+    'supertypes'
 INVALID_GENERATOR_RETURN_ITEM_TYPE = \
     'The return type of a generator function must be None in its third type parameter in Python 2'
 YIELD_VALUE_EXPECTED = 'Yield value expected'
