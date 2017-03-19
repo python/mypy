@@ -546,18 +546,14 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)
 
-    def visit_void(self, left: Void) -> bool:
-        return True
-
     def visit_none_type(self, left: NoneTyp) -> bool:
         if experiments.STRICT_OPTIONAL:
             return (isinstance(self.right, NoneTyp) or
                     is_named_instance(self.right, 'builtins.object'))
-        else:
-            return not isinstance(self.right, Void)
+        return True
 
     def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
-        return not isinstance(self.right, Void)
+        return True
 
     def visit_erased_type(self, left: ErasedType) -> bool:
         return True
