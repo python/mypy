@@ -2479,8 +2479,8 @@ def conditional_type_map(expr: Expression,
         else:
             proposed_type = UnionType([type_range.item for type_range in proposed_type_ranges])
         if current_type:
-            if not any(type_range.is_upper_bound for type_range in proposed_type_ranges) \
-               and is_proper_subtype(current_type, proposed_type):
+            if (not any(type_range.is_upper_bound for type_range in proposed_type_ranges)
+               and is_proper_subtype(current_type, proposed_type)):
                 # Expression is always of one of the types in proposed_type_ranges
                 return {}, None
             elif not is_overlapping_types(current_type, proposed_type):
@@ -2748,17 +2748,25 @@ def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> L
     all_types = [type_map[e] for e in flatten(expr)]
     types = []  # type: List[TypeRange]
     for type in all_types:
-        if isinstance(type, FunctionLike):
-            if type.is_type_obj():
-                # Type variables may be present -- erase them, which is the best
-                # we can do (outside disallowing them here).
-                type = erase_typevars(type.items()[0].ret_type)
+        if isinstance(type, FunctionLike) and type.is_type_obj():
+            # Type variables may be present -- erase them, which is the best
+            # we can do (outside disallowing them here).
+            type = erase_typevars(type.items()[0].ret_type)
             types.append(TypeRange(type, is_upper_bound=False))
         elif isinstance(type, TypeType):
+            # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
+            # we indicate this by setting is_upper_bound flag
             types.append(TypeRange(type.item, is_upper_bound=True))
+        elif isinstance(type, Instance) and type.type.fullname() == 'builtins.type':
+            object_type = Instance(type.type.mro[-1], [])
+            types.append(TypeRange(object_type, is_upper_bound=True))
         else:  # we didn't see an actual type, but rather a variable whose value is unknown to us
             return None
-    assert len(types) != 0
+    if not types:
+        # this can happen if someone has empty tuple as 2nd argument to isinstance
+        # strictly speaking, we should return UninhabitedType but for simplicity we will simply
+        # refuse to do any type inference for now
+        return None
     return types
 
 
