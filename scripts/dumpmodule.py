@@ -102,8 +102,9 @@ special_methods = [
 ]
 
 
+# Change to return a dict
 def dump_attrs(d, depth):
-    result = []
+    result = {}
     seen = set()
     try:
         mro = d.mro()
@@ -113,11 +114,11 @@ def dump_attrs(d, depth):
         v = vars(base)
         for name, value in v.items():
             if name not in seen:
-                result.append([name, dump_value(value, depth + 1)])
+                result[name] = dump_value(value, depth + 1)
                 seen.add(name)
     for m in special_methods:
         if hasattr(d, m) and m not in seen:
-            result.append([m, dump_value(getattr(d, m), depth + 1)])
+            result[m] = dump_value(getattr(d, m), depth + 1)
     return result
 
 

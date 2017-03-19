@@ -12,7 +12,7 @@ from collections import defaultdict, namedtuple
 from mypy import build
 from mypy.build import default_data_dir, default_lib_path, find_modules_recursive
 from mypy.errors import CompileError
-from mypy.nodes import MypyFile, TypeInfo, FuncItem
+from mypy.nodes import MypyFile, TypeInfo, FuncItem, Var, OverloadedFuncDef, TypeVarExpr, Decorator
 from mypy.options import Options
 
 import dumpmodule
@@ -29,20 +29,23 @@ skipped = {
                       # https://bugs.python.org/issue25532
 }
 
-not_in_runtime_msg = ('"{name}" defined at line {line} in stub '
-                      'but is not defined at runtime').format
+messages = {
+    'not_in_runtime': ('<{error.stub_type}> "{error.name}" defined at line '
+                       ' {error.line} in stub but is not defined at runtime'),
+    'not_in_stub': ('<{error.module_type}> "{error.name}" defined at line'
+                    ' {error.line} at runtime but is not defined in stub'),
+    'no_typeshed': 'could not find typeshed {error.name}',
+    'inconsistent': ('"{error.name}" is <{error.stub_type}> in stub but'
+                     ' <{error.module_type}> at runtime'),
+}
 
-not_in_stub_msg = ('"{obj_type} {name}" defined at line {line} at runtime '
-                   'but is not defined in stub').format
-
-no_typeshed_msg = 'could not find typeshed {}'.format
-
-class_not_in_stub_msg = '"{}" is a class in stub but not at runtime'.format
-
-method_not_in_stub_msg = ('"{}.{}" defined as a method in stub but not defined '
-                          'at runtime in class object').format
-
-Error = namedtuple('Error', ('module', 'name', 'error_type', 'line', 'message'))
+Error = namedtuple('Error', (
+    'module',
+    'name',
+    'error_type',
+    'line',
+    'stub_type',
+    'module_type'))
 
 
 def test_stub(id: str) -> List[Error]:
@@ -85,31 +88,49 @@ def verify_stub(module: str, symbols: dict, dumped: dict):
     for name, (typeshed, runtime) in all_symbols.items():
         if runtime is None:
             line = getattr(typeshed.node, 'line', None)
-            msg = not_in_runtime_msg(name=name, line=line)
-            yield Error(module, name, 'not_in_runtime', line, msg)
+            shed_type = type(typeshed.node).__name__
+            yield Error(module, name, 'not_in_runtime', line, shed_type, None)
         elif typeshed is None:
-            msg = not_in_stub_msg(
-                obj_type=runtime['type'],
-                name=name,
-                line=runtime['line'])
-            yield Error(module, name, 'not_in_stub', runtime['line'], msg)
+            yield Error(module, name, 'not_in_stub', runtime['line'], None, runtime['type'])
         else:
-            for obj, error_type, line, msg in verify_node(name, typeshed, runtime):
-                yield Error(module, obj, error_type, line, msg)
+            for err in verify_node(name, typeshed, runtime):
+                yield Error(module, *err)
 
 
 def verify_node(name, node, dump):
+    module_type = dump.get('type', None)
+    shed_type = type(node.node).__name__
     if isinstance(node.node, TypeInfo):
-        if not isinstance(dump, dict) or dump['type'] != 'class':
-            yield (name, 'class_not_in_stub', node.node.line,
-                   class_not_in_stub_msg(name))
-            return
-        all_attrs = {x[0] for x in dump['attributes']}
-        for attr, attr_node in node.node.names.items():
-            if isinstance(attr_node.node, FuncItem) and attr not in all_attrs:
-                yield (name, 'method_not_in_stub', node.node.line,
-                       method_not_in_stub_msg(name, attr))
-    # TODO other kinds of nodes
+        if dump['type'] != 'class':
+            yield name, 'inconsistent', node.node.line, shed_type, module_type
+        else:
+            for attr, attr_node in node.node.names.items():
+                subname = '{}.{}'.format(name, attr)
+                subdump = dump['attributes'].get(attr, {})
+                for err in verify_node(subname, attr_node, subdump):
+                    yield err
+
+    elif isinstance(node.node, FuncItem):
+        if 'type' not in dump or dump['type'] not in ('function', 'callable'):
+            yield name, 'inconsistent', node.node.line, shed_type, module_type
+        # TODO check arguments and return value
+    elif isinstance(node.node, Var):
+        pass
+        # Need to check if types are inconsistent.
+        #if 'type' not in dump or dump['type'] != node.node.type:
+        #    import ipdb; ipdb.set_trace()
+        #    yield name, 'inconsistent', node.node.line, shed_type, module_type
+    elif isinstance(node.node, MypyFile):
+        pass # TODO: what checking can we do here?
+    elif isinstance(node.node, OverloadedFuncDef):
+        # Should check types of the union of the overloaded types.
+        pass
+    elif isinstance(node.node, TypeVarExpr):
+        pass # TODO: what even is this?
+    elif isinstance(node.node, Decorator):
+        pass # What can we check here?
+    else:
+        raise TypeError('unkonwn node type {}'.format(node.node))
 
 
 def dump_module(id: str) -> Dict[str, Any]:
@@ -127,8 +148,7 @@ def build_stubs(mod):
                                 custom_typeshed_dir=None)
     sources = find_modules_recursive(mod, lib_path)
     if not sources:
-        errors += [Error(repr(mod), repr(mod), 'no_typeshed', None,
-                        no_typeshed_msg(repr(mod)))]
+        errors += [Error(repr(mod), repr(mod), 'no_typeshed', None, None, None)]
     try:
         res = build.build(sources=sources,
                           options=options)
@@ -143,19 +163,23 @@ def build_stubs(mod):
     return res, errors
 
 
-if __name__ == '__main__':
-    if len(sys.argv) == 1:
+def main(args):
+    if len(args) == 1:
         print('must provide at least one module to test, or --all_stdlib')
         sys.exit(1)
-    elif sys.argv[1] == '--all_stdlib':
+    elif args[1] == '--all_stdlib':
         version = '{}.{}'.format(sys.version_info.major, sys.version_info.minor)
         from stdlib_list import stdlib_list
         modules = set(stdlib_list(version))
-        modules.remove('unittest')
-        modules.remove('unittest.mock')
     else:
-        modules = sys.argv[1:]
+        modules = args[1:]
 
     for module in modules:
         for error in test_stub(module):
-            print(error.module, ':', error.message)
+            yield error
+
+
+if __name__ == '__main__':
+
+    for err in main(sys.argv):
+        print(messages[err.error_type].format(error=err))
