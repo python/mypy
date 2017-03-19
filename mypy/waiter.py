@@ -6,6 +6,7 @@ This is used for running mypy tests.
 from typing import Dict, List, Optional, Set, Tuple
 
 import os
+from multiprocessing import cpu_count
 import pipes
 import re
 from subprocess import Popen, STDOUT
@@ -122,7 +123,8 @@ class Waiter:
             try:
                 sched_getaffinity = os.sched_getaffinity
             except AttributeError:
-                limit = 2
+                # no support for affinity on OSX/Windows
+                limit = cpu_count()
             else:
                 # Note: only count CPUs we are allowed to use. It is a
                 # major mistake to count *all* CPUs on the machine.
