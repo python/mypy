@@ -440,7 +440,7 @@ class StrConv(NodeVisitor[str]):
         return 'NewTypeExpr:{}({}, {})'.format(o.line, o.name,
                                                self.dump([o.old_type], o))
 
-    def visit_func_expr(self, o: 'mypy.nodes.FuncExpr') -> str:
+    def visit_lambda_expr(self, o: 'mypy.nodes.LambdaExpr') -> str:
         a = self.func_helper(o)
         return self.dump(a, o)
 

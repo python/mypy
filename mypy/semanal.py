@@ -58,7 +58,7 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
-    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
+    LambdaExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
@@ -2846,7 +2846,7 @@ class SemanticAnalyzer(NodeVisitor):
         """
         expr.sequences[0].accept(self)
 
-    def visit_func_expr(self, expr: FuncExpr) -> None:
+    def visit_lambda_expr(self, expr: LambdaExpr) -> None:
         self.analyze_function(expr)
 
     def visit_conditional_expr(self, expr: ConditionalExpr) -> None:

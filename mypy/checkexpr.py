@@ -15,7 +15,7 @@ from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
     OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealTypeExpr, TypeApplication, ListExpr,
-    TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context, Expression,
+    TupleExpr, DictExpr, LambdaExpr, SuperExpr, SliceExpr, Context, Expression,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
@@ -1743,7 +1743,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.check_call(method, [arg], [nodes.ARG_POS], arg)
         return rv
 
-    def visit_func_expr(self, e: FuncExpr) -> Type:
+    def visit_lambda_expr(self, e: LambdaExpr) -> Type:
         """Type check lambda expression."""
         inferred_type, type_override = self.infer_lambda_type_using_context(e)
         if not inferred_type:
@@ -1764,7 +1764,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return inferred_type
             return replace_callable_return_type(inferred_type, ret_type)
 
-    def infer_lambda_type_using_context(self, e: FuncExpr) -> Tuple[Optional[CallableType],
+    def infer_lambda_type_using_context(self, e: LambdaExpr) -> Tuple[Optional[CallableType],
                                                                     Optional[CallableType]]:
         """Try to infer lambda expression type using context.
 

@@ -1510,7 +1510,7 @@ class SuperExpr(Expression):
         return visitor.visit_super_expr(self)
 
 
-class FuncExpr(FuncItem, Expression):
+class LambdaExpr(FuncItem, Expression):
     """Lambda expression"""
 
     def name(self) -> str:
@@ -1522,7 +1522,7 @@ class FuncExpr(FuncItem, Expression):
         return ret.expr
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_func_expr(self)
+        return visitor.visit_lambda_expr(self)
 
 
 class ListExpr(Expression):

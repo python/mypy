@@ -704,25 +704,25 @@ class A: pass
 class B:
   a = None # type: A
 [out]
-FuncExpr(2) : def (B) -> A
+LambdaExpr(2) : def (B) -> A
 MemberExpr(2) : A
 NameExpr(2) : B
 
 [case testLambdaWithInferredType]
-## FuncExpr|NameExpr
+## LambdaExpr|NameExpr
 import typing
 f = lambda: 1
 [out]
-FuncExpr(3) : def () -> builtins.int
+LambdaExpr(3) : def () -> builtins.int
 NameExpr(3) : def () -> builtins.int
 
 [case testLambdaWithInferredType2]
-## FuncExpr|NameExpr
+## LambdaExpr|NameExpr
 import typing
 f = lambda: [1]
 [builtins fixtures/list.pyi]
 [out]
-FuncExpr(3) : def () -> builtins.list[builtins.int]
+LambdaExpr(3) : def () -> builtins.list[builtins.int]
 NameExpr(3) : def () -> builtins.list[builtins.int]
 
 [case testLambdaWithInferredType2]
@@ -733,7 +733,7 @@ class B:
   a = None # type: A
 [builtins fixtures/list.pyi]
 [out]
-FuncExpr(2) : def (B) -> builtins.list[A]
+LambdaExpr(2) : def (B) -> builtins.list[A]
 ListExpr(2) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunction]
@@ -752,13 +752,13 @@ def f(a: A) -> B: pass
 CallExpr(5) : builtins.list[B]
 NameExpr(5) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
 CallExpr(6) : B
-FuncExpr(6) : def (A) -> B
+LambdaExpr(6) : def (A) -> B
 NameExpr(6) : def (a: A) -> B
 NameExpr(6) : builtins.list[A]
 NameExpr(6) : A
 
 [case testLambdaAndHigherOrderFunction2]
-## FuncExpr|NameExpr|ListExpr
+## LambdaExpr|NameExpr|ListExpr
 from typing import TypeVar, List, Callable
 t = TypeVar('t')
 s = TypeVar('s')
@@ -772,7 +772,7 @@ def f(a: A) -> B: pass
 [builtins fixtures/list.pyi]
 [out]
 NameExpr(6) : def (f: def (A) -> builtins.list[B], a: builtins.list[A]) -> builtins.list[B]
-FuncExpr(7) : def (A) -> builtins.list[B]
+LambdaExpr(7) : def (A) -> builtins.list[B]
 ListExpr(7) : builtins.list[B]
 NameExpr(7) : def (a: A) -> B
 NameExpr(7) : builtins.list[A]
@@ -794,7 +794,7 @@ class A: pass
 --      context. Perhaps just fail instead?
 CallExpr(5) : builtins.list[Any]
 NameExpr(5) : def (f: builtins.list[def (A) -> Any], a: builtins.list[A]) -> builtins.list[Any]
-FuncExpr(6) : def (A) -> A
+LambdaExpr(6) : def (A) -> A
 ListExpr(6) : builtins.list[def (A) -> Any]
 NameExpr(6) : A
 NameExpr(7) : builtins.list[A]
@@ -815,7 +815,7 @@ class B: pass
 [out]
 CallExpr(5) : builtins.list[B]
 NameExpr(5) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
-FuncExpr(6) : def (A) -> B
+LambdaExpr(6) : def (A) -> B
 MemberExpr(6) : B
 NameExpr(6) : A
 NameExpr(7) : builtins.list[A]
@@ -837,7 +837,7 @@ class B: pass
 CallExpr(5) : builtins.list[B]
 NameExpr(5) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
 NameExpr(6) : builtins.list[A]
-FuncExpr(7) : def (A) -> B
+LambdaExpr(7) : def (A) -> B
 MemberExpr(7) : B
 NameExpr(7) : A
 

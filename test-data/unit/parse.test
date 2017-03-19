@@ -1421,12 +1421,12 @@ lambda x, y: 1
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    FuncExpr:1(
+    LambdaExpr:1(
       Block:1(
         ReturnStmt:1(
           IntExpr(1)))))
   ExpressionStmt:2(
-    FuncExpr:2(
+    LambdaExpr:2(
       Args(
         Var(x))
       Block:2(
@@ -1436,7 +1436,7 @@ MypyFile:1(
             NameExpr(y)
             IntExpr(1))))))
   ExpressionStmt:3(
-    FuncExpr:3(
+    LambdaExpr:3(
       Args(
         Var(x)
         Var(y))
@@ -1449,7 +1449,7 @@ lambda x=2: x
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    FuncExpr:1(
+    LambdaExpr:1(
       Args(
         Var(x))
       Init(
@@ -1466,7 +1466,7 @@ lambda x: 1, 2
 MypyFile:1(
   ExpressionStmt:1(
     TupleExpr:1(
-      FuncExpr:1(
+      LambdaExpr:1(
         Args(
           Var(x))
         Block:1(
