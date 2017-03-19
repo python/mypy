@@ -2452,10 +2452,19 @@ class TypeChecker(StatementVisitor[None]):
 
 TypeMap = Optional[Dict[Expression, Type]]
 
+# An object that represents either a precise type or a type with an upper bound;
+# it is important for correct type inference with isinstance.
+TypeRange = NamedTuple(
+    'TypeRange',
+    [
+        ('item', Type),
+        ('is_upper_bound', bool),  # False => precise type
+    ])
+
 
 def conditional_type_map(expr: Expression,
                          current_type: Optional[Type],
-                         proposed_type: Optional[Type],
+                         proposed_type_ranges: Optional[List[TypeRange]],
                          ) -> Tuple[TypeMap, TypeMap]:
     """Takes in an expression, the current type of the expression, and a
     proposed type of that expression.
@@ -2463,17 +2472,26 @@ def conditional_type_map(expr: Expression,
     Returns a 2-tuple: The first element is a map from the expression to
     the proposed type, if the expression can be the proposed type.  The
     second element is a map from the expression to the type it would hold
-    if it was not the proposed type, if any."""
-    if proposed_type:
+    if it was not the proposed type, if any. None means bot, {} means top"""
+    if proposed_type_ranges:
+        if len(proposed_type_ranges) == 1:
+            proposed_type = proposed_type_ranges[0].item  # Union with a single type breaks tests
+        else:
+            proposed_type = UnionType([type_range.item for type_range in proposed_type_ranges])
         if current_type:
-            if is_proper_subtype(current_type, proposed_type):
-                # Expression is always of type proposed_type
+            if not any(type_range.is_upper_bound for type_range in proposed_type_ranges) \
+               and is_proper_subtype(current_type, proposed_type):
+                # Expression is always of one of the types in proposed_type_ranges
                 return {}, None
             elif not is_overlapping_types(current_type, proposed_type):
-                # Expression is never of type proposed_type
+                # Expression is never of any type in proposed_type_ranges
                 return None, {}
             else:
-                remaining_type = restrict_subtype_away(current_type, proposed_type)
+                # we can only restrict when the type is precise, not bounded
+                proposed_precise_type = UnionType([type_range.item
+                                          for type_range in proposed_type_ranges
+                                          if not type_range.is_upper_bound])
+                remaining_type = restrict_subtype_away(current_type, proposed_precise_type)
                 return {expr: proposed_type}, {expr: remaining_type}
         else:
             return {expr: proposed_type}, {}
@@ -2644,8 +2662,8 @@ def find_isinstance_check(node: Expression,
             expr = node.args[0]
             if expr.literal == LITERAL_TYPE:
                 vartype = type_map[expr]
-                type = get_isinstance_type(node.args[1], type_map)
-                return conditional_type_map(expr, vartype, type)
+                types = get_isinstance_type(node.args[1], type_map)
+                return conditional_type_map(expr, vartype, types)
         elif refers_to_fullname(node.callee, 'builtins.callable'):
             expr = node.args[0]
             if expr.literal == LITERAL_TYPE:
@@ -2663,7 +2681,8 @@ def find_isinstance_check(node: Expression,
                     # two elements in node.operands, and at least one of them
                     # should represent a None.
                     vartype = type_map[expr]
-                    if_vars, else_vars = conditional_type_map(expr, vartype, NoneTyp())
+                    none_typ = [TypeRange(NoneTyp(), is_upper_bound=False)]
+                    if_vars, else_vars = conditional_type_map(expr, vartype, none_typ)
                     break
 
             if is_not:
@@ -2725,28 +2744,22 @@ def flatten(t: Expression) -> List[Expression]:
         return [t]
 
 
-def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> Type:
+def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> List[TypeRange]:
     all_types = [type_map[e] for e in flatten(expr)]
-
-    types = []  # type: List[Type]
-
+    types = []  # type: List[TypeRange]
     for type in all_types:
         if isinstance(type, FunctionLike):
             if type.is_type_obj():
                 # Type variables may be present -- erase them, which is the best
                 # we can do (outside disallowing them here).
                 type = erase_typevars(type.items()[0].ret_type)
-            types.append(type)
+            types.append(TypeRange(type, is_upper_bound=False))
         elif isinstance(type, TypeType):
-            types.append(type.item)
+            types.append(TypeRange(type.item, is_upper_bound=True))
         else:  # we didn't see an actual type, but rather a variable whose value is unknown to us
             return None
-
     assert len(types) != 0
-    if len(types) == 1:
-        return types[0]
-    else:
-        return UnionType(types)
+    return types
 
 
 def expand_func(defn: FuncItem, map: Dict[TypeVarId, Type]) -> FuncItem:
