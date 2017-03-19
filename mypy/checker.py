@@ -25,7 +25,7 @@ from mypy.nodes import (
 )
 from mypy import nodes
 from mypy.types import (
-    Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType, TypedDictType,
+    Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, ErrorType, strip_type, TypeType,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance
@@ -300,7 +300,7 @@ class TypeChecker(StatementVisitor[None]):
     #
     # A classic generator must define a return type that's either
     # `Generator[ty, tc, tr]`, Iterator[ty], or Iterable[ty] (or
-    # object or Any).  If tc/tr are not given, both are Void.
+    # object or Any).  If tc/tr are not given, both are None.
     #
     # A coroutine must define a return type corresponding to tr; the
     # other two are unconstrained.  The "external" return type (seen
@@ -377,11 +377,6 @@ class TypeChecker(StatementVisitor[None]):
             # AwaitableGenerator, Generator, AsyncGenerator, Iterator, or Iterable; ty is args[0].
             ret_type = return_type.args[0]
             # TODO not best fix, better have dedicated yield token
-            if isinstance(ret_type, NoneTyp):
-                if experiments.STRICT_OPTIONAL:
-                    return NoneTyp(is_ret_type=True)
-                else:
-                    return Void()
             return ret_type
         else:
             # If the function's declared supertype of Generator has no type
@@ -414,10 +409,7 @@ class TypeChecker(StatementVisitor[None]):
         else:
             # `return_type` is a supertype of Generator, so callers won't be able to send it
             # values.  IOW, tc is None.
-            if experiments.STRICT_OPTIONAL:
-                return NoneTyp(is_ret_type=True)
-            else:
-                return Void()
+            return NoneTyp()
 
     def get_generator_return_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it returns (tr)."""
@@ -529,7 +521,7 @@ class TypeChecker(StatementVisitor[None]):
                 if fdef:
                     # Check if __init__ has an invalid, non-None return type.
                     if (fdef.info and fdef.name() in ('__init__', '__init_subclass__') and
-                            not isinstance(typ.ret_type, (Void, NoneTyp)) and
+                            not isinstance(typ.ret_type, NoneTyp) and
                             not self.dynamic_funcs[-1]):
                         self.fail(messages.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
                                   item.type)
@@ -572,7 +564,7 @@ class TypeChecker(StatementVisitor[None]):
                     if (self.options.python_version[0] == 2 and
                             isinstance(typ.ret_type, Instance) and
                             typ.ret_type.type.fullname() == 'typing.Generator'):
-                        if not isinstance(typ.ret_type.args[2], (Void, NoneTyp, AnyType)):
+                        if not isinstance(typ.ret_type.args[2], (NoneTyp, AnyType)):
                             self.fail(messages.INVALID_GENERATOR_RETURN_ITEM_TYPE, typ)
 
                 # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
@@ -660,7 +652,7 @@ class TypeChecker(StatementVisitor[None]):
                 else:
                     return_type = self.return_types[-1]
 
-                if (not isinstance(return_type, (Void, NoneTyp, AnyType))
+                if (not isinstance(return_type, (NoneTyp, AnyType))
                         and not self.is_trivial_body(defn.body)):
                     # Control flow fell off the end of a function that was
                     # declared to return a non-None type and is not
@@ -1149,11 +1141,8 @@ class TypeChecker(StatementVisitor[None]):
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             if not self.current_node_deferred:
-                                if experiments.STRICT_OPTIONAL:
-                                    var.type = UnionType.make_simplified_union(
-                                        [rvalue_type, NoneTyp()])
-                                else:
-                                    var.type = rvalue_type
+                                var.type = UnionType.make_simplified_union(
+                                    [rvalue_type, NoneTyp()])
                             else:
                                 var.type = None
                             del partial_types[var]
@@ -1554,10 +1543,7 @@ class TypeChecker(StatementVisitor[None]):
     def infer_variable_type(self, name: Var, lvalue: Lvalue,
                             init_type: Type, context: Context) -> None:
         """Infer the type of initialized variables from initializer type."""
-        if self.is_unusable_type(init_type):
-            self.check_usable_type(init_type, context)
-            self.set_inference_error_fallback_type(name, lvalue, init_type, context)
-        elif isinstance(init_type, DeletedType):
+        if isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
         elif not is_valid_inferred_type(init_type):
             # We cannot use the type of the initialization expression for full type
@@ -1748,7 +1734,7 @@ class TypeChecker(StatementVisitor[None]):
                         del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
-        self.expr_checker.accept(s.expr)
+        self.expr_checker.accept(s.expr, allow_none_return=True)
 
     def visit_return_stmt(self, s: ReturnStmt) -> None:
         """Type check a return statement."""
@@ -1769,13 +1755,25 @@ class TypeChecker(StatementVisitor[None]):
                 return
 
             if s.expr:
+                is_lambda = isinstance(self.scope.top_function(), FuncExpr)
+                declared_none_return = isinstance(return_type, NoneTyp)
+                declared_any_return = isinstance(return_type, AnyType)
+
+                # This controls whether or not we allow a function call that
+                # returns None as the expression of this return statement.
+                # E.g. `return f()` for some `f` that returns None.  We allow
+                # this only if we're in a lambda or in a function that returns
+                # `None` or `Any`.
+                allow_none_func_call = is_lambda or declared_none_return or declared_any_return
+
                 # Return with a value.
-                typ = self.expr_checker.accept(s.expr, return_type)
+                typ = self.expr_checker.accept(s.expr,
+                                               return_type,
+                                               allow_none_return=allow_none_func_call)
 
                 if defn.is_async_generator:
                     self.fail("'return' with value in async generator is not allowed", s)
                     return
-
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the
@@ -1784,10 +1782,12 @@ class TypeChecker(StatementVisitor[None]):
                         self.warn(messages.RETURN_ANY.format(return_type), s)
                     return
 
-                if self.is_unusable_type(return_type):
-                    # Lambdas are allowed to have a unusable returns.
-                    # Functions returning a value of type None are allowed to have a Void return.
-                    if isinstance(self.scope.top_function(), FuncExpr) or isinstance(typ, NoneTyp):
+                # Disallow return expressions in functions declared to return
+                # None, subject to two exceptions below.
+                if declared_none_return:
+                    # Lambdas are allowed to have None returns.
+                    # Functions returning a value of type None are allowed to have a None return.
+                    if is_lambda or isinstance(typ, NoneTyp):
                         return
                     self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                 else:
@@ -1805,7 +1805,7 @@ class TypeChecker(StatementVisitor[None]):
                         isinstance(return_type, AnyType)):
                     return
 
-                if isinstance(return_type, (Void, NoneTyp, AnyType)):
+                if isinstance(return_type, (NoneTyp, AnyType)):
                     return
 
                 if self.in_checked_function():
@@ -1818,7 +1818,6 @@ class TypeChecker(StatementVisitor[None]):
         with self.binder.frame_context(can_skip=False, fall_through=0):
             for e, b in zip(s.expr, s.body):
                 t = self.expr_checker.accept(e)
-                self.check_usable_type(t, e)
 
                 if isinstance(t, DeletedType):
                     self.msg.deleted_as_rvalue(t, s)
@@ -2058,8 +2057,6 @@ class TypeChecker(StatementVisitor[None]):
         echk = self.expr_checker
         iterable = echk.accept(expr)
 
-        self.check_usable_type(iterable, expr)
-
         self.check_subtype(iterable,
                            self.named_generic_type('typing.AsyncIterable',
                                                    [AnyType()]),
@@ -2077,12 +2074,8 @@ class TypeChecker(StatementVisitor[None]):
         echk = self.expr_checker
         iterable = echk.accept(expr)
 
-        self.check_usable_type(iterable, expr)
         if isinstance(iterable, TupleType):
-            if experiments.STRICT_OPTIONAL:
-                joined = UninhabitedType()  # type: Type
-            else:
-                joined = NoneTyp()
+            joined = UninhabitedType()  # type: Type
             for item in iterable.items:
                 joined = join_types(joined, item)
             if isinstance(joined, ErrorType):
@@ -2119,7 +2112,7 @@ class TypeChecker(StatementVisitor[None]):
             m.line = s.line
             c = CallExpr(m, [e.index], [nodes.ARG_POS], [None])
             c.line = s.line
-            c.accept(self.expr_checker)
+            self.expr_checker.accept(c, allow_none_return=True)
         else:
             s.expr.accept(self.expr_checker)
             for elt in flatten(s.expr):
@@ -2248,21 +2241,18 @@ class TypeChecker(StatementVisitor[None]):
         if is_subtype(subtype, supertype):
             return True
         else:
-            if self.is_unusable_type(subtype):
-                self.msg.does_not_return_value(subtype, context)
-            else:
-                if self.should_suppress_optional_error([subtype]):
-                    return False
-                extra_info = []  # type: List[str]
-                if subtype_label is not None or supertype_label is not None:
-                    subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
-                    if subtype_label is not None:
-                        extra_info.append(subtype_label + ' ' + subtype_str)
-                    if supertype_label is not None:
-                        extra_info.append(supertype_label + ' ' + supertype_str)
-                if extra_info:
-                    msg += ' (' + ', '.join(extra_info) + ')'
-                self.fail(msg, context)
+            if self.should_suppress_optional_error([subtype]):
+                return False
+            extra_info = []  # type: List[str]
+            if subtype_label is not None or supertype_label is not None:
+                subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
+                if subtype_label is not None:
+                    extra_info.append(subtype_label + ' ' + subtype_str)
+                if supertype_label is not None:
+                    extra_info.append(supertype_label + ' ' + supertype_str)
+            if extra_info:
+                msg += ' (' + ', '.join(extra_info) + ')'
+            self.fail(msg, context)
             return False
 
     def contains_none(self, t: Type) -> bool:
@@ -2369,8 +2359,7 @@ class TypeChecker(StatementVisitor[None]):
         partial_types = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                if (experiments.STRICT_OPTIONAL and
-                        isinstance(var.type, PartialType) and var.type.type is None):
+                if isinstance(var.type, PartialType) and var.type.type is None:
                     # None partial type: assume variable is intended to have type None
                     var.type = NoneTyp()
                 else:
@@ -2382,18 +2371,6 @@ class TypeChecker(StatementVisitor[None]):
             if var in partial_types:
                 return partial_types
         return None
-
-    def is_unusable_type(self, typ: Type) -> bool:
-        """Is this type an unusable type?
-
-        The two unusable types are Void and NoneTyp(is_ret_type=True).
-        """
-        return isinstance(typ, Void) or (isinstance(typ, NoneTyp) and typ.is_ret_type)
-
-    def check_usable_type(self, typ: Type, context: Context) -> None:
-        """Generate an error if the type is not a usable type."""
-        if self.is_unusable_type(typ):
-            self.msg.does_not_return_value(typ, context)
 
     def temp_node(self, t: Type, context: Context = None) -> TempNode:
         """Create a temporary node with the given, fixed type."""
@@ -2925,9 +2902,6 @@ def is_valid_inferred_type_component(typ: Type) -> bool:
     In strict Optional mode this excludes bare None types, as otherwise every
     type containing None would be invalid.
     """
-    if not experiments.STRICT_OPTIONAL:
-        if is_same_type(typ, NoneTyp()):
-            return False
     if is_same_type(typ, UninhabitedType()):
         return False
     elif isinstance(typ, Instance):

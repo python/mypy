@@ -281,10 +281,9 @@ class A:
     def g(self) -> 'A': pass
 class B(A):
     def f(self) -> A: pass  # Fail
-    def g(self) -> None: pass  # Fail
+    def g(self) -> None: pass
 [out]
 main:6: error: Return type of "f" incompatible with supertype "A"
-main:7: error: Return type of "g" incompatible with supertype "A"
 
 [case testOverride__new__WithDifferentSignature]
 class A:
@@ -727,12 +726,9 @@ import typing
 class A:
     def f(self) -> None:
         def g() -> None:
-            a = None
-        b = None
+            "" + 1  # E: Unsupported operand types for + ("str" and "int")
+        "" + 1  # E: Unsupported operand types for + ("str" and "int")
 [out]
-main:5: error: Need type annotation for variable
-main:6: error: Need type annotation for variable
-
 
 -- Static methods
 -- --------------

@@ -1,7 +1,7 @@
 from typing import Sequence
 
 from mypy.types import (
-    Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, TypedDictType,
+    Type, UnboundType, ErrorType, AnyType, NoneTyp, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     TypeList, Overloaded, PartialType, DeletedType, UninhabitedType, TypeType
 )
@@ -63,9 +63,6 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)
-
-    def visit_void(self, left: Void) -> bool:
-        return isinstance(self.right, Void)
 
     def visit_none_type(self, left: NoneTyp) -> bool:
         return isinstance(self.right, NoneTyp)

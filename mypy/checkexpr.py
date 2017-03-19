@@ -5,7 +5,7 @@ from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
 
 from mypy.errors import report_internal_error
 from mypy.types import (
-    Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
+    Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
@@ -173,7 +173,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 return val
 
-    def visit_call_expr(self, e: CallExpr) -> Type:
+    def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         """Type check a call expression."""
         if e.analyzed:
             # It's really a special form that only looks like a call.
@@ -192,6 +192,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ret_type = self.check_call_expr_with_callee_type(callee_type, e)
         if isinstance(ret_type, UninhabitedType):
             self.chk.binder.unreachable()
+        if not allow_none_return and isinstance(ret_type, NoneTyp):
+            self.chk.msg.does_not_return_value(callee_type, e)
+            return AnyType(implicit=True)
         return ret_type
 
     def check_typeddict_call(self, callee: TypedDictType,
@@ -557,9 +560,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for arg in args:
             if isinstance(arg, UninhabitedType) or has_erased_component(arg):
                 new_args.append(None)
-            elif not experiments.STRICT_OPTIONAL and isinstance(arg, NoneTyp):
-                # Don't substitute None types in non-strict-Optional mode.
-                new_args.append(None)
             else:
                 new_args.append(arg)
         return self.apply_generic_arguments(callable, new_args, error_context)
@@ -836,9 +836,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                   callee_type: Type, n: int, m: int, callee: CallableType,
                   context: Context, messages: MessageBuilder) -> None:
         """Check the type of a single argument in a call."""
-        if self.chk.is_unusable_type(caller_type):
-            messages.does_not_return_value(caller_type, context)
-        elif isinstance(caller_type, DeletedType):
+        if isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
@@ -1192,8 +1190,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if result is None:
                 result = sub_result
             else:
-                # TODO: check on void needed?
-                self.check_usable_type(sub_result, e)
                 result = join.join_types(result, sub_result)
 
         return result
@@ -1344,9 +1340,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         right_type = self.analyze_cond_branch(right_map, e.right, left_type)
 
-        self.check_usable_type(left_type, context)
-        self.check_usable_type(right_type, context)
-
         if right_map is None:
             # The boolean expression is statically known to be the left value
             assert left_map is not None  # find_isinstance_check guarantees this
@@ -1386,7 +1379,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         operand_type = self.accept(e.expr)
         op = e.op
         if op == 'not':
-            self.check_usable_type(operand_type, e)
             result = self.bool_type()  # type: Type
         elif op == '-':
             method_type = self.analyze_external_member_access('__neg__',
@@ -1520,19 +1512,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
-        source_type = self.accept(expr.expr, type_context=AnyType())
+        source_type = self.accept(expr.expr, type_context=AnyType(), allow_none_return=True)
         target_type = expr.type
         if self.chk.options.warn_redundant_casts and is_same_type(source_type, target_type):
             self.msg.redundant_cast(target_type, expr)
-        if not self.is_valid_cast(source_type, target_type):
-            self.msg.invalid_cast(target_type, source_type, expr)
         return target_type
-
-    def is_valid_cast(self, source_type: Type, target_type: Type) -> bool:
-        """Is a cast from source_type to target_type meaningful?"""
-        return (isinstance(target_type, AnyType) or
-                (not isinstance(source_type, Void) and
-                 not isinstance(target_type, Void)))
 
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
         """Type check a reveal_type expression."""
@@ -1688,7 +1672,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # context?  Counterargument: Why would anyone write
                 # (1, *(2, 3)) instead of (1, 2, 3) except in a test?
                 tt = self.accept(item.expr)
-                self.check_usable_type(tt, e)
                 if isinstance(tt, TupleType):
                     items.extend(tt.items)
                     j += len(tt.items)
@@ -1702,7 +1685,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     tt = self.accept(item, type_context_items[j])
                     j += 1
-                self.check_usable_type(tt, e)
                 items.append(tt)
         fallback_item = join.join_type_list(items)
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
@@ -1766,16 +1748,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         inferred_type, type_override = self.infer_lambda_type_using_context(e)
         if not inferred_type:
             # No useful type context.
-            ret_type = self.accept(e.expr())
-            if isinstance(ret_type, NoneTyp):
-                ret_type = Void()
+            ret_type = self.accept(e.expr(), allow_none_return=True)
             fallback = self.named_type('builtins.function')
             return callable_type(e, fallback, ret_type)
         else:
             # Type context available.
             self.chk.check_func_item(e, type_override=type_override)
             if e.expr() not in self.chk.type_map:
-                self.accept(e.expr())
+                self.accept(e.expr(), allow_none_return=True)
             ret_type = self.chk.type_map[e.expr()]
             if isinstance(ret_type, NoneTyp):
                 # For "lambda ...: None", just use type from the context.
@@ -1965,7 +1945,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
-        self.check_usable_type(cond_type, e)
         if self.chk.options.strict_boolean:
             is_bool = (isinstance(cond_type, Instance)
                 and cond_type.type.fullname() == 'builtins.bool')
@@ -2019,11 +1998,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     # Helpers
     #
 
-    def accept(self, node: Expression, type_context: Type = None) -> Type:
-        """Type check a node in the given type context."""
+    def accept(self,
+               node: Expression,
+               type_context: Type = None,
+               allow_none_return: bool = False
+               ) -> Type:
+        """Type check a node in the given type context.  If allow_none_return
+        is True and this expression is a call, allow it to return None.  This
+        applies only to this expression and not any subexpressions.
+        """
         self.type_context.append(type_context)
         try:
-            typ = node.accept(self)
+            if allow_none_return and isinstance(node, CallExpr):
+                typ = self.visit_call_expr(node, allow_none_return=True)
+            elif allow_none_return and isinstance(node, YieldFromExpr):
+                typ = self.visit_yield_from_expr(node, allow_none_return=True)
+            else:
+                typ = node.accept(self)
         except Exception as err:
             report_internal_error(err, self.chk.errors.file,
                                   node.line, self.chk.errors, self.chk.options)
@@ -2034,10 +2025,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType()
         else:
             return typ
-
-    def check_usable_type(self, typ: Type, context: Context) -> None:
-        """Generate an error if type is Void."""
-        self.chk.check_usable_type(typ, context)
 
     def named_type(self, name: str) -> Instance:
         """Return an instance type with type given by the name and no type
@@ -2099,7 +2086,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return_type = self.chk.return_types[-1]
         expected_item_type = self.chk.get_generator_yield_type(return_type, False)
         if e.expr is None:
-            if (not isinstance(expected_item_type, (Void, NoneTyp, AnyType))
+            if (not isinstance(expected_item_type, (NoneTyp, AnyType))
                     and self.chk.in_checked_function()):
                 self.chk.fail(messages.YIELD_VALUE_EXPECTED, e)
         else:
@@ -2131,7 +2118,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             generator = self.check_call(method, [], [], ctx)[0]
             return self.chk.get_generator_return_type(generator, False)
 
-    def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
+    def visit_yield_from_expr(self, e: YieldFromExpr, allow_none_return: bool = False) -> Type:
         # NOTE: Whether `yield from` accepts an `async def` decorated
         # with `@types.coroutine` (or `@asyncio.coroutine`) depends on
         # whether the generator containing the `yield from` is itself
@@ -2177,17 +2164,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Determine the type of the entire yield from expression.
         if (isinstance(iter_type, Instance) and
                 iter_type.type.fullname() == 'typing.Generator'):
-            return self.chk.get_generator_return_type(iter_type, False)
+            expr_type = self.chk.get_generator_return_type(iter_type, False)
         else:
             # Non-Generators don't return anything from `yield from` expressions.
             # However special-case Any (which might be produced by an error).
             if isinstance(actual_item_type, AnyType):
-                return AnyType()
+                expr_type = AnyType()
             else:
-                if experiments.STRICT_OPTIONAL:
-                    return NoneTyp(is_ret_type=True)
-                else:
-                    return Void()
+                expr_type = NoneTyp()
+
+        if not allow_none_return and isinstance(expr_type, NoneTyp):
+            self.chk.msg.does_not_return_value(None, e)
+        return expr_type
 
     def visit_temp_node(self, e: TempNode) -> Type:
         return e.type
