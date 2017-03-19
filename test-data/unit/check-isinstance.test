@@ -1360,3 +1360,55 @@ def f(x: object) -> None:
     reveal_type(b)  # E: Revealed type is '__main__.A'
 [builtins fixtures/isinstance.pyi]
 [out]
+
+
+[case testIsInstanceWithUnknownType]
+from typing import Union
+def f(x: Union[int, str], typ: type) -> None:
+    if isinstance(x, (typ, int)):
+        x + 1  # E: Unsupported operand types for + (likely involving Union)
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    else:
+        reveal_type(x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testIsInstanceWithBoundedType]
+from typing import Union, Type
+
+class A: pass
+def f(x: Union[int, A], a: Type[A]) -> None:
+    if isinstance(x, (a, int)):
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, __main__.A]'
+    else:
+        reveal_type(x)  # E: Revealed type is '__main__.A'
+
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testIsInstanceWithEmtpy2ndArg]
+from typing import Union
+def f(x: Union[int, str]) -> None:
+    if isinstance(x, ()):
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    else:
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testIsInstanceWithTypeObject]
+from typing import Union, Type
+
+class A: pass
+
+def f(x: Union[int, A], a: Type[A]) -> None:
+    if isinstance(x, a):
+        reveal_type(x)  # E: Revealed type is '__main__.A'
+    elif isinstance(x, int):
+        reveal_type(x)  # E: Revealed type is 'builtins.int'
+    else:
+        reveal_type(x)  # E: Revealed type is '__main__.A'
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, __main__.A]'
+
+[builtins fixtures/isinstancelist.pyi]
+

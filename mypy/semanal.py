@@ -2679,8 +2679,7 @@ class SemanticAnalyzer(NodeVisitor):
             # This branch handles the case foo.bar where foo is a module.
             # In this case base.node is the module's MypyFile and we look up
             # bar in its namespace.  This must be done for all types of bar.
-            file = base.node
-            assert isinstance(file, (MypyFile, type(None)))
+            file = cast(Optional[MypyFile], base.node)  # can't use isinstance due to issue #2999
             n = file.names.get(expr.name, None) if file is not None else None
             if n:
                 n = self.normalize_type_alias(n, expr)
