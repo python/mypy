@@ -1734,12 +1734,7 @@ class TypeChecker(StatementVisitor[None]):
                         del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
-        # Special-case call exprs so we can support warnings on return value of
-        # None-returning functions
-        if isinstance(s.expr, CallExpr):
-            self.expr_checker.accept(s.expr, allow_none_return=True)
-        else:
-            self.expr_checker.accept(s.expr)
+        self.expr_checker.accept(s.expr, allow_none_return=True)
 
     def visit_return_stmt(self, s: ReturnStmt) -> None:
         """Type check a return statement."""
@@ -1762,10 +1757,19 @@ class TypeChecker(StatementVisitor[None]):
             if s.expr:
                 is_lambda = isinstance(self.scope.top_function(), FuncExpr)
                 declared_none_return = isinstance(return_type, NoneTyp)
+                declared_any_return = isinstance(return_type, AnyType)
+
+                # This controls whether or not we allow a function call that
+                # returns None as the expression of this return statement.
+                # E.g. `return f()` for some `f` that returns None.  We allow
+                # this only if we're in a lambda or in a function that returns
+                # `None` or `Any`.
+                allow_none_func_call = is_lambda or declared_none_return or declared_any_return
+
                 # Return with a value.
                 typ = self.expr_checker.accept(s.expr,
                                                return_type,
-                                               allow_none_return=is_lambda or declared_none_return)
+                                               allow_none_return=allow_none_func_call)
 
                 if defn.is_async_generator:
                     self.fail("'return' with value in async generator is not allowed", s)
@@ -1778,6 +1782,8 @@ class TypeChecker(StatementVisitor[None]):
                         self.warn(messages.RETURN_ANY.format(return_type), s)
                     return
 
+                # Disallow return expressions in functions declared to return
+                # None, subject to two exceptions below.
                 if declared_none_return:
                     # Lambdas are allowed to have None returns.
                     # Functions returning a value of type None are allowed to have a None return.

@@ -548,20 +548,13 @@ async def return_int() -> AsyncGenerator[int, None]:
 async def return_none() -> AsyncGenerator[int, None]:
     yield 1
     return None  # E: 'return' with value in async generator is not allowed
-[builtins fixtures/dict.pyi]
 
-[case testAsyncGeneratorNoReturnWithValue2]
-# flags: --python-version 3.6
-from typing import AsyncGenerator
 def f() -> None:
     return
 
 async def return_f() -> AsyncGenerator[int, None]:
     yield 1
-    return f()
-[out]
-main:8: error: 'return' with value in async generator is not allowed
-main:8: error: "f" does not return a value
+    return f()  # E: 'return' with value in async generator is not allowed
 
 [builtins fixtures/dict.pyi]
 

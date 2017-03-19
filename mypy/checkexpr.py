@@ -1748,14 +1748,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         inferred_type, type_override = self.infer_lambda_type_using_context(e)
         if not inferred_type:
             # No useful type context.
-            ret_type = self.accept(e.expr())
+            ret_type = self.accept(e.expr(), allow_none_return=True)
             fallback = self.named_type('builtins.function')
             return callable_type(e, fallback, ret_type)
         else:
             # Type context available.
             self.chk.check_func_item(e, type_override=type_override)
             if e.expr() not in self.chk.type_map:
-                self.accept(e.expr())
+                self.accept(e.expr(), allow_none_return=True)
             ret_type = self.chk.type_map[e.expr()]
             if isinstance(ret_type, NoneTyp):
                 # For "lambda ...: None", just use type from the context.
@@ -2011,6 +2011,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         try:
             if allow_none_return and isinstance(node, CallExpr):
                 typ = self.visit_call_expr(node, allow_none_return=True)
+            elif allow_none_return and isinstance(node, YieldFromExpr):
+                typ = self.visit_yield_from_expr(node, allow_none_return=True)
             else:
                 typ = node.accept(self)
         except Exception as err:
@@ -2116,7 +2118,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             generator = self.check_call(method, [], [], ctx)[0]
             return self.chk.get_generator_return_type(generator, False)
 
-    def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
+    def visit_yield_from_expr(self, e: YieldFromExpr, allow_none_return: bool = False) -> Type:
         # NOTE: Whether `yield from` accepts an `async def` decorated
         # with `@types.coroutine` (or `@asyncio.coroutine`) depends on
         # whether the generator containing the `yield from` is itself
@@ -2162,14 +2164,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Determine the type of the entire yield from expression.
         if (isinstance(iter_type, Instance) and
                 iter_type.type.fullname() == 'typing.Generator'):
-            return self.chk.get_generator_return_type(iter_type, False)
+            expr_type = self.chk.get_generator_return_type(iter_type, False)
         else:
             # Non-Generators don't return anything from `yield from` expressions.
             # However special-case Any (which might be produced by an error).
             if isinstance(actual_item_type, AnyType):
-                return AnyType()
+                expr_type = AnyType()
             else:
-                return NoneTyp()
+                expr_type = NoneTyp()
+
+        if not allow_none_return and isinstance(expr_type, NoneTyp):
+            self.chk.msg.does_not_return_value(None, e)
+        return expr_type
 
     def visit_temp_node(self, e: TempNode) -> Type:
         return e.type

@@ -269,8 +269,7 @@ def greet() -> 'Generator[Any, None, None]':
 @asyncio.coroutine
 def test() -> 'Generator[Any, None, None]':
     yield from greet()
-    x = yield from greet()
-    reveal_type(x)
+    x = yield from greet()  # Error
 
 loop = asyncio.get_event_loop()
 try:
@@ -278,7 +277,7 @@ try:
 finally:
     loop.close()
 [out]
-_program.py:14: error: Revealed type is 'builtins.None'
+_program.py:13: error: Function does not return a value
 
 [case testErrorReturnIsNotTheSameType]
 from typing import Generator, Any

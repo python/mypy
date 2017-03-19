@@ -933,7 +933,7 @@ class A:
 [case testNoneReturnTypeWithExpressions2]
 
 a, b = None, None # type: (A, bool)
-f() in a
+f() in a   # Fail (see output)
 a < f()    # E: "f" does not return a value
 f() <= a   # E: "f" does not return a value
 a in f()   # E: "f" does not return a value
@@ -1491,14 +1491,14 @@ def f(x: int) -> Iterator[None]:
 -- ----------------
 
 
-[case testYieldFromIteratorIsNone]
+[case testYieldFromIteratorHasNoValue]
 from typing import Iterator
 def f() -> Iterator[int]:
     yield 5
 def g() -> Iterator[int]:
     a = yield from f()
-    reveal_type(a)  # E: Revealed type is 'builtins.None'
 [out]
+main:5: error: Function does not return a value
 
 [case testYieldFromGeneratorHasValue]
 from typing import Iterator, Generator
