@@ -32,16 +32,26 @@ def module_to_json(m):
     result = {}
     for name, value in m.__dict__.items():
         # Filter out some useless attributes.
+
         if name in ('__file__',
                     '__doc__',
                     '__name__',
                     '__builtins__',
                     '__package__'):
             continue
+
         if name == '__all__':
-            result[name] = sorted(value)
+            result[name] = {'values': sorted(value)}
         else:
             result[name] = dump_value(value)
+
+        try:
+            _, line = inspect.getsourcelines(getattr(m, name))
+        except (TypeError, OSError):
+            line = None
+
+        result[name]['line'] = line
+
     return result
 
 
@@ -53,25 +63,25 @@ def dump_value(value, depth=0):
     if inspect.isfunction(value):
         return dump_function(value)
     if callable(value):
-        return 'callable'  # TODO more information
+        return {'type': 'callable'}  # TODO more information
     if isinstance(value, types.ModuleType):
-        return 'module'  # TODO module name
+        return {'type': 'module'}  # TODO module name
     if inspect.isdatadescriptor(value):
-        return 'datadescriptor'
+        return {'type': 'datadescriptor'}
 
     if inspect.ismemberdescriptor(value):
-        return 'memberdescriptor'
+        return {'type': 'memberdescriptor'}
     return dump_simple(value)
 
 
 def dump_simple(value):
     if type(value) in (int, bool, float, str, bytes, Text, long, list, set, dict, tuple):
-        return type(value).__name__
+        return {'type': type(value).__name__}
     if value is None:
-        return 'None'
+        return {'type': 'None'}
     if value is inspect.Parameter.empty:
-        return None
-    return 'unknown'
+        return {'type': None}  # 'None' and None: Ruh-Roh
+    return {'type': 'unknown'}
 
 
 def dump_class(value, depth):
@@ -133,14 +143,12 @@ def dump_function(value):
         sig = inspect.signature(value)
     except ValueError:
         # The signature call sometimes fails for some reason.
-        return 'invalid_signature'
+        return {'type': 'invalid_signature'}
     params = list(sig.parameters.items())
     return {
         'type': 'function',
-        'args': [(name,
-             param_kind(p),
-             dump_simple(p.default))
-            for name, p in params],
+        'args': [(name, param_kind(p), dump_simple(p.default))
+                 for name, p in params],
     }
 
 
