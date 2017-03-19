@@ -286,6 +286,36 @@ def as_mapping(p: Point) -> Mapping[str, str]:
     return p  # E: Incompatible return value type (got "Point", expected Mapping[str, str])
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictAcceptsIntForFloatDuckTypes]
+from mypy_extensions import TypedDict
+from typing import Any, Mapping
+Point = TypedDict('Point', {'x': float, 'y': float})
+def create_point() -> Point:
+    return Point(x=1, y=2)
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictDoesNotAcceptsFloatForInt]
+from mypy_extensions import TypedDict
+from typing import Any, Mapping
+Point = TypedDict('Point', {'x': int, 'y': int})
+def create_point() -> Point:
+    return Point(x=1.2, y=2.5)
+[out]
+main:5: error: Incompatible types (expression has type "float", TypedDict item "x" has type "int")
+main:5: error: Incompatible types (expression has type "float", TypedDict item "y" has type "int")
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictAcceptsAnyType]
+from mypy_extensions import TypedDict
+from typing import Any, Mapping
+Point = TypedDict('Point', {'x': float, 'y': float})
+def create_point(something: Any) -> Point:
+    return Point({
+      'x': something.x,
+      'y': something.y
+    })
+[builtins fixtures/dict.pyi]
+
 -- TODO: Fix mypy stubs so that the following passes in the test suite
 --[case testCanConvertTypedDictToAnySuperclassOfMapping]
 --from mypy_extensions import TypedDict
@@ -341,9 +371,9 @@ CellWithObject = TypedDict('CellWithObject', {'value': object, 'meta': object})
 c1 = CellWithInt(value=1, meta=42)
 c2 = CellWithObject(value=2, meta='turtle doves')
 joined_cells = [c1, c2]
-reveal_type(c1)             # E: Revealed type is 'TypedDict(value=builtins.int, meta=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-reveal_type(c2)             # E: Revealed type is 'TypedDict(value=builtins.int, meta=builtins.str, _fallback=typing.Mapping[builtins.str, builtins.object])'
-reveal_type(joined_cells)   # E: Revealed type is 'builtins.list[TypedDict(value=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])]'
+reveal_type(c1)             # E: Revealed type is 'TypedDict(value=builtins.object, meta=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.object])'
+reveal_type(c2)             # E: Revealed type is 'TypedDict(value=builtins.object, meta=builtins.object, _fallback=typing.Mapping[builtins.str, builtins.object])'
+reveal_type(joined_cells)   # E: Revealed type is 'builtins.list[TypedDict(value=builtins.object, _fallback=typing.Mapping[builtins.str, builtins.object])]'
 [builtins fixtures/dict.pyi]
 
 [case testJoinOfDisjointTypedDictsIsEmptyTypedDict]
@@ -354,7 +384,7 @@ d1 = Point(x=0, y=0)
 d2 = Cell(value='pear tree')
 joined_dicts = [d1, d2]
 reveal_type(d1)             # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-reveal_type(d2)             # E: Revealed type is 'TypedDict(value=builtins.str, _fallback=typing.Mapping[builtins.str, builtins.str])'
+reveal_type(d2)             # E: Revealed type is 'TypedDict(value=builtins.object, _fallback=typing.Mapping[builtins.str, builtins.object])'
 reveal_type(joined_dicts)   # E: Revealed type is 'builtins.list[TypedDict(_fallback=typing.Mapping[builtins.str, builtins.None])]'
 [builtins fixtures/dict.pyi]
 
