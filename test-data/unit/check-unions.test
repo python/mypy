@@ -307,3 +307,57 @@ reveal_type(u(2.3, 1))  # E: Revealed type is 'builtins.float*'
 reveal_type(u(False, 2.2)) # E: Revealed type is 'builtins.float*'
 reveal_type(u(2.2, False)) # E: Revealed type is 'builtins.float*'
 [builtins fixtures/primitives.pyi]
+
+[case testSimplifyingUnionWithTypeTypes1]
+from typing import TypeVar, Union, Type, Any
+
+T = TypeVar('T')
+S = TypeVar('S')
+def u(x: T, y: S) -> Union[S, T]: pass
+
+t_o = None  # type: Type[object]
+t_s = None  # type: Type[str]
+t_a = None  # type: Type[Any]
+
+# Two identical items
+reveal_type(u(t_o, t_o)) # E: Revealed type is 'Type[builtins.object]'
+reveal_type(u(t_s, t_s)) # E: Revealed type is 'Type[builtins.str]'
+reveal_type(u(t_a, t_a)) # E: Revealed type is 'Type[Any]'
+reveal_type(u(type, type)) # E: Revealed type is 'def (x: builtins.Any) -> builtins.type'
+
+# One type, other non-type
+reveal_type(u(t_s, 1)) # E: Revealed type is 'Union[builtins.int*, Type[builtins.str]]'
+reveal_type(u(1, t_s)) # E: Revealed type is 'Union[Type[builtins.str], builtins.int*]'
+reveal_type(u(type, 1)) # E: Revealed type is 'Union[builtins.int*, def (x: builtins.Any) -> builtins.type]'
+reveal_type(u(1, type)) # E: Revealed type is 'Union[def (x: builtins.Any) -> builtins.type, builtins.int*]'
+reveal_type(u(t_a, 1)) # E: Revealed type is 'Union[builtins.int*, Type[Any]]'
+reveal_type(u(1, t_a)) # E: Revealed type is 'Union[Type[Any], builtins.int*]'
+reveal_type(u(t_o, 1)) # E: Revealed type is 'Union[builtins.int*, Type[builtins.object]]'
+reveal_type(u(1, t_o)) # E: Revealed type is 'Union[Type[builtins.object], builtins.int*]'
+
+[case testSimplifyingUnionWithTypeTypes2]
+from typing import TypeVar, Union, Type, Any
+
+T = TypeVar('T')
+S = TypeVar('S')
+def u(x: T, y: S) -> Union[S, T]: pass
+
+t_o = None  # type: Type[object]
+t_s = None  # type: Type[str]
+t_a = None  # type: Type[Any]
+
+# Union with object
+reveal_type(u(t_o, object())) # E: Revealed type is 'builtins.object*'
+reveal_type(u(object(), t_o)) # E: Revealed type is 'builtins.object*'
+reveal_type(u(t_s, object())) # E: Revealed type is 'builtins.object*'
+reveal_type(u(object(), t_s)) # E: Revealed type is 'builtins.object*'
+reveal_type(u(t_a, object())) # E: Revealed type is 'builtins.object*'
+reveal_type(u(object(), t_a)) # E: Revealed type is 'builtins.object*'
+
+# Union between type objects
+reveal_type(u(t_o, t_a)) # E: Revealed type is 'Union[Type[Any], Type[builtins.object]]'
+reveal_type(u(t_a, t_o)) # E: Revealed type is 'Union[Type[builtins.object], Type[Any]]'
+reveal_type(u(t_s, t_o)) # E: Revealed type is 'Type[builtins.object]'
+reveal_type(u(t_o, t_s)) # E: Revealed type is 'Type[builtins.object]'
+reveal_type(u(t_o, type)) # E: Revealed type is 'Type[builtins.object]'
+reveal_type(u(type, t_o)) # E: Revealed type is 'Type[builtins.object]'

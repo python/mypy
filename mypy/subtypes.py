@@ -583,7 +583,6 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
             return all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
                        zip(left.args, self.right.args, self.right.type.defn.type_vars))
-        # TODO: TypeType
         return False
 
     def visit_type_var(self, left: TypeVarType) -> bool:
