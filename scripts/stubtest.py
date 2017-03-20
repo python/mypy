@@ -165,12 +165,8 @@ def build_stubs(mod):
 
 def main(args):
     if len(args) == 1:
-        print('must provide at least one module to test, or --all_stdlib')
+        print('must provide at least one module to test')
         sys.exit(1)
-    elif args[1] == '--all_stdlib':
-        version = '{}.{}'.format(sys.version_info.major, sys.version_info.minor)
-        from stdlib_list import stdlib_list
-        modules = set(stdlib_list(version))
     else:
         modules = args[1:]
 
