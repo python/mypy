@@ -563,6 +563,10 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
     def visit_instance(self, left: Instance) -> bool:
         if isinstance(self.right, Instance):
+            for base in left.type.mro:
+                if base._promote and is_proper_subtype(base._promote, self.right):
+                    return True
+
             if not left.type.has_base(self.right.type.fullname()):
                 return False
 
@@ -579,6 +583,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
             return all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
                        zip(left.args, self.right.args, self.right.type.defn.type_vars))
+        # TODO: TypeType
         return False
 
     def visit_type_var(self, left: TypeVarType) -> bool:

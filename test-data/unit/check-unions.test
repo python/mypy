@@ -295,3 +295,15 @@ def foo(a: Union[A, B, C]):
         a.y # E: Some element of union has no attribute "y"
         b = a # type: Union[B, C]
 [builtins fixtures/isinstance.pyi]
+
+[case testSimplifyingUnionAndTypePromotions]
+from typing import TypeVar, Union
+T = TypeVar('T')
+S = TypeVar('S')
+def u(x: T, y: S) -> Union[S, T]: pass
+
+reveal_type(u(1, 2.3))  # E: Revealed type is 'builtins.float*'
+reveal_type(u(2.3, 1))  # E: Revealed type is 'builtins.float*'
+reveal_type(u(False, 2.2)) # E: Revealed type is 'builtins.float*'
+reveal_type(u(2.2, False)) # E: Revealed type is 'builtins.float*'
+[builtins fixtures/primitives.pyi]
