@@ -109,7 +109,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             t.optional = False
             # We don't need to worry about double-wrapping Optionals or
             # wrapping Anys: Union simplification will take care of that.
-            return UnionType.make_simplified_union([self.visit_unbound_type(t), NoneTyp()])
+            return make_optional_type(self.visit_unbound_type(t))
         sym = self.lookup(t.name, t)
         if sym is not None:
             if sym.node is None:
@@ -151,7 +151,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     self.fail('Optional[...] must have exactly one type argument', t)
                     return AnyType()
                 item = self.anal_type(t.args[0])
-                return UnionType.make_simplified_union([item, NoneTyp()])
+                return make_optional_type(item)
             elif fullname == 'typing.Callable':
                 return self.analyze_callable_type(t)
             elif fullname == 'typing.Type':
@@ -557,3 +557,20 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_type_type(self, t: TypeType) -> None:
         pass
+
+
+def make_optional_type(t: Type) -> Type:
+    """Return the type corresponding to Optional[t].
+
+    Note that we can't use normal union simplification, since this function
+    is called during semantic analysis and simplification only works during
+    type checking.
+    """
+    if not experiments.STRICT_OPTIONAL:
+        return t
+    if isinstance(t, NoneTyp):
+        return t
+    if isinstance(t, UnionType) and any(isinstance(item, NoneTyp)
+                                        for item in t.items):
+        return t
+    return UnionType([t, NoneTyp()], t.line, t.column)

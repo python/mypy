@@ -986,6 +986,21 @@ class UnionType(Type):
 
     @staticmethod
     def make_simplified_union(items: List[Type], line: int = -1, column: int = -1) -> Type:
+        """Build union type with redundant union items removed.
+
+        If only a single item remains, this may return a non-union type.
+
+        Examples:
+
+        * [int, str] -> Union[int, str]
+        * [int, object] -> object
+        * [int, int] -> int
+        * [int, Any] -> Union[int, Any] (Any types are not simplified away!)
+        * [Any, Any] -> Any
+
+        Note: This must NOT be used during semantic analysis, since TypeInfos may not
+              be fully initialized.
+        """
         while any(isinstance(typ, UnionType) for typ in items):
             all_items = []  # type: List[Type]
             for typ in items:
@@ -1708,7 +1723,7 @@ def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -
     if isinstance(tp, TupleType):
         return tp.copy_modified(items=new_args)
     if isinstance(tp, UnionType):
-        return UnionType.make_simplified_union(new_args, line, column)
+        return UnionType(new_args, line, column)
     if isinstance(tp, CallableType):
         return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1],
                                 line=line, column=column)
