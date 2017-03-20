@@ -111,7 +111,7 @@ class Waiter:
         print('error')
     """
 
-    TIMING_FILENAME = 'runtest_timing.json'
+    TIMING_FILENAME = '.runtest_timing.json'
 
     def __init__(self, limit: int = 0, *, verbosity: int = 0, xfail: List[str] = []) -> None:
         self.verbosity = verbosity
@@ -299,7 +299,7 @@ class Waiter:
         if not self.found_timing_file:
             try:
                 with open(self.TIMING_FILENAME, 'w') as fp:
-                    json.dump(self.times, fp)
+                    json.dump(self.times, fp, sort_keys=True, indent=4)
             except Exception:
                 print('cannot save runtest timing file')
 
