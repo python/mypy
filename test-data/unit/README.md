@@ -29,7 +29,11 @@ Add the test in this format anywhere in the file:
 - `# E: abc...` indicates that this line should result in type check error
 with text "abc..."
 - note a space after `E:` and `flags:`
-- lines without `# E: ` should cause no type check errors
+- `# E:12` adds column number to the expected error
+- `# E:-1` means that the error was expected 2 lines ago (helpful for multiple errors in a line)
+- `# E:12:-1` combines the two options above
+- `W: ...` and `N: ...` works exactly like `E:`, but report a warning and a note respectively
+- lines that don't contain the above should cause no type check errors
 - optional `[builtins fixtures/...]` tells the type checker to use
 stubs from the indicated file (see Fixtures section below)
 - optional `[out]` is an alternative to the "# E:" notation: it indicates that

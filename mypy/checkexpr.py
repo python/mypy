@@ -1694,6 +1694,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Translate it into a call to dict(), with provisions for **expr.
         """
+        if isinstance(self.type_context[-1], TypedDictType):
+            return self.check_typeddict_call_with_dict(
+                callee=self.type_context[-1],
+                kwargs=e,
+                context=e
+            )
+
         # Collect function arguments, watching out for **expr.
         args = []  # type: List[Expression]  # Regular "key: value"
         stargs = []  # type: List[Expression]  # For "**expr"

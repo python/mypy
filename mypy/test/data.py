@@ -379,7 +379,7 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
         # The first in the split things isn't a comment
         for possible_err_comment in input[i].split('#')[1:]:
             m = re.search(
-                '^([ENW]):((?P<col>\d+):)? (?P<message>.*)$',
+                '^([ENW]):((?P<col>\d+):)?((?P<backtrack>-\d+):)? (?P<message>.*)$',
                 possible_err_comment.strip())
             if m:
                 if m.group(1) == 'E':
@@ -389,12 +389,14 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
                 elif m.group(1) == 'W':
                     severity = 'warning'
                 col = m.group('col')
+                backtrack = int(m.group('backtrack')) if m.group('backtrack') is not None else 0
                 if col is None:
                     output.append(
-                        '{}:{}: {}: {}'.format(fnam, i + 1, severity, m.group('message')))
+                        '{}:{}: {}: {}'.format(fnam, i + 1 + backtrack,
+                                               severity, m.group('message')))
                 else:
                     output.append('{}:{}:{}: {}: {}'.format(
-                        fnam, i + 1, col, severity, m.group('message')))
+                        fnam, i + 1 + backtrack, col, severity, m.group('message')))
 
 
 def fix_win_path(line: str) -> str:
