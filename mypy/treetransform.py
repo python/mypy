@@ -14,7 +14,7 @@ from mypy.nodes import (
     CastExpr, RevealTypeExpr, TupleExpr, GeneratorExpr, ListComprehension, ListExpr,
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
-    SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
+    SliceExpr, OpExpr, UnaryExpr, LambdaExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, TypeVarExpr, NewTypeExpr, PromoteExpr,
     ComparisonExpr, TempNode, StarExpr, Statement, Expression,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
@@ -143,8 +143,8 @@ class TransformVisitor(NodeVisitor[Node]):
         else:
             return new
 
-    def visit_func_expr(self, node: FuncExpr) -> FuncExpr:
-        new = FuncExpr([self.copy_argument(arg) for arg in node.arguments],
+    def visit_lambda_expr(self, node: LambdaExpr) -> LambdaExpr:
+        new = LambdaExpr([self.copy_argument(arg) for arg in node.arguments],
                        self.block(node.body),
                        cast(FunctionLike, self.optional_type(node.type)))
         self.copy_function_attributes(new, node)

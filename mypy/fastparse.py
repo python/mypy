@@ -12,7 +12,7 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, FuncExpr, ComparisonExpr,
+    UnaryExpr, LambdaExpr, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
@@ -733,12 +733,12 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     # Lambda(arguments args, expr body)
     @with_line
-    def visit_Lambda(self, n: ast3.Lambda) -> FuncExpr:
+    def visit_Lambda(self, n: ast3.Lambda) -> LambdaExpr:
         body = ast3.Return(n.body)
         body.lineno = n.lineno
         body.col_offset = n.col_offset
 
-        return FuncExpr(self.transform_args(n.args, n.lineno),
+        return LambdaExpr(self.transform_args(n.args, n.lineno),
                         self.as_block([body], n.lineno))
 
     # IfExp(expr test, expr body, expr orelse)

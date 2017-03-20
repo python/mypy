@@ -348,7 +348,7 @@ MypyFile:1(
     NameExpr(x* [__main__.x])
     IntExpr(0))
   ExpressionStmt:2(
-    FuncExpr:2(
+    LambdaExpr:2(
       Block:2(
         ReturnStmt:2(
           NameExpr(x [__main__.x]))))))
@@ -358,7 +358,7 @@ lambda x, y: x + y
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    FuncExpr:1(
+    LambdaExpr:1(
       Args(
         Var(x)
         Var(y))

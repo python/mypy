@@ -113,7 +113,7 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
-    def visit_func_expr(self, o: 'mypy.nodes.FuncExpr') -> T:
+    def visit_lambda_expr(self, o: 'mypy.nodes.LambdaExpr') -> T:
         pass
 
     @abstractmethod
@@ -481,7 +481,7 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_type_application(self, o: 'mypy.nodes.TypeApplication') -> T:
         pass
 
-    def visit_func_expr(self, o: 'mypy.nodes.FuncExpr') -> T:
+    def visit_lambda_expr(self, o: 'mypy.nodes.LambdaExpr') -> T:
         pass
 
     def visit_list_comprehension(self, o: 'mypy.nodes.ListComprehension') -> T:
