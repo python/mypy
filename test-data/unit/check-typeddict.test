@@ -625,8 +625,7 @@ def f(p: Point) -> None:
     p = dict(x=2, y=3)
 
 f({'x': 1, 'y': 3})
-f({'x': 1, 'y': 'z'})  # E: Argument 1 to "f" has incompatible type "TypedDict(x=int, y=str)"; expected "Point"
-# E:-1: Incompatible types (expression has type "str", TypedDict item "y" has type "int")
+f({'x': 1, 'y': 'z'})  # E: Argument 1 to "f" has incompatible type "TypedDict(x=int, y=str)"; expected "Point" # E: Incompatible types (expression has type "str", TypedDict item "y" has type "int")
 
 f(dict(x=1, y=3))
 f(dict(x=1, y=3, z=4))  # E: Expected items ['x', 'y'] but found ['x', 'y', 'z'].
