@@ -182,6 +182,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 e.callee.node.typeddict_type is not None:
             return self.check_typeddict_call(e.callee.node.typeddict_type,
                                              e.arg_kinds, e.arg_names, e.args, e)
+        if isinstance(e.callee, NameExpr) and e.callee.name in ('isinstance', 'issubclass'):
+            for typ in mypy.checker.flatten(e.args[1]):
+                try:
+                    if (isinstance(typ, IndexExpr)
+                            and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr))
+                            or isinstance(typ, NameExpr)
+                            and self.chk.lookup_qualified(typ.name).kind == nodes.TYPE_ALIAS):
+                        self.msg.type_arguments_not_allowed(e)
+                except KeyError:
+                    pass
         self.try_infer_partial_type(e)
         callee_type = self.accept(e.callee)
         if (self.chk.options.disallow_untyped_calls and

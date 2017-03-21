@@ -1412,3 +1412,24 @@ def f(x: Union[int, A], a: Type[A]) -> None:
 
 [builtins fixtures/isinstancelist.pyi]
 
+
+[case testNotTypeArgsInIsinstance]
+from typing import Iterable, TypeVar
+x = 1
+isinstance(x, Iterable[int])  # E: Type arguments not allowed in this context
+isinstance(x, Iterable)
+isinstance(x, (int, Iterable[int]))  # E: Type arguments not allowed in this context
+isinstance(x, (int, (str, Iterable[int])))  # E: Type arguments not allowed in this context
+
+It = Iterable
+isinstance(x, It[int])  # E: Type arguments not allowed in this context
+isinstance(x, It)
+
+T = TypeVar('T')
+isinstance(x, Iterable[T])  # E: Type arguments not allowed in this context
+It2 = Iterable[T]
+isinstance(x, It2[int])  # E: Type arguments not allowed in this context
+isinstance(x, It2)  # E: Type arguments not allowed in this context
+
+[builtins fixtures/isinstancelist.pyi]
+
