@@ -194,7 +194,6 @@ x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has t
 [builtins fixtures/dict.pyi]
 
 [case testNoReturnImportFromTyping]
-# flags: --warn-no-return
 from typing import NoReturn
 
 def h() -> NoReturn:
@@ -207,7 +206,7 @@ def no_return() -> NoReturn: pass
 def f() -> NoReturn:
   no_return()
 
-x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type NoReturn)
+x: NoReturn = 0 # E: Incompatible types in assignment (expression has type "int", variable has type NoReturn)
 [builtins fixtures/dict.pyi]
 
 [case testShowErrorContextFunction]
