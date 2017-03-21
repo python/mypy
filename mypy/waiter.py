@@ -3,7 +3,7 @@
 This is used for running mypy tests.
 """
 
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Any
 
 import os
 from multiprocessing import cpu_count
@@ -110,8 +110,8 @@ class Waiter:
     if not waiter.run():
         print('error')
     """
-
-    TIMING_FILENAME = '.runtest_timing.json'
+    LOGSIZE = 50
+    FULL_LOG_FILENAME = '.runtest_log.json'
 
     def __init__(self, limit: int = 0, *, verbosity: int = 0, xfail: List[str] = []) -> None:
         self.verbosity = verbosity
@@ -135,18 +135,19 @@ class Waiter:
         self._note = None  # type: Noter
         self.times1 = {}  # type: Dict[str, float]
         self.times2 = {}  # type: Dict[str, float]
+        self.new_log = defaultdict(dict)  # type: Dict[str, Dict[str, Any]]
 
-        # we likely add only a few tasks, so it's ok to put them in front even if they fast
-        # much worse if we put them in the back, and one of them turns out to be slow
-        self.times = defaultdict(lambda: float('inf'))  # type: Dict[str, float]
+    def load_log_file(self) -> Optional[List[Dict[str, Dict[str, Any]]]]:
         try:
-            with open(self.TIMING_FILENAME) as fp:
-                times = json.load(fp)
-            self.times.update(times)
-            self.found_timing_file = True
-        except Exception:
-            print('cannot find runtest timing file')
-            self.found_timing_file = False
+            # get the last log
+            with open(self.FULL_LOG_FILENAME) as fp:
+                test_log = json.load(fp)
+        except FileNotFoundError:
+            test_log = []
+        except json.JSONDecodeError:
+            print('corrupt test log file {}'.format(self.FULL_LOG_FILENAME))
+            test_log = []
+        return test_log
 
     def add(self, cmd: LazySubprocess) -> int:
         rv = len(self.queue)
@@ -186,7 +187,8 @@ class Waiter:
                 code = cmd.process.poll()
                 if code is not None:
                     cmd.end_time = time.perf_counter()
-                    self.times[cmd.name] = cmd.end_time - cmd.start_time
+                    self.new_log[cmd.name]['exit_code'] = code
+                    self.new_log[cmd.name]['runtime'] = cmd.end_time - cmd.start_time
                     return pid, code
 
     def _wait_next(self) -> Tuple[List[str], int, int]:
@@ -260,8 +262,16 @@ class Waiter:
             self._note = Noter(len(self.queue))
         print('SUMMARY  %d tasks selected' % len(self.queue))
 
-        self.queue = sorted(self.queue, key=lambda c: self.times[c.name], reverse=True)
-        print([t.name for t in self.queue][:5])
+        if self.limit > 1:
+            logs = self.load_log_file()
+            if logs:
+                # we don't know how long a new task takes
+                # better err by putting it in front in case it is slow:
+                # a fast task in front hurts performance less than a slow task in the back
+                default = float('inf')
+                times = {cmd.name: sum(log[cmd.name].get('runtime', default) for log in logs)
+                         / len(logs) for cmd in self.queue}
+                self.queue = sorted(self.queue, key=lambda cmd: times[cmd.name], reverse=True)
 
         sys.stdout.flush()
         # Failed tasks.
@@ -296,12 +306,14 @@ class Waiter:
             print('*** OK ***')
             sys.stdout.flush()
 
-        if not self.found_timing_file:
+        if self.limit > 1:
+            # log only LOGSIZE most recent tests
+            test_log = (self.load_log_file() + [self.new_log])[:self.LOGSIZE]
             try:
-                with open(self.TIMING_FILENAME, 'w') as fp:
-                    json.dump(self.times, fp, sort_keys=True, indent=4)
-            except Exception:
-                print('cannot save runtest timing file')
+                with open(self.FULL_LOG_FILENAME, 'w') as fp:
+                    json.dump(test_log, fp, sort_keys=True, indent=4)
+            except Exception as e:
+                print('cannot save test log file:', e)
 
         return 0
 

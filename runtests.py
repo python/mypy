@@ -34,6 +34,7 @@ from mypy.test.testpythoneval import python_eval_files, python_34_eval_files
 import itertools
 import os
 import re
+import json
 
 
 # Ideally, all tests would be `discover`able so that they can be driven
@@ -57,6 +58,10 @@ class Driver:
         self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
         self.env = dict(os.environ)
         self.coverage = coverage
+
+    def run(self) -> int:
+        exit_code = self.sequential.run() & self.waiter.run()
+        return exit_code
 
     def prepend_path(self, name: str, paths: List[str]) -> None:
         old_val = self.env.get(name)
@@ -424,7 +429,7 @@ def main() -> None:
         driver.list_tasks()
         return
 
-    exit_code = driver.sequential.run() & driver.waiter.run()
+    exit_code = driver.run()
     t1 = time.perf_counter()
     print('total runtime:', t1 - t0, 'sec')
 
