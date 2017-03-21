@@ -1417,16 +1417,13 @@ def f(x: Union[int, A], a: Type[A]) -> None:
 from typing import Type, ClassVar
 
 class Goblin:
-    aggressive: bool = True
     level: int
 
 class GoblinAmbusher(Goblin):
     job: ClassVar[str] = 'Ranger'
 
-
 def test_issubclass(cls: Type[Goblin]) -> None:
     if issubclass(cls, GoblinAmbusher):
-        cls.aggressive
         cls.level
         cls.job
         ga = cls()
@@ -1434,7 +1431,6 @@ def test_issubclass(cls: Type[Goblin]) -> None:
         ga.job
         ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
     else:
-        cls.aggressive
         cls.level
         cls.job  # E: Type[Goblin] has no attribute "job"
         g = cls()
@@ -1452,7 +1448,6 @@ class Mob:
     pass
 
 class Goblin(Mob):
-    aggressive: bool = True
     level: int
 
 class GoblinAmbusher(Goblin):
@@ -1460,14 +1455,12 @@ class GoblinAmbusher(Goblin):
 
 def test_issubclass(cls: Type[Mob]) -> None:
     if issubclass(cls, Goblin):
-        cls.aggressive
         cls.level
         cls.job  # E: Type[Goblin] has no attribute "job"
         g = cls()
         g.level = 15
         g.job  # E: "Goblin" has no attribute "job"
         if issubclass(cls, GoblinAmbusher):
-            cls.aggressive
             cls.level
             cls.job
             g = cls()
@@ -1475,14 +1468,12 @@ def test_issubclass(cls: Type[Mob]) -> None:
             g.job
             g.job = 'Warrior' # E: Cannot assign to class variable "job" via instance
     else:
-        cls.aggressive  # E: Type[Mob] has no attribute "aggressive"
         cls.job  # E: Type[Mob] has no attribute "job"
         cls.level  # E: Type[Mob] has no attribute "level"
         m = cls()
         m.level = 15  # E: "Mob" has no attribute "level"
         m.job  # E: "Mob" has no attribute "job"
         if issubclass(cls, GoblinAmbusher):
-            cls.aggressive
             cls.job
             cls.level
             ga = cls()
@@ -1491,7 +1482,6 @@ def test_issubclass(cls: Type[Mob]) -> None:
             ga.job = 'Warrior' # E: Cannot assign to class variable "job" via instance
 
     if issubclass(cls, GoblinAmbusher):
-        cls.aggressive
         cls.level
         cls.job
         ga = cls()
@@ -1509,7 +1499,6 @@ class Mob:
     pass
 
 class Goblin(Mob):
-    aggressive: bool = True
     level: int
 
 class GoblinAmbusher(Goblin):
@@ -1518,17 +1507,14 @@ class GoblinAmbusher(Goblin):
 class GoblinDigger(Goblin):
     job: ClassVar[str] = 'Thief'
 
-
 def test_issubclass(cls: Type[Mob]) -> None:
     if issubclass(cls, (Goblin, GoblinAmbusher)):
-        cls.aggressive
         cls.level
         cls.job  # E: Some element of union has no attribute "job"
         g = cls()
         g.level = 15
         g.job  # E: "Goblin" has no attribute "job"
         if issubclass(cls, GoblinAmbusher):
-            cls.aggressive
             cls.level
             reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
             cls.job
@@ -1537,14 +1523,12 @@ def test_issubclass(cls: Type[Mob]) -> None:
             ga.job
             ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
     else:
-        cls.aggressive  # E: Type[Mob] has no attribute "aggressive"
         cls.job  # E: Type[Mob] has no attribute "job"
         cls.level  # E: Type[Mob] has no attribute "level"
         m = cls()
         m.level = 15  # E: "Mob" has no attribute "level"
         m.job  # E: "Mob" has no attribute "job"
         if issubclass(cls, GoblinAmbusher):
-            cls.aggressive
             cls.job
             cls.level
             ga = cls()
@@ -1553,7 +1537,6 @@ def test_issubclass(cls: Type[Mob]) -> None:
             ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
 
     if issubclass(cls, (GoblinDigger, GoblinAmbusher)):
-        cls.aggressive
         cls.level
         cls.job
         g = cls()
@@ -1574,7 +1557,7 @@ def f(cls: Type):
     if issubclass(cls, MyList):
         cls()[0]
     else:
-        cls()[0]  # E:
+        cls()[0]
 
     if issubclass(cls, MyIntList):
         cls()[0] + 1

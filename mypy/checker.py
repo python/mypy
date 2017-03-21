@@ -2666,7 +2666,8 @@ def find_isinstance_check(node: Expression,
                         if isinstance(t, TypeType):
                             union_list.append(t.item)
                         else:
-                            #  this an error; should be caught earlier, so we should never be here
+                            #  this is an error that should be reported earlier
+                            #  if we reach here, we refuse to do any type inference
                             return {}, {}
                     vartype = UnionType(union_list)
                 elif isinstance(vartype, TypeType):
