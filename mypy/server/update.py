@@ -393,9 +393,9 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
             active_class = node
             active_class_name = node.name()
         # TODO: Is it possible for the assertion to fail?
-        assert isinstance(node, (MypyFile, TypeInfo))
         if isinstance(node, MypyFile):
             file = node
+        assert isinstance(node, (MypyFile, TypeInfo))
         node = node.names[c].node
     if isinstance(node, TypeInfo):
         # A ClassDef target covers the body of the class and everything defined
@@ -403,7 +403,8 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
         # typically a module top-level, since we don't support processing class
         # bodies as separate entitites for simplicity.
         result = [DeferredNode(file, None, None)]
-        for name, node in node.names.items():
+        for name, symnode in node.names.items():
+            node = symnode.node
             if isinstance(node, FuncDef):
                 result.extend(lookup_target(modules, target + '.' + name))
         return result

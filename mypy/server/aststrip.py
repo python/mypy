@@ -5,7 +5,7 @@ from typing import Union, Iterator
 
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
-    TypeInfo
+    TypeInfo, Var
 )
 from mypy.traverser import TraverserVisitor
 
@@ -82,7 +82,6 @@ class NodeStripVisitor(TraverserVisitor):
         node.fullname = None
 
     # TODO: handle more node types
-
 
 
 def is_self_member_ref(memberexpr: MemberExpr) -> bool:

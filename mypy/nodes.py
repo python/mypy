@@ -2013,7 +2013,7 @@ class TypeInfo(SymbolNode):
 
     def add_type_vars(self) -> None:
         if self.defn.type_vars:
-            for vd in defn.type_vars:
+            for vd in self.defn.type_vars:
                 self.type_vars.append(vd.name)
 
     def name(self) -> str:

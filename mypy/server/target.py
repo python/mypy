@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, List
 
 
 def module_prefix(modules: Iterable[str], target: str) -> str:
@@ -6,7 +6,7 @@ def module_prefix(modules: Iterable[str], target: str) -> str:
 
 
 def split_target(modules: Iterable[str], target: str) -> Tuple[str, str]:
-    remaining = []
+    remaining = []  # type: List[str]
     while True:
         if target in modules:
             return target, '.'.join(remaining)
