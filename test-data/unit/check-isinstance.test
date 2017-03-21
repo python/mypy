@@ -1553,11 +1553,11 @@ from typing import List, Type
 class MyList(List): pass
 class MyIntList(List[int]): pass
 
-def f(cls: Type):
+def f(cls: Type[object]) -> None:
     if issubclass(cls, MyList):
         cls()[0]
     else:
-        cls()[0]
+        cls()[0]  # E: Value of type "object" is not indexable
 
     if issubclass(cls, MyIntList):
         cls()[0] + 1
