@@ -1413,23 +1413,42 @@ def f(x: Union[int, A], a: Type[A]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 
-[case testNotTypeArgsInIsinstance]
+[case testIsinstanceTypeArgs]
 from typing import Iterable, TypeVar
 x = 1
-isinstance(x, Iterable[int])  # E: Type arguments not allowed in this context
-isinstance(x, Iterable)
-isinstance(x, (int, Iterable[int]))  # E: Type arguments not allowed in this context
-isinstance(x, (int, (str, Iterable[int])))  # E: Type arguments not allowed in this context
-
-It = Iterable
-isinstance(x, It[int])  # E: Type arguments not allowed in this context
-isinstance(x, It)
-
 T = TypeVar('T')
-isinstance(x, Iterable[T])  # E: Type arguments not allowed in this context
-It2 = Iterable[T]
-isinstance(x, It2[int])  # E: Type arguments not allowed in this context
-isinstance(x, It2)  # E: Type arguments not allowed in this context
 
-[builtins fixtures/isinstancelist.pyi]
+isinstance(x, Iterable)
+isinstance(x, Iterable[int])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, Iterable[T])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, (int, (str, Iterable[int])))  # E: Parameterized generics cannot be used with class or instance checks
+
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceTypeArgsAliases]
+from typing import Iterable, TypeVar
+x = 1
+T = TypeVar('T')
+It = Iterable
+It2 = Iterable[T]
+
+isinstance(x, It[int])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, It)
+isinstance(x, It2[int])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, It2)  # E: Parameterized generics cannot be used with class or instance checks
+
+[builtins fixtures/isinstance.pyi]
+
+
+[case testIssubclassTypeArgs]
+from typing import Iterable, TypeVar
+x = int
+T = TypeVar('T')
+issubclass(x, Iterable)
+issubclass(x, Iterable[int])  # E: Parameterized generics cannot be used with class or instance checks
+issubclass(x, Iterable[T])  # E: Parameterized generics cannot be used with class or instance checks
+issubclass(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
+
+[builtins fixtures/isinstance.pyi]
 
