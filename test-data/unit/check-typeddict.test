@@ -638,7 +638,7 @@ from mypy_extensions import TypedDict
 
 Point = TypedDict('Point', {'x': int, 'y': int})
 
-p1: Point = {'x': 'hi'}  # # E: Expected items ['x', 'y'] but found ['x'].
+p1: Point = {'x': 'hi'}  # E: Expected items ['x', 'y'] but found ['x'].
 
 p2: Point
 p2 = dict(x='bye')  # E: Expected items ['x', 'y'] but found ['x'].
