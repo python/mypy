@@ -845,10 +845,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             messages.does_not_return_value(caller_type, context)
         elif isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
-        # Only non-abstract class could be given where Type[...] is expected
+        # Only non-abstract class can be given where Type[...] is expected...
         elif (isinstance(caller_type, CallableType) and isinstance(callee_type, TypeType) and
               caller_type.is_type_obj() and caller_type.type_object().is_abstract and
-              isinstance(callee_type.item, Instance) and callee_type.item.type.is_abstract):
+              isinstance(callee_type.item, Instance) and callee_type.item.type.is_abstract and
+              # ...except for classmethod first argument
+              not caller_type.is_classmethod_class):
             messages.fail("Only non-abstract class can be given where '{}' is expected"
                           .format(callee_type), context)
         elif not is_subtype(caller_type, callee_type):
