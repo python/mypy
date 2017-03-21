@@ -193,6 +193,23 @@ from mypy_extensions import NoReturn
 x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type NoReturn)
 [builtins fixtures/dict.pyi]
 
+[case testNoReturnImportFromTyping]
+# flags: --warn-no-return
+from typing import NoReturn
+
+def h() -> NoReturn:
+  if bool():
+    return 5  # E: Return statement in function which does not return
+  else:
+    return  # E: Return statement in function which does not return
+
+def no_return() -> NoReturn: pass
+def f() -> NoReturn:
+  no_return()
+
+x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type NoReturn)
+[builtins fixtures/dict.pyi]
+
 [case testShowErrorContextFunction]
 # flags: --show-error-context
 def f() -> None:
