@@ -1153,12 +1153,11 @@ class TypeChecker(StatementVisitor[None]):
 
                 # Special case: only non-abstract classes can be assigned to variables
                 # with explicit type Type[A].
-                if (
-                    isinstance(rvalue_type, CallableType) and rvalue_type.is_type_obj() and
-                    rvalue_type.type_object().is_abstract and
-                    isinstance(lvalue_type, TypeType) and
-                    isinstance(lvalue_type.item, Instance) and lvalue_type.item.type.is_abstract
-                ):
+                if (isinstance(rvalue_type, CallableType) and rvalue_type.is_type_obj() and
+                        rvalue_type.type_object().is_abstract and
+                        isinstance(lvalue_type, TypeType) and
+                        isinstance(lvalue_type.item, Instance) and
+                        lvalue_type.item.type.is_abstract):
                     self.fail("Can only assign non-abstract classes"
                               " to a variable of type '{}'".format(lvalue_type), rvalue)
                     return
