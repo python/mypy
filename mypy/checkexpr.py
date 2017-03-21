@@ -1694,9 +1694,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Translate it into a call to dict(), with provisions for **expr.
         """
-        # if we find a DictExpr inside a context that expected TypedDict,
-        # we try to convert the dictionary into TypedDict
-        # we warn if they are not compatible or if we don't have enough info to verify
+        # if the dict literal doesn't match TypedDict, check_typeddict_call_with_dict reports
+        # an error, but returns the TypedDict type that matches the literal it found
+        # that would cause a second error when that TypedDict type is returned upstream
+        # to avoid the second error, we always return TypedDict type that was requested
         if isinstance(self.type_context[-1], TypedDictType):
             self.check_typeddict_call_with_dict(
                 callee=self.type_context[-1],
