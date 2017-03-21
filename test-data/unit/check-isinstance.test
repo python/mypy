@@ -1424,7 +1424,7 @@ isinstance(x, Iterable[T])  # E: Parameterized generics cannot be used with clas
 isinstance(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
 isinstance(x, (int, (str, Iterable[int])))  # E: Parameterized generics cannot be used with class or instance checks
 
-[builtins fixtures/isinstance.pyi]
+[builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceTypeArgsAliases]
 from typing import Iterable, TypeVar
