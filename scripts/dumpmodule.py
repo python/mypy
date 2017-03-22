@@ -12,6 +12,7 @@ import json
 import sys
 import types
 from typing import Text
+from collections import defaultdict
 
 
 if sys.version_info >= (3, 0):
@@ -41,7 +42,7 @@ def module_to_json(m):
             continue
 
         if name == '__all__':
-            result[name] = {'values': sorted(value)}
+            result[name] = {'type': 'list', 'values': sorted(value)}
         else:
             result[name] = dump_value(value)
 
