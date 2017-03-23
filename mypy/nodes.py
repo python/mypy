@@ -383,7 +383,6 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
 
     This node has no explicit representation in the source program.
     Overloaded variants must be consecutive in the source file.
-
     """
 
     items = None  # type: List[OverloadPart]

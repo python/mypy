@@ -36,7 +36,8 @@ from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
-    restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_subtype
+    restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_subtype,
+    unify_generic_callable,
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars
@@ -315,7 +316,14 @@ class TypeChecker(StatementVisitor[None]):
                 assert isinstance(sig1, CallableType)
                 if not is_callable_subtype(impl_type, sig1, ignore_return=True):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
-                if not is_subtype(sig1.ret_type, impl_type.ret_type):
+                impl_type_subst = impl_type
+                if impl_type.variables:
+                    impl_type_subst = unify_generic_callable(impl_type, sig1, ignore_return=False)
+                    if impl_type_subst is None:
+                        self.fail("Type variable mismatch between " +
+                                  "overload signature {} and implementation".format(i+1), defn.impl)
+                        return
+                if not is_subtype(sig1.ret_type, impl_type_subst.ret_type):
                     self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
     # Here's the scoop about generators and coroutines.

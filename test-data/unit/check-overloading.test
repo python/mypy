@@ -40,7 +40,6 @@ class A: pass
 class B: pass
 [builtins fixtures/isinstance.pyi]
 
-
 [case testOverloadByAnyOtherName]
 from typing import overload as rose
 from typing import Any
@@ -223,6 +222,52 @@ def f(x: Any) -> 'B': # E: Overloaded function implementation cannot produce ret
 
 reveal_type(f(A())) # E: Revealed type is '__main__.B'
 reveal_type(f(B())) # E: Revealed type is '__main__.A'
+
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeCheckOverloadWithImplTypeVar]
+from typing import overload, Any, TypeVar
+
+T = TypeVar('T')
+
+class A: pass
+class B: pass
+
+a = A()
+
+@overload
+def f(x: 'A') -> 'A': ...
+@overload
+def f(x: 'B') -> 'B': ...
+
+def f(x: T) -> T:
+    ...
+
+reveal_type(f(A())) # E: Revealed type is '__main__.A'
+reveal_type(f(B())) # E: Revealed type is '__main__.B'
+
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeCheckOverloadWithImplTypeVarProblems]
+from typing import overload, Any, TypeVar
+
+T = TypeVar('T', bound='A')
+
+class A: pass
+class B: pass
+
+a = A()
+
+@overload
+def f(x: 'A') -> 'A': ...
+@overload
+def f(x: 'B') -> 'B': ...
+
+def f(x: Any) -> T:  # E: Type variable mismatch between overload signature 2 and implementation
+    ...
+
+reveal_type(f(A())) # E: Revealed type is '__main__.A'
+reveal_type(f(B())) # E: Revealed type is '__main__.B'
 
 [builtins fixtures/isinstance.pyi]
 
