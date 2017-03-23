@@ -321,7 +321,8 @@ class TypeChecker(StatementVisitor[None]):
                     impl_type_subst = unify_generic_callable(impl_type, sig1, ignore_return=False)
                     if impl_type_subst is None:
                         self.fail("Type variable mismatch between " +
-                                  "overload signature {} and implementation".format(i+1), defn.impl)
+                                  "overload signature {} and implementation".format(i + 1),
+                                  defn.impl)
                         return
                 if not is_subtype(sig1.ret_type, impl_type_subst.ret_type):
                     self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
