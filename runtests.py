@@ -42,7 +42,8 @@ import json
 
 class Driver:
 
-    def __init__(self, whitelist: List[str], blacklist: List[str],
+    def __init__(self, *, whitelist: List[str], blacklist: List[str],
+            lf: bool, ff: bool,
             arglist: List[str], pyt_arglist: List[str],
             verbosity: int, parallel_limit: int,
             xfail: List[str], coverage: bool) -> None:
@@ -51,17 +52,12 @@ class Driver:
         self.arglist = arglist
         self.pyt_arglist = pyt_arglist
         self.verbosity = verbosity
-        self.waiter = Waiter(verbosity=verbosity, limit=parallel_limit, xfail=xfail)
-        self.sequential = Waiter(verbosity=verbosity, limit=1, xfail=xfail)
+        self.waiter = Waiter(verbosity=verbosity, limit=parallel_limit, xfail=xfail, lf=lf, ff=ff)
         self.versions = get_versions()
         self.cwd = os.getcwd()
         self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
         self.env = dict(os.environ)
         self.coverage = coverage
-
-    def run(self) -> int:
-        exit_code = self.sequential.run() & self.waiter.run()
-        return exit_code
 
     def prepend_path(self, name: str, paths: List[str]) -> None:
         old_val = self.env.get(name)
@@ -115,7 +111,7 @@ class Driver:
         else:
             args = [sys.executable, '-m', 'pytest'] + pytest_args
 
-        self.sequential.add(LazySubprocess(full_name, args, env=self.env))
+        self.waiter.add(LazySubprocess(full_name, args, env=self.env), sequential=True)
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
@@ -168,8 +164,7 @@ class Driver:
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
     def list_tasks(self) -> None:
-        for id, task in enumerate(itertools.chain(self.sequential.queue,
-                                                  self.waiter.queue)):
+        for id, task in enumerate(self.waiter.queue):
             print('{id}:{task}'.format(id=id, task=task.name))
 
 
@@ -184,7 +179,8 @@ def add_basic(driver: Driver) -> None:
 
 
 def add_selftypecheck(driver: Driver) -> None:
-    driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_self_check.ini')
+    driver.add_mypy_package('package mypy nonstrict optional', 'mypy', '--config-file',
+                            'mypy_self_check.ini')
     driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_strict_optional.ini')
 
 
@@ -305,7 +301,8 @@ def add_samples(driver: Driver) -> None:
 
 
 def usage(status: int) -> None:
-    print('Usage: %s [-h | -v | -q | [-x] FILTER | -a ARG | -p ARG] ... [-- FILTER ...]'
+    print('Usage: %s [-h | -v | -q | --lf | --ff | [-x] FILTER | -a ARG | -p ARG]'
+          '... [-- FILTER ...]'
           % sys.argv[0])
     print()
     print('Run mypy tests. If given no arguments, run all tests.')
@@ -318,6 +315,8 @@ def usage(status: int) -> None:
     print('Options:')
     print('  -h, --help             show this help')
     print('  -v, --verbose          increase driver verbosity')
+    print('  --lf                   rerun only the tests that failed at the last run')
+    print('  --ff                   run all tests but run the last failures first')
     print('  -q, --quiet            decrease driver verbosity')
     print('  -jN                    run N tasks at once (default: one per CPU)')
     print('  -a, --argument ARG     pass an argument to myunit tasks')
@@ -357,6 +356,8 @@ def main() -> None:
     blacklist = []  # type: List[str]
     arglist = []  # type: List[str]
     pyt_arglist = []  # type: List[str]
+    lf = False
+    ff = False
     list_only = False
     coverage = False
 
@@ -383,6 +384,12 @@ def main() -> None:
                 curlist = arglist
             elif a == '-p' or a == '--pytest_arg':
                 curlist = pyt_arglist
+            # will also pass this option to pytest
+            elif a == '--lf':
+                lf = True
+            # will also pass this option to pytest
+            elif a == '--ff':
+                ff = True
             elif a == '-l' or a == '--list':
                 list_only = True
             elif a == '-c' or a == '--coverage':
@@ -400,11 +407,17 @@ def main() -> None:
         sys.exit('-a must be followed by an argument')
     if curlist is pyt_arglist:
         sys.exit('-p must be followed by an argument')
+    if lf and ff:
+        sys.exit('use either --lf or --ff, not both')
     # empty string is a substring of all names
     if not whitelist:
         whitelist.append('')
+    if lf:
+        pyt_arglist.append('--lf')
+    if ff:
+        pyt_arglist.append('--ff')
 
-    driver = Driver(whitelist=whitelist, blacklist=blacklist,
+    driver = Driver(whitelist=whitelist, blacklist=blacklist, lf=lf, ff=ff,
                     arglist=arglist, pyt_arglist=pyt_arglist, verbosity=verbosity,
                     parallel_limit=parallel_limit, xfail=[], coverage=coverage)
 
@@ -429,7 +442,7 @@ def main() -> None:
         driver.list_tasks()
         return
 
-    exit_code = driver.run()
+    exit_code = driver.waiter.run()
     t1 = time.perf_counter()
     print('total runtime:', t1 - t0, 'sec')
 

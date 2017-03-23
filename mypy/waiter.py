@@ -3,7 +3,7 @@
 This is used for running mypy tests.
 """
 
-from typing import Dict, List, Optional, Set, Tuple, Any
+from typing import Dict, List, Optional, Set, Tuple, Any, Iterable
 
 import os
 from multiprocessing import cpu_count
@@ -113,7 +113,8 @@ class Waiter:
     LOGSIZE = 50
     FULL_LOG_FILENAME = '.runtest_log.json'
 
-    def __init__(self, limit: int = 0, *, verbosity: int = 0, xfail: List[str] = []) -> None:
+    def __init__(self, limit: int = 0, *, verbosity: int = 0, xfail: List[str] = [],
+                 lf: bool = False, ff: bool = False) -> None:
         self.verbosity = verbosity
         self.queue = []  # type: List[LazySubprocess]
         # Index of next task to run in the queue.
@@ -130,12 +131,15 @@ class Waiter:
                 # major mistake to count *all* CPUs on the machine.
                 limit = len(sched_getaffinity(0))
         self.limit = limit
+        self.lf = lf
+        self.ff = ff
         assert limit > 0
         self.xfail = set(xfail)
         self._note = None  # type: Noter
         self.times1 = {}  # type: Dict[str, float]
         self.times2 = {}  # type: Dict[str, float]
-        self.new_log = defaultdict(dict)  # type: Dict[str, Dict[str, Any]]
+        self.new_log = defaultdict(dict)  # type: Dict[str, Dict[str, float]]
+        self.sequential_tasks = set()  # type: Set[str]
 
     def load_log_file(self) -> Optional[List[Dict[str, Dict[str, Any]]]]:
         try:
@@ -149,9 +153,13 @@ class Waiter:
             test_log = []
         return test_log
 
-    def add(self, cmd: LazySubprocess) -> int:
+    def add(self, cmd: LazySubprocess, sequential: bool = False) -> int:
         rv = len(self.queue)
+        if cmd.name in (task.name for task in self.queue):
+            sys.exit('Duplicate test name: {}'.format(cmd.name))
         self.queue.append(cmd)
+        if sequential:
+            self.sequential_tasks.add(cmd.name)
         return rv
 
     def _start_next(self) -> None:
@@ -187,8 +195,8 @@ class Waiter:
                 code = cmd.process.poll()
                 if code is not None:
                     cmd.end_time = time.perf_counter()
-                    self.new_log[cmd.name]['exit_code'] = code
-                    self.new_log[cmd.name]['runtime'] = cmd.end_time - cmd.start_time
+                    self.new_log['exit_code'][cmd.name] = code
+                    self.new_log['runtime'][cmd.name] = cmd.end_time - cmd.start_time
                     return pid, code
 
     def _wait_next(self) -> Tuple[List[str], int, int]:
@@ -262,16 +270,43 @@ class Waiter:
             self._note = Noter(len(self.queue))
         print('SUMMARY  %d tasks selected' % len(self.queue))
 
-        if self.limit > 1:
-            logs = self.load_log_file()
-            if logs:
+        def avg(lst: Iterable[float]) -> float:
+            valid_items = [item for item in lst if item is not None]
+            if not valid_items:
                 # we don't know how long a new task takes
                 # better err by putting it in front in case it is slow:
                 # a fast task in front hurts performance less than a slow task in the back
-                default = float('inf')
-                times = {cmd.name: sum(log[cmd.name].get('runtime', default) for log in logs)
-                         / len(logs) for cmd in self.queue}
-                self.queue = sorted(self.queue, key=lambda cmd: times[cmd.name], reverse=True)
+                return float('inf')
+            else:
+                return sum(valid_items) / len(valid_items)
+
+        logs = self.load_log_file()
+        if logs:
+            times = {cmd.name: avg(log['runtime'].get(cmd.name, None) for log in logs)
+                     for cmd in self.queue}
+
+            def sort_function(cmd: LazySubprocess) -> Tuple[Any, int, float]:
+                # longest tasks first
+                runtime = -times[cmd.name]
+                # sequential tasks go first by default
+                sequential = -(cmd.name in self.sequential_tasks)
+                if self.ff:
+                    # failed tasks first with -ff
+                    exit_code = -logs[-1]['exit_code'].get(cmd.name, 0)
+                    if not exit_code:
+                        # avoid interrupting parallel tasks with sequential in between
+                        # => order: seq failed, parallel failed, parallel passed, seq passed
+                        # => among failed tasks, sequential should go before parallel
+                        # => among successful tasks, sequential should go after parallel
+                        sequential = -sequential
+                else:
+                    # ignore exit code without -ff
+                    exit_code = 0
+                return exit_code, sequential, runtime
+            self.queue = sorted(self.queue, key=sort_function)
+            if self.lf:
+                self.queue = [cmd for cmd in self.queue
+                              if logs[-1]['exit_code'].get(cmd.name, 0)]
 
         sys.stdout.flush()
         # Failed tasks.
@@ -280,15 +315,35 @@ class Waiter:
         total_tests = 0
         # Number of failed test cases.
         total_failed_tests = 0
+        running_sequential_task = False
         while self.current or self.next < len(self.queue):
             while len(self.current) < self.limit and self.next < len(self.queue):
+                # only start next task if idle, or current and next tasks are both parallel
+                if running_sequential_task:
+                    break
+                if self.queue[self.next].name in self.sequential_tasks:
+                    if self.current:
+                        break
+                    else:
+                        running_sequential_task = True
                 self._start_next()
             fails, tests, test_fails = self._wait_next()
+            running_sequential_task = False
             all_failures += fails
             total_tests += tests
             total_failed_tests += test_fails
         if self.verbosity == 0:
             self._note.clear()
+
+        if self.new_log:  # don't append empty log, it will corrupt the cache file
+            # log only LOGSIZE most recent tests
+            test_log = (self.load_log_file() + [self.new_log])[:self.LOGSIZE]
+            try:
+                with open(self.FULL_LOG_FILENAME, 'w') as fp:
+                    json.dump(test_log, fp, sort_keys=True, indent=4)
+            except Exception as e:
+                print('cannot save test log file:', e)
+
         if all_failures:
             summary = 'SUMMARY  %d/%d tasks and %d/%d tests failed' % (
                 len(all_failures), len(self.queue), total_failed_tests, total_tests)
@@ -305,16 +360,6 @@ class Waiter:
                 len(self.queue), total_tests))
             print('*** OK ***')
             sys.stdout.flush()
-
-        if self.limit > 1:
-            # log only LOGSIZE most recent tests
-            test_log = (self.load_log_file() + [self.new_log])[:self.LOGSIZE]
-            try:
-                with open(self.FULL_LOG_FILENAME, 'w') as fp:
-                    json.dump(test_log, fp, sort_keys=True, indent=4)
-            except Exception as e:
-                print('cannot save test log file:', e)
-
         return 0
 
 
