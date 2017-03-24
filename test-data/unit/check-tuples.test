@@ -826,7 +826,7 @@ def g(x: Union[str, Tuple[str, str]]) -> None:
 [builtins fixtures/tuple.pyi]
 [out]
 
-[case testTupleMeetTUpleAnyComplex]
+[case testTupleMeetTupleAnyComplex]
 from typing import Tuple, Union
 
 Pair = Tuple[int, int]

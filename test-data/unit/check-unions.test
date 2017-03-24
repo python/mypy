@@ -279,7 +279,8 @@ reveal_type(u('', 1, 1))  # E: Revealed type is 'Union[builtins.int*, builtins.s
 from typing import Union
 class A: pass
 def f(x: Union[int, str, A]):
-    x + object() # E: Unsupported left operand type for + (some union)
+    x + object() # E: Unsupported left operand type for + (some union) \
+        # E: Unsupported operand types for + (likely involving Union)
 
 [case testNarrowingDownNamedTupleUnion]
 from typing import NamedTuple, Union
@@ -361,3 +362,58 @@ reveal_type(u(t_s, t_o)) # E: Revealed type is 'Type[builtins.object]'
 reveal_type(u(t_o, t_s)) # E: Revealed type is 'Type[builtins.object]'
 reveal_type(u(t_o, type)) # E: Revealed type is 'Type[builtins.object]'
 reveal_type(u(type, t_o)) # E: Revealed type is 'Type[builtins.object]'
+
+[case testNotSimplifyingUnionWithMetaclass]
+from typing import TypeVar, Union, Type, Any
+
+class M(type): pass
+class M2(M): pass
+class A(metaclass=M): pass
+
+T = TypeVar('T')
+S = TypeVar('S')
+def u(x: T, y: S) -> Union[S, T]: pass
+
+a: Any
+t_a: Type[A]
+
+reveal_type(u(M(*a), t_a)) # E: Revealed type is 'Union[Type[__main__.A], __main__.M*]'
+reveal_type(u(t_a, M(*a))) # E: Revealed type is 'Union[__main__.M*, Type[__main__.A]]'
+
+reveal_type(u(M2(*a), t_a)) # E: Revealed type is 'Union[Type[__main__.A], __main__.M2*]'
+reveal_type(u(t_a, M2(*a))) # E: Revealed type is 'Union[__main__.M2*, Type[__main__.A]]'
+
+[case testSimplifyUnionWithCallable]
+from typing import TypeVar, Union, Any, Callable
+
+T = TypeVar('T')
+S = TypeVar('S')
+def u(x: T, y: S) -> Union[S, T]: pass
+
+class C: pass
+class D(C): pass
+
+D_C: Callable[[D], C]
+A_C: Callable[[Any], C]
+D_A: Callable[[D], Any]
+C_C: Callable[[C], C]
+D_D: Callable[[D], D]
+i_C: Callable[[int], C]
+
+# TODO: Test argument names and kinds once we have flexible callable types.
+
+reveal_type(u(D_C, D_C)) # E: Revealed type is 'def (__main__.D) -> __main__.C'
+
+reveal_type(u(A_C, D_C)) # E: Revealed type is 'Union[def (__main__.D) -> __main__.C, def (Any) -> __main__.C]'
+reveal_type(u(D_C, A_C)) # E: Revealed type is 'Union[def (Any) -> __main__.C, def (__main__.D) -> __main__.C]'
+
+reveal_type(u(D_A, D_C)) # E: Revealed type is 'Union[def (__main__.D) -> __main__.C, def (__main__.D) -> Any]'
+reveal_type(u(D_C, D_A)) # E: Revealed type is 'Union[def (__main__.D) -> Any, def (__main__.D) -> __main__.C]'
+
+reveal_type(u(D_C, C_C)) # E: Revealed type is 'def (__main__.D) -> __main__.C'
+reveal_type(u(C_C, D_C)) # E: Revealed type is 'def (__main__.D) -> __main__.C'
+
+reveal_type(u(D_C, D_D)) # E: Revealed type is 'def (__main__.D) -> __main__.C'
+reveal_type(u(D_D, D_C)) # E: Revealed type is 'def (__main__.D) -> __main__.C'
+
+reveal_type(u(D_C, i_C)) # E: Revealed type is 'Union[def (builtins.int) -> __main__.C, def (__main__.D) -> __main__.C]'
