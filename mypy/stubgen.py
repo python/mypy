@@ -36,7 +36,6 @@ TODO:
 """
 
 import glob
-import imp
 import importlib
 import json
 import os.path
@@ -44,6 +43,7 @@ import pkgutil
 import subprocess
 import sys
 import textwrap
+import traceback
 
 from typing import (
     Any, List, Dict, Tuple, Iterable, Iterator, Optional, NamedTuple, Set, Union, cast
@@ -76,6 +76,10 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ])
 
 
+class CantImport(Exception):
+    pass
+
+
 def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
                              add_header: bool = False, sigs: Dict[str, str] = {},
                              class_sigs: Dict[str, str] = {},
@@ -84,11 +88,18 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
                              search_path: List[str] = [],
                              interpreter: str = sys.executable) -> None:
     target = module.replace('.', '/')
-    result = find_module_path_and_all(module=module,
-                                      pyversion=pyversion,
-                                      no_import=no_import,
-                                      search_path=search_path,
-                                      interpreter=interpreter)
+    try:
+        result = find_module_path_and_all(module=module,
+                                          pyversion=pyversion,
+                                          no_import=no_import,
+                                          search_path=search_path,
+                                          interpreter=interpreter)
+    except CantImport:
+        if not quiet:
+            traceback.print_exc()
+        print('Failed to import %s; skipping it' % module)
+        return
+
     if not result:
         # C module
         target = os.path.join(output_dir, target + '.pyi')
@@ -127,8 +138,10 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             module_path, module_all = load_python_module_info(module, interpreter)
         else:
             # TODO: Support custom interpreters.
-            mod = importlib.import_module(module)
-            imp.reload(mod)
+            try:
+                mod = importlib.import_module(module)
+            except Exception:
+                raise CantImport(module)
             if is_c_module(mod):
                 return None
             module_path = mod.__file__
