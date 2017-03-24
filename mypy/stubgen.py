@@ -97,7 +97,7 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
     except CantImport:
         if not quiet:
             traceback.print_exc()
-            print('Failed to import %s; skipping it' % module)
+        print('Failed to import %s; skipping it' % module)
         return
 
     if not result:
