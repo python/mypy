@@ -16,6 +16,7 @@ from mypy.nodes import (
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
 )
 from mypy.maptype import map_instance_to_supertype
+from mypy.sametypes import is_same_type
 
 from mypy import experiments
 
@@ -373,7 +374,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                 right_by_position = right.argument_by_position(j)
                 assert right_by_position is not None
                 if not are_args_compatible(left_by_position, right_by_position,
-                                           ignore_pos_arg_names):
+                                           ignore_pos_arg_names, use_proper_subtype):
                     return False
                 j += 1
             continue
@@ -396,7 +397,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                 right_by_name = right.argument_by_name(name)
                 assert right_by_name is not None
                 if not are_args_compatible(left_by_name, right_by_name,
-                                           ignore_pos_arg_names):
+                                           ignore_pos_arg_names, use_proper_subtype):
                     return False
             continue
 
@@ -655,8 +656,8 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_typeddict_type(self, left: TypedDictType) -> bool:
         right = self.right
         if isinstance(right, TypedDictType):
-            for name, typ in left.items():
-                if name not in right or not is_same_type(typ, right.items[name]):
+            for name, typ in left.items.items():
+                if name not in right.items or not is_same_type(typ, right.items[name]):
                     return False
             return True
         return is_proper_subtype(left.fallback, right)

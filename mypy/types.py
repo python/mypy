@@ -1751,6 +1751,20 @@ def get_type_vars(typ: Type) -> List[TypeVarType]:
     return tvars
 
 
+def union_items(typ: Type) -> List[Type]:
+    """Return the flattened items of a union type.
+
+    For non-union types, return a list containing just the argument.
+    """
+    if isinstance(typ, UnionType):
+        items = []
+        for item in typ.items:
+            items.extend(union_items(item))
+        return items
+    else:
+        return [typ]
+
+
 deserialize_map = {
     key: obj.deserialize  # type: ignore
     for key, obj in globals().items()

@@ -417,3 +417,12 @@ reveal_type(u(D_C, D_D)) # E: Revealed type is 'def (__main__.D) -> __main__.C'
 reveal_type(u(D_D, D_C)) # E: Revealed type is 'def (__main__.D) -> __main__.C'
 
 reveal_type(u(D_C, i_C)) # E: Revealed type is 'Union[def (builtins.int) -> __main__.C, def (__main__.D) -> __main__.C]'
+
+[case testUnionOperatorMethodSpecialCase]
+from typing import Union
+class C:
+    def __le__(self, x: 'C') -> int: ...
+class D:
+    def __le__(self, other) -> int: ...
+class E:
+    def __ge__(self, other: Union[C, D]) -> int: ...
