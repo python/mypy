@@ -577,3 +577,11 @@ def f(a: Optional[A]):
         reveal_type(a) # E: Revealed type is 'builtins.None'
     reveal_type(a) # E: Revealed type is 'Union[__main__.A, builtins.None]'
 [builtins fixtures/isinstance.pyi]
+
+[case testFlattenOptionalUnion]
+from typing import Optional, Union
+
+x: Optional[Union[int, str]]
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.None]'
+y: Optional[Union[int, None]]
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'

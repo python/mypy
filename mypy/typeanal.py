@@ -7,7 +7,7 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
     AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    get_type_vars,
+    get_type_vars, union_items
 )
 from mypy.nodes import (
     BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
@@ -570,7 +570,8 @@ def make_optional_type(t: Type) -> Type:
         return t
     if isinstance(t, NoneTyp):
         return t
-    if isinstance(t, UnionType) and any(isinstance(item, NoneTyp)
-                                        for item in t.items):
-        return t
+    if isinstance(t, UnionType):
+        items = [item for item in union_items(t)
+                 if not isinstance(item, NoneTyp)]
+        return UnionType(items + [NoneTyp()], t.line, t.column)
     return UnionType([t, NoneTyp()], t.line, t.column)
