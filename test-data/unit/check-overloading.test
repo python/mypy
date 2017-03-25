@@ -130,7 +130,6 @@ class A: pass
 class B: pass
 [builtins fixtures/isinstance.pyi]
 
-
 [case testTypeCheckOverloadWithImplementationPy2]
 # flags: --python-version 2.7
 
@@ -1059,7 +1058,6 @@ def f(a: int) -> None: pass
 [out]
 tmp/foo.pyi:2: error: Single overload definition, multiple required
 tmp/foo.pyi:4: error: An implementation for an overloaded function is not allowed in a stub file
-
 
 [case testSingleOverload2]
 from foo import *
