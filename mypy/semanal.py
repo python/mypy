@@ -454,7 +454,6 @@ class SemanticAnalyzer(NodeVisitor):
                     item.accept(self)
                 # TODO support decorated overloaded functions properly
                 if isinstance(item, Decorator):
-                    item.func.is_overload = True
                     callable = function_type(item.func, self.builtin_type('builtins.function'))
                     assert isinstance(callable, CallableType)
                     if not any(refers_to_fullname(dec, 'typing.overload')
@@ -468,6 +467,7 @@ class SemanticAnalyzer(NodeVisitor):
                             # that.
                             non_overload_indexes.append(i)
                     else:
+                        item.func.is_overload = True
                         types.append(callable)
                 elif isinstance(item, FuncDef):
                     if i == len(defn.items) - 1 and not self.is_stub_file:
