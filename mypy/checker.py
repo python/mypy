@@ -2266,12 +2266,6 @@ class TypeChecker(NodeVisitor[None]):
         self.binder.handle_continue()
         return None
 
-    def visit_typeddict_expr(self, e: TypedDictExpr) -> Type:
-        return self.expr_checker.visit_typeddict_expr(e)
-
-    def visit_enum_call_expr(self, o: 'mypy.nodes.EnumCallExpr') -> Type:
-        return self.expr_checker.visit_enum_call_expr(o)
-
     #
     # Helpers
     #
