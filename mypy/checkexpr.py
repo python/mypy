@@ -2110,8 +2110,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Also used by `async for` and `async with`.
         """
-        if not self.chk.check_subtype(t, self.named_type('typing.Awaitable'), ctx,
-                                      msg, 'actual type', 'expected type'):
+        if not self.chk.check_subtype(t, self.chk.named_generic_type('typing.Awaitable',
+                                                                     [AnyType()]),
+                                      ctx, msg, 'actual type', 'expected type'):
             return AnyType()
         else:
             method = self.analyze_external_member_access('__await__', t, ctx)
@@ -2431,6 +2432,8 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             # First perform a quick check (as an optimization) and fall back to generic
             # subtyping algorithm if type promotions are possible (e.g., int vs. float).
             if formal.type in actual.type.mro:
+                return 2
+            elif formal.type.is_protocol and is_subtype(actual, formal):
                 return 2
             elif actual.type._promote and is_subtype(actual, formal):
                 return 1

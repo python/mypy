@@ -718,7 +718,7 @@ class SemanticAnalyzer(NodeVisitor):
             sym = self.lookup_qualified(base.name, base)
             if sym is None or sym.node is None:
                 return False
-            return sym.node.fullname() == 'typing.Protocol'
+            return sym.node.fullname() in ('typing.Protocol', 'mypy_extensions.Protocol')
         return False
 
     def clean_up_bases_and_infer_type_variables(self, defn: ClassDef) -> None:
@@ -751,7 +751,8 @@ class SemanticAnalyzer(NodeVisitor):
             if isinstance(base, UnboundType):
                 sym = self.lookup_qualified(base.name, base)
                 if sym is not None and sym.node is not None:
-                    if sym.node.fullname() == 'typing.Protocol' and i not in removed:
+                    if (sym.node.fullname() in ('typing.Protocol', 'mypy_extensions.Protocol') and
+                            i not in removed):
                         # also remove bare 'Protocol' bases
                         removed.append(i)
 
@@ -785,7 +786,8 @@ class SemanticAnalyzer(NodeVisitor):
         if sym is None or sym.node is None:
             return None
         if (sym.node.fullname() == 'typing.Generic' or
-                sym.node.fullname() == 'typing.Protocol' and t.args):
+                sym.node.fullname() == 'typing.Protocol' and t.args or
+                sym.node.fullname() == 'mypy_extensions.Protocol' and t.args):
             tvars = []  # type: List[Tuple[str, TypeVarExpr]]
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)

@@ -104,7 +104,8 @@ class Sequence(Iterable[T], Protocol):
     def __getitem__(self, n: Any) -> T: pass
 
 @runtime
-class Mapping(Protocol[T, U]): pass
+class Mapping(Protocol[T, U]):
+    def __getitem__(self, key: T) -> U: pass
 
 @runtime
 class MutableMapping(Protocol[T, U]): pass

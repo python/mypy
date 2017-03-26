@@ -1,9 +1,10 @@
-from typing import List, Optional, Dict, Callable
+from typing import List, Optional, Dict, Callable, Tuple
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, ErrorType, FormalArgument, NoneTyp,
+    Type, AnyType, UnboundType, TypeVisitor, ErrorType, FormalArgument, NoneTyp, function_type,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
-    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
+    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
+    FunctionLike,
 )
 import mypy.applytype
 import mypy.constraints
@@ -11,10 +12,11 @@ import mypy.constraints
 # import mypy.solve
 from mypy import messages, sametypes
 from mypy.nodes import (
-    CONTRAVARIANT, COVARIANT,
+    CONTRAVARIANT, COVARIANT, FuncBase, Var, Decorator, OverloadedFuncDef,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
 )
 from mypy.maptype import map_instance_to_supertype
+from mypy.expandtype import expand_type_by_instance
 
 from mypy import experiments
 
@@ -60,6 +62,8 @@ def is_subtype(left: Type, right: Type,
     else:
         return left.accept(SubtypeVisitor(right, type_parameter_checker,
                                           ignore_pos_arg_names=ignore_pos_arg_names))
+        # print(left, right, res)
+        # return res
 
 
 def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
@@ -131,6 +135,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     ignore_pos_arg_names=self.ignore_pos_arg_names):
                 return True
             rname = right.type.fullname()
+            if right.type.is_protocol:
+                return is_protocol_implementation(left, right)
             if not left.type.has_base(rname) and rname != 'builtins.object':
                 return False
 
@@ -276,6 +282,79 @@ class SubtypeVisitor(TypeVisitor[bool]):
             item = left.item
             return isinstance(item, Instance) and is_subtype(item, right.type.metaclass_type)
         return False
+
+
+ASSUMING = []  # type: List[Tuple[Instance, Instance]]
+
+
+def is_protocol_implementation(left: Instance, right: Instance) -> bool:
+    global ASSUMING
+    assert right.type.is_protocol
+    for (l, r) in ASSUMING:
+        if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):
+            return True
+    ASSUMING.append((left, right))
+    for member in right.type.protocol_members:
+        supertype = find_member(member, right)
+        subtype = find_member(member, left)
+        # print(member, subtype, supertype)
+        if not subtype or not is_subtype(subtype, supertype):
+            ASSUMING.pop()
+            return False
+    return True
+
+
+def find_member(name: str, itype: Instance) -> Optional[Type]:
+    info = itype.type
+    method = info.get_method(name)
+    if method:
+        if method.is_property:
+            assert isinstance(method, OverloadedFuncDef)
+            return find_var_type(method.items[0].var, itype)
+        return map_method(method, itype)
+    else:
+        node = info.get(name)
+        if not node:
+            return None
+        v = node.node
+        if isinstance(v, Decorator):
+            v = v.var
+        if isinstance(v, Var):
+            return find_var_type(v, itype)
+        if not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
+            for method_name in ('__getattribute__', '__getattr__'):
+                method = info.get_method(method_name)
+                if method and method.info.fullname() != 'builtins.object':
+                    getattr_type = map_method(method, itype)
+                    if isinstance(getattr_type, CallableType):
+                        return getattr_type.ret_type
+        if itype.type.fallback_to_any:
+            return AnyType()
+    return None
+
+
+def find_var_type(var: Var, itype: Instance) -> Type:
+    from mypy.checkmember import bind_self
+    itype = map_instance_to_supertype(itype, var.info)
+    typ = var.type
+    if typ is None:
+        return AnyType()
+    typ = expand_type_by_instance(typ, itype)
+    if isinstance(typ, FunctionLike):
+        signature = bind_self(typ)
+        assert isinstance(signature, CallableType)
+        if var.is_property:
+            return signature.ret_type
+        return signature
+    return typ
+
+
+def map_method(method: FuncBase, itype: Instance) -> Type:
+    from mypy.checkmember import bind_self
+    signature = function_type(method, Instance(None, []))
+    signature = bind_self(signature)
+    itype = map_instance_to_supertype(itype, method.info)
+    return expand_type_by_instance(signature, itype)
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,

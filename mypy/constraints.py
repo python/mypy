@@ -314,6 +314,13 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             actual = actual.fallback
         if isinstance(actual, Instance):
             instance = actual
+            if template.type.is_protocol and self.direction == SUPERTYPE_OF:
+                for member in template.type.protocol_members:
+                    inst = mypy.subtypes.find_member(member, instance)
+                    temp = mypy.subtypes.find_member(member, template)
+                    res.extend(infer_constraints(temp, inst, self.direction))
+                    res.extend(infer_constraints(temp, inst, neg_op(self.direction)))
+                return res
             if (self.direction == SUBTYPE_OF and
                     template.type.has_base(instance.type.fullname())):
                 mapped = map_instance_to_supertype(template, instance.type)
