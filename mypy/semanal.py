@@ -588,6 +588,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
+        is_protocol = self.detect_protocol_base(defn)
         self.clean_up_bases_and_infer_type_variables(defn)
         if self.analyze_typeddict_classdef(defn):
             return
@@ -604,8 +605,10 @@ class SemanticAnalyzer(NodeVisitor):
             self.analyze_base_classes(defn)
             self.analyze_metaclass(defn)
 
+            runtime_protocol = False
             for decorator in defn.decorators:
-                self.analyze_class_decorator(defn, decorator)
+                if self.analyze_class_decorator(defn, decorator):
+                    runtime_protocol = True
 
             self.enter_class(defn)
 
@@ -613,6 +616,8 @@ class SemanticAnalyzer(NodeVisitor):
             defn.defs.accept(self)
 
             self.calculate_abstract_status(defn.info)
+            defn.info.is_protocol = is_protocol
+            defn.info.runtime_protocol = runtime_protocol
             self.setup_type_promotion(defn)
 
             self.leave_class()
@@ -652,8 +657,9 @@ class SemanticAnalyzer(NodeVisitor):
         if self.bound_tvars:
             enable_typevars(self.bound_tvars)
 
-    def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
+    def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> bool:
         decorator.accept(self)
+        return isinstance(decorator, RefExpr) and decorator.fullname == 'typing.runtime'
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.
@@ -701,12 +707,26 @@ class SemanticAnalyzer(NodeVisitor):
                 promote_target = self.named_type_or_none(promotions[defn.fullname])
         defn.info._promote = promote_target
 
+    def detect_protocol_base(self, defn: ClassDef) -> bool:
+        for base_expr in defn.base_type_exprs:
+            try:
+                base = expr_to_unanalyzed_type(base_expr)
+            except TypeTranslationError:
+                continue  # This will be reported later
+            if not isinstance(base, UnboundType):
+                return False
+            sym = self.lookup_qualified(base.name, base)
+            if sym is None or sym.node is None:
+                return False
+            return sym.node.fullname() == 'typing.Protocol'
+        return False
+
     def clean_up_bases_and_infer_type_variables(self, defn: ClassDef) -> None:
         """Remove extra base classes such as Generic and infer type vars.
 
         For example, consider this class:
 
-        . class Foo(Bar, Generic[T]): ...
+          class Foo(Bar, Generic[T]): ...
 
         Now we will remove Generic[T] from bases of Foo and infer that the
         type variable 'T' is a type argument of Foo.
@@ -725,17 +745,24 @@ class SemanticAnalyzer(NodeVisitor):
             tvars = self.analyze_typevar_declaration(base)
             if tvars is not None:
                 if declared_tvars:
-                    self.fail('Duplicate Generic in bases', defn)
+                    self.fail('Only single Generic[...] or Protocol[...] can be in bases', defn)
                 removed.append(i)
                 declared_tvars.extend(tvars)
+            if isinstance(base, UnboundType):
+                sym = self.lookup_qualified(base.name, base)
+                if sym is not None and sym.node is not None:
+                    if sym.node.fullname() == 'typing.Protocol' and i not in removed:
+                        # also remove bare 'Protocol' bases
+                        removed.append(i)
 
         all_tvars = self.get_all_bases_tvars(defn, removed)
         if declared_tvars:
             if len(self.remove_dups(declared_tvars)) < len(declared_tvars):
-                self.fail("Duplicate type variables in Generic[...]", defn)
+                self.fail("Duplicate type variables in Generic[...] or Protocol[...]", defn)
             declared_tvars = self.remove_dups(declared_tvars)
             if not set(all_tvars).issubset(set(declared_tvars)):
-                self.fail("If Generic[...] is present it should list all type variables", defn)
+                self.fail("If Generic[...] or Protocol[...] is present"
+                          " it should list all type variables", defn)
                 # In case of error, Generic tvars will go first
                 declared_tvars = self.remove_dups(declared_tvars + all_tvars)
         else:
@@ -757,7 +784,8 @@ class SemanticAnalyzer(NodeVisitor):
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is None or sym.node is None:
             return None
-        if sym.node.fullname() == 'typing.Generic':
+        if (sym.node.fullname() == 'typing.Generic' or
+                sym.node.fullname() == 'typing.Protocol' and t.args):
             tvars = []  # type: List[Tuple[str, TypeVarExpr]]
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)
@@ -3405,12 +3433,18 @@ class ThirdPass(TraverserVisitor):
     def visit_class_def(self, tdef: ClassDef) -> None:
         for type in tdef.info.bases:
             self.analyze(type)
+            if tdef.info.is_protocol:
+                if not isinstance(type, Instance) or not type.type.is_protocol:
+                    if type.type.fullname() != 'builtins.object':
+                        self.fail('All bases of a protocol must be protocols', tdef)
         # Recompute MRO now that we have analyzed all modules, to pick
         # up superclasses of bases imported from other modules in an
         # import loop. (Only do so if we succeeded the first time.)
         if tdef.info.mro:
             tdef.info.mro = []  # Force recomputation
             calculate_class_mro(tdef, self.fail_blocker)
+            if tdef.info.is_protocol:
+                add_protocol_members(tdef.info)
         super().visit_class_def(tdef)
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -3499,6 +3533,16 @@ class ThirdPass(TraverserVisitor):
         sym = names.names[name]
         assert isinstance(sym.node, TypeInfo)
         return Instance(sym.node, args or [])
+
+
+def add_protocol_members(typ: TypeInfo) -> None:
+    members = set()  # type: Set[str]
+    if typ.mro:
+        for base in typ.mro[:-1]:  # we skip "object" since everyone implements it
+            if base.is_protocol:
+                for name in base.names:
+                    members.add(name)
+    typ.protocol_members = list(members)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

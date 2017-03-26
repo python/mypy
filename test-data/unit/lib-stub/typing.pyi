@@ -18,6 +18,7 @@ NamedTuple = 0
 Type = 0
 no_type_check = 0
 ClassVar = 0
+Protocol = 0
 
 # Type aliases.
 List = 0
@@ -29,20 +30,24 @@ U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
 
-class Container(Generic[T]):
+@runtime
+class Container(Protocol[T]):
     @abstractmethod
     # Use int because bool isn't in the default test builtins
     def __contains__(self, arg: T) -> int: pass
 
-class Sized:
+@runtime
+class Sized(Protocol):
     @abstractmethod
     def __len__(self) -> int: pass
 
-class Iterable(Generic[T]):
+@runtime
+class Iterable(Protocol[T]):
     @abstractmethod
     def __iter__(self) -> 'Iterator[T]': pass
 
-class Iterator(Iterable[T], Generic[T]):
+@runtime
+class Iterator(Iterable[T], Protocol):
     @abstractmethod
     def __next__(self) -> T: pass
 
@@ -75,14 +80,16 @@ class AsyncGenerator(AsyncIterator[T], Generic[T, U]):
     @abstractmethod
     def __aiter__(self) -> 'AsyncGenerator[T, U]': pass
 
-class Awaitable(Generic[T]):
+@runtime
+class Awaitable(Protocol[T]):
     @abstractmethod
     def __await__(self) -> Generator[Any, Any, T]: pass
 
 class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V, S]):
     pass
 
-class AsyncIterable(Generic[T]):
+@runtime
+class AsyncIterable(Protocol[T]):
     @abstractmethod
     def __aiter__(self) -> 'AsyncIterator[T]': pass
 
@@ -91,17 +98,23 @@ class AsyncIterator(AsyncIterable[T], Generic[T]):
     @abstractmethod
     def __anext__(self) -> Awaitable[T]: pass
 
-class Sequence(Iterable[T], Generic[T]):
+@runtime
+class Sequence(Iterable[T], Protocol):
     @abstractmethod
     def __getitem__(self, n: Any) -> T: pass
 
-class Mapping(Generic[T, U]): pass
+@runtime
+class Mapping(Protocol[T, U]): pass
 
-class MutableMapping(Generic[T, U]): pass
+@runtime
+class MutableMapping(Protocol[T, U]): pass
 
 def NewType(name: str, tp: Type[T]) -> Callable[[T], T]:
     def new_type(x):
         return x
     return new_type
+
+def runtime(cls: T) -> T:
+    return cls
 
 TYPE_CHECKING = 1
