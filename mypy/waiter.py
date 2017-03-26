@@ -149,7 +149,7 @@ class Waiter:
         except FileNotFoundError:
             test_log = []
         except json.JSONDecodeError:
-            print('corrupt test log file {}'.format(self.FULL_LOG_FILENAME))
+            print('corrupt test log file {}'.format(self.FULL_LOG_FILENAME), file=sys.stderr)
             test_log = []
         return test_log
 
@@ -295,9 +295,11 @@ class Waiter:
                     exit_code = -logs[-1]['exit_code'].get(cmd.name, 0)
                     if not exit_code:
                         # avoid interrupting parallel tasks with sequential in between
-                        # => order: seq failed, parallel failed, parallel passed, seq passed
-                        # => among failed tasks, sequential should go before parallel
-                        # => among successful tasks, sequential should go after parallel
+                        # so either: seq failed, parallel failed, parallel passed, seq passed
+                        # or: parallel failed, seq failed, seq passed, parallel passed
+                        # I picked the first one arbitrarily, since no obvious pros/cons
+                        # in other words, among failed tasks, sequential should go before parallel,
+                        # and among successful tasks, sequential should go after parallel
                         sequential = -sequential
                 else:
                     # ignore exit code without -ff
