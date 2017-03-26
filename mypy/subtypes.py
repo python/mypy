@@ -62,8 +62,6 @@ def is_subtype(left: Type, right: Type,
     else:
         return left.accept(SubtypeVisitor(right, type_parameter_checker,
                                           ignore_pos_arg_names=ignore_pos_arg_names))
-        # print(left, right, res)
-        # return res
 
 
 def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
@@ -297,7 +295,6 @@ def is_protocol_implementation(left: Instance, right: Instance) -> bool:
     for member in right.type.protocol_members:
         supertype = find_member(member, right)
         subtype = find_member(member, left)
-        # print(member, subtype, supertype)
         if not subtype or not is_subtype(subtype, supertype):
             ASSUMING.pop()
             return False

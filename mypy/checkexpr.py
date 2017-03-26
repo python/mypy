@@ -2433,8 +2433,6 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             # subtyping algorithm if type promotions are possible (e.g., int vs. float).
             if formal.type in actual.type.mro:
                 return 2
-            elif formal.type.is_protocol and is_subtype(actual, formal):
-                return 2
             elif actual.type._promote and is_subtype(actual, formal):
                 return 1
             else:
