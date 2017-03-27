@@ -110,12 +110,14 @@ class ConditionalTypeBinder:
         return None
 
     def put(self, expr: Expression, typ: Type) -> None:
-        if not isinstance(expr, BindableTypes):
+        # TODO: replace with isinstance(expr, BindableTypes)
+        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
         if not expr.literal:
             return
         key = expr.literal_hash
         if key not in self.declarations:
+            assert isinstance(expr, BindableTypes)
             self.declarations[key] = get_declaration(expr)
             self._add_dependencies(key)
         self._put(key, typ)
@@ -201,7 +203,8 @@ class ConditionalTypeBinder:
                     type: Type,
                     declared_type: Type,
                     restrict_any: bool = False) -> None:
-        if not isinstance(expr, BindableTypes):
+        # TODO: replace with isinstance(expr, BindableTypes)
+        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return None
         if not expr.literal:
             return
