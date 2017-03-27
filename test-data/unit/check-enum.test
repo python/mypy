@@ -275,6 +275,8 @@ S = Enum('S', {1: 1})
 T = Enum('T', keyword='a b')
 U = Enum('U', *['a'])
 V = Enum('U', **{'a': 1})
+W = Enum('W', 'a b')
+W.c
 [out]
 main:2: error: Too few arguments for Enum()
 main:3: error: Enum() expects a string, tuple, list or dict literal as the second argument
@@ -295,6 +297,7 @@ main:17: error: Enum() with dict literal requires string literals
 main:18: error: Unexpected arguments to Enum()
 main:19: error: Unexpected arguments to Enum()
 main:20: error: Unexpected arguments to Enum()
+main:22: error: "W" has no attribute "c"
 
 [case testFunctionalEnumFlag]
 from enum import Flag, IntFlag
