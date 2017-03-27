@@ -331,3 +331,19 @@ y = B.E.a
 x = y
 [out]
 main:8: error: Incompatible types in assignment (expression has type "__main__.B.E", variable has type "__main__.A.E")
+
+[case testFunctionalEnum_python2]
+from enum import Enum
+Eu = Enum(u'Eu', u'a b')
+Eb = Enum(b'Eb', b'a b')
+Gu = Enum(u'Gu', {u'a': 1})
+Gb = Enum(b'Gb', {b'a': 1})
+Hu = Enum(u'Hu', [u'a'])
+Hb = Enum(b'Hb', [b'a'])
+Eu.a
+Eb.a
+Gu.a
+Gb.a
+Hu.a
+Hb.a
+[out]
