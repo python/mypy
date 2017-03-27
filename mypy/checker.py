@@ -46,7 +46,6 @@ from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import StatementVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
-
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
 from mypy.options import Options
