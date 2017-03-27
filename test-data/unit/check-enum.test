@@ -272,6 +272,9 @@ P = Enum('P', [42])
 Q = Enum('Q', [('a', 42, 0)])
 R = IntEnum('R', [[0, 42]])
 S = Enum('S', {1: 1})
+T = Enum('T', keyword='a b')
+U = Enum('U', *['a'])
+V = Enum('U', **{'a': 1})
 [out]
 main:2: error: Too few arguments for Enum()
 main:3: error: Enum() expects a string, tuple, list or dict literal as the second argument
@@ -289,6 +292,9 @@ main:14: error: Enum() with tuple or list expects strings or (name, value) pairs
 main:15: error: Enum() with tuple or list expects strings or (name, value) pairs
 main:16: error: IntEnum() with tuple or list expects strings or (name, value) pairs
 main:17: error: Enum() with dict literal requires string literals
+main:18: error: Unexpected arguments to Enum()
+main:19: error: Unexpected arguments to Enum()
+main:20: error: Unexpected arguments to Enum()
 
 [case testFunctionalEnumFlag]
 from enum import Flag, IntFlag
