@@ -8,6 +8,12 @@ from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
 
+from mypy.nodes import IndexExpr, MemberExpr, NameExpr
+
+
+BindableTypes = (IndexExpr, MemberExpr, NameExpr)
+BindableExpression = Union[IndexExpr, MemberExpr, NameExpr]
+
 
 class Frame(Dict[Key, Type]):
     """A Frame represents a specific point in the execution of a program.
@@ -92,7 +98,7 @@ class ConditionalTypeBinder:
         self.options_on_return.append([])
         return f
 
-    def _push(self, key: Key, type: Type, index: int=-1) -> None:
+    def _put(self, key: Key, type: Type, index: int=-1) -> None:
         self.frames[index][key] = type
 
     def _get(self, key: Key, index: int=-1) -> Type:
@@ -103,19 +109,23 @@ class ConditionalTypeBinder:
                 return self.frames[i][key]
         return None
 
-    def push(self, node: Node, typ: Type) -> None:
-        if not node.literal:
+    def put(self, expr: Expression, typ: Type) -> None:
+        # TODO: replace with isinstance(expr, BindableTypes)
+        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
-        key = node.literal_hash
+        if not expr.literal:
+            return
+        key = expr.literal_hash
         if key not in self.declarations:
-            self.declarations[key] = self.get_declaration(node)
+            assert isinstance(expr, BindableTypes)
+            self.declarations[key] = get_declaration(expr)
             self._add_dependencies(key)
-        self._push(key, typ)
+        self._put(key, typ)
 
     def unreachable(self) -> None:
         self.frames[-1].unreachable = True
 
-    def get(self, expr: Union[Expression, Var]) -> Type:
+    def get(self, expr: Expression) -> Type:
         return self._get(expr.literal_hash)
 
     def is_unreachable(self) -> bool:
@@ -163,7 +173,7 @@ class ConditionalTypeBinder:
                 for other in resulting_values[1:]:
                     type = join_simple(self.declarations[key], type, other)
             if not is_same_type(type, current_value):
-                self._push(key, type)
+                self._put(key, type)
                 changed = True
 
         self.frames[-1].unreachable = not frames
@@ -189,19 +199,13 @@ class ConditionalTypeBinder:
 
         return result
 
-    def get_declaration(self, expr: Node) -> Type:
-        if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
-            type = expr.node.type
-            if isinstance(type, PartialType):
-                return None
-            return type
-        else:
-            return None
-
     def assign_type(self, expr: Expression,
                     type: Type,
                     declared_type: Type,
                     restrict_any: bool = False) -> None:
+        # TODO: replace with isinstance(expr, BindableTypes)
+        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
+            return None
         if not expr.literal:
             return
         self.invalidate_dependencies(expr)
@@ -226,16 +230,16 @@ class ConditionalTypeBinder:
                 and not restrict_any):
             pass
         elif isinstance(type, AnyType):
-            self.push(expr, declared_type)
+            self.put(expr, declared_type)
         else:
-            self.push(expr, type)
+            self.put(expr, type)
 
         for i in self.try_frames:
             # XXX This should probably not copy the entire frame, but
             # just copy this variable into a single stored frame.
             self.allow_jump(i)
 
-    def invalidate_dependencies(self, expr: Expression) -> None:
+    def invalidate_dependencies(self, expr: BindableExpression) -> None:
         """Invalidate knowledge of types that include expr, but not expr itself.
 
         For example, when expr is foo.bar, invalidate foo.bar.baz.
@@ -246,11 +250,11 @@ class ConditionalTypeBinder:
         for dep in self.dependencies.get(expr.literal_hash, set()):
             self._cleanse_key(dep)
 
-    def most_recent_enclosing_type(self, expr: Expression, type: Type) -> Type:
+    def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Type:
         if isinstance(type, AnyType):
-            return self.get_declaration(expr)
+            return get_declaration(expr)
         key = expr.literal_hash
-        enclosers = ([self.get_declaration(expr)] +
+        enclosers = ([get_declaration(expr)] +
                      [f[key] for f in self.frames
                       if key in f and is_subtype(type, f[key])])
         return enclosers[-1]
@@ -334,3 +338,11 @@ class ConditionalTypeBinder:
         assert len(self.frames) == 1
         yield self.push_frame()
         self.pop_frame(True, 0)
+
+
+def get_declaration(expr: BindableExpression) -> Type:
+    if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
+        type = expr.node.type
+        if not isinstance(type, PartialType):
+            return type
+    return None

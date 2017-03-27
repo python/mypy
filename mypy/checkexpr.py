@@ -160,18 +160,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return result
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
-        if not var.type:
+        if var.type:
+            return var.type
+        else:
             if not var.is_ready and self.chk.in_checked_function():
                 self.chk.handle_cannot_determine_type(var.name(), context)
             # Implicit 'Any' type.
             return AnyType()
-        else:
-            # Look up local type of variable with type (inferred or explicit).
-            val = self.chk.binder.get(var)
-            if val is None:
-                return var.type
-            else:
-                return val
 
     def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         """Type check a call expression."""
@@ -1954,7 +1949,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
                 if true_map:
                     for var, type in true_map.items():
-                        self.chk.binder.push(var, type)
+                        self.chk.binder.put(var, type)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
