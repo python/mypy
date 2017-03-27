@@ -1,0 +1,223 @@
+[case testClassVarDef]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [ClassVar])
+  ClassDef:2(
+    A
+    AssignmentStmt:3(
+      NameExpr(x [m])
+      IntExpr(1)
+      builtins.int)))
+
+[case testClassVarDefInModuleScope]
+from typing import ClassVar
+x = None  # type: ClassVar[int]
+[out]
+main:2: error: ClassVar can only be used for assignments in class body
+
+[case testClassVarDefInFuncScope]
+from typing import ClassVar
+def f() -> None:
+    x = None  # type: ClassVar[int]
+[out]
+main:3: error: ClassVar can only be used for assignments in class body
+
+[case testClassVarDefInMethod]
+from typing import ClassVar
+class A:
+    def f(self) -> None:
+        x = None  # type: ClassVar
+[out]
+main:4: error: ClassVar can only be used for assignments in class body
+
+[case testClassVarTooManyArguments]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int, str]
+[out]
+main:3: error: ClassVar[...] must have at most one type argument
+
+[case testClassVarWithoutArguments]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [ClassVar])
+  ClassDef:2(
+    A
+    AssignmentStmt:3(
+      NameExpr(x [m])
+      IntExpr(1)
+      Any)))
+
+[case testClassVarWithTypeVar]
+from typing import ClassVar, TypeVar
+T = TypeVar('T')
+class A:
+    x = None  # type: ClassVar[T]
+[out]
+main:4: error: Invalid type "__main__.T"
+
+[case testClassVarInFunctionArgs]
+from typing import ClassVar
+def f(x: str, y: ClassVar) -> None: pass
+[out]
+main:2: error: ClassVar can only be used for assignments in class body
+
+[case testClassVarInMethodArgs]
+from typing import ClassVar
+class A:
+    def f(x: str, y: ClassVar) -> None: pass
+[out]
+main:3: error: ClassVar can only be used for assignments in class body
+
+[case testClassVarFunctionRetType]
+from typing import ClassVar
+def f() -> ClassVar: pass
+[out]
+main:2: error: ClassVar can only be used for assignments in class body
+
+[case testClassVarMethodRetType]
+from typing import ClassVar
+class A:
+    def f(self) -> ClassVar: pass
+[out]
+main:3: error: ClassVar can only be used for assignments in class body
+
+[case testMultipleClassVarInFunctionSig]
+from typing import ClassVar
+def f(x: ClassVar, y: ClassVar) -> ClassVar: pass
+[out]
+main:2: error: ClassVar can only be used for assignments in class body
+
+[case testClassVarInCallableArgs]
+from typing import Callable, ClassVar
+f = None  # type: Callable[[int, ClassVar], Any]
+[out]
+main:2: error: Invalid type: ClassVar nested inside other type
+
+[case testClassVarInCallableRet]
+from typing import Callable, ClassVar
+f = None  # type: Callable[..., ClassVar]
+[out]
+main:2: error: Invalid type: ClassVar nested inside other type
+
+[case testClassVarInUnion]
+from typing import ClassVar, Union
+x = None  # type: Union[ClassVar, str]
+[out]
+main:2: error: Invalid type: ClassVar nested inside other type
+
+[case testClassVarInUnionAsAttribute]
+from typing import ClassVar, Union
+class A:
+    x = None  # type: Union[ClassVar, str]
+[out]
+main:3: error: Invalid type: ClassVar nested inside other type
+
+[case testListWithClassVars]
+from typing import ClassVar, List
+x = []  # type: List[ClassVar]
+[builtins fixtures/list.pyi]
+[out]
+main:2: error: Invalid type: ClassVar nested inside other type
+
+[case testTupleClassVar]
+from typing import ClassVar, Tuple
+x = None  # type: Tuple[ClassVar, int]
+[out]
+main:2: error: Invalid type: ClassVar nested inside other type
+
+[case testMultipleLvaluesWithList]
+from typing import ClassVar, List
+class A:
+    [x, y] = None, None  # type: List[ClassVar]
+[builtins fixtures/list.pyi]
+[out]
+main:3: error: Invalid type: ClassVar nested inside other type
+
+[case testDeeplyNested]
+from typing import Callable, ClassVar, Union
+class A: pass
+class B:
+    x = None  # type: Union[str, Callable[[A, ClassVar], int]]
+[out]
+main:4: error: Invalid type: ClassVar nested inside other type
+
+[case testClassVarInClassVar]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[ClassVar[int]]
+[out]
+main:3: error: Invalid type: ClassVar nested inside other type
+
+[case testInsideGeneric]
+from typing import ClassVar, Generic, TypeVar
+T = TypeVar('T')
+class A(Generic[T]): pass
+class B:
+    x = None  # type: A[ClassVar]
+[out]
+main:5: error: Invalid type: ClassVar nested inside other type
+
+[case testDefineOnSelf]
+from typing import ClassVar
+class A:
+    def __init__(self) -> None:
+        self.x = None  # type: ClassVar
+[out]
+main:4: error: ClassVar can only be used for assignments in class body
+
+[case testForIndex]
+from typing import ClassVar
+for i in []:  # type: ClassVar
+    pass
+[out]
+main:2: error: ClassVar can only be used for assignments in class body
+
+[case testForIndexInClassBody]
+from typing import ClassVar
+class A:
+    for i in []:  # type: ClassVar
+        pass
+[out]
+main:3: error: ClassVar can only be used for assignments in class body
+
+[case testWithStmt]
+from typing import ClassVar
+class A: pass
+with A() as x:  # type: ClassVar
+    pass
+[out]
+main:3: error: ClassVar can only be used for assignments in class body
+
+[case testWithStmtInClassBody]
+from typing import ClassVar
+class A: pass
+class B:
+    with A() as x:  # type: ClassVar
+        pass
+[out]
+main:4: error: ClassVar can only be used for assignments in class body
+
+[case testClassVarWithGeneric]
+from typing import ClassVar, Generic, TypeVar
+T = TypeVar('T')
+class A(Generic[T]):
+    x = None  # type: ClassVar[T]
+[out]
+main:4: error: Invalid type: ClassVar cannot be generic
+
+[case testClassVarWithNestedGeneric]
+from typing import ClassVar, Generic, List, TypeVar, Union
+T = TypeVar('T')
+U = TypeVar('U')
+class A(Generic[T, U]):
+    x = None  # type: ClassVar[Union[T, List[U]]]
+[builtins fixtures/list.pyi]
+[out]
+main:5: error: Invalid type: ClassVar cannot be generic

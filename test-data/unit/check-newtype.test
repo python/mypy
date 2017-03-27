@@ -173,14 +173,13 @@ def func() -> None:
 
 class MyClass:
     C = NewType('C', float)
-    
+
     def foo(self) -> 'MyClass.C':
         return MyClass.C(3.2)
 
 b = A(3)
 c = MyClass.C(3.5)
 [out]
-main: note: In function "func":
 
 [case testNewTypeInMultipleFiles]
 import a
@@ -234,7 +233,6 @@ reveal_type(num)
 [stale]
 [out1]
 [out2]
-main:1: note: In module imported here:
 tmp/m.py:13: error: Revealed type is 'm.UserId'
 tmp/m.py:14: error: Revealed type is 'builtins.int'
 
@@ -302,7 +300,7 @@ b = NewType('b', float)  # this line throws two errors
 c = NewType('c', str)   # type: str
 [out]
 main:4: error: Cannot redefine 'a' as a NewType
-main:7: error: Invalid assignment target
+main:7: error: Cannot assign to a type
 main:7: error: Cannot redefine 'b' as a NewType
 main:9: error: Cannot declare the type of a NewType declaration
 
@@ -319,3 +317,8 @@ class A: pass
 B = NewType('B', A)
 class C(B): pass  # E: Cannot subclass NewType
 [out]
+
+[case testNewTypeAny]
+from typing import NewType
+Any = NewType('Any', int)
+Any(5)

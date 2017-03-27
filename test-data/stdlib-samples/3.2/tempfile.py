@@ -101,6 +101,7 @@ else:
         except IOError:
             raise _os.error()
         f.close()
+        return None
     _stat = __stat
 
 def _exists(fn: str) -> bool:
@@ -421,6 +422,7 @@ class _TemporaryFileWrapper:
         def __exit__(self, exc: _Type[BaseException], value: BaseException,
                      tb: _Optional[_TracebackType]) -> bool:
             self.file.__exit__(exc, value, tb)
+            return False
 
 
 def NamedTemporaryFile(mode: str = 'w+b', buffering: int = -1,
@@ -554,6 +556,7 @@ class SpooledTemporaryFile:
     def __exit__(self, exc: type, value: BaseException,
                  tb: _TracebackType) -> bool:
         self._file.close()
+        return False
 
     # file protocol
     def __iter__(self) -> _Iterable[_Any]:
@@ -690,6 +693,7 @@ class TemporaryDirectory(object):
     def __exit__(self, exc: type, value: BaseException,
                  tb: _TracebackType) -> bool:
         self.cleanup()
+        return False
 
     def __del__(self) -> None:
         # Issue a ResourceWarning if implicit cleanup needed

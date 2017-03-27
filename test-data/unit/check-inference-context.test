@@ -13,7 +13,7 @@ b = None # type: B
 
 ao = f()
 ab = f()
-b = f() # E: Incompatible types in assignment (expression has type A[None], variable has type "B")
+b = f() # E: Incompatible types in assignment (expression has type A[<uninhabited>], variable has type "B")
 
 def f() -> 'A[T]': pass
 
@@ -29,7 +29,7 @@ b = None # type: B
 
 ao = A()
 ab = A()
-b = A() # E: Incompatible types in assignment (expression has type A[None], variable has type "B")
+b = A() # E: Incompatible types in assignment (expression has type A[<uninhabited>], variable has type "B")
 
 class A(Generic[T]): pass
 class B: pass
@@ -85,7 +85,6 @@ def f(a: T) -> 'A[T]': pass
 class A(Generic[T]): pass
 class B: pass
 [out]
-main: note: In function "g":
 
 [case testInferLocalVariableTypeWithUnderspecifiedGenericType]
 from typing import TypeVar, Generic
@@ -96,7 +95,6 @@ def g() -> None:
 def f() -> 'A[T]': pass
 class A(Generic[T]): pass
 [out]
-main: note: In function "g":
 
 [case testInferMultipleLocalVariableTypesWithTupleRvalue]
 from typing import TypeVar, Generic
@@ -115,7 +113,6 @@ def f(a: T) -> 'A[T]': pass
 class A(Generic[T]): pass
 class B: pass
 [out]
-main: note: In function "g":
 
 [case testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting]
 from typing import TypeVar, List, Generic
@@ -137,7 +134,6 @@ class A(Generic[T]): pass
 class B: pass
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "h":
 
 
 -- Return types with multiple tvar instances
@@ -338,7 +334,7 @@ aa = None # type: List[A]
 ao = None # type: List[object]
 a = None # type: A
 
-a = [] # E: Incompatible types in assignment (expression has type List[None], variable has type "A")
+a = [] # E: Incompatible types in assignment (expression has type List[<uninhabited>], variable has type "A")
 
 aa = []
 ao = []
@@ -389,14 +385,13 @@ class B(A): pass
 import typing
 def f() -> None:
     a = []     # E: Need type annotation for variable
-    b = [None]  # E: Need type annotation for variable
+    b = [None]
     c = [B()]
     c = [object()] # E: List item 0 has incompatible type "object"
     c = [B()]
 class B: pass
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testNestedListExpressions]
 from typing import List
@@ -487,9 +482,10 @@ class B: pass
 class C(B): pass
 class D: pass
 [out]
-main: note: In function "t":
 
 [case testIntersectionWithInferredGenericArgument]
+from foo import *
+[file foo.pyi]
 from typing import overload, TypeVar, Generic
 T = TypeVar('T')
 f(A())
@@ -583,12 +579,22 @@ list_a = [] # type: List[A]
 f(list_a, lambda a: a.x)
 [builtins fixtures/list.pyi]
 
+[case testLambdaWithoutContext]
+reveal_type(lambda x: x)  # E: Revealed type is 'def (x: Any) -> Any'
+reveal_type(lambda x: 1)  # E: Revealed type is 'def (x: Any) -> builtins.int'
+
+[case testLambdaContextVararg]
+from typing import Callable
+def f(t: Callable[[str], str]) -> str: ''
+f(lambda *_: '')
+
 [case testInvalidContextForLambda]
 from typing import Callable
 f = lambda x: A() # type: Callable[[], A]
 f2 = lambda: A() # type: Callable[[A], A]
 class A: pass
 [out]
+main:2: error: Incompatible types in assignment (expression has type Callable[[Any], A], variable has type Callable[[], A])
 main:2: error: Cannot infer type of lambda
 main:3: error: Incompatible types in assignment (expression has type Callable[[], A], variable has type Callable[[A], A])
 main:3: error: Cannot infer type of lambda
@@ -640,6 +646,8 @@ f( # E: Argument 1 to "f" has incompatible type Callable[[A], A]; expected Calla
 
 
 [case testMapWithOverloadedFunc]
+from foo import *
+[file foo.pyi]
 from typing import TypeVar, Callable, List, overload, Any
 t = TypeVar('t')
 s = TypeVar('s')
@@ -751,7 +759,7 @@ T = TypeVar('T')
 def f(x: Union[List[T], str]) -> None: pass
 f([1])
 f('')
-f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[List[None], str]"
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[List[<uninhabited>], str]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIgnoringInferenceContext]
@@ -781,7 +789,6 @@ def f(a: T) -> None:
     l.append(1) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "T"
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testInferenceInGenericClass]
 from typing import TypeVar, Generic, List
@@ -794,7 +801,6 @@ class A(Generic[S]):
         l.append(b) # E: Argument 1 to "append" of "list" has incompatible type "S"; expected "T"
 [builtins fixtures/list.pyi]
 [out]
-main: note: In member "f" of class "A":
 
 [case testLambdaInGenericFunction]
 from typing import TypeVar, Callable
@@ -803,7 +809,6 @@ S = TypeVar('S')
 def f(a: T, b: S) -> None:
     c = lambda x: x  # type: Callable[[T], S]
 [out]
-main: note: In function "f":
 main:5: error: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[T], S])
 main:5: error: Incompatible return value type (got "T", expected "S")
 
@@ -815,6 +820,78 @@ class A(Generic[T]):
     def f(self, b: S) -> None:
         c = lambda x: x  # type: Callable[[T], S]
 [out]
-main: note: In member "f" of class "A":
 main:6: error: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[T], S])
 main:6: error: Incompatible return value type (got "T", expected "S")
+
+[case testRevealTypeContext]
+from typing import TypeVar, Callable, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    pass
+reveal_type(A()) # E: Revealed type is '__main__.A[<uninhabited>]'
+b = reveal_type(A())  # type: A[int] # E: Revealed type is '__main__.A[builtins.int]'
+
+[case testUnionWithGenericTypeItemContext]
+from typing import TypeVar, Union, List
+
+T = TypeVar('T')
+
+def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
+reveal_type(f(1)) # E: Revealed type is 'Union[builtins.int*, builtins.list[builtins.int]]'
+reveal_type(f([])) # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(f(None)) # E: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/list.pyi]
+
+[case testUnionWithGenericTypeItemContextAndStrictOptional]
+# flags: --strict-optional
+from typing import TypeVar, Union, List
+
+T = TypeVar('T')
+
+def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
+reveal_type(f(1)) # E: Revealed type is 'Union[builtins.int*, builtins.list[builtins.int]]'
+reveal_type(f([])) # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(f(None)) # E: Revealed type is 'Union[builtins.None, builtins.list[builtins.int]]'
+[builtins fixtures/list.pyi]
+
+[case testUnionWithGenericTypeItemContextInMethod]
+from typing import TypeVar, Union, List, Generic
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class C(Generic[T]):
+    def f(self, x: Union[T, S]) -> Union[T, S]: pass
+
+c = C[List[int]]()
+reveal_type(c.f('')) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.str*]'
+reveal_type(c.f([1])) # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(c.f([])) # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(c.f(None)) # E: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/list.pyi]
+
+[case testGenericMethodCalledInGenericContext]
+from typing import TypeVar, Generic
+
+_KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
+_T = TypeVar('_T')
+
+class M(Generic[_KT, _VT]):
+    def get(self, k: _KT, default: _T) -> _T: ...
+
+def f(d: M[_KT, _VT], k: _KT) -> _VT:
+    return d.get(k, None)  # E: "get" of "M" does not return a value
+
+[case testGenericMethodCalledInGenericContext2]
+from typing import TypeVar, Generic, Union
+
+_KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
+_T = TypeVar('_T')
+
+class M(Generic[_KT, _VT]):
+    def get(self, k: _KT, default: _T) -> Union[_VT, _T]: ...
+
+def f(d: M[_KT, _VT], k: _KT) -> Union[_VT, None]:
+    return d.get(k, None)

@@ -51,9 +51,6 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     def visit_any(self, t: types.AnyType) -> Set[str]:
         return set()
 
-    def visit_void(self, t: types.Void) -> Set[str]:
-        return set()
-
     def visit_none_type(self, t: types.NoneTyp) -> Set[str]:
         return set()
 
@@ -86,6 +83,9 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
 
     def visit_tuple_type(self, t: types.TupleType) -> Set[str]:
         return self._visit(*t.items) | self._visit(t.fallback)
+
+    def visit_typeddict_type(self, t: types.TypedDictType) -> Set[str]:
+        return self._visit(*t.items.values()) | self._visit(t.fallback)
 
     def visit_star_type(self, t: types.StarType) -> Set[str]:
         return set()

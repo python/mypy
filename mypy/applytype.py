@@ -3,7 +3,7 @@ from typing import List, Dict
 import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.expandtype import expand_type
-from mypy.types import Type, TypeVarId, TypeVarType, CallableType, AnyType
+from mypy.types import Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType
 from mypy.messages import MessageBuilder
 from mypy.nodes import Context
 
@@ -34,14 +34,15 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
                        for v1 in type.values):
                     continue
             for value in values:
-                if mypy.subtypes.is_subtype(type, value):
+                if isinstance(type, PartialType) or mypy.subtypes.is_subtype(type, value):
                     types[i] = value
                     break
             else:
                 msg.incompatible_typevar_value(callable, i + 1, type, context)
 
         upper_bound = callable.variables[i].upper_bound
-        if type and not mypy.subtypes.satisfies_upper_bound(type, upper_bound):
+        if (type and not isinstance(type, PartialType) and
+                not mypy.subtypes.is_subtype(type, upper_bound)):
             msg.incompatible_typevar_value(callable, i + 1, type, context)
 
     # Create a map from type variable id to target type.

@@ -356,6 +356,48 @@ check against ``None`` in the if condition.
 
     ``--strict-optional`` is experimental and still has known issues.
 
+.. _noreturn:
+
+The NoReturn type
+*****************
+
+Mypy provides support for functions that never return. For
+example, a function that unconditionally raises an exception:
+
+.. code-block:: python
+
+   from mypy_extensions import NoReturn
+
+   def stop() -> NoReturn:
+       raise Exception('no way')
+
+Mypy will ensure that functions annotated as returning ``NoReturn``
+truly never return, either implicitly or explicitly. Mypy will also
+recognize that the code after calls to such functions is unreachable
+and will behave accordingly:
+
+.. code-block:: python
+
+   def f(x: int) -> int:
+       if x == 0:
+           return x
+       stop()
+       return 'whatever works'  # No error in an unreachable block
+
+Install ``mypy_extensions`` using pip to use ``NoReturn`` in your code.
+Python 3 command line:
+
+.. code-block:: text
+
+    python3 -m pip install --upgrade mypy-extensions
+
+This works for Python 2:
+
+.. code-block:: text
+
+    pip install --upgrade mypy-extensions
+
+
 Class name forward references
 *****************************
 
@@ -636,6 +678,19 @@ item types:
                                  ('y', int)])
     p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
 
+Python 3.6 will have an alternative, class-based syntax for named tuples with types.
+Mypy supports it already:
+
+.. code-block:: python
+
+    from typing import NamedTuple
+
+    class Point(NamedTuple):
+        x: int
+        y: int
+
+    p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
+
 .. _type-of-class:
 
 The type of class objects
@@ -797,7 +852,7 @@ Note that unlike many other generics in the typing module, the ``SendType`` of
 ``Generator`` behaves contravariantly, not covariantly or invariantly.
 
 If you do not plan on recieving or returning values, then set the ``SendType``
-or ``ReturnType`` to ``None``, as appropriate. For example, we could have 
+or ``ReturnType`` to ``None``, as appropriate. For example, we could have
 annotated the first example as the following:
 
 .. code-block:: python
@@ -810,15 +865,6 @@ annotated the first example as the following:
 
 Typing async/await
 ******************
-
-.. note::
-
-   Currently, you must pass in the ``--fast-parser`` flag if you want to run
-   mypy against code containing the ``async/await`` keywords. The fast parser
-   will be enabled by default in a future version of mypy.
-
-   Note that mypy will understand coroutines created using the ``@asyncio.coroutine``
-   decorator both with and without the fast parser enabled.
 
 Mypy supports the ability to type coroutines that use the ``async/await``
 syntax introduced in Python 3.5. For more information regarding coroutines and
@@ -892,7 +938,7 @@ will be a value of type ``Awaitable[T]``.
    ``yield from`` statements:
 
    .. code-block:: python
-   
+
       import asyncio
 
       @asyncio.coroutine
@@ -906,7 +952,7 @@ will be a value of type ``Awaitable[T]``.
    something like this:
 
    .. code-block:: python
-   
+
       from typing import Generator
       import asyncio
 

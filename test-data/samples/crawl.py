@@ -16,7 +16,7 @@ import re
 import sys
 import time
 import urllib.parse
-from typing import Any, Generator, IO, Optional, Sequence, Set, Tuple
+from typing import Any, Generator, IO, Optional, Sequence, Set, Tuple, List, Dict
 
 
 ARGS = argparse.ArgumentParser(description="Web crawler")
@@ -319,7 +319,7 @@ class Request:
             self.conn = None
 
     @asyncio.coroutine
-    def putline(self, line: str) -> Generator[Any, None, None]:
+    def putline(self, line: str) -> None:
         """Write a line to the connection.
 
         Used for the request line and headers.
@@ -859,5 +859,5 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO) # type: ignore
     main()

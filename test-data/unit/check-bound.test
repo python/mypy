@@ -24,9 +24,7 @@ b = B()
 b = f(b)
 b = f(C()) # Fail
 [out]
-main: note: In function "g":
 main:12: error: Type argument 1 of "f" has incompatible value "U"
-main: note: At top level:
 main:16: error: Type argument 1 of "f" has incompatible value "D"
 main:20: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 
@@ -58,7 +56,7 @@ class C(Generic[T]):
         return self.t
 c1 = None # type: C[None]
 c1.get()
-d = c1.get() # E: Function does not return a value
+d = c1.get() # E: "get" of "C" does not return a value
 
 
 [case testBoundAny]
@@ -84,7 +82,7 @@ def f(g: Callable[[], T]) -> T:
     return g()
 def h() -> None: pass
 f(h)
-a = f(h) # E: "h" does not return a value
+a = f(h) # E: "f" does not return a value
 
 
 [case testBoundInheritance]
@@ -127,9 +125,7 @@ def j(x: TA) -> A:
 def k(x: TA) -> B:
     return x # Fail
 [out]
-main: note: In function "g2":
 main:16: error: Type argument 1 of "h" has incompatible value "TA"
-main: note: In function "k":
 main:21: error: Incompatible return value type (got "TA", expected "B")
 
 
@@ -159,7 +155,6 @@ def f(x: T) -> T:
 b = f(B())
 [builtins fixtures/property.pyi]
 [out]
-main: note: In function "f":
 
 [case testBoundClassMethod]
 from typing import TypeVar

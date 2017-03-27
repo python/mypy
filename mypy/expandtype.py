@@ -1,13 +1,14 @@
-from typing import Dict, List
+from typing import Dict, Iterable, List, TypeVar, Mapping, cast
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
-    Void, NoneTyp, TypeVarType, Overloaded, TupleType, UnionType, ErasedType, TypeList,
-    PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId
+    NoneTyp, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
+    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
+    FunctionLike, TypeVarDef
 )
 
 
-def expand_type(typ: Type, env: Dict[TypeVarId, Type]) -> Type:
+def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
     """Substitute any type variable references in a type given by a type
     environment.
     """
@@ -28,12 +29,35 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
         return expand_type(typ, variables)
 
 
+F = TypeVar('F', bound=FunctionLike)
+
+
+def freshen_function_type_vars(callee: F) -> F:
+    """Substitute fresh type variables for generic function type variables."""
+    if isinstance(callee, CallableType):
+        if not callee.is_generic():
+            return cast(F, callee)
+        tvdefs = []
+        tvmap = {}  # type: Dict[TypeVarId, Type]
+        for v in callee.variables:
+            tvdef = TypeVarDef.new_unification_variable(v)
+            tvdefs.append(tvdef)
+            tvmap[v.id] = TypeVarType(tvdef)
+        fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvdefs)
+        return cast(F, fresh)
+    else:
+        assert isinstance(callee, Overloaded)
+        fresh_overload = Overloaded([freshen_function_type_vars(item)
+                                     for item in callee.items()])
+        return cast(F, fresh_overload)
+
+
 class ExpandTypeVisitor(TypeVisitor[Type]):
     """Visitor that substitutes type variables with values."""
 
-    variables = None  # type: Dict[TypeVarId, Type]  # TypeVar id -> TypeVar value
+    variables = None  # type: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
-    def __init__(self, variables: Dict[TypeVarId, Type]) -> None:
+    def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         self.variables = variables
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
@@ -46,9 +70,6 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         assert False, 'Not supported'
 
     def visit_any(self, t: AnyType) -> Type:
-        return t
-
-    def visit_void(self, t: Void) -> Type:
         return t
 
     def visit_none_type(self, t: NoneTyp) -> Type:
@@ -93,6 +114,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_tuple_type(self, t: TupleType) -> Type:
         return t.copy_modified(items=self.expand_types(t.items))
 
+    def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        return t.copy_modified(item_types=self.expand_types(t.items.values()))
+
     def visit_union_type(self, t: UnionType) -> Type:
         # After substituting for type variables in t.items,
         # some of the resulting types might be subtypes of others.
@@ -108,7 +132,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         item = t.item.accept(self)
         return TypeType(item)
 
-    def expand_types(self, types: List[Type]) -> List[Type]:
+    def expand_types(self, types: Iterable[Type]) -> List[Type]:
         a = []  # type: List[Type]
         for t in types:
             a.append(t.accept(self))

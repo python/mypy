@@ -93,7 +93,6 @@ a = A()
 b = B()
 def f() -> None: pass
 [out]
-main: note: In function "f":
 
 [case testImportWithinMethod]
 import typing
@@ -113,7 +112,6 @@ a = A()
 b = B()
 def f() -> None: pass
 [out]
-main: note: In member "f" of class "C":
 
 [case testImportWithinClassBody]
 import typing
@@ -124,7 +122,6 @@ class C:
 [file m.py]
 def f() -> None: pass
 [out]
-main: note: In class "C":
 
 [case testImportWithinClassBody2]
 import typing
@@ -135,7 +132,6 @@ class C:
 [file m.py]
 def f() -> None: pass
 [out]
-main: note: In class "C":
 
 [case testImportWithStub]
 import _m
@@ -203,7 +199,7 @@ import nonexistent
 None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Unsupported left operand type for + (None)
 
 [case testTypeCheckWithUnknownModule2]
@@ -215,7 +211,7 @@ m.x = ''
 x = 1
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Unsupported left operand type for + (None)
 main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
@@ -228,7 +224,7 @@ m.x = ''
 x = 1
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Unsupported left operand type for + (None)
 main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
@@ -237,7 +233,7 @@ import nonexistent, another
 None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'another'
 main:2: error: Unsupported left operand type for + (None)
 
@@ -246,7 +242,7 @@ import nonexistent as x
 None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Unsupported left operand type for + (None)
 
 [case testTypeCheckWithUnknownModuleUsingFromImport]
@@ -254,7 +250,7 @@ from nonexistent import x
 None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Unsupported left operand type for + (None)
 
 [case testTypeCheckWithUnknownModuleUsingImportStar]
@@ -262,7 +258,7 @@ from nonexistent import *
 None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Unsupported left operand type for + (None)
 
 [case testAccessingUnknownModule]
@@ -271,7 +267,7 @@ xyz.foo()
 xyz()
 [out]
 main:1: error: Cannot find module named 'xyz'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
 [case testAccessingUnknownModule2]
 import xyz, bar
@@ -279,7 +275,7 @@ xyz.foo()
 bar()
 [out]
 main:1: error: Cannot find module named 'xyz'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'bar'
 
 [case testAccessingUnknownModule3]
@@ -288,7 +284,7 @@ xyz.foo()
 z()
 [out]
 main:1: error: Cannot find module named 'xyz'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Name 'xyz' is not defined
 
 [case testAccessingNameImportedFromUnknownModule]
@@ -297,14 +293,14 @@ y.foo()
 z()
 [out]
 main:1: error: Cannot find module named 'xyz'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
 [case testAccessingNameImportedFromUnknownModule2]
 from xyz import *
 y
 [out]
 main:1: error: Cannot find module named 'xyz'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Name 'y' is not defined
 
 [case testAccessingNameImportedFromUnknownModule3]
@@ -313,7 +309,7 @@ y
 z
 [out]
 main:1: error: Cannot find module named 'xyz'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Name 'y' is not defined
 
 [case testUnknownModuleRedefinition]
@@ -321,7 +317,7 @@ import xab
 def xab(): pass
 [out]
 main:1: error: Cannot find module named 'xab'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
 [case testAccessingUnknownModuleFromOtherModule]
 import x
@@ -331,9 +327,8 @@ x.z
 import nonexistent
 [builtins fixtures/module.pyi]
 [out]
-main:1: note: In module imported here:
 tmp/x.py:1: error: Cannot find module named 'nonexistent'
-tmp/x.py:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+tmp/x.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:3: error: "module" has no attribute "z"
 
 [case testUnknownModuleImportedWithinFunction]
@@ -343,7 +338,7 @@ def foobar(): pass
 foobar('')
 [out]
 main:2: error: Cannot find module named 'foobar'
-main:2: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:4: error: Too many arguments for "foobar"
 
 [case testUnknownModuleImportedWithinFunction2]
@@ -353,7 +348,7 @@ def x(): pass
 x('')
 [out]
 main:2: error: Cannot find module named 'foobar'
-main:2: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:4: error: Too many arguments for "x"
 
 [case testRelativeImports]
@@ -373,7 +368,6 @@ class B: pass
 x = A()
 y = B()
 [out]
-main:2: note: In module imported here:
 tmp/m/a.py:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
@@ -416,7 +410,21 @@ import typing
 __all__ = [1, 2, 3]
 [builtins fixtures/module_all.pyi]
 [out]
-main: error: Type of __all__ must be Sequence[str], not List[int]
+main:2: error: Type of __all__ must be Sequence[str], not List[int]
+
+[case testAllMustBeSequenceStr_python2]
+import typing
+__all__ = [1, 2, 3]
+[builtins_py2 fixtures/module_all_python2.pyi]
+[out]
+main:2: error: Type of __all__ must be Sequence[unicode], not List[int]
+
+[case testAllUnicodeSequenceOK_python2]
+import typing
+__all__ = [u'a', u'b', u'c']
+[builtins_py2 fixtures/module_all_python2.pyi]
+
+[out]
 
 [case testEllipsisInitializerInStubFileWithType]
 import m
@@ -447,16 +455,12 @@ def f(x: int = ...) -> None: pass
 [file m.pyi]
 def g(x: int = '') -> None: pass
 [out]
-main:1: note: In module imported here:
-tmp/m.pyi: note: In function "g":
 tmp/m.pyi:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main: note: In function "f":
 main:2: error: Incompatible types in assignment (expression has type "ellipsis", variable has type "int")
 
 [case testEllipsisDefaultArgValueInNonStub]
 def f(x: int = ...) -> None: pass # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "int")
 [out]
-main: note: In function "f":
 
 [case testStarImportOverlapping]
 from m1 import *
@@ -487,7 +491,7 @@ x = 1
 
 [case testAssignToFuncDefViaImport]
 from m import *  # E: Incompatible import of "x" (imported name has type "int", local name has type "str")
-f = None # E: Need type annotation for variable
+f = None
 x = ''
 [file m.py]
 def f(): pass
@@ -590,7 +594,7 @@ try:
 except:
     f = g
 [file m.py]
-def f(y): pass
+def f(x): pass
 
 [case testImportFunctionAndAssignIncompatible]
 try:
@@ -610,7 +614,6 @@ def g() -> None:
 [file m.py]
 def f(): pass
 [out]
-main: note: In function "g":
 
 [case testAssignToFuncDefViaNestedModules]
 import m.n
@@ -792,7 +795,6 @@ a.b.c.value
 [file a/b/c.py]
 value = 3.2
 [out]
-main:1: note: In module imported here:
 tmp/a/b/__init__.py:2: error: Name 'c' is not defined
 tmp/a/b/__init__.py:3: error: Name 'a' is not defined
 tmp/a/__init__.py:2: error: Name 'b' is not defined
@@ -823,7 +825,6 @@ foo = parent.common.SomeClass()
 
 [builtins fixtures/module.pyi]
 [out]
-main:1: note: In module imported here:
 tmp/parent/child.py:3: error: Name 'parent' is not defined
 
 [case testSubmoduleMixingImportFromAndImport]
@@ -850,7 +851,6 @@ bar = parent.unrelated.ShouldNotLoad()
 
 [builtins fixtures/module.pyi]
 [out]
-main:1: note: In module imported here:
 tmp/parent/child.py:8: error: Revealed type is 'parent.common.SomeClass'
 tmp/parent/child.py:9: error: "module" has no attribute "unrelated"
 
@@ -870,7 +870,6 @@ reveal_type(foo)
 
 [builtins fixtures/module.pyi]
 [out]
-main:1: note: In module imported here:
 tmp/parent/child.py:4: error: Revealed type is 'parent.common.SomeClass'
 
 -- Tests repeated imports
@@ -932,30 +931,28 @@ tmp/bar.py:1: error: Module 'foo' has no attribute 'B'
 
 [case testImportSuppressedWhileAlmostSilent]
 # cmd: mypy -m main
-# flags: --silent-imports --almost-silent
+# flags: --follow-imports=error
 [file main.py]
 import mod
 [file mod.py]
 [builtins fixtures/module.pyi]
 [out]
-tmp/main.py:1: note: Import of 'mod' silently ignored
-tmp/main.py:1: note: (Using --silent-imports, module not passed on command line)
-tmp/main.py:1: note: (This note courtesy of --almost-silent)
+tmp/main.py:1: note: Import of 'mod' ignored
+tmp/main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testAncestorSuppressedWhileAlmostSilent]
 # cmd: mypy -m foo.bar
-# flags: --silent-imports --almost-silent
+# flags: --follow-imports=error
 [file foo/bar.py]
 [file foo/__init__.py]
 [builtins fixtures/module.pyi]
 [out]
-tmp/foo/bar.py: note: Ancestor package 'foo' silently ignored
-tmp/foo/bar.py: note: (Using --silent-imports, submodule passed on command line)
-tmp/foo/bar.py: note: (This note brought to you by --almost-silent)
+tmp/foo/bar.py: note: Ancestor package 'foo' ignored
+tmp/foo/bar.py: note: (Using --follow-imports=error, submodule passed on command line)
 
 [case testStubImportNonStubWhileSilent]
 # cmd: mypy -m main
-# flags: --silent-imports
+# flags: --follow-imports=skip
 [file main.py]
 from stub import x # Permitted
 from other import y # Disallowed
@@ -970,6 +967,14 @@ y = 42
 [builtins fixtures/module.pyi]
 [out]
 tmp/main.py:3: error: Unsupported left operand type for + ("int")
+
+[case testSilentSubmoduleImport]
+# cmd: mypy -m foo
+# flags: --follow-imports=skip
+[file foo/__init__.py]
+from foo import bar
+[file foo/bar.py]
+pass
 
 [case testSuperclassInImportCycle]
 import a
@@ -1093,9 +1098,6 @@ import x
 class Sub(x.Base):
     attr = 0
 [out]
-tmp/y.py:1: note: In module imported here,
-main:1: note: ... from here:
-tmp/x.py: note: In function "foo":
 tmp/x.py:5: error: Revealed type is 'builtins.int'
 
 -- This case has a symmetrical cycle, so it doesn't matter in what
@@ -1144,7 +1146,8 @@ import y
 [file x.py]
 class Base:
     pass
-def foo() -> None:
+def foo():
+    # type: () -> None
     import y
     i = y.Sub.iattr  # type: int
     f = y.Sub.fattr  # type: float
@@ -1172,8 +1175,6 @@ def foo() -> int:
 import x
 value = 12
 [out]
-main:1: note: In module imported here:
-tmp/x.py: note: In function "foo":
 tmp/x.py:3: error: Revealed type is 'builtins.int'
 
 -- This is not really cycle-related but still about the lightweight
@@ -1202,9 +1203,6 @@ def g() -> int:
     return a.y
 x = 1 + 1
 [out]
-tmp/a.py:1: note: In module imported here,
-main:1: note: ... from here:
-tmp/b.py: note: In function "g":
 tmp/b.py:3: error: Revealed type is 'builtins.int'
 
 [case testSymmetricImportCycle2]
@@ -1221,9 +1219,6 @@ def g() -> int:
     return a.y
 x = 1 + 1
 [out]
-tmp/b.py:1: note: In module imported here,
-main:1: note: ... from here:
-tmp/a.py: note: In function "f":
 tmp/a.py:3: error: Revealed type is 'builtins.int'
 
 [case testThreePassesRequired]
@@ -1239,9 +1234,6 @@ class C:
 import a
 b = 1 + 1
 [out]
-tmp/b.py:1: note: In module imported here,
-main:1: note: ... from here:
-tmp/a.py: note: In member "f1" of class "C":
 tmp/a.py:4: error: Cannot determine type of 'x2'
 
 [case testErrorInPassTwo1]
@@ -1255,9 +1247,6 @@ def f() -> None:
 import a
 x = 1 + 1
 [out]
-tmp/b.py:1: note: In module imported here,
-main:1: note: ... from here:
-tmp/a.py: note: In function "f":
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
 [case testErrorInPassTwo2]
@@ -1271,8 +1260,6 @@ def f() -> None:
 import a
 x = 1 + 1
 [out]
-main:1: note: In module imported here:
-tmp/a.py: note: In function "f":
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
 [case testDeferredDecorator]
@@ -1293,7 +1280,6 @@ def deco(f: Callable[[T], int]) -> Callable[[T], int]:
     a.x
     return f
 [out]
-main:1: note: In module imported here:
 tmp/a.py:6: error: Revealed type is 'def (builtins.str*) -> builtins.int'
 
 [case testDeferredClassContext]
@@ -1345,3 +1331,78 @@ def part4_thing(a: int) -> str: pass
 [builtins fixtures/bool.pyi]
 [out]
 tmp/part3.py:2: error: Revealed type is 'def (a: builtins.int) -> builtins.str'
+
+[case testImportStarAliasAnyList]
+import bar
+
+[file bar.py]
+from foo import *
+def bar(y: AnyAlias) -> None:  pass
+
+l = None # type: ListAlias[int]
+reveal_type(l)
+
+[file foo.py]
+from typing import Any, List
+AnyAlias = Any
+ListAlias = List
+[builtins fixtures/list.pyi]
+[out]
+tmp/bar.py:5: error: Revealed type is 'builtins.list[builtins.int]'
+
+[case testImportStarAliasSimpleGeneric]
+from ex2a import *
+
+def do_something(dic: Row) -> None:
+    pass
+
+def do_another() -> Row:
+    return {}
+
+do_something({'good': 'bad'}) # E: List item 0 has incompatible type "Tuple[str, str]"
+reveal_type(do_another()) # E: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
+
+[file ex2a.py]
+from typing import Dict
+Row = Dict[str, int]
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testImportStarAliasGeneric]
+from y import *
+notes = None  # type: G[X]
+another = G[X]()
+second = XT[str]()
+last = XT[G]()
+
+reveal_type(notes) # E: Revealed type is 'y.G[y.G[builtins.int]]'
+reveal_type(another) # E: Revealed type is 'y.G[y.G*[builtins.int]]'
+reveal_type(second) # E: Revealed type is 'y.G[builtins.str*]'
+reveal_type(last) # E: Revealed type is 'y.G[y.G*]'
+
+[file y.py]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class G(Generic[T]):
+    pass
+
+X = G[int]
+XT = G[T]
+[out]
+
+[case testImportStarAliasCallable]
+from foo import *
+from typing import Any
+
+def bar(x: Any, y: AnyCallable) -> Any:
+    return 'foo'
+
+cb = None # type: AnyCallable
+reveal_type(cb) # E: Revealed type is 'def (*Any, **Any) -> Any'
+
+[file foo.py]
+from typing import Callable, Any
+AnyCallable = Callable[..., Any]
+[out]

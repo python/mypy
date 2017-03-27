@@ -230,8 +230,8 @@ a = None # type: A
 b = None # type: B
 b = cast(A, d) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = cast(A, d)
-b = Any(d)
-a = Any(f())
+b = cast(Any, d)
+a = cast(Any, f())
 def f() -> None: pass
 
 [case testCompatibilityOfDynamicWithOtherTypes]
@@ -537,7 +537,7 @@ f11 = None # type: Callable[[], Any]
 f2 = None # type: Callable[[], A]
 f3 = None # type: Callable[[], None]
 
-f2 = f3 # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type Callable[[], A])
+f2 = f3
 
 f1 = f2
 f1 = f3
@@ -625,7 +625,6 @@ class A(B):
         pass
 class D: pass
 [out]
-main: note: In class "A":
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature1]
 import typing
@@ -644,7 +643,6 @@ class A(B):
     def f(self, x: 'A') -> None: # E: Signature of "f" incompatible with supertype "B"
         pass
 [out]
-main: note: In class "A":
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature3]
 import typing
@@ -654,7 +652,6 @@ class A(B):
     def f(self, x, y) -> None: # E: Signature of "f" incompatible with supertype "B"
         x()
 [out]
-main: note: In class "A":
 
 
 -- Don't complain about too few/many arguments in dynamic functions

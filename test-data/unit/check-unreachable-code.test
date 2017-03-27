@@ -66,7 +66,6 @@ import typing
 x = 1
 x = 'a'
 [out]
-main:9: note: In module imported here:
 tmp/m.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNegatedMypyConditional]
@@ -79,7 +78,7 @@ else:
 [builtins fixtures/bool.pyi]
 [out]
 main:6: error: Cannot find module named 'pow123'
-main:6: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:6: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
 [case testMypyConditional]
 import typing
@@ -98,7 +97,7 @@ else:
     import xyz753
 [out]
 main:3: error: Cannot find module named 'pow123'
-main:3: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
 [case testTypeCheckingConditionalFromImport]
 from typing import TYPE_CHECKING
@@ -108,7 +107,7 @@ else:
     import xyz753
 [out]
 main:3: error: Cannot find module named 'pow123'
-main:3: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
 [case testNegatedTypeCheckingConditional]
 import typing
@@ -119,7 +118,7 @@ else:
 [builtins fixtures/bool.pyi]
 [out]
 main:5: error: Cannot find module named 'xyz753'
-main:5: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:5: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
 [case testUndefinedTypeCheckingConditional]
 if not TYPE_CHECKING: # E
@@ -130,7 +129,7 @@ else:
 [out]
 main:1: error: Name 'TYPE_CHECKING' is not defined
 main:4: error: Cannot find module named 'xyz753'
-main:4: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:4: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
 [case testConditionalClassDefPY3]
 def f(): pass
@@ -158,9 +157,13 @@ else:
 [case testSysVersionInfo_python2]
 import sys
 if sys.version_info[0] >= 3:
-    def foo() -> int: return 0
+    def foo():
+        # type: () -> int
+        return 0
 else:
-    def foo() -> str: return ''
+    def foo():
+        # type: () -> str
+        return ''
 reveal_type(foo())  # E: Revealed type is 'builtins.str'
 [builtins_py2 fixtures/ops.pyi]
 [out]
@@ -178,9 +181,13 @@ reveal_type(foo())  # E: Revealed type is 'builtins.int'
 [case testSysVersionInfoNegated_python2]
 import sys
 if not (sys.version_info[0] < 3):
-    def foo() -> int: return 0
+    def foo():
+        # type: () -> int
+        return 0
 else:
-    def foo() -> str: return ''
+    def foo():
+        # type: () -> str
+        return ''
 reveal_type(foo())  # E: Revealed type is 'builtins.str'
 [builtins_py2 fixtures/ops.pyi]
 [out]
@@ -370,7 +377,6 @@ def foo() -> None:
     reveal_type(x)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/ops.pyi]
 [out]
-main: note: In function "foo":
 
 [case testSysPlatformInMethod]
 import sys
@@ -383,7 +389,6 @@ class C:
         reveal_type(x)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/ops.pyi]
 [out]
-main: note: In member "foo" of class "C":
 
 [case testSysPlatformInFunctionImport]
 import sys

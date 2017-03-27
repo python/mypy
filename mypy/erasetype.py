@@ -1,9 +1,9 @@
 from typing import Optional, Container, Callable
 
 from mypy.types import (
-    Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp, TypeVarId,
-    Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
-    PartialType, DeletedType, TypeTranslator, TypeList, UninhabitedType, TypeType
+    Type, TypeVisitor, UnboundType, ErrorType, AnyType, NoneTyp, TypeVarId,
+    Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
+    ErasedType, PartialType, DeletedType, TypeTranslator, TypeList, UninhabitedType, TypeType
 )
 from mypy import experiments
 
@@ -38,9 +38,6 @@ class EraseTypeVisitor(TypeVisitor[Type]):
     def visit_any(self, t: AnyType) -> Type:
         return t
 
-    def visit_void(self, t: Void) -> Type:
-        return t
-
     def visit_none_type(self, t: NoneTyp) -> Type:
         return t
 
@@ -66,16 +63,16 @@ class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         # We must preserve the fallback type for overload resolution to work.
-        if experiments.STRICT_OPTIONAL:
-            ret_type = NoneTyp(is_ret_type=True)  # type: Type
-        else:
-            ret_type = Void()
+        ret_type = NoneTyp()  # type: Type
         return CallableType([], [], [], ret_type, t.fallback)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         return t.items()[0].accept(self)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
+        return t.fallback.accept(self)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> Type:
         return t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> Type:

@@ -784,6 +784,7 @@ class Popen(object):
             self.stdin.close()
         # Wait for the process to terminate, to avoid zombies.
         self.wait()
+        return False
 
     def __del__(self, _maxsize: int = sys.maxsize,
                 _active: List['Popen'] = _active) -> None:
@@ -1582,7 +1583,7 @@ class Popen(object):
             input_offset = 0
             while read_set or write_set:
                 try:
-                    rlist, wlist, xlist = select.select(read_set, write_set, [])
+                    rlist, wlist, xlist = select.select(read_set, write_set, cast(List[object], []))
                 except select.error as e:
                     if e.args[0] == errno.EINTR:
                         continue

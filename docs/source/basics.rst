@@ -39,6 +39,13 @@ context results in a type check error:
 
    a = p()   # Type check error: p has None return value
 
+Arguments with default values can be annotated as follows:
+
+.. code-block:: python
+
+   def greeting(name: str, prefix: str = 'Mr.') -> str:
+      return 'Hello, {} {}'.format(name, prefix)
+
 Mixing dynamic and static typing
 ********************************
 

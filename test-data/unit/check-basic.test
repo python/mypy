@@ -131,7 +131,6 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 main:6: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLocalVariableScope]
@@ -145,7 +144,6 @@ def g() -> None:
 class A: pass
 class B: pass
 [out]
-main: note: In function "g":
 main:7: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testFunctionArguments]
@@ -157,7 +155,6 @@ def f(x: 'A', y: 'B') -> None:
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLocalVariableInitialization]
@@ -168,7 +165,6 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testVariableInitializationWithSubtype]
@@ -192,7 +188,6 @@ def f() -> 'A':
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 main:3: error: Incompatible return value type (got "B", expected "A")
 
 [case testTopLevelContextAndInvalidReturn]
@@ -203,9 +198,7 @@ a = B() # type: A
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 main:3: error: Incompatible return value type (got "B", expected "A")
-main: note: At top level:
 main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testEmptyReturnInAnyTypedFunction]
@@ -265,9 +258,7 @@ class A: pass
 class B: pass
 [out]
 main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main: note: In function "f":
 main:7: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-main: note: At top level:
 main:9: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testGlobalDefinedInBlockWithType]
@@ -288,9 +279,7 @@ def f(x): # type: (int) -> str
     return 1
 f('')
 [out]
-main: note: In function "f":
 main:2: error: Incompatible return value type (got "int", expected "str")
-main: note: At top level:
 main:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testMethodSignatureAsComment]
@@ -301,10 +290,8 @@ class A:
         return 1
 A().f('') # Fail
 [out]
-main: note: In member "f" of class "A":
 main:4: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 main:5: error: Incompatible return value type (got "int", expected "str")
-main: note: At top level:
 main:6: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testTrailingCommaParsing-skip]
@@ -320,5 +307,4 @@ class C:
         # type: () -> int
         pass
 [out]
-main: note: In member "__init__" of class "C":
 main:2: error: The return type of "__init__" must be None

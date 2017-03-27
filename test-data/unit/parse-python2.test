@@ -109,7 +109,8 @@ MypyFile:1(
   ExpressionStmt:3(
     IntExpr(255)))
 
-[case testLongLiteral]
+[case testLongLiteral-skip]
+# see typed_ast issue #26
 0L
 123L
 012L
@@ -187,7 +188,7 @@ MypyFile:1(
     NameExpr(y)))
 
 [case testEllipsisInExpression_python2]
-x = ... # E: Parse error before ...
+x = ... # E: invalid syntax
 [out]
 
 [case testStrLiteralConcatenationWithMixedLiteralTypes]
@@ -290,7 +291,7 @@ lambda (x, y): z
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    FuncExpr:1(
+    LambdaExpr:1(
       Args(
         Var(__tuple_arg_1))
       Block:1(
@@ -307,7 +308,7 @@ lambda (x,): z
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    FuncExpr:1(
+    LambdaExpr:1(
       Args(
         Var(__tuple_arg_1))
       Block:1(
@@ -323,7 +324,7 @@ lambda (x): z
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    FuncExpr:1(
+    LambdaExpr:1(
       Args(
         Var(x))
       Block:1(
@@ -333,33 +334,27 @@ MypyFile:1(
 [case testInvalidExprInTupleArgListInPython2_1]
 def f(x, ()): pass
 [out]
-main: note: In function "f":
-main: error: Empty tuple not valid as an argument
+main:1: error: invalid syntax
 
 [case testInvalidExprInTupleArgListInPython2_2]
 def f(x, (y, x[1])): pass
 [out]
-main: note: In function "f":
-main:1: error: Invalid item in tuple argument
+main:1: error: invalid syntax
 
 [case testListLiteralAsTupleArgInPython2]
 def f(x, [x]): pass
 [out]
-main: note: In function "f":
-main:1: error: Parse error before [
-main:1: error: Parse error before end of line
+main:1: error: invalid syntax
 
 [case testTupleArgAfterStarArgInPython2]
 def f(*a, (b, c)): pass
 [out]
-main: note: In function "f":
-main:1: error: Invalid argument list
+main:1: error: invalid syntax
 
 [case testTupleArgAfterStarStarArgInPython2]
 def f(*a, (b, c)): pass
 [out]
-main: note: In function "f":
-main:1: error: Invalid argument list
+main:1: error: invalid syntax
 
 [case testParenthesizedArgumentInPython2]
 def f(x, (y)): pass
@@ -379,10 +374,8 @@ def f(a, (a, b)):
 def g((x, (x, y))):
     pass
 [out]
-main: note: In function "f":
-main:1: error: Duplicate argument name "a"
-main: note: In function "g":
-main:3: error: Duplicate argument name "x"
+main:1: error: duplicate argument 'a' in function definition
+main:3: error: duplicate argument 'x' in function definition
 
 [case testBackquotesInPython2]
 `1 + 2`

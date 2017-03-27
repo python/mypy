@@ -17,6 +17,7 @@ _promote = 0
 NamedTuple = 0
 Type = 0
 no_type_check = 0
+ClassVar = 0
 
 # Type aliases.
 List = 0
@@ -58,6 +59,22 @@ class Generator(Iterator[T], Generic[T, U, V]):
     @abstractmethod
     def __iter__(self) -> 'Generator[T, U, V]': pass
 
+class AsyncGenerator(AsyncIterator[T], Generic[T, U]):
+    @abstractmethod
+    def __anext__(self) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def asend(self, value: U) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def athrow(self, typ: Any, val: Any=None, tb: Any=None) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def aclose(self) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def __aiter__(self) -> 'AsyncGenerator[T, U]': pass
+
 class Awaitable(Generic[T]):
     @abstractmethod
     def __await__(self) -> Generator[Any, Any, T]: pass
@@ -79,6 +96,8 @@ class Sequence(Iterable[T], Generic[T]):
     def __getitem__(self, n: Any) -> T: pass
 
 class Mapping(Generic[T, U]): pass
+
+class MutableMapping(Generic[T, U]): pass
 
 def NewType(name: str, tp: Type[T]) -> Callable[[T], T]:
     def new_type(x):

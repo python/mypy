@@ -41,9 +41,9 @@ class StrConv(NodeVisitor[str]):
         extra = []  # type: List[Tuple[str, List[mypy.nodes.Var]]]
         for i, arg in enumerate(o.arguments):
             kind = arg.kind  # type: int
-            if kind == mypy.nodes.ARG_POS:
+            if kind in (mypy.nodes.ARG_POS, mypy.nodes.ARG_NAMED):
                 args.append(o.arguments[i].variable)
-            elif kind in (mypy.nodes.ARG_OPT, mypy.nodes.ARG_NAMED):
+            elif kind in (mypy.nodes.ARG_OPT, mypy.nodes.ARG_NAMED_OPT):
                 args.append(o.arguments[i].variable)
                 init.append(o.arguments[i].initialization_statement)
             elif kind == mypy.nodes.ARG_STAR:
@@ -108,7 +108,8 @@ class StrConv(NodeVisitor[str]):
     def visit_func_def(self, o: 'mypy.nodes.FuncDef') -> str:
         a = self.func_helper(o)
         a.insert(0, o.name())
-        if mypy.nodes.ARG_NAMED in [arg.kind for arg in o.arguments]:
+        arg_kinds = {arg.kind for arg in o.arguments}
+        if len(arg_kinds & {mypy.nodes.ARG_NAMED, mypy.nodes.ARG_NAMED_OPT}) > 0:
             a.insert(1, 'MaxPos({})'.format(o.max_pos))
         if o.is_abstract:
             a.insert(-1, 'Abstract')
@@ -124,6 +125,8 @@ class StrConv(NodeVisitor[str]):
         a = o.items[:]  # type: Any
         if o.type:
             a.insert(0, o.type)
+        if o.impl:
+            a.insert(0, o.impl)
         return self.dump(a, o)
 
     def visit_class_def(self, o: 'mypy.nodes.ClassDef') -> str:
@@ -198,7 +201,10 @@ class StrConv(NodeVisitor[str]):
         a = []  # type: List[Any]
         if o.is_async:
             a.append(('Async', ''))
-        a.extend([o.index, o.expr, o.body])
+        a.append(o.index)
+        if o.index_type:
+            a.append(o.index_type)
+        a.extend([o.expr, o.body])
         if o.else_body:
             a.append(('Else', o.else_body.body))
         return self.dump(a, o)
@@ -230,7 +236,10 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr, o.from_expr], o)
 
     def visit_assert_stmt(self, o: 'mypy.nodes.AssertStmt') -> str:
-        return self.dump([o.expr], o)
+        if o.msg is not None:
+            return self.dump([o.expr, o.msg], o)
+        else:
+            return self.dump([o.expr], o)
 
     def visit_await_expr(self, o: 'mypy.nodes.AwaitExpr') -> str:
         return self.dump([o.expr], o)
@@ -262,6 +271,8 @@ class StrConv(NodeVisitor[str]):
             a.append(('Expr', [o.expr[i]]))
             if o.target[i]:
                 a.append(('Target', [o.target[i]]))
+        if o.target_type:
+            a.append(o.target_type)
         return self.dump(a + [o.body], o)
 
     def visit_print_stmt(self, o: 'mypy.nodes.PrintStmt') -> str:
@@ -291,7 +302,7 @@ class StrConv(NodeVisitor[str]):
     def visit_unicode_expr(self, o: 'mypy.nodes.UnicodeExpr') -> str:
         return 'UnicodeExpr({})'.format(self.str_repr(o.value))
 
-    def str_repr(self, s):
+    def str_repr(self, s: str) -> str:
         s = re.sub(r'\\u[0-9a-fA-F]{4}', lambda m: '\\' + m.group(0), s)
         return re.sub('[^\\x20-\\x7e]',
                       lambda m: r'\u%.4x' % ord(m.group(0)), s)
@@ -431,7 +442,7 @@ class StrConv(NodeVisitor[str]):
         return 'NewTypeExpr:{}({}, {})'.format(o.line, o.name,
                                                self.dump([o.old_type], o))
 
-    def visit_func_expr(self, o: 'mypy.nodes.FuncExpr') -> str:
+    def visit_lambda_expr(self, o: 'mypy.nodes.LambdaExpr') -> str:
         a = self.func_helper(o)
         return self.dump(a, o)
 

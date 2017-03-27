@@ -3,16 +3,18 @@
 import os.path
 import re
 
-import typing
+from typing import Set, List
 
 from mypy import build
 from mypy.build import BuildSource
 from mypy.myunit import Suite
 from mypy.test import config
-from mypy.test.data import parse_test_cases
+from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.util import short_type
-from mypy.nodes import NameExpr, TypeVarExpr, CallExpr
+from mypy.nodes import (
+    NameExpr, TypeVarExpr, CallExpr, Expression, MypyFile, AssignmentStmt, IntExpr
+)
 from mypy.traverser import TraverserVisitor
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -22,14 +24,14 @@ class TypeExportSuite(Suite):
     # List of files that contain test case descriptions.
     files = ['typexport-basic.test']
 
-    def cases(self):
-        c = []
+    def cases(self) -> List[DataDrivenTestCase]:
+        c = []  # type: List[DataDrivenTestCase]
         for f in self.files:
             c += parse_test_cases(os.path.join(config.test_data_prefix, f),
                                   self.run_test, config.test_temp_dir)
         return c
 
-    def run_test(self, testcase):
+    def run_test(self, testcase: DataDrivenTestCase) -> None:
         try:
             line = testcase.input[0]
             mask = ''
@@ -81,32 +83,33 @@ class TypeExportSuite(Suite):
 
 
 class SkippedNodeSearcher(TraverserVisitor):
-    def __init__(self):
-        self.nodes = set()
+    def __init__(self) -> None:
+        self.nodes = set()  # type: Set[Expression]
+        self.is_typing = False
 
-    def visit_mypy_file(self, f):
+    def visit_mypy_file(self, f: MypyFile) -> None:
         self.is_typing = f.fullname() == 'typing'
         super().visit_mypy_file(f)
 
-    def visit_assignment_stmt(self, s):
+    def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         if s.type or ignore_node(s.rvalue):
             for lvalue in s.lvalues:
                 if isinstance(lvalue, NameExpr):
                     self.nodes.add(lvalue)
         super().visit_assignment_stmt(s)
 
-    def visit_name_expr(self, n):
+    def visit_name_expr(self, n: NameExpr) -> None:
         self.skip_if_typing(n)
 
-    def visit_int_expr(self, n):
+    def visit_int_expr(self, n: IntExpr) -> None:
         self.skip_if_typing(n)
 
-    def skip_if_typing(self, n):
+    def skip_if_typing(self, n: Expression) -> None:
         if self.is_typing:
             self.nodes.add(n)
 
 
-def ignore_node(node):
+def ignore_node(node: Expression) -> bool:
     """Return True if node is to be omitted from test case output."""
 
     # We want to get rid of object() expressions in the typing module stub

@@ -1,9 +1,9 @@
 from typing import Sequence
 
 from mypy.types import (
-    Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, CallableType,
-    TypeVarType, Instance, TypeVisitor, ErasedType, TypeList, Overloaded, PartialType,
-    DeletedType, UninhabitedType, TypeType
+    Type, UnboundType, ErrorType, AnyType, NoneTyp, TupleType, TypedDictType,
+    UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
+    TypeList, Overloaded, PartialType, DeletedType, UninhabitedType, TypeType
 )
 
 
@@ -64,9 +64,6 @@ class SameTypeVisitor(TypeVisitor[bool]):
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)
 
-    def visit_void(self, left: Void) -> bool:
-        return isinstance(self.right, Void)
-
     def visit_none_type(self, left: NoneTyp) -> bool:
         return isinstance(self.right, NoneTyp)
 
@@ -111,10 +108,30 @@ class SameTypeVisitor(TypeVisitor[bool]):
         else:
             return False
 
+    def visit_typeddict_type(self, left: TypedDictType) -> bool:
+        if isinstance(self.right, TypedDictType):
+            if left.items.keys() != self.right.items.keys():
+                return False
+            for (_, left_item_type, right_item_type) in left.zip(self.right):
+                if not is_same_type(left_item_type, right_item_type):
+                    return False
+            return True
+        else:
+            return False
+
     def visit_union_type(self, left: UnionType) -> bool:
-        # XXX This is a test for syntactic equality, not equivalence
         if isinstance(self.right, UnionType):
-            return is_same_types(left.items, self.right.items)
+            # Check that everything in left is in right
+            for left_item in left.items:
+                if not any(is_same_type(left_item, right_item) for right_item in self.right.items):
+                    return False
+
+            # Check that everything in right is in left
+            for right_item in self.right.items:
+                if not any(is_same_type(right_item, left_item) for left_item in left.items):
+                    return False
+
+            return True
         else:
             return False
 

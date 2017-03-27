@@ -2,15 +2,16 @@ Mypy: Optional Static Typing for Python
 =======================================
 
 [![Build Status](https://travis-ci.org/python/mypy.svg)](https://travis-ci.org/python/mypy)
-[![Chat at https://gitter.im/python/mypy](https://badges.gitter.im/python/mypy.svg)](https://gitter.im/python/mypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
+[![Chat at https://gitter.im/python/mypy](https://badges.gitter.im/python/mypy.svg)](https://gitter.im/python/mypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 
-Got a question? File an issue!
-------------------------------
+Got a question? Join us on Gitter!
+----------------------------------
 
 We don't have a mailing list; but we are always happy to answer
-questions on [gitter chat](https://gitter.im/python/mypy) or filed as
-issues in our trackers:
+questions on [gitter chat](https://gitter.im/python/mypy).  If you are
+sure you've found a bug please search our issue trackers for a
+duplicate before filing a new issue:
 
 - [mypy tracker](https://github.com/python/mypy/issues)
   for mypy isues
@@ -75,9 +76,7 @@ Quick start
 
 Mypy can be installed using pip:
 
-    $ python3 -m pip install -U mypy-lang
-
-*Note that the package name is `mypy-lang`, not `mypy`.*
+    $ python3 -m pip install -U mypy
 
 If you want to run the latest version of the code, you can install from git:
 
@@ -85,7 +84,8 @@ If you want to run the latest version of the code, you can install from git:
 
 
 Now, if Python on your system is configured properly (else see
-"Troubleshooting" below), you can type-check a program like this:
+"Troubleshooting" below), you can type-check the [statically typed parts] of a
+program like this:
 
     $ mypy PROGRAM
 
@@ -93,6 +93,8 @@ You can always use a Python interpreter to run your statically typed
 programs, even if they have type errors:
 
     $ python3 PROGRAM
+
+[statically typed parts]: http://mypy.readthedocs.io/en/latest/basics.html#function-signatures
 
 
 Web site and documentation
@@ -113,12 +115,11 @@ Troubleshooting
 Depending on your configuration, you may have to run `pip3` like
 this:
 
-    $ python3 -m pip install -U mypy-lang
+    $ python3 -m pip install -U mypy
 
-Double-check that you installed `mypy-lang`, not `mypy`.
-
-Except on Windows, it's best to always use the `--fast-parser`
-option to mypy; this requires installing `typed-ast`:
+This should automatically installed the appropriate version of
+mypy's parser, typed-ast.  If for some reason it does not, you
+can install it manually:
 
     $ python3 -m pip install -U typed-ast
 
@@ -173,6 +174,7 @@ The mypy wiki contains some useful information for contributors:
 
   https://github.com/python/mypy/wiki/Developer-Guides
 
+
 Working with the git version of mypy
 ------------------------------------
 
@@ -187,78 +189,11 @@ whenever you change branches, merge, rebase, or pull.
 
 (It's possible to automate this: Search Google for "git hook update submodule")
 
-Running tests and linting
--------------------------
 
-First install any additional dependencies needed for testing:
+Tests
+-----
 
-    $ python3 -m pip install -U -r test-requirements.txt
-
-To run all tests, run the script `runtests.py` in the mypy repository:
-
-    $ ./runtests.py
-
-Note that some tests will be disabled for older python versions.
-
-This will run all tests, including integration and regression tests,
-and will type check mypy and verify that all stubs are valid.
-
-You can run a subset of test suites by passing positive or negative
-filters:
-
-    $ ./runtests.py lex parse -x lint -x stub
-
-For example, to run unit tests only, which run pretty quickly:
-
-    $ ./runtests.py unit-test pytest
-
-The unit test suites are driven by a mixture of test frameworks:
-mypy's own `myunit` framework, and `pytest`, which we're in the
-process of migrating to.  For finer control over which unit tests are
-run and how, you can run `py.test` or `scripts/myunit` directly, or
-pass inferior arguments via `-a`:
-
-    $ py.test mypy/test/testcheck.py -v -k MethodCall
-    $ ./runtests.py -v 'pytest mypy/test/testcheck' -a -v -a -k -a MethodCall
-
-    $ PYTHONPATH=$PWD scripts/myunit -m mypy.test.testlex -v '*backslash*'
-    $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
-
-You can also run the type checker for manual testing without
-installing anything by setting up the Python module search path
-suitably (the lib-typing/3.2 path entry is not needed for Python 3.5
-or when you have manually installed the `typing` module):
-
-    $ export PYTHONPATH=$PWD:$PWD/lib-typing/3.2
-    $ python<version> -m mypy PROGRAM.py
-
-You can add the entry scripts to PATH for a single python3 version:
-
-    $ export PATH=$PWD/scripts
-    $ mypy PROGRAM.py
-
-You can check a module or string instead of a file:
-
-    $ mypy PROGRAM.py
-    $ mypy -m MODULE
-    $ mypy -c 'import MODULE'
-
-To run the linter:
-
-    $ ./runtests.py lint
-
-
-Coverage reports
-----------------
-
-There is an experimental feature to generate coverage reports.  To use
-this feature, you need to `pip install -U lxml`.  This is an extension
-module and requires various library headers to install; on a
-Debian-derived system the command
-  `apt-get install python3-dev libxml2-dev libxslt1-dev`
-may provide the necessary dependencies.
-
-To use the feature, pass e.g. `--txt-report "$(mktemp -d)"`.
+See [Test README.md](test-data/unit/README.md)
 
 
 Development status

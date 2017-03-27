@@ -10,12 +10,13 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 
 from mypy.errors import Errors
 from mypy.types import (
-    Type, CallableType, Instance, TypeVarType, TupleType, UnionType, Void, NoneTyp, AnyType,
-    Overloaded, FunctionLike, DeletedType, TypeType
+    Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
+    UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
+    UninhabitedType
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
-    ARG_STAR, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2
 )
 
 
@@ -24,12 +25,18 @@ from mypy.nodes import (
 
 NO_RETURN_VALUE_EXPECTED = 'No return value expected'
 MISSING_RETURN_STATEMENT = 'Missing return statement'
+INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'
 INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
+RETURN_ANY = 'Returning Any from function with declared return type "{}"'
 RETURN_VALUE_EXPECTED = 'Return value expected'
+NO_RETURN_EXPECTED = 'Return statement in function which does not return'
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
     'The return type of a generator function should be "Generator" or one of its supertypes'
+INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR = \
+    'The return type of an async generator function should be "AsyncGenerator" or one of its ' \
+    'supertypes'
 INVALID_GENERATOR_RETURN_ITEM_TYPE = \
     'The return type of a generator function must be None in its third type parameter in Python 2'
 YIELD_VALUE_EXPECTED = 'Yield value expected'
@@ -44,7 +51,7 @@ INCOMPATIBLE_TYPES_IN_ASYNC_FOR = 'Incompatible types in "async for"'
 INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
 INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
-INIT_MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "__init__" must be None'
+MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
 TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must be an integer literal'
 TUPLE_SLICE_MUST_BE_AN_INT_LITERAL = 'Tuple slice must be an integer literal'
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
@@ -72,6 +79,23 @@ ARGUMENT_TYPE_EXPECTED = "Function is missing a type annotation for one or more 
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \
     'Keyword argument only valid with "str" key type in call to "dict"'
 ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'
+INVALID_TYPEDDICT_ARGS = \
+    'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
+TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
+    'Expected TypedDict item name to be string literal'
+MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
+NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
+DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
+GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
+
+ARG_CONSTRUCTOR_NAMES = {
+    ARG_POS: "Arg",
+    ARG_OPT: "DefaultArg",
+    ARG_NAMED: "NamedArg",
+    ARG_NAMED_OPT: "DefaultNamedArg",
+    ARG_STAR: "StarArg",
+    ARG_STAR2: "KwArg",
+}
 
 
 class MessageBuilder:
@@ -128,20 +152,29 @@ class MessageBuilder:
     def is_errors(self) -> bool:
         return self.errors.is_errors()
 
-    def report(self, msg: str, context: Context, severity: str, file: str = None) -> None:
+    def report(self, msg: str, context: Context, severity: str,
+               file: str = None, origin: Context = None) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
-                               msg.strip(), severity=severity, file=file)
+                               msg.strip(), severity=severity, file=file,
+                               origin_line=origin.get_line() if origin else None)
 
-    def fail(self, msg: str, context: Context, file: str = None) -> None:
+    def fail(self, msg: str, context: Context, file: str = None,
+             origin: Context = None) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', file=file)
+        self.report(msg, context, 'error', file=file, origin=origin)
 
-    def note(self, msg: str, context: Context, file: str = None) -> None:
-        """Report an error message (unless disabled)."""
-        self.report(msg, context, 'note', file=file)
+    def note(self, msg: str, context: Context, file: str = None,
+             origin: Context = None) -> None:
+        """Report a note (unless disabled)."""
+        self.report(msg, context, 'note', file=file, origin=origin)
+
+    def warn(self, msg: str, context: Context, file: str = None,
+             origin: Context = None) -> None:
+        """Report a warning message (unless disabled)."""
+        self.report(msg, context, 'warning', file=file, origin=origin)
 
     def format(self, typ: Type, verbosity: int = 0) -> str:
         """Convert a type to a relatively short string that is suitable for error messages.
@@ -168,8 +201,30 @@ class MessageBuilder:
                 return_type = strip_quotes(self.format(func.ret_type))
                 if func.is_ellipsis_args:
                     return 'Callable[..., {}]'.format(return_type)
-                arg_types = [strip_quotes(self.format(t)) for t in func.arg_types]
-                return 'Callable[[{}], {}]'.format(", ".join(arg_types), return_type)
+                arg_strings = []
+                for arg_name, arg_type, arg_kind in zip(
+                        func.arg_names, func.arg_types, func.arg_kinds):
+                    if (arg_kind == ARG_POS and arg_name is None
+                            or verbosity == 0 and arg_kind in (ARG_POS, ARG_OPT)):
+
+                        arg_strings.append(
+                            strip_quotes(
+                                self.format(
+                                    arg_type,
+                                    verbosity = max(verbosity - 1, 0))))
+                    else:
+                        constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
+                        if arg_kind in (ARG_STAR, ARG_STAR2):
+                            arg_strings.append("{}({})".format(
+                                constructor,
+                                strip_quotes(self.format(arg_type))))
+                        else:
+                            arg_strings.append("{}('{}', {})".format(
+                                constructor,
+                                arg_name,
+                                strip_quotes(self.format(arg_type))))
+
+                return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
             else:
                 # Use a simple representation for function types; proper
                 # function types may result in long and difficult-to-read
@@ -204,8 +259,8 @@ class MessageBuilder:
                 # interpreted as a normal word.
                 return '"{}"'.format(base_str)
             elif itype.type.fullname() == 'builtins.tuple':
-                item_type = strip_quotes(self.format(itype.args[0]))
-                return 'Tuple[{}, ...]'.format(item_type)
+                item_type_str = strip_quotes(self.format(itype.args[0]))
+                return 'Tuple[{}, ...]'.format(item_type_str)
             elif itype.type.fullname() in reverse_type_aliases:
                 alias = reverse_type_aliases[itype.type.fullname()]
                 alias = alias.split('.')[-1]
@@ -239,6 +294,15 @@ class MessageBuilder:
                 return s
             else:
                 return 'tuple(length {})'.format(len(items))
+        elif isinstance(typ, TypedDictType):
+            # If the TypedDictType is named, return the name
+            if typ.fallback.type.fullname() != 'typing.Mapping':
+                return self.format_simple(typ.fallback)
+            items = []
+            for (item_name, item_type) in typ.items.items():
+                items.append('{}={}'.format(item_name, strip_quotes(self.format(item_type))))
+            s = '"TypedDict({})"'.format(', '.join(items))
+            return s
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
             print_as_optional = (len(typ.items) -
@@ -255,14 +319,17 @@ class MessageBuilder:
                     return s
                 else:
                     return 'union type ({} items)'.format(len(items))
-        elif isinstance(typ, Void):
-            return 'None'
         elif isinstance(typ, NoneTyp):
             return 'None'
         elif isinstance(typ, AnyType):
             return '"Any"'
         elif isinstance(typ, DeletedType):
             return '<deleted>'
+        elif isinstance(typ, UninhabitedType):
+            if typ.is_noreturn:
+                return 'NoReturn'
+            else:
+                return '<uninhabited>'
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(
                 strip_quotes(self.format_simple(typ.item, verbosity)))
@@ -305,8 +372,6 @@ class MessageBuilder:
         if (isinstance(typ, Instance) and
                 typ.type.has_readable_member(member)):
             self.fail('Member "{}" is not assignable'.format(member), context)
-        elif self.check_unusable_type(typ, context):
-            pass
         elif member == '__contains__':
             self.fail('Unsupported right operand type for in ({})'.format(
                 self.format(typ)), context)
@@ -328,8 +393,13 @@ class MessageBuilder:
                 self.format(typ)), context)
         elif member == '__getitem__':
             # Indexed get.
-            self.fail('Value of type {} is not indexable'.format(
-                self.format(typ)), context)
+            # TODO: Fix this consistently in self.format
+            if isinstance(typ, CallableType) and typ.is_type_obj():
+                self.fail('The type {} is not generic and not indexable'.format(
+                    self.format(typ)), context)
+            else:
+                self.fail('Value of type {} is not indexable'.format(
+                    self.format(typ)), context)
         elif member == '__setitem__':
             # Indexed set.
             self.fail('Unsupported target for indexed assignment', context)
@@ -366,9 +436,6 @@ class MessageBuilder:
 
         Types can be Type objects or strings.
         """
-        if (self.check_unusable_type(left_type, context) or
-                self.check_unusable_type(right_type, context)):
-            return
         left_str = ''
         if isinstance(left_type, str):
             left_str = left_type
@@ -390,13 +457,12 @@ class MessageBuilder:
 
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
-        if not self.check_unusable_type(typ, context):
-            if self.disable_type_names:
-                msg = 'Unsupported left operand type for {} (some union)'.format(op)
-            else:
-                msg = 'Unsupported left operand type for {} ({})'.format(
-                    op, self.format(typ))
-            self.fail(msg, context)
+        if self.disable_type_names:
+            msg = 'Unsupported left operand type for {} (some union)'.format(op)
+        else:
+            msg = 'Unsupported left operand type for {} ({})'.format(
+                op, self.format(typ))
+        self.fail(msg, context)
 
     def not_callable(self, typ: Type, context: Context) -> Type:
         self.fail('{} not callable'.format(self.format(typ)), context)
@@ -434,12 +500,12 @@ class MessageBuilder:
                         return
 
             if name.startswith('"__getitem__" of'):
-                self.invalid_index_type(arg_type, base, context)
+                self.invalid_index_type(arg_type, callee.arg_types[n - 1], base, context)
                 return
 
             if name.startswith('"__setitem__" of'):
                 if n == 1:
-                    self.invalid_index_type(arg_type, base, context)
+                    self.invalid_index_type(arg_type, callee.arg_types[n - 1], base, context)
                 else:
                     msg = '{} (expression has type {}, target has type {})'
                     arg_type_str, callee_type_str = self.format_distinctly(arg_type,
@@ -486,10 +552,10 @@ class MessageBuilder:
                 n, target, arg_type_str, expected_type_str)
         self.fail(msg, context)
 
-    def invalid_index_type(self, index_type: Type, base_str: str,
+    def invalid_index_type(self, index_type: Type, expected_type: Type, base_str: str,
                            context: Context) -> None:
-        self.fail('Invalid index type {} for {}'.format(
-            self.format(index_type), base_str), context)
+        self.fail('Invalid index type {} for {}; expected type {}'.format(
+            self.format(index_type), base_str, self.format(expected_type)), context)
 
     def too_few_arguments(self, callee: CallableType, context: Context,
                           argument_names: List[str]) -> None:
@@ -506,6 +572,12 @@ class MessageBuilder:
             msg = 'Too few arguments'
             if callee.name:
                 msg += ' for {}'.format(callee.name)
+        self.fail(msg, context)
+
+    def missing_named_argument(self, callee: CallableType, context: Context, name: str) -> None:
+        msg = 'Missing named argument "{}"'.format(name)
+        if callee.name:
+            msg += ' for function {}'.format(callee.name)
         self.fail(msg, context)
 
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
@@ -532,7 +604,8 @@ class MessageBuilder:
             if fullname is not None and '.' in fullname:
                 module_name = fullname.rsplit('.', 1)[0]
                 path = self.modules[module_name].path
-                self.note('{} defined here'.format(callee.name), callee.definition, file=path)
+                self.note('{} defined here'.format(callee.name), callee.definition,
+                          file=path, origin=context)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
                                  context: Context) -> None:
@@ -540,15 +613,11 @@ class MessageBuilder:
                   format(capitalize(callable_name(callee)),
                          callee.arg_names[index]), context)
 
-    def does_not_return_value(self, unusable_type: Type, context: Context) -> None:
-        """Report an error about use of an unusable type.
-
-        If the type is a Void type and has a source in it, report it in the error message.
-        This allows giving messages such as 'Foo does not return a value'.
-        """
-        if isinstance(unusable_type, Void) and unusable_type.source is not None:
+    def does_not_return_value(self, callee_type: Type, context: Context) -> None:
+        """Report an error about use of an unusable type."""
+        if isinstance(callee_type, FunctionLike) and callee_type.get_name() is not None:
             self.fail('{} does not return a value'.format(
-                capitalize((cast(Void, unusable_type)).source)), context)
+                capitalize(callee_type.get_name())), context)
         else:
             self.fail('Function does not return a value', context)
 
@@ -579,12 +648,6 @@ class MessageBuilder:
                       .format(overload.name(), arg_types), context)
         else:
             self.fail('No overload variant matches argument types {}'.format(arg_types), context)
-
-    def invalid_cast(self, target_type: Type, source_type: Type,
-                     context: Context) -> None:
-        if not self.check_unusable_type(source_type, context):
-            self.fail('Cannot cast from {} to {}'.format(
-                self.format(source_type), self.format(target_type)), context)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
@@ -669,18 +732,6 @@ class MessageBuilder:
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
 
-    def check_unusable_type(self, typ: Type, context: Context) -> bool:
-        """If type is a type which is not meant to be used (like Void or
-        NoneTyp(is_ret_type=True)), report an error such as '.. does not
-        return a value' and return True. Otherwise, return False.
-        """
-        if (isinstance(typ, Void) or
-                (isinstance(typ, NoneTyp) and typ.is_ret_type)):
-            self.does_not_return_value(typ, context)
-            return True
-        else:
-            return False
-
     def too_few_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not enough arguments for format string', context)
 
@@ -737,6 +788,9 @@ class MessageBuilder:
     def cant_assign_to_method(self, context: Context) -> None:
         self.fail(CANNOT_ASSIGN_TO_METHOD, context)
 
+    def cant_assign_to_classvar(self, name: str, context: Context) -> None:
+        self.fail('Cannot assign to class variable "%s" via instance' % name, context)
+
     def read_only_property(self, name: str, type: TypeInfo,
                            context: Context) -> None:
         self.fail('Property "{}" defined in "{}" is read-only'.format(
@@ -751,6 +805,14 @@ class MessageBuilder:
                                       context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
+
+    def overloaded_signatures_arg_specific(self, index1: int, context: Context) -> None:
+        self.fail('Overloaded function implementation does not accept all possible arguments '
+                  'of signature {}'.format(index1), context)
+
+    def overloaded_signatures_ret_specific(self, index1: int, context: Context) -> None:
+        self.fail('Overloaded function implementation cannot produce return type '
+                  'of signature {}'.format(index1), context)
 
     def operator_method_signatures_overlap(
             self, reverse_class: str, reverse_method: str, forward_class: str,
@@ -787,6 +849,28 @@ class MessageBuilder:
 
     def redundant_cast(self, typ: Type, context: Context) -> None:
         self.note('Redundant cast to {}'.format(self.format(typ)), context)
+
+    def typeddict_instantiated_with_unexpected_items(self,
+                                                     expected_item_names: List[str],
+                                                     actual_item_names: List[str],
+                                                     context: Context) -> None:
+        self.fail('Expected items {} but found {}.'.format(
+            expected_item_names, actual_item_names), context)
+
+    def typeddict_item_name_must_be_string_literal(self,
+                                                   typ: TypedDictType,
+                                                   context: Context,
+                                                   ) -> None:
+        self.fail('Cannot prove expression is a valid item name; expected one of {}'.format(
+            format_item_name_list(typ.items.keys())), context)
+
+    def typeddict_item_name_not_found(self,
+                                      typ: TypedDictType,
+                                      item_name: str,
+                                      context: Context,
+                                      ) -> None:
+        self.fail('\'{}\' is not a valid item name; expected one of {}'.format(
+            item_name, format_item_name_list(typ.items.keys())), context)
 
 
 def capitalize(s: str) -> str:
@@ -829,6 +913,14 @@ def format_string_list(s: Iterable[str]) -> str:
         return '%s and %s' % (', '.join(l[:-1]), l[-1])
     else:
         return '%s, ... and %s (%i methods suppressed)' % (', '.join(l[:2]), l[-1], len(l) - 3)
+
+
+def format_item_name_list(s: Iterable[str]) -> str:
+    l = list(s)
+    if len(l) <= 5:
+        return '[' + ', '.join(["'%s'" % name for name in l]) + ']'
+    else:
+        return '[' + ', '.join(["'%s'" % name for name in l[:5]]) + ', ...]'
 
 
 def callable_name(type: CallableType) -> str:

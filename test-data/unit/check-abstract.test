@@ -157,6 +157,97 @@ class B(A): pass
 B()# E: Cannot instantiate abstract class 'B' with abstract attributes 'f' and 'g'
 [out]
 
+[case testInstantiationAbstractsInTypeForFunctions]
+from typing import Type
+from abc import abstractmethod
+
+class A:
+    @abstractmethod
+    def m(self) -> None: pass
+class B(A): pass
+class C(B):
+    def m(self) -> None:
+        pass
+
+def f(cls: Type[A]) -> A:
+    return cls()  # OK
+def g() -> A:
+    return A()  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
+
+f(A)  # E: Only non-abstract class can be given where 'Type[__main__.A]' is expected
+f(B)  # E: Only non-abstract class can be given where 'Type[__main__.A]' is expected
+f(C)  # OK
+x: Type[B]
+f(x)  # OK
+[out]
+
+[case testInstantiationAbstractsInTypeForAliases]
+from typing import Type
+from abc import abstractmethod
+
+class A:
+    @abstractmethod
+    def m(self) -> None: pass
+class B(A): pass
+class C(B):
+    def m(self) -> None:
+        pass
+
+def f(cls: Type[A]) -> A:
+    return cls()  # OK
+
+Alias = A
+GoodAlias = C
+Alias()  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
+GoodAlias()
+f(Alias)  # E: Only non-abstract class can be given where 'Type[__main__.A]' is expected
+f(GoodAlias)
+[out]
+
+[case testInstantiationAbstractsInTypeForVariables]
+from typing import Type
+from abc import abstractmethod
+
+class A:
+    @abstractmethod
+    def m(self) -> None: pass
+class B(A): pass
+class C(B):
+    def m(self) -> None:
+        pass
+
+var: Type[A]
+var()
+var = A # E: Can only assign non-abstract classes to a variable of type 'Type[__main__.A]'
+var = B # E: Can only assign non-abstract classes to a variable of type 'Type[__main__.A]'
+var = C # OK
+
+var_old = None # type: Type[A] # Old syntax for variable annotations
+var_old()
+var_old = A # E: Can only assign non-abstract classes to a variable of type 'Type[__main__.A]'
+var_old = B # E: Can only assign non-abstract classes to a variable of type 'Type[__main__.A]'
+var_old = C # OK
+[out]
+
+[case testInstantiationAbstractsInTypeForClassMethods]
+from typing import Type
+from abc import abstractmethod
+
+class Logger:
+    @staticmethod
+    def log(a: Type[C]):
+        pass
+class C:
+    @classmethod
+    def action(cls) -> None:
+        cls() #OK for classmethods
+        Logger.log(cls)  #OK for classmethods
+    @abstractmethod
+    def m(self) -> None:
+        pass
+[builtins fixtures/classmethod.pyi]
+[out]
+
 [case testInstantiatingClassWithInheritedAbstractMethodAndSuppression]
 from abc import abstractmethod, ABCMeta
 import typing
@@ -203,7 +294,6 @@ class B(A):
         pass
     def g(self, x: int) -> int: pass
 [out]
-main: note: In class "B":
 
 [case testImplementingAbstractMethodWithMultipleBaseClasses]
 from abc import abstractmethod, ABCMeta
@@ -221,7 +311,6 @@ class A(I, J):
         # E: Return type of "g" incompatible with supertype "J"
     def h(self) -> int: pass # Not related to any base class
 [out]
-main: note: In class "A":
 
 [case testImplementingAbstractMethodWithExtension]
 from abc import abstractmethod, ABCMeta
@@ -234,7 +323,6 @@ class A(I):
     def f(self, x: str) -> int: pass \
         # E: Argument 1 of "f" incompatible with supertype "J"
 [out]
-main: note: In class "A":
 
 [case testInvalidOverridingAbstractMethod]
 from abc import abstractmethod, ABCMeta
@@ -246,7 +334,6 @@ class I(J):
     @abstractmethod
     def f(self, x: 'I') -> None: pass # E: Argument 1 of "f" incompatible with supertype "J"
 [out]
-main: note: In class "I":
 
 [case testAbstractClassCoAndContraVariance]
 from abc import abstractmethod, ABCMeta
@@ -266,7 +353,6 @@ class A(I):
     def g(self, a: 'A') -> 'A':
         pass
 [out]
-main: note: In class "A":
 main:11: error: Argument 1 of "h" incompatible with supertype "I"
 main:11: error: Return type of "h" incompatible with supertype "I"
 
@@ -323,7 +409,6 @@ class A(I):
     def g(self, x, y) -> None: pass \
         # E: Signature of "g" incompatible with supertype "I"
 [out]
-main: note: In class "A":
 
 [case testAbstractClassWithAllDynamicTypes2]
 from abc import abstractmethod, ABCMeta
@@ -416,6 +501,8 @@ class B(object, A): pass \
       # E: Cannot determine consistent method resolution order (MRO) for "B"
 
 [case testOverloadedAbstractMethod]
+from foo import *
+[file foo.pyi]
 from abc import abstractmethod, ABCMeta
 from typing import overload
 
@@ -438,9 +525,11 @@ B().f(1)
 a = B() # type: A
 a.f(1)
 a.f('')
-a.f(B()) # E: No overload variant of "f" of "A" matches argument types [__main__.B]
+a.f(B()) # E: No overload variant of "f" of "A" matches argument types [foo.B]
 
 [case testOverloadedAbstractMethodWithAlternativeDecoratorOrder]
+from foo import *
+[file foo.pyi]
 from abc import abstractmethod, ABCMeta
 from typing import overload
 
@@ -463,9 +552,11 @@ B().f(1)
 a = B() # type: A
 a.f(1)
 a.f('')
-a.f(B()) # E: No overload variant of "f" of "A" matches argument types [__main__.B]
+a.f(B()) # E: No overload variant of "f" of "A" matches argument types [foo.B]
 
 [case testOverloadedAbstractMethodVariantMissingDecorator1]
+from foo import *
+[file foo.pyi]
 from abc import abstractmethod, ABCMeta
 from typing import overload
 
@@ -477,9 +568,10 @@ class A(metaclass=ABCMeta):
   @overload
   def f(self, x: str) -> str: pass
 [out]
-main: note: In class "A":
 
 [case testOverloadedAbstractMethodVariantMissingDecorator1]
+from foo import *
+[file foo.pyi]
 from abc import abstractmethod, ABCMeta
 from typing import overload
 
@@ -491,7 +583,6 @@ class A(metaclass=ABCMeta):
   @overload
   def f(self, x: str) -> str: pass
 [out]
-main: note: In class "A":
 
 [case testMultipleInheritanceAndAbstractMethod]
 import typing
@@ -513,7 +604,6 @@ class B(metaclass=ABCMeta):
   def f(self, x: int) -> None: pass
 class C(A, B): pass
 [out]
-main: note: In class "C":
 main:8: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 
 [case testCallAbstractMethodBeforeDefinition]
@@ -525,7 +615,6 @@ class A(metaclass=ABCMeta):
     @abstractmethod
     def g(self, x: str) -> None: pass
 [out]
-main: note: In member "f" of class "A":
 
 [case testAbstractOperatorMethods1]
 import typing
@@ -563,7 +652,6 @@ def f(a: A) -> None:
     a.x() # E: "int" not callable
     a.x = 1  # E: Property "x" defined in "A" is read-only
 [out]
-main: note: In function "f":
 
 [case testReadOnlyAbstractPropertyForwardRef]
 from abc import abstractproperty, ABCMeta
@@ -574,7 +662,6 @@ class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self) -> int: pass
 [out]
-main: note: In function "f":
 
 [case testReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -587,7 +674,6 @@ class A(metaclass=ABCMeta):
     @x.setter
     def x(self, x: int) -> None: pass
 [out]
-main: note: In function "f":
 
 [case testInstantiateClassWithReadOnlyAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -647,9 +733,7 @@ b = B()
 b.x() # E
 [builtins fixtures/property.pyi]
 [out]
-main: note: In class "B":
 main:7: error: Return type of "x" incompatible with supertype "A"
-main: note: At top level:
 main:9: error: "str" not callable
 
 [case testCantImplementAbstractPropertyViaInstanceVariable]
@@ -664,9 +748,7 @@ b = B() # E
 b.x.y # E
 [builtins fixtures/property.pyi]
 [out]
-main: note: In member "__init__" of class "B":
 main:7: error: Property "x" defined in "B" is read-only
-main: note: At top level:
 main:8: error: Cannot instantiate abstract class 'B' with abstract attribute 'x'
 main:9: error: "int" has no attribute "y"
 
@@ -681,7 +763,6 @@ class B(A):
         return super().x.y # E: "int" has no attribute "y"
 [builtins fixtures/property.pyi]
 [out]
-main: note: In member "x" of class "B":
 
 [case testSuperWithReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -699,9 +780,7 @@ class B(A):
         super().x = '' # E
 [builtins fixtures/property.pyi]
 [out]
-main: note: In member "x" of class "B":
 main:10: error: "int" has no attribute "y"
-main: note: In function "x":
 main:13: error: Invalid assignment target
 
 [case testOnlyImplementGetterOfReadWriteAbstractProperty]
@@ -718,9 +797,7 @@ b = B()
 b.x.y # E
 [builtins fixtures/property.pyi]
 [out]
-main: note: In class "B":
 main:8: error: Read-only property cannot override read-write property
-main: note: At top level:
 main:11: error: "int" has no attribute "y"
 
 [case testDynamicallyTypedReadOnlyAbstractProperty]
@@ -732,7 +809,6 @@ def f(a: A) -> None:
     a.x.y
     a.x = 1  # E: Property "x" defined in "A" is read-only
 [out]
-main: note: In function "f":
 
 [case testDynamicallyTypedReadOnlyAbstractPropertyForwardRef]
 from abc import abstractproperty, ABCMeta
@@ -743,7 +819,6 @@ class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self): pass
 [out]
-main: note: In function "f":
 
 [case testDynamicallyTypedReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta

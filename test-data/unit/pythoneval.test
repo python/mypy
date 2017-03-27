@@ -11,7 +11,8 @@ print('hello, world')
 [out]
 hello, world
 
-[case testAbstractBaseClasses]
+-- Skipped because different typing package versions have different repr()s.
+[case testAbstractBaseClasses-skip]
 import re
 from typing import Sized, Sequence, Iterator, Iterable, Mapping, AbstractSet
 
@@ -389,9 +390,7 @@ def bin(f: IO[bytes]) -> None:
 txt(sys.stdout)
 bin(sys.stdout)
 [out]
-_program.py: note: In function "txt":
 _program.py:5: error: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
-_program.py: note: At top level:
 _program.py:10: error: Argument 1 to "bin" has incompatible type "TextIO"; expected IO[bytes]
 
 [case testBuiltinOpen]
@@ -431,7 +430,6 @@ S = TypeVar('S', int, str)
 def f(t: T, s: S) -> None:
     t + s
 [out]
-_program.py: note: In function "f":
 _program.py:7: error: Unsupported operand types for + ("int" and "str")
 _program.py:7: error: Unsupported operand types for + ("str" and "int")
 
@@ -536,7 +534,6 @@ b = None  # type: B
 b = C()
 print(A() + b)
 [out]
-_program.py: note: In member "__radd__" of class "B":
 _program.py:9: error: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
 
 [case testBytesAndBytearrayComparisons]
@@ -751,7 +748,6 @@ print('>', list(b))
 import typing
 def f(x: _T) -> None: pass
 [out]
-_program.py: note: In function "f":
 _program.py:2: error: Name '_T' is not defined
 
 [case testVarArgsFunctionSubtyping]
@@ -760,7 +756,7 @@ def f(*args: str) -> str: return args[0]
 map(f, ['x'])
 map(f, [1])
 [out]
-_program.py:4: error: Argument 1 to "map" has incompatible type Callable[[str], str]; expected Callable[[int], str]
+_program.py:4: error: Argument 1 to "map" has incompatible type Callable[[StarArg(str)], str]; expected Callable[[int], str]
 
 [case testMapStr]
 import typing
@@ -915,7 +911,6 @@ def f(x: A) -> None:
     x(1)
     x('')
 [out]
-_program.py: note: In function "f":
 _program.py:5: error: Argument 1 has incompatible type "str"; expected "int"
 
 [case testSuperNew]
@@ -971,7 +966,6 @@ def f(*x: int) -> None:
     x.append(1)
 f(1)
 [out]
-_program.py: note: In function "f":
 _program.py:3: error: Tuple[int, ...] has no attribute "append"
 
 [case testExit]
@@ -1045,9 +1039,7 @@ def p(t: Tuple[str, ...]) -> None:
 ''.startswith(('x', 'y'))
 ''.startswith(('x', b'y'))
 [out]
-_program.py: note: In function "p":
 _program.py:6: error: "str" not callable
-_program.py: note: At top level:
 _program.py:8: error: Argument 1 to "startswith" of "str" has incompatible type "Tuple[str, bytes]"; expected "Union[str, Tuple[str, ...]]"
 
 [case testMultiplyTupleByInteger]
@@ -1103,10 +1095,82 @@ MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
 _program.py:6: error: Argument 1 to "defaultdict" has incompatible type List[_T]; expected Callable[[], str]
-_program.py:9: error: Invalid index type "str" for "dict"
+_program.py:9: error: Invalid index type "str" for "dict"; expected type "int"
 _program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
-_program.py:19: error: List item 0 has incompatible type "Tuple[str, List[None]]"
-_program.py:23: error: Invalid index type "str" for "dict"
+_program.py:19: error: List item 0 has incompatible type "Tuple[str, List[<uninhabited>]]"
+_program.py:23: error: Invalid index type "str" for "dict"; expected type "int"
+
+[case testNoSubcriptionOfStdlibCollections]
+import collections
+from collections import Counter
+from typing import TypeVar
+
+collections.defaultdict[int, str]()
+Counter[int]()
+
+T = TypeVar('T')
+DDint = collections.defaultdict[T, int]
+
+d = DDint[str]()
+d[0] = 1
+
+def f(d: collections.defaultdict[int, str]) -> None:
+    ...
+[out]
+_program.py:5: error: "defaultdict" is not subscriptable
+_program.py:6: error: "Counter" is not subscriptable
+_program.py:9: error: "defaultdict" is not subscriptable
+_program.py:12: error: Invalid index type "int" for "dict"; expected type "str"
+_program.py:14: error: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
+
+[case testCollectionsAliases]
+import typing as t
+import collections as c
+
+o1 = c.Counter()  # type: t.Counter[int]
+reveal_type(o1)
+o1['string']
+
+o2 = c.ChainMap()  # type: t.ChainMap[int, str]
+reveal_type(o2)
+
+o3 = c.deque()  # type: t.Deque[int]
+reveal_type(o3)
+
+o4 = t.Counter[int]()
+reveal_type(o4)
+
+o5 = t.ChainMap[int, str]()
+reveal_type(o5)
+
+o6 = t.Deque[int]()
+reveal_type(o6)
+
+[out]
+_testCollectionsAliases.py:5: error: Revealed type is 'collections.Counter[builtins.int]'
+_testCollectionsAliases.py:6: error: Invalid index type "str" for "dict"; expected type "int"
+_testCollectionsAliases.py:9: error: Revealed type is 'collections.ChainMap[builtins.int, builtins.str]'
+_testCollectionsAliases.py:12: error: Revealed type is 'collections.deque[builtins.int]'
+_testCollectionsAliases.py:15: error: Revealed type is 'collections.Counter[builtins.int*]'
+_testCollectionsAliases.py:18: error: Revealed type is 'collections.ChainMap[builtins.int*, builtins.str*]'
+_testCollectionsAliases.py:21: error: Revealed type is 'collections.deque[builtins.int*]'
+
+[case testChainMapUnimported]
+ChainMap[int, str]()
+
+[out]
+_testChainMapUnimported.py:1: error: Name 'ChainMap' is not defined
+
+[case testDequeWrongCase]
+import collections
+import typing
+
+collections.Deque()
+typing.deque()
+
+[out]
+_testDequeWrongCase.py:4: error: "module" has no attribute "Deque"
+_testDequeWrongCase.py:5: error: "module" has no attribute "deque"
 
 [case testDictUpdateInference]
 from typing import Dict, Optional
@@ -1119,7 +1183,6 @@ class A:
         super().__setattr__('a', 1)
         super().__setattr__(1, 'a')
 [out]
-_program.py: note: In member "__init__" of class "A":
 _program.py:4: error: Argument 1 to "__setattr__" of "object" has incompatible type "int"; expected "str"
 
 [case testMetaclassAndSuper]
@@ -1156,7 +1219,7 @@ print(b.x + 1)
 4
 
 [case testInferenceWithLambda]
-from typing import TypeVar, Iterable, Iterator
+from typing import TypeVar, Iterable, Iterator, List
 import itertools
 
 _T = TypeVar('_T')
