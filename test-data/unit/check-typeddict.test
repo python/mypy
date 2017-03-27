@@ -301,7 +301,7 @@ def as_mapping(p: Point) -> Mapping[str, str]:
 --    return p
 --[builtins fixtures/dict.pyi]
 
-[case testCannotConvertTypedDictToDict]
+[case testCannotConvertTypedDictToDictOrMutableMapping]
 from mypy_extensions import TypedDict
 from typing import Dict, MutableMapping
 Point = TypedDict('Point', {'x': int, 'y': int})

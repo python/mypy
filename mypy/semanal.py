@@ -659,7 +659,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> bool:
         decorator.accept(self)
-        return isinstance(decorator, RefExpr) and decorator.fullname == 'typing.runtime'
+        return (isinstance(decorator, RefExpr) and
+                decorator.fullname in ('typing.runtime', 'mypy_extensions.runtime')
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.
