@@ -99,10 +99,6 @@ class AnyTests(BaseTestCase):
         with self.assertRaises(TypeError):
             type(Any)()
 
-    def test_cannot_subscript(self):
-        with self.assertRaises(TypeError):
-            Any[int]
-
     def test_any_is_subclass(self):
         # These expressions must simply not fail.
         typing.Match[Any]
@@ -641,6 +637,41 @@ class GenericTests(BaseTestCase):
         c = C()
         c.bar = 'abc'
         self.assertEqual(c.__dict__, {'bar': 'abc'})
+
+    def test_subscripted_generics_as_proxies(self):
+        T = TypeVar('T')
+        class C(Generic[T]):
+            x = 'def'
+        self.assertEqual(C[int].x, 'def')
+        self.assertEqual(C[C[int]].x, 'def')
+        C[C[int]].x = 'changed'
+        self.assertEqual(C.x, 'changed')
+        self.assertEqual(C[str].x, 'changed')
+        C[List[str]].z = 'new'
+        self.assertEqual(C.z, 'new')
+        self.assertEqual(C[Tuple[int]].z, 'new')
+
+        self.assertEqual(C().x, 'changed')
+        self.assertEqual(C[Tuple[str]]().z, 'new')
+
+        class D(C[T]):
+            pass
+        self.assertEqual(D[int].x, 'changed')
+        self.assertEqual(D.z, 'new')
+        D.z = 'from derived z'
+        D[int].x = 'from derived x'
+        self.assertEqual(C.x, 'changed')
+        self.assertEqual(C[int].z, 'new')
+        self.assertEqual(D.x, 'from derived x')
+        self.assertEqual(D[str].z, 'from derived z')
+
+    def test_abc_registry_kept(self):
+        T = TypeVar('T')
+        class C(Generic[T]): pass
+        C.register(int)
+        self.assertIsInstance(1, C)
+        C[int]
+        self.assertIsInstance(1, C)
 
     def test_false_subclasses(self):
         class MyMapping(MutableMapping[str, str]): pass

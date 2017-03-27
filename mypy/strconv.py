@@ -125,6 +125,8 @@ class StrConv(NodeVisitor[str]):
         a = o.items[:]  # type: Any
         if o.type:
             a.insert(0, o.type)
+        if o.impl:
+            a.insert(0, o.impl)
         return self.dump(a, o)
 
     def visit_class_def(self, o: 'mypy.nodes.ClassDef') -> str:

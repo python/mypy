@@ -264,6 +264,8 @@ class A:
 def f() -> None: pass
 
 [case testFunctionTypesWithOverloads]
+from foo import *
+[file foo.pyi]
 from typing import Callable, overload
 f = None # type: Callable[[AA], A]
 g = None # type: Callable[[B], B]
@@ -296,6 +298,8 @@ def j(x: A) -> AA:
     pass
 
 [case testOverloadWithThreeItems]
+from foo import *
+[file foo.pyi]
 from typing import Callable, overload
 g1 = None # type: Callable[[A], A]
 g2 = None # type: Callable[[B], B]
@@ -479,6 +483,8 @@ a.f()
 a.f(a) # E: Too many arguments
 
 [case testOverloadedMethodAsDataAttribute]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class B: pass
 class A:
@@ -490,7 +496,7 @@ class A:
 a = None # type: A
 a.g()
 a.g(B())
-a.g(a) # E: No overload variant matches argument types [__main__.A]
+a.g(a) # E: No overload variant matches argument types [foo.A]
 
 [case testMethodAsDataAttributeInferredFromDynamicallyTypedMethod]
 
