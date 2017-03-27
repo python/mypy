@@ -1665,6 +1665,9 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
+            elif ignored:
+                manager.missing_modules.add(dep)
+
             if dep in st.ancestors and dep in graph:
                 graph[dep].child_modules.add(st.id)
             if dep in graph and dep in st.suppressed:
