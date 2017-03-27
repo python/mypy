@@ -176,6 +176,32 @@ x = x | C.b
 [out]
 main:6: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
+[case testAnonymousEnum]
+from enum import Enum
+class A:
+    def f(self) -> None:
+        class E(Enum):
+            a = 1
+        self.x = E.a
+a = A()
+reveal_type(a.x)
+[out]
+main:7: error: Revealed type is '__main__.A.E@4'
+
+[case testEnumInClassBody]
+from enum import Enum
+class A:
+    class E(Enum):
+        a = 1
+class B:
+    class E(Enum):
+        a = 1
+x = A.E.a
+y = B.E.a
+x = y
+[out]
+main:10: error: Incompatible types in assignment (expression has type "__main__.B.E", variable has type "__main__.A.E")
+
 [case testFunctionalEnumString]
 from enum import Enum, IntEnum
 E = Enum('E', 'foo bar')
@@ -273,3 +299,26 @@ reveal_type(B.a)
 [out]
 main:4: error: Revealed type is '__main__.A'
 main:5: error: Revealed type is '__main__.B'
+
+[case testAnonymousFunctionalEnum]
+from enum import Enum
+class A:
+    def f(self) -> None:
+        E = Enum('E', 'a b')
+        self.x = E.a
+a = A()
+reveal_type(a.x)
+[out]
+main:7: error: Revealed type is '__main__.A.E@4'
+
+[case testFunctionalEnumInClassBody]
+from enum import Enum
+class A:
+    E = Enum('E', 'a b')
+class B:
+    E = Enum('E', 'a b')
+x = A.E.a
+y = B.E.a
+x = y
+[out]
+main:8: error: Incompatible types in assignment (expression has type "__main__.B.E", variable has type "__main__.A.E")
