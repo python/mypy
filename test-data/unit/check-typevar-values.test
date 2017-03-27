@@ -431,6 +431,8 @@ class C(Generic[T]):
     def f(self, x: int = None) -> None: pass
 
 [case testTypevarValuesWithOverloadedFunctionSpecialCase]
+from foo import *
+[file foo.pyi]
 from typing import TypeVar, overload, Callable
 
 T = TypeVar('T', int, str)
@@ -448,8 +450,8 @@ def g(x: int) -> int: return x
 @overload
 def g(x: str) -> str: return x
 [out]
-main:7: error: Incompatible types in assignment (expression has type "object", variable has type "int")
-main:7: error: Incompatible types in assignment (expression has type "object", variable has type "str")
+tmp/foo.pyi:7: error: Incompatible types in assignment (expression has type "object", variable has type "int")
+tmp/foo.pyi:7: error: Incompatible types in assignment (expression has type "object", variable has type "str")
 
 [case testGenericFunctionSubtypingWithTypevarValues]
 from typing import TypeVar

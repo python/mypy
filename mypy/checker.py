@@ -37,7 +37,8 @@ from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
-    restrict_subtype_away, is_subtype_ignoring_tvars
+    restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_subtype,
+    unify_generic_callable,
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars
@@ -262,29 +263,70 @@ class TypeChecker(StatementVisitor[None]):
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         num_abstract = 0
+        if not defn.items:
+            # In this case we have already complained about none of these being
+            # valid overloads.
+            return None
+        if len(defn.items) == 1:
+            self.fail('Single overload definition, multiple required', defn)
+
         if defn.is_property:
             # HACK: Infer the type of the property.
-            self.visit_decorator(defn.items[0])
+            self.visit_decorator(cast(Decorator, defn.items[0]))
         for fdef in defn.items:
+            assert isinstance(fdef, Decorator)
             self.check_func_item(fdef.func, name=fdef.func.name())
             if fdef.func.is_abstract:
                 num_abstract += 1
         if num_abstract not in (0, len(defn.items)):
             self.fail(messages.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
+        if defn.impl:
+            defn.impl.accept(self)
         if defn.info:
             self.check_method_override(defn)
             self.check_inplace_operator_method(defn)
         self.check_overlapping_overloads(defn)
+        return None
 
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
+        # At this point we should have set the impl already, and all remaining
+        # items are decorators
         for i, item in enumerate(defn.items):
+            assert isinstance(item, Decorator)
+            sig1 = self.function_type(item.func)
             for j, item2 in enumerate(defn.items[i + 1:]):
                 # TODO overloads involving decorators
-                sig1 = self.function_type(item.func)
+                assert isinstance(item2, Decorator)
                 sig2 = self.function_type(item2.func)
                 if is_unsafe_overlapping_signatures(sig1, sig2):
                     self.msg.overloaded_signatures_overlap(i + 1, i + j + 2,
                                                            item.func)
+            if defn.impl:
+                if isinstance(defn.impl, FuncDef):
+                    impl_type = defn.impl.type
+                elif isinstance(defn.impl, Decorator):
+                    impl_type = defn.impl.var.type
+                else:
+                    assert False, "Impl isn't the right type"
+                # This can happen if we've got an overload with a different
+                # decorator too -- we gave up on the types.
+                if impl_type is None or isinstance(impl_type, AnyType) or sig1 is None:
+                    return
+
+                assert isinstance(impl_type, CallableType)
+                assert isinstance(sig1, CallableType)
+                if not is_callable_subtype(impl_type, sig1, ignore_return=True):
+                    self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
+                impl_type_subst = impl_type
+                if impl_type.variables:
+                    impl_type_subst = unify_generic_callable(impl_type, sig1, ignore_return=False)
+                    if impl_type_subst is None:
+                        self.fail("Type variable mismatch between " +
+                                  "overload signature {} and implementation".format(i + 1),
+                                  defn.impl)
+                        return
+                if not is_subtype(sig1.ret_type, impl_type_subst.ret_type):
+                    self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
     # Here's the scoop about generators and coroutines.
     #
@@ -2134,9 +2176,7 @@ class TypeChecker(StatementVisitor[None]):
         e.func.accept(self)
         sig = self.function_type(e.func)  # type: Type
         # Process decorators from the inside out.
-        for i in range(len(e.decorators)):
-            n = len(e.decorators) - 1 - i
-            d = e.decorators[n]
+        for d in reversed(e.decorators):
             if isinstance(d, NameExpr) and d.fullname == 'typing.overload':
                 self.fail('Single overload definition, multiple required', e)
                 continue
@@ -2160,7 +2200,8 @@ class TypeChecker(StatementVisitor[None]):
                     continue
                 if (isinstance(base_attr.node, OverloadedFuncDef) and
                         base_attr.node.is_property and
-                        base_attr.node.items[0].var.is_settable_property):
+                        cast(Decorator,
+                             base_attr.node.items[0]).var.is_settable_property):
                     self.fail(messages.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, e)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
