@@ -1001,6 +1001,8 @@ class UnionType(Type):
         Note: This must NOT be used during semantic analysis, since TypeInfos may not
               be fully initialized.
         """
+        # TODO: Make this a function living somewhere outside mypy.types. Most other non-trivial
+        #       type operations are not static methods, so this is inconsistent.
         while any(isinstance(typ, UnionType) for typ in items):
             all_items = []  # type: List[Type]
             for typ in items:
