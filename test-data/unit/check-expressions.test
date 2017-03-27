@@ -806,7 +806,8 @@ main:4: error: Incompatible types in assignment (expression has type "A", target
 main:5: error: Unsupported target for indexed assignment
 
 [case testOverloadedIndexing]
-
+from foo import *
+[file foo.pyi]
 from typing import overload
 
 a, b, c = None, None, None  # type: (A, B, C)

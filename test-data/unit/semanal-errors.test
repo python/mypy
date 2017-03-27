@@ -89,6 +89,7 @@ class A: pass
 def f(): pass
 @overload # E: "A" expects no type arguments, but 1 given
 def f(x: A[int]) -> None: pass
+def f(*args): pass
 [out]
 
 [case testInvalidNumberOfGenericArgsInBaseType]
@@ -651,6 +652,7 @@ def f() -> None:
     x = 1
     def p(): pass # fail
 [out]
+main:3: error: An overloaded function outside a stub file must have an implementation
 main:8: error: Name 'p' already defined
 
 [case testNestedFunctionInMethod]
@@ -1060,16 +1062,16 @@ def f(x: 'int['): pass # E: syntax error in type comment
 [case testInconsistentOverload]
 from typing import overload
 def dec(x): pass
-@overload
+@dec  # E: The implementation for an overloaded function must come last
 def f(): pass
-@dec  # E: 'overload' decorator expected
+@overload
 def f(): pass
 [out]
 
 [case testInconsistentOverload2]
 from typing import overload
 def dec(x): pass
-@dec  # E: 'overload' decorator expected
+@dec  # E: The implementation for an overloaded function must come last
 def f(): pass
 @overload
 def f(): pass
@@ -1078,9 +1080,9 @@ def f(): pass
 [case testMissingOverloadDecorator]
 from typing import overload
 def dec(x): pass
-@dec  # E: 'overload' decorator expected
+@dec
 def f(): pass
-@dec  # E: 'overload' decorator expected
+@dec  # E: Name 'f' already defined
 def f(): pass
 [out]
 
@@ -1152,7 +1154,7 @@ class A:
 [case testOverloadedProperty2]
 from typing import overload
 class A:
-    @overload
+    @overload  # E: An overloaded function outside a stub file must have an implementation
     def f(self) -> int: pass
     @property  # E: Decorated property not supported
     @overload
