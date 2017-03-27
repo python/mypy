@@ -261,6 +261,9 @@ class CompleteTypeVisitor(TypeQuery):
         return False
 
 
+INFERRING = []  # type: List[nodes.TypeInfo]
+
+
 class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     """Visitor class for inferring type constraints."""
 
@@ -308,18 +311,22 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     # Non-leaf types
 
     def visit_instance(self, template: Instance) -> List[Constraint]:
+        global INFERRING
         actual = self.actual
         res = []  # type: List[Constraint]
         if isinstance(actual, CallableType) and actual.fallback is not None:
             actual = actual.fallback
         if isinstance(actual, Instance):
             instance = actual
-            if template.type.is_protocol and self.direction == SUPERTYPE_OF:
+            if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
+                    template.type not in INFERRING):
+                INFERRING.append(template.type)
                 for member in template.type.protocol_members:
                     inst = mypy.subtypes.find_member(member, instance)
                     temp = mypy.subtypes.find_member(member, template)
                     res.extend(infer_constraints(temp, inst, self.direction))
                     res.extend(infer_constraints(temp, inst, neg_op(self.direction)))
+                INFERRING.pop()
                 return res
             if (self.direction == SUBTYPE_OF and
                     template.type.has_base(instance.type.fullname())):

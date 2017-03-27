@@ -1,0 +1,101 @@
+-- Simple protocol types
+-- ---------------------
+
+
+[case testSimpleProtocolOneMethod]
+from typing import Protocol
+
+class P(Protocol):
+    def meth(self) -> None:
+        pass
+
+class B: pass
+
+class C:
+    def meth(self) -> None:
+        pass
+
+x: P
+
+def fun(x: P) -> None:
+    x.meth()
+    x.meth(x) # E: Too many arguments for "meth" of "P"
+    x.bad # E: "P" has no attribute "bad"
+
+x = C()
+x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P")
+
+fun(C())
+fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "P"
+[out]
+
+[case testSimpleProtocolOneAbstractMethod]
+from typing import Protocol
+from abc import abstractmethod
+
+class P(Protocol):
+    @abstractmethod
+    def meth(self) -> None:
+        pass
+
+class B: pass
+
+class C:
+    def meth(self) -> None:
+        pass
+
+class D(B):
+    def meth(self) -> None:
+        pass
+
+x: P
+
+def fun(x: P) -> None:
+    x.meth()
+    x.meth(x) # E: Too many arguments for "meth" of "P"
+    x.bad # E: "P" has no attribute "bad"
+
+x = C()
+x = D()
+x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P")
+fun(C())
+fun(D())
+fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "P"
+[out]
+
+[case testSimpleProtocolOneMethodOverride]
+from typing import Protocol, Union
+
+class P(Protocol):
+    def meth(self) -> Union[int, str]:
+        pass
+class SubP(P, Protocol):
+    def meth(self) -> int:
+        pass
+
+class B: pass
+class C:
+    def meth(self) -> int:
+        pass
+
+x: SubP
+def fun(x: SubP) -> str:
+    x.bad # E: "SubP" has no attribute "bad"
+    return x.meth() # E: Incompatible return value type (got "int", expected "str")
+
+x = C()
+x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "SubP")
+
+reveal_type(fun(C())) # E: Revealed type is 'builtins.str'
+fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "SubP"
+[out]
+
+[case testSimpleProtocolTwoMethodsMerge]
+from typing import Protocol
+
+[out]
+
+[case testSimpleProtocolTwoMethodsExtend]
+from typing import Protocol
+
+[out]

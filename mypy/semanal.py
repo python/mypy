@@ -714,11 +714,12 @@ class SemanticAnalyzer(NodeVisitor):
             except TypeTranslationError:
                 continue  # This will be reported later
             if not isinstance(base, UnboundType):
-                return False
+                continue
             sym = self.lookup_qualified(base.name, base)
             if sym is None or sym.node is None:
-                return False
-            return sym.node.fullname() in ('typing.Protocol', 'mypy_extensions.Protocol')
+                continue
+            if sym.node.fullname() in ('typing.Protocol', 'mypy_extensions.Protocol'):
+                return True
         return False
 
     def clean_up_bases_and_infer_type_variables(self, defn: ClassDef) -> None:

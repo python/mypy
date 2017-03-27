@@ -308,7 +308,7 @@ Point = TypedDict('Point', {'x': int, 'y': int})
 def as_dict(p: Point) -> Dict[str, int]:
     return p  # E: Incompatible return value type (got "Point", expected Dict[str, int])
 def as_mutable_mapping(p: Point) -> MutableMapping[str, int]:
-    return p  # this is OK since homogeneous TypedDict is a structural subtype of MutableMapping
+    return p  # E: Incompatible return value type (got "Point", expected MutableMapping[str, int])
 [builtins fixtures/dict.pyi]
 
 [case testCanConvertTypedDictToAny]

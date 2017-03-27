@@ -93,7 +93,8 @@ class AsyncIterable(Protocol[T]):
     @abstractmethod
     def __aiter__(self) -> 'AsyncIterator[T]': pass
 
-class AsyncIterator(AsyncIterable[T], Generic[T]):
+@runtime
+class AsyncIterator(AsyncIterable[T], Protocol):
     def __aiter__(self) -> 'AsyncIterator[T]': return self
     @abstractmethod
     def __anext__(self) -> Awaitable[T]: pass
@@ -108,7 +109,8 @@ class Mapping(Protocol[T, U]):
     def __getitem__(self, key: T) -> U: pass
 
 @runtime
-class MutableMapping(Protocol[T, U]): pass
+class MutableMapping(Mapping[T, U], Protocol):
+    def __setitem__(self, k: T, v: U) -> None: pass
 
 def NewType(name: str, tp: Type[T]) -> Callable[[T], T]:
     def new_type(x):

@@ -337,7 +337,7 @@ def find_var_type(var: Var, itype: Instance) -> Type:
     if typ is None:
         return AnyType()
     typ = expand_type_by_instance(typ, itype)
-    if isinstance(typ, FunctionLike):
+    if isinstance(typ, FunctionLike) and not var.is_staticmethod:
         signature = bind_self(typ)
         assert isinstance(signature, CallableType)
         if var.is_property:
