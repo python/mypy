@@ -347,3 +347,23 @@ Gb.a
 Hu.a
 Hb.a
 [out]
+
+[case testEnumIncremental]
+import m
+reveal_type(m.E.a)
+reveal_type(m.F.b)
+[file m.py]
+from enum import Enum
+class E(Enum):
+    a = 1
+    b = 2
+F = Enum('F', 'a b')
+[rechecked]
+[stale]
+[out1]
+main:2: error: Revealed type is 'm.E'
+main:3: error: Revealed type is 'm.F'
+[out2]
+main:2: error: Revealed type is 'm.E'
+main:3: error: Revealed type is 'm.F'
+
