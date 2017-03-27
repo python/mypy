@@ -657,7 +657,10 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TypedDictType):
             for name, typ in left.items.items():
-                if name not in right.items or not is_same_type(typ, right.items[name]):
+                if name in right.items and not is_same_type(typ, right.items[name]):
+                    return False
+            for name, typ in right.items.items():
+                if name not in left.items:
                     return False
             return True
         return is_proper_subtype(left.fallback, right)
