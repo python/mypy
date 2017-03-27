@@ -18,4 +18,11 @@ _T = TypeVar('_T')
 
 def unique(enumeration: _T) -> _T: pass
 
-# TODO: Flag, IntFlag?
+# In reality Flag and IntFlag are 3.6 only
+
+class Flag(Enum):
+    def __or__(self: _T, other: Union[int, _T]) -> _T: pass
+
+
+class IntFlag(int, Flag):
+    def __and__(self: _T, other: Union[int, _T]) -> _T: pass

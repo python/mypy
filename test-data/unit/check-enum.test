@@ -154,6 +154,28 @@ E[1]
 [out]
 main:4: error: Enum index should be a string (actual index type "int")
 
+[case testEnumFlag]
+from enum import Flag
+class C(Flag):
+    a = 1
+    b = 2
+x = C.a
+x = 1
+x = x | C.b
+[out]
+main:6: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+
+[case testEnumIntFlag]
+from enum import IntFlag
+class C(IntFlag):
+    a = 1
+    b = 2
+x = C.a
+x = 1
+x = x | C.b
+[out]
+main:6: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+
 [case testFunctionalEnumString]
 from enum import Enum, IntEnum
 E = Enum('E', 'foo bar')
@@ -241,3 +263,13 @@ main:14: error: Enum() with tuple or list expects strings or (name, value) pairs
 main:15: error: Enum() with tuple or list expects strings or (name, value) pairs
 main:16: error: IntEnum() with tuple or list expects strings or (name, value) pairs
 main:17: error: Enum() with dict literal requires string literals
+
+[case testFunctionalEnumFlag]
+from enum import Flag, IntFlag
+A = Flag('A', 'x y')
+B = IntFlag('B', 'a b')
+reveal_type(A.x)
+reveal_type(B.a)
+[out]
+main:4: error: Revealed type is '__main__.A'
+main:5: error: Revealed type is '__main__.B'
