@@ -354,7 +354,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         arg_messages = arg_messages or self.msg
         if isinstance(callee, CallableType):
-            if callee.is_concrete_type_obj() and callee.type_object().is_abstract:
+            if (callee.is_type_obj() and callee.type_object().is_abstract
+                    # Exceptions for Type[...] and classmethod first argument
+                    and not callee.from_type_type and not callee.is_classmethod_class):
                 type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
                     callee.type_object().name(), type.abstract_attributes,
@@ -440,7 +442,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(item, AnyType):
             return AnyType()
         if isinstance(item, Instance):
-            return type_object_type(item.type, self.named_type)
+            res = type_object_type(item.type, self.named_type)
+            if isinstance(res, CallableType):
+                res = res.copy_modified(from_type_type=True)
+            return res
         if isinstance(item, UnionType):
             return UnionType([self.analyze_type_type_callee(item, context)
                               for item in item.items], item.line)
@@ -838,6 +843,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Check the type of a single argument in a call."""
         if isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
+        # Only non-abstract class can be given where Type[...] is expected...
+        elif (isinstance(caller_type, CallableType) and isinstance(callee_type, TypeType) and
+              caller_type.is_type_obj() and caller_type.type_object().is_abstract and
+              isinstance(callee_type.item, Instance) and callee_type.item.type.is_abstract and
+              # ...except for classmethod first argument
+              not caller_type.is_classmethod_class):
+            messages.fail("Only non-abstract class can be given where '{}' is expected"
+                          .format(callee_type), context)
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return

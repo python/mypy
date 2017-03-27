@@ -104,11 +104,12 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     elif isinstance(t, TypeType) or isinstance(s, TypeType):
         # If exactly only one of t or s is a TypeType, check if one of them
         # is an `object` or a `type` and otherwise assume no overlap.
+        one = t if isinstance(t, TypeType) else s
         other = s if isinstance(t, TypeType) else t
         if isinstance(other, Instance):
             return other.type.fullname() in {'builtins.object', 'builtins.type'}
         else:
-            return False
+            return isinstance(other, CallableType) and is_subtype(other, one)
     if experiments.STRICT_OPTIONAL:
         if isinstance(t, NoneTyp) != isinstance(s, NoneTyp):
             # NoneTyp does not overlap with other non-Union types under strict Optional checking

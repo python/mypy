@@ -656,6 +656,8 @@ class TypeChecker(StatementVisitor[None]):
                             self.fail(msg, defn)
                             if note:
                                 self.note(note, defn)
+                        if defn.is_class and isinstance(arg_type, CallableType):
+                            arg_type.is_classmethod_class = True
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
@@ -1208,6 +1210,16 @@ class TypeChecker(StatementVisitor[None]):
                 else:
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
+                # Special case: only non-abstract classes can be assigned to variables
+                # with explicit type Type[A].
+                if (isinstance(rvalue_type, CallableType) and rvalue_type.is_type_obj() and
+                        rvalue_type.type_object().is_abstract and
+                        isinstance(lvalue_type, TypeType) and
+                        isinstance(lvalue_type.item, Instance) and
+                        lvalue_type.item.type.is_abstract):
+                    self.fail("Can only assign non-abstract classes"
+                              " to a variable of type '{}'".format(lvalue_type), rvalue)
+                    return
                 if rvalue_type and infer_lvalue_type:
                     self.binder.assign_type(lvalue,
                                             rvalue_type,
