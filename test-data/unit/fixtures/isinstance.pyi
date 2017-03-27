@@ -20,3 +20,4 @@ class float: pass
 class bool(int): pass
 class str:
     def __add__(self, other: 'str') -> 'str': pass
+class ellipsis: pass

@@ -18,7 +18,9 @@ from functools import wraps
 import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set
-from mypy.sharedparse import special_function_elide_names, argument_elide_name
+from mypy.sharedparse import (
+    special_function_elide_names, argument_elide_name,
+)
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
@@ -31,7 +33,7 @@ from mypy.nodes import (
     UnaryExpr, LambdaExpr, ComparisonExpr, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     Expression, Statement, BackquoteExpr, PrintStmt, ExecStmt,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart,
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType
@@ -225,12 +227,18 @@ class ASTConverter(ast27.NodeTransformer):
 
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
         ret = []  # type: List[Statement]
-        current_overload = []
+        current_overload = []  # type: List[OverloadPart]
         current_overload_name = None
-        # mypy doesn't actually check that the decorator is literally @overload
         for stmt in stmts:
-            if isinstance(stmt, Decorator) and stmt.name() == current_overload_name:
+            if (isinstance(stmt, Decorator)
+                    and stmt.name() == current_overload_name):
                 current_overload.append(stmt)
+            elif (isinstance(stmt, FuncDef)
+                  and stmt.name() == current_overload_name
+                  and stmt.name() is not None):
+                ret.append(OverloadedFuncDef(current_overload + [stmt]))
+                current_overload = []
+                current_overload_name = None
             else:
                 if len(current_overload) == 1:
                     ret.append(current_overload[0])

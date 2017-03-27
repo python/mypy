@@ -1256,6 +1256,8 @@ class B: pass
 
 
 [case testGenericArgumentInOverload]
+from foo import *
+[file foo.pyi]
 from typing import overload, List
 class A: pass
 class B: pass
@@ -1275,6 +1277,8 @@ b = f(b)
 [builtins fixtures/list.pyi]
 
 [case testGenericFunctionAsOverloadItem]
+from foo import *
+[file foo.pyi]
 from typing import overload, TypeVar, List
 T = TypeVar('T')
 class A: pass

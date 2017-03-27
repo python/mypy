@@ -382,6 +382,9 @@ class FuncBase(Node):
         return self._fullname
 
 
+OverloadPart = Union['FuncDef', 'Decorator']
+
+
 class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     """A logical node representing all the variants of an overloaded function.
 
@@ -389,14 +392,16 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     Overloaded variants must be consecutive in the source file.
     """
 
-    items = None  # type: List[Decorator]
+    items = None  # type: List[OverloadPart]
+    impl = None  # type: Optional[OverloadPart]
 
-    def __init__(self, items: List['Decorator']) -> None:
+    def __init__(self, items: List['OverloadPart']) -> None:
         self.items = items
+        self.impl = None
         self.set_line(items[0].line)
 
     def name(self) -> str:
-        return self.items[0].func.name()
+        return self.items[0].name()
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
@@ -407,12 +412,17 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
                 'type': None if self.type is None else self.type.serialize(),
                 'fullname': self._fullname,
                 'is_property': self.is_property,
+                'impl': None if self.impl is None else self.impl.serialize()
                 }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'OverloadedFuncDef':
         assert data['.class'] == 'OverloadedFuncDef'
-        res = OverloadedFuncDef([Decorator.deserialize(d) for d in data['items']])
+        res = OverloadedFuncDef([
+            cast(OverloadPart, SymbolNode.deserialize(d))
+            for d in data['items']])
+        if data.get('impl') is not None:
+            res.impl = cast(OverloadPart, SymbolNode.deserialize(data['impl']))
         if data.get('type') is not None:
             res.type = mypy.types.deserialize_type(data['type'])
         res._fullname = data['fullname']
@@ -550,6 +560,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_func_def(self)
 
+    def get_body(self) -> Optional['Block']:
+        return self.body
+
     def serialize(self) -> JsonDict:
         # We're deliberating omitting arguments and storing only arg_names and
         # arg_kinds for space-saving reasons (arguments is not used in later
@@ -598,6 +611,7 @@ class Decorator(SymbolNode, Statement):
     func = None  # type: FuncDef                # Decorated function
     decorators = None  # type: List[Expression] # Decorators, at least one  # XXX Not true
     var = None  # type: Var                     # Represents the decorated function obj
+    type = None  # type: mypy.types.Type
     is_overload = False
 
     def __init__(self, func: FuncDef, decorators: List[Expression],
@@ -609,6 +623,9 @@ class Decorator(SymbolNode, Statement):
 
     def name(self) -> str:
         return self.func.name()
+
+    def get_body(self) -> Optional['Block']:
+        return self.func.body
 
     def fullname(self) -> str:
         return self.func.fullname()

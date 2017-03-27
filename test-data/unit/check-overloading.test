@@ -1,7 +1,119 @@
 -- Test cases for function overloading
 
+[case testTypeCheckOverloadWithImplementation]
+from typing import overload, Any
+@overload
+def f(x: 'A') -> 'B': ...
+@overload
+def f(x: 'B') -> 'A': ...
+
+def f(x: Any) -> Any:
+    pass
+
+reveal_type(f(A())) # E: Revealed type is '__main__.B'
+reveal_type(f(B())) # E: Revealed type is '__main__.A'
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeCheckOverloadWithImplementationPy2]
+# flags: --python-version 2.7
+
+from typing import overload
+@overload
+def f(x):
+    # type: (A) -> B
+    pass
+
+@overload
+def f(x):
+    # type: (B) -> A
+    pass
+
+def f(x):
+    pass
+
+reveal_type(f(A()))  # E: Revealed type is '__main__.B'
+reveal_type(f(B()))  # E: Revealed type is '__main__.A'
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeCheckOverloadWithImplementationError]
+from typing import overload, Any
+
+@overload
+def f(x: 'A') -> 'B': ...
+@overload
+def f(x: 'B') -> 'A': ...
+
+def f(x: Any) -> Any:
+    foo = 1
+    foo = "bar"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+@overload
+def g(x: 'A') -> 'B': ...
+@overload
+def g(x: 'B') -> 'A': ...
+
+def g(x):
+    foo = 1
+    foo = "bar"
+
+reveal_type(f(A()))  # E: Revealed type is '__main__.B'
+reveal_type(f(B()))  # E: Revealed type is '__main__.A'
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeCheckOverloadWithImplTooSpecificArg]
+from typing import overload, Any
+
+class A: pass
+class B: pass
+
+a = A()
+
+@overload
+def f(x: 'A') -> 'B': ...
+@overload
+def f(x: 'B') -> 'A': ...
+
+def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept all possible arguments of signature 2
+    pass
+
+reveal_type(f(A())) # E: Revealed type is '__main__.B'
+reveal_type(f(B())) # E: Revealed type is '__main__.A'
+
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeCheckOverloadWithImplTooSpecificRetType]
+from typing import overload, Any
+
+class A: pass
+class B: pass
+
+a = A()
+
+@overload
+def f(x: 'A') -> 'B': ...
+@overload
+def f(x: 'B') -> 'A': ...
+
+def f(x: Any) -> 'B': # E: Overloaded function implementation cannot produce return type of signature 2
+    return B()
+
+reveal_type(f(A())) # E: Revealed type is '__main__.B'
+reveal_type(f(B())) # E: Revealed type is '__main__.A'
+
+[builtins fixtures/isinstance.pyi]
 
 [case testTypeCheckOverloadedFunctionBody]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(x: 'A'):
@@ -16,6 +128,8 @@ class B: pass
 [out]
 
 [case testTypeCheckOverloadedMethodBody]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class A:
     @overload
@@ -30,8 +144,10 @@ class B: pass
 [out]
 
 [case testCallToOverloadedFunction]
+from foo import *
+[file foo.pyi]
 from typing import overload
-f(C()) # E: No overload variant of "f" matches argument types [__main__.C]
+f(C()) # E: No overload variant of "f" matches argument types [foo.C]
 f(A())
 f(B())
 
@@ -45,6 +161,8 @@ class B: pass
 class C: pass
 
 [case testOverloadedFunctionReturnValue]
+from foo import *
+[file foo.pyi]
 from typing import overload
 a, b = None, None # type: (A, B)
 b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -60,8 +178,10 @@ class A: pass
 class B: pass
 
 [case testCallToOverloadedMethod]
+from foo import *
+[file foo.pyi]
 from typing import overload
-A().f(C()) # E: No overload variant of "f" of "A" matches argument types [__main__.C]
+A().f(C()) # E: No overload variant of "f" of "A" matches argument types [foo.C]
 A().f(A())
 A().f(B())
 
@@ -75,6 +195,8 @@ class B: pass
 class C: pass
 
 [case testOverloadedMethodReturnValue]
+from foo import *
+[file foo.pyi]
 from typing import overload
 a, b = None, None # type: (A, B)
 b = a.f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -90,15 +212,17 @@ class A:
 class B: pass
 
 [case testOverloadsWithDifferentArgumentCounts]
+from foo import *
+[file foo.pyi]
 from typing import overload
 a, b = None, None # type: (A, B)
 a = f(a)
 b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-f(b)     # E: No overload variant of "f" matches argument types [__main__.B]
+f(b)     # E: No overload variant of "f" matches argument types [foo.B]
 b = f(b, a)
 a = f(b, a) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-f(a, a)     # E: No overload variant of "f" matches argument types [__main__.A, __main__.A]
-f(b, b)     # E: No overload variant of "f" matches argument types [__main__.B, __main__.B]
+f(a, a)     # E: No overload variant of "f" matches argument types [foo.A, foo.A]
+f(b, b)     # E: No overload variant of "f" matches argument types [foo.B, foo.B]
 
 @overload
 def f(x: 'A') -> 'A': pass
@@ -108,6 +232,8 @@ class A: pass
 class B: pass
 
 [case testGenericOverloadVariant]
+from foo import *
+[file foo.pyi]
 from typing import overload, TypeVar, Generic
 t = TypeVar('t')
 ab, ac, b, c = None, None, None, None # type: (A[B], A[C], B, C)
@@ -125,6 +251,8 @@ class B: pass
 class C: pass
 
 [case testOverloadedInit]
+from foo import *
+[file foo.pyi]
 from typing import overload
 a, b = None, None # type: (A, B)
 a = A(a)
@@ -139,6 +267,8 @@ class A:
 class B: pass
 
 [case testIntersectionTypeCompatibility]
+from foo import *
+[file foo.pyi]
 from typing import overload, Callable
 o = None # type: object
 a = None # type: A
@@ -153,6 +283,8 @@ def f(a: Callable[[], None]) -> None: pass
 class A: pass
 
 [case testCompatibilityOfIntersectionTypeObjectWithStdType]
+from foo import *
+[file foo.pyi]
 from typing import overload
 t, a = None, None # type: (type, A)
 
@@ -167,6 +299,8 @@ class A:
 class B: pass
 
 [case testOverloadedGetitem]
+from foo import *
+[file foo.pyi]
 from typing import overload
 a, b = None, None # type: int, str
 a = A()[a]
@@ -181,6 +315,8 @@ class A:
     def __getitem__(self, b: str) -> str: pass
 
 [case testOverloadedGetitemWithGenerics]
+from foo import *
+[file foo.pyi]
 from typing import TypeVar, Generic, overload
 t = TypeVar('t')
 a, b, c = None, None, None # type: (A, B, C[A])
@@ -198,6 +334,8 @@ class A: pass
 class B: pass
 
 [case testImplementingOverloadedMethod]
+from foo import *
+[file foo.pyi]
 from typing import overload
 from abc import abstractmethod, ABCMeta
 
@@ -215,6 +353,8 @@ class A(I):
     def f(self, a: 'A') -> None: pass
 
 [case testOverloadWithFunctionType]
+from foo import *
+[file foo.pyi]
 from typing import overload, Callable
 class A: pass
 @overload
@@ -226,6 +366,8 @@ f(A())
 [builtins fixtures/function.pyi]
 
 [case testVarArgsOverload]
+from foo import *
+[file foo.pyi]
 from typing import overload, Any
 @overload
 def f(x: 'A', *more: Any) -> 'A': pass
@@ -242,6 +384,8 @@ class B: pass
 [builtins fixtures/list.pyi]
 
 [case testVarArgsOverload2]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(x: 'A', *more: 'B') -> 'A': pass
@@ -249,13 +393,15 @@ def f(x: 'A', *more: 'B') -> 'A': pass
 def f(x: 'B', *more: 'A') -> 'A': pass
 f(A(), B())
 f(A(), B(), B())
-f(A(), A(), B()) # E: No overload variant of "f" matches argument types [__main__.A, __main__.A, __main__.B]
-f(A(), B(), A()) # E: No overload variant of "f" matches argument types [__main__.A, __main__.B, __main__.A]
+f(A(), A(), B()) # E: No overload variant of "f" matches argument types [foo.A, foo.A, foo.B]
+f(A(), B(), A()) # E: No overload variant of "f" matches argument types [foo.A, foo.B, foo.A]
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
 
 [case testOverloadWithTypeObject]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(a: 'A', t: type) -> None: pass
@@ -268,6 +414,8 @@ class B: pass
 [builtins fixtures/function.pyi]
 
 [case testOverloadedInitAndTypeObjectInOverload]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(t: type) -> 'A': pass
@@ -287,6 +435,8 @@ class B:
     pass
 
 [case testOverlappingErasedSignatures]
+from foo import *
+[file foo.pyi]
 from typing import overload, List
 @overload
 def f(a: List[int]) -> int: pass
@@ -305,6 +455,8 @@ f(list_object) # E: Argument 1 to "f" has incompatible type List[object]; expect
 [builtins fixtures/list.pyi]
 
 [case testOverlappingOverloadSignatures]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class A: pass
 class B(A): pass
@@ -314,6 +466,8 @@ def f(x: B) -> int: pass # E: Overloaded function signatures 1 and 2 overlap wit
 def f(x: A) -> str: pass
 
 [case testContravariantOverlappingOverloadSignatures]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class A: pass
 class B(A): pass
@@ -324,6 +478,8 @@ def f(x: B) -> B: pass # This is more specific than the first item, and thus
                        # will never be called.
 
 [case testPartiallyCovariantOverlappingOverloadSignatures]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class A: pass
 class B(A): pass
@@ -333,6 +489,8 @@ def f(x: B) -> A: pass # E: Overloaded function signatures 1 and 2 overlap with 
 def f(x: A) -> B: pass
 
 [case testPartiallyContravariantOverloadSignatures]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class A: pass
 class B(A): pass
@@ -342,6 +500,8 @@ def g(x: A) -> int: pass # Fine, since A us supertype of B.
 def g(x: B) -> str: pass
 
 [case testCovariantOverlappingOverloadSignatures]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class A: pass
 class B(A): pass
@@ -351,6 +511,8 @@ def g(x: B) -> B: pass
 def g(x: A) -> A: pass
 
 [case testCovariantOverlappingOverloadSignaturesWithSomeSameArgTypes]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class A: pass
 class B(A): pass
@@ -360,6 +522,8 @@ def g(x: int, y: B) -> B: pass
 def g(x: int, y: A) -> A: pass
 
 [case testCovariantOverlappingOverloadSignaturesWithAnyType]
+from foo import *
+[file foo.pyi]
 from typing import Any, overload
 @overload
 def g(x: int) -> int: pass
@@ -367,6 +531,8 @@ def g(x: int) -> int: pass
 def g(x: Any) -> Any: pass
 
 [case testContravariantOverlappingOverloadSignaturesWithAnyType]
+from foo import *
+[file foo.pyi]
 from typing import Any, overload
 @overload
 def g(x: Any) -> Any: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
@@ -374,6 +540,8 @@ def g(x: Any) -> Any: pass # E: Overloaded function signatures 1 and 2 overlap w
 def g(x: int) -> int: pass
 
 [case testOverloadedLtAndGtMethods]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class A:
     def __lt__(self, x: A) -> int: pass
@@ -395,6 +563,8 @@ A() < object() # E: Unsupported operand types for < ("A" and "object")
 B() < object() # E: No overload variant of "__lt__" of "B" matches argument types [builtins.object]
 
 [case testOverloadedForwardMethodAndCallingReverseMethod]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class A:
     @overload
@@ -409,6 +579,8 @@ A() + B()
 A() + '' # E: No overload variant of "__add__" of "A" matches argument types [builtins.str]
 
 [case testOverrideOverloadedMethodWithMoreGeneralArgumentTypes]
+from foo import *
+[file foo.pyi]
 from typing import overload
 
 class IntSub(int): pass
@@ -427,6 +599,8 @@ class B(A):
 [out]
 
 [case testOverrideOverloadedMethodWithMoreSpecificArgumentTypes]
+from foo import *
+[file foo.pyi]
 from typing import overload
 
 class IntSub(int): pass
@@ -453,10 +627,12 @@ class D(A):
     @overload
     def f(self, x: str) -> str: return ''
 [out]
-main:12: error: Signature of "f" incompatible with supertype "A"
-main:17: error: Signature of "f" incompatible with supertype "A"
+tmp/foo.pyi:12: error: Signature of "f" incompatible with supertype "A"
+tmp/foo.pyi:17: error: Signature of "f" incompatible with supertype "A"
 
 [case testOverloadingAndDucktypeCompatibility]
+from foo import *
+[file foo.pyi]
 from typing import overload, _promote
 
 class A: pass
@@ -475,6 +651,8 @@ f(B()) + 'x'  # E: Unsupported left operand type for + ("B")
 f(A()) + 'x'  # E: Unsupported left operand type for + ("A")
 
 [case testOverloadingAndIntFloatSubtyping]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(x: float) -> None: pass
@@ -488,6 +666,8 @@ f(()) # E: No overload variant of "f" matches argument types [Tuple[]]
 [out]
 
 [case testOverloadingVariableInputs]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(x: int, y: int) -> None: pass
@@ -501,6 +681,8 @@ f(*z)
 [out]
 
 [case testTypeInferenceSpecialCaseWithOverloading]
+from foo import *
+[file foo.pyi]
 from typing import overload
 
 class A:
@@ -516,6 +698,8 @@ def f(x: B) -> B: pass
 f(A() + B())() # E: "B" not callable
 
 [case testKeywordArgOverload]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(x: int, y: str) -> int: pass
@@ -525,6 +709,8 @@ f(x=1, y='')() # E: "int" not callable
 f(y=1, x='')() # E: "str" not callable
 
 [case testIgnoreOverloadVariantBasedOnKeywordArg]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(x: int) -> int: pass
@@ -534,6 +720,8 @@ f(x=1)() # E: "int" not callable
 f(y=1)() # E: "str" not callable
 
 [case testOverloadWithTupleVarArg]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(x: int, y: str) -> int: pass
@@ -545,6 +733,8 @@ f(*(1, ''))() # E: "int" not callable
 f(*(1, '', 1))() # E: No overload variant of "f" matches argument types [Tuple[builtins.int, builtins.str, builtins.int]]
 
 [case testPreferExactSignatureMatchInOverload]
+from foo import *
+[file foo.pyi]
 from typing import overload, List
 @overload
 def f(x: int, y: List[int] = None) -> int: pass
@@ -557,6 +747,8 @@ a() # E: "int" not callable
 [builtins fixtures/list.pyi]
 
 [case testOverloadWithDerivedFromAny]
+from foo import *
+[file foo.pyi]
 from typing import Any, overload
 Base = None  # type: Any
 
@@ -573,6 +765,8 @@ C(Derived())  # fails without the hack
 C(Base())  # Always ok
 
 [case testOverloadWithBoundedTypeVar]
+from foo import *
+[file foo.pyi]
 from typing import overload, TypeVar
 T = TypeVar('T', bound=str)
 @overload
@@ -588,6 +782,8 @@ f(mystr())() # E: "mystr" not callable
 [builtins fixtures/primitives.pyi]
 
 [case testOverloadedCallWithVariableTypes]
+from foo import *
+[file foo.pyi]
 from typing import overload, TypeVar, List
 T = TypeVar('T', bound=str)
 @overload
@@ -608,6 +804,8 @@ def g(x: U, y: V) -> None:
 [out]
 
 [case testOverlapWithTypeVars]
+from foo import *
+[file foo.pyi]
 from typing import overload, TypeVar, Sequence
 T = TypeVar('T', bound=str)
 @overload
@@ -616,9 +814,11 @@ def f(x: Sequence[T]) -> None: pass
 def f(x: Sequence[int]) -> int: pass
 # These are considered overlapping despite the bound on T due to runtime type erasure.
 [out]
-main:4: error: Overloaded function signatures 1 and 2 overlap with incompatible return types
+tmp/foo.pyi:4: error: Overloaded function signatures 1 and 2 overlap with incompatible return types
 
 [case testOverlapWithTypeVarsWithValues]
+from foo import *
+[file foo.pyi]
 from typing import overload, TypeVar
 AnyStr = TypeVar('AnyStr', bytes, str)
 
@@ -646,6 +846,8 @@ g(1, 'foo', b'bar') # E: Type argument 1 of "g" has incompatible value "object"
 [builtins fixtures/primitives.pyi]
 
 [case testBadOverlapWithTypeVarsWithValues]
+from foo import *
+[file foo.pyi]
 from typing import overload, TypeVar
 AnyStr = TypeVar('AnyStr', bytes, str)
 
@@ -656,6 +858,8 @@ def f(x: str) -> bool: pass
 [builtins fixtures/primitives.pyi]
 
 [case testOverlappingOverloadCounting]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class A: pass
 class B(A): pass
@@ -667,6 +871,8 @@ def f(x: B) -> str: pass # E: Overloaded function signatures 2 and 3 overlap wit
 def f(x: A) -> int: pass
 
 [case testOverloadWithTupleMatchingTypeVar]
+from foo import *
+[file foo.pyi]
 from typing import TypeVar, Generic, Tuple, overload
 
 T = TypeVar('T')
@@ -683,25 +889,32 @@ b = A()  # type: A[Tuple[int, int]]
 b.f((0, 0))
 b.f((0, '')) # E: Argument 1 to "f" of "A" has incompatible type "Tuple[int, str]"; expected "Tuple[int, int]"
 
-[case testSingleOverload]
+[case testSingleOverloadStub]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(a: int) -> None: pass
-def f(a: str) -> None: pass
+def f(a: int) -> None: pass
 [out]
-main:2: error: Single overload definition, multiple required
-main:4: error: Name 'f' already defined
+tmp/foo.pyi:2: error: Single overload definition, multiple required
+tmp/foo.pyi:4: error: Implementations of overloaded functions not allowed in stub files
+
 
 [case testSingleOverload2]
+from foo import *
+[file foo.pyi]
 from typing import overload
 def f(a: int) -> None: pass
 @overload
 def f(a: str) -> None: pass
 [out]
-main:3: error: Name 'f' already defined
-main:3: error: Single overload definition, multiple required
+tmp/foo.pyi:3: error: Name 'f' already defined
+tmp/foo.pyi:3: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloads]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(a: int) -> None: pass
@@ -709,31 +922,37 @@ def f(a: int) -> None: pass
 @overload
 def f(a: str) -> None: pass
 [out]
-main:2: error: Single overload definition, multiple required
-main:5: error: Name 'f' already defined
-main:5: error: Single overload definition, multiple required
+tmp/foo.pyi:5: error: Name 'f' already defined
+tmp/foo.pyi:2: error: Single overload definition, multiple required
+tmp/foo.pyi:5: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloadsMissingFirstOverload]
+from foo import *
+[file foo.pyi]
 from typing import overload
 def f(a: int) -> None: pass
 1
 @overload
 def f(a: str) -> None: pass
 [out]
-main:4: error: Name 'f' already defined
-main:4: error: Single overload definition, multiple required
+tmp/foo.pyi:4: error: Name 'f' already defined
+tmp/foo.pyi:4: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloadsMissingLaterOverload]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(a: int) -> None: pass
 1
 def f(a: str) -> None: pass
 [out]
-main:2: error: Single overload definition, multiple required
-main:5: error: Name 'f' already defined
+tmp/foo.pyi:5: error: Name 'f' already defined
+tmp/foo.pyi:2: error: Single overload definition, multiple required
 
 [case testOverloadTuple]
+from foo import *
+[file foo.pyi]
 from typing import overload, Tuple
 @overload
 def f(x: int, y: Tuple[str, ...]) -> None: pass
@@ -751,6 +970,8 @@ f(1, y) # E: Argument 2 to "f" has incompatible type Tuple[int, ...]; expected T
 [builtins fixtures/tuple.pyi]
 
 [case testCallableSpecificOverload]
+from foo import *
+[file foo.pyi]
 from typing import overload, Callable
 @overload
 def f(a: Callable[[], int]) -> None: pass
