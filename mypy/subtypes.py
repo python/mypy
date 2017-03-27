@@ -683,7 +683,13 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
             # This is also unsound because of __init__.
             return right.is_type_obj() and is_proper_subtype(left.item, right.ret_type)
         if isinstance(right, Instance):
-            if right.type.fullname() in ('builtins.type', 'builtins.object'):
+            if right.type.fullname() == 'builtins.type':
+                # TODO: Strictly speaking, the type builtins.type is considered equivalent to
+                #       Type[Any]. However, this would break the is_proper_subtype check in
+                #       conditional_type_map for cases like isinstance(x, type) when the type
+                #       of x is Type[int]. It's unclear what's the right way to address this.
+                return True
+            if right.type.fullname() == 'builtins.object':
                 return True
         return False
 

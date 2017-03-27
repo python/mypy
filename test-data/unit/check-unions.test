@@ -346,6 +346,7 @@ def u(x: T, y: S) -> Union[S, T]: pass
 t_o = None  # type: Type[object]
 t_s = None  # type: Type[str]
 t_a = None  # type: Type[Any]
+t = None    # type: type
 
 # Union with object
 reveal_type(u(t_o, object())) # E: Revealed type is 'builtins.object*'
@@ -362,6 +363,12 @@ reveal_type(u(t_s, t_o)) # E: Revealed type is 'Type[builtins.object]'
 reveal_type(u(t_o, t_s)) # E: Revealed type is 'Type[builtins.object]'
 reveal_type(u(t_o, type)) # E: Revealed type is 'Type[builtins.object]'
 reveal_type(u(type, t_o)) # E: Revealed type is 'Type[builtins.object]'
+reveal_type(u(t_a, t)) # E: Revealed type is 'builtins.type*'
+reveal_type(u(t, t_a)) # E: Revealed type is 'builtins.type*'
+# The following should arguably not be simplified, but it's unclear how to fix then
+# without causing regressions elsewhere.
+reveal_type(u(t_o, t)) # E: Revealed type is 'builtins.type*'
+reveal_type(u(t, t_o)) # E: Revealed type is 'builtins.type*'
 
 [case testNotSimplifyingUnionWithMetaclass]
 from typing import TypeVar, Union, Type, Any
