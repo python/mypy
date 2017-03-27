@@ -48,8 +48,8 @@ from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import StatementVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
+from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
-from mypy.binder import ConditionalTypeBinder
 from mypy.options import Options
 
 from mypy import experiments
@@ -656,6 +656,8 @@ class TypeChecker(StatementVisitor[None]):
                             self.fail(msg, defn)
                             if note:
                                 self.note(note, defn)
+                        if defn.is_class and isinstance(arg_type, CallableType):
+                            arg_type.is_classmethod_class = True
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
@@ -1208,11 +1210,18 @@ class TypeChecker(StatementVisitor[None]):
                 else:
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
+                # Special case: only non-abstract classes can be assigned to variables
+                # with explicit type Type[A].
+                if (isinstance(rvalue_type, CallableType) and rvalue_type.is_type_obj() and
+                        rvalue_type.type_object().is_abstract and
+                        isinstance(lvalue_type, TypeType) and
+                        isinstance(lvalue_type.item, Instance) and
+                        lvalue_type.item.type.is_abstract):
+                    self.fail("Can only assign non-abstract classes"
+                              " to a variable of type '{}'".format(lvalue_type), rvalue)
+                    return
                 if rvalue_type and infer_lvalue_type:
-                    self.binder.assign_type(lvalue,
-                                            rvalue_type,
-                                            lvalue_type,
-                                            False)
+                    self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
@@ -1915,7 +1924,6 @@ class TypeChecker(StatementVisitor[None]):
 
         # If this is asserting some isinstance check, bind that type in the following code
         true_map, _ = self.find_isinstance_check(s.expr)
-
         self.push_type_map(true_map)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
@@ -2159,10 +2167,8 @@ class TypeChecker(StatementVisitor[None]):
             s.expr.accept(self.expr_checker)
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
-                    self.binder.assign_type(elt,
-                                            DeletedType(source=elt.name),
-                                            self.binder.get_declaration(elt),
-                                            False)
+                    self.binder.assign_type(elt, DeletedType(source=elt.name),
+                                            get_declaration(elt), False)
 
     def visit_decorator(self, e: Decorator) -> None:
         for d in e.decorators:
@@ -2451,7 +2457,7 @@ class TypeChecker(StatementVisitor[None]):
             self.binder.unreachable()
         else:
             for expr, type in type_map.items():
-                self.binder.push(expr, type)
+                self.binder.put(expr, type)
 
 # Data structure returned by find_isinstance_check representing
 # information learned from the truth or falsehood of a condition.  The
