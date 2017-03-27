@@ -1438,3 +1438,13 @@ def f(x: T) -> None:
         reveal_type(x) # E: Revealed type is 'T`-1'
     reveal_type(x) # E: Revealed type is 'T`-1'
 [builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceAndTypeType]
+from typing import Type
+def f(x: Type[int]) -> None:
+    if isinstance(x, type):
+        reveal_type(x) # E: Revealed type is 'Type[builtins.int]'
+    else:
+        reveal_type(x)  # Unreachable
+    reveal_type(x) # E: Revealed type is 'Type[builtins.int]'
+[builtins fixtures/isinstancelist.pyi]
