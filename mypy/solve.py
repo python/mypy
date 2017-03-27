@@ -3,7 +3,7 @@
 from typing import List, Dict
 from collections import defaultdict
 
-from mypy.types import Type, Void, NoneTyp, AnyType, ErrorType, UninhabitedType, TypeVarId
+from mypy.types import Type, NoneTyp, AnyType, ErrorType, UninhabitedType, TypeVarId
 from mypy.constraints import Constraint, SUPERTYPE_OF
 from mypy.join import join_types
 from mypy.meet import meet_types
@@ -57,12 +57,9 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
             if top:
                 candidate = top
             else:
-                # No constraints for type variable -- type 'None' is the most specific type.
+                # No constraints for type variable -- 'UninhabitedType' is the most specific type.
                 if strict:
-                    if experiments.STRICT_OPTIONAL:
-                        candidate = UninhabitedType()
-                    else:
-                        candidate = NoneTyp()
+                    candidate = UninhabitedType()
                 else:
                     candidate = AnyType()
         elif top is None:

@@ -13,7 +13,7 @@ b = None # type: B
 
 ao = f()
 ab = f()
-b = f() # E: Incompatible types in assignment (expression has type A[None], variable has type "B")
+b = f() # E: Incompatible types in assignment (expression has type A[<uninhabited>], variable has type "B")
 
 def f() -> 'A[T]': pass
 
@@ -29,7 +29,7 @@ b = None # type: B
 
 ao = A()
 ab = A()
-b = A() # E: Incompatible types in assignment (expression has type A[None], variable has type "B")
+b = A() # E: Incompatible types in assignment (expression has type A[<uninhabited>], variable has type "B")
 
 class A(Generic[T]): pass
 class B: pass
@@ -334,7 +334,7 @@ aa = None # type: List[A]
 ao = None # type: List[object]
 a = None # type: A
 
-a = [] # E: Incompatible types in assignment (expression has type List[None], variable has type "A")
+a = [] # E: Incompatible types in assignment (expression has type List[<uninhabited>], variable has type "A")
 
 aa = []
 ao = []
@@ -385,7 +385,7 @@ class B(A): pass
 import typing
 def f() -> None:
     a = []     # E: Need type annotation for variable
-    b = [None]  # E: Need type annotation for variable
+    b = [None]
     c = [B()]
     c = [object()] # E: List item 0 has incompatible type "object"
     c = [B()]
@@ -484,6 +484,8 @@ class D: pass
 [out]
 
 [case testIntersectionWithInferredGenericArgument]
+from foo import *
+[file foo.pyi]
 from typing import overload, TypeVar, Generic
 T = TypeVar('T')
 f(A())
@@ -644,6 +646,8 @@ f( # E: Argument 1 to "f" has incompatible type Callable[[A], A]; expected Calla
 
 
 [case testMapWithOverloadedFunc]
+from foo import *
+[file foo.pyi]
 from typing import TypeVar, Callable, List, overload, Any
 t = TypeVar('t')
 s = TypeVar('s')
@@ -755,7 +759,7 @@ T = TypeVar('T')
 def f(x: Union[List[T], str]) -> None: pass
 f([1])
 f('')
-f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[List[None], str]"
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[List[<uninhabited>], str]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIgnoringInferenceContext]
@@ -824,7 +828,7 @@ from typing import TypeVar, Callable, Generic
 T = TypeVar('T')
 class A(Generic[T]):
     pass
-reveal_type(A()) # E: Revealed type is '__main__.A[builtins.None]'
+reveal_type(A()) # E: Revealed type is '__main__.A[<uninhabited>]'
 b = reveal_type(A())  # type: A[int] # E: Revealed type is '__main__.A[builtins.int]'
 
 [case testUnionWithGenericTypeItemContext]
@@ -877,4 +881,17 @@ class M(Generic[_KT, _VT]):
     def get(self, k: _KT, default: _T) -> _T: ...
 
 def f(d: M[_KT, _VT], k: _KT) -> _VT:
+    return d.get(k, None)  # E: "get" of "M" does not return a value
+
+[case testGenericMethodCalledInGenericContext2]
+from typing import TypeVar, Generic, Union
+
+_KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
+_T = TypeVar('_T')
+
+class M(Generic[_KT, _VT]):
+    def get(self, k: _KT, default: _T) -> Union[_VT, _T]: ...
+
+def f(d: M[_KT, _VT], k: _KT) -> Union[_VT, None]:
     return d.get(k, None)

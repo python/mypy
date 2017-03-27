@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
-    Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVarType,
+    Type, AnyType, TypeVisitor, UnboundType, ErrorType, NoneTyp, TypeVarType,
     Instance, CallableType, TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType,
     DeletedType, UninhabitedType, TypeType
 )
@@ -104,11 +104,12 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     elif isinstance(t, TypeType) or isinstance(s, TypeType):
         # If exactly only one of t or s is a TypeType, check if one of them
         # is an `object` or a `type` and otherwise assume no overlap.
+        one = t if isinstance(t, TypeType) else s
         other = s if isinstance(t, TypeType) else t
         if isinstance(other, Instance):
             return other.type.fullname() in {'builtins.object', 'builtins.type'}
         else:
-            return False
+            return isinstance(other, CallableType) and is_subtype(other, one)
     if experiments.STRICT_OPTIONAL:
         if isinstance(t, NoneTyp) != isinstance(s, NoneTyp):
             # NoneTyp does not overlap with other non-Union types under strict Optional checking
@@ -123,7 +124,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         self.s = s
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
+        if isinstance(self.s, ErrorType):
             return ErrorType()
         elif isinstance(self.s, NoneTyp):
             if experiments.STRICT_OPTIONAL:
@@ -155,12 +156,6 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                      for x in t.items]
         return UnionType.make_simplified_union(meets)
 
-    def visit_void(self, t: Void) -> Type:
-        if isinstance(self.s, Void):
-            return t
-        else:
-            return ErrorType()
-
     def visit_none_type(self, t: NoneTyp) -> Type:
         if experiments.STRICT_OPTIONAL:
             if isinstance(self.s, NoneTyp) or (isinstance(self.s, Instance) and
@@ -169,19 +164,19 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             else:
                 return UninhabitedType()
         else:
-            if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
+            if not isinstance(self.s, ErrorType):
                 return t
             else:
                 return ErrorType()
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
-        if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
+        if not isinstance(self.s, ErrorType):
             return t
         else:
             return ErrorType()
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
-        if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
+        if not isinstance(self.s, ErrorType):
             if isinstance(self.s, NoneTyp):
                 if experiments.STRICT_OPTIONAL:
                     return t
@@ -293,7 +288,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def default(self, typ: Type) -> Type:
         if isinstance(typ, UnboundType):
             return AnyType()
-        elif isinstance(typ, Void) or isinstance(typ, ErrorType):
+        elif isinstance(typ, ErrorType):
             return ErrorType()
         else:
             if experiments.STRICT_OPTIONAL:

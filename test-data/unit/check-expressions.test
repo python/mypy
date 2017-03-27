@@ -806,7 +806,8 @@ main:4: error: Incompatible types in assignment (expression has type "A", target
 main:5: error: Unsupported target for indexed assignment
 
 [case testOverloadedIndexing]
-
+from foo import *
+[file foo.pyi]
 from typing import overload
 
 a, b, c = None, None, None  # type: (A, B, C)
@@ -921,8 +922,8 @@ a = None # type: A
 f() + a     # E: "f" does not return a value
 a + f()     # E: "f" does not return a value
 f() == a    # E: "f" does not return a value
-a != f()    # E: Unsupported left operand type for != ("A")
-cast(A, f()) # E: "f" does not return a value
+a != f()    # E: "f" does not return a value
+cast(A, f())
 f().foo     # E: "f" does not return a value
 
 def f() -> None: pass
@@ -933,9 +934,9 @@ class A:
 [case testNoneReturnTypeWithExpressions2]
 
 a, b = None, None # type: (A, bool)
-a < f()    # E: Unsupported left operand type for < ("A")
+f() in a   # Fail (see output)
+a < f()    # E: "f" does not return a value
 f() <= a   # E: "f" does not return a value
-f() in a   # E: Unsupported right operand type for in ("A")
 a in f()   # E: "f" does not return a value
 -f()       # E: "f" does not return a value
 not f()    # E: "f" does not return a value
@@ -947,6 +948,9 @@ class A:
     def __add__(self, x: 'A') -> 'A':
         pass
 [builtins fixtures/bool.pyi]
+[out]
+main:3: error: "f" does not return a value
+main:3: error: Unsupported right operand type for in ("A")
 
 
 -- Slicing
@@ -1047,6 +1051,22 @@ a = None # type: Any
 
 [case testStringInterpolationInvalidPlaceholder]
 '%W' % 1  # E: Unsupported format character 'W'
+'%b' % 1  # E: Format character 'b' is only supported on bytes patterns
+
+[case testStringInterPolationPython2]
+# flags: --python-version 2.7
+b'%b' % 1  # E: Format character 'b' is only supported in Python 3.5 and later
+b'%s' % 1
+b'%a' % 1  # E: Format character 'a' is only supported in Python 3
+
+[case testBytesInterpolationBefore35]
+# flags: --python-version 3.4
+b'%b' % 1  # E: Unsupported left operand type for % ("bytes")
+
+[case testBytesInterpolation]
+b'%b' % 1  # E: Incompatible types in string interpolation (expression has type "int", placeholder has type "bytes")
+b'%b' % b'1'
+b'%a' % 3
 
 [case testStringInterpolationWidth]
 '%2f' % 3.14
@@ -1458,6 +1478,7 @@ def f(x: int) -> None:
 [out]
 main:1: error: The return type of a generator function should be "Generator" or one of its supertypes
 main:2: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+main:2: error: "f" does not return a value
 
 [case testYieldExpressionWithNone]
 from typing import Iterator

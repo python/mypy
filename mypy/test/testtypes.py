@@ -10,7 +10,7 @@ from mypy.expandtype import expand_type
 from mypy.join import join_types, join_simple
 from mypy.meet import meet_types
 from mypy.types import (
-    UnboundType, AnyType, Void, CallableType, TupleType, TypeVarDef, Type,
+    UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type,
     Instance, NoneTyp, ErrorType, Overloaded, TypeType, UnionType, UninhabitedType,
     true_only, false_only, TypeVarId
 )
@@ -38,9 +38,6 @@ class TypesSuite(Suite):
         u = UnboundType('Foo', [UnboundType('T'), AnyType()])
         assert_equal(str(u), 'Foo?[T?, Any]')
 
-    def test_void_type(self) -> None:
-        assert_equal(str(Void(None)), 'void')
-
     def test_callable_type(self) -> None:
         c = CallableType([self.x, self.y],
                          [ARG_POS, ARG_POS],
@@ -48,7 +45,7 @@ class TypesSuite(Suite):
                          AnyType(), self.function)
         assert_equal(str(c), 'def (X?, Y?) -> Any')
 
-        c2 = CallableType([], [], [], Void(None), None)
+        c2 = CallableType([], [], [], NoneTyp(), None)
         assert_equal(str(c2), 'def ()')
 
     def test_callable_type_with_default_args(self) -> None:
@@ -90,7 +87,7 @@ class TypesSuite(Suite):
 
         v = [TypeVarDef('Y', -1, None, self.fx.o),
              TypeVarDef('X', -2, None, self.fx.o)]
-        c2 = CallableType([], [], [], Void(None), self.function, name=None, variables=v)
+        c2 = CallableType([], [], [], NoneTyp(), self.function, name=None, variables=v)
         assert_equal(str(c2), 'def [Y, X] ()')
 
 
@@ -103,7 +100,7 @@ class TypeOpsSuite(Suite):
     # expand_type
 
     def test_trivial_expand(self) -> None:
-        for t in (self.fx.a, self.fx.o, self.fx.t, self.fx.void, self.fx.nonet,
+        for t in (self.fx.a, self.fx.o, self.fx.t, self.fx.nonet,
                   self.tuple(self.fx.a),
                   self.callable([], self.fx.a, self.fx.a), self.fx.anyt):
             self.assert_expand(t, [], t)
@@ -139,7 +136,7 @@ class TypeOpsSuite(Suite):
     # erase_type
 
     def test_trivial_erase(self) -> None:
-        for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.nonet,
+        for t in (self.fx.a, self.fx.o, self.fx.nonet,
                   self.fx.anyt, self.fx.err):
             self.assert_erase(t, t)
 
@@ -156,11 +153,11 @@ class TypeOpsSuite(Suite):
 
     def test_erase_with_function_type(self) -> None:
         self.assert_erase(self.fx.callable(self.fx.a, self.fx.b),
-                          self.fx.callable_type(self.fx.void))
+                          self.fx.callable_type(self.fx.nonet))
 
     def test_erase_with_type_object(self) -> None:
         self.assert_erase(self.fx.callable_type(self.fx.a, self.fx.b),
-                          self.fx.callable_type(self.fx.void))
+                          self.fx.callable_type(self.fx.nonet))
 
     def test_erase_with_type_type(self) -> None:
         self.assert_erase(self.fx.type_a, self.fx.type_a)
@@ -363,7 +360,7 @@ class JoinSuite(Suite):
         self.fx = TypeFixture()
 
     def test_trivial_cases(self) -> None:
-        for simple in self.fx.void, self.fx.a, self.fx.o, self.fx.b:
+        for simple in self.fx.a, self.fx.o, self.fx.b:
             self.assert_join(simple, simple, simple)
 
     def test_class_subtyping(self) -> None:
@@ -409,17 +406,6 @@ class JoinSuite(Suite):
         self.assert_join(self.fx.s, self.fx.s, self.fx.s)
         self.assert_join(self.fx.t, self.fx.s, self.fx.o)
 
-    def test_void(self) -> None:
-        self.assert_join(self.fx.void, self.fx.void, self.fx.void)
-        self.assert_join(self.fx.void, self.fx.anyt, self.fx.anyt)
-
-        # Join of any other type against void results in ErrorType, since there
-        # is no other meaningful result.
-        for t in [self.fx.a, self.fx.o, NoneTyp(), UnboundType('x'),
-                  self.fx.t, self.tuple(),
-                  self.callable(self.fx.a, self.fx.b)]:
-            self.assert_join(t, self.fx.void, self.fx.err)
-
     def test_none(self) -> None:
         # Any type t joined with None results in t.
         for t in [NoneTyp(), self.fx.a, self.fx.o, UnboundType('x'),
@@ -441,7 +427,7 @@ class JoinSuite(Suite):
     def test_any_type(self) -> None:
         # Join against 'Any' type always results in 'Any'.
         for t in [self.fx.anyt, self.fx.a, self.fx.o, NoneTyp(),
-                  UnboundType('x'), self.fx.void, self.fx.t, self.tuple(),
+                  UnboundType('x'), self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_join(t, self.fx.anyt, self.fx.anyt)
 
@@ -475,7 +461,7 @@ class JoinSuite(Suite):
 
         # Meet against any type except dynamic results in ErrorType.
         for t in [self.fx.a, self.fx.o, NoneTyp(), UnboundType('x'),
-                  self.fx.void, self.fx.t, self.tuple(),
+                  self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_join(t, self.fx.err, self.fx.err)
 
@@ -651,7 +637,7 @@ class MeetSuite(Suite):
         self.fx = TypeFixture()
 
     def test_trivial_cases(self) -> None:
-        for simple in self.fx.void, self.fx.a, self.fx.o, self.fx.b:
+        for simple in self.fx.a, self.fx.o, self.fx.b:
             self.assert_meet(simple, simple, simple)
 
     def test_class_subtyping(self) -> None:
@@ -694,25 +680,12 @@ class MeetSuite(Suite):
         self.assert_meet(self.fx.s, self.fx.s, self.fx.s)
         self.assert_meet(self.fx.t, self.fx.s, NoneTyp())
 
-    def test_void(self) -> None:
-        self.assert_meet(self.fx.void, self.fx.void, self.fx.void)
-        self.assert_meet(self.fx.void, self.fx.anyt, self.fx.void)
-
-        # Meet of any other type against void results in ErrorType, since there
-        # is no meaningful valid result.
-        for t in [self.fx.a, self.fx.o, UnboundType('x'), NoneTyp(),
-                  self.fx.t, self.tuple(),
-                  self.callable(self.fx.a, self.fx.b)]:
-            self.assert_meet(t, self.fx.void, self.fx.err)
-
     def test_none(self) -> None:
         self.assert_meet(NoneTyp(), NoneTyp(), NoneTyp())
 
         self.assert_meet(NoneTyp(), self.fx.anyt, NoneTyp())
-        self.assert_meet(NoneTyp(), self.fx.void, self.fx.err)
 
-        # Any type t joined with None results in None, unless t is any or
-        # void.
+        # Any type t joined with None results in None, unless t is Any.
         for t in [self.fx.a, self.fx.o, UnboundType('x'), self.fx.t,
                   self.tuple(), self.callable(self.fx.a, self.fx.b)]:
             self.assert_meet(t, NoneTyp(), NoneTyp())
@@ -721,12 +694,11 @@ class MeetSuite(Suite):
         self.assert_meet(UnboundType('x'), UnboundType('x'), self.fx.anyt)
         self.assert_meet(UnboundType('x'), UnboundType('y'), self.fx.anyt)
 
-        self.assert_meet(UnboundType('x'), self.fx.void, self.fx.err)
         self.assert_meet(UnboundType('x'), self.fx.anyt, UnboundType('x'))
 
-        # The meet of any type t with an unbound type results in dynamic
-        # (except for void). Unbound type means that there is an error
-        # somewhere in the program, so this does not affect type safety.
+        # The meet of any type t with an unbound type results in dynamic.
+        # Unbound type means that there is an error somewhere in the program,
+        # so this does not affect type safety.
         for t in [self.fx.a, self.fx.o, self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_meet(t, UnboundType('X'), self.fx.anyt)
@@ -734,7 +706,7 @@ class MeetSuite(Suite):
     def test_dynamic_type(self) -> None:
         # Meet against dynamic type always results in dynamic.
         for t in [self.fx.anyt, self.fx.a, self.fx.o, NoneTyp(),
-                  UnboundType('x'), self.fx.void, self.fx.t, self.tuple(),
+                  UnboundType('x'), self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_meet(t, self.fx.anyt, t)
 
@@ -743,7 +715,7 @@ class MeetSuite(Suite):
 
         # Meet against any type except dynamic results in ErrorType.
         for t in [self.fx.a, self.fx.o, NoneTyp(), UnboundType('x'),
-                  self.fx.void, self.fx.t, self.tuple(),
+                  self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_meet(t, self.fx.err, self.fx.err)
 

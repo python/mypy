@@ -282,7 +282,7 @@ class C:
     def __aenter__(self) -> None: pass
     async def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
-    async with C() as x:  # E: "__aenter__" of "C" does not return a value
+    async with C() as x:  # E: None has no attribute "__await__"
         pass
 [builtins fixtures/async_await.pyi]
 [out]
@@ -304,7 +304,7 @@ class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
-    async with C() as x: # E: "__aexit__" of "C" does not return a value
+    async with C() as x: # E: None has no attribute "__await__"
         pass
 [builtins fixtures/async_await.pyi]
 [out]
@@ -326,18 +326,15 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 
 [case testNoYieldInAsyncDef]
+# flags: --python-version 3.5
 
 async def f():
-    yield None
+    yield None  # E: 'yield' in async function
 async def g():
-    yield
+    yield  # E: 'yield' in async function
 async def h():
-    x = yield
+    x = yield  # E: 'yield' in async function
 [builtins fixtures/async_await.pyi]
-[out]
-main:3: error: 'yield' in async function
-main:5: error: 'yield' in async function
-main:7: error: 'yield' in async function
 
 [case testNoYieldFromInAsyncDef]
 
@@ -410,6 +407,156 @@ def f() -> Generator[int, str, int]:
 [builtins fixtures/async_await.pyi]
 [out]
 
+-- Async generators (PEP 525), some test cases adapted from the PEP text
+-- ---------------------------------------------------------------------
+
+[case testAsyncGenerator]
+# flags: --python-version 3.6
+from typing import AsyncGenerator, Generator
+
+async def f() -> int:
+    return 42
+
+async def g() -> AsyncGenerator[int, None]:
+    value = await f()
+    reveal_type(value)  # E: Revealed type is 'builtins.int*'
+    yield value
+
+    yield 'not an int'  # E: Incompatible types in yield (actual type "str", expected type "int")
+    # return without a value is fine
+    return
+reveal_type(g)  # E: Revealed type is 'def () -> typing.AsyncGenerator[builtins.int, builtins.None]'
+reveal_type(g())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int, builtins.None]'
+
+async def h() -> None:
+    async for item in g():
+        reveal_type(item)  # E: Revealed type is 'builtins.int*'
+
+async def wrong_return() -> Generator[int, None, None]:  # E: The return type of an async generator function should be "AsyncGenerator" or one of its supertypes
+    yield 3
+
+[builtins fixtures/dict.pyi]
+
+[case testAsyncGeneratorReturnIterator]
+# flags: --python-version 3.6
+from typing import AsyncIterator
+
+async def gen() -> AsyncIterator[int]:
+    yield 3
+
+    yield 'not an int'  # E: Incompatible types in yield (actual type "str", expected type "int")
+
+async def use_gen() -> None:
+    async for item in gen():
+        reveal_type(item)  # E: Revealed type is 'builtins.int*'
+
+[builtins fixtures/dict.pyi]
+
+[case testAsyncGeneratorManualIter]
+# flags: --python-version 3.6
+from typing import AsyncGenerator
+
+async def genfunc() -> AsyncGenerator[int, None]:
+    yield 1
+    yield 2
+
+async def user() -> None:
+    gen = genfunc()
+
+    reveal_type(gen.__aiter__())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int*, builtins.None]'
+
+    reveal_type(await gen.__anext__())  # E: Revealed type is 'builtins.int*'
+
+[builtins fixtures/dict.pyi]
+
+[case testAsyncGeneratorAsend]
+# flags: --fast-parser --python-version 3.6
+from typing import AsyncGenerator
+
+async def f() -> None:
+    pass
+
+async def gen() -> AsyncGenerator[int, str]:
+    await f()
+    v = yield 42
+    reveal_type(v)  # E: Revealed type is 'builtins.str'
+    await f()
+
+async def h() -> None:
+    g = gen()
+    await g.asend(())  # E: Argument 1 to "asend" of "AsyncGenerator" has incompatible type "Tuple[]"; expected "str"
+    reveal_type(await g.asend('hello'))  # E: Revealed type is 'builtins.int*'
+
+[builtins fixtures/dict.pyi]
+
+[case testAsyncGeneratorAthrow]
+# flags: --fast-parser --python-version 3.6
+from typing import AsyncGenerator
+
+async def gen() -> AsyncGenerator[str, int]:
+    try:
+        yield 'hello'
+    except BaseException:
+        yield 'world'
+
+async def h() -> None:
+    g = gen()
+    v = await g.asend(1)
+    reveal_type(v)  # E: Revealed type is 'builtins.str*'
+    reveal_type(await g.athrow(BaseException))  # E: Revealed type is 'builtins.str*'
+
+[builtins fixtures/dict.pyi]
+
+[case testAsyncGeneratorNoSyncIteration]
+# flags: --fast-parser --python-version 3.6
+from typing import AsyncGenerator
+
+async def gen() -> AsyncGenerator[int, None]:
+    for i in (1, 2, 3):
+        yield i
+
+def h() -> None:
+    for i in gen():
+        pass
+
+[builtins fixtures/dict.pyi]
+
+[out]
+main:9: error: Iterable expected
+main:9: error: AsyncGenerator[int, None] has no attribute "__iter__"; maybe "__aiter__"?
+
+[case testAsyncGeneratorNoYieldFrom]
+# flags: --fast-parser --python-version 3.6
+from typing import AsyncGenerator
+
+async def f() -> AsyncGenerator[int, None]:
+    pass
+
+async def gen() -> AsyncGenerator[int, None]:
+    yield from f()  # E: 'yield from' in async function
+
+[builtins fixtures/dict.pyi]
+
+[case testAsyncGeneratorNoReturnWithValue]
+# flags: --fast-parser --python-version 3.6
+from typing import AsyncGenerator
+
+async def return_int() -> AsyncGenerator[int, None]:
+    yield 1
+    return 42  # E: 'return' with value in async generator is not allowed
+
+async def return_none() -> AsyncGenerator[int, None]:
+    yield 1
+    return None  # E: 'return' with value in async generator is not allowed
+
+def f() -> None:
+    return
+
+async def return_f() -> AsyncGenerator[int, None]:
+    yield 1
+    return f()  # E: 'return' with value in async generator is not allowed
+
+[builtins fixtures/dict.pyi]
 
 -- The full matrix of coroutine compatibility
 -- ------------------------------------------

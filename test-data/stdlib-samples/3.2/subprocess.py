@@ -1583,7 +1583,7 @@ class Popen(object):
             input_offset = 0
             while read_set or write_set:
                 try:
-                    rlist, wlist, xlist = select.select(read_set, write_set, [])
+                    rlist, wlist, xlist = select.select(read_set, write_set, cast(List[object], []))
                 except select.error as e:
                     if e.args[0] == errno.EINTR:
                         continue

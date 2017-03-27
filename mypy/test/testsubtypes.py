@@ -12,7 +12,7 @@ class SubtypingSuite(Suite):
         self.fx_co = TypeFixture(COVARIANT)
 
     def test_trivial_cases(self) -> None:
-        for simple in self.fx_co.void, self.fx_co.a, self.fx_co.o, self.fx_co.b:
+        for simple in self.fx_co.a, self.fx_co.o, self.fx_co.b:
             self.assert_subtype(simple, simple)
 
     def test_instance_subtyping(self) -> None:
@@ -84,8 +84,8 @@ class SubtypingSuite(Suite):
         self.assert_strict_subtype(self.fx.callable(self.fx.d, self.fx.b),
                                    self.fx.callable(self.fx.d, self.fx.a))
 
-        self.assert_unrelated(self.fx.callable(self.fx.a, self.fx.a),
-                              self.fx.callable(self.fx.a, self.fx.void))
+        self.assert_strict_subtype(self.fx.callable(self.fx.a, self.fx.nonet),
+                                   self.fx.callable(self.fx.a, self.fx.a))
 
         self.assert_unrelated(
             self.fx.callable(self.fx.a, self.fx.a, self.fx.a),
@@ -184,7 +184,6 @@ class SubtypingSuite(Suite):
     #  * more generic interface subtyping test cases
     #  * type variables
     #  * tuple types
-    #  * void type
     #  * None type
     #  * any type
     #  * generic function types

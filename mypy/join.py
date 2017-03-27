@@ -4,7 +4,7 @@ from collections import OrderedDict
 from typing import cast, List
 
 from mypy.types import (
-    Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
+    Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType,
     ErrorType, TypeVarType, CallableType, TupleType, TypedDictType, ErasedType, TypeList,
     UnionType, FunctionLike, Overloaded, PartialType, DeletedType,
     UninhabitedType, TypeType, true_or_false
@@ -101,7 +101,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         self.s = s
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
+        if isinstance(self.s, ErrorType):
             return ErrorType()
         else:
             return AnyType()
@@ -121,39 +121,24 @@ class TypeJoinVisitor(TypeVisitor[Type]):
     def visit_any(self, t: AnyType) -> Type:
         return t
 
-    def visit_void(self, t: Void) -> Type:
-        if isinstance(self.s, Void):
-            return t
-        else:
-            return ErrorType()
-
     def visit_none_type(self, t: NoneTyp) -> Type:
         if experiments.STRICT_OPTIONAL:
             if isinstance(self.s, (NoneTyp, UninhabitedType)):
                 return t
             elif isinstance(self.s, UnboundType):
                 return AnyType()
-            elif isinstance(self.s, Void) or isinstance(self.s, ErrorType):
+            elif isinstance(self.s, ErrorType):
                 return ErrorType()
             else:
                 return UnionType.make_simplified_union([self.s, t])
         else:
-            if not isinstance(self.s, Void):
-                return self.s
-            else:
-                return self.default(self.s)
+            return self.s
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
-        if not isinstance(self.s, Void):
-            return self.s
-        else:
-            return self.default(self.s)
+        return self.s
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
-        if not isinstance(self.s, Void):
-            return self.s
-        else:
-            return self.default(self.s)
+        return self.s
 
     def visit_erased_type(self, t: ErasedType) -> Type:
         return self.s
@@ -279,7 +264,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return object_from_instance(typ)
         elif isinstance(typ, UnboundType):
             return AnyType()
-        elif isinstance(typ, Void) or isinstance(typ, ErrorType):
+        elif isinstance(typ, ErrorType):
             return ErrorType()
         elif isinstance(typ, TupleType):
             return self.default(typ.fallback)
@@ -387,13 +372,8 @@ def object_from_instance(instance: Instance) -> Instance:
 def join_type_list(types: List[Type]) -> Type:
     if not types:
         # This is a little arbitrary but reasonable. Any empty tuple should be compatible
-        # with all variable length tuples, and this makes it possible. A better approach
-        # would be to use a special bottom type, which we do when strict Optional
-        # checking is enabled.
-        if experiments.STRICT_OPTIONAL:
-            return UninhabitedType()
-        else:
-            return NoneTyp()
+        # with all variable length tuples, and this makes it possible.
+        return UninhabitedType()
     joined = types[0]
     for t in types[1:]:
         joined = join_types(joined, t)

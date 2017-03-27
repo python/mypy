@@ -565,7 +565,7 @@ def func(x: IntNode[T]) -> IntNode[T]:
     return x
 reveal_type(func) # E: Revealed type is 'def [T] (x: __main__.Node[builtins.int, T`-1]) -> __main__.Node[builtins.int, T`-1]'
 
-func(1) # E: Argument 1 to "func" has incompatible type "int"; expected Node[int, None]
+func(1) # E: Argument 1 to "func" has incompatible type "int"; expected Node[int, <uninhabited>]
 func(Node('x', 1)) # E: Argument 1 to "Node" has incompatible type "str"; expected "int"
 reveal_type(func(Node(1, 'x'))) # E: Revealed type is '__main__.Node[builtins.int, builtins.str*]'
 
@@ -800,7 +800,7 @@ reveal_type(x) # E: Revealed type is 'builtins.int'
 def f2(x: IntTP[T]) -> IntTP[T]:
     return x
 
-f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[int, int, int]"; expected "Tuple[int, None]"
+f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[int, int, int]"; expected "Tuple[int, <uninhabited>]"
 reveal_type(f2((1, 'x'))) # E: Revealed type is 'Tuple[builtins.int, builtins.str*]'
 
 [builtins fixtures/for.pyi]
@@ -869,7 +869,7 @@ n.y = 'x' # E: Incompatible types in assignment (expression has type "str", vari
 def f(x: Node[T, T]) -> TupledNode[T]:
     return Node(x.x, (x.x, x.x))
 
-f(1) # E: Argument 1 to "f" has incompatible type "int"; expected Node[None, None]
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected Node[<uninhabited>, <uninhabited>]
 f(Node(1, 'x')) # E: Cannot infer type argument 1 of "f"
 reveal_type(Node('x', 'x')) # E: Revealed type is 'a.Node[builtins.str*, builtins.str*]'
 
@@ -1256,6 +1256,8 @@ class B: pass
 
 
 [case testGenericArgumentInOverload]
+from foo import *
+[file foo.pyi]
 from typing import overload, List
 class A: pass
 class B: pass
@@ -1275,6 +1277,8 @@ b = f(b)
 [builtins fixtures/list.pyi]
 
 [case testGenericFunctionAsOverloadItem]
+from foo import *
+[file foo.pyi]
 from typing import overload, TypeVar, List
 T = TypeVar('T')
 class A: pass

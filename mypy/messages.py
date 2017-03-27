@@ -11,7 +11,7 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
-    UnionType, Void, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
+    UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType
 )
 from mypy.nodes import (
@@ -34,6 +34,9 @@ INVALID_EXCEPTION = 'Exception must be derived from BaseException'
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
     'The return type of a generator function should be "Generator" or one of its supertypes'
+INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR = \
+    'The return type of an async generator function should be "AsyncGenerator" or one of its ' \
+    'supertypes'
 INVALID_GENERATOR_RETURN_ITEM_TYPE = \
     'The return type of a generator function must be None in its third type parameter in Python 2'
 YIELD_VALUE_EXPECTED = 'Yield value expected'
@@ -316,8 +319,6 @@ class MessageBuilder:
                     return s
                 else:
                     return 'union type ({} items)'.format(len(items))
-        elif isinstance(typ, Void):
-            return 'None'
         elif isinstance(typ, NoneTyp):
             return 'None'
         elif isinstance(typ, AnyType):
@@ -371,8 +372,6 @@ class MessageBuilder:
         if (isinstance(typ, Instance) and
                 typ.type.has_readable_member(member)):
             self.fail('Member "{}" is not assignable'.format(member), context)
-        elif self.check_unusable_type(typ, context):
-            pass
         elif member == '__contains__':
             self.fail('Unsupported right operand type for in ({})'.format(
                 self.format(typ)), context)
@@ -437,9 +436,6 @@ class MessageBuilder:
 
         Types can be Type objects or strings.
         """
-        if (self.check_unusable_type(left_type, context) or
-                self.check_unusable_type(right_type, context)):
-            return
         left_str = ''
         if isinstance(left_type, str):
             left_str = left_type
@@ -461,13 +457,12 @@ class MessageBuilder:
 
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
-        if not self.check_unusable_type(typ, context):
-            if self.disable_type_names:
-                msg = 'Unsupported left operand type for {} (some union)'.format(op)
-            else:
-                msg = 'Unsupported left operand type for {} ({})'.format(
-                    op, self.format(typ))
-            self.fail(msg, context)
+        if self.disable_type_names:
+            msg = 'Unsupported left operand type for {} (some union)'.format(op)
+        else:
+            msg = 'Unsupported left operand type for {} ({})'.format(
+                op, self.format(typ))
+        self.fail(msg, context)
 
     def not_callable(self, typ: Type, context: Context) -> Type:
         self.fail('{} not callable'.format(self.format(typ)), context)
@@ -618,15 +613,11 @@ class MessageBuilder:
                   format(capitalize(callable_name(callee)),
                          callee.arg_names[index]), context)
 
-    def does_not_return_value(self, unusable_type: Type, context: Context) -> None:
-        """Report an error about use of an unusable type.
-
-        If the type is a Void type and has a source in it, report it in the error message.
-        This allows giving messages such as 'Foo does not return a value'.
-        """
-        if isinstance(unusable_type, Void) and unusable_type.source is not None:
+    def does_not_return_value(self, callee_type: Type, context: Context) -> None:
+        """Report an error about use of an unusable type."""
+        if isinstance(callee_type, FunctionLike) and callee_type.get_name() is not None:
             self.fail('{} does not return a value'.format(
-                capitalize((cast(Void, unusable_type)).source)), context)
+                capitalize(callee_type.get_name())), context)
         else:
             self.fail('Function does not return a value', context)
 
@@ -657,12 +648,6 @@ class MessageBuilder:
                       .format(overload.name(), arg_types), context)
         else:
             self.fail('No overload variant matches argument types {}'.format(arg_types), context)
-
-    def invalid_cast(self, target_type: Type, source_type: Type,
-                     context: Context) -> None:
-        if not self.check_unusable_type(source_type, context):
-            self.fail('Cannot cast from {} to {}'.format(
-                self.format(source_type), self.format(target_type)), context)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
@@ -747,18 +732,6 @@ class MessageBuilder:
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
 
-    def check_unusable_type(self, typ: Type, context: Context) -> bool:
-        """If type is a type which is not meant to be used (like Void or
-        NoneTyp(is_ret_type=True)), report an error such as '.. does not
-        return a value' and return True. Otherwise, return False.
-        """
-        if (isinstance(typ, Void) or
-                (isinstance(typ, NoneTyp) and typ.is_ret_type)):
-            self.does_not_return_value(typ, context)
-            return True
-        else:
-            return False
-
     def too_few_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not enough arguments for format string', context)
 
@@ -832,6 +805,14 @@ class MessageBuilder:
                                       context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
+
+    def overloaded_signatures_arg_specific(self, index1: int, context: Context) -> None:
+        self.fail('Overloaded function implementation does not accept all possible arguments '
+                  'of signature {}'.format(index1), context)
+
+    def overloaded_signatures_ret_specific(self, index1: int, context: Context) -> None:
+        self.fail('Overloaded function implementation cannot produce return type '
+                  'of signature {}'.format(index1), context)
 
     def operator_method_signatures_overlap(
             self, reverse_class: str, reverse_method: str, forward_class: str,

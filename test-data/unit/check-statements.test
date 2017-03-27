@@ -44,7 +44,7 @@ import typing
 def f() -> None:
     return None
 def g() -> None:
-    return f()  # E: No return value expected
+    return f()
 [out]
 
 [case testReturnInGenerator]
@@ -932,6 +932,8 @@ except exs1 as e: pass # E: Exception type must be derived from BaseException
 [builtins fixtures/exception.pyi]
 
 [case testOverloadedExceptionType]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class E(BaseException):
     @overload
@@ -1127,7 +1129,7 @@ def f() -> Iterator[int]:
 [case testYieldWithExplicitNone]
 from typing import Iterator
 def f() -> Iterator[None]:
-    yield None  # E: Incompatible types in yield (actual type None, expected type None)
+    yield None
 [builtins fixtures/for.pyi]
 [out]
 

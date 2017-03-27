@@ -4,7 +4,7 @@ from typing import Iterable, List, Optional
 
 from mypy import experiments
 from mypy.types import (
-    CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVarType,
+    CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarType,
     Instance, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
     DeletedType, UninhabitedType, TypeType, TypeVarId, TypeQuery, ALL_TYPES_STRATEGY,
     is_named_instance
@@ -279,9 +279,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         return []
 
     def visit_any(self, template: AnyType) -> List[Constraint]:
-        return []
-
-    def visit_void(self, template: Void) -> List[Constraint]:
         return []
 
     def visit_none_type(self, template: NoneTyp) -> List[Constraint]:

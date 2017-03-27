@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Callable
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, ErrorType, FormalArgument, Void, NoneTyp,
+    Type, AnyType, UnboundType, TypeVisitor, ErrorType, FormalArgument, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
 )
@@ -79,19 +79,6 @@ def is_equivalent(a: Type,
         and is_subtype(b, a, type_parameter_checker, ignore_pos_arg_names=ignore_pos_arg_names))
 
 
-def satisfies_upper_bound(a: Type, upper_bound: Type) -> bool:
-    """Is 'a' valid value for a type variable with the given 'upper_bound'?
-
-    Same as is_subtype except that Void is considered to be a subtype of
-    any upper_bound. This is needed in a case like
-
-        def f(g: Callable[[], T]) -> T: ...
-        def h() -> None: ...
-        f(h)
-    """
-    return isinstance(a, Void) or is_subtype(a, upper_bound)
-
-
 class SubtypeVisitor(TypeVisitor[bool]):
 
     def __init__(self, right: Type,
@@ -116,18 +103,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_any(self, left: AnyType) -> bool:
         return True
 
-    def visit_void(self, left: Void) -> bool:
-        return isinstance(self.right, Void)
-
     def visit_none_type(self, left: NoneTyp) -> bool:
         if experiments.STRICT_OPTIONAL:
             return (isinstance(self.right, NoneTyp) or
                     is_named_instance(self.right, 'builtins.object'))
         else:
-            return not isinstance(self.right, Void)
+            return True
 
     def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
-        return not isinstance(self.right, Void)
+        return True
 
     def visit_erased_type(self, left: ErasedType) -> bool:
         return True
@@ -160,7 +144,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
             item = right.item
             if isinstance(item, TupleType):
                 item = item.fallback
-            return isinstance(item, Instance) and is_subtype(left, item.type.metaclass_type)
+            if isinstance(item, Instance):
+                return is_subtype(left, item.type.metaclass_type)
+            elif isinstance(item, AnyType):
+                # Special case: all metaclasses are subtypes of Type[Any]
+                mro = left.type.mro or []
+                return any(base.fullname() == 'builtins.type' for base in mro)
+            else:
+                return False
         else:
             return False
 

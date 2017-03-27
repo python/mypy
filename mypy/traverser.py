@@ -8,7 +8,7 @@ from mypy.nodes import (
     TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealTypeExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
-    FuncExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
+    LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
     YieldExpr
 )
 
@@ -49,6 +49,8 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
         for item in o.items:
             item.accept(self)
+        if o.impl:
+            o.impl.accept(self)
 
     def visit_class_def(self, o: ClassDef) -> None:
         for d in o.decorators:
@@ -220,5 +222,5 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_type_application(self, o: TypeApplication) -> None:
         o.expr.accept(self)
 
-    def visit_func_expr(self, o: FuncExpr) -> None:
+    def visit_lambda_expr(self, o: LambdaExpr) -> None:
         self.visit_func(o)

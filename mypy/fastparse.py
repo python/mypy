@@ -2,9 +2,12 @@ from functools import wraps
 import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set
-from mypy.sharedparse import special_function_elide_names, argument_elide_name
+from mypy.sharedparse import (
+    special_function_elide_names, argument_elide_name,
+)
 from mypy.nodes import (
-    MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
+    MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef,
+    OverloadedFuncDef, OverloadPart,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
@@ -12,7 +15,7 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, FuncExpr, ComparisonExpr,
+    UnaryExpr, LambdaExpr, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
@@ -222,11 +225,12 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
         ret = []  # type: List[Statement]
-        current_overload = []
+        current_overload = []  # type: List[OverloadPart]
         current_overload_name = None
-        # mypy doesn't actually check that the decorator is literally @overload
         for stmt in stmts:
-            if isinstance(stmt, Decorator) and stmt.name() == current_overload_name:
+            if (current_overload_name is not None
+                    and isinstance(stmt, (Decorator, FuncDef))
+                    and stmt.name() == current_overload_name):
                 current_overload.append(stmt)
             else:
                 if len(current_overload) == 1:
@@ -341,9 +345,6 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)
-
-        if isinstance(return_type, UnboundType):
-            return_type.is_ret_type = True
 
         func_type = None
         if any(arg_types) or return_type:
@@ -736,12 +737,12 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     # Lambda(arguments args, expr body)
     @with_line
-    def visit_Lambda(self, n: ast3.Lambda) -> FuncExpr:
+    def visit_Lambda(self, n: ast3.Lambda) -> LambdaExpr:
         body = ast3.Return(n.body)
         body.lineno = n.lineno
         body.col_offset = n.col_offset
 
-        return FuncExpr(self.transform_args(n.args, n.lineno),
+        return LambdaExpr(self.transform_args(n.args, n.lineno),
                         self.as_block([body], n.lineno))
 
     # IfExp(expr test, expr body, expr orelse)

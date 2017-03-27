@@ -125,6 +125,8 @@ class StrConv(NodeVisitor[str]):
         a = o.items[:]  # type: Any
         if o.type:
             a.insert(0, o.type)
+        if o.impl:
+            a.insert(0, o.impl)
         return self.dump(a, o)
 
     def visit_class_def(self, o: 'mypy.nodes.ClassDef') -> str:
@@ -440,7 +442,7 @@ class StrConv(NodeVisitor[str]):
         return 'NewTypeExpr:{}({}, {})'.format(o.line, o.name,
                                                self.dump([o.old_type], o))
 
-    def visit_func_expr(self, o: 'mypy.nodes.FuncExpr') -> str:
+    def visit_lambda_expr(self, o: 'mypy.nodes.LambdaExpr') -> str:
         a = self.func_helper(o)
         return self.dump(a, o)
 

@@ -380,21 +380,29 @@ class FuncBase(Node):
         return self._fullname
 
 
+OverloadPart = Union['FuncDef', 'Decorator']
+
+
 class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
-    """A logical node representing all the variants of an overloaded function.
+    """A logical node representing all the variants of a multi-declaration function.
+
+    A multi-declaration function is often an @overload, but can also be a
+    @property with a setter and a/or a deleter.
 
     This node has no explicit representation in the source program.
     Overloaded variants must be consecutive in the source file.
     """
 
-    items = None  # type: List[Decorator]
+    items = None  # type: List[OverloadPart]
+    impl = None  # type: Optional[OverloadPart]
 
-    def __init__(self, items: List['Decorator']) -> None:
+    def __init__(self, items: List['OverloadPart']) -> None:
         self.items = items
+        self.impl = None
         self.set_line(items[0].line)
 
     def name(self) -> str:
-        return self.items[0].func.name()
+        return self.items[0].name()
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
@@ -405,12 +413,17 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
                 'type': None if self.type is None else self.type.serialize(),
                 'fullname': self._fullname,
                 'is_property': self.is_property,
+                'impl': None if self.impl is None else self.impl.serialize()
                 }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'OverloadedFuncDef':
         assert data['.class'] == 'OverloadedFuncDef'
-        res = OverloadedFuncDef([Decorator.deserialize(d) for d in data['items']])
+        res = OverloadedFuncDef([
+            cast(OverloadPart, SymbolNode.deserialize(d))
+            for d in data['items']])
+        if data.get('impl') is not None:
+            res.impl = cast(OverloadPart, SymbolNode.deserialize(data['impl']))
         if data.get('type') is not None:
             res.type = mypy.types.deserialize_type(data['type'])
         res._fullname = data['fullname']
@@ -425,7 +438,7 @@ class Argument(Node):
     variable = None  # type: Var
     type_annotation = None  # type: Optional[mypy.types.Type]
     initializer = None  # type: Optional[Expression]
-    kind = None  # type: int
+    kind = None  # type: int  # must be an ARG_* constant
     initialization_statement = None  # type: Optional[AssignmentStmt]
 
     def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
@@ -479,6 +492,7 @@ class FuncItem(FuncBase):
     is_overload = False
     is_generator = False   # Contains a yield statement?
     is_coroutine = False   # Defined using 'async def' syntax?
+    is_async_generator = False  # Is an async def generator?
     is_awaitable_coroutine = False  # Decorated with '@{typing,asyncio}.coroutine'?
     is_static = False      # Uses @staticmethod?
     is_class = False       # Uses @classmethod?
@@ -486,8 +500,8 @@ class FuncItem(FuncBase):
     expanded = None  # type: List[FuncItem]
 
     FLAGS = [
-        'is_overload', 'is_generator', 'is_coroutine', 'is_awaitable_coroutine',
-        'is_static', 'is_class',
+        'is_overload', 'is_generator', 'is_coroutine', 'is_async_generator',
+        'is_awaitable_coroutine', 'is_static', 'is_class',
     ]
 
     def __init__(self, arguments: List[Argument], body: 'Block',
@@ -595,6 +609,7 @@ class Decorator(SymbolNode, Statement):
     func = None  # type: FuncDef                # Decorated function
     decorators = None  # type: List[Expression] # Decorators, at least one  # XXX Not true
     var = None  # type: Var                     # Represents the decorated function obj
+    type = None  # type: mypy.types.Type
     is_overload = False
 
     def __init__(self, func: FuncDef, decorators: List[Expression],
@@ -1507,7 +1522,7 @@ class SuperExpr(Expression):
         return visitor.visit_super_expr(self)
 
 
-class FuncExpr(FuncItem, Expression):
+class LambdaExpr(FuncItem, Expression):
     """Lambda expression"""
 
     def name(self) -> str:
@@ -1519,7 +1534,7 @@ class FuncExpr(FuncItem, Expression):
         return ret.expr
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_func_expr(self)
+        return visitor.visit_lambda_expr(self)
 
 
 class ListExpr(Expression):

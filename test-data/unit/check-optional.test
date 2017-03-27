@@ -220,6 +220,8 @@ class C:
 [out]
 
 [case testOverloadWithNone]
+from foo import *
+[file foo.pyi]
 from typing import overload
 @overload
 def f(x: None) -> str: pass
@@ -335,9 +337,9 @@ def f() -> None:
 def g(x: Optional[int]) -> int:
   pass
 
-x = f()  # E: Function does not return a value
-f() + 1  # E: Function does not return a value
-g(f())  # E: Function does not return a value
+x = f()  # E: "f" does not return a value
+f() + 1  # E: "f" does not return a value
+g(f())  # E: "f" does not return a value
 
 [case testEmptyReturn]
 def f() -> None:
