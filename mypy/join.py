@@ -151,7 +151,15 @@ class TypeJoinVisitor(TypeVisitor[Type]):
 
     def visit_instance(self, t: Instance) -> Type:
         if isinstance(self.s, Instance):
-            return join_instances(t, self.s)
+            nominal = join_instances(t, self.s)
+            structural = None  # type: Instance
+            if t.type.is_protocol and is_subtype(self.s, t):
+                structural = t
+            if self.s.type.is_protocol and is_subtype(t, self.s):
+                structural = self.s
+            if not structural or is_better(nominal, structural):
+                return nominal
+            return structural
         elif isinstance(self.s, FunctionLike):
             return join_types(t, self.s.fallback)
         elif isinstance(self.s, TypeType):

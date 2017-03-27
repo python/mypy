@@ -3010,6 +3010,7 @@ class ImplicitMeta(type):
 class Implicit(metaclass=ImplicitMeta): pass
 
 for _ in Implicit: pass
+reveal_type(list(Implicit))  # E: Revealed type is 'builtins.list[builtins.int*]'
 
 class ExplicitMeta(type, Iterable[int]):
     def __iter__(self) -> Iterator[int]: yield 1

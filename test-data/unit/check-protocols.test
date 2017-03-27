@@ -99,3 +99,27 @@ from typing import Protocol
 from typing import Protocol
 
 [out]
+
+-- Generic protocol types
+-- ----------------------
+
+-- Recursive protocol types
+-- ------------------------
+
+-- @property, @classmethod and @staticmethod in protocol types
+-- -----------------------------------------------------------
+
+-- Meet and join of protocol types
+-- -------------------------------
+
+-- Unions of protocol types
+-- ------------------------
+
+-- Type[] with protocol types
+-- --------------------------
+
+-- isinsatnce() with @runtime protocols
+-- ------------------------------------
+
+-- Non-Instances and protocol types (Callable vs __call__ etc.)
+-- ------------------------------------------------------------

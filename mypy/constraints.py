@@ -319,13 +319,23 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(actual, Instance):
             instance = actual
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
-                    template.type not in INFERRING):
+                    template.type not in INFERRING and
+                    mypy.subtypes.is_subtype(instance, erase_typevars(template))):
                 INFERRING.append(template.type)
                 for member in template.type.protocol_members:
                     inst = mypy.subtypes.find_member(member, instance)
                     temp = mypy.subtypes.find_member(member, template)
                     res.extend(infer_constraints(temp, inst, self.direction))
-                    res.extend(infer_constraints(temp, inst, neg_op(self.direction)))
+                INFERRING.pop()
+                return res
+            elif (instance.type.is_protocol and self.direction == SUBTYPE_OF and
+                  instance.type not in INFERRING and
+                  mypy.subtypes.is_subtype(erase_typevars(template), instance)):
+                INFERRING.append(instance.type)
+                for member in instance.type.protocol_members:
+                    inst = mypy.subtypes.find_member(member, instance)
+                    temp = mypy.subtypes.find_member(member, template)
+                    res.extend(infer_constraints(temp, inst, self.direction))
                 INFERRING.pop()
                 return res
             if (self.direction == SUBTYPE_OF and

@@ -307,13 +307,16 @@ def find_member(name: str, itype: Instance) -> Optional[Type]:
     if method:
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
-            return find_var_type(method.items[0].var, itype)
+            dec = method.items[0]
+            assert isinstance(dec, Decorator)
+            return find_var_type(dec.var, itype)
         return map_method(method, itype)
     else:
         node = info.get(name)
         if not node:
-            return None
-        v = node.node
+            v = None
+        else:
+            v = node.node
         if isinstance(v, Decorator):
             v = v.var
         if isinstance(v, Var):
@@ -348,7 +351,7 @@ def find_var_type(var: Var, itype: Instance) -> Type:
 
 def map_method(method: FuncBase, itype: Instance) -> Type:
     from mypy.checkmember import bind_self
-    signature = function_type(method, Instance(None, []))
+    signature = function_type(method, Instance(itype.type.mro[-1], []))
     signature = bind_self(signature)
     itype = map_instance_to_supertype(itype, method.info)
     return expand_type_by_instance(signature, itype)
