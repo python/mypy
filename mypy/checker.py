@@ -200,6 +200,8 @@ class TypeChecker(NodeVisitor[None]):
         self.pass_num += 1
         if not todo:
             todo = self.deferred_nodes
+        else:
+            assert not self.deferred_nodes
         self.deferred_nodes = []
         done = set()  # type: Set[Union[FuncDef, MypyFile]]
         for node, type_name, active_typeinfo in todo:
@@ -234,7 +236,7 @@ class TypeChecker(NodeVisitor[None]):
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         node = self.scope.top_function()
-        if self.pass_num < LAST_PASS and node is not None:
+        if self.pass_num < LAST_PASS and node is not None and isinstance(node, FuncDef):
             # Don't report an error yet. Just defer.
             if self.errors.type_name:
                 type_name = self.errors.type_name[-1]
@@ -651,7 +653,7 @@ class TypeChecker(NodeVisitor[None]):
                 for i in range(len(typ.arg_types)):
                     arg_type = typ.arg_types[i]
 
-                    ref_type = self.scope.active_self_type()  # type: Type
+                    ref_type = self.scope.active_self_type()  # type: Optional[Type]
                     if (isinstance(defn, FuncDef) and ref_type is not None and i == 0
                             and not defn.is_static
                             and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
@@ -3012,12 +3014,12 @@ def is_node_static(node: Node) -> Optional[bool]:
 
 class Scope:
     # We keep two stacks combined, to maintain the relative order
-    stack = None  # type: List[Union[TypeInfo, FuncDef, MypyFile]]
+    stack = None  # type: List[Union[TypeInfo, FuncItem, MypyFile]]
 
     def __init__(self, module: MypyFile) -> None:
         self.stack = [module]
 
-    def top_function(self) -> Optional[FuncDef]:
+    def top_function(self) -> Optional[FuncItem]:
         for e in reversed(self.stack):
             if isinstance(e, FuncItem):
                 return e
@@ -3035,7 +3037,7 @@ class Scope:
         return None
 
     @contextmanager
-    def push_function(self, item: FuncDef) -> Iterator[None]:
+    def push_function(self, item: FuncItem) -> Iterator[None]:
         self.stack.append(item)
         yield
         self.stack.pop()

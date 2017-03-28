@@ -288,6 +288,7 @@ class SemanticAnalyzer(NodeVisitor):
         with self.analyze_class_body(defn) as should_continue:
             if should_continue:
                 for d in defn.defs.body:
+                    # TODO: Make sure refreshing class bodies works.
                     if isinstance(d, ClassDef):
                         self.refresh_class_def(d)
                     elif not isinstance(d, FuncItem):
