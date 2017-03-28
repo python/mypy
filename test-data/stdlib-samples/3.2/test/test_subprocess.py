@@ -1291,7 +1291,7 @@ class POSIXProcessTestCase(BaseTestCase):
         p1.stdin.write(data)
         p1.stdin.close()
 
-        readfiles, ignored1, ignored2 = select.select([p2.stdout], cast(List[object], []), cast(List[object], []), 10)
+        readfiles, ignored1, ignored2 = select.select([p2.stdout], [], [], 10)
 
         self.assertTrue(readfiles, "The child hung")
         self.assertEqual(p2.stdout.read(), data)
