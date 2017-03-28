@@ -2345,7 +2345,7 @@ deserialize_map = {
 
 def literal_hash(e: Expression) -> Key:
     if isinstance(e, (IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr, UnicodeExpr)):
-        return (e.value,)
+        return ('Literal', e.value)
 
     elif isinstance(e, StarExpr):
         return ('Star', literal_hash(e.expr))
@@ -2358,7 +2358,7 @@ def literal_hash(e: Expression) -> Key:
 
     elif isinstance(e, IndexExpr):
         if literal(e.index) == LITERAL_YES:
-            return ('Member', literal_hash(e.base), literal_hash(e.index))
+            return ('Index', literal_hash(e.base), literal_hash(e.index))
 
     elif isinstance(e, UnaryExpr):
         return ('Unary', e.op, literal_hash(e.expr))
