@@ -1,8 +1,8 @@
-from typing import (Dict, List, Set, Iterator, Union)
+from typing import Dict, List, Set, Iterator, Union
 from contextlib import contextmanager
 
 from mypy.types import Type, AnyType, PartialType
-from mypy.nodes import (Key, Expression, Var, RefExpr, literal, literal_hash)
+from mypy.nodes import Key, Expression, Var, RefExpr, literal, literal_hash
 
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple

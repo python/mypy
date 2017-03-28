@@ -21,7 +21,7 @@ from mypy.nodes import (
     Context, Decorator, PrintStmt, LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, ImportFrom, ImportAll, ImportBase,
     ARG_POS, CONTRAVARIANT, COVARIANT, ExecStmt, GlobalDecl, Import, NonlocalDecl,
-    MDEF, Node, literal, literal_hash
+    MDEF, Node, literal, literal_hash,
 )
 from mypy import nodes
 from mypy.types import (

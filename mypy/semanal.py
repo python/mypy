@@ -66,7 +66,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
-    collections_type_aliases, get_member_expr_fullname, literal
+    collections_type_aliases, get_member_expr_fullname, literal,
 )
 from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor

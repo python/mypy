@@ -21,7 +21,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF,
-    UNBOUND_TVAR, BOUND_TVAR, LITERAL_TYPE, literal
+    UNBOUND_TVAR, BOUND_TVAR, LITERAL_TYPE, literal,
 )
 from mypy import nodes
 import mypy.checker
