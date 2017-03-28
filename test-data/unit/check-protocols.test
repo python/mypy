@@ -211,8 +211,31 @@ f1(x2)
 f2(x1)
 [out]
 
--- Semanal errors in protocol types
--- --------------------------------
+[case testSemanalErrorsInProtocols]
+from typing import Protocol, Generic, TypeVar, Iterable
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class P1(Protocol[T, T]): # E: Duplicate type variables in Generic[...] or Protocol[...]
+    def meth(self) -> T:
+        pass
+
+class P2(Protocol[T], Protocol[S]): # E: Only single Generic[...] or Protocol[...] can be in bases
+    def meth(self) -> T:
+        pass
+
+class P3(Protocol[T], Generic[S]): # E: Only single Generic[...] or Protocol[...] can be in bases
+    def meth(self) -> T:
+        pass
+
+class P4(Protocol[T]):
+    attr: Iterable[S] # E: Invalid type "__main__.S"
+
+class P5(Iterable[S], Protocol[T]): # E: If Generic[...] or Protocol[...] is present it should list all type variables
+    def meth(self) -> T:
+        pass
+[out]
 
 -- Generic protocol types
 -- ----------------------

@@ -1451,6 +1451,26 @@ class MyClass:
 [rechecked]
 [stale]
 
+[case testIncrementalWorksWithBasicProtocols]
+from a import P
+
+x: int
+y: P[int]
+x = y.meth()
+
+class C:
+    def meth(self) -> int:
+        pass
+
+y = C()
+[file a.py]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T')
+class P(Protocol[T]):
+    def meth(self) -> T:
+        pass
+
 [case testIncrementalWorksWithNamedTuple]
 import foo
 
