@@ -1617,7 +1617,7 @@ class TypeChecker(StatementVisitor[None]):
             partial_type = PartialType(None, name, [init_type])
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname()
-            if (isinstance(lvalue, NameExpr) and
+            if (isinstance(lvalue, (NameExpr, MemberExpr)) and
                     (fullname == 'builtins.list' or
                      fullname == 'builtins.set' or
                      fullname == 'builtins.dict') and

@@ -1267,8 +1267,22 @@ class A:
     def f(self) -> None:
         # Attributes aren't supported right now.
         self.a = [] # E: Need type annotation for variable
-        self.a.append(1) # E: Cannot determine type of 'a'
-        self.a.append('') # E: Cannot determine type of 'a'
+        self.a.append(1)
+        self.a.append('')
+[builtins fixtures/list.pyi]
+[out]
+
+[case testInferListInitializedToEmptyInClassBodyAndOverriden]
+from typing import List
+
+class A:
+    def __init__(self) -> None:
+        self.x = [] # E: Need type annotation for variable
+
+class B(A):
+    @property
+    def x(self) -> List[int]:
+        return [123]
 [builtins fixtures/list.pyi]
 [out]
 
