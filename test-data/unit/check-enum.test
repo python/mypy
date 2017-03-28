@@ -186,7 +186,7 @@ class A:
 a = A()
 reveal_type(a.x)
 [out]
-main:7: error: Revealed type is '__main__.A.E@4'
+main:8: error: Revealed type is '__main__.E@4'
 
 [case testEnumInClassBody]
 from enum import Enum
