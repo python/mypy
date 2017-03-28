@@ -58,7 +58,6 @@ class D(B):
         pass
 
 x: P
-
 def fun(x: P) -> None:
     x.meth()
     x.meth(x) # E: Too many arguments for "meth" of "P"
@@ -86,12 +85,13 @@ class B: pass
 class C:
     def meth(self) -> int:
         pass
-
+z: P
 x: SubP
 def fun(x: SubP) -> str:
     x.bad # E: "SubP" has no attribute "bad"
     return x.meth() # E: Incompatible return value type (got "int", expected "str")
 
+z = x
 x = C()
 x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "SubP")
 
@@ -102,11 +102,113 @@ fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "SubP"
 [case testSimpleProtocolTwoMethodsMerge]
 from typing import Protocol
 
+class P1(Protocol):
+    def meth1(self) -> int:
+        pass
+class P2(Protocol):
+    def meth2(self) -> str:
+        pass
+
+class C1:
+    def meth1(self) -> int:
+        pass
+class C2(C1):
+    def meth2(self) -> str:
+        pass
+class C:
+    def meth1(self) -> int:
+        pass
+    def meth2(self) -> str:
+        pass
+
+class AnotherP(Protocol):
+    def meth1(self) -> int:
+        pass
+    def meth2(self) -> str:
+        pass
+
+class P(P1, P2, Protocol): pass
+
+x: P
+reveal_type(x.meth1())  # E: Revealed type is 'builtins.int'
+reveal_type(x.meth2())  # E: Revealed type is 'builtins.str'
+
+c: C
+c1: C1
+c2: C2
+y: AnotherP
+
+x = c
+x = c1 # E: Incompatible types in assignment (expression has type "C1", variable has type "P")
+x = c2
+x = y
+y = x
 [out]
 
 [case testSimpleProtocolTwoMethodsExtend]
 from typing import Protocol
 
+class P1(Protocol):
+    def meth1(self) -> int:
+        pass
+class P2(P1, Protocol):
+    def meth2(self) -> str:
+        pass
+
+class Cbad:
+    def meth1(self) -> int:
+        pass
+
+class C:
+    def meth1(self) -> int:
+        pass
+    def meth2(self) -> str:
+        pass
+
+x: P2
+reveal_type(x.meth1()) # E: Revealed type is 'builtins.int'
+reveal_type(x.meth2()) # E: Revealed type is 'builtins.str'
+
+x = C() # OK
+x = Cbad() # E: Incompatible types in assignment (expression has type "Cbad", variable has type "P2")
+[out]
+
+[case testCannotAssignNormalToProtocol]
+from typing import Protocol
+
+class P(Protocol):
+    def meth(self) -> int:
+        pass
+class C:
+    def meth(self) -> int:
+        pass
+
+x: C
+y: P
+x = y # E: Incompatible types in assignment (expression has type "P", variable has type "C")
+[out]
+
+[case testIndependentProtocolSubtyping]
+from typing import Protocol
+
+class P1(Protocol):
+    def meth(self) -> int:
+        pass
+class P2(Protocol):
+    def meth(self) -> int:
+        pass
+
+x1: P1
+x2: P2
+
+x1 = x2
+x2 = x1
+
+def f1(x: P1) -> None: pass
+def f2(x: P2) -> None: pass
+
+f1(x2)
+f2(x1)
 [out]
 
 -- Semanal errors in protocol types
@@ -129,6 +231,92 @@ from typing import Protocol
 
 -- Type[] with protocol types
 -- --------------------------
+
+[case testInstantiationProtocolInTypeForFunctions]
+from typing import Type, Protocol
+
+class P(Protocol):
+    def m(self) -> None: pass
+class P1(Protocol):
+    def m(self) -> None: pass
+class Pbad(Protocol):
+    def mbad(self) -> int: pass
+class B(P): pass
+class C:
+    def m(self) -> None:
+        pass
+
+def f(cls: Type[P]) -> P:
+    return cls()  # OK
+def g() -> P:
+    return P()  # E: Cannot instantiate protocol class "__main__.P"
+
+f(P)  # E: Only concrete class can be given where 'Type[__main__.P]' is expected
+f(B)  # OK
+f(C)  # OK
+x: Type[P1]
+xbad: Type[Pbad]
+f(x)  # OK
+f(xbad)  # E: Argument 1 to "f" has incompatible type Type[Pbad]; expected Type[P]
+[out]
+
+[case testInstantiationProtocolInTypeForAliases]
+from typing import Type, Protocol
+
+class P(Protocol):
+    def m(self) -> None: pass
+class C:
+    def m(self) -> None:
+        pass
+
+def f(cls: Type[P]) -> P:
+    return cls()  # OK
+
+Alias = P
+GoodAlias = C
+Alias()  # E: Cannot instantiate protocol class "__main__.P"
+GoodAlias()
+f(Alias)  # E: Only concrete class can be given where 'Type[__main__.P]' is expected
+f(GoodAlias)
+[out]
+
+[case testInstantiationProtocolInTypeForVariables]
+from typing import Type, Protocol
+
+class P(Protocol):
+    def m(self) -> None: pass
+class B(P): pass
+class C:
+    def m(self) -> None:
+        pass
+
+var: Type[P]
+var()
+var = P # E: Can only assign concrete classes to a variable of type 'Type[__main__.P]'
+var = B # OK
+var = C # OK
+
+var_old = None # type: Type[P] # Old syntax for variable annotations
+var_old()
+var_old = P # E: Can only assign concrete classes to a variable of type 'Type[__main__.P]'
+var_old = B # OK
+var_old = C # OK
+[out]
+
+[case testInstantiationProtocolInTypeForClassMethods]
+from typing import Type, Protocol
+
+class Logger:
+    @staticmethod
+    def log(a: Type[C]):
+        pass
+class C(Protocol):
+    @classmethod
+    def action(cls) -> None:
+        cls() #OK for classmethods
+        Logger.log(cls)  #OK for classmethods
+[builtins fixtures/classmethod.pyi]
+[out]
 
 -- isinsatnce() with @runtime protocols
 -- ------------------------------------
