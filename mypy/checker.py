@@ -21,7 +21,7 @@ from mypy.nodes import (
     Context, Decorator, PrintStmt, LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, ImportFrom, ImportAll, ImportBase,
     ARG_POS, CONTRAVARIANT, COVARIANT, ExecStmt, GlobalDecl, Import, NonlocalDecl,
-    MDEF, Node
+    MDEF, Node, literal, literal_hash
 )
 from mypy import nodes
 from mypy.types import (
@@ -2634,9 +2634,9 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     # arbitrarily give precedence to m2. (In the future, we could use
     # an intersection type.)
     result = m2.copy()
-    m2_keys = set(n2.literal_hash for n2 in m2)
+    m2_keys = set(literal_hash(n2) for n2 in m2)
     for n1 in m1:
-        if n1.literal_hash not in m2_keys:
+        if literal_hash(n1) not in m2_keys:
             result[n1] = m1[n1]
     return result
 
@@ -2658,7 +2658,7 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     result = {}
     for n1 in m1:
         for n2 in m2:
-            if n1.literal_hash == n2.literal_hash:
+            if literal_hash(n1) == literal_hash(n2):
                 result[n1] = UnionType.make_simplified_union([m1[n1], m2[n2]])
     return result
 
@@ -2684,13 +2684,13 @@ def find_isinstance_check(node: Expression,
     elif isinstance(node, CallExpr):
         if refers_to_fullname(node.callee, 'builtins.isinstance'):
             expr = node.args[0]
-            if expr.literal == LITERAL_TYPE:
+            if literal(expr) == LITERAL_TYPE:
                 vartype = type_map[expr]
                 types = get_isinstance_type(node.args[1], type_map)
                 return conditional_type_map(expr, vartype, types)
         elif refers_to_fullname(node.callee, 'builtins.callable'):
             expr = node.args[0]
-            if expr.literal == LITERAL_TYPE:
+            if literal(expr) == LITERAL_TYPE:
                 vartype = type_map[expr]
                 return conditional_callable_type_map(expr, vartype)
     elif isinstance(node, ComparisonExpr) and experiments.STRICT_OPTIONAL:
@@ -2700,7 +2700,8 @@ def find_isinstance_check(node: Expression,
             if_vars = {}  # type: Dict[Expression, Type]
             else_vars = {}  # type: Dict[Expression, Type]
             for expr in node.operands:
-                if expr.literal == LITERAL_TYPE and not is_literal_none(expr) and expr in type_map:
+                if (literal(expr) == LITERAL_TYPE and not is_literal_none(expr)
+                        and expr in type_map):
                     # This should only be true at most once: there should be
                     # two elements in node.operands, and at least one of them
                     # should represent a None.

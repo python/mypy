@@ -156,9 +156,6 @@ class Statement(Node):
 
 class Expression(Node):
     """An expression node."""
-    literal = LITERAL_NO
-    literal_hash = None  # type: Key
-
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
 
@@ -168,44 +165,6 @@ class Expression(Node):
 #                'TupleExpr', 'ListExpr']; see #1783.
 Lvalue = Expression
 
-
-# [Note Literals and literal_hash]
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# Mypy uses the term "literal" to refer to any expression built out of
-# the following:
-#
-# * Plain literal expressions, like `1` (integer, float, string, etc.)
-#
-# * Compound literal expressions, like `(lit1, lit2)` (list, dict,
-#   set, or tuple)
-#
-# * Operator expressions, like `lit1 + lit2`
-#
-# * Variable references, like `x`
-#
-# * Member references, like `lit.m`
-#
-# * Index expressions, like `lit[0]`
-#
-# A typical "literal" looks like `x[(i,j+1)].m`.
-#
-# An expression that is a literal has a `literal_hash`, with the
-# following properties.
-#
-# * `literal_hash` is a Key: a tuple containing basic data types and
-#   possibly other Keys. So it can be used as a key in a dictionary
-#   that will be compared by value (as opposed to the Node itself,
-#   which is compared by identity).
-#
-# * Two expressions have equal `literal_hash`es if and only if they
-#   are syntactically equal expressions. (NB: Actually, we also
-#   identify as equal expressions like `3` and `3.0`; is this a good
-#   idea?)
-#
-# * The elements of `literal_hash` that are tuples are exactly the
-#   subexpressions of the original expression (e.g. the base and index
-#   of an index expression, or the operands of an operator expression).
 
 class SymbolNode(Node):
     # Nodes that can be stored in a symbol table.
@@ -1059,11 +1018,9 @@ class IntExpr(Expression):
     """Integer literal"""
 
     value = 0
-    literal = LITERAL_YES
 
     def __init__(self, value: int) -> None:
         self.value = value
-        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_int_expr(self)
@@ -1084,11 +1041,9 @@ class StrExpr(Expression):
     """String literal"""
 
     value = ''
-    literal = LITERAL_YES
 
     def __init__(self, value: str) -> None:
         self.value = value
-        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -1098,11 +1053,9 @@ class BytesExpr(Expression):
     """Bytes literal"""
 
     value = ''  # TODO use bytes
-    literal = LITERAL_YES
 
     def __init__(self, value: str) -> None:
         self.value = value
-        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
@@ -1112,11 +1065,9 @@ class UnicodeExpr(Expression):
     """Unicode literal (Python 2.x)"""
 
     value = ''  # TODO use bytes
-    literal = LITERAL_YES
 
     def __init__(self, value: str) -> None:
         self.value = value
-        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_unicode_expr(self)
@@ -1126,11 +1077,9 @@ class FloatExpr(Expression):
     """Float literal"""
 
     value = 0.0
-    literal = LITERAL_YES
 
     def __init__(self, value: float) -> None:
         self.value = value
-        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_float_expr(self)
@@ -1140,11 +1089,9 @@ class ComplexExpr(Expression):
     """Complex literal"""
 
     value = 0.0j
-    literal = LITERAL_YES
 
     def __init__(self, value: complex) -> None:
         self.value = value
-        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_complex_expr(self)
@@ -1164,8 +1111,6 @@ class StarExpr(Expression):
 
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
-        self.literal = self.expr.literal
-        self.literal_hash = ('Star', expr.literal_hash,)
 
         # Whether this starred expression is used in a tuple/list and as lvalue
         self.valid = False
@@ -1196,11 +1141,8 @@ class NameExpr(RefExpr):
 
     name = None  # type: str      # Name referred to (may be qualified)
 
-    literal = LITERAL_TYPE
-
     def __init__(self, name: str) -> None:
         self.name = name
-        self.literal_hash = ('Var', name,)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
@@ -1214,7 +1156,6 @@ class NameExpr(RefExpr):
                 'fullname': self.fullname,
                 'is_def': self.is_def,
                 'name': self.name,
-                'literal': self.literal,
                 }
 
     @classmethod
@@ -1225,7 +1166,6 @@ class NameExpr(RefExpr):
         ret.node = None if data['node'] is None else SymbolNode.deserialize(data['node'])
         ret.fullname = data['fullname']
         ret.is_def = data['is_def']
-        ret.literal = data['literal']
         return ret
 
 
@@ -1240,8 +1180,6 @@ class MemberExpr(RefExpr):
     def __init__(self, expr: Expression, name: str) -> None:
         self.expr = expr
         self.name = name
-        self.literal = self.expr.literal
-        self.literal_hash = ('Member', expr.literal_hash, name)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_member_expr(self)
@@ -1332,10 +1270,6 @@ class IndexExpr(Expression):
         self.base = base
         self.index = index
         self.analyzed = None
-        if self.index.literal == LITERAL_YES:
-            self.literal = self.base.literal
-            self.literal_hash = ('Index', base.literal_hash,
-                                 index.literal_hash)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
@@ -1352,8 +1286,6 @@ class UnaryExpr(Expression):
     def __init__(self, op: str, expr: Expression) -> None:
         self.op = op
         self.expr = expr
-        self.literal = self.expr.literal
-        self.literal_hash = ('Unary', op, expr.literal_hash)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_unary_expr(self)
@@ -1435,8 +1367,6 @@ class OpExpr(Expression):
         self.op = op
         self.left = left
         self.right = right
-        self.literal = min(self.left.literal, self.right.literal)
-        self.literal_hash = ('Binary', op, left.literal_hash, right.literal_hash)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
@@ -1454,9 +1384,6 @@ class ComparisonExpr(Expression):
         self.operators = operators
         self.operands = operands
         self.method_types = []
-        self.literal = min(o.literal for o in self.operands)
-        self.literal_hash = ((cast(Any, 'Comparison'),) + tuple(operators) +
-                             tuple(o.literal_hash for o in operands))
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
@@ -1544,9 +1471,6 @@ class ListExpr(Expression):
 
     def __init__(self, items: List[Expression]) -> None:
         self.items = items
-        if all(x.literal == LITERAL_YES for x in items):
-            self.literal = LITERAL_YES
-            self.literal_hash = (cast(Any, 'List'),) + tuple(x.literal_hash for x in items)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_list_expr(self)
@@ -1559,13 +1483,6 @@ class DictExpr(Expression):
 
     def __init__(self, items: List[Tuple[Expression, Expression]]) -> None:
         self.items = items
-        # key is None for **item, e.g. {'a': 1, **x} has
-        # keys ['a', None] and values [1, x].
-        if all(x[0] and x[0].literal == LITERAL_YES and x[1].literal == LITERAL_YES
-               for x in items):
-            self.literal = LITERAL_YES
-            self.literal_hash = (cast(Any, 'Dict'),) + tuple(
-                (x[0].literal_hash, x[1].literal_hash) for x in items)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
@@ -1578,9 +1495,6 @@ class TupleExpr(Expression):
 
     def __init__(self, items: List[Expression]) -> None:
         self.items = items
-        if all(x.literal == LITERAL_YES for x in items):
-            self.literal = LITERAL_YES
-            self.literal_hash = (cast(Any, 'Tuple'),) + tuple(x.literal_hash for x in items)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_tuple_expr(self)
@@ -1593,9 +1507,6 @@ class SetExpr(Expression):
 
     def __init__(self, items: List[Expression]) -> None:
         self.items = items
-        if all(x.literal == LITERAL_YES for x in items):
-            self.literal = LITERAL_YES
-            self.literal_hash = (cast(Any, 'Set'),) + tuple(x.literal_hash for x in items)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_set_expr(self)
@@ -2392,3 +2303,114 @@ deserialize_map = {
     for key, obj in globals().items()
     if isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
 }
+
+# [Note Literals and literal_hash]
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Mypy uses the term "literal" to refer to any expression built out of
+# the following:
+#
+# * Plain literal expressions, like `1` (integer, float, string, etc.)
+#
+# * Compound literal expressions, like `(lit1, lit2)` (list, dict,
+#   set, or tuple)
+#
+# * Operator expressions, like `lit1 + lit2`
+#
+# * Variable references, like `x`
+#
+# * Member references, like `lit.m`
+#
+# * Index expressions, like `lit[0]`
+#
+# A typical "literal" looks like `x[(i,j+1)].m`.
+#
+# An expression that is a literal has a `literal_hash`, with the
+# following properties.
+#
+# * `literal_hash` is a Key: a tuple containing basic data types and
+#   possibly other Keys. So it can be used as a key in a dictionary
+#   that will be compared by value (as opposed to the Node itself,
+#   which is compared by identity).
+#
+# * Two expressions have equal `literal_hash`es if and only if they
+#   are syntactically equal expressions. (NB: Actually, we also
+#   identify as equal expressions like `3` and `3.0`; is this a good
+#   idea?)
+#
+# * The elements of `literal_hash` that are tuples are exactly the
+#   subexpressions of the original expression (e.g. the base and index
+#   of an index expression, or the operands of an operator expression).
+
+
+def literal_hash(e: Expression) -> Any:
+    if isinstance(e, (IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr, UnicodeExpr)):
+        return e.value
+
+    elif isinstance(e, StarExpr):
+        return ('Star', literal_hash(e.expr))
+
+    elif isinstance(e, NameExpr):
+        return ('Var', e.name)
+
+    elif isinstance(e, MemberExpr):
+        return ('Member', literal_hash(e.expr), e.name)
+
+    elif isinstance(e, IndexExpr):
+        if literal(e.index) == LITERAL_YES:
+            return ('Member', literal_hash(e.base), literal_hash(e.index))
+
+    elif isinstance(e, UnaryExpr):
+        return ('Unary', e.op, literal_hash(e.expr))
+
+    elif isinstance(e, OpExpr):
+        return ('Binary', e.op, literal_hash(e.left), literal_hash(e.right))
+
+    elif isinstance(e, ComparisonExpr):
+        return (('Comparison',) + tuple(e.operators) +
+                tuple(literal_hash(o) for o in e.operands))  # type: ignore
+
+    elif isinstance(e, ListExpr):
+        if all(literal(x) == LITERAL_YES for x in e.items):
+            return ('List',) + tuple(literal_hash(x) for x in e.items)
+
+    elif isinstance(e, TupleExpr):
+        if all(literal(x) == LITERAL_YES for x in e.items):
+            return ('Tuple',) + tuple(literal_hash(x) for x in e.items)
+
+    elif isinstance(e, SetExpr):
+        if all(literal(x) == LITERAL_YES for x in e.items):
+            return ('Set',) + tuple(literal_hash(x) for x in e.items)
+
+    elif isinstance(e, DictExpr):
+        if all(a and literal(a) == literal(b) == LITERAL_YES for a, b in e.items):
+            rest = tuple((literal_hash(a), literal_hash(b)) for a, b in e.items)
+            return ('Dict',) + rest  # type: ignore
+
+    return None
+
+
+def literal(e: Expression) -> int:
+    if isinstance(e, ComparisonExpr):
+        return min(literal(o) for o in e.operands)
+
+    elif isinstance(e, OpExpr):
+        return min(literal(e.left), literal(e.right))
+
+    elif isinstance(e, (MemberExpr, UnaryExpr, StarExpr)):
+        return literal(e.expr)
+
+    elif isinstance(e, IndexExpr):
+        if literal(e.index) == LITERAL_YES:
+            return literal(e.base)
+
+    elif isinstance(e, NameExpr):
+        return LITERAL_TYPE
+
+    if isinstance(e, (IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr, UnicodeExpr)):
+        return LITERAL_YES
+
+    if literal_hash(e):
+        return LITERAL_YES
+
+    return LITERAL_NO

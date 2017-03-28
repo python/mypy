@@ -21,7 +21,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF,
-    UNBOUND_TVAR, BOUND_TVAR, LITERAL_TYPE
+    UNBOUND_TVAR, BOUND_TVAR, LITERAL_TYPE, literal
 )
 from mypy import nodes
 import mypy.checker
@@ -2218,7 +2218,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.named_type('builtins.bool')
 
     def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
-        if expr.literal >= LITERAL_TYPE:
+        if literal(expr) >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
             if restriction:
                 ans = meet_simple(known_type, restriction)
