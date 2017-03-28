@@ -2343,9 +2343,9 @@ deserialize_map = {
 #   of an index expression, or the operands of an operator expression).
 
 
-def literal_hash(e: Expression) -> Any:
+def literal_hash(e: Expression) -> Key:
     if isinstance(e, (IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr, UnicodeExpr)):
-        return e.value
+        return (e.value,)
 
     elif isinstance(e, StarExpr):
         return ('Star', literal_hash(e.expr))
@@ -2372,15 +2372,15 @@ def literal_hash(e: Expression) -> Any:
 
     elif isinstance(e, ListExpr):
         if all(literal(x) == LITERAL_YES for x in e.items):
-            return ('List',) + tuple(literal_hash(x) for x in e.items)
+            return ('List',) + tuple(literal_hash(x) for x in e.items)  # type: ignore
 
     elif isinstance(e, TupleExpr):
         if all(literal(x) == LITERAL_YES for x in e.items):
-            return ('Tuple',) + tuple(literal_hash(x) for x in e.items)
+            return ('Tuple',) + tuple(literal_hash(x) for x in e.items)  # type: ignore
 
     elif isinstance(e, SetExpr):
         if all(literal(x) == LITERAL_YES for x in e.items):
-            return ('Set',) + tuple(literal_hash(x) for x in e.items)
+            return ('Set',) + tuple(literal_hash(x) for x in e.items)  # type: ignore
 
     elif isinstance(e, DictExpr):
         if all(a and literal(a) == literal(b) == LITERAL_YES for a, b in e.items):
