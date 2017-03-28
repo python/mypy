@@ -1,6 +1,15 @@
 -- Simple protocol types
 -- ---------------------
 
+[case testCannotInstantiateProtocol]
+from typing import Protocol
+
+class P(Protocol):
+    def meth(self) -> None:
+        pass
+
+P() # E: Cannot instantiate protocol class "__main__.P"
+[out]
 
 [case testSimpleProtocolOneMethod]
 from typing import Protocol
@@ -100,6 +109,9 @@ from typing import Protocol
 
 [out]
 
+-- Semanal errors in protocol types
+-- --------------------------------
+
 -- Generic protocol types
 -- ----------------------
 
@@ -121,5 +133,31 @@ from typing import Protocol
 -- isinsatnce() with @runtime protocols
 -- ------------------------------------
 
+[case testSimpleRuntimeProtocolCheck]
+from typing import Protocol, runtime
+
+class P(Protocol):
+    def meth(self) -> None:
+        pass
+
+@runtime
+class R(Protocol):
+    def meth(self) -> int:
+        pass
+
+x: object
+
+if isinstance(x, P):  # E: Only @runtime protocols can be used with instance and class checks
+    reveal_type(x)  # E: Revealed type is '__main__.P'
+
+if isinstance(x, R):
+    reveal_type(x)  # E: Revealed type is '__main__.R'
+    reveal_type(x.meth())  # E: Revealed type is 'builtins.int'  # TODO: this should be Any
+[builtins fixtures/isinstance.pyi]
+[out]
+
 -- Non-Instances and protocol types (Callable vs __call__ etc.)
 -- ------------------------------------------------------------
+
+-- Standard protocol types (SupportsInt, Reversible, etc.)
+-- -------------------------------------------------------

@@ -185,6 +185,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 and callee_type.implicit):
             return self.msg.untyped_function_call(callee_type, e)
         ret_type = self.check_call_expr_with_callee_type(callee_type, e)
+        if isinstance(e.callee, RefExpr) and e.callee.fullname in ('builtins.isinstance',
+                                                                   'builtins.issubclass'):
+            for expr in mypy.checker.flatten(e.args[1]):
+                tp = self.chk.type_map[expr]
+                if (isinstance(tp, CallableType) and tp.is_type_obj() and
+                        tp.type_object().is_protocol and
+                        not tp.type_object().runtime_protocol):
+                    self.chk.fail('Only @runtime protocols can be used with'
+                                  ' instance and class checks', e)
         if isinstance(ret_type, UninhabitedType):
             self.chk.binder.unreachable()
         if not allow_none_return and isinstance(ret_type, NoneTyp):
@@ -356,6 +365,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.msg.cannot_instantiate_abstract_class(
                     callee.type_object().name(), type.abstract_attributes,
                     context)
+            elif (callee.is_type_obj() and callee.type_object().is_protocol
+                  # Exceptions for Type[...] and classmethod first argument
+                  and not callee.from_type_type and not callee.is_classmethod_class):
+                self.chk.fail('Cannot instantiate protocol class "{}"'
+                              .format(callee.type_object().fullname()), context)
 
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds, arg_names,
@@ -838,13 +852,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Check the type of a single argument in a call."""
         if isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
-        # Only non-abstract class can be given where Type[...] is expected...
+        # Only non-abstract non-protocol class can be given where Type[...] is expected...
         elif (isinstance(caller_type, CallableType) and isinstance(callee_type, TypeType) and
-              caller_type.is_type_obj() and caller_type.type_object().is_abstract and
-              isinstance(callee_type.item, Instance) and callee_type.item.type.is_abstract and
+              caller_type.is_type_obj() and
+              (caller_type.type_object().is_abstract or caller_type.type_object().is_protocol) and
+              isinstance(callee_type.item, Instance) and
+              (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol) and
               # ...except for classmethod first argument
               not caller_type.is_classmethod_class):
-            messages.fail("Only non-abstract class can be given where '{}' is expected"
+            messages.fail("Only concrete class can be given where '{}' is expected"
                           .format(callee_type), context)
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):

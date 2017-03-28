@@ -1210,14 +1210,16 @@ class TypeChecker(StatementVisitor[None]):
                 else:
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
-                # Special case: only non-abstract classes can be assigned to variables
-                # with explicit type Type[A].
+                # Special case: only non-abstract non-protocol classes can be assigned to
+                # variables with explicit type Type[A], where A is protocol or abstract.
                 if (isinstance(rvalue_type, CallableType) and rvalue_type.is_type_obj() and
-                        rvalue_type.type_object().is_abstract and
+                        (rvalue_type.type_object().is_abstract or
+                         rvalue_type.type_object().is_protocol) and
                         isinstance(lvalue_type, TypeType) and
                         isinstance(lvalue_type.item, Instance) and
-                        lvalue_type.item.type.is_abstract):
-                    self.fail("Can only assign non-abstract classes"
+                        (lvalue_type.item.type.is_abstract or
+                         lvalue_type.item.type.is_protocol)):
+                    self.fail("Can only assign concrete classes"
                               " to a variable of type '{}'".format(lvalue_type), rvalue)
                     return
                 if rvalue_type and infer_lvalue_type:
