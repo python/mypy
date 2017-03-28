@@ -792,7 +792,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         For example, consider this class:
 
-          class Foo(Bar, Generic[T]): ...
+        . class Foo(Bar, Generic[T]): ...
 
         Now we will remove Generic[T] from bases of Foo and infer that the
         type variable 'T' is a type argument of Foo.
