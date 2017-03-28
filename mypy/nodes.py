@@ -2367,25 +2367,19 @@ def literal_hash(e: Expression) -> Key:
         return ('Binary', e.op, literal_hash(e.left), literal_hash(e.right))
 
     elif isinstance(e, ComparisonExpr):
-        return (('Comparison',) + tuple(e.operators) +
-                tuple(literal_hash(o) for o in e.operands))  # type: ignore
+        rest = tuple(e.operators)  # type: Any
+        rest += tuple(literal_hash(o) for o in e.operands)
+        return ('Comparison',) + rest
 
-    elif isinstance(e, ListExpr):
+    elif isinstance(e, (ListExpr, TupleExpr, SetExpr)):
+        name = {ListExpr: 'List', TupleExpr: 'Tuple', SetExpr: 'Set'}[type(e)]  # type: Any
         if all(literal(x) == LITERAL_YES for x in e.items):
-            return ('List',) + tuple(literal_hash(x) for x in e.items)  # type: ignore
-
-    elif isinstance(e, TupleExpr):
-        if all(literal(x) == LITERAL_YES for x in e.items):
-            return ('Tuple',) + tuple(literal_hash(x) for x in e.items)  # type: ignore
-
-    elif isinstance(e, SetExpr):
-        if all(literal(x) == LITERAL_YES for x in e.items):
-            return ('Set',) + tuple(literal_hash(x) for x in e.items)  # type: ignore
+            return (name,) + tuple(literal_hash(x) for x in e.items)
 
     elif isinstance(e, DictExpr):
         if all(a and literal(a) == literal(b) == LITERAL_YES for a, b in e.items):
             rest = tuple((literal_hash(a), literal_hash(b)) for a, b in e.items)
-            return ('Dict',) + rest  # type: ignore
+            return ('Dict',) + rest
 
     return None
 
