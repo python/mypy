@@ -1647,7 +1647,9 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
             # so we ignore any suppressed module not explicitly re-included
             # from the command line.
             ignored = dep in st.suppressed and dep not in entry_points
-            if dep not in graph and not ignored:
+            if ignored:
+                manager.missing_modules.add(dep)
+            elif dep not in graph:
                 try:
                     if dep in st.ancestors:
                         # TODO: Why not 'if dep not in st.dependencies' ?
