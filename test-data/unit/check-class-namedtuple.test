@@ -296,6 +296,7 @@ class X(NamedTuple):
 reveal_type(X._fields)  # E: Revealed type is 'Tuple[builtins.str, builtins.str]'
 reveal_type(X._field_types)  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
 reveal_type(X._field_defaults)  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
+reveal_type(X.__annotations__)  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
 
 [builtins fixtures/dict.pyi]
 
