@@ -579,3 +579,18 @@ class ReuseCallableNamed(NamedTuple):
         return 0
 
 [builtins fixtures/dict.pyi]
+
+[case testNewNamedTupleDocString]
+from typing import NamedTuple
+
+class Documented(NamedTuple):
+    """This is a docstring."""
+    x: int
+
+reveal_type(Documented.__doc__)  # E: Revealed type is 'builtins.str'
+reveal_type(Documented(1).x)  # E: Revealed type is 'builtins.int'
+
+class BadDoc(NamedTuple):
+    x: int
+    def __doc__(self) -> str:  # E: Cannot overwrite NamedTuple attribute "__doc__"
+        return ''

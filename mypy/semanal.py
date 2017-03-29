@@ -151,12 +151,14 @@ FUNCTION_BOTH_PHASES = 0  # Everthing in one go
 FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone body
 FUNCTION_SECOND_PHASE = 2  # Only analyze body
 
-# Matches "_prohibited" in typing.py, but adds _source, which is allowed but ignored at runtime, and
-# __annotations__, which works at runtime but can't easily be supported in a static checker.
+# Matches "_prohibited" in typing.py, but adds _source, which is allowed but ignored at runtime,
+# __annotations__, which works at runtime but can't easily be supported in a static checker,
+# and __doc__, which works at runtime but is a bit tricky to implement here and lacks a good use
+# case.
 NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs__',
                                '_fields', '_field_defaults', '_field_types',
                                '_make', '_replace', '_asdict',
-                               '_source', '__annotations__')
+                               '_source', '__annotations__', '__doc__')
 
 
 class SemanticAnalyzer(NodeVisitor):
@@ -946,6 +948,10 @@ class SemanticAnalyzer(NodeVisitor):
                     continue
                 # Also allow methods.
                 if isinstance(stmt, FuncBase):
+                    continue
+                # And docstrings.
+                if (isinstance(stmt, ExpressionStmt) and
+                        isinstance(stmt.expr, StrExpr)):
                     continue
                 self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
@@ -2161,6 +2167,7 @@ class SemanticAnalyzer(NodeVisitor):
         add_field(Var('_field_defaults', dictype), is_initialized_in_class=True)
         add_field(Var('_source', strtype), is_initialized_in_class=True)
         add_field(Var('__annotations__', ordereddictype), is_initialized_in_class=True)
+        add_field(Var('__doc__', strtype), is_initialized_in_class=True)
 
         tvd = TypeVarDef('NT', 1, [], info.tuple_type)
         selftype = TypeVarType(tvd)
