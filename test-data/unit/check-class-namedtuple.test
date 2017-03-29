@@ -491,6 +491,8 @@ class XMeth(NamedTuple):
     x: int
     def double(self) -> int:
         return self.x
+    async def asyncdouble(self) -> int:
+        return self.x
 
 class XRepr(NamedTuple):
     x: int
@@ -501,11 +503,55 @@ class XRepr(NamedTuple):
         return 0
 
 reveal_type(XMeth(1).double()) # E: Revealed type is 'builtins.int'
+reveal_type(XMeth(1).asyncdouble())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
 reveal_type(XMeth(42).x)  # E: Revealed type is 'builtins.int'
 reveal_type(XRepr(42).__str__())  # E: Revealed type is 'builtins.str'
 reveal_type(XRepr(1, 2).__add__(XRepr(3)))  # E: Revealed type is 'builtins.int'
+
+[case testNewNamedTupleMethodInheritance]
+# flags: --python-version 3.6
+from typing import NamedTuple, TypeVar
+
+T = TypeVar('T')
+
+class Base(NamedTuple):
+    x: int
+    def copy(self: T) -> T:
+        return self
+    def good_override(self) -> int:
+        return self.x
+    def bad_override(self) -> int:
+        return self.x
+
+class Child(Base):
+    def new_method(self) -> int:
+        return self.x
+    def good_override(self) -> int:
+        return 0
+    def bad_override(self) -> str:  # E: Return type of "bad_override" incompatible with supertype "Base"
+        return 'incompatible'
+
+def takes_base(base: Base) -> int:
+    return base.x
+
+reveal_type(Base(1).copy())  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.Base]'
+reveal_type(Child(1).copy())  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.Child]'
+reveal_type(Base(1).good_override())  # E: Revealed type is 'builtins.int'
+reveal_type(Child(1).good_override())  # E: Revealed type is 'builtins.int'
+reveal_type(Base(1).bad_override())  # E: Revealed type is 'builtins.int'
+reveal_type(takes_base(Base(1)))  # E: Revealed type is 'builtins.int'
+reveal_type(takes_base(Child(1)))  # E: Revealed type is 'builtins.int'
+
+[case testNewNamedTupleIllegalNames]
+# flags: --python-version 3.6
+from typing import NamedTuple
 
 class XMethBad(NamedTuple):
     x: int
     def _fields(self):  # E: Cannot overwrite NamedTuple attribute "_fields"
         return 'no chance for this'
+
+class MagicalFields(NamedTuple):
+    x: int
+    def __slots__(self) -> None: ...  # E: Cannot overwrite NamedTuple attribute "__slots__"
+    def __new__(cls) -> None: ...  # E: Cannot overwrite NamedTuple attribute "__new__"
