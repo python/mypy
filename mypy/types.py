@@ -1582,9 +1582,6 @@ class TypeQuery(Generic[T], TypeVisitor[T]):
 
         Use the strategy to combine the results.
         """
-        if not types:
-            # Use default result for empty list.
-            return self.default
         res = self.default
         try:
             for t in types:
