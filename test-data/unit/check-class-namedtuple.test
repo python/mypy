@@ -485,7 +485,6 @@ class CallsBaseInit(X):
         super().__init__(x)
 
 [case testNewNamedTupleWithMethods]
-# flags: --python-version 3.6
 from typing import NamedTuple
 
 class XMeth(NamedTuple):
@@ -510,7 +509,6 @@ reveal_type(XRepr(42).__str__())  # E: Revealed type is 'builtins.str'
 reveal_type(XRepr(1, 2).__add__(XRepr(3)))  # E: Revealed type is 'builtins.int'
 
 [case testNewNamedTupleMethodInheritance]
-# flags: --python-version 3.6
 from typing import NamedTuple, TypeVar
 
 T = TypeVar('T')
@@ -544,8 +542,7 @@ reveal_type(takes_base(Base(1)))  # E: Revealed type is 'builtins.int'
 reveal_type(takes_base(Child(1)))  # E: Revealed type is 'builtins.int'
 
 [case testNewNamedTupleIllegalNames]
-# flags: --python-version 3.6
-from typing import NamedTuple
+from typing import Callable, NamedTuple
 
 class XMethBad(NamedTuple):
     x: int
@@ -556,3 +553,17 @@ class MagicalFields(NamedTuple):
     x: int
     def __slots__(self) -> None: ...  # E: Cannot overwrite NamedTuple attribute "__slots__"
     def __new__(cls) -> None: ...  # E: Cannot overwrite NamedTuple attribute "__new__"
+
+class ReuseNames(NamedTuple):
+    x: int
+    def x(self) -> str:  # E: Name 'x' already defined
+        return ''
+
+    def y(self) -> int:
+        return 0
+    y: str  # E: Name 'y' already defined
+
+class ReuseCallableNamed(NamedTuple):
+    z: Callable[[ReuseNames], int]
+    def z(self) -> int:  # E: Name 'z' already defined
+        return 0

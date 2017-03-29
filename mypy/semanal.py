@@ -662,8 +662,8 @@ class SemanticAnalyzer(NodeVisitor):
             return
         named_tuple_info = self.analyze_namedtuple_classdef(defn)
         if named_tuple_info is not None:
-            # temporarily clear the names dict so we don't get errors about duplicate names that
-            # were set in build_namedtuple_typeinfo
+            # Temporarily clear the names dict so we don't get errors about duplicate names that
+            # were already set in build_namedtuple_typeinfo.
             nt_names = named_tuple_info.names
             named_tuple_info.names = SymbolTable()
 
@@ -681,6 +681,8 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail('Cannot overwrite NamedTuple attribute "{}"'.format(prohibited),
                               named_tuple_info.names[prohibited].node)
 
+            # Restore the names in the original symbol table. This ensures that the symbol
+            # table contains the field objects created by build_namedtuple_typeinfo.
             named_tuple_info.names.update(nt_names)
         else:
             self.setup_class_def_analysis(defn)
@@ -936,12 +938,14 @@ class SemanticAnalyzer(NodeVisitor):
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
+                if (isinstance(stmt, PassStmt) or
+                    (isinstance(stmt, ExpressionStmt) and
+                        isinstance(stmt.expr, EllipsisExpr))):
+                    continue
                 # Also allow methods.
-                if (not isinstance(stmt, PassStmt) and
-                        not (isinstance(stmt, ExpressionStmt) and
-                             isinstance(stmt.expr, EllipsisExpr)) and
-                        not isinstance(stmt, FuncBase)):
-                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+                if isinstance(stmt, FuncBase):
+                    continue
+                self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
                 self.fail(NAMEDTUP_CLASS_ERROR, stmt)
@@ -3515,7 +3519,8 @@ class ThirdPass(TraverserVisitor):
         self.errors.pop_function()
 
     def visit_class_def(self, tdef: ClassDef) -> None:
-        # NamedTuple base classes are special; we don't have to check them again here
+        # NamedTuple base classes are validated in check_namedtuple_classdef; we don't have to
+        # check them again here.
         if not tdef.info.is_named_tuple:
             for type in tdef.info.bases:
                 self.analyze(type)
