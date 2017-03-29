@@ -38,6 +38,7 @@ class NodeStripVisitor(TraverserVisitor):
         node.info.type_vars = []
         node.info.bases = []
         node.info.abstract_attributes = []
+        node.info.mro = []
         node.info.add_type_vars()
 
     def visit_func_def(self, node: FuncDef) -> None:

@@ -500,6 +500,28 @@ class B: pass
 main:4: error: "A" has no attribute "g"
 main:5: error: "A" has no attribute "x"
 
+[case testRemoveBaseClass2]
+import m
+class A(m.B):
+    def f(self) -> None:
+        self.g()
+        self.x
+        self.y = 1
+[file m.py]
+class C:
+    def g(self) -> None:
+        self.x = 1
+class B(C): pass
+[file m.py.2]
+class C:
+    def g(self) -> None:
+        self.x = 1
+class B: pass
+[out]
+==
+main:4: error: "A" has no attribute "g"
+main:5: error: "A" has no attribute "x"
+
 [case testChangeInPackage]
 import m.n
 def f() -> None:
