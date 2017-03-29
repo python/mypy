@@ -151,10 +151,12 @@ FUNCTION_BOTH_PHASES = 0  # Everthing in one go
 FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone body
 FUNCTION_SECOND_PHASE = 2  # Only analyze body
 
-# Matches "_prohibited" in typing.py
+# Matches "_prohibited" in typing.py, but adds _source, which is allowed but ignored at runtime, and
+# __annotations__, which works at runtime but can't easily be supported in a static checker.
 NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs__',
                                '_fields', '_field_defaults', '_field_types',
-                               '_make', '_replace', '_asdict')
+                               '_make', '_replace', '_asdict',
+                               '_source', '__annotations__')
 
 
 class SemanticAnalyzer(NodeVisitor):

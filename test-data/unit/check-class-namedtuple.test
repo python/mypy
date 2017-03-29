@@ -551,8 +551,18 @@ class XMethBad(NamedTuple):
 
 class MagicalFields(NamedTuple):
     x: int
-    def __slots__(self) -> None: ...  # E: Cannot overwrite NamedTuple attribute "__slots__"
-    def __new__(cls) -> None: ...  # E: Cannot overwrite NamedTuple attribute "__new__"
+    def __slots__(self) -> None: pass  # E: Cannot overwrite NamedTuple attribute "__slots__"
+    def __new__(cls) -> None: pass  # E: Cannot overwrite NamedTuple attribute "__new__"
+    def _source(self) -> int: pass  # E: Cannot overwrite NamedTuple attribute "_source"
+    __annotations__ = {'x': float}  # E: NamedTuple field name cannot start with an underscore: __annotations__ \
+        # E: Invalid statement in NamedTuple definition; expected "field_name: field_type" \
+        # E: Cannot overwrite NamedTuple attribute "__annotations__"
+
+class AnnotationsAsAMethod(NamedTuple):
+    x: int
+    # This fails at runtime because typing.py assumes that __annotations__ is a dictionary.
+    def __annotations__(self) -> float:  # E: Cannot overwrite NamedTuple attribute "__annotations__"
+        return 1.0
 
 class ReuseNames(NamedTuple):
     x: int
@@ -567,3 +577,5 @@ class ReuseCallableNamed(NamedTuple):
     z: Callable[[ReuseNames], int]
     def z(self) -> int:  # E: Name 'z' already defined
         return 0
+
+[builtins fixtures/dict.pyi]
