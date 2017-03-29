@@ -25,21 +25,26 @@ def meet_types(s: Type, t: Type) -> Type:
     return t.accept(TypeMeetVisitor(s))
 
 
-def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
-    if s == t:
-        return s
-    if isinstance(s, UnionType):
-        return UnionType.make_simplified_union([meet_types(x, t) for x in s.items])
-    elif not is_overlapping_types(s, t, use_promotions=True):
+def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
+    """Return the declared type narrowed down to another type."""
+    if declared == narrowed:
+        return declared
+    if isinstance(declared, UnionType):
+        return UnionType.make_simplified_union([narrow_declared_type(x, narrowed)
+                                                for x in declared.items])
+    elif not is_overlapping_types(declared, narrowed, use_promotions=True):
         if experiments.STRICT_OPTIONAL:
             return UninhabitedType()
         else:
             return NoneTyp()
-    else:
-        if default_right:
-            return t
-        else:
-            return s
+    elif isinstance(narrowed, UnionType):
+        return UnionType.make_simplified_union([narrow_declared_type(declared, x)
+                                                for x in narrowed.items])
+    elif isinstance(narrowed, AnyType):
+        return narrowed
+    elif isinstance(declared, (Instance, TupleType)):
+        return meet_types(declared, narrowed)
+    return narrowed
 
 
 def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool:
@@ -249,6 +254,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         elif (isinstance(self.s, Instance) and
               self.s.type.fullname() == 'builtins.tuple' and self.s.args):
             return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
+        elif (isinstance(self.s, Instance) and t.fallback.type == self.s.type):
+            # Uh oh, a broken named tuple type (https://github.com/python/mypy/issues/3016).
+            # Do something reasonable until that bug is fixed.
+            return t
         else:
             return self.default(self.s)
 
