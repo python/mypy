@@ -996,6 +996,23 @@ class UnionType(Type):
 
     @staticmethod
     def make_simplified_union(items: List[Type], line: int = -1, column: int = -1) -> Type:
+        """Build union type with redundant union items removed.
+
+        If only a single item remains, this may return a non-union type.
+
+        Examples:
+
+        * [int, str] -> Union[int, str]
+        * [int, object] -> object
+        * [int, int] -> int
+        * [int, Any] -> Union[int, Any] (Any types are not simplified away!)
+        * [Any, Any] -> Any
+
+        Note: This must NOT be used during semantic analysis, since TypeInfos may not
+              be fully initialized.
+        """
+        # TODO: Make this a function living somewhere outside mypy.types. Most other non-trivial
+        #       type operations are not static methods, so this is inconsistent.
         while any(isinstance(typ, UnionType) for typ in items):
             all_items = []  # type: List[Type]
             for typ in items:
@@ -1005,11 +1022,7 @@ class UnionType(Type):
                     all_items.append(typ)
             items = all_items
 
-        if any(isinstance(typ, AnyType) for typ in items):
-            return AnyType()
-
-        from mypy.subtypes import is_subtype
-        from mypy.sametypes import is_same_type
+        from mypy.subtypes import is_proper_subtype
 
         removed = set()  # type: Set[int]
         for i, ti in enumerate(items):
@@ -1017,10 +1030,8 @@ class UnionType(Type):
             # Keep track of the truishness info for deleted subtypes which can be relevant
             cbt = cbf = False
             for j, tj in enumerate(items):
-                if (i != j
-                    and is_subtype(tj, ti)
-                    and (not (isinstance(tj, Instance) and tj.type.fallback_to_any)
-                         or is_same_type(ti, tj))):
+                if (i != j and is_proper_subtype(tj, ti)):
+                    # We found a redundant item in the union.
                     removed.add(j)
                     cbt = cbt or tj.can_be_true
                     cbf = cbf or tj.can_be_false
@@ -1724,7 +1735,7 @@ def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -
     if isinstance(tp, TupleType):
         return tp.copy_modified(items=new_args)
     if isinstance(tp, UnionType):
-        return UnionType.make_simplified_union(new_args, line, column)
+        return UnionType(new_args, line, column)
     if isinstance(tp, CallableType):
         return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1],
                                 line=line, column=column)
@@ -1750,6 +1761,20 @@ def get_type_vars(typ: Type) -> List[TypeVarType]:
             tvars.append(var)
             included.add(var.id)
     return tvars
+
+
+def union_items(typ: Type) -> List[Type]:
+    """Return the flattened items of a union type.
+
+    For non-union types, return a list containing just the argument.
+    """
+    if isinstance(typ, UnionType):
+        items = []
+        for item in typ.items:
+            items.extend(union_items(item))
+        return items
+    else:
+        return [typ]
 
 
 deserialize_map = {
