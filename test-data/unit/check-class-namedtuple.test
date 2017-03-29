@@ -508,6 +508,22 @@ reveal_type(XMeth(42).x)  # E: Revealed type is 'builtins.int'
 reveal_type(XRepr(42).__str__())  # E: Revealed type is 'builtins.str'
 reveal_type(XRepr(1, 2).__add__(XRepr(3)))  # E: Revealed type is 'builtins.int'
 
+[case testNewNamedTupleOverloading]
+from typing import NamedTuple, overload
+
+class Overloader(NamedTuple):
+    x: int
+    @overload
+    def method(self, y: str) -> str: pass
+    @overload
+    def method(self, y: int) -> int: pass
+    def method(self, y):
+        return y
+
+reveal_type(Overloader(1).method('string'))  # E: Revealed type is 'builtins.str'
+reveal_type(Overloader(1).method(1))  # E: Revealed type is 'builtins.int'
+Overloader(1).method(('tuple',))  # E: No overload variant of "method" of "Overloader" matches argument types [Tuple[builtins.str]]
+
 [case testNewNamedTupleMethodInheritance]
 from typing import NamedTuple, TypeVar
 
@@ -516,14 +532,28 @@ T = TypeVar('T')
 class Base(NamedTuple):
     x: int
     def copy(self: T) -> T:
+        reveal_type(self)  # E: Revealed type is 'T`-1'
         return self
     def good_override(self) -> int:
+        reveal_type(self)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.Base]'
+        reveal_type(self[0])  # E: Revealed type is 'builtins.int'
+        self[0] = 3  # E: Unsupported target for indexed assignment
+        reveal_type(self.x)  # E: Revealed type is 'builtins.int'
+        self.x = 3  # E: Property "x" defined in "Base" is read-only
+        self[1]  # E: Tuple index out of range
+        self[T]  # E: Tuple index must be an integer literal
         return self.x
     def bad_override(self) -> int:
         return self.x
 
 class Child(Base):
     def new_method(self) -> int:
+        reveal_type(self)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.Child]'
+        reveal_type(self[0])  # E: Revealed type is 'builtins.int'
+        self[0] = 3  # E: Unsupported target for indexed assignment
+        reveal_type(self.x)  # E: Revealed type is 'builtins.int'
+        self.x = 3  # E: Property "x" defined in "Child" is read-only
+        self[1]  # E: Tuple index out of range
         return self.x
     def good_override(self) -> int:
         return 0
