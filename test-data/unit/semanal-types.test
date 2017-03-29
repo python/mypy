@@ -736,7 +736,7 @@ MypyFile:1(
       f
       Args(
         Var(a))
-      def (a: builtins.Any) -> builtins.Any
+      def (a: Any) -> Any
       Block:7(
         ReturnStmt:7(
           NameExpr(a [l]))))
