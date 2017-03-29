@@ -226,7 +226,7 @@ def is_imprecise(t: Type) -> bool:
     return t.accept(HasAnyQuery())
 
 
-class HasAnyQuery(TypeQuery):
+class HasAnyQuery(TypeQuery[bool]):
     def __init__(self) -> None:
         super().__init__(False, ANY_TYPE_STRATEGY)
 

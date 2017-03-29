@@ -2375,7 +2375,7 @@ def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> Callabl
     return c.copy_modified(ret_type=new_ret_type)
 
 
-class ArgInferSecondPassQuery(types.TypeQuery):
+class ArgInferSecondPassQuery(types.TypeQuery[bool]):
     """Query whether an argument type should be inferred in the second pass.
 
     The result is True if the type has a type variable in a callable return
@@ -2389,7 +2389,7 @@ class ArgInferSecondPassQuery(types.TypeQuery):
         return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
 
 
-class HasTypeVarQuery(types.TypeQuery):
+class HasTypeVarQuery(types.TypeQuery[bool]):
     """Visitor for querying whether a type has a type variable component."""
     def __init__(self) -> None:
         super().__init__(False, types.ANY_TYPE_STRATEGY)
@@ -2402,7 +2402,7 @@ def has_erased_component(t: Type) -> bool:
     return t is not None and t.accept(HasErasedComponentsQuery())
 
 
-class HasErasedComponentsQuery(types.TypeQuery):
+class HasErasedComponentsQuery(types.TypeQuery[bool]):
     """Visitor for querying whether a type has an erased component."""
     def __init__(self) -> None:
         super().__init__(False, types.ANY_TYPE_STRATEGY)

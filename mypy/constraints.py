@@ -250,7 +250,7 @@ def is_complete_type(typ: Type) -> bool:
     return typ.accept(CompleteTypeVisitor())
 
 
-class CompleteTypeVisitor(TypeQuery):
+class CompleteTypeVisitor(TypeQuery[bool]):
     def __init__(self) -> None:
         super().__init__(default=True, strategy=ALL_TYPES_STRATEGY)
 
