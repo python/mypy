@@ -723,11 +723,11 @@ try:
 except BaseException as e1:
     reveal_type(e1)  # E: Revealed type is 'builtins.BaseException'
 except (E1, BaseException) as e2:
-    reveal_type(e2)  # E: Revealed type is 'Union[Any, builtins.BaseException]'
+    reveal_type(e2)  # E: Revealed type is 'Any'
 except (E1, E2) as e3:
-    reveal_type(e3)  # E: Revealed type is 'Union[Any, __main__.E2]'
+    reveal_type(e3)  # E: Revealed type is 'Any'
 except (E1, E2, BaseException) as e4:
-    reveal_type(e4)  # E: Revealed type is 'Union[Any, builtins.BaseException]'
+    reveal_type(e4)  # E: Revealed type is 'Any'
 
 try: pass
 except E1 as e1:

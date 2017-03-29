@@ -10,7 +10,7 @@ from mypy.types import (
     UninhabitedType, TypeType, true_or_false
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype
+from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
 
 from mypy import experiments
 
@@ -29,10 +29,10 @@ def join_simple(declaration: Type, s: Type, t: Type) -> Type:
     if isinstance(s, ErasedType):
         return t
 
-    if is_proper_subtype(s, t):
+    if is_subtype(s, t):
         return t
 
-    if is_proper_subtype(t, s):
+    if is_subtype(t, s):
         return s
 
     if isinstance(declaration, UnionType):

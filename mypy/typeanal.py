@@ -7,7 +7,7 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
     AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    get_type_vars, union_items
+    get_type_vars,
 )
 from mypy.nodes import (
     BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
@@ -109,7 +109,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             t.optional = False
             # We don't need to worry about double-wrapping Optionals or
             # wrapping Anys: Union simplification will take care of that.
-            return make_optional_type(self.visit_unbound_type(t))
+            return UnionType.make_simplified_union([self.visit_unbound_type(t), NoneTyp()])
         sym = self.lookup(t.name, t)
         if sym is not None:
             if sym.node is None:
@@ -151,7 +151,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     self.fail('Optional[...] must have exactly one type argument', t)
                     return AnyType()
                 item = self.anal_type(t.args[0])
-                return make_optional_type(item)
+                return UnionType.make_simplified_union([item, NoneTyp()])
             elif fullname == 'typing.Callable':
                 return self.analyze_callable_type(t)
             elif fullname == 'typing.Type':
@@ -557,21 +557,3 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_type_type(self, t: TypeType) -> None:
         pass
-
-
-def make_optional_type(t: Type) -> Type:
-    """Return the type corresponding to Optional[t].
-
-    Note that we can't use normal union simplification, since this function
-    is called during semantic analysis and simplification only works during
-    type checking.
-    """
-    if not experiments.STRICT_OPTIONAL:
-        return t
-    if isinstance(t, NoneTyp):
-        return t
-    if isinstance(t, UnionType):
-        items = [item for item in union_items(t)
-                 if not isinstance(item, NoneTyp)]
-        return UnionType(items + [NoneTyp()], t.line, t.column)
-    return UnionType([t, NoneTyp()], t.line, t.column)

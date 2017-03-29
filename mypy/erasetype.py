@@ -76,8 +76,7 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> Type:
-        erased_items = [erase_type(item) for item in t.items]
-        return UnionType.make_simplified_union(erased_items)
+        return AnyType()        # XXX: return underlying type if only one?
 
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType(t.item.accept(self), line=t.line)
