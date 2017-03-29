@@ -345,7 +345,7 @@ from typing import NamedTuple
 class X(NamedTuple):
     x: int
     y = z = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
-    def f(self): pass  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+    def f(self): pass
 
 [case testNewNamedTupleWithInvalidItems2]
 # flags: --python-version 3.6
@@ -482,3 +482,30 @@ Y(y=1, x='1').method()
 class CallsBaseInit(X):
     def __init__(self, x: str) -> None:
         super().__init__(x)
+
+[case testNewNamedTupleWithMethods]
+# flags: --python-version 3.6
+from typing import NamedTuple
+
+class XMeth(NamedTuple):
+    x: int
+    def double(self) -> int:
+        return self.x
+
+class XRepr(NamedTuple):
+    x: int
+    y: int = 1
+    def __str__(self) -> str:
+        return 'string'
+    def __add__(self, other: XRepr) -> int:
+        return 0
+
+reveal_type(XMeth(1).double()) # E: Revealed type is 'builtins.int'
+reveal_type(XMeth(42).x)  # E: Revealed type is 'builtins.int'
+reveal_type(XRepr(42).__str__())  # E: Revealed type is 'builtins.str'
+reveal_type(XRepr(1, 2).__add__(XRepr(3)))  # E: Revealed type is 'builtins.int'
+
+class XMethBad(NamedTuple):
+    x: int
+    def _fields(self):  # E: Cannot overwrite NamedTuple attribute "_fields"
+        return 'no chance for this'

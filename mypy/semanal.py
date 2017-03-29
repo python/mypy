@@ -151,6 +151,11 @@ FUNCTION_BOTH_PHASES = 0  # Everthing in one go
 FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone body
 FUNCTION_SECOND_PHASE = 2  # Only analyze body
 
+# Matches "_prohibited" in typing.py
+NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs__',
+                               '_fields', '_field_defaults', '_field_types',
+                               '_make', '_replace', '_asdict')
+
 
 class SemanticAnalyzer(NodeVisitor):
     """Semantically analyze parsed mypy files.
@@ -655,15 +660,32 @@ class SemanticAnalyzer(NodeVisitor):
         self.clean_up_bases_and_infer_type_variables(defn)
         if self.analyze_typeddict_classdef(defn):
             return
-        if self.analyze_namedtuple_classdef(defn):
-            # just analyze the class body so we catch type errors in default values
-            self.enter_class(defn)
+        named_tuple_info = self.analyze_namedtuple_classdef(defn)
+        if named_tuple_info is not None:
+            # temporarily clear the names dict so we don't get errors about duplicate names that
+            # were set in build_namedtuple_typeinfo
+            nt_names = named_tuple_info.names
+            named_tuple_info.names = SymbolTable()
+
+            self.bind_class_type_vars(named_tuple_info)
+            self.enter_class(named_tuple_info)
+
             defn.defs.accept(self)
+
             self.leave_class()
+            self.unbind_class_type_vars()
+
+            # make sure we didn't use illegal names, then reset the names in the typeinfo
+            for prohibited in NAMEDTUPLE_PROHIBITED_NAMES:
+                if prohibited in named_tuple_info.names:
+                    self.fail('Cannot overwrite NamedTuple attribute "{}"'.format(prohibited),
+                              named_tuple_info.names[prohibited].node)
+
+            named_tuple_info.names.update(nt_names)
         else:
             self.setup_class_def_analysis(defn)
 
-            self.bind_class_type_vars(defn)
+            self.bind_class_type_vars(defn.info)
 
             self.analyze_base_classes(defn)
             self.analyze_metaclass(defn)
@@ -671,7 +693,7 @@ class SemanticAnalyzer(NodeVisitor):
             for decorator in defn.decorators:
                 self.analyze_class_decorator(defn, decorator)
 
-            self.enter_class(defn)
+            self.enter_class(defn.info)
 
             # Analyze class body.
             defn.defs.accept(self)
@@ -683,13 +705,13 @@ class SemanticAnalyzer(NodeVisitor):
 
             self.unbind_class_type_vars()
 
-    def enter_class(self, defn: ClassDef) -> None:
+    def enter_class(self, info: TypeInfo) -> None:
         # Remember previous active class
         self.type_stack.append(self.type)
         self.locals.append(None)  # Add class scope
         self.block_depth.append(-1)  # The class body increments this to 0
         self.postpone_nested_functions_stack.append(FUNCTION_BOTH_PHASES)
-        self.type = defn.info
+        self.type = info
 
     def leave_class(self) -> None:
         """ Restore analyzer state. """
@@ -698,14 +720,14 @@ class SemanticAnalyzer(NodeVisitor):
         self.locals.pop()
         self.type = self.type_stack.pop()
 
-    def bind_class_type_vars(self, defn: ClassDef) -> None:
+    def bind_class_type_vars(self, info: TypeInfo) -> None:
         """ Unbind type variables of previously active class and bind
         the type variables for the active class.
         """
         if self.bound_tvars:
             disable_typevars(self.bound_tvars)
         self.tvar_stack.append(self.bound_tvars)
-        self.bound_tvars = self.bind_class_type_variables_in_symbol_table(defn.info)
+        self.bound_tvars = self.bind_class_type_variables_in_symbol_table(info)
 
     def unbind_class_type_vars(self) -> None:
         """ Unbind the active class' type vars and rebind the
@@ -882,7 +904,7 @@ class SemanticAnalyzer(NodeVisitor):
                 all_tvars.remove(t)
         return new_tvars
 
-    def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
+    def analyze_namedtuple_classdef(self, defn: ClassDef) -> Optional[TypeInfo]:
         # special case for NamedTuple
         for base_expr in defn.base_type_exprs:
             if isinstance(base_expr, RefExpr):
@@ -892,15 +914,17 @@ class SemanticAnalyzer(NodeVisitor):
                     if node is not None:
                         node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
                         items, types, default_items = self.check_namedtuple_classdef(defn)
-                        node.node = self.build_namedtuple_typeinfo(
+                        info = self.build_namedtuple_typeinfo(
                             defn.name, items, types, default_items)
-                        return True
-        return False
+                        node.node = info
+                        defn.info = info
+                        return info
+        return None
 
     def check_namedtuple_classdef(
             self, defn: ClassDef) -> Tuple[List[str], List[Type], Dict[str, Expression]]:
         NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
-                               'expected "field_name: field_type"')
+                                'expected "field_name: field_type"')
         if self.options.python_version < (3, 6):
             self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
             return [], [], {}
@@ -912,9 +936,11 @@ class SemanticAnalyzer(NodeVisitor):
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
+                # Also allow methods.
                 if (not isinstance(stmt, PassStmt) and
-                    not (isinstance(stmt, ExpressionStmt) and
-                         isinstance(stmt.expr, EllipsisExpr))):
+                        not (isinstance(stmt, ExpressionStmt) and
+                             isinstance(stmt.expr, EllipsisExpr)) and
+                        not isinstance(stmt, FuncBase)):
                     self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
@@ -2128,6 +2154,7 @@ class SemanticAnalyzer(NodeVisitor):
         add_field(Var('_field_types', dictype), is_initialized_in_class=True)
         add_field(Var('_field_defaults', dictype), is_initialized_in_class=True)
         add_field(Var('_source', strtype), is_initialized_in_class=True)
+        add_field(Var('__annotations__', ordereddictype), is_initialized_in_class=True)
 
         tvd = TypeVarDef('NT', 1, [], info.tuple_type)
         selftype = TypeVarType(tvd)
@@ -3359,7 +3386,7 @@ class FirstPass(NodeVisitor):
         self.process_nested_classes(cdef)
 
     def process_nested_classes(self, outer_def: ClassDef) -> None:
-        self.sem.enter_class(outer_def)
+        self.sem.enter_class(outer_def.info)
         for node in outer_def.defs.body:
             if isinstance(node, ClassDef):
                 node.info = TypeInfo(SymbolTable(), node, self.sem.cur_mod_id)
@@ -3488,8 +3515,10 @@ class ThirdPass(TraverserVisitor):
         self.errors.pop_function()
 
     def visit_class_def(self, tdef: ClassDef) -> None:
-        for type in tdef.info.bases:
-            self.analyze(type)
+        # NamedTuple base classes are special; we don't have to check them again here
+        if not tdef.info.is_named_tuple:
+            for type in tdef.info.bases:
+                self.analyze(type)
         # Recompute MRO now that we have analyzed all modules, to pick
         # up superclasses of bases imported from other modules in an
         # import loop. (Only do so if we succeeded the first time.)
