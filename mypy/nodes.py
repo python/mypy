@@ -116,11 +116,6 @@ class Node(Context):
     line = -1
     column = -1
 
-    # TODO: Move to Expression
-    # See [Note Literals and literal_hash] below
-    literal = LITERAL_NO
-    literal_hash = None  # type: Key
-
     def __str__(self) -> str:
         ans = self.accept(mypy.strconv.StrConv())
         if ans is None:
@@ -161,6 +156,9 @@ class Statement(Node):
 
 class Expression(Node):
     """An expression node."""
+    literal = LITERAL_NO
+    literal_hash = None  # type: Key
+
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
 
