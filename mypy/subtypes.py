@@ -357,6 +357,14 @@ def map_method(method: FuncBase, itype: Instance) -> Type:
     return expand_type_by_instance(signature, itype)
 
 
+def get_missing_members(left: Instance, right: Instance) -> List[str]:
+    missing = []  # type: List[str]
+    for member in right.type.protocol_members:
+        if not find_member(member, left):
+            missing.append(member)
+    return missing
+
+
 def is_callable_subtype(left: CallableType, right: CallableType,
                         ignore_return: bool = False,
                         ignore_pos_arg_names: bool = False) -> bool:

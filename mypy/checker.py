@@ -38,7 +38,7 @@ from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
     restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_subtype,
-    unify_generic_callable,
+    unify_generic_callable, get_missing_members
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars
@@ -2302,6 +2302,11 @@ class TypeChecker(StatementVisitor[None]):
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
             self.fail(msg, context)
+            if (isinstance(supertype, Instance) and supertype.type.is_protocol and
+                    isinstance(subtype, Instance)):
+                self.note('{} missing following {} protocol members:'
+                          .format(subtype, supertype), context)
+                self.note(', '.join(get_missing_members(subtype, supertype)), context)
             return False
 
     def contains_none(self, t: Type) -> bool:
