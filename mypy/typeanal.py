@@ -129,7 +129,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return TypeVarType(sym.tvar_def, t.line)
             elif fullname == 'builtins.None':
                 return NoneTyp()
-            elif fullname == 'typing.Any':
+            elif fullname == 'typing.Any' or fullname == 'builtins.Any':
                 return AnyType()
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:

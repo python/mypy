@@ -976,10 +976,11 @@ a = TypeVar()       # E: Too few arguments for TypeVar()
 b = TypeVar(x='b')  # E: TypeVar() expects a string literal as first argument
 c = TypeVar(1)      # E: TypeVar() expects a string literal as first argument
 d = TypeVar('D')    # E: String argument 1 'D' to TypeVar(...) does not match variable name 'd'
-e = TypeVar('e', int, str, x=1) # E: Unexpected argument to TypeVar(): x
-f = TypeVar('f', (int, str)) # E: Type expected
-g = TypeVar('g', x=(int, str)) # E: Unexpected argument to TypeVar(): x
-h = TypeVar('h', bound=1) # E: TypeVar 'bound' must be a type
+e = TypeVar('e', int, str, x=1)   # E: Unexpected argument to TypeVar(): x
+f = TypeVar('f', (int, str), int) # E: Type expected
+g = TypeVar('g', int)             # E: TypeVar cannot have only a single constraint
+h = TypeVar('h', x=(int, str))    # E: Unexpected argument to TypeVar(): x
+i = TypeVar('i', bound=1)         # E: TypeVar 'bound' must be a type
 [out]
 
 [case testMoreInvalidTypevarArguments]

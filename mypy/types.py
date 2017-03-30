@@ -384,6 +384,7 @@ class Instance(Type):
 
     def __init__(self, typ: Optional[mypy.nodes.TypeInfo], args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
+        assert(typ is None or typ.fullname() not in ["builtins.Any", "typing.Any"])
         self.type = typ
         self.args = args
         self.erased = erased
@@ -1146,7 +1147,10 @@ class TypeType(Type):
 
     def __init__(self, item: Type, *, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.item = item
+        if isinstance(item, CallableType) and item.is_type_obj():
+            self.item = item.fallback
+        else:
+            self.item = item
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)

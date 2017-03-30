@@ -1550,13 +1550,12 @@ tmp/foo.pyi:6: error: Signatures of "__radd__" of "B" and "__add__" of "X" are u
 
 [case testUnsafeOverlappingWithLineNo]
 from typing import TypeVar
-T = TypeVar('T', Real)
 class Real:
     def __add__(self, other): ...
 class Fraction(Real):
-    def __radd__(self, other: T) -> T: ...
+    def __radd__(self, other: Real) -> Real: ...
 [out]
-main:6: error: Signatures of "__radd__" of "Fraction" and "__add__" of "Real" are unsafely overlapping
+main:5: error: Signatures of "__radd__" of "Fraction" and "__add__" of "Real" are unsafely overlapping
 
 [case testOverlappingNormalAndInplaceOperatorMethod]
 import typing
@@ -3112,3 +3111,11 @@ reveal_type(A.x) # E: Revealed type is 'Any'
 A.f(1) # E: Too many arguments for "f" of "A"
 A().g(1) # E: Too many arguments for "g" of "A"
 [builtins fixtures/classmethod.pyi]
+
+[case testMetaclassTypeCallable]
+class M(type):
+    x = 5
+
+class A(metaclass=M): pass
+reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+
