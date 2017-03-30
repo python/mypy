@@ -583,7 +583,7 @@ class MagicalFields(NamedTuple):
     x: int
     def __slots__(self) -> None: pass  # E: Cannot overwrite NamedTuple attribute "__slots__"
     def __new__(cls) -> None: pass  # E: Cannot overwrite NamedTuple attribute "__new__"
-    def _source(self) -> int: pass  # E: Cannot overwrite NamedTuple attribute "_source"
+    def _source(self) -> int: pass  # _source is ok
     __annotations__ = {'x': float}  # E: NamedTuple field name cannot start with an underscore: __annotations__ \
         # E: Invalid statement in NamedTuple definition; expected "field_name: field_type" \
         # E: Cannot overwrite NamedTuple attribute "__annotations__"
@@ -622,5 +622,7 @@ reveal_type(Documented(1).x)  # E: Revealed type is 'builtins.int'
 
 class BadDoc(NamedTuple):
     x: int
-    def __doc__(self) -> str:  # E: Cannot overwrite NamedTuple attribute "__doc__"
+    def __doc__(self) -> str:
         return ''
+
+reveal_type(BadDoc(1).__doc__())  # E: Revealed type is 'builtins.str'

@@ -151,14 +151,12 @@ FUNCTION_BOTH_PHASES = 0  # Everthing in one go
 FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone body
 FUNCTION_SECOND_PHASE = 2  # Only analyze body
 
-# Matches "_prohibited" in typing.py, but adds _source, which is allowed but ignored at runtime,
-# __annotations__, which works at runtime but can't easily be supported in a static checker,
-# and __doc__, which works at runtime but is a bit tricky to implement here and lacks a good use
-# case.
+# Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't
+# easily be supported in a static checker.
 NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs__',
                                '_fields', '_field_defaults', '_field_types',
                                '_make', '_replace', '_asdict',
-                               '_source', '__annotations__', '__doc__')
+                               '__annotations__')
 
 
 class SemanticAnalyzer(NodeVisitor):
@@ -686,8 +684,12 @@ class SemanticAnalyzer(NodeVisitor):
                               named_tuple_info.names[prohibited].node)
 
             # Restore the names in the original symbol table. This ensures that the symbol
-            # table contains the field objects created by build_namedtuple_typeinfo.
-            named_tuple_info.names.update(nt_names)
+            # table contains the field objects created by build_namedtuple_typeinfo. Exclude
+            # _source and __doc__, which can legally be overwritten by the class.
+            named_tuple_info.names.update({
+                key: value for key, value in nt_names.items()
+                if key not in named_tuple_info.names or key not in ('_source', '__doc__')
+            })
         else:
             self.setup_class_def_analysis(defn)
 
