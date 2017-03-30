@@ -163,6 +163,15 @@ x = None
 x = 1
 reveal_type(x)  # E: Revealed type is 'builtins.int'
 
+[case testInferOptionalAnyType]
+from typing import Any
+x = None
+a = None  # type: Any
+if bool():
+  x = a
+  reveal_type(x)  # E: Revealed type is 'Any'
+reveal_type(x)  # E: Revealed type is 'Union[Any, builtins.None]'
+[builtins fixtures/bool.pyi]
 
 [case testInferOptionalTypeFromOptional]
 from typing import Optional
