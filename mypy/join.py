@@ -10,7 +10,9 @@ from mypy.types import (
     UninhabitedType, TypeType, true_or_false
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
+from mypy.subtypes import (
+    is_subtype, is_equivalent, is_subtype_ignoring_tvars,is_protocol_implementation
+)
 
 from mypy import experiments
 
@@ -153,9 +155,9 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         if isinstance(self.s, Instance):
             nominal = join_instances(t, self.s)
             structural = None  # type: Instance
-            if t.type.is_protocol and is_subtype(self.s, t):
+            if t.type.is_protocol and is_protocol_implementation(self.s, t):
                 structural = t
-            if self.s.type.is_protocol and is_subtype(t, self.s):
+            if self.s.type.is_protocol and is_protocol_implementation(t, self.s):
                 structural = self.s
             if not structural or is_better(nominal, structural):
                 return nominal

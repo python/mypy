@@ -285,9 +285,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
 ASSUMING = []  # type: List[Tuple[Instance, Instance]]
 
 
-def is_protocol_implementation(left: Instance, right: Instance) -> bool:
+def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool = True) -> bool:
     global ASSUMING
     assert right.type.is_protocol
+    is_compat = is_subtype if allow_any else is_proper_subtype
     for (l, r) in ASSUMING:
         if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):
             return True
@@ -295,7 +296,7 @@ def is_protocol_implementation(left: Instance, right: Instance) -> bool:
     for member in right.type.protocol_members:
         supertype = find_member(member, right)
         subtype = find_member(member, left)
-        if not subtype or not is_subtype(subtype, supertype):
+        if not subtype or not is_compat(subtype, supertype):
             ASSUMING.pop()
             return False
     return True
@@ -610,6 +611,8 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
 
     if isinstance(t, Instance):
         if isinstance(s, Instance):
+            if s.type.is_protocol:
+                return is_protocol_implementation(t, s, allow_any=False)
             if not t.type.has_base(s.type.fullname()):
                 return False
 

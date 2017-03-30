@@ -11,7 +11,7 @@ class object:
 
 class type: pass
 
-class dict(Iterable[KT], Mapping[KT, VT], Generic[KT, VT]):
+class dict(Generic[KT, VT]):
     @overload
     def __init__(self, **kwargs: VT) -> None: pass
     @overload
@@ -31,7 +31,7 @@ class int: # for convenience
 class str: pass # for keyword argument key type
 class unicode: pass # needed for py2 docstrings
 
-class list(Iterable[T], Generic[T]): # needed by some test cases
+class list(Generic[T]): # needed by some test cases
     def __iter__(self) -> Iterator[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
 
