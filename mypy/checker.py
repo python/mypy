@@ -2306,8 +2306,9 @@ class TypeChecker(StatementVisitor[None]):
                     isinstance(subtype, Instance)):
                 missing = get_missing_members(subtype, supertype)
                 if missing:
-                    self.note('{} missing following {} protocol members:'
-                              .format(subtype, supertype), context)
+                    self.note("'{}' missing following '{}' protocol members:"
+                              .format(subtype.type.fullname(), supertype.type.fullname()),
+                              context)
                     self.note(', '.join(missing), context)
             return False
 

@@ -871,8 +871,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     isinstance(callee_type, Instance) and callee_type.type.is_protocol):
                 missing = get_missing_members(original_caller_type, callee_type)
                 if missing:
-                    messages.note('{} missing following {} protocol members:'
-                                  .format(original_caller_type, callee_type), context)
+                    messages.note("'{}' missing following '{}' protocol members:"
+                                  .format(original_caller_type.type.fullname(),
+                                          callee_type.type.fullname()), context)
                     messages.note(', '.join(missing), context)
 
     def overload_call_target(self, arg_types: List[Type], arg_kinds: List[int],
