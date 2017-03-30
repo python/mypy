@@ -238,6 +238,8 @@ def propagate_changes_using_dependencies(
         # dependency loop that loops back to an originally processed module.
         up_to_date_modules = set()
         targets_with_errors = set()
+        if DEBUG:
+            print('triggered:', list(triggered))
 
 
 def find_targets_recursive(
