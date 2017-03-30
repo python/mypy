@@ -377,7 +377,9 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         """
         # MOVEABLE
         if fun_type.variables:
-            print("Already got to function", fun_type)
+            print("Already got to function", fun_type, "scope", self.tvar_scope)
+            for var in fun_type.variables:
+                self.tvar_scope.bind_fun_tvar(var.name, self.lookup_qualified(var.name, var).node)
             return
         typevars = self.infer_type_variables(fun_type)
         # Do not define a new type variable if already defined in scope.
@@ -387,7 +389,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         for name, tvar in typevars:
             self.tvar_scope.bind_fun_tvar(name, tvar)
             defs.append(self.tvar_scope.get_binding(tvar.fullname()))
-        print("Setting variables of ", fun_type, "to", defs)
+        print("Setting variables of ", fun_type, "to", defs, "scope now", self.tvar_scope)
         fun_type.variables = defs
 
     def infer_type_variables(self,
@@ -1423,6 +1425,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
                              aliasing=aliasing,
                              allow_tuple_literal=allow_tuple_literal,
                              allow_unnormalized=self.is_stub_file)
+            print("analyzing", t, "scope", self.tvar_scope)
             return t.accept(a).accept(self)
 
         else:
