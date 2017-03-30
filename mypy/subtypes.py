@@ -362,7 +362,7 @@ def get_missing_members(left: Instance, right: Instance) -> List[str]:
     for member in right.type.protocol_members:
         if not find_member(member, left):
             missing.append(member)
-    return missing
+    return sorted(missing)
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,

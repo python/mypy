@@ -2304,9 +2304,11 @@ class TypeChecker(StatementVisitor[None]):
             self.fail(msg, context)
             if (isinstance(supertype, Instance) and supertype.type.is_protocol and
                     isinstance(subtype, Instance)):
-                self.note('{} missing following {} protocol members:'
-                          .format(subtype, supertype), context)
-                self.note(', '.join(get_missing_members(subtype, supertype)), context)
+                missing = get_missing_members(subtype, supertype)
+                if missing:
+                    self.note('{} missing following {} protocol members:'
+                              .format(subtype, supertype), context)
+                    self.note(', '.join(missing), context)
             return False
 
     def contains_none(self, t: Type) -> bool:

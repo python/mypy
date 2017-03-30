@@ -37,7 +37,16 @@ x = B() # E: Incompatible types in assignment (expression has type "B", variable
     # N: meth
 
 fun(C())
-fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "P"
+fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "P"\
+    # N: __main__.B missing following __main__.P protocol members:\
+    # N: meth
+
+def fun2() -> P:
+    return C()
+def fun3() -> P:
+    return B() # E: Incompatible return value type (got "B", expected "P")\
+               # N: __main__.B missing following __main__.P protocol members:\
+               # N: meth
 [out]
 
 [case testSimpleProtocolOneAbstractMethod]
@@ -72,7 +81,9 @@ x = B() # E: Incompatible types in assignment (expression has type "B", variable
     # N: meth
 fun(C())
 fun(D())
-fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "P"
+fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "P"\
+    # N: __main__.B missing following __main__.P protocol members:\
+    # N: meth
 [out]
 
 [case testSimpleProtocolOneMethodOverride]
@@ -102,7 +113,9 @@ x = B() # E: Incompatible types in assignment (expression has type "B", variable
     # N: meth
 
 reveal_type(fun(C())) # E: Revealed type is 'builtins.str'
-fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "SubP"
+fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "SubP"\
+    # N: __main__.B missing following __main__.SubP protocol members:\
+    # N: meth
 [out]
 
 [case testSimpleProtocolTwoMethodsMerge]

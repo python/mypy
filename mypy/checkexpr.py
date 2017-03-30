@@ -34,7 +34,7 @@ from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
 from mypy.meet import meet_simple
 from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import is_subtype, is_equivalent
+from mypy.subtypes import is_subtype, is_equivalent, get_missing_members
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type, bind_self
@@ -867,6 +867,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return
             messages.incompatible_argument(n, m, callee, original_caller_type,
                                            caller_kind, context)
+            if (isinstance(original_caller_type, Instance) and
+                    isinstance(callee_type, Instance) and callee_type.type.is_protocol):
+                missing = get_missing_members(original_caller_type, callee_type)
+                if missing:
+                    messages.note('{} missing following {} protocol members:'
+                                  .format(original_caller_type, callee_type), context)
+                    messages.note(', '.join(missing), context)
 
     def overload_call_target(self, arg_types: List[Type], arg_kinds: List[int],
                              arg_names: List[str],
