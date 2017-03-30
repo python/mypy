@@ -1703,3 +1703,42 @@ def f(a, (b, c), d): pass
 # flags: --python-version 2.7
 
 def f(a, (b, c), d): pass
+
+-- Type variable shenanagins
+-- -------------------------
+
+[case testGenericFunctionTypeDecl]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+
+f: Callable[[T], T]
+reveal_type(f)
+def g(__x: T) -> T: pass
+f = g
+reveal_type(f)
+i = f(3)
+reveal_type(i)
+
+[case testFunctionReturningGenericFunction]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+def deco() -> Callable[[T], T]: pass
+reveal_type(deco)
+f = deco()
+reveal_type(f)
+i = f(3)
+reveal_type(i)
+
+[case testGenericFunctionOnReturnTypeOnly]
+from typing import TypeVar, List
+
+T = TypeVar('T')
+
+def make_list() -> List[T]: pass
+
+l: List[int] = make_list()
+
+bad = make_list()  # E: Need type annotation for variable
+[builtins fixtures/list.pyi]

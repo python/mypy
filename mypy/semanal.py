@@ -77,6 +77,7 @@ from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
     TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
+    TypeTranslator, TypeQuery
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -152,7 +153,7 @@ FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone bod
 FUNCTION_SECOND_PHASE = 2  # Only analyze body
 
 
-class SemanticAnalyzer(NodeVisitor):
+class SemanticAnalyzer(NodeVisitor, TypeTranslator):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a
@@ -273,7 +274,9 @@ class SemanticAnalyzer(NodeVisitor):
             self.function_stack.append(defn)
             # First phase of analysis for function.
             self.errors.push_function(defn.name())
-            self.update_function_type_variables(defn)
+            if defn.type:
+                assert isinstance(defn.type, CallableType)
+                self.update_function_type_variables(defn.type, defn)
             self.errors.pop_function()
             self.function_stack.pop()
 
@@ -366,67 +369,61 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             return False
 
-    def update_function_type_variables(self, defn: FuncDef) -> None:
+    def update_function_type_variables(self, fun_type: CallableType, defn: Context) -> None:
         """Make any type variables in the signature of defn explicit.
 
         Update the signature of defn to contain type variable definitions
         if defn is generic.
         """
-        if defn.type:
-            assert isinstance(defn.type, CallableType)
-            typevars = self.infer_type_variables(defn.type)
-            # Do not define a new type variable if already defined in scope.
-            typevars = [(name, tvar) for name, tvar in typevars
-                        if not self.is_defined_type_var(name, defn)]
-            if typevars:
-                next_tvar_id = self.next_function_tvar_id()
-                defs = [TypeVarDef(tvar[0], next_tvar_id - i,
-                                   tvar[1].values, tvar[1].upper_bound,
-                                   tvar[1].variance)
-                        for i, tvar in enumerate(typevars)]
-                defn.type.variables = defs
+        # MOVEABLE
+        typevars = self.infer_type_variables(fun_type)
+        # Do not define a new type variable if already defined in scope.
+        typevars = [(name, tvar) for name, tvar in typevars
+                    if not self.is_defined_type_var(name, defn)]
+        if typevars:
+            next_tvar_id = self.next_function_tvar_id()
+            defs = [TypeVarDef(tvar[0], next_tvar_id - i,
+                               tvar[1].values, tvar[1].upper_bound,
+                               tvar[1].variance)
+                    for i, tvar in enumerate(typevars)]
+            fun_type.variables = defs
 
     def infer_type_variables(self,
                              type: CallableType) -> List[Tuple[str, TypeVarExpr]]:
+        # MOVEABLE
         """Return list of unique type variables referred to in a callable."""
         names = []  # type: List[str]
         tvars = []  # type: List[TypeVarExpr]
-        for arg in type.arg_types + [type.ret_type]:
-            for name, tvar_expr in self.find_type_variables_in_type(arg):
+        for arg in type.arg_types:
+            for name, tvar_expr in self.find_type_variables_in_type(arg, include_callables=True):
                 if name not in names:
                     names.append(name)
                     tvars.append(tvar_expr)
+        for name, tvar_expr in self.find_type_variables_in_type(type.ret_type, include_callables=False):
+            if name not in names:
+                names.append(name)
+                tvars.append(tvar_expr)
         return list(zip(names, tvars))
 
-    def find_type_variables_in_type(self, type: Type) -> List[Tuple[str, TypeVarExpr]]:
+    def _seems_like_callable(self, type: UnboundType) -> bool:
+        # MOVEABLE
+        if not type.args:
+            return False
+        if isinstance(type.args[0], (EllipsisType, TypeList)):
+            return True
+        return False
+
+    def find_type_variables_in_type(self, type: Type, *, include_callables: bool) -> List[Tuple[str, TypeVarExpr]]:
         """Return a list of all unique type variable references in type.
 
         This effectively does partial name binding, results of which are mostly thrown away.
         """
-        result = []  # type: List[Tuple[str, TypeVarExpr]]
-        if isinstance(type, UnboundType):
-            name = type.name
-            node = self.lookup_qualified(name, type)
-            if node and node.kind == UNBOUND_TVAR:
-                assert isinstance(node.node, TypeVarExpr)
-                result.append((name, node.node))
-            for arg in type.args:
-                result.extend(self.find_type_variables_in_type(arg))
-        elif isinstance(type, TypeList):
-            for item in type.items:
-                result.extend(self.find_type_variables_in_type(item))
-        elif isinstance(type, UnionType):
-            for item in type.items:
-                result.extend(self.find_type_variables_in_type(item))
-        elif isinstance(type, AnyType):
-            pass
-        elif isinstance(type, EllipsisType) or isinstance(type, TupleType):
-            pass
-        else:
-            assert False, 'Unsupported type %s' % type
-        return result
+        # MOVEABLE
+        ret = type.accept(TypeVariableQuery(self.lookup_qualified, include_callables))
+        return ret
 
     def is_defined_type_var(self, tvar: str, context: Context) -> bool:
+        # USED ONCE; MOVEABLE
         return self.lookup_qualified(tvar, context).kind == BOUND_TVAR
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
@@ -547,7 +544,11 @@ class SemanticAnalyzer(NodeVisitor):
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
 
-        tvarnodes = self.add_func_type_variables_to_symbol_table(defn)
+        if defn.type:
+            assert isinstance(defn.type, CallableType)
+            tvarnodes = self.add_func_type_variables_to_symbol_table(defn.type, defn)
+        else:
+            tvarnodes = []
         next_function_tvar_id = min([self.next_function_tvar_id()] +
                                     [n.tvar_def.id.raw_id - 1 for n in tvarnodes])
         self.next_function_tvar_id_stack.append(next_function_tvar_id)
@@ -611,20 +612,17 @@ class SemanticAnalyzer(NodeVisitor):
                 break
 
     def add_func_type_variables_to_symbol_table(
-            self, defn: FuncItem) -> List[SymbolTableNode]:
+            self, tt: CallableType, defn: Context) -> List[SymbolTableNode]:
         nodes = []  # type: List[SymbolTableNode]
-        if defn.type:
-            tt = defn.type
-            assert isinstance(tt, CallableType)
-            items = tt.variables
-            names = self.type_var_names()
-            for item in items:
-                name = item.name
-                if name in names:
-                    self.name_already_defined(name, defn)
-                node = self.bind_type_var(name, item, defn)
-                nodes.append(node)
-                names.add(name)
+        items = tt.variables
+        names = self.type_var_names()
+        for item in items:
+            name = item.name
+            if name in names:
+                self.name_already_defined(name, defn)
+            node = self.bind_type_var(name, item, defn)
+            nodes.append(node)
+            names.add(name)
         return nodes
 
     def type_var_names(self) -> Set[str]:
@@ -1457,7 +1455,8 @@ class SemanticAnalyzer(NodeVisitor):
                              aliasing=aliasing,
                              allow_tuple_literal=allow_tuple_literal,
                              allow_unnormalized=self.is_stub_file)
-            return t.accept(a)
+            return t.accept(a).accept(self)
+
         else:
             return None
 
@@ -3084,6 +3083,20 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("'await' outside coroutine ('async def')", expr)
         expr.expr.accept(self)
 
+
+    #
+    # Visitors for the TypeTranslator nature.  Used for binding type vars.
+    #
+    def visit_callable_type(self, t: CallableType) -> CallableType:
+        print("visiting", t)
+        self.update_function_type_variables(t, t)
+        self.add_func_type_variables_to_symbol_table(t, t)
+        t = t.copy_modified(
+            arg_types=[self.anal_type(a) for a in t.arg_types],
+            ret_type=self.anal_type(t.ret_type),
+        )
+        print("visited", t)
+        return t
     #
     # Helpers
     #
@@ -3723,6 +3736,41 @@ class ThirdPass(TraverserVisitor):
         assert isinstance(sym.node, TypeInfo)
         return Instance(sym.node, args or [])
 
+TypeVarList = List[Tuple[str, TypeVarExpr]]
+
+def _concat_type_var_lists(a: TypeVarList, b: TypeVarList) -> TypeVarList:
+    return a + b
+
+class TypeVariableQuery(TypeQuery[TypeVarList]):
+
+    def __init__(self, lookup: Callable[[str, Context], SymbolTableNode], include_callables: bool):
+        self.include_callables = include_callables
+        self.lookup = lookup
+        super().__init__(default=[], strategy=_concat_type_var_lists)
+
+    def _seems_like_callable(self, type: UnboundType) -> bool:
+        if not type.args:
+            return False
+        if isinstance(type.args[0], (EllipsisType, TypeList)):
+            return True
+        return False
+
+    def visit_unbound_type(self, t: UnboundType) -> TypeVarList:
+        name = t.name
+        node = self.lookup(name, t)
+        if node and node.kind == UNBOUND_TVAR:
+            assert isinstance(node.node, TypeVarExpr)
+            return[(name, node.node)]
+        elif not self.include_callables and self._seems_like_callable(t):
+            return []
+        else:
+            return super().visit_unbound_type(t)
+
+    def visit_callable_type(self, t: CallableType) -> TypeVarList:
+        if self.include_callables:
+            return super().visit_callable_type(t)
+        else:
+            return self.default
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
