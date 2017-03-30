@@ -404,6 +404,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return self.infer_against_overloaded(self.actual, template)
         elif isinstance(self.actual, TypeType):
             return infer_constraints(template.ret_type, self.actual.item, self.direction)
+        elif isinstance(self.actual, Instance):
+            call = mypy.subtypes.find_member('__call__', self.actual)
+            if call:
+                return infer_constraints(template, call, self.direction)
         else:
             return []
 

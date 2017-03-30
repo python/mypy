@@ -156,6 +156,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return any(base.fullname() == 'builtins.type' for base in mro)
             else:
                 return False
+        if isinstance(right, CallableType):
+            call = find_member('__call__', left)
+            return call and is_subtype(call, right)
         else:
             return False
 
@@ -283,21 +286,22 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
 
 ASSUMING = []  # type: List[Tuple[Instance, Instance]]
+ASSUMING_PROPER = []  # type: List[Tuple[Instance, Instance]]
 
 
 def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool = True) -> bool:
-    global ASSUMING
     assert right.type.is_protocol
     is_compat = is_subtype if allow_any else is_proper_subtype
-    for (l, r) in ASSUMING:
+    assuming = ASSUMING if allow_any else ASSUMING_PROPER
+    for (l, r) in reversed(assuming):
         if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):
             return True
-    ASSUMING.append((left, right))
+    assuming.append((left, right))
     for member in right.type.protocol_members:
         supertype = find_member(member, right)
         subtype = find_member(member, left)
         if not subtype or not is_compat(subtype, supertype):
-            ASSUMING.pop()
+            assuming.pop()
             return False
     return True
 
@@ -629,6 +633,9 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
 
             return all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
                        zip(t.args, s.args, s.type.defn.type_vars))
+        if isinstance(s, CallableType):
+            call = find_member('__call__', t)
+            return call and is_proper_subtype(call, s)
         return False
     else:
         return sametypes.is_same_type(t, s)

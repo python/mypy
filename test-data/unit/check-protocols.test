@@ -296,11 +296,85 @@ class B2:
 x2: P2 = B2()  # OK
 [out]
 
+[case testProtocolsInMypyExtensions]
+from mypy_extensions import Protocol, runtime
+
+@runtime
+class P(Protocol):
+    def meth(self) -> int:
+        pass
+
+x: object
+if isinstance(x, P):
+    reveal_type(x)  # E: Revealed type is '__main__.P'
+    reveal_type(x.meth())  # E: Revealed type is 'builtins.int'
+
+class C:
+    def meth(self) -> int:
+        pass
+
+z: P = C()
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
 -- Generic protocol types
 -- ----------------------
 
+[case testBasicGenericProtocols]
+from typing import Protocol, Sequence, TypeVar
+
+T = TypeVar('T')
+
+class Closeable(Protocol[T]):
+    def close(self) -> T:
+        pass
+
+class F:
+    def close(self) -> int:
+        return 0
+
+def close(arg: Closeable[T]) -> T:
+    return arg.close()
+
+def close_all(args: Sequence[Closeable[T]]) -> T:
+    for arg in args:
+        return arg.close()
+    return args[0].close()
+
+arg: Closeable[int]
+
+reveal_type(close(F())) # E: Revealed type is 'builtins.int*'
+reveal_type(close(arg)) # E: Revealed type is 'builtins.int*'
+reveal_type(close_all([F()])) # E: Revealed type is 'builtins.int*'
+reveal_type(close_all([arg])) # E: Revealed type is 'builtins.int*'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
 -- Recursive protocol types
 -- ------------------------
+
+[case testBasicRecursiveProtocols]
+from typing import Protocol, Sequence, List, Generic, TypeVar
+
+T = TypeVar('T')
+
+class Traversable(Protocol):
+    leaves: Sequence[Traversable]
+
+class C: pass
+
+class D(Generic[T]):
+    @property
+    def leaves(self) -> List[D[T]]:
+        pass
+
+t: Traversable
+t = D[int]() # OK
+t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "Traversable")\
+        # N: __main__.C missing following __main__.Traversable protocol members:\
+        # N: leaves
+[builtins fixtures/list.pyi]
+[out]
 
 -- @property, @classmethod and @staticmethod in protocol types
 -- -----------------------------------------------------------
@@ -422,7 +496,7 @@ if isinstance(x, P):  # E: Only @runtime protocols can be used with instance and
 
 if isinstance(x, R):
     reveal_type(x)  # E: Revealed type is '__main__.R'
-    reveal_type(x.meth())  # E: Revealed type is 'builtins.int'  # TODO: this should be Any
+    reveal_type(x.meth())  # E: Revealed type is 'builtins.int'
 [builtins fixtures/isinstance.pyi]
 [out]
 
@@ -436,8 +510,157 @@ if isinstance(x, Iterable):
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
+[case testConcreteClassesInProtocolsIsInstance]
+from typing import Protocol, runtime, TypeVar, Generic
+
+T = TypeVar('T')
+
+@runtime
+class P1(Protocol):
+    def meth1(self) -> int:
+        pass
+@runtime
+class P2(Protocol):
+    def meth2(self) -> int:
+        pass
+@runtime
+class P(P1, P2, Protocol):
+    pass
+
+class C1(Generic[T]):
+    def meth1(self) -> T:
+        pass
+class C2:
+    def meth2(self) -> int:
+        pass
+class C(C1[int], C2): pass
+
+c = C()
+if isinstance(c, P1):
+    reveal_type(c) # E: Revealed type is '__main__.C'
+else:
+    reveal_type(c) # Unreachable
+if isinstance(c, P):
+    reveal_type(c) # E: Revealed type is '__main__.C'
+else:
+    reveal_type(c) # Unreachable
+
+c1i: C1[int]
+if isinstance(c1i, P1):
+    reveal_type(c1i) # E: Revealed type is '__main__.C1[builtins.int]'
+else:
+    reveal_type(c1i) # Unreachable
+if isinstance(c1i, P):
+    reveal_type(c1i) # Unreachable
+else:
+    reveal_type(c1i) # E: Revealed type is '__main__.C1[builtins.int]'
+
+c1s: C1[str]
+if isinstance(c1s, P1):
+    reveal_type(c1s) # Unreachable
+else:
+    reveal_type(c1s) # E: Revealed type is '__main__.C1[builtins.str]'
+
+c2: C2
+if isinstance(c2, P):
+    reveal_type(c2) # Unreachable
+else:
+    reveal_type(c2) # E: Revealed type is '__main__.C2'
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testConcreteClassesUnionInProtocolsIsInstance]
+from typing import Protocol, runtime, TypeVar, Generic, Union
+
+T = TypeVar('T')
+
+@runtime
+class P1(Protocol):
+    def meth1(self) -> int:
+        pass
+@runtime
+class P2(Protocol):
+    def meth2(self) -> int:
+        pass
+
+class C1(Generic[T]):
+    def meth1(self) -> T:
+        pass
+class C2:
+    def meth2(self) -> int:
+        pass
+
+x: Union[C1[int], C2]
+if isinstance(x, P1):
+    reveal_type(x) # E: Revealed type is '__main__.C1[builtins.int]'
+else:
+    reveal_type(x) # E: Revealed type is '__main__.C2'
+
+if isinstance(x, P2):
+    reveal_type(x) # E: Revealed type is '__main__.C2'
+else:
+    reveal_type(x) # E: Revealed type is '__main__.C1[builtins.int]'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
 -- Non-Instances and protocol types (Callable vs __call__ etc.)
 -- ------------------------------------------------------------
 
+[case testBasicCallableStructuralSubtyping]
+from typing import Callable, Generic, TypeVar
+
+def apply(f: Callable[[int], int], x: int) -> int:
+    return f(x)
+
+class Add5:
+    def __call__(self, x: int) -> int:
+        return x + 5
+
+apply(Add5(), 5)
+
+T = TypeVar('T')
+def apply_gen(f: Callable[[T], T]) -> T:
+    pass
+
+reveal_type(apply_gen(Add5())) # E: Revealed type is 'builtins.int*'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testStructuralSupportForPartial]
+from typing import Callable, TypeVar, Generic, Any
+
+T = TypeVar('T')
+
+class partial(Generic[T]):
+    def __init__(self, func: Callable[..., T], *args: Any) -> None: ...
+    def __call__(self, *args: Any) -> T: ...
+
+def inc(a: int, temp: str) -> int:
+    pass
+
+def foo(f: Callable[[int], T]) -> T:
+    return f(1)
+
+reveal_type(foo(partial(inc, 'temp'))) # E: Revealed type is 'builtins.int*'
+[builtins fixtures/list.pyi]
+[out]
+
 -- Standard protocol types (SupportsInt, Reversible, etc.)
 -- -------------------------------------------------------
+
+[case testBasicSupportsIntProtocol]
+from typing import SupportsInt
+
+class Bar:
+    def __int__(self):
+        return 1
+
+def foo(a: SupportsInt):
+    return int(a)
+
+foo(1)
+foo(Bar())
+
+[builtins fixtures/isinstancelist.pyi]
+[out]

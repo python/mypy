@@ -112,6 +112,9 @@ class Mapping(Protocol[T, U]):
 class MutableMapping(Mapping[T, U], Protocol):
     def __setitem__(self, k: T, v: U) -> None: pass
 
+class SupportsInt(Protocol):
+    def __int__(self) -> int: pass
+
 def NewType(name: str, tp: Type[T]) -> Callable[[T], T]:
     def new_type(x):
         return x
