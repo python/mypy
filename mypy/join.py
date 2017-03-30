@@ -11,7 +11,7 @@ from mypy.types import (
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
-    is_subtype, is_equivalent, is_subtype_ignoring_tvars,is_protocol_implementation
+    is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_protocol_implementation
 )
 
 from mypy import experiments

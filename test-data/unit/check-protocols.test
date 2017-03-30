@@ -657,9 +657,8 @@ class Bar:
         return 1
 
 def foo(a: SupportsInt):
-    return int(a)
+    pass
 
-foo(1)
 foo(Bar())
 
 [builtins fixtures/isinstancelist.pyi]

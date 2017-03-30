@@ -408,6 +408,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             call = mypy.subtypes.find_member('__call__', self.actual)
             if call:
                 return infer_constraints(template, call, self.direction)
+            else:
+                return []
         else:
             return []
 
