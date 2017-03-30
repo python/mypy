@@ -10,10 +10,11 @@ from mypy.types import (
     get_type_vars,
 )
 from mypy.nodes import (
-    BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
+    TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
     TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins,
 )
+from mypy.tvar_scope import TypeVarScope
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.subtypes import is_subtype
@@ -46,7 +47,7 @@ def analyze_type_alias(node: Expression,
         # Note that this misses the case where someone tried to use a
         # class-referenced type variable as a type alias.  It's easier to catch
         # that one in checkmember.py
-        if node.kind == UNBOUND_TVAR or node.kind == BOUND_TVAR:
+        if node.kind == TVAR:
             fail_func('Type variable "{}" is invalid as target for type alias'.format(
                 node.fullname), node)
             return None
@@ -72,7 +73,7 @@ def analyze_type_alias(node: Expression,
     except TypeTranslationError:
         fail_func('Invalid type alias', node)
         return None
-    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, fail_func, aliasing=True,
+    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, TypeVarScope(), fail_func, aliasing=True,
                             allow_unnormalized=allow_unnormalized)
     return type.accept(analyzer)
 
@@ -94,6 +95,7 @@ class TypeAnalyser(TypeVisitor[Type]):
     def __init__(self,
                  lookup_func: Callable[[str, Context], SymbolTableNode],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
+                 tvar_scope: TypeVarScope,
                  fail_func: Callable[[str, Context], None], *,
                  aliasing: bool = False,
                  allow_tuple_literal: bool = False,
@@ -101,6 +103,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
+        self.tvar_scope = tvar_scope
         self.aliasing = aliasing
         self.allow_tuple_literal = allow_tuple_literal
         # Positive if we are analyzing arguments of another (outer) type
@@ -124,12 +127,13 @@ class TypeAnalyser(TypeVisitor[Type]):
             if (fullname in nongen_builtins and t.args and
                     not sym.normalized and not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname), t)
-            if sym.kind == BOUND_TVAR:
+            if sym.kind == TVAR and self.tvar_scope.get_binding(sym) is not None:
+                # XXX: Don't fetch twice
+                tvar_def = self.tvar_scope.get_binding(sym)
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(
                         t.name), t)
-                assert sym.tvar_def is not None
-                return TypeVarType(sym.tvar_def, t.line)
+                return TypeVarType(tvar_def, t.line)
             elif fullname == 'builtins.None':
                 return NoneTyp()
             elif fullname == 'typing.Any' or fullname == 'builtins.Any':
@@ -207,7 +211,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                     # is pretty minor.
                     return AnyType()
                 # Allow unbound type variables when defining an alias
-                if not (self.aliasing and sym.kind == UNBOUND_TVAR):
+                if not (self.aliasing and sym.kind == TVAR and self.tvar_scope.get_binding(sym) == None):
+                    print("scope is", self.tvar_scope, "looking for", sym.fullname)
                     self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = sym.node  # type: TypeInfo
@@ -272,7 +277,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         if not isinstance(t, UnboundType):
             return None
         sym = self.lookup(t.name, t)
-        if sym is not None and (sym.kind == UNBOUND_TVAR or sym.kind == BOUND_TVAR):
+        if sym is not None and sym.kind == TVAR:
             return t.name
         return None
 

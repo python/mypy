@@ -44,6 +44,8 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from collections import OrderedDict
+from contextlib import contextmanager
+
 from typing import (
     List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable
 )
@@ -57,7 +59,7 @@ from mypy.nodes import (
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
-    SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
+    SymbolTableNode, TVAR, ListComprehension, GeneratorExpr,
     LambdaExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, MroError, type_aliases,
@@ -68,6 +70,7 @@ from mypy.nodes import (
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
     collections_type_aliases, get_member_expr_fullname,
 )
+from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -184,14 +187,12 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
     # Type variables that are bound by the directly enclosing class
     bound_tvars = None  # type: List[SymbolTableNode]
     # Stack of type variables that were bound by outer classess
-    tvar_stack = None  # type: List[List[SymbolTableNode]]
+    tvar_scope = None  # type: TypeVarScope
     # Per-module options
     options = None  # type: Options
 
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
-    # Stack of next available function type variable ids
-    next_function_tvar_id_stack = None  # type: List[int]
 
     # Status of postponing analysis of nested function bodies. By using this we
     # can have mutually recursive nested functions. Values are FUNCTION_x
@@ -220,10 +221,8 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         self.imports = set()
         self.type = None
         self.type_stack = []
-        self.bound_tvars = None
-        self.tvar_stack = []
+        self.tvar_scope = TypeVarScope()
         self.function_stack = []
-        self.next_function_tvar_id_stack = [-1]
         self.block_depth = [0]
         self.loop_depth = 0
         self.lib_path = lib_path
@@ -269,74 +268,75 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        phase_info = self.postpone_nested_functions_stack[-1]
-        if phase_info != FUNCTION_SECOND_PHASE:
-            self.function_stack.append(defn)
-            # First phase of analysis for function.
-            self.errors.push_function(defn.name())
-            if defn.type:
-                assert isinstance(defn.type, CallableType)
-                self.update_function_type_variables(defn.type, defn)
-            self.errors.pop_function()
-            self.function_stack.pop()
+        with self.tvar_scope_frame():
+            phase_info = self.postpone_nested_functions_stack[-1]
+            if phase_info != FUNCTION_SECOND_PHASE:
+                self.function_stack.append(defn)
+                # First phase of analysis for function.
+                self.errors.push_function(defn.name())
+                if defn.type:
+                    assert isinstance(defn.type, CallableType)
+                    self.update_function_type_variables(defn.type, defn)
+                self.errors.pop_function()
+                self.function_stack.pop()
 
-            defn.is_conditional = self.block_depth[-1] > 0
+                defn.is_conditional = self.block_depth[-1] > 0
 
-            # TODO(jukka): Figure out how to share the various cases. It doesn't
-            #   make sense to have (almost) duplicate code (here and elsewhere) for
-            #   3 cases: module-level, class-level and local names. Maybe implement
-            #   a common stack of namespaces. As the 3 kinds of namespaces have
-            #   different semantics, this wouldn't always work, but it might still
-            #   be a win.
-            if self.is_class_scope():
-                # Method definition
-                defn.info = self.type
-                if not defn.is_decorated and not defn.is_overload:
-                    if defn.name() in self.type.names:
-                        # Redefinition. Conditional redefinition is okay.
-                        n = self.type.names[defn.name()].node
-                        if not self.set_original_def(n, defn):
-                            self.name_already_defined(defn.name(), defn)
-                    self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
-                self.prepare_method_signature(defn)
-            elif self.is_func_scope():
-                # Nested function
-                if not defn.is_decorated and not defn.is_overload:
-                    if defn.name() in self.locals[-1]:
-                        # Redefinition. Conditional redefinition is okay.
-                        n = self.locals[-1][defn.name()].node
-                        if not self.set_original_def(n, defn):
-                            self.name_already_defined(defn.name(), defn)
-                    else:
-                        self.add_local(defn, defn)
-            else:
-                # Top-level function
-                if not defn.is_decorated and not defn.is_overload:
-                    symbol = self.globals.get(defn.name())
-                    if isinstance(symbol.node, FuncDef) and symbol.node != defn:
-                        # This is redefinition. Conditional redefinition is okay.
-                        if not self.set_original_def(symbol.node, defn):
-                            # Report error.
-                            self.check_no_global(defn.name(), defn, True)
-            if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
-                # Postpone this function (for the second phase).
-                self.postponed_functions_stack[-1].append(defn)
-                return
-        if phase_info != FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
-            # Second phase of analysis for function.
-            self.errors.push_function(defn.name())
-            self.analyze_function(defn)
-            if defn.is_coroutine and isinstance(defn.type, CallableType):
-                if defn.is_async_generator:
-                    # Async generator types are handled elsewhere
-                    pass
+                # TODO(jukka): Figure out how to share the various cases. It doesn't
+                #   make sense to have (almost) duplicate code (here and elsewhere) for
+                #   3 cases: module-level, class-level and local names. Maybe implement
+                #   a common stack of namespaces. As the 3 kinds of namespaces have
+                #   different semantics, this wouldn't always work, but it might still
+                #   be a win.
+                if self.is_class_scope():
+                    # Method definition
+                    defn.info = self.type
+                    if not defn.is_decorated and not defn.is_overload:
+                        if defn.name() in self.type.names:
+                            # Redefinition. Conditional redefinition is okay.
+                            n = self.type.names[defn.name()].node
+                            if not self.set_original_def(n, defn):
+                                self.name_already_defined(defn.name(), defn)
+                        self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+                    self.prepare_method_signature(defn)
+                elif self.is_func_scope():
+                    # Nested function
+                    if not defn.is_decorated and not defn.is_overload:
+                        if defn.name() in self.locals[-1]:
+                            # Redefinition. Conditional redefinition is okay.
+                            n = self.locals[-1][defn.name()].node
+                            if not self.set_original_def(n, defn):
+                                self.name_already_defined(defn.name(), defn)
+                        else:
+                            self.add_local(defn, defn)
                 else:
-                    # A coroutine defined as `async def foo(...) -> T: ...`
-                    # has external return type `Awaitable[T]`.
-                    defn.type = defn.type.copy_modified(
-                        ret_type = self.named_type_or_none('typing.Awaitable',
-                                                           [defn.type.ret_type]))
-            self.errors.pop_function()
+                    # Top-level function
+                    if not defn.is_decorated and not defn.is_overload:
+                        symbol = self.globals.get(defn.name())
+                        if isinstance(symbol.node, FuncDef) and symbol.node != defn:
+                            # This is redefinition. Conditional redefinition is okay.
+                            if not self.set_original_def(symbol.node, defn):
+                                # Report error.
+                                self.check_no_global(defn.name(), defn, True)
+                if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
+                    # Postpone this function (for the second phase).
+                    self.postponed_functions_stack[-1].append(defn)
+                    return
+            if phase_info != FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
+                # Second phase of analysis for function.
+                self.errors.push_function(defn.name())
+                self.analyze_function(defn)
+                if defn.is_coroutine and isinstance(defn.type, CallableType):
+                    if defn.is_async_generator:
+                        # Async generator types are handled elsewhere
+                        pass
+                    else:
+                        # A coroutine defined as `async def foo(...) -> T: ...`
+                        # has external return type `Awaitable[T]`.
+                        defn.type = defn.type.copy_modified(
+                            ret_type = self.named_type_or_none('typing.Awaitable',
+                                                               [defn.type.ret_type]))
+                self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
@@ -376,17 +376,19 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         if defn is generic.
         """
         # MOVEABLE
+        if fun_type.variables:
+            print("Already got to function", fun_type)
+            return
         typevars = self.infer_type_variables(fun_type)
         # Do not define a new type variable if already defined in scope.
         typevars = [(name, tvar) for name, tvar in typevars
                     if not self.is_defined_type_var(name, defn)]
-        if typevars:
-            next_tvar_id = self.next_function_tvar_id()
-            defs = [TypeVarDef(tvar[0], next_tvar_id - i,
-                               tvar[1].values, tvar[1].upper_bound,
-                               tvar[1].variance)
-                    for i, tvar in enumerate(typevars)]
-            fun_type.variables = defs
+        defs = []  # type: List[TypeVarDef]
+        for name, tvar in typevars:
+            self.tvar_scope.bind_fun_tvar(name, tvar)
+            defs.append(self.tvar_scope.get_binding(tvar.fullname()))
+        print("Setting variables of ", fun_type, "to", defs)
+        fun_type.variables = defs
 
     def infer_type_variables(self,
                              type: CallableType) -> List[Tuple[str, TypeVarExpr]]:
@@ -419,12 +421,12 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         This effectively does partial name binding, results of which are mostly thrown away.
         """
         # MOVEABLE
-        ret = type.accept(TypeVariableQuery(self.lookup_qualified, include_callables))
+        ret = type.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope, include_callables))
         return ret
 
     def is_defined_type_var(self, tvar: str, context: Context) -> bool:
         # USED ONCE; MOVEABLE
-        return self.lookup_qualified(tvar, context).kind == BOUND_TVAR
+        return self.tvar_scope.get_binding(self.lookup_qualified(tvar, context)) is not None
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         # OverloadedFuncDef refers to any legitimate situation where you have
@@ -538,28 +540,18 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
             else:
                 self.fail("Decorated property not supported", item)
 
-    def next_function_tvar_id(self) -> int:
-        return self.next_function_tvar_id_stack[-1]
-
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
-
-        tvarnodes = []
         if defn.type:
             self.check_classvar_in_signature(defn.type)
             assert isinstance(defn.type, CallableType)
-            tvarnodes = self.add_func_type_variables_to_symbol_table(defn.type, defn)
-            next_function_tvar_id = min([self.next_function_tvar_id()] +
-                                        [n.tvar_def.id.raw_id - 1 for n in tvarnodes])
-            self.next_function_tvar_id_stack.append(next_function_tvar_id)
             # Signature must be analyzed in the surrounding scope so that
             # class-level imported names and type variables are in scope.
             defn.type = self.anal_type(defn.type)
             self.check_function_signature(defn)
             if isinstance(defn, FuncDef):
                 defn.type = set_callable_name(defn.type, defn)
-        else:
-            self.next_function_tvar_id_stack.append(self.next_function_tvar_id())
+
         for arg in defn.arguments:
             if arg.initializer:
                 arg.initializer.accept(self)
@@ -589,9 +581,6 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
             postponed.accept(self)
         self.postpone_nested_functions_stack.pop()
         self.postponed_functions_stack.pop()
-
-        self.next_function_tvar_id_stack.pop()
-        disable_typevars(tvarnodes)
 
         self.leave()
         self.function_stack.pop()
@@ -633,8 +622,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
     def bind_type_var(self, fullname: str, tvar_def: TypeVarDef,
                      context: Context) -> SymbolTableNode:
         node = self.lookup_qualified(fullname, context)
-        node.kind = BOUND_TVAR
-        node.tvar_def = tvar_def
+        self.tvar_scope.bind(node, tvar_def)
         return node
 
     def check_function_signature(self, fdef: FuncItem) -> None:
@@ -649,36 +637,33 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
-        self.clean_up_bases_and_infer_type_variables(defn)
-        if self.analyze_typeddict_classdef(defn):
-            return
-        if self.analyze_namedtuple_classdef(defn):
-            # just analyze the class body so we catch type errors in default values
-            self.enter_class(defn)
-            defn.defs.accept(self)
-            self.leave_class()
-        else:
-            self.setup_class_def_analysis(defn)
+        with self.new_tvar_scope():
+            self.clean_up_bases_and_infer_type_variables(defn)
+            if self.analyze_typeddict_classdef(defn):
+                return
+            if self.analyze_namedtuple_classdef(defn):
+                # just analyze the class body so we catch type errors in default values
+                self.enter_class(defn)
+                defn.defs.accept(self)
+                self.leave_class()
+            else:
+                self.setup_class_def_analysis(defn)
+                # self.bind_class_type_variables_in_symbol_table(defn.info)
+                self.analyze_base_classes(defn)
+                self.analyze_metaclass(defn)
 
-            self.bind_class_type_vars(defn)
+                for decorator in defn.decorators:
+                    self.analyze_class_decorator(defn, decorator)
 
-            self.analyze_base_classes(defn)
-            self.analyze_metaclass(defn)
+                self.enter_class(defn)
 
-            for decorator in defn.decorators:
-                self.analyze_class_decorator(defn, decorator)
+                # Analyze class body.
+                defn.defs.accept(self)
 
-            self.enter_class(defn)
+                self.calculate_abstract_status(defn.info)
+                self.setup_type_promotion(defn)
 
-            # Analyze class body.
-            defn.defs.accept(self)
-
-            self.calculate_abstract_status(defn.info)
-            self.setup_type_promotion(defn)
-
-            self.leave_class()
-
-            self.unbind_class_type_vars()
+                self.leave_class()
 
     def enter_class(self, defn: ClassDef) -> None:
         # Remember previous active class
@@ -694,24 +679,6 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         self.block_depth.pop()
         self.locals.pop()
         self.type = self.type_stack.pop()
-
-    def bind_class_type_vars(self, defn: ClassDef) -> None:
-        """ Unbind type variables of previously active class and bind
-        the type variables for the active class.
-        """
-        if self.bound_tvars:
-            disable_typevars(self.bound_tvars)
-        self.tvar_stack.append(self.bound_tvars)
-        self.bound_tvars = self.bind_class_type_variables_in_symbol_table(defn.info)
-
-    def unbind_class_type_vars(self) -> None:
-        """ Unbind the active class' type vars and rebind the
-        type vars of the previously active class.
-        """
-        disable_typevars(self.bound_tvars)
-        self.bound_tvars = self.tvar_stack.pop()
-        if self.bound_tvars:
-            enable_typevars(self.bound_tvars)
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
@@ -801,15 +768,16 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
                 declared_tvars = self.remove_dups(declared_tvars + all_tvars)
         else:
             declared_tvars = all_tvars
-        for j, (name, tvar_expr) in enumerate(declared_tvars):
-            type_vars.append(TypeVarDef(name, j + 1, tvar_expr.values,
-                                        tvar_expr.upper_bound, tvar_expr.variance))
-        if type_vars:
-            defn.type_vars = type_vars
+        if declared_tvars:
             if defn.info:
-                defn.info.type_vars = [tv.name for tv in type_vars]
+                defn.info.type_vars = [name for name, _ in declared_tvars]
         for i in reversed(removed):
             del defn.base_type_exprs[i]
+        tvar_defs = []  # type: List[TypeVarDef]
+        for name, tvar_expr in declared_tvars:
+            self.tvar_scope.bind_class_tvar(name, tvar_expr)
+            tvar_defs.append(self.tvar_scope.get_binding(tvar_expr.fullname()))
+        defn.type_vars = tvar_defs
 
     def analyze_typevar_declaration(self, t: Type) -> Optional[List[Tuple[str, TypeVarExpr]]]:
         if not isinstance(t, UnboundType):
@@ -835,7 +803,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
             return None
         unbound = t
         sym = self.lookup_qualified(unbound.name, unbound)
-        if sym is not None and sym.kind == UNBOUND_TVAR:
+        if sym is not None and sym.kind == TVAR and self.tvar_scope.get_binding(sym) is None:
             assert isinstance(sym.node, TypeVarExpr)
             return unbound.name, sym.node
         return None
@@ -1450,6 +1418,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         if t:
             a = TypeAnalyser(self.lookup_qualified,
                              self.lookup_fully_qualified,
+                             self.tvar_scope,
                              self.fail,
                              aliasing=aliasing,
                              allow_tuple_literal=allow_tuple_literal,
@@ -1859,7 +1828,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
 
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
-        node.kind = UNBOUND_TVAR
+        node.kind = TVAR
         TypeVar = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
         TypeVar.line = call.line
         call.analyzed = TypeVar
@@ -2716,7 +2685,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
     def visit_name_expr(self, expr: NameExpr) -> None:
         n = self.lookup(expr.name, expr)
         if n:
-            if n.kind == BOUND_TVAR:
+            if n.kind == TVAR and self.tvar_scope.get_binding(n):
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
             else:
@@ -3087,18 +3056,29 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
     # Visitors for the TypeTranslator nature.  Used for binding type vars.
     #
     def visit_callable_type(self, t: CallableType) -> CallableType:
-        print("visiting", t)
         self.update_function_type_variables(t, t)
-        self.add_func_type_variables_to_symbol_table(t, t)
         t = t.copy_modified(
             arg_types=[self.anal_type(a) for a in t.arg_types],
             ret_type=self.anal_type(t.ret_type),
         )
-        print("visited", t)
         return t
     #
     # Helpers
     #
+
+    @contextmanager
+    def new_tvar_scope(self):
+        old_scope = self.tvar_scope
+        self.tvar_scope = TypeVarScope()
+        yield
+        self.tvar_scope = old_scope
+
+    @contextmanager
+    def tvar_scope_frame(self):
+        old_scope = self.tvar_scope
+        self.tvar_scope = TypeVarScope(self.tvar_scope)
+        yield
+        self.tvar_scope = old_scope
 
     def lookup(self, name: str, ctx: Context) -> SymbolTableNode:
         """Look up an unqualified name in all active namespaces."""
@@ -3742,9 +3722,13 @@ def _concat_type_var_lists(a: TypeVarList, b: TypeVarList) -> TypeVarList:
 
 class TypeVariableQuery(TypeQuery[TypeVarList]):
 
-    def __init__(self, lookup: Callable[[str, Context], SymbolTableNode], include_callables: bool):
+    def __init__(self,
+                 lookup: Callable[[str, Context], SymbolTableNode],
+                 scope: 'TypeVarScope',
+                 include_callables: bool):
         self.include_callables = include_callables
         self.lookup = lookup
+        self.scope = scope
         super().__init__(default=[], strategy=_concat_type_var_lists)
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
@@ -3757,7 +3741,7 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
     def visit_unbound_type(self, t: UnboundType) -> TypeVarList:
         name = t.name
         node = self.lookup(name, t)
-        if node and node.kind == UNBOUND_TVAR:
+        if node and node.kind == TVAR and self.scope.get_binding(node) is None:
             assert isinstance(node.node, TypeVarExpr)
             return[(name, node.node)]
         elif not self.include_callables and self._seems_like_callable(t):
@@ -3823,18 +3807,6 @@ def find_duplicate(list: List[T]) -> T:
         if list[i] in list[:i]:
             return list[i]
     return None
-
-
-def disable_typevars(nodes: List[SymbolTableNode]) -> None:
-    for node in nodes:
-        assert node.kind in (BOUND_TVAR, UNBOUND_TVAR)
-        node.kind = UNBOUND_TVAR
-
-
-def enable_typevars(nodes: List[SymbolTableNode]) -> None:
-    for node in nodes:
-        assert node.kind in (BOUND_TVAR, UNBOUND_TVAR)
-        node.kind = BOUND_TVAR
 
 
 def remove_imported_names_from_symtable(names: SymbolTable,
