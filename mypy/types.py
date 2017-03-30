@@ -1523,10 +1523,10 @@ class TypeQuery(Generic[T], TypeVisitor[T]):
         self.strategy = strategy
 
     def visit_unbound_type(self, t: UnboundType) -> T:
-        return self.default
+        return self.query_types(t.args)
 
     def visit_type_list(self, t: TypeList) -> T:
-        return self.default
+        return self.query_types(t.items)
 
     def visit_error_type(self, t: ErrorType) -> T:
         return self.default
@@ -1550,7 +1550,7 @@ class TypeQuery(Generic[T], TypeVisitor[T]):
         return self.default
 
     def visit_partial_type(self, t: PartialType) -> T:
-        return self.default
+        return self.query_types(t.inner_types)
 
     def visit_instance(self, t: Instance) -> T:
         return self.query_types(t.args)
