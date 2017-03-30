@@ -546,6 +546,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
 
         tvarnodes = []
         if defn.type:
+            self.check_classvar_in_signature(defn.type)
             assert isinstance(defn.type, CallableType)
             tvarnodes = self.add_func_type_variables_to_symbol_table(defn.type, defn)
             next_function_tvar_id = min([self.next_function_tvar_id()] +
@@ -553,7 +554,6 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
             self.next_function_tvar_id_stack.append(next_function_tvar_id)
             # Signature must be analyzed in the surrounding scope so that
             # class-level imported names and type variables are in scope.
-            self.check_classvar_in_signature(defn.type)
             defn.type = self.anal_type(defn.type)
             self.check_function_signature(defn)
             if isinstance(defn, FuncDef):
