@@ -237,7 +237,10 @@ f1(x2)
 f2(x1)
 [out]
 
-[case testSemanalErrorsInProtocols]
+-- Semanal errors in protocol types
+-- --------------------------------
+
+[case testBasicSemanalErrorsInProtocols]
 from typing import Protocol, Generic, TypeVar, Iterable
 
 T = TypeVar('T')
@@ -261,6 +264,36 @@ class P4(Protocol[T]):
 class P5(Iterable[S], Protocol[T]): # E: If Generic[...] or Protocol[...] is present it should list all type variables
     def meth(self) -> T:
         pass
+[out]
+
+[case testProhibitSelfDefinitionInProtocols]
+from typing import Protocol
+
+class P(Protocol):
+    def __init__(self, a: int) -> None:
+        self.a = a # E: Protocol members cannot be defined via assignment to self\
+                   # E: "P" has no attribute "a"
+
+class B: pass
+class C:
+    def __init__(self, a: int) -> None:
+        pass
+
+x: P
+x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P")
+# The above is because of incompatible __init__, maybe we could allow this?
+# (mypy allows incompatible __init__ in nominal subclasses.)
+x = C(1)
+
+class P2(Protocol):
+    a: int
+    def __init__(self) -> None:
+        self.a = 1
+
+class B2:
+    a: int
+
+x2: P2 = B2()  # OK
 [out]
 
 -- Generic protocol types

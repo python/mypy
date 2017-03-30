@@ -668,7 +668,7 @@ class SemanticAnalyzer(NodeVisitor):
 
             self.analyze_base_classes(defn)
             self.analyze_metaclass(defn)
-
+            defn.info.is_protocol = is_protocol
             runtime_protocol = False
             for decorator in defn.decorators:
                 if self.analyze_class_decorator(defn, decorator):
@@ -680,7 +680,6 @@ class SemanticAnalyzer(NodeVisitor):
             defn.defs.accept(self)
 
             self.calculate_abstract_status(defn.info)
-            defn.info.is_protocol = is_protocol
             defn.info.runtime_protocol = runtime_protocol
             self.setup_type_promotion(defn)
 
@@ -1698,15 +1697,19 @@ class SemanticAnalyzer(NodeVisitor):
         lval.accept(self)
         if (self.is_self_member_ref(lval) and
                 self.type.get(lval.name) is None):
-            # Implicit attribute definition in __init__.
-            lval.is_def = True
-            v = Var(lval.name)
-            v.set_line(lval)
-            v.info = self.type
-            v.is_ready = False
-            lval.def_var = v
-            lval.node = v
-            self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+            if self.type.is_protocol:
+                # Protocol members can't be defined via self
+                self.fail("Protocol members cannot be defined via assignment to self", lval)
+            else:
+                # Implicit attribute definition in __init__.
+                lval.is_def = True
+                v = Var(lval.name)
+                v.set_line(lval)
+                v.info = self.type
+                v.is_ready = False
+                lval.def_var = v
+                lval.node = v
+                self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
