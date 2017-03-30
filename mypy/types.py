@@ -1591,6 +1591,9 @@ class TypeQuery(Generic[T], TypeVisitor[T]):
     def visit_type_type(self, t: TypeType) -> T:
         return t.item.accept(self)
 
+    def visit_ellipsis_type(self, t: EllipsisType) -> T:
+        return self.default
+
     def query_types(self, types: Iterable[Type]) -> T:
         """Perform a query for a list of types.
 
