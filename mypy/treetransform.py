@@ -19,7 +19,8 @@ from mypy.nodes import (
     ComparisonExpr, TempNode, StarExpr, Statement, Expression,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, OverloadPart
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
+    OverloadPart, EnumCallExpr,
 )
 from mypy.types import Type, FunctionLike
 from mypy.traverser import TraverserVisitor
@@ -485,6 +486,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> NamedTupleExpr:
         return NamedTupleExpr(node.info)
+
+    def visit_enum_call_expr(self, node: EnumCallExpr) -> EnumCallExpr:
+        return EnumCallExpr(node.info, node.items, node.values)
 
     def visit_typeddict_expr(self, node: TypedDictExpr) -> Node:
         return TypedDictExpr(node.info)

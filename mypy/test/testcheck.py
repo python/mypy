@@ -73,6 +73,7 @@ files = [
     'check-newsyntax.test',
     'check-underscores.test',
     'check-classvar.test',
+    'check-enum.test',
 ]
 
 
