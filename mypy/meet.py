@@ -237,7 +237,11 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
             if is_equivalent(t, self.s):
                 return combine_similar_callables(t, self.s)
-            return meet_similar_callables(t, self.s)
+            result = meet_similar_callables(t, self.s)
+            if isinstance(result.ret_type, UninhabitedType):
+                # Return a plain None or <uninhabited> instead of a weird function.
+                return self.default(self.s)
+            return result
         else:
             return self.default(self.s)
 

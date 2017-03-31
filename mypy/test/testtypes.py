@@ -397,6 +397,9 @@ class JoinSuite(Suite):
         self.assert_join(self.callable(self.fx.a, self.fx.b),
                          self.fx.function,
                          self.fx.function)
+        self.assert_join(self.callable(self.fx.a, self.fx.b),
+                         self.callable(self.fx.d, self.fx.b),
+                         self.fx.function)
 
     def test_type_vars(self) -> None:
         self.assert_join(self.fx.t, self.fx.t, self.fx.t)

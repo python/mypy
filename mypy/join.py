@@ -180,7 +180,11 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
             if is_equivalent(t, self.s):
                 return combine_similar_callables(t, self.s)
-            return join_similar_callables(t, self.s)
+            result = join_similar_callables(t, self.s)
+            if any(isinstance(tp, (NoneTyp, UninhabitedType)) for tp in result.arg_types):
+                # We don't want to return unusable Callable, attempt fallback instead.
+                return join_types(t.fallback, self.s)
+            return result
         elif isinstance(self.s, Overloaded):
             # Switch the order of arguments to that we'll get to visit_overloaded.
             return join_types(t, self.s)
