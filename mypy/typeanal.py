@@ -1,18 +1,20 @@
 """Semantic analysis of types"""
 
 from collections import OrderedDict
-from typing import Callable, List, Optional, Set
+from typing import Callable, List, Optional, Set, Tuple
+
+from contextlib import contextmanager
 
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
     AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    get_type_vars,
+    get_type_vars, TypeQuery,
 )
 from mypy.nodes import (
     TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
     TypeInfo, Context, SymbolTableNode, Var, Expression,
-    IndexExpr, RefExpr, nongen_builtins,
+    IndexExpr, RefExpr, nongen_builtins, TypeVarExpr
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.sametypes import is_same_type
@@ -321,10 +323,13 @@ class TypeAnalyser(TypeVisitor[Type]):
         return t
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        return t.copy_modified(arg_types=self.anal_array(t.arg_types, nested=False),
-                               ret_type=self.anal_type(t.ret_type, nested=False),
-                               fallback=t.fallback or self.builtin_type('builtins.function'),
-                               variables=self.anal_var_defs(t.variables))
+        with self.tvar_scope_frame():
+            variables = self.bind_function_type_variables(t, t)
+            ret = t.copy_modified(arg_types=self.anal_array(t.arg_types, nested=False),
+                                  ret_type=self.anal_type(t.ret_type, nested=False),
+                                  fallback=t.fallback or self.builtin_type('builtins.function'),
+                                  variables=self.anal_var_defs(variables))
+        return ret
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
@@ -371,25 +376,25 @@ class TypeAnalyser(TypeVisitor[Type]):
         fallback = self.builtin_type('builtins.function')
         if len(t.args) == 0:
             # Callable (bare). Treat as Callable[..., Any].
-            return CallableType([AnyType(), AnyType()],
+            ret = CallableType([AnyType(), AnyType()],
                                 [nodes.ARG_STAR, nodes.ARG_STAR2],
                                 [None, None],
                                 ret_type=AnyType(),
                                 fallback=fallback,
                                 is_ellipsis_args=True)
         elif len(t.args) == 2:
-            ret_type = self.anal_type(t.args[1])
+            ret_type = t.args[1]
             if isinstance(t.args[0], TypeList):
                 # Callable[[ARG, ...], RET] (ordinary callable type)
                 args = t.args[0].items
-                return CallableType(self.anal_array(args),
-                                    [nodes.ARG_POS] * len(args),
-                                    [None] * len(args),
-                                    ret_type=ret_type,
-                                    fallback=fallback)
+                ret = CallableType(args,
+                                   [nodes.ARG_POS] * len(args),
+                                   [None] * len(args),
+                                   ret_type=ret_type,
+                                   fallback=fallback)
             elif isinstance(t.args[0], EllipsisType):
                 # Callable[..., RET] (with literal ellipsis; accept arbitrary arguments)
-                return CallableType([AnyType(), AnyType()],
+                ret = CallableType([AnyType(), AnyType()],
                                     [nodes.ARG_STAR, nodes.ARG_STAR2],
                                     [None, None],
                                     ret_type=ret_type,
@@ -398,9 +403,60 @@ class TypeAnalyser(TypeVisitor[Type]):
             else:
                 self.fail('The first argument to Callable must be a list of types or "..."', t)
                 return AnyType()
+        else:
+            self.fail('Invalid function type', t)
+            return AnyType()
+        assert isinstance(ret, CallableType)
+        return ret.accept(self)
 
-        self.fail('Invalid function type', t)
-        return AnyType()
+    @contextmanager
+    def tvar_scope_frame(self):
+        old_scope = self.tvar_scope
+        self.tvar_scope = TypeVarScope(self.tvar_scope)
+        yield
+        self.tvar_scope = old_scope
+
+    def infer_type_variables(self,
+                             type: CallableType) -> List[Tuple[str, TypeVarExpr]]:
+        # MOVEABLE
+        """Return list of unique type variables referred to in a callable."""
+        names = []  # type: List[str]
+        tvars = []  # type: List[TypeVarExpr]
+        for arg in type.arg_types:
+            for name, tvar_expr in self.find_type_variables_in_type(arg, include_callables=True):
+                if name not in names:
+                    names.append(name)
+                    tvars.append(tvar_expr)
+        for name, tvar_expr in self.find_type_variables_in_type(type.ret_type, include_callables=False):
+            if name not in names:
+                names.append(name)
+                tvars.append(tvar_expr)
+        return list(zip(names, tvars))
+
+    def bind_function_type_variables(self, fun_type: CallableType, defn: Context) -> None:
+        """Find the type variables of the function type and bind them in our tvar_scope.
+        """
+        # MOVEABLE
+        if fun_type.variables:
+            for var in fun_type.variables:
+                self.tvar_scope.bind_fun_tvar(var.name, self.lookup(var.name, var).node)
+            return fun_type.variables
+        typevars = self.infer_type_variables(fun_type)
+        # Do not define a new type variable if already defined in scope.
+        typevars = [(name, tvar) for name, tvar in typevars
+                    if not self.is_defined_type_var(name, defn)]
+        defs = []  # type: List[TypeVarDef]
+        for name, tvar in typevars:
+            self.tvar_scope.bind_fun_tvar(name, tvar)
+            defs.append(self.tvar_scope.get_binding(tvar.fullname()))
+        return defs
+
+    def is_defined_type_var(self, tvar: str, context: Context) -> bool:
+        return self.tvar_scope.get_binding(self.lookup(tvar, context)) is not None
+
+    def find_type_variables_in_type(self, type: Type, *, include_callables: bool) -> List[Tuple[str, TypeVarExpr]]:
+        ret = type.accept(TypeVariableQuery(self.lookup, self.tvar_scope, include_callables))
+        return ret
 
     def anal_array(self, a: List[Type], nested: bool = True) -> List[Type]:
         res = []  # type: List[Type]
@@ -565,3 +621,43 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_type_type(self, t: TypeType) -> None:
         pass
+
+TypeVarList = List[Tuple[str, TypeVarExpr]]
+
+def _concat_type_var_lists(a: TypeVarList, b: TypeVarList) -> TypeVarList:
+    return b + a
+
+class TypeVariableQuery(TypeQuery[TypeVarList]):
+
+    def __init__(self,
+                 lookup: Callable[[str, Context], SymbolTableNode],
+                 scope: 'TypeVarScope',
+                 include_callables: bool):
+        self.include_callables = include_callables
+        self.lookup = lookup
+        self.scope = scope
+        super().__init__(default=[], strategy=_concat_type_var_lists)
+
+    def _seems_like_callable(self, type: UnboundType) -> bool:
+        if not type.args:
+            return False
+        if isinstance(type.args[0], (EllipsisType, TypeList)):
+            return True
+        return False
+
+    def visit_unbound_type(self, t: UnboundType) -> TypeVarList:
+        name = t.name
+        node = self.lookup(name, t)
+        if node and node.kind == TVAR and self.scope.get_binding(node) is None:
+            assert isinstance(node.node, TypeVarExpr)
+            return[(name, node.node)]
+        elif not self.include_callables and self._seems_like_callable(t):
+            return []
+        else:
+            return super().visit_unbound_type(t)
+
+    def visit_callable_type(self, t: CallableType) -> TypeVarList:
+        if self.include_callables:
+            return super().visit_callable_type(t)
+        else:
+            return self.default

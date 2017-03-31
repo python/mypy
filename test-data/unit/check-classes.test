@@ -1867,6 +1867,8 @@ class A(Generic[T]):
 class B(Generic[T]):
     a = A[T]
 
+reveal_type(B[int]())
+
 reveal_type(B[int]().a) # E: Revealed type is 'def (x: builtins.int*) -> __main__.A[builtins.int*]'
 B[int]().a('hi') # E: Argument 1 has incompatible type "str"; expected "int"
 

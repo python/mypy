@@ -268,75 +268,75 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        with self.tvar_scope_frame():
-            phase_info = self.postpone_nested_functions_stack[-1]
-            if phase_info != FUNCTION_SECOND_PHASE:
-                self.function_stack.append(defn)
-                # First phase of analysis for function.
-                self.errors.push_function(defn.name())
-                if defn.type:
-                    assert isinstance(defn.type, CallableType)
-                    self.update_function_type_variables(defn.type, defn)
-                self.errors.pop_function()
-                self.function_stack.pop()
 
-                defn.is_conditional = self.block_depth[-1] > 0
+        phase_info = self.postpone_nested_functions_stack[-1]
+        if phase_info != FUNCTION_SECOND_PHASE:
+            self.function_stack.append(defn)
+            # First phase of analysis for function.
+            self.errors.push_function(defn.name())
+            if defn.type:
+                assert isinstance(defn.type, CallableType)
+                self.update_function_type_variables(defn.type, defn)
+            self.errors.pop_function()
+            self.function_stack.pop()
 
-                # TODO(jukka): Figure out how to share the various cases. It doesn't
-                #   make sense to have (almost) duplicate code (here and elsewhere) for
-                #   3 cases: module-level, class-level and local names. Maybe implement
-                #   a common stack of namespaces. As the 3 kinds of namespaces have
-                #   different semantics, this wouldn't always work, but it might still
-                #   be a win.
-                if self.is_class_scope():
-                    # Method definition
-                    defn.info = self.type
-                    if not defn.is_decorated and not defn.is_overload:
-                        if defn.name() in self.type.names:
-                            # Redefinition. Conditional redefinition is okay.
-                            n = self.type.names[defn.name()].node
-                            if not self.set_original_def(n, defn):
-                                self.name_already_defined(defn.name(), defn)
-                        self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
-                    self.prepare_method_signature(defn)
-                elif self.is_func_scope():
-                    # Nested function
-                    if not defn.is_decorated and not defn.is_overload:
-                        if defn.name() in self.locals[-1]:
-                            # Redefinition. Conditional redefinition is okay.
-                            n = self.locals[-1][defn.name()].node
-                            if not self.set_original_def(n, defn):
-                                self.name_already_defined(defn.name(), defn)
-                        else:
-                            self.add_local(defn, defn)
-                else:
-                    # Top-level function
-                    if not defn.is_decorated and not defn.is_overload:
-                        symbol = self.globals.get(defn.name())
-                        if isinstance(symbol.node, FuncDef) and symbol.node != defn:
-                            # This is redefinition. Conditional redefinition is okay.
-                            if not self.set_original_def(symbol.node, defn):
-                                # Report error.
-                                self.check_no_global(defn.name(), defn, True)
-                if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
-                    # Postpone this function (for the second phase).
-                    self.postponed_functions_stack[-1].append(defn)
-                    return
-            if phase_info != FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
-                # Second phase of analysis for function.
-                self.errors.push_function(defn.name())
-                self.analyze_function(defn)
-                if defn.is_coroutine and isinstance(defn.type, CallableType):
-                    if defn.is_async_generator:
-                        # Async generator types are handled elsewhere
-                        pass
+            defn.is_conditional = self.block_depth[-1] > 0
+
+            # TODO(jukka): Figure out how to share the various cases. It doesn't
+            #   make sense to have (almost) duplicate code (here and elsewhere) for
+            #   3 cases: module-level, class-level and local names. Maybe implement
+            #   a common stack of namespaces. As the 3 kinds of namespaces have
+            #   different semantics, this wouldn't always work, but it might still
+            #   be a win.
+            if self.is_class_scope():
+                # Method definition
+                defn.info = self.type
+                if not defn.is_decorated and not defn.is_overload:
+                    if defn.name() in self.type.names:
+                        # Redefinition. Conditional redefinition is okay.
+                        n = self.type.names[defn.name()].node
+                        if not self.set_original_def(n, defn):
+                            self.name_already_defined(defn.name(), defn)
+                    self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+                self.prepare_method_signature(defn)
+            elif self.is_func_scope():
+                # Nested function
+                if not defn.is_decorated and not defn.is_overload:
+                    if defn.name() in self.locals[-1]:
+                        # Redefinition. Conditional redefinition is okay.
+                        n = self.locals[-1][defn.name()].node
+                        if not self.set_original_def(n, defn):
+                            self.name_already_defined(defn.name(), defn)
                     else:
-                        # A coroutine defined as `async def foo(...) -> T: ...`
-                        # has external return type `Awaitable[T]`.
-                        defn.type = defn.type.copy_modified(
-                            ret_type = self.named_type_or_none('typing.Awaitable',
-                                                               [defn.type.ret_type]))
-                self.errors.pop_function()
+                        self.add_local(defn, defn)
+            else:
+                # Top-level function
+                if not defn.is_decorated and not defn.is_overload:
+                    symbol = self.globals.get(defn.name())
+                    if isinstance(symbol.node, FuncDef) and symbol.node != defn:
+                        # This is redefinition. Conditional redefinition is okay.
+                        if not self.set_original_def(symbol.node, defn):
+                            # Report error.
+                            self.check_no_global(defn.name(), defn, True)
+            if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
+                # Postpone this function (for the second phase).
+                self.postponed_functions_stack[-1].append(defn)
+                return
+        if phase_info != FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
+            # Second phase of analysis for function.
+            self.errors.push_function(defn.name())
+            self.analyze_function(defn)
+            if defn.is_coroutine and isinstance(defn.type, CallableType):
+                if defn.is_async_generator:
+                    # Async generator types are handled elsewhere
+                    pass
+                else:
+                    # A coroutine defined as `async def foo(...) -> T: ...`
+                    # has external return type `Awaitable[T]`.
+                    defn.type = defn.type.copy_modified(
+                        ret_type = self.named_type_or_none('typing.Awaitable',
+                                                           [defn.type.ret_type]))
+            self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
@@ -375,60 +375,10 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         Update the signature of defn to contain type variable definitions
         if defn is generic.
         """
-        # MOVEABLE
-        if fun_type.variables:
-            print("Already got to function", fun_type, "scope", self.tvar_scope)
-            for var in fun_type.variables:
-                self.tvar_scope.bind_fun_tvar(var.name, self.lookup_qualified(var.name, var).node)
-            return
-        typevars = self.infer_type_variables(fun_type)
-        # Do not define a new type variable if already defined in scope.
-        typevars = [(name, tvar) for name, tvar in typevars
-                    if not self.is_defined_type_var(name, defn)]
-        defs = []  # type: List[TypeVarDef]
-        for name, tvar in typevars:
-            self.tvar_scope.bind_fun_tvar(name, tvar)
-            defs.append(self.tvar_scope.get_binding(tvar.fullname()))
-        print("Setting variables of ", fun_type, "to", defs, "scope now", self.tvar_scope)
-        fun_type.variables = defs
 
-    def infer_type_variables(self,
-                             type: CallableType) -> List[Tuple[str, TypeVarExpr]]:
-        # MOVEABLE
-        """Return list of unique type variables referred to in a callable."""
-        names = []  # type: List[str]
-        tvars = []  # type: List[TypeVarExpr]
-        for arg in type.arg_types:
-            for name, tvar_expr in self.find_type_variables_in_type(arg, include_callables=True):
-                if name not in names:
-                    names.append(name)
-                    tvars.append(tvar_expr)
-        for name, tvar_expr in self.find_type_variables_in_type(type.ret_type, include_callables=False):
-            if name not in names:
-                names.append(name)
-                tvars.append(tvar_expr)
-        return list(zip(names, tvars))
-
-    def _seems_like_callable(self, type: UnboundType) -> bool:
-        # MOVEABLE
-        if not type.args:
-            return False
-        if isinstance(type.args[0], (EllipsisType, TypeList)):
-            return True
-        return False
-
-    def find_type_variables_in_type(self, type: Type, *, include_callables: bool) -> List[Tuple[str, TypeVarExpr]]:
-        """Return a list of all unique type variable references in type.
-
-        This effectively does partial name binding, results of which are mostly thrown away.
-        """
-        # MOVEABLE
-        ret = type.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope, include_callables))
-        return ret
-
-    def is_defined_type_var(self, tvar: str, context: Context) -> bool:
-        # USED ONCE; MOVEABLE
-        return self.tvar_scope.get_binding(self.lookup_qualified(tvar, context)) is not None
+        a = self.type_analyzer(tvar_scope=TypeVarScope(self.tvar_scope))
+        variables = a.bind_function_type_variables(fun_type, defn)
+        fun_type.variables = variables
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         # OverloadedFuncDef refers to any legitimate situation where you have
@@ -557,35 +507,40 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         for arg in defn.arguments:
             if arg.initializer:
                 arg.initializer.accept(self)
-        self.function_stack.append(defn)
-        self.enter()
-        for arg in defn.arguments:
-            self.add_local(arg.variable, defn)
-        for arg in defn.arguments:
-            if arg.initialization_statement:
-                lvalue = arg.initialization_statement.lvalues[0]
-                lvalue.accept(self)
+        with self.tvar_scope_frame():
+            # Bind the type variables again to visit the body.
+            if defn.type:
+                a = self.type_analyzer()
+                a.bind_function_type_variables(defn.type, defn)
+            self.function_stack.append(defn)
+            self.enter()
+            for arg in defn.arguments:
+                self.add_local(arg.variable, defn)
+            for arg in defn.arguments:
+                if arg.initialization_statement:
+                    lvalue = arg.initialization_statement.lvalues[0]
+                    lvalue.accept(self)
 
-        # The first argument of a non-static, non-class method is like 'self'
-        # (though the name could be different), having the enclosing class's
-        # instance type.
-        if is_method and not defn.is_static and not defn.is_class and defn.arguments:
-            defn.arguments[0].variable.is_self = True
+            # The first argument of a non-static, non-class method is like 'self'
+            # (though the name could be different), having the enclosing class's
+            # instance type.
+            if is_method and not defn.is_static and not defn.is_class and defn.arguments:
+                defn.arguments[0].variable.is_self = True
 
-        # First analyze body of the function but ignore nested functions.
-        self.postpone_nested_functions_stack.append(FUNCTION_FIRST_PHASE_POSTPONE_SECOND)
-        self.postponed_functions_stack.append([])
-        defn.body.accept(self)
+            # First analyze body of the function but ignore nested functions.
+            self.postpone_nested_functions_stack.append(FUNCTION_FIRST_PHASE_POSTPONE_SECOND)
+            self.postponed_functions_stack.append([])
+            defn.body.accept(self)
 
-        # Analyze nested functions (if any) as a second phase.
-        self.postpone_nested_functions_stack[-1] = FUNCTION_SECOND_PHASE
-        for postponed in self.postponed_functions_stack[-1]:
-            postponed.accept(self)
-        self.postpone_nested_functions_stack.pop()
-        self.postponed_functions_stack.pop()
+            # Analyze nested functions (if any) as a second phase.
+            self.postpone_nested_functions_stack[-1] = FUNCTION_SECOND_PHASE
+            for postponed in self.postponed_functions_stack[-1]:
+                postponed.accept(self)
+            self.postpone_nested_functions_stack.pop()
+            self.postponed_functions_stack.pop()
 
-        self.leave()
-        self.function_stack.pop()
+            self.leave()
+            self.function_stack.pop()
 
     def check_classvar_in_signature(self, typ: Type) -> None:
         t = None  # type: Type
@@ -658,6 +613,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
                     self.analyze_class_decorator(defn, decorator)
 
                 self.enter_class(defn)
+                print("Entered class", defn.name, self.tvar_scope)
 
                 # Analyze class body.
                 defn.defs.accept(self)
@@ -1415,23 +1371,34 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         if b:
             self.visit_block(b)
 
+    def type_analyzer(self,
+                      tvar_scope: Optional[TypeVarScope] = None,
+                      allow_tuple_literal: bool = False,
+                      aliasing: bool = False) -> TypeAnalyser:
+        if tvar_scope is None:
+            tvar_scope = self.tvar_scope
+        return TypeAnalyser(self.lookup_qualified,
+                            self.lookup_fully_qualified,
+                            tvar_scope,
+                            self.fail,
+                            aliasing=aliasing,
+                            allow_tuple_literal=allow_tuple_literal,
+                            allow_unnormalized=self.is_stub_file)
+
     def anal_type(self, t: Type, allow_tuple_literal: bool = False,
                   aliasing: bool = False) -> Type:
         if t:
-            a = TypeAnalyser(self.lookup_qualified,
-                             self.lookup_fully_qualified,
-                             self.tvar_scope,
-                             self.fail,
-                             aliasing=aliasing,
-                             allow_tuple_literal=allow_tuple_literal,
-                             allow_unnormalized=self.is_stub_file)
+            a = self.type_analyzer(
+                aliasing=aliasing,
+                allow_tuple_literal=allow_tuple_literal)
             print("analyzing", t, "scope", self.tvar_scope)
-            return t.accept(a).accept(self)
+            return t.accept(a)
 
         else:
             return None
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
+        print("Visiting assignment", s)
         for lval in s.lvalues:
             self.analyze_lvalue(lval, explicit_type=s.type is not None)
         self.check_classvar(s)
@@ -1439,6 +1406,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         if s.type:
             allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
             s.type = self.anal_type(s.type, allow_tuple_literal)
+            print("declared type", s.type)
         else:
             # For simple assignments, allow binding type aliases.
             # Also set the type if the rvalue is a simple literal.
@@ -1457,8 +1425,10 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
                     node.kind = TYPE_ALIAS
                     node.type_override = res
                     if isinstance(s.rvalue, IndexExpr):
+                        print("Making type alias with scope", self.tvar_scope)
                         s.rvalue.analyzed = TypeAliasExpr(res,
                                                           fallback=self.alias_fallback(res))
+                        print("Made", s.rvalue.analyzed)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1521,6 +1491,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
                     # Only a definition can create a type alias, not regular assignment.
                     return
                 rvalue = s.rvalue
+                print("Setting up type alias", rvalue)
                 if isinstance(rvalue, RefExpr):
                     node = rvalue.node
                     if isinstance(node, TypeInfo):
@@ -3054,17 +3025,6 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
             self.fail("'await' outside coroutine ('async def')", expr)
         expr.expr.accept(self)
 
-
-    #
-    # Visitors for the TypeTranslator nature.  Used for binding type vars.
-    #
-    def visit_callable_type(self, t: CallableType) -> CallableType:
-        self.update_function_type_variables(t, t)
-        t = t.copy_modified(
-            arg_types=[self.anal_type(a) for a in t.arg_types],
-            ret_type=self.anal_type(t.ret_type),
-        )
-        return t
     #
     # Helpers
     #
@@ -3718,45 +3678,6 @@ class ThirdPass(TraverserVisitor):
         assert isinstance(sym.node, TypeInfo)
         return Instance(sym.node, args or [])
 
-TypeVarList = List[Tuple[str, TypeVarExpr]]
-
-def _concat_type_var_lists(a: TypeVarList, b: TypeVarList) -> TypeVarList:
-    return a + b
-
-class TypeVariableQuery(TypeQuery[TypeVarList]):
-
-    def __init__(self,
-                 lookup: Callable[[str, Context], SymbolTableNode],
-                 scope: 'TypeVarScope',
-                 include_callables: bool):
-        self.include_callables = include_callables
-        self.lookup = lookup
-        self.scope = scope
-        super().__init__(default=[], strategy=_concat_type_var_lists)
-
-    def _seems_like_callable(self, type: UnboundType) -> bool:
-        if not type.args:
-            return False
-        if isinstance(type.args[0], (EllipsisType, TypeList)):
-            return True
-        return False
-
-    def visit_unbound_type(self, t: UnboundType) -> TypeVarList:
-        name = t.name
-        node = self.lookup(name, t)
-        if node and node.kind == TVAR and self.scope.get_binding(node) is None:
-            assert isinstance(node.node, TypeVarExpr)
-            return[(name, node.node)]
-        elif not self.include_callables and self._seems_like_callable(t):
-            return []
-        else:
-            return super().visit_unbound_type(t)
-
-    def visit_callable_type(self, t: CallableType) -> TypeVarList:
-        if self.include_callables:
-            return super().visit_callable_type(t)
-        else:
-            return self.default
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
