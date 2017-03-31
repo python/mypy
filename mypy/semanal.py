@@ -1417,6 +1417,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
                 res = analyze_type_alias(s.rvalue,
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
+                                         self.tvar_scope,
                                          self.fail, allow_unnormalized=True)
                 if res and (not isinstance(res, Instance) or res.args):
                     # TODO: What if this gets reassigned?
@@ -2884,6 +2885,7 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
             res = analyze_type_alias(expr,
                                      self.lookup_qualified,
                                      self.lookup_fully_qualified,
+                                     self.tvar_scope,
                                      self.fail, allow_unnormalized=self.is_stub_file)
             expr.analyzed = TypeAliasExpr(res, fallback=self.alias_fallback(res),
                                           in_runtime=True)

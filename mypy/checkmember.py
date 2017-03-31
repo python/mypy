@@ -53,7 +53,6 @@ def analyze_member_access(name: str,
     original_type is always the type used in the initial call.
     """
     if isinstance(typ, Instance):
-        print("Getting member", name, "of", typ)
         if name == '__init__' and not is_super:
             # Accessing __init__ in statically typed code would compromise
             # type safety unless used via super().
@@ -74,7 +73,6 @@ def analyze_member_access(name: str,
         # Look up the member. First look up the method dictionary.
         method = info.get_method(name)
         if method:
-            print("It is a method!", method)
             if method.is_property:
                 assert isinstance(method, OverloadedFuncDef)
                 first_item = cast(Decorator, method.items[0])
@@ -215,9 +213,6 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
     """
     # It was not a method. Try looking up a variable.
     v = lookup_member_var_or_accessor(info, name, is_lvalue)
-    print("It's a var?", v, "itype", itype, "type", v.type)
-    print("names", info.names)
-
     vv = v
     if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
@@ -495,7 +490,6 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
         # Construct callable type based on signature of __init__. Adjust
         # return type and insert type arguments.
         ret = type_object_type_from_function(init_method, info, fallback)
-        print("Making callable based on __init__ of", info.name(), ret)
         return ret
 
 

@@ -36,6 +36,7 @@ type_constructors = {
 def analyze_type_alias(node: Expression,
                        lookup_func: Callable[[str, Context], SymbolTableNode],
                        lookup_fqn_func: Callable[[str], SymbolTableNode],
+                       tvar_scope: TypeVarScope,
                        fail_func: Callable[[str, Context], None],
                        allow_unnormalized: bool = False) -> Type:
     """Return type if node is valid as a type alias rvalue.
@@ -75,7 +76,7 @@ def analyze_type_alias(node: Expression,
     except TypeTranslationError:
         fail_func('Invalid type alias', node)
         return None
-    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, TypeVarScope(), fail_func, aliasing=True,
+    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, tvar_scope, fail_func, aliasing=True,
                             allow_unnormalized=allow_unnormalized)
     return type.accept(analyzer)
 
@@ -187,8 +188,14 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return UninhabitedType(is_noreturn=True)
             elif sym.kind == TYPE_ALIAS:
                 override = sym.type_override
+                print("t is", t)
+                print("t.class", t.__class__.__name__)
+
                 an_args = self.anal_array(t.args)
+                print("Analyzed args", an_args)
+                print("Type override is", override)
                 all_vars = self.get_type_var_names(override)
+                print("All vars", all_vars)
                 exp_len = len(all_vars)
                 act_len = len(an_args)
                 if exp_len > 0 and act_len == 0:
@@ -258,6 +265,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         """
         tvars = []  # type: List[str]
         typ_args = get_typ_args(tp)
+        print("typ_args", typ_args, "of", tp)
         for arg in typ_args:
             tvar = self.get_tvar_name(arg)
             if tvar:
@@ -273,6 +281,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             if t in all_tvars:
                 new_tvars.append(t)
                 all_tvars.remove(t)
+        print("consolidates to", new_tvars, "of", tp)
         return new_tvars
 
     def get_tvar_name(self, t: Type) -> Optional[str]:
@@ -324,7 +333,10 @@ class TypeAnalyser(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         with self.tvar_scope_frame():
-            variables = self.bind_function_type_variables(t, t)
+            if self.aliasing:
+                variables = t.variables
+            else:
+                variables = self.bind_function_type_variables(t, t)
             ret = t.copy_modified(arg_types=self.anal_array(t.arg_types, nested=False),
                                   ret_type=self.anal_type(t.ret_type, nested=False),
                                   fallback=t.fallback or self.builtin_type('builtins.function'),

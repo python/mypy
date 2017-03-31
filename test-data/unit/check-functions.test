@@ -1713,23 +1713,23 @@ from typing import Callable, TypeVar
 T = TypeVar('T')
 
 f: Callable[[T], T]
-reveal_type(f)
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
 def g(__x: T) -> T: pass
 f = g
-reveal_type(f)
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
 i = f(3)
-reveal_type(i)
+reveal_type(i)  # E: Revealed type is 'builtins.int*'
 
 [case testFunctionReturningGenericFunction]
 from typing import Callable, TypeVar
 
 T = TypeVar('T')
 def deco() -> Callable[[T], T]: pass
-reveal_type(deco)
+reveal_type(deco)  # E: Revealed type is 'def () -> def [T] (T`-1) -> T`-1'
 f = deco()
-reveal_type(f)
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
 i = f(3)
-reveal_type(i)
+reveal_type(i)  # E: Revealed type is 'builtins.int*'
 
 [case testGenericFunctionOnReturnTypeOnly]
 from typing import TypeVar, List
