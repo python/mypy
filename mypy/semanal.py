@@ -155,7 +155,7 @@ FUNCTION_SECOND_PHASE = 2  # Only analyze body
 # easily be supported in a static checker.
 NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs__',
                                '_fields', '_field_defaults', '_field_types',
-                               '_make', '_replace', '_asdict',
+                               '_make', '_replace', '_asdict', '_source',
                                '__annotations__')
 
 
@@ -685,10 +685,10 @@ class SemanticAnalyzer(NodeVisitor):
 
             # Restore the names in the original symbol table. This ensures that the symbol
             # table contains the field objects created by build_namedtuple_typeinfo. Exclude
-            # _source and __doc__, which can legally be overwritten by the class.
+            # __doc__, which can legally be overwritten by the class.
             named_tuple_info.names.update({
                 key: value for key, value in nt_names.items()
-                if key not in named_tuple_info.names or key not in ('_source', '__doc__')
+                if key not in named_tuple_info.names or key != '__doc__'
             })
         else:
             self.setup_class_def_analysis(defn)

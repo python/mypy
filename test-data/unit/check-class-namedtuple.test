@@ -583,7 +583,7 @@ class MagicalFields(NamedTuple):
     x: int
     def __slots__(self) -> None: pass  # E: Cannot overwrite NamedTuple attribute "__slots__"
     def __new__(cls) -> None: pass  # E: Cannot overwrite NamedTuple attribute "__new__"
-    def _source(self) -> int: pass  # _source is ok
+    def _source(self) -> int: pass  # E: Cannot overwrite NamedTuple attribute "_source"
     __annotations__ = {'x': float}  # E: NamedTuple field name cannot start with an underscore: __annotations__ \
         # E: Invalid statement in NamedTuple definition; expected "field_name: field_type" \
         # E: Cannot overwrite NamedTuple attribute "__annotations__"
