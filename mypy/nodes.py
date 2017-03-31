@@ -4,7 +4,7 @@ import os
 from abc import abstractmethod
 
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, ClassVar
 )
 
 import mypy.strconv
@@ -1925,6 +1925,16 @@ class TypeInfo(SymbolNode):
     runtime_protocol = False               # Does this protocol support isinstance checks?
     abstract_attributes = None  # type: List[str]
     protocol_members = None  # type: List[str]
+
+    # These represent global structural subtype matrices.
+    # If concurrent/parallel type checking will be added in future,
+    # then there should be one matrix per thread/process to avoid false negatives
+    # during the type checking phase.
+    assuming = []  # type: ClassVar[List[Tuple[Instance, Instance]]]
+    assuming_proper = []  # type: ClassVar[List[Tuple[Instance, Instance]]]
+    # Ditto for temporary stack of recursive constraint inference.
+    inferring = []  # type: ClassVar[List[TypeInfo]]
+
     # Classes inheriting from Enum shadow their true members with a __getattr__, so we
     # have to treat them as a special case.
     is_enum = False

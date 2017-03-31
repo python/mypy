@@ -261,9 +261,6 @@ class CompleteTypeVisitor(TypeQuery):
         return False
 
 
-INFERRING = []  # type: List[nodes.TypeInfo]
-
-
 class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     """Visitor class for inferring type constraints."""
 
@@ -311,7 +308,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     # Non-leaf types
 
     def visit_instance(self, template: Instance) -> List[Constraint]:
-        global INFERRING
+        inferring = nodes.TypeInfo.inferring
         actual = self.actual
         res = []  # type: List[Constraint]
         if isinstance(actual, CallableType) and actual.fallback is not None:
@@ -319,24 +316,24 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(actual, Instance):
             instance = actual
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
-                    template.type not in INFERRING and
+                    template.type not in inferring and
                     mypy.subtypes.is_subtype(instance, erase_typevars(template))):
-                INFERRING.append(template.type)
+                inferring.append(template.type)
                 for member in template.type.protocol_members:
                     inst = mypy.subtypes.find_member(member, instance, instance)
                     temp = mypy.subtypes.find_member(member, template, template)
                     res.extend(infer_constraints(temp, inst, self.direction))
-                INFERRING.pop()
+                inferring.pop()
                 return res
             elif (instance.type.is_protocol and self.direction == SUBTYPE_OF and
-                  instance.type not in INFERRING and
+                  instance.type not in inferring and
                   mypy.subtypes.is_subtype(erase_typevars(template), instance)):
-                INFERRING.append(instance.type)
+                inferring.append(instance.type)
                 for member in instance.type.protocol_members:
                     inst = mypy.subtypes.find_member(member, instance, instance)
                     temp = mypy.subtypes.find_member(member, template, template)
                     res.extend(infer_constraints(temp, inst, self.direction))
-                INFERRING.pop()
+                inferring.pop()
                 return res
             if (self.direction == SUBTYPE_OF and
                     template.type.has_base(instance.type.fullname())):

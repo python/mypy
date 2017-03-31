@@ -13,7 +13,7 @@ import mypy.constraints
 from mypy import messages, sametypes
 from mypy.nodes import (
     CONTRAVARIANT, COVARIANT, FuncBase, Var, Decorator, OverloadedFuncDef,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeInfo
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
@@ -287,10 +287,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return False
 
 
-ASSUMING = []  # type: List[Tuple[Instance, Instance]]
-ASSUMING_PROPER = []  # type: List[Tuple[Instance, Instance]]
-
-
 def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool = True) -> bool:
     assert right.type.is_protocol
     is_compat = None  # type: Callable[[Type, Type], bool]
@@ -298,7 +294,7 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
         is_compat = is_subtype
     else:
         is_compat = is_proper_subtype
-    assuming = ASSUMING if allow_any else ASSUMING_PROPER
+    assuming = TypeInfo.assuming if allow_any else TypeInfo.assuming_proper
     for (l, r) in reversed(assuming):
         if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):
             return True
