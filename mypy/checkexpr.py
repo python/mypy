@@ -254,12 +254,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for (item_name, item_expected_type) in callee.items.items():
             item_value = kwargs[item_name]
 
-            item_actual_type = self.chk.check_simple_assignment(
+            self.chk.check_simple_assignment(
                 lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
                 msg=messages.INCOMPATIBLE_TYPES,
                 lvalue_name='TypedDict item "{}"'.format(item_name),
                 rvalue_name='expression')
-            items[item_name] = item_actual_type
+            items[item_name] = item_expected_type
 
         mapping_value_type = join.join_type_list(list(items.values()))
         fallback = self.chk.named_generic_type('typing.Mapping',
