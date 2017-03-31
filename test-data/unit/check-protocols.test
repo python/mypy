@@ -359,6 +359,10 @@ class Shape(Protocol):
     def combine(self: T, other: T) -> T:
         pass
 
+class Template(Protocol):
+    def combine(self, other: Template) -> Template:
+        pass
+
 class Triangle:
     def combine(self, other: Shape) -> Shape:
         pass
@@ -389,8 +393,11 @@ t = Triangle()
 r = Rectangle()
 c = Circle()
 n = NonProtoShape()
+tm: Template
 
-# This compatibility matrix matches those for nominal subclasses; should be updated if the latter changes
+# The compatibility matrix below matches behavior for *nominal* subclasses with self-types;
+# should be updated if the latter changes
+
 s = t # E: Incompatible types in assignment (expression has type "Triangle", variable has type "Shape")
 s = r
 s = c
@@ -398,7 +405,8 @@ s3: Shape = c
 s = Bad() # E: Incompatible types in assignment (expression has type "Bad", variable has type "Shape")
 s = a
 s = n
-
+tm = n # E: Incompatible types in assignment (expression has type "NonProtoShape", variable has type "Template")
+tm = r
 s2: Shape
 n2: NonProtoShape = s2 # E: Incompatible types in assignment (expression has type "Shape", variable has type "NonProtoShape")
 [out]
@@ -432,7 +440,7 @@ t = C() # E: Incompatible types in assignment (expression has type "C", variable
 -- @property, @classmethod and @staticmethod in protocol types
 -- -----------------------------------------------------------
 
--- Meet and join of protocol types
+-- Join and meet of protocol types
 -- -------------------------------
 
 -- Unions of protocol types
