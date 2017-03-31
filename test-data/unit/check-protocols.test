@@ -437,6 +437,55 @@ t = C() # E: Incompatible types in assignment (expression has type "C", variable
 [builtins fixtures/list.pyi]
 [out]
 
+[case testComplexRecursiveProtocols]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T')
+
+class Linked(Protocol[T]):
+    val: T
+    next: Linked[T]
+
+class L:
+    val: int
+    next: L
+
+def last(seq: Linked[T]) -> T:
+    pass
+
+reveal_type(last(L())) # E: Revealed type is 'builtins.int*'
+
+[builtins fixtures/list.pyi]
+[out]
+
+[case testMutuallyRecursiveProtocols]
+from typing import Protocol, Sequence, List
+
+class P1(Protocol):
+    attr1: Sequence[P2]
+
+class P2(Protocol):
+    attr2: Sequence[P1]
+
+class C: pass
+
+class A:
+    attr1: List[B]
+
+class B:
+    attr2: List[A]
+
+t: P1
+t = A() # OK
+t = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P1")\
+        # N: '__main__.B' missing following '__main__.P1' protocol members:\
+        # N: attr1
+t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P1")\
+        # N: '__main__.C' missing following '__main__.P1' protocol members:\
+        # N: attr1
+[builtins fixtures/list.pyi]
+[out]
+
 -- @property, @classmethod and @staticmethod in protocol types
 -- -----------------------------------------------------------
 
