@@ -749,6 +749,10 @@ class SemanticAnalyzer(NodeVisitor):
                     if fdef.is_abstract and name not in concrete:
                         typ.is_abstract = True
                         abstract.append(name)
+                elif isinstance(node, Var):
+                    if node.is_abstract_var and name not in concrete:
+                        typ.is_abstract = True
+                        abstract.append(name)
                 concrete.add(name)
         typ.abstract_attributes = sorted(abstract)
 
@@ -1500,6 +1504,10 @@ class SemanticAnalyzer(NodeVisitor):
         if s.type:
             allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
             s.type = self.anal_type(s.type, allow_tuple_literal)
+            if (self.type and self.type.is_protocol and isinstance(lval, NameExpr) and
+                    isinstance(s.rvalue, TempNode)) and s.rvalue.no_rhs:
+                        if isinstance(lval.node, Var):
+                            lval.node.is_abstract_var = True
         else:
             # For simple assignments, allow binding type aliases.
             # Also set the type if the rvalue is a simple literal.
@@ -1695,9 +1703,10 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_member_lvalue(self, lval: MemberExpr) -> None:
         lval.accept(self)
+        node = self.type.get(lval.name)
         if (self.is_self_member_ref(lval) and
-                self.type.get(lval.name) is None):
-            if self.type.is_protocol:
+                (node is None or isinstance(node.node, Var) and node.node.is_abstract_var)):
+            if self.type.is_protocol and node is None:
                 # Protocol members can't be defined via self
                 self.fail("Protocol members cannot be defined via assignment to self", lval)
             else:

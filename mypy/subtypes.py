@@ -151,12 +151,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if isinstance(item, Instance):
                 return is_subtype(left, item.type.metaclass_type)
             elif isinstance(item, AnyType):
-                # Special case: all metaclasses are subtypes of Type[Any]
+                # Special case: all metaclasses are subtypes of Type[Any].
                 mro = left.type.mro or []
                 return any(base.fullname() == 'builtins.type' for base in mro)
             else:
                 return False
         if isinstance(right, CallableType):
+            # Special case: Instance can by a subtype of Callable.
             call = find_member('__call__', left, left)
             if call:
                 return is_subtype(call, right)
@@ -288,6 +289,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
 
 def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool = True) -> bool:
+    """Check whether 'left' implements the protocol 'right'. If 'allow_any' is False, then
+    check for a proper subtype. Treat recursive protocols by using a global 'assuming'
+    structural subtype matrix (in sparse representation). If concurrent type checking
+    will be implemented, then every thread/process should use its own matrix
+    (see comment in nodes.TypeInfo).
+    """
     assert right.type.is_protocol
     is_compat = None  # type: Callable[[Type, Type], bool]
     if allow_any:
@@ -309,6 +316,9 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
 
 
 def find_member(name: str, itype: Instance, subtype: Instance) -> Optional[Type]:
+    """Find the type of member by 'name' in 'itype's TypeInfo. Apply type arguments
+    from 'itype', and bind 'self' to 'subtype'. Return None if member was not found.
+    """
     info = itype.type
     method = info.get_method(name)
     if method:
@@ -319,6 +329,7 @@ def find_member(name: str, itype: Instance, subtype: Instance) -> Optional[Type]
             return find_var_type(dec.var, itype, subtype)
         return map_method(method, itype, subtype)
     else:
+        # don't have such method, maybe variable or decorator?
         node = info.get(name)
         if not node:
             v = None
@@ -330,6 +341,10 @@ def find_member(name: str, itype: Instance, subtype: Instance) -> Optional[Type]
             return find_var_type(v, itype, subtype)
         if not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
             for method_name in ('__getattribute__', '__getattr__'):
+                # Normally, mypy assumes that instances that define __getattr__ have all
+                # attributes with the corresponding return type. If this will produce
+                # many false negatives, then this could be prohibited for
+                # structural subtyping.
                 method = info.get_method(method_name)
                 if method and method.info.fullname() != 'builtins.object':
                     getattr_type = map_method(method, itype, subtype)
@@ -341,12 +356,16 @@ def find_member(name: str, itype: Instance, subtype: Instance) -> Optional[Type]
 
 
 def find_var_type(var: Var, itype: Instance, subtype: Instance) -> Type:
+    """Find type of a variable 'var' (maybe also a decorated method).
+    Apply type arguments from 'itype', and bind 'self' to 'subtype'.
+    """
     from mypy.checkmember import bind_self
     itype = map_instance_to_supertype(itype, var.info)
     typ = var.type
     if typ is None:
         return AnyType()
     typ = expand_type_by_instance(typ, itype)
+    # We don't need to bind 'self' for static methods, since there is no 'self'.
     if isinstance(typ, FunctionLike) and not var.is_staticmethod:
         signature = bind_self(typ, subtype)
         assert isinstance(signature, CallableType)
@@ -357,6 +376,12 @@ def find_var_type(var: Var, itype: Instance, subtype: Instance) -> Type:
 
 
 def map_method(method: FuncBase, itype: Instance, subtype: Instance) -> Type:
+    """Map 'method' to the base where it was defined. Apply type arguments
+    from 'itype', and bind 'self' type to 'subtype'.
+    This function should be used only for non-decorated methods. Decorated
+    methods (including @staticmethod and @property) are treated
+    by 'find_var_type'.
+    """
     from mypy.checkmember import bind_self
     signature = function_type(method, Instance(itype.type.mro[-1], []))
     signature = bind_self(signature, subtype)
@@ -365,6 +390,10 @@ def map_method(method: FuncBase, itype: Instance, subtype: Instance) -> Type:
 
 
 def get_missing_members(left: Instance, right: Instance) -> List[str]:
+    """Find all protocol members of 'right' that are not implemented
+    (i.e. completely missing) in 'left'.
+    """
+    assert right.type.is_protocol
     missing = []  # type: List[str]
     for member in right.type.protocol_members:
         if not find_member(member, left, left):

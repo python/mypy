@@ -517,7 +517,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     @with_line
     def visit_AnnAssign(self, n: ast3.AnnAssign) -> AssignmentStmt:
         if n.value is None:  # always allow 'x: int'
-            rvalue = TempNode(AnyType())  # type: Expression
+            rvalue = TempNode(AnyType(), no_rhs=True)  # type: Expression
         else:
             rvalue = self.visit(n.value)
         typ = TypeConverter(self.errors, line=n.lineno).visit(n.annotation)

@@ -666,6 +666,7 @@ class Var(SymbolNode):
     is_property = False
     is_settable_property = False
     is_classvar = False
+    is_abstract_var = False
     # Set to true when this variable refers to a module we were unable to
     # parse for some reason (eg a silenced module)
     is_suppressed_import = False
@@ -673,7 +674,7 @@ class Var(SymbolNode):
     FLAGS = [
         'is_self', 'is_ready', 'is_initialized_in_class', 'is_staticmethod',
         'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
-        'is_classvar'
+        'is_classvar', 'is_abstract_var'
     ]
 
     def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
@@ -1881,9 +1882,12 @@ class TempNode(Expression):
     """
 
     type = None  # type: mypy.types.Type
+    # Is it used to indicate no right hand side in assignment?
+    no_rhs = False  # type: bool
 
-    def __init__(self, typ: 'mypy.types.Type') -> None:
+    def __init__(self, typ: 'mypy.types.Type', no_rhs: bool = False) -> None:
         self.type = typ
+        self.no_rhs = no_rhs
 
     def __repr__(self) -> str:
         return 'TempNode(%s)' % str(self.type)

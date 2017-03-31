@@ -440,6 +440,52 @@ t = C() # E: Incompatible types in assignment (expression has type "C", variable
 -- @property, @classmethod and @staticmethod in protocol types
 -- -----------------------------------------------------------
 
+[case testCannotInstantiateAbstractMethodExplicitProtocolSubtypes]
+from typing import Protocol
+from abc import abstractmethod
+
+class P(Protocol):
+    @abstractmethod
+    def meth(self) -> int:
+        pass
+
+class A(P):
+    pass
+
+A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'meth'
+
+class C(A):
+    def meth(self) -> int:
+        pass
+class C2(P):
+    def meth(self) -> int:
+        pass
+
+C()
+C2()
+[out]
+
+[case testCannotInstantiateAbstractVariableExplicitProtocolSubtypes]
+from typing import Protocol
+
+class P(Protocol):
+    attr: int
+
+class A(P):
+    pass
+
+A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'attr'
+
+class C(A):
+    attr: int
+class C2(P):
+    def __init__(self) -> None:
+        self.attr = 1
+
+C()
+C2()
+[out]
+
 -- Join and meet of protocol types
 -- -------------------------------
 

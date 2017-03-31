@@ -316,6 +316,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(actual, Instance):
             instance = actual
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
+                    # We avoid infinite recursion for structural subtypes by checking
+                    # whether this TypeInfo already appeared in the inference chain.
                     template.type not in inferring and
                     mypy.subtypes.is_subtype(instance, erase_typevars(template))):
                 inferring.append(template.type)
@@ -326,6 +328,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 inferring.pop()
                 return res
             elif (instance.type.is_protocol and self.direction == SUBTYPE_OF and
+                  # We avoid infinite recursion for structural subtypes by checking
+                  # whether this TypeInfo already appeared in the inference chain.
                   instance.type not in inferring and
                   mypy.subtypes.is_subtype(erase_typevars(template), instance)):
                 inferring.append(instance.type)
@@ -402,6 +406,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         elif isinstance(self.actual, TypeType):
             return infer_constraints(template.ret_type, self.actual.item, self.direction)
         elif isinstance(self.actual, Instance):
+            # Instances with __call__ method defined are considered structural
+            # subtypes of Callable with a compatible signature.
             call = mypy.subtypes.find_member('__call__', self.actual, self.actual)
             if call:
                 return infer_constraints(template, call, self.direction)

@@ -159,6 +159,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 structural = t
             if self.s.type.is_protocol and is_protocol_implementation(t, self.s):
                 structural = self.s
+            # structural type for join is preferred
             if not structural or is_better(nominal, structural):
                 return nominal
             return structural
