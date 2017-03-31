@@ -431,6 +431,9 @@ class StrConv(NodeVisitor[str]):
                                                   o.info.name(),
                                                   o.info.tuple_type)
 
+    def visit_enum_call_expr(self, o: 'mypy.nodes.EnumCallExpr') -> str:
+        return 'EnumCallExpr:{}({}, {})'.format(o.line, o.info.name(), o.items)
+
     def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> str:
         return 'TypedDictExpr:{}({})'.format(o.line,
                                              o.info.name())

@@ -74,6 +74,7 @@ files = [
     'check-protocols.test',
     'check-underscores.test',
     'check-classvar.test',
+    'check-enum.test',
 ]
 
 

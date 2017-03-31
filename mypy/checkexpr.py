@@ -20,7 +20,8 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr,
+    ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF,
     UNBOUND_TVAR, BOUND_TVAR, LITERAL_TYPE
 )
 from mypy import nodes
@@ -358,6 +359,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         arg_messages = arg_messages or self.msg
         if isinstance(callee, CallableType):
+            if (isinstance(callable_node, RefExpr)
+                and callable_node.fullname in ('enum.Enum', 'enum.IntEnum',
+                                               'enum.Flag', 'enum.IntFlag')):
+                # An Enum() call that failed SemanticAnalyzer.check_enum_call().
+                return callee.ret_type, callee
+
             if (callee.is_type_obj() and callee.type_object().is_abstract
                     # Exceptions for Type[...] and classmethod first argument
                     and not callee.from_type_type and not callee.is_classmethod_class):
@@ -2221,6 +2228,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return AnyType()
 
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
+        # TODO: Perhaps return a type object type?
+        return AnyType()
+
+    def visit_enum_call_expr(self, e: EnumCallExpr) -> Type:
+        for name, value in zip(e.items, e.values):
+            if value is not None:
+                typ = self.accept(value)
+                if not isinstance(typ, AnyType):
+                    var = e.info.names[name].node
+                    if isinstance(var, Var):
+                        # Inline TypeCheker.set_inferred_type(),
+                        # without the lvalue.  (This doesn't really do
+                        # much, since the value attribute is defined
+                        # to have type Any in the typeshed stub.)
+                        var.type = typ
+                        var.is_inferred = True
         # TODO: Perhaps return a type object type?
         return AnyType()
 

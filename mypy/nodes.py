@@ -1831,6 +1831,25 @@ class TypedDictExpr(Expression):
         return visitor.visit_typeddict_expr(self)
 
 
+class EnumCallExpr(Expression):
+    """Named tuple expression Enum('name', 'val1 val2 ...')."""
+
+    # The class representation of this enumerated type
+    info = None  # type: TypeInfo
+    # The item names (for debugging)
+    items = None  # type: List[str]
+    values = None  # type: List[Optional[Expression]]
+
+    def __init__(self, info: 'TypeInfo', items: List[str],
+                 values: List[Optional[Expression]]) -> None:
+        self.info = info
+        self.items = items
+        self.values = values
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_enum_call_expr(self)
+
+
 class PromoteExpr(Expression):
     """Ducktype class decorator expression _promote(...)."""
 
