@@ -1726,7 +1726,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 [None],
                 self.chk.named_generic_type('builtins.dict', [kt, vt]),
                 self.named_type('builtins.function'),
-                name='<list>',
+                name='<dict>',
                 variables=[ktdef, vtdef])
             rv = self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
         else:
