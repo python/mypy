@@ -323,8 +323,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     mypy.subtypes.is_subtype(instance, erase_typevars(template))):
                 INFERRING.append(template.type)
                 for member in template.type.protocol_members:
-                    inst = mypy.subtypes.find_member(member, instance)
-                    temp = mypy.subtypes.find_member(member, template)
+                    inst = mypy.subtypes.find_member(member, instance, instance)
+                    temp = mypy.subtypes.find_member(member, template, template)
                     res.extend(infer_constraints(temp, inst, self.direction))
                 INFERRING.pop()
                 return res
@@ -333,8 +333,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                   mypy.subtypes.is_subtype(erase_typevars(template), instance)):
                 INFERRING.append(instance.type)
                 for member in instance.type.protocol_members:
-                    inst = mypy.subtypes.find_member(member, instance)
-                    temp = mypy.subtypes.find_member(member, template)
+                    inst = mypy.subtypes.find_member(member, instance, instance)
+                    temp = mypy.subtypes.find_member(member, template, template)
                     res.extend(infer_constraints(temp, inst, self.direction))
                 INFERRING.pop()
                 return res
@@ -405,7 +405,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         elif isinstance(self.actual, TypeType):
             return infer_constraints(template.ret_type, self.actual.item, self.direction)
         elif isinstance(self.actual, Instance):
-            call = mypy.subtypes.find_member('__call__', self.actual)
+            call = mypy.subtypes.find_member('__call__', self.actual, self.actual)
             if call:
                 return infer_constraints(template, call, self.direction)
             else:

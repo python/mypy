@@ -157,7 +157,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             else:
                 return False
         if isinstance(right, CallableType):
-            call = find_member('__call__', left)
+            call = find_member('__call__', left, left)
             if call:
                 return is_subtype(call, right)
             return False
@@ -304,15 +304,15 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
             return True
     assuming.append((left, right))
     for member in right.type.protocol_members:
-        supertype = find_member(member, right)
-        subtype = find_member(member, left)
+        supertype = find_member(member, right, left)
+        subtype = find_member(member, left, left)
         if not subtype or not is_compat(subtype, supertype):
             assuming.pop()
             return False
     return True
 
 
-def find_member(name: str, itype: Instance) -> Optional[Type]:
+def find_member(name: str, itype: Instance, subtype: Instance) -> Optional[Type]:
     info = itype.type
     method = info.get_method(name)
     if method:
@@ -320,8 +320,8 @@ def find_member(name: str, itype: Instance) -> Optional[Type]:
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
-            return find_var_type(dec.var, itype)
-        return map_method(method, itype)
+            return find_var_type(dec.var, itype, subtype)
+        return map_method(method, itype, subtype)
     else:
         node = info.get(name)
         if not node:
@@ -331,12 +331,12 @@ def find_member(name: str, itype: Instance) -> Optional[Type]:
         if isinstance(v, Decorator):
             v = v.var
         if isinstance(v, Var):
-            return find_var_type(v, itype)
+            return find_var_type(v, itype, subtype)
         if not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
             for method_name in ('__getattribute__', '__getattr__'):
                 method = info.get_method(method_name)
                 if method and method.info.fullname() != 'builtins.object':
-                    getattr_type = map_method(method, itype)
+                    getattr_type = map_method(method, itype, subtype)
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
         if itype.type.fallback_to_any:
@@ -344,7 +344,7 @@ def find_member(name: str, itype: Instance) -> Optional[Type]:
     return None
 
 
-def find_var_type(var: Var, itype: Instance) -> Type:
+def find_var_type(var: Var, itype: Instance, subtype: Instance) -> Type:
     from mypy.checkmember import bind_self
     itype = map_instance_to_supertype(itype, var.info)
     typ = var.type
@@ -352,7 +352,7 @@ def find_var_type(var: Var, itype: Instance) -> Type:
         return AnyType()
     typ = expand_type_by_instance(typ, itype)
     if isinstance(typ, FunctionLike) and not var.is_staticmethod:
-        signature = bind_self(typ)
+        signature = bind_self(typ, subtype)
         assert isinstance(signature, CallableType)
         if var.is_property:
             return signature.ret_type
@@ -360,10 +360,10 @@ def find_var_type(var: Var, itype: Instance) -> Type:
     return typ
 
 
-def map_method(method: FuncBase, itype: Instance) -> Type:
+def map_method(method: FuncBase, itype: Instance, subtype: Instance) -> Type:
     from mypy.checkmember import bind_self
     signature = function_type(method, Instance(itype.type.mro[-1], []))
-    signature = bind_self(signature)
+    signature = bind_self(signature, subtype)
     itype = map_instance_to_supertype(itype, method.info)
     return expand_type_by_instance(signature, itype)
 
@@ -371,7 +371,7 @@ def map_method(method: FuncBase, itype: Instance) -> Type:
 def get_missing_members(left: Instance, right: Instance) -> List[str]:
     missing = []  # type: List[str]
     for member in right.type.protocol_members:
-        if not find_member(member, left):
+        if not find_member(member, left, left):
             missing.append(member)
     return sorted(missing)
 
@@ -640,7 +640,7 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
             return all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
                        zip(t.args, s.args, s.type.defn.type_vars))
         if isinstance(s, CallableType):
-            call = find_member('__call__', t)
+            call = find_member('__call__', t, t)
             if call:
                 return is_proper_subtype(call, s)
             return False

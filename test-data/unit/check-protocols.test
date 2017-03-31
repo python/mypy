@@ -338,7 +338,7 @@ def close(arg: Closeable[T]) -> T:
 
 def close_all(args: Sequence[Closeable[T]]) -> T:
     for arg in args:
-        return arg.close()
+            arg.close()
     return args[0].close()
 
 arg: Closeable[int]
@@ -348,6 +348,59 @@ reveal_type(close(arg)) # E: Revealed type is 'builtins.int*'
 reveal_type(close_all([F()])) # E: Revealed type is 'builtins.int*'
 reveal_type(close_all([arg])) # E: Revealed type is 'builtins.int*'
 [builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testSelfTypesWithProtocols]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T', bound=Shape)
+
+class Shape(Protocol):
+    def combine(self: T, other: T) -> T:
+        pass
+
+class Triangle:
+    def combine(self, other: Shape) -> Shape:
+        pass
+
+class Rectangle:
+    def combine(self, other: T) -> T:
+        pass
+
+class Circle:
+    def combine(self: T, other: Shape) -> T:
+        pass
+
+class Bad:
+    def combine(self, other: int) -> str:
+        pass
+
+class AnotherShape(Protocol):
+    def combine(self: T, other: T) -> T:
+        pass
+
+class NonProtoShape:
+    def combine(self: T, other: T) -> T:
+        pass
+
+s: Shape
+a: AnotherShape
+t = Triangle()
+r = Rectangle()
+c = Circle()
+n = NonProtoShape()
+
+# This compatibility matrix matches those for nominal subclasses; should be updated if the latter changes
+s = t # E: Incompatible types in assignment (expression has type "Triangle", variable has type "Shape")
+s = r
+s = c
+s3: Shape = c
+s = Bad() # E: Incompatible types in assignment (expression has type "Bad", variable has type "Shape")
+s = a
+s = n
+
+s2: Shape
+n2: NonProtoShape = s2 # E: Incompatible types in assignment (expression has type "Shape", variable has type "NonProtoShape")
 [out]
 
 -- Recursive protocol types
