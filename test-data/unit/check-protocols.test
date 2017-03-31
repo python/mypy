@@ -802,8 +802,29 @@ reveal_type(foo(partial(inc, 'temp'))) # E: Revealed type is 'builtins.int*'
 [builtins fixtures/list.pyi]
 [out]
 
--- Standard protocol types (SupportsInt, Reversible, etc.)
--- -------------------------------------------------------
+-- Standard protocol types (SupportsInt, Sized, etc.)
+-- --------------------------------------------------
+
+-- More tests could be added for types from typing converted to protocols
+
+[case testBasicSizedProtocol]
+from typing import Sized
+
+class Foo:
+    def __len__(self) -> int:
+        return 42
+
+def bar(a: Sized) -> int:
+    return a.__len__()
+
+bar(Foo())
+bar(1)
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+main:11: error: Argument 1 to "bar" has incompatible type "int"; expected "Sized"
+main:11: note: 'builtins.int' missing following 'typing.Sized' protocol members:
+main:11: note: __len__
 
 [case testBasicSupportsIntProtocol]
 from typing import SupportsInt
@@ -816,6 +837,10 @@ def foo(a: SupportsInt):
     pass
 
 foo(Bar())
+foo('no way')
 
 [builtins fixtures/isinstancelist.pyi]
 [out]
+main:11: error: Argument 1 to "foo" has incompatible type "str"; expected "SupportsInt"
+main:11: note: 'builtins.str' missing following 'typing.SupportsInt' protocol members:
+main:11: note: __int__
