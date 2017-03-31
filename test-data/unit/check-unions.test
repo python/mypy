@@ -436,3 +436,11 @@ class D:
     def __le__(self, other) -> int: ...
 class E:
     def __ge__(self, other: Union[C, D]) -> int: ...
+
+[case testUnionSimplificationWithBoolIntAndFloat]
+from typing import List, Union
+l = reveal_type([]) # type: List[Union[bool, int, float]] \
+    # E: Revealed type is 'builtins.list[builtins.float]'
+reveal_type(l) \
+    # E: Revealed type is 'builtins.list[Union[builtins.bool, builtins.int, builtins.float]]'
+[builtins fixtures/list.pyi]
