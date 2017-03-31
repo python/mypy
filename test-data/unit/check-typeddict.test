@@ -292,6 +292,7 @@ from typing import Any, Mapping
 Point = TypedDict('Point', {'x': float, 'y': float})
 def create_point() -> Point:
     return Point(x=1, y=2)
+reveal_type(Point(x=1, y=2))  # E: Revealed type is 'TypedDict(x=builtins.float, y=builtins.float, _fallback=typing.Mapping[builtins.str, builtins.float])'
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictDoesNotAcceptsFloatForInt]
