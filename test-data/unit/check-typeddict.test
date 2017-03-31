@@ -317,6 +317,13 @@ def create_point(something: Any) -> Point:
     })
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictValueTypeContext]
+from mypy_extensions import TypedDict
+from typing import List
+D = TypedDict('D', {'x': List[int]})
+reveal_type(D(x=[]))  # E: Revealed type is 'TypedDict(x=builtins.list[builtins.int], _fallback=typing.Mapping[builtins.str, builtins.list[builtins.int]])'
+[builtins fixtures/dict.pyi]
+
 -- TODO: Fix mypy stubs so that the following passes in the test suite
 --[case testCanConvertTypedDictToAnySuperclassOfMapping]
 --from mypy_extensions import TypedDict
