@@ -152,7 +152,7 @@ class Point(TypedDict):
     z = int # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
 
 p = Point(x=42, y=1337, z='whatever')
-reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, z=builtins.str, _fallback=typing.Mapping[builtins.str, builtins.object])'
+reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, z=Any, _fallback=typing.Mapping[builtins.str, Any])'
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictTypeWithUnderscoreItemName]
@@ -384,15 +384,8 @@ d1 = Point(x=0, y=0)
 d2 = Cell(value='pear tree')
 joined_dicts = [d1, d2]
 reveal_type(d1)             # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-reveal_type(d2)             # E: Revealed type is 'TypedDict(value=builtins.str, _fallback=typing.Mapping[builtins.str, builtins.str])'
-reveal_type(joined_dicts)   # E: Revealed type is 'builtins.list[TypedDict(_fallback=typing.Mapping[builtins.str, <uninhabited>])]'
-
-# TODO: fix the below
-reveal_type(d2)             # E: Revealed type is 'TypedDict(value=builtins.str, _fallback=typing.Mapping[builtins.str, builtins.str])'
-reveal_type(joined_dicts)   # E: Revealed type is 'builtins.list[TypedDict(_fallback=typing.Mapping[builtins.str, builtins.None])]'
-
 reveal_type(d2)             # E: Revealed type is 'TypedDict(value=builtins.object, _fallback=typing.Mapping[builtins.str, builtins.object])'
-reveal_type(joined_dicts)   # E: Revealed type is 'builtins.list[TypedDict(_fallback=typing.Mapping[builtins.str, builtins.None])]'
+reveal_type(joined_dicts)   # E: Revealed type is 'builtins.list[TypedDict(_fallback=typing.Mapping[builtins.str, <uninhabited>])]'
 [builtins fixtures/dict.pyi]
 
 [case testJoinOfTypedDictWithCompatibleMappingIsMapping]
