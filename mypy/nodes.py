@@ -1934,8 +1934,8 @@ class TypeInfo(SymbolNode):
     # If concurrent/parallel type checking will be added in future,
     # then there should be one matrix per thread/process to avoid false negatives
     # during the type checking phase.
-    assuming = []  # type: ClassVar[List[Tuple[Instance, Instance]]]
-    assuming_proper = []  # type: ClassVar[List[Tuple[Instance, Instance]]]
+    assuming = []  # type: ClassVar[List[Tuple[mypy.types.Instance, mypy.types.Instance]]]
+    assuming_proper = []  # type: ClassVar[List[Tuple[mypy.types.Instance, mypy.types.Instance]]]
     # Ditto for temporary stack of recursive constraint inference.
     inferring = []  # type: ClassVar[List[TypeInfo]]
 

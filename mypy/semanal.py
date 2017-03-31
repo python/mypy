@@ -1703,22 +1703,22 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_member_lvalue(self, lval: MemberExpr) -> None:
         lval.accept(self)
-        node = self.type.get(lval.name)
-        if (self.is_self_member_ref(lval) and
-                (node is None or isinstance(node.node, Var) and node.node.is_abstract_var)):
-            if self.type.is_protocol and node is None:
-                # Protocol members can't be defined via self
-                self.fail("Protocol members cannot be defined via assignment to self", lval)
-            else:
-                # Implicit attribute definition in __init__.
-                lval.is_def = True
-                v = Var(lval.name)
-                v.set_line(lval)
-                v.info = self.type
-                v.is_ready = False
-                lval.def_var = v
-                lval.node = v
-                self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+        if self.is_self_member_ref(lval):
+            node = self.type.get(lval.name)
+            if node is None or isinstance(node.node, Var) and node.node.is_abstract_var:
+                if self.type.is_protocol and node is None:
+                    # Protocol members can't be defined via self
+                    self.fail("Protocol members cannot be defined via assignment to self", lval)
+                else:
+                    # Implicit attribute definition in __init__.
+                    lval.is_def = True
+                    v = Var(lval.name)
+                    v.set_line(lval)
+                    v.info = self.type
+                    v.is_ready = False
+                    lval.def_var = v
+                    lval.node = v
+                    self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
