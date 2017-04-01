@@ -156,7 +156,7 @@ FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone bod
 FUNCTION_SECOND_PHASE = 2  # Only analyze body
 
 
-class SemanticAnalyzer(NodeVisitor, TypeTranslator):
+class SemanticAnalyzer(NodeVisitor):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a
@@ -556,31 +556,11 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
                 # Show only one error per signature
                 break
 
-    def add_func_type_variables_to_symbol_table(
-            self, tt: CallableType, defn: Context) -> List[SymbolTableNode]:
-        nodes = []  # type: List[SymbolTableNode]
-        items = tt.variables
-        names = self.type_var_names()
-        for item in items:
-            name = item.name
-            if name in names:
-                self.name_already_defined(name, defn)
-            node = self.bind_type_var(name, item, defn)
-            nodes.append(node)
-            names.add(name)
-        return nodes
-
     def type_var_names(self) -> Set[str]:
         if not self.type:
             return set()
         else:
             return set(self.type.type_vars)
-
-    def bind_type_var(self, fullname: str, tvar_def: TypeVarDef,
-                     context: Context) -> SymbolTableNode:
-        node = self.lookup_qualified(fullname, context)
-        self.tvar_scope.bind(node, tvar_def)
-        return node
 
     def check_function_signature(self, fdef: FuncItem) -> None:
         sig = fdef.type
@@ -605,7 +585,6 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
                 self.leave_class()
             else:
                 self.setup_class_def_analysis(defn)
-                # self.bind_class_type_variables_in_symbol_table(defn.info)
                 self.analyze_base_classes(defn)
                 self.analyze_metaclass(defn)
 
@@ -613,7 +592,6 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
                     self.analyze_class_decorator(defn, decorator)
 
                 self.enter_class(defn)
-                print("Entered class", defn.name, self.tvar_scope)
 
                 # Analyze class body.
                 defn.defs.accept(self)
@@ -1071,14 +1049,6 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         assert isinstance(sym.node, TypeInfo)
         return Instance(sym.node, args or [])
 
-    def bind_class_type_variables_in_symbol_table(
-            self, info: TypeInfo) -> List[SymbolTableNode]:
-        nodes = []  # type: List[SymbolTableNode]
-        for var, binder in zip(info.type_vars, info.defn.type_vars):
-            node = self.bind_type_var(var, binder, info)
-            nodes.append(node)
-        return nodes
-
     def is_typeddict(self, expr: Expression) -> bool:
         return (isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and
                 expr.node.typeddict_type is not None)
@@ -1391,14 +1361,12 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
             a = self.type_analyzer(
                 aliasing=aliasing,
                 allow_tuple_literal=allow_tuple_literal)
-            print("analyzing", t, "scope", self.tvar_scope)
             return t.accept(a)
 
         else:
             return None
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
-        print("Visiting assignment", s)
         for lval in s.lvalues:
             self.analyze_lvalue(lval, explicit_type=s.type is not None)
         self.check_classvar(s)
@@ -1406,7 +1374,6 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
         if s.type:
             allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
             s.type = self.anal_type(s.type, allow_tuple_literal)
-            print("declared type", s.type)
         else:
             # For simple assignments, allow binding type aliases.
             # Also set the type if the rvalue is a simple literal.
@@ -1426,10 +1393,8 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
                     node.kind = TYPE_ALIAS
                     node.type_override = res
                     if isinstance(s.rvalue, IndexExpr):
-                        print("Making type alias with scope", self.tvar_scope)
                         s.rvalue.analyzed = TypeAliasExpr(res,
                                                           fallback=self.alias_fallback(res))
-                        print("Made", s.rvalue.analyzed)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1492,7 +1457,6 @@ class SemanticAnalyzer(NodeVisitor, TypeTranslator):
                     # Only a definition can create a type alias, not regular assignment.
                     return
                 rvalue = s.rvalue
-                print("Setting up type alias", rvalue)
                 if isinstance(rvalue, RefExpr):
                     node = rvalue.node
                     if isinstance(node, TypeInfo):

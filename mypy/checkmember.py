@@ -442,6 +442,7 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
     # TODO: verify consistency between Q and T
     info = itype.type  # type: TypeInfo
     if isinstance(t, CallableType):
+        print("Adding class tvars", info.type_vars)
         # TODO: Should we propagate type variable values?
         tvars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
                  for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
