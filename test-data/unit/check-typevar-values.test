@@ -502,6 +502,8 @@ class C:
     def f(self, x: T) -> T:
         L = List[C.T] # a valid type alias
         l: L = []
+        reveal_type(l)  # E: Revealed type is 'builtins.list[T`-1]'
+        y: C.T = x
         l.append(x)
         C.T  # E: Type variable "T" is invalid except as a parameter to another type
         A = C.T  # E: Type variable "T" is invalid except as a parameter to another type
