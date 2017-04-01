@@ -317,6 +317,22 @@ z: P = C()
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
+[case testProtocolsCannotInheritFromNormal]
+from typing import Protocol
+
+class C: pass
+class D: pass
+
+class P(C, Protocol): # E: All bases of a protocol must be protocols
+    attr: int
+
+class P2(P, D, Protocol): # E: All bases of a protocol must be protocols
+    pass
+
+p: P2
+reveal_type(p.attr) # E: Revealed type is 'builtins.int'
+[out]
+
 -- Generic protocol types
 -- ----------------------
 
@@ -482,7 +498,6 @@ tm: Template
 s = t # E: Incompatible types in assignment (expression has type "Triangle", variable has type "Shape")
 s = r
 s = c
-s3: Shape = c
 s = Bad() # E: Incompatible types in assignment (expression has type "Bad", variable has type "Shape")
 s = a
 s = n
@@ -506,9 +521,7 @@ class Traversable(Protocol):
 class C: pass
 
 class D(Generic[T]):
-    @property
-    def leaves(self) -> List[D[T]]:
-        pass
+    leaves: List[D[T]]
 
 t: Traversable
 t = D[int]() # OK
@@ -614,6 +627,136 @@ class C2(P):
 
 C()
 C2()
+[out]
+
+[case testClassVarsInProtocols]
+from typing import Protocol, ClassVar
+
+class PInst(Protocol):
+   v: int
+
+class PClass(Protocol):
+   v: ClassVar[int]
+
+class CInst:
+   v: int
+
+class CClass:
+   v: ClassVar[int]
+
+x: PInst
+y: PClass
+
+x = CInst()
+x = CClass() # E: Incompatible types in assignment (expression has type "CClass", variable has type "PInst")
+y = CClass()
+y = CInst()  # E: Incompatible types in assignment (expression has type "CInst", variable has type "PClass")
+[out]
+
+[case testPropertyInProtocols]
+from typing import Protocol
+
+class PP(Protocol):
+    @property
+    def attr(self) -> int:
+        pass
+
+class P(Protocol):
+    attr: int
+
+x: P
+y: PP
+y = x
+
+x2: P
+y2: PP
+x2 = y2 # E: Incompatible types in assignment (expression has type "PP", variable has type "P")
+[builtins fixtures/property.pyi]
+[out]
+
+[case testSettablePropertyInProtocols]
+from typing import Protocol
+
+class PPS(Protocol):
+    @property
+    def attr(self) -> int:
+        pass
+    @attr.setter
+    def attr(self, x: int) -> None:
+        pass
+
+class PP(Protocol):
+    @property
+    def attr(self) -> int:
+        pass
+
+class P(Protocol):
+    attr: int
+
+x: P
+z: PPS
+z = x
+
+x2: P
+z2: PPS
+x2 = z2
+
+y3: PP
+z3: PPS
+y3 = z3
+
+y4: PP
+z4: PPS
+z4 = y4 # E: Incompatible types in assignment (expression has type "PP", variable has type "PPS")
+[builtins fixtures/property.pyi]
+[out]
+
+[case testStaticAndClassMethodsInProtocols]
+from typing import Protocol, Type, TypeVar
+
+class P(Protocol):
+    def meth(self, x: int) -> str:
+        pass
+
+class PC(Protocol):
+    @classmethod
+    def meth(cls, x: int) -> str:
+        pass
+
+class B:
+    @staticmethod
+    def meth(x: int) -> str:
+        pass
+
+class C:
+    def meth(self, x: int) -> str:
+        pass
+
+x: P
+x = C()
+x = B()
+
+y: PC
+y = B()
+y = C() # E: Incompatible types in assignment (expression has type "C", variable has type "PC")
+[builtins fixtures/classmethod.pyi]
+[out]
+
+[case testOverloadedMethodsInProtocols]
+from typing import overload, Protocol, Union
+
+class P(Protocol):
+    @overload
+    def f(self, x: int) -> int: pass
+    @overload
+    def f(self, x: str) -> str: pass
+    def f(self, x): pass
+
+class C:
+    def f(self, x: Union[int, str]) -> None:
+        pass
+
+x: P = C()
 [out]
 
 -- Join and meet with protocol types
@@ -742,6 +885,65 @@ f(C()) # E: No overload variant of "f" matches argument types [__main__.C]
 
 -- Unions of protocol types
 -- ------------------------
+
+[case testBasicUnionsOfProtocols]
+from typing import Union, Protocol
+
+class P1(Protocol):
+    attr1: int
+class P2(Protocol):
+    attr2: int
+
+class C1:
+    attr1: int
+class C2:
+    attr2: int
+class C(C1, C2):
+    pass
+
+class B: ...
+
+x: Union[P1, P2]
+
+x = C1()
+x = C2()
+x = C()
+x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "Union[P1, P2]")
+[out]
+
+[case testUnionsOfNormalClassesWithProtocols]
+from typing import Protocol, Union
+
+class P1(Protocol):
+    attr1: int
+class P2(Protocol):
+    attr2: int
+
+class C1:
+    attr1: int
+class C2:
+    attr2: int
+class C(C1, C2):
+    pass
+
+class D1:
+    attr1: int
+
+def f1(x: P1) -> None:
+    pass
+def f2(x: P2) -> None:
+    pass
+
+x: Union[C1, C2]
+y: Union[C1, D1]
+z: Union[C, D1]
+
+f1(x) # E: Argument 1 to "f1" has incompatible type "Union[C1, C2]"; expected "P1"
+f1(y)
+f1(z)
+f2(x) # E: Argument 1 to "f2" has incompatible type "Union[C1, C2]"; expected "P2"
+f2(z) # E: Argument 1 to "f2" has incompatible type "Union[C, D1]"; expected "P2"
+[out]
 
 -- Type[] with protocol types
 -- --------------------------

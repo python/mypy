@@ -1,4 +1,5 @@
-from typing import List, Optional, Dict, Callable, Tuple
+from typing import List, Optional, Dict, Callable, Tuple, Iterator
+from contextlib import contextmanager
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, FormalArgument, NoneTyp, function_type,
@@ -19,6 +20,12 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
 
 from mypy import experiments
+
+
+# Flags for detected protocol members
+IS_SETTABLE = 1
+IS_CLASSVAR = 2
+IS_CLASS_OR_STATIC = 3
 
 
 TypeParameterChecker = Callable[[Type, Type, int], bool]
@@ -294,6 +301,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return False
 
 
+@contextmanager
+def pop_on_exit(lst: List[Tuple[Type, Type]]) -> Iterator[None]:
+    yield
+    lst.pop()
+
+
 def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool = True) -> bool:
     """Check whether 'left' implements the protocol 'right'. If 'allow_any' is False, then
     check for a proper subtype. Treat recursive protocols by using a global 'assuming'
@@ -306,28 +319,37 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
     for (l, r) in reversed(assuming):
         if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):
             return True
+    with pop_on_exit(assuming):
+        assuming.append((left, right))
+        if right.type.protocol_members is None:
+            # This type has not been yet analyzed, probably a call from make_simplified_union
+            return False
+        for member in right.type.protocol_members:
+            supertype = find_member(member, right, left)
+            subtype = find_member(member, left, left)
+            # Useful for debugging:
+            # print(member, 'of', left, 'has type', subtype)
+            # print(member, 'of', right, 'has type', supertype)
+            if not subtype:
+                return False
+            if allow_any:
+                # nominal check currently ignore arg names
+                is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
+            else:
+                is_compat = is_proper_subtype(subtype, supertype)
+            if not is_compat:
+                return False
+            subflags = get_member_flags(member, left.type)
+            superflags = get_member_flags(member, right.type)
+            if (IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags or
+                    IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags):
+                return False
+            if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
+                return False
+            # this rule is copied from nominal check in checker.py
+            if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
+                return False
     assuming.append((left, right))
-    if right.type.protocol_members is None:
-        # This type has not been yet analyzed, probably a call from make_simplified_union
-        assuming.pop()
-        return False
-    for member in right.type.protocol_members:
-        supertype = find_member(member, right, left)
-        subtype = find_member(member, left, left)
-        # Useful for debugging:
-        # print(member, 'of', left, 'has type', subtype)
-        # print(member, 'of', right, 'has type', supertype)
-        if not subtype:
-            assuming.pop()
-            return False
-        if allow_any:
-            # nominal check currently ignore arg names
-            is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
-        else:
-            is_compat = is_proper_subtype(subtype, supertype)
-        if not is_compat:
-            assuming.pop()
-            return False
     return True
 
 
@@ -369,6 +391,36 @@ def find_member(name: str, itype: Instance, subtype: Instance) -> Optional[Type]
         if itype.type.fallback_to_any:
             return AnyType()
     return None
+
+
+def get_member_flags(name: str, info: TypeInfo) -> List[int]:
+    """Detect whether a member 'name' is settable and whether it is an
+    instance or class variable.
+    """
+    method = info.get_method(name)
+    if method:
+        # this could be settable property
+        if method.is_property:
+            assert isinstance(method, OverloadedFuncDef)
+            dec = method.items[0]
+            assert isinstance(dec, Decorator)
+            if dec.var.is_settable_property:
+                return [IS_SETTABLE]
+        return []
+    node = info.get(name)
+    if not node:
+        return []
+    v = node.node
+    if isinstance(v, Decorator):
+        if v.var.is_staticmethod or v.var.is_classmethod:
+            return [IS_CLASS_OR_STATIC]
+    # just a variable
+    if isinstance(v, Var):
+        flags = [IS_SETTABLE]
+        if v.is_classvar:
+            flags.append(IS_CLASSVAR)
+        return flags
+    return []
 
 
 def find_var_type(var: Var, itype: Instance, subtype: Instance) -> Type:
