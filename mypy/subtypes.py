@@ -60,8 +60,11 @@ def is_subtype(left: Type, right: Type,
     elif is_named_instance(right, 'builtins.type'):
             return is_subtype(left, TypeType(AnyType()))
     else:
-        return left.accept(SubtypeVisitor(right, type_parameter_checker,
-                                          ignore_pos_arg_names=ignore_pos_arg_names))
+        result = left.accept(SubtypeVisitor(right, type_parameter_checker,
+                                            ignore_pos_arg_names=ignore_pos_arg_names))
+        # Useful for debugging
+        # print(left, right, result)
+        return result
 
 
 def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
@@ -134,7 +137,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             rname = right.type.fullname()
             if right.type.is_protocol:
-                return is_protocol_implementation(left, right)
+                if is_protocol_implementation(left, right):
+                    return True
+            # always try a nominal check (even if structural returns False)
+            # there might be errors that a user wants to silence *once*
             if not left.type.has_base(rname) and rname != 'builtins.object':
                 return False
 
@@ -296,20 +302,30 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
     (see comment in nodes.TypeInfo).
     """
     assert right.type.is_protocol
-    is_compat = None  # type: Callable[[Type, Type], bool]
-    if allow_any:
-        is_compat = is_subtype
-    else:
-        is_compat = is_proper_subtype
     assuming = TypeInfo.assuming if allow_any else TypeInfo.assuming_proper
     for (l, r) in reversed(assuming):
         if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):
             return True
     assuming.append((left, right))
+    if right.type.protocol_members is None:
+        # This type has not been yet analyzed, probably a call from make_simplified_union
+        assuming.pop()
+        return False
     for member in right.type.protocol_members:
         supertype = find_member(member, right, left)
         subtype = find_member(member, left, left)
-        if not subtype or not is_compat(subtype, supertype):
+        # Useful for debugging:
+        # print(member, 'of', left, 'has type', subtype)
+        # print(member, 'of', right, 'has type', supertype)
+        if not subtype:
+            assuming.pop()
+            return False
+        if allow_any:
+            # nominal check currently ignore arg names
+            is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
+        else:
+            is_compat = is_proper_subtype(subtype, supertype)
+        if not is_compat:
             assuming.pop()
             return False
     return True
