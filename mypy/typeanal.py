@@ -43,6 +43,9 @@ def analyze_type_alias(node: Expression,
     # that we don't support straight string literals as type aliases
     # (only string literals within index expressions).
     if isinstance(node, RefExpr):
+        # Note that this misses the case where someone tried to use a
+        # class-referenced type variable as a type alias.  It's easier to catch
+        # that one in checkmemeber.py
         if node.kind == UNBOUND_TVAR or node.kind == BOUND_TVAR:
             fail_func('Type variable "{}" is invalid as target for type alias'.format(
                 node.fullname), node)
