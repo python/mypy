@@ -1,4 +1,4 @@
-from typing import builtinclass, Iterable, Iterator, TypeVar, List, Mapping, overload, Tuple, Set, Union, Generic
+from typing import builtinclass, Iterable, Iterator, TypeVar, List, Mapping, overload, Tuple, Set, Union, Generic, Any
 
 @builtinclass
 class object:
@@ -8,7 +8,12 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
-class tuple: pass
+T = TypeVar('T')
+KT = TypeVar('KT')
+VT = TypeVar('VT')
+
+class tuple(Generic[T]):
+    def __len__(self) -> int: pass
 class function: pass
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
@@ -22,10 +27,6 @@ class bool(int): pass
 class str:
     def __add__(self, x: str) -> str: pass
     def __getitem__(self, x: int) -> str: pass
-
-T = TypeVar('T')
-KT = TypeVar('KT')
-VT = TypeVar('VT')
 
 class list(Generic[T]):
     def __iter__(self) -> Iterator[T]: pass

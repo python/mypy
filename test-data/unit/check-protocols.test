@@ -350,6 +350,87 @@ reveal_type(close_all([arg])) # E: Revealed type is 'builtins.int*'
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
+[case testProtocolBasicGenericInference]
+from typing import Generic, TypeVar, Protocol
+T = TypeVar('T')
+S = TypeVar('S')
+
+class P(Protocol[T, S]):
+    x: T
+    y: S
+
+class C:
+    x: int
+    y: int
+
+def fun3(x: P[T, T]) -> T:
+    pass
+
+reveal_type(fun3(C())) # E: Revealed type is 'builtins.int*'
+[out]
+
+[case testGenericSubProtocols]
+from typing import TypeVar, Protocol, Tuple, Generic
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class P1(Protocol[T]):
+    attr1: T
+class P2(P1[T], Protocol[T, S]):
+    attr2: Tuple[T, S]
+
+class C:
+    def __init__(self, a1: int, a2: Tuple[int, int]) -> None:
+        self.attr1 = a1
+        self.attr2 = a2
+c: C
+
+var: P2[int, int] = c
+var2: P2[int, str] = c # E: Incompatible types in assignment (expression has type "C", variable has type P2[int, str])
+
+class D(Generic[T]):
+    attr1: T
+
+def f(x: T) -> T:
+    y: P2[T, T] = D[T]() # E: Incompatible types in assignment (expression has type D[T], variable has type P2[T, T])\
+                         # N: '__main__.D' missing following '__main__.P2' protocol members:\
+                         # N: attr2
+    return x
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testGenericSubProtocolsExtension]
+from typing import TypeVar, Protocol, Union
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class P1(Protocol[T]):
+    attr1: T
+class P2(Protocol[T]):
+    attr2: T
+
+class P(P1[T], P2[S], Protocol):
+    pass
+
+class C:
+    attr1: int
+    attr2: str
+
+class A:
+    attr1: A
+class B:
+    attr2: B
+class D(A, B): pass
+
+x: P = D()
+
+var: P[Union[int, P], Union[P, str]] = C() # OK
+var2: P[Union[str, P], Union[P, int]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[str, P[Any, Any]], Union[P[Any, Any], int]])
+
+[out]
+
 [case testSelfTypesWithProtocols]
 from typing import Protocol, TypeVar
 
@@ -535,8 +616,129 @@ C()
 C2()
 [out]
 
--- Join and meet of protocol types
--- -------------------------------
+-- Join and meet with protocol types
+-- ---------------------------------
+
+[case testJoinProtocolWithProtocol]
+from typing import Protocol
+
+class P(Protocol):
+    attr: int
+class P2(Protocol):
+    attr: int
+    attr2: str
+
+x: P
+y: P2
+
+l = [x, y]
+
+reveal_type(l) # E: Revealed type is 'builtins.list[__main__.P*]'
+
+[builtins fixtures/list.pyi]
+[out]
+
+[case testJoinProtocolWithNormal]
+from typing import Protocol
+
+class P(Protocol):
+    attr: int
+
+class C:
+    attr: int
+
+x: P
+y: C
+
+l = [x, y]
+
+reveal_type(l) # E: Revealed type is 'builtins.list[__main__.P*]'
+
+[builtins fixtures/list.pyi]
+[out]
+
+[case testMeetProtocolWithProtocol]
+from typing import Protocol, Callable, TypeVar
+
+class P(Protocol):
+    attr: int
+class P2(Protocol):
+    attr: int
+    attr2: str
+
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: P, y: P2) -> None: pass
+reveal_type(f(g)) # E: Revealed type is '__main__.P2*'
+[out]
+
+[case testMeetProtocolWithNormal]
+from typing import Protocol, Callable, TypeVar
+
+class P(Protocol):
+    attr: int
+class C:
+    attr: int
+
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: P, y: C) -> None: pass
+reveal_type(f(g)) # E: Revealed type is '__main__.C*'
+[out]
+
+[case testInferProtocolFromProtocol]
+from typing import Protocol, Sequence, TypeVar, Union
+
+class Box(Protocol):
+    content: int
+
+T = TypeVar('T')
+class Linked(Protocol[T]):
+    val: T
+    next: Linked[T]
+
+class L:
+    val: Box
+    next: L
+
+def last(seq: Linked[T]) -> T:
+    pass
+
+reveal_type(last(L())) # E: Revealed type is '__main__.Box*'
+[out]
+
+[case testOverloadOnProtocol]
+from typing import overload, Protocol, runtime
+
+@runtime
+class P1(Protocol):
+    attr1: int
+class P2(Protocol):
+    attr2: str
+
+class C1:
+    attr1: int
+class C2:
+    attr2: str
+class C: pass
+
+@overload
+def f(x: P1) -> int: ...
+@overload
+def f(x: P2) -> str: ...
+def f(x):
+    if isinstance(x, P1):
+        return P1.attr1
+    if isinstance(x, P2): # E: Only @runtime protocols can be used with instance and class checks
+        return P1.attr2
+
+reveal_type(f(C1())) # E: Revealed type is 'builtins.int'
+reveal_type(f(C2())) # E: Revealed type is 'builtins.str'
+
+f(C()) # E: No overload variant of "f" matches argument types [__main__.C]
+
+[builtins fixtures/isinstance.pyi]
+[out]
 
 -- Unions of protocol types
 -- ------------------------
@@ -762,6 +964,65 @@ else:
 
 -- Non-Instances and protocol types (Callable vs __call__ etc.)
 -- ------------------------------------------------------------
+
+[case testBasicTupleStructuralSubtyping]
+from typing import Tuple, TypeVar, Protocol
+
+T = TypeVar('T')
+
+class MyProto(Protocol[T]):
+    def __len__(self) -> T:
+        pass
+
+t: Tuple[int, str]
+
+def f(x: MyProto[int]) -> None:
+    pass
+
+f(t)  # OK
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testBasicNamedTupleStructuralSubtyping]
+from typing import NamedTuple, TypeVar, Protocol
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class P(Protocol[T, S]):
+    x: T
+    y: S
+
+class N(NamedTuple):
+    x: int
+    y: str
+class N2(NamedTuple):
+    x: int
+class N3(NamedTuple):
+    x: int
+    y: int
+
+z: N
+z3: N3
+
+def fun(x: P[int, str]) -> None:
+    pass
+def fun2(x: P[int, int]) -> None:
+    pass
+def fun3(x: P[T, T]) -> T:
+    return x.x
+
+fun(z)
+fun2(z) # E: Argument 1 to "fun2" has incompatible type "N"; expected P[int, int]
+
+fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected P[int, str]
+
+reveal_type(fun3(z)) # E: Revealed type is 'builtins.object*'
+
+reveal_type(fun3(z3)) # E: Revealed type is 'builtins.int*'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
 
 [case testBasicCallableStructuralSubtyping]
 from typing import Callable, Generic, TypeVar
