@@ -3450,6 +3450,9 @@ class FirstPass(NodeVisitor):
                     ('False', bool_type),
                     ('__debug__', bool_type),
                 ])
+            else:
+                # We are running tests
+                literal_types.append(('True', AnyType()))
 
             for name, typ in literal_types:
                 v = Var(name, typ)

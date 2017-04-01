@@ -136,12 +136,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     ignore_pos_arg_names=self.ignore_pos_arg_names):
                 return True
             rname = right.type.fullname()
-            if right.type.is_protocol:
-                if is_protocol_implementation(left, right):
-                    return True
-            # always try a nominal check (even if structural returns False)
-            # there might be errors that a user wants to silence *once*
+            # Always try a nominal check if possible,
+            # there might be errors that a user wants to silence *once*.
+            # Also, nominal checks are much faster.
             if not left.type.has_base(rname) and rname != 'builtins.object':
+                if right.type.is_protocol:
+                    return is_protocol_implementation(left, right)
                 return False
 
             # Map left type to corresponding right instances.

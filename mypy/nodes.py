@@ -2036,6 +2036,8 @@ class TypeInfo(SymbolNode):
         return len(self.type_vars) > 0
 
     def get(self, name: str) -> 'SymbolTableNode':
+        if self.mro is None:  # Might be because of a previous error.
+            return None
         for cls in self.mro:
             n = cls.names.get(name)
             if n:

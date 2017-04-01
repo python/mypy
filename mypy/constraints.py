@@ -315,30 +315,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             actual = actual.fallback
         if isinstance(actual, Instance):
             instance = actual
-            if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
-                    # We avoid infinite recursion for structural subtypes by checking
-                    # whether this TypeInfo already appeared in the inference chain.
-                    template.type not in inferring and
-                    mypy.subtypes.is_subtype(instance, erase_typevars(template))):
-                inferring.append(template.type)
-                for member in template.type.protocol_members:
-                    inst = mypy.subtypes.find_member(member, instance, instance)
-                    temp = mypy.subtypes.find_member(member, template, template)
-                    res.extend(infer_constraints(temp, inst, self.direction))
-                inferring.pop()
-                return res
-            elif (instance.type.is_protocol and self.direction == SUBTYPE_OF and
-                  # We avoid infinite recursion for structural subtypes by checking
-                  # whether this TypeInfo already appeared in the inference chain.
-                  instance.type not in inferring and
-                  mypy.subtypes.is_subtype(erase_typevars(template), instance)):
-                inferring.append(instance.type)
-                for member in instance.type.protocol_members:
-                    inst = mypy.subtypes.find_member(member, instance, instance)
-                    temp = mypy.subtypes.find_member(member, template, template)
-                    res.extend(infer_constraints(temp, inst, self.direction))
-                inferring.pop()
-                return res
             if (self.direction == SUBTYPE_OF and
                     template.type.has_base(instance.type.fullname())):
                 mapped = map_instance_to_supertype(template, instance.type)
@@ -361,6 +337,29 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         template.args[j], mapped.args[j], self.direction))
                     res.extend(infer_constraints(
                         template.args[j], mapped.args[j], neg_op(self.direction)))
+                return res
+            if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
+                    # We avoid infinite recursion for structural subtypes by checking
+                    # whether this TypeInfo already appeared in the inference chain.
+                    template.type not in inferring and
+                    mypy.subtypes.is_subtype(instance, erase_typevars(template))):
+                inferring.append(template.type)
+                for member in template.type.protocol_members:
+                    inst = mypy.subtypes.find_member(member, instance, instance)
+                    temp = mypy.subtypes.find_member(member, template, template)
+                    res.extend(infer_constraints(temp, inst, self.direction))
+                inferring.pop()
+                return res
+            elif (instance.type.is_protocol and self.direction == SUBTYPE_OF and
+                  # We avoid infinite recursion for structural subtypes also here.
+                  instance.type not in inferring and
+                  mypy.subtypes.is_subtype(erase_typevars(template), instance)):
+                inferring.append(instance.type)
+                for member in instance.type.protocol_members:
+                    inst = mypy.subtypes.find_member(member, instance, instance)
+                    temp = mypy.subtypes.find_member(member, template, template)
+                    res.extend(infer_constraints(temp, inst, self.direction))
+                inferring.pop()
                 return res
         if isinstance(actual, AnyType):
             # IDEA: Include both ways, i.e. add negation as well?

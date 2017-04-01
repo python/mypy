@@ -26,6 +26,7 @@ Dict = 0
 Set = 0
 
 T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
 U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
@@ -42,14 +43,14 @@ class Sized(Protocol):
     def __len__(self) -> int: pass
 
 @runtime
-class Iterable(Protocol[T]):
+class Iterable(Protocol[T_co]):
     @abstractmethod
-    def __iter__(self) -> 'Iterator[T]': pass
+    def __iter__(self) -> 'Iterator[T_co]': pass
 
 @runtime
-class Iterator(Iterable[T], Protocol):
+class Iterator(Iterable[T_co], Protocol):
     @abstractmethod
-    def __next__(self) -> T: pass
+    def __next__(self) -> T_co: pass
 
 class Generator(Iterator[T], Generic[T, U, V]):
     @abstractmethod
