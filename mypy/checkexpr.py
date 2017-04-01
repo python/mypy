@@ -264,12 +264,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for (item_name, item_expected_type) in callee.items.items():
             item_value = kwargs[item_name]
 
-            item_actual_type = self.chk.check_simple_assignment(
+            self.chk.check_simple_assignment(
                 lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
                 msg=messages.INCOMPATIBLE_TYPES,
                 lvalue_name='TypedDict item "{}"'.format(item_name),
                 rvalue_name='expression')
-            items[item_name] = item_actual_type
+            items[item_name] = item_expected_type
 
         mapping_value_type = join.join_type_list(list(items.values()))
         fallback = self.chk.named_generic_type('typing.Mapping',
@@ -1733,6 +1733,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Translate it into a call to dict(), with provisions for **expr.
         """
+        # if the dict literal doesn't match TypedDict, check_typeddict_call_with_dict reports
+        # an error, but returns the TypedDict type that matches the literal it found
+        # that would cause a second error when that TypedDict type is returned upstream
+        # to avoid the second error, we always return TypedDict type that was requested
+        if isinstance(self.type_context[-1], TypedDictType):
+            self.check_typeddict_call_with_dict(
+                callee=self.type_context[-1],
+                kwargs=e,
+                context=e
+            )
+            return self.type_context[-1].copy_modified()
+
         # Collect function arguments, watching out for **expr.
         args = []  # type: List[Expression]  # Regular "key: value"
         stargs = []  # type: List[Expression]  # For "**expr"
