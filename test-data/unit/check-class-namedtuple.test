@@ -345,7 +345,7 @@ from typing import NamedTuple
 
 class X(NamedTuple):
     x: int
-    y = z = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+    y = z = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
     def f(self): pass
 
 [case testNewNamedTupleWithInvalidItems2]
@@ -360,8 +360,8 @@ class X(typing.NamedTuple):
     aa: int
 
 [out]
-main:6: error: Invalid statement in NamedTuple definition; expected "field_name: field_type"
-main:7: error: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+main:6: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+main:7: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 main:7: error: Type cannot be declared in assignment to non-self attribute
 main:7: error: "int" has no attribute "x"
 main:9: error: Non-default NamedTuple fields cannot follow default fields
@@ -374,7 +374,7 @@ from typing import NamedTuple
 
 class X(NamedTuple):
     x: int
-    y = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+    y = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 
 [case testTypeUsingTypeCNamedTuple]
 # flags: --python-version 3.6
@@ -585,7 +585,7 @@ class MagicalFields(NamedTuple):
     def __new__(cls) -> None: pass  # E: Cannot overwrite NamedTuple attribute "__new__"
     def _source(self) -> int: pass  # E: Cannot overwrite NamedTuple attribute "_source"
     __annotations__ = {'x': float}  # E: NamedTuple field name cannot start with an underscore: __annotations__ \
-        # E: Invalid statement in NamedTuple definition; expected "field_name: field_type" \
+        # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]" \
         # E: Cannot overwrite NamedTuple attribute "__annotations__"
 
 class AnnotationsAsAMethod(NamedTuple):
