@@ -213,6 +213,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
     """
     # It was not a method. Try looking up a variable.
     v = lookup_member_var_or_accessor(info, name, is_lvalue)
+
     vv = v
     if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
@@ -442,7 +443,6 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
     # TODO: verify consistency between Q and T
     info = itype.type  # type: TypeInfo
     if isinstance(t, CallableType):
-        print("Adding class tvars", info.type_vars)
         # TODO: Should we propagate type variable values?
         tvars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
                  for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
@@ -490,8 +490,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
                 return class_callable(sig, info, fallback, None)
         # Construct callable type based on signature of __init__. Adjust
         # return type and insert type arguments.
-        ret = type_object_type_from_function(init_method, info, fallback)
-        return ret
+        return type_object_type_from_function(init_method, info, fallback)
 
 
 def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,

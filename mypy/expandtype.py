@@ -23,7 +23,6 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
     if instance.args == []:
         return typ
     else:
-        print("Ok so the instance", instance, "has some args", instance.args)
         variables = {}  # type: Dict[TypeVarId, Type]
         for binder, arg in zip(instance.type.defn.type_vars, instance.args):
             variables[binder.id] = arg

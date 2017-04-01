@@ -80,7 +80,7 @@ from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
     TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
-    TypeTranslator, TypeQuery
+    TypeQuery
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (

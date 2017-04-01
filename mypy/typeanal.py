@@ -188,14 +188,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return UninhabitedType(is_noreturn=True)
             elif sym.kind == TYPE_ALIAS:
                 override = sym.type_override
-                print("t is", t)
-                print("t.class", t.__class__.__name__)
-
                 an_args = self.anal_array(t.args)
-                print("Analyzed args", an_args)
-                print("Type override is", override)
                 all_vars = self.get_type_var_names(override)
-                print("All vars", all_vars)
                 exp_len = len(all_vars)
                 act_len = len(an_args)
                 if exp_len > 0 and act_len == 0:
@@ -220,8 +214,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                     # is pretty minor.
                     return AnyType()
                 # Allow unbound type variables when defining an alias
-                if not (self.aliasing and sym.kind == TVAR and self.tvar_scope.get_binding(sym) == None):
-                    print("scope is", self.tvar_scope, "looking for", sym.fullname)
+                if not (self.aliasing and sym.kind == TVAR and
+                        self.tvar_scope.get_binding(sym) == None):
                     self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = sym.node  # type: TypeInfo
@@ -265,7 +259,6 @@ class TypeAnalyser(TypeVisitor[Type]):
         """
         tvars = []  # type: List[str]
         typ_args = get_typ_args(tp)
-        print("typ_args", typ_args, "of", tp)
         for arg in typ_args:
             tvar = self.get_tvar_name(arg)
             if tvar:
@@ -281,7 +274,6 @@ class TypeAnalyser(TypeVisitor[Type]):
             if t in all_tvars:
                 new_tvars.append(t)
                 all_tvars.remove(t)
-        print("consolidates to", new_tvars, "of", tp)
         return new_tvars
 
     def get_tvar_name(self, t: Type) -> Optional[str]:
@@ -430,7 +422,6 @@ class TypeAnalyser(TypeVisitor[Type]):
 
     def infer_type_variables(self,
                              type: CallableType) -> List[Tuple[str, TypeVarExpr]]:
-        # MOVEABLE
         """Return list of unique type variables referred to in a callable."""
         names = []  # type: List[str]
         tvars = []  # type: List[TypeVarExpr]
@@ -448,7 +439,6 @@ class TypeAnalyser(TypeVisitor[Type]):
     def bind_function_type_variables(self, fun_type: CallableType, defn: Context) -> None:
         """Find the type variables of the function type and bind them in our tvar_scope.
         """
-        # MOVEABLE
         if fun_type.variables:
             for var in fun_type.variables:
                 self.tvar_scope.bind_fun_tvar(var.name, self.lookup(var.name, var).node)
