@@ -505,8 +505,8 @@ class C:
         reveal_type(l)  # E: Revealed type is 'builtins.list[T`-1]'
         y: C.T = x
         l.append(x)
-        C.T  # E: Type variable "C.T" is invalid in a runtime context
-        A = C.T  # E: Type variable "C.T" is invalid in a runtime context
+        C.T  # E: Type variable "C.T" cannot be used as an expression
+        A = C.T  # E: Type variable "C.T" cannot be used as an expression
         return l[0]
 
 [builtins fixtures/list.pyi]

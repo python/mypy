@@ -406,7 +406,7 @@ def analyze_class_attribute_access(itype: Instance,
         return AnyType()
 
     if isinstance(node.node, TypeVarExpr):
-        msg.fail('Type variable "{}.{}" is invalid in a runtime context'.format(
+        msg.fail('Type variable "{}.{}" cannot be used as an expression'.format(
                  itype.type.name(), name), context)
         return AnyType()
 
