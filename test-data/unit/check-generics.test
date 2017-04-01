@@ -14,6 +14,7 @@ class A(Generic[T]):
 
 class B: pass
 class C: pass
+
 [out]
 main:4: error: Incompatible types in assignment (expression has type "B", variable has type "C")
 

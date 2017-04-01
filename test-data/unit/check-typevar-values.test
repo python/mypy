@@ -503,7 +503,8 @@ class C:
         L = List[C.T] # a valid type alias
         l: L = []
         l.append(x)
-        A = C.T  # E: Type variable "T" is invalid as target for type alias
+        C.T  # E: Type variable "T" is invalid except as a parameter to another type
+        A = C.T  # E: Type variable "T" is invalid except as a parameter to another type
         return l[0]
 
 [builtins fixtures/list.pyi]
