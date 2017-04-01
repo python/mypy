@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Callable
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, ErrorType, FormalArgument, NoneTyp,
+    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
 )
@@ -93,9 +93,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return True
-
-    def visit_error_type(self, left: ErrorType) -> bool:
-        return False
 
     def visit_type_list(self, t: TypeList) -> bool:
         assert False, 'Not supported'
