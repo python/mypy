@@ -496,12 +496,17 @@ def outer(x: T) -> T:
 [out]
 
 [case testClassMemberTypeVarInFunctionBody]
-from typing import TypeVar
+from typing import TypeVar, List
 class C:
     T = TypeVar('T', bound=int)
     def f(self, x: T) -> T:
-        A = C.T
-        return x
+        L = List[C.T] # a valid type alias
+        l: L = []
+        l.append(x)
+        A = C.T  # E: Type variable "T" is invalid as target for type alias
+        return l[0]
+
+[builtins fixtures/list.pyi]
 
 [case testParameterLessGenericAsRestriction]
 from typing import Sequence, Iterable, TypeVar

@@ -406,7 +406,9 @@ def analyze_class_attribute_access(itype: Instance,
         return AnyType()
 
     if isinstance(node.node, TypeVarExpr):
-        return TypeVarType(node.tvar_def, node.tvar_def.line, node.tvar_def.column)
+        msg.fail('Type variable "{}" is invalid as target for type alias'.format(
+                node.node.fullname() or node.node.name()), context)
+        return AnyType()
 
     if isinstance(node.node, TypeInfo):
         return type_object_type(node.node, builtin_type)
