@@ -9,10 +9,9 @@ class TypeVarScope:
     def __init__(self, parent: Optional['TypeVarScope'] = None):
         self.scope = {}  # type: Dict[str, TypeVarDef]
         self.parent = parent
-        if parent is None:
-            self.func_id = 0
-            self.class_id = 0
-        else:
+        self.func_id = 0
+        self.class_id = 0
+        if parent is not None:
             self.func_id = parent.func_id
             self.class_id = parent.class_id
 
@@ -32,10 +31,7 @@ class TypeVarScope:
         self.scope[tvar_expr.fullname()] = tvar_def
 
     def get_binding(self, item: Union[str, SymbolTableNode]):
-        if isinstance(item, SymbolTableNode):
-            fullname = item.fullname
-        else:
-            fullname = item
+        fullname = item.fullname if isinstance(item, SymbolTableNode) else item
         if fullname in self.scope:
             return self.scope[fullname]
         elif self.parent is not None:
@@ -47,5 +43,4 @@ class TypeVarScope:
         me = ", ".join('{}: {}`{}'.format(k, v.name, v.id) for k, v in self.scope.items())
         if self.parent is None:
             return me
-        else:
-            return "{} <- {}".format(str(self.parent), me)
+        return "{} <- {}".format(str(self.parent), me)

@@ -85,6 +85,7 @@ from mypy.types import (
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
+    TypeVariableQuery,
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -375,10 +376,8 @@ class SemanticAnalyzer(NodeVisitor):
         Update the signature of defn to contain type variable definitions
         if defn is generic.
         """
-
         a = self.type_analyzer(tvar_scope=TypeVarScope(self.tvar_scope))
-        variables = a.bind_function_type_variables(fun_type, defn)
-        fun_type.variables = variables
+        fun_type.variables = a.bind_function_type_variables(fun_type, defn)
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         # OverloadedFuncDef refers to any legitimate situation where you have
@@ -503,7 +502,6 @@ class SemanticAnalyzer(NodeVisitor):
             self.check_function_signature(defn)
             if isinstance(defn, FuncDef):
                 defn.type = set_callable_name(defn.type, defn)
-
         for arg in defn.arguments:
             if arg.initializer:
                 arg.initializer.accept(self)
@@ -555,12 +553,6 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail_invalid_classvar(t)
                 # Show only one error per signature
                 break
-
-    def type_var_names(self) -> Set[str]:
-        if not self.type:
-            return set()
-        else:
-            return set(self.type.type_vars)
 
     def check_function_signature(self, fdef: FuncItem) -> None:
         sig = fdef.type
@@ -754,23 +746,8 @@ class SemanticAnalyzer(NodeVisitor):
                 except TypeTranslationError:
                     # This error will be caught later.
                     continue
-                tvars.extend(self.get_tvars(base))
-        return self.remove_dups(tvars)
-
-    def get_tvars(self, tp: Type) -> List[Tuple[str, TypeVarExpr]]:
-        tvars = []  # type: List[Tuple[str, TypeVarExpr]]
-        if isinstance(tp, UnboundType):
-            tp_args = tp.args
-        elif isinstance(tp, TypeList):
-            tp_args = tp.items
-        else:
-            return tvars
-        for arg in tp_args:
-            tvar = self.analyze_unbound_tvar(arg)
-            if tvar:
-                tvars.append(tvar)
-            else:
-                tvars.extend(self.get_tvars(arg))
+                tvars.extend(base.accept(TypeVariableQuery(
+                    self.lookup_qualified, self.tvar_scope)))
         return self.remove_dups(tvars)
 
     def remove_dups(self, tvars: List[T]) -> List[T]:

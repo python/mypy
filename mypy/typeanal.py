@@ -131,7 +131,6 @@ class TypeAnalyser(TypeVisitor[Type]):
                     not sym.normalized and not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname), t)
             if sym.kind == TVAR and self.tvar_scope.get_binding(sym) is not None:
-                # XXX: Don't fetch twice
                 tvar_def = self.tvar_scope.get_binding(sym)
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(
@@ -259,7 +258,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         """
         return [name for name, _
                 in tp.accept(TypeVariableQuery(self.lookup, self.tvar_scope,
-                                               include_callables=True,include_bound=True))]
+                                               include_callables=True, include_bound=True))]
 
     def get_tvar_name(self, t: Type) -> Optional[str]:
         if not isinstance(t, UnboundType):
@@ -411,11 +410,12 @@ class TypeAnalyser(TypeVisitor[Type]):
         names = []  # type: List[str]
         tvars = []  # type: List[TypeVarExpr]
         for arg in type.arg_types:
-            for name, tvar_expr in self.find_type_variables_in_type(arg, include_callables=True):
+            for name, tvar_expr in arg.accept(TypeVariableQuery(self.lookup, self.tvar_scope)):
                 if name not in names:
                     names.append(name)
                     tvars.append(tvar_expr)
-        for name, tvar_expr in self.find_type_variables_in_type(type.ret_type, include_callables=False):
+        for name, tvar_expr in type.ret_type.accept(
+                TypeVariableQuery(self.lookup, self.tvar_scope, include_callables=False)):
             if name not in names:
                 names.append(name)
                 tvars.append(tvar_expr)
@@ -440,10 +440,6 @@ class TypeAnalyser(TypeVisitor[Type]):
 
     def is_defined_type_var(self, tvar: str, context: Context) -> bool:
         return self.tvar_scope.get_binding(self.lookup(tvar, context)) is not None
-
-    def find_type_variables_in_type(self, type: Type, *, include_callables: bool) -> List[Tuple[str, TypeVarExpr]]:
-        ret = type.accept(TypeVariableQuery(self.lookup, self.tvar_scope, include_callables))
-        return ret
 
     def anal_array(self, a: List[Type], nested: bool = True) -> List[Type]:
         res = []  # type: List[Type]
@@ -619,8 +615,8 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
     def __init__(self,
                  lookup: Callable[[str, Context], SymbolTableNode],
                  scope: 'TypeVarScope',
-                 include_callables: bool,
                  *,
+                 include_callables: bool = True,
                  include_bound: bool = False):
         self.include_callables = include_callables
         self.lookup = lookup
