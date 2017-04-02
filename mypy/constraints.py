@@ -308,13 +308,14 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     # Non-leaf types
 
     def visit_instance(self, template: Instance) -> List[Constraint]:
-        inferring = nodes.TypeInfo.inferring
         actual = self.actual
         res = []  # type: List[Constraint]
         if isinstance(actual, CallableType) and actual.fallback is not None:
             actual = actual.fallback
         if isinstance(actual, Instance):
             instance = actual
+            # We always try nominal inference if possible,
+            # it is much faster than the structural one.
             if (self.direction == SUBTYPE_OF and
                     template.type.has_base(instance.type.fullname())):
                 mapped = map_instance_to_supertype(template, instance.type)
@@ -341,25 +342,25 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
                     # We avoid infinite recursion for structural subtypes by checking
                     # whether this TypeInfo already appeared in the inference chain.
-                    template.type not in inferring and
+                    not any(is_same_type(template, t) for t in template.type.inferring) and
                     mypy.subtypes.is_subtype(instance, erase_typevars(template))):
-                inferring.append(template.type)
+                template.type.inferring.append(template)
                 for member in template.type.protocol_members:
                     inst = mypy.subtypes.find_member(member, instance, instance)
                     temp = mypy.subtypes.find_member(member, template, template)
                     res.extend(infer_constraints(temp, inst, self.direction))
-                inferring.pop()
+                template.type.inferring.pop()
                 return res
             elif (instance.type.is_protocol and self.direction == SUBTYPE_OF and
                   # We avoid infinite recursion for structural subtypes also here.
-                  instance.type not in inferring and
+                  not any(is_same_type(instance, i) for i in instance.type.inferring) and
                   mypy.subtypes.is_subtype(erase_typevars(template), instance)):
-                inferring.append(instance.type)
+                instance.type.inferring.append(instance)
                 for member in instance.type.protocol_members:
                     inst = mypy.subtypes.find_member(member, instance, instance)
                     temp = mypy.subtypes.find_member(member, template, template)
                     res.extend(infer_constraints(temp, inst, self.direction))
-                inferring.pop()
+                instance.type.inferring.pop()
                 return res
         if isinstance(actual, AnyType):
             # IDEA: Include both ways, i.e. add negation as well?

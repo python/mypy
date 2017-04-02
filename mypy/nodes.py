@@ -4,7 +4,7 @@ import os
 from abc import abstractmethod
 
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, ClassVar
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
 )
 
 import mypy.strconv
@@ -1949,14 +1949,15 @@ class TypeInfo(SymbolNode):
     abstract_attributes = None  # type: List[str]
     protocol_members = None  # type: List[str]
 
-    # These represent global structural subtype matrices.
+    # These represent structural subtype matrices. Note that these are shared
+    # by all 'Instance's with given TypeInfo.
     # If concurrent/parallel type checking will be added in future,
     # then there should be one matrix per thread/process to avoid false negatives
     # during the type checking phase.
-    assuming = []  # type: ClassVar[List[Tuple[mypy.types.Instance, mypy.types.Instance]]]
-    assuming_proper = []  # type: ClassVar[List[Tuple[mypy.types.Instance, mypy.types.Instance]]]
+    assuming = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
+    assuming_proper = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
     # Ditto for temporary stack of recursive constraint inference.
-    inferring = []  # type: ClassVar[List[TypeInfo]]
+    inferring = None  # type: List[mypy.types.Instance]
 
     # Classes inheriting from Enum shadow their true members with a __getattr__, so we
     # have to treat them as a special case.
@@ -2020,6 +2021,9 @@ class TypeInfo(SymbolNode):
         self._fullname = defn.fullname
         self.is_abstract = False
         self.abstract_attributes = []
+        self.assuming = []
+        self.assuming_proper = []
+        self.inferring = []
         if defn.type_vars:
             for vd in defn.type_vars:
                 self.type_vars.append(vd.name)

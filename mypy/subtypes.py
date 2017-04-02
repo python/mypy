@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Callable, Tuple, Iterator
+from typing import List, Optional, Dict, Callable, Tuple, Iterator, Set
 from contextlib import contextmanager
 
 from mypy.types import (
@@ -13,8 +13,8 @@ import mypy.constraints
 # import mypy.solve
 from mypy import messages, sametypes
 from mypy.nodes import (
-    CONTRAVARIANT, COVARIANT, FuncBase, Var, Decorator, OverloadedFuncDef,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeInfo
+    FuncBase, Var, Decorator, OverloadedFuncDef, TypeInfo, CONTRAVARIANT, COVARIANT,
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
@@ -145,7 +145,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             rname = right.type.fullname()
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
-            # Also, nominal checks are much faster.
+            # Also, nominal checks are faster.
             if not left.type.has_base(rname) and rname != 'builtins.object':
                 if right.type.is_protocol:
                     return is_protocol_implementation(left, right)
@@ -302,9 +302,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
 
 @contextmanager
-def pop_on_exit(lst: List[Tuple[Type, Type]]) -> Iterator[None]:
+def pop_on_exit(stack: List[Tuple[Instance, Instance]],
+                left: Instance, right: Instance) -> Iterator[None]:
+    stack.append((left, right))
     yield
-    lst.pop()
+    stack.pop()
 
 
 def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool = True) -> bool:
@@ -315,12 +317,11 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
     (see comment in nodes.TypeInfo).
     """
     assert right.type.is_protocol
-    assuming = TypeInfo.assuming if allow_any else TypeInfo.assuming_proper
+    assuming = right.type.assuming if allow_any else right.type.assuming_proper
     for (l, r) in reversed(assuming):
         if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):
             return True
-    with pop_on_exit(assuming):
-        assuming.append((left, right))
+    with pop_on_exit(assuming, left, right):
         if right.type.protocol_members is None:
             # This type has not been yet analyzed, probably a call from make_simplified_union
             return False
@@ -393,7 +394,7 @@ def find_member(name: str, itype: Instance, subtype: Instance) -> Optional[Type]
     return None
 
 
-def get_member_flags(name: str, info: TypeInfo) -> List[int]:
+def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
     """Detect whether a member 'name' is settable and whether it is an
     instance or class variable.
     """
@@ -405,22 +406,22 @@ def get_member_flags(name: str, info: TypeInfo) -> List[int]:
             dec = method.items[0]
             assert isinstance(dec, Decorator)
             if dec.var.is_settable_property:
-                return [IS_SETTABLE]
-        return []
+                return {IS_SETTABLE}
+        return set()
     node = info.get(name)
     if not node:
-        return []
+        return set()
     v = node.node
     if isinstance(v, Decorator):
         if v.var.is_staticmethod or v.var.is_classmethod:
-            return [IS_CLASS_OR_STATIC]
+            return {IS_CLASS_OR_STATIC}
     # just a variable
     if isinstance(v, Var):
-        flags = [IS_SETTABLE]
+        flags = {IS_SETTABLE}
         if v.is_classvar:
-            flags.append(IS_CLASSVAR)
+            flags.add(IS_CLASSVAR)
         return flags
-    return []
+    return set()
 
 
 def find_var_type(var: Var, itype: Instance, subtype: Instance) -> Type:
