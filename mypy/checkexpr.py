@@ -151,7 +151,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = type_object_type(node, self.named_type)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
-            result = self.named_type('builtins.module')
+            result = self.named_type('types.ModuleType')
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
         else:

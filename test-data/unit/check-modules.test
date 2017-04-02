@@ -153,17 +153,18 @@ def f(c:str) -> None: pass
 [case testInvalidOperationsOnModules]
 import m
 import typing
+
 class A: pass
-m()      # E: "module" not callable
-a = m # type: A  # E: Incompatible types in assignment (expression has type "module", variable has type "A")
-m + None # E: Unsupported left operand type for + ("module")
+m()      # E: "ModuleType" not callable
+a = m # type: A  # E: Incompatible types in assignment (expression has type "ModuleType", variable has type "A")
+m + None # E: Unsupported left operand type for + ("ModuleType")
 [file m.py]
 [builtins fixtures/module.pyi]
 
 [case testNameDefinedInDifferentModule]
 import m, n
 import typing
-m.x # E: "module" has no attribute "x"
+m.x # E: "ModuleType" has no attribute "x"
 [file m.py]
 y = object()
 [file n.py]
@@ -329,7 +330,7 @@ import nonexistent
 [out]
 tmp/x.py:1: error: Cannot find module named 'nonexistent'
 tmp/x.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:3: error: "module" has no attribute "z"
+main:3: error: "ModuleType" has no attribute "z"
 
 [case testUnknownModuleImportedWithinFunction]
 def f():
@@ -647,7 +648,7 @@ def f(x: str) -> None: pass
 if object():
     import m
 else:
-    m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "module")
+    m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "ModuleType")
 [file m.py]
 [builtins fixtures/module.pyi]
 [out]
@@ -751,7 +752,7 @@ value = 3.2
 [case testSubmoduleImportFromDoesNotAddParents]
 from a import b
 reveal_type(b.value)  # E: Revealed type is 'builtins.str'
-b.c.value  # E: "module" has no attribute "c"
+b.c.value  # E: "ModuleType" has no attribute "c"
 a.value  # E: Name 'a' is not defined
 
 [file a/__init__.py]
@@ -852,7 +853,7 @@ bar = parent.unrelated.ShouldNotLoad()
 [builtins fixtures/module.pyi]
 [out]
 tmp/parent/child.py:8: error: Revealed type is 'parent.common.SomeClass'
-tmp/parent/child.py:9: error: "module" has no attribute "unrelated"
+tmp/parent/child.py:9: error: "ModuleType" has no attribute "unrelated"
 
 [case testSubmoduleMixingImportFromAndImport2]
 import parent.child
@@ -1406,3 +1407,12 @@ reveal_type(cb) # E: Revealed type is 'def (*Any, **Any) -> Any'
 from typing import Callable, Any
 AnyCallable = Callable[..., Any]
 [out]
+
+[case testRevealType]
+import types
+def f() -> types.ModuleType:
+    return types
+reveal_type(f())  # E: Revealed type is 'types.ModuleType'
+reveal_type(types)  # E: Revealed type is 'types.ModuleType'
+
+[builtins fixtures/module.pyi]
