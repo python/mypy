@@ -1909,8 +1909,14 @@ class TypeChecker(NodeVisitor[None]):
         """Type check an operator assignment statement, e.g. x += 1."""
         lvalue_type = self.expr_checker.accept(s.lvalue)
         inplace, method = infer_operator_assignment_method(lvalue_type, s.op)
-        rvalue_type, method_type = self.expr_checker.check_op(
-            method, lvalue_type, s.rvalue, s)
+        if inplace:
+            rvalue_type, method_type = self.expr_checker.check_op(
+                method, lvalue_type, s.rvalue, s)
+        else:
+            lvalue_type, index_lvalue, inferred = self.check_lvalue(s.lvalue)
+            expr = OpExpr(s.op, s.lvalue, s.rvalue)
+            expr.set_line(s)
+            rvalue_type = self.expr_checker.accept(expr, lvalue_type)
 
         if isinstance(s.lvalue, IndexExpr) and not inplace:
             self.check_indexed_assignment(s.lvalue, s.rvalue, s.rvalue)

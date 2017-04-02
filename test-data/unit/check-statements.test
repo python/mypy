@@ -1514,3 +1514,10 @@ class A(): pass
 class B(): pass
 [out]
 main:8: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+[case testAugmentedAssignmentIntFloat]
+weight0 = 65.5
+weight0 = 65
+weight0 *= 0.5
+
+[builtins fixtures/float.pyi]
