@@ -42,6 +42,7 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
+from mypy.test.config import ALLOW_FIXTURES
 
 
 # We need to know the location of this file to load data, but
@@ -142,8 +143,9 @@ def build(sources: List[BuildSource],
         # debug).  This is a test-only feature, so assume our files are laid out
         # as in the source tree.
         root_dir = dirname(dirname(__file__))
-        lib_path.insert(0, os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
-    else:
+        if ALLOW_FIXTURES:
+            lib_path.insert(0, os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
+    if not options.use_builtins_fixtures or not ALLOW_FIXTURES:
         for source in sources:
             if source.path:
                 # Include directory of the program file in the module search path.

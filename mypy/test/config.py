@@ -17,3 +17,6 @@ assert os.path.isdir(test_data_prefix), \
 # This is *within* the tempfile.TemporaryDirectory that is chroot'ed per testcase.
 # It is also hard-coded in numerous places, so don't change it.
 test_temp_dir = 'tmp'
+
+# Set this to False (here in the file, not dynamically!) to disable builtins fixtures in tests
+ALLOW_FIXTURES = True

@@ -12,6 +12,8 @@ from typing import Callable, List, Tuple, Set, Optional, Iterator, Any
 
 from mypy.myunit import TestCase, SkipTestCaseException
 
+from mypy.test.config import ALLOW_FIXTURES
+
 
 def parse_test_cases(
         path: str,
@@ -77,7 +79,8 @@ def parse_test_cases(
                         # Python 2
                         fnam = '__builtin__.pyi'
                     with open(mpath) as f:
-                        files.append((join(base_path, fnam), f.read()))
+                        if ALLOW_FIXTURES:
+                            files.append((join(base_path, fnam), f.read()))
                 elif p[i].id == 'stale':
                     arg = p[i].arg
                     if arg is None:
