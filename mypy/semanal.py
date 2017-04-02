@@ -3353,6 +3353,14 @@ class FirstPass(NodeVisitor):
         we generate dummy symbol table nodes for the imported names,
         and these will get resolved in later phases of semantic
         analysis.
+
+        MYPY_MODULE has a special meaning in stubs. If present, its current
+        value will be used as the module name prefix for qualified names of
+        all objects found in the stub. This is to provide correct output from
+        reveal_type for definitions placed in the "wrong" module for circular
+        import reasons (e.g., the definition of ModuleType in
+        _importlib_modulespec.pyi instead of type.pyi).
+
         """
         sem = self.sem
         self.sem.options = options  # Needed because we sometimes call into it
@@ -3385,6 +3393,11 @@ class FirstPass(NodeVisitor):
 
         for d in defs:
             d.accept(self)
+            if file.is_stub and isinstance(d, AssignmentStmt):
+                lvalue = d.lvalues[0]
+                if isinstance(lvalue, NameExpr) and lvalue.name == 'MYPY_MODULE':
+                    assert isinstance(d.rvalue, StrExpr)
+                    sem.cur_mod_id = d.rvalue.value
 
         # Add implicit definition of literals/keywords to builtins, as we
         # cannot define a variable with them explicitly.
