@@ -47,7 +47,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Generator
 )
 
 from mypy.nodes import (
@@ -2972,14 +2972,14 @@ class SemanticAnalyzer(NodeVisitor):
     #
 
     @contextmanager
-    def new_tvar_scope(self) -> None:
+    def new_tvar_scope(self) -> Generator:
         old_scope = self.tvar_scope
         self.tvar_scope = TypeVarScope()
         yield
         self.tvar_scope = old_scope
 
     @contextmanager
-    def tvar_scope_frame(self) -> None:
+    def tvar_scope_frame(self) -> Generator:
         old_scope = self.tvar_scope
         self.tvar_scope = TypeVarScope(self.tvar_scope)
         yield

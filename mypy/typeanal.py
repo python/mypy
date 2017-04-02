@@ -1,7 +1,7 @@
 """Semantic analysis of types"""
 
 from collections import OrderedDict
-from typing import Callable, List, Optional, Set, Tuple
+from typing import Callable, List, Optional, Set, Tuple, Generator
 
 from contextlib import contextmanager
 
@@ -398,7 +398,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return ret.accept(self)
 
     @contextmanager
-    def tvar_scope_frame(self) -> None:
+    def tvar_scope_frame(self) -> Generator:
         old_scope = self.tvar_scope
         self.tvar_scope = TypeVarScope(self.tvar_scope)
         yield
