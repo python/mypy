@@ -151,7 +151,33 @@ concrete. As with normal overrides, a dynamically typed method can
 implement a statically typed abstract method defined in an abstract
 base class.
 
-.. note::
+.. _protocol-types:
 
-   There are also plans to support more Python-style "duck typing" in
-   the type system. The details are still open.
+Protocols and structural subtyping
+**********************************
+
+Mypy provides support for structural subtyping and protocol classes.
+
+.. code-block:: python
+
+   from typing import Iterator, Iterable
+
+   class Bucket:
+       ...
+       def __len__(self) -> int: ...
+       def __iter__(self) -> Iterator[int]: ...
+
+   def collect(items: Iterable[int]) -> int: ...
+   result: int = collect(Bucket())  # Passes type check
+
+Users can also define protocols.
+
+.. code-block:: python
+
+  from typing import Protocol
+
+  class SupportsClose(Protocol):
+      def close(self) -> None:
+          ...
+
+Protocols can be generic. See :ref:`generic-classes`.

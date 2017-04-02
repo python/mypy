@@ -1,6 +1,8 @@
 Generics
 ========
 
+.. _generic-classes:
+
 Defining generic classes
 ************************
 

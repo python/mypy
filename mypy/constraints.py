@@ -341,7 +341,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 return res
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
                     # We avoid infinite recursion for structural subtypes by checking
-                    # whether this TypeInfo already appeared in the inference chain.
+                    # whether this type already appeared in the inference chain.
                     not any(is_same_type(template, t) for t in template.type.inferring) and
                     mypy.subtypes.is_subtype(instance, erase_typevars(template))):
                 template.type.inferring.append(template)
