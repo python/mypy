@@ -3359,7 +3359,7 @@ class FirstPass(NodeVisitor):
         all objects found in the stub. This is to provide correct output from
         reveal_type for definitions placed in the "wrong" module for circular
         import reasons (e.g., the definition of ModuleType in
-        _importlib_modulespec.pyi instead of type.pyi).
+        _importlib_modulespec.pyi instead of types.pyi).
 
         """
         sem = self.sem
