@@ -1505,7 +1505,7 @@ class SemanticAnalyzer(NodeVisitor):
             allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
             s.type = self.anal_type(s.type, allow_tuple_literal)
             if (self.type and self.type.is_protocol and isinstance(lval, NameExpr) and
-                    isinstance(s.rvalue, TempNode)) and s.rvalue.no_rhs:
+                    isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
                         if isinstance(lval.node, Var):
                             lval.node.is_abstract_var = True
         else:
@@ -1707,8 +1707,8 @@ class SemanticAnalyzer(NodeVisitor):
         if self.is_self_member_ref(lval):
             node = self.type.get(lval.name)
             if node is None or isinstance(node.node, Var) and node.node.is_abstract_var:
+                # Protocol members can't be defined via self
                 if self.type.is_protocol and node is None:
-                    # Protocol members can't be defined via self
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
                 else:
                     # Implicit attribute definition in __init__.
@@ -3451,7 +3451,9 @@ class FirstPass(NodeVisitor):
                     ('__debug__', bool_type),
                 ])
             else:
-                # We are running tests
+                # We are running tests without 'bool' in builtins.
+                # TODO: Find a permanent solution to this problem.
+                # Maybe add 'bool' to all fixtures?
                 literal_types.append(('True', AnyType()))
 
             for name, typ in literal_types:

@@ -69,7 +69,7 @@ def is_subtype(left: Type, right: Type,
     else:
         result = left.accept(SubtypeVisitor(right, type_parameter_checker,
                                             ignore_pos_arg_names=ignore_pos_arg_names))
-        # Useful for debugging
+        # Useful for debugging:
         # print(left, right, result)
         return result
 
@@ -145,18 +145,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
             rname = right.type.fullname()
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
-            # Also, nominal checks are faster.
-            if not left.type.has_base(rname) and rname != 'builtins.object':
-                if right.type.is_protocol:
-                    return is_protocol_implementation(left, right)
-                return False
-
-            # Map left type to corresponding right instances.
-            t = map_instance_to_supertype(left, right.type)
-
-            return all(self.check_type_parameter(lefta, righta, tvar.variance)
-                       for lefta, righta, tvar in
-                       zip(t.args, right.args, right.type.defn.type_vars))
+            if left.type.has_base(rname) or rname == 'builtins.object':
+                # Map left type to corresponding right instances.
+                t = map_instance_to_supertype(left, right.type)
+                nominal = all(self.check_type_parameter(lefta, righta, tvar.variance)
+                              for lefta, righta, tvar in
+                              zip(t.args, right.args, right.type.defn.type_vars))
+                if nominal:
+                    return True
+            if right.type.is_protocol and is_protocol_implementation(left, right):
+                return True
+            return False
         if isinstance(right, TypeType):
             item = right.item
             if isinstance(item, TupleType):
@@ -170,7 +169,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             else:
                 return False
         if isinstance(right, CallableType):
-            # Special case: Instance can by a subtype of Callable.
+            # Special case: Instance can be a subtype of Callable.
             call = find_member('__call__', left, left)
             if call:
                 return is_subtype(call, right)
@@ -311,10 +310,8 @@ def pop_on_exit(stack: List[Tuple[Instance, Instance]],
 
 def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool = True) -> bool:
     """Check whether 'left' implements the protocol 'right'. If 'allow_any' is False, then
-    check for a proper subtype. Treat recursive protocols by using a global 'assuming'
-    structural subtype matrix (in sparse representation). If concurrent type checking
-    will be implemented, then every thread/process should use its own matrix
-    (see comment in nodes.TypeInfo).
+    check for a proper subtype. Treat recursive protocols by using the 'assuming'
+    structural subtype matrix (in sparse representation), see comment in nodes.TypeInfo.
     """
     assert right.type.is_protocol
     assuming = right.type.assuming if allow_any else right.type.assuming_proper
@@ -334,7 +331,7 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
             if not subtype:
                 return False
             if allow_any:
-                # nominal check currently ignore arg names
+                # nominal check currently ignores arg names
                 is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
             else:
                 is_compat = is_proper_subtype(subtype, supertype)
@@ -350,6 +347,9 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
             # this rule is copied from nominal check in checker.py
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 return False
+    # This additional push serves as poor man's subtype cache.
+    # (This already gives a decent speed-up.)
+    # TODO: Implement a general fast subtype cache?
     assuming.append((left, right))
     return True
 
@@ -452,7 +452,7 @@ def map_method(method: FuncBase, itype: Instance, subtype: Instance) -> Type:
     by 'find_var_type'.
     """
     from mypy.checkmember import bind_self
-    signature = function_type(method, Instance(itype.type.mro[-1], []))
+    signature = function_type(method, fallback=Instance(itype.type.mro[-1], []))
     signature = bind_self(signature, subtype)
     itype = map_instance_to_supertype(itype, method.info)
     return expand_type_by_instance(signature, itype)
@@ -715,24 +715,23 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
 
     if isinstance(t, Instance):
         if isinstance(s, Instance):
-            if s.type.is_protocol:
-                return is_protocol_implementation(t, s, allow_any=False)
-            if not t.type.has_base(s.type.fullname()):
-                return False
-
-            def check_argument(left: Type, right: Type, variance: int) -> bool:
-                if variance == COVARIANT:
-                    return is_proper_subtype(left, right)
-                elif variance == CONTRAVARIANT:
-                    return is_proper_subtype(right, left)
-                else:
-                    return sametypes.is_same_type(left, right)
-
-            # Map left type to corresponding right instances.
-            t = map_instance_to_supertype(t, s.type)
-
-            return all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
-                       zip(t.args, s.args, s.type.defn.type_vars))
+            if t.type.has_base(s.type.fullname()):
+                def check_argument(left: Type, right: Type, variance: int) -> bool:
+                    if variance == COVARIANT:
+                        return is_proper_subtype(left, right)
+                    elif variance == CONTRAVARIANT:
+                        return is_proper_subtype(right, left)
+                    else:
+                        return sametypes.is_same_type(left, right)
+                # Map left type to corresponding right instances.
+                t = map_instance_to_supertype(t, s.type)
+                nominal = all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
+                              zip(t.args, s.args, s.type.defn.type_vars))
+                if nominal:
+                    return True
+            if s.type.is_protocol and is_protocol_implementation(t, s, allow_any=False):
+                return True
+            return False
         if isinstance(s, CallableType):
             call = find_member('__call__', t, t)
             if call:

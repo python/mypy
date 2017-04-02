@@ -92,11 +92,13 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
                     return True
                 if s.type._promote and is_overlapping_types(s.type._promote, t):
                     return True
+            if t.type in s.type.mro or s.type in t.type.mro:
+                return True
             if t.type.is_protocol and is_protocol_implementation(s, t):
                 return True
             if s.type.is_protocol and is_protocol_implementation(t, s):
                 return True
-            return t.type in s.type.mro or s.type in t.type.mro
+            return False
     if isinstance(t, UnionType):
         return any(is_overlapping_types(item, s)
                    for item in t.items)

@@ -19,13 +19,11 @@ class P(Protocol):
         pass
 
 class B: pass
-
 class C:
     def meth(self) -> None:
         pass
 
 x: P
-
 def fun(x: P) -> None:
     x.meth()
     x.meth(x) # E: Too many arguments for "meth" of "P"
@@ -59,11 +57,9 @@ class P(Protocol):
         pass
 
 class B: pass
-
 class C:
     def meth(self) -> None:
         pass
-
 class D(B):
     def meth(self) -> None:
         pass
@@ -127,6 +123,8 @@ class P1(Protocol):
 class P2(Protocol):
     def meth2(self) -> str:
         pass
+class P(P1, P2, Protocol): pass
+
 class B: pass
 class C1:
     def meth1(self) -> int:
@@ -145,8 +143,6 @@ class AnotherP(Protocol):
         pass
     def meth2(self) -> str:
         pass
-
-class P(P1, P2, Protocol): pass
 
 x: P
 reveal_type(x.meth1())  # E: Revealed type is 'builtins.int'
@@ -290,7 +286,7 @@ class P2(Protocol):
     def __init__(self) -> None:
         self.a = 1
 
-class B2:
+class B2(P2):
     a: int
 
 x2: P2 = B2()  # OK
@@ -336,7 +332,41 @@ reveal_type(p.attr) # E: Revealed type is 'builtins.int'
 -- Generic protocol types
 -- ----------------------
 
-[case testBasicGenericProtocols]
+[case testAutomaticProtocolVariance]
+from typing import TypeVar, Protocol
+
+T = TypeVar('T')
+
+class Pco(Protocol[T]):
+    attr: T
+class Pcontra(Protocol[T]):
+    def meth(self, x: T) -> None:
+        pass
+class Pinv(Protocol[T]):
+    attr: T
+    def meth(self, x: T) -> None:
+        pass
+
+class A: pass
+class B(A): pass
+
+x1: Pco[B]
+y1: Pco[A]
+x1 = y1 # E: Incompatible types in assignment (expression has type Pco[A], variable has type Pco[B])
+y1 = x1
+
+x2: Pcontra[B]
+y2: Pcontra[A]
+y2 = x2 # E: Incompatible types in assignment (expression has type Pcontra[B], variable has type Pcontra[A])
+x2 = y2
+
+x3: Pinv[B]
+y3: Pinv[A]
+y3 = x3 # E: Incompatible types in assignment (expression has type Pinv[B], variable has type Pinv[A])
+x3 = y3 # E: Incompatible types in assignment (expression has type Pinv[A], variable has type Pinv[B])
+[out]
+
+[case testGenericProtocolsInference1]
 from typing import Protocol, Sequence, TypeVar
 
 T = TypeVar('T')
@@ -366,7 +396,7 @@ reveal_type(close_all([arg])) # E: Revealed type is 'builtins.int*'
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
-[case testProtocolBasicGenericInference]
+[case testProtocolGenericInference2]
 from typing import Generic, TypeVar, Protocol
 T = TypeVar('T')
 S = TypeVar('S')
@@ -381,8 +411,11 @@ class C:
 
 def fun3(x: P[T, T]) -> T:
     pass
-
 reveal_type(fun3(C())) # E: Revealed type is 'builtins.int*'
+
+def fun4(x: T, y: P[T, T]) -> T:
+    pass
+reveal_type(fun4('a', C())) # E: Revealed type is 'builtins.object*'
 [out]
 
 [case testGenericSubProtocols]
@@ -400,15 +433,18 @@ class C:
     def __init__(self, a1: int, a2: Tuple[int, int]) -> None:
         self.attr1 = a1
         self.attr2 = a2
-c: C
 
+c: C
 var: P2[int, int] = c
 var2: P2[int, str] = c # E: Incompatible types in assignment (expression has type "C", variable has type P2[int, str])
 
 class D(Generic[T]):
     attr1: T
+class E(D[T]):
+    attr2: Tuple[T, T]
 
 def f(x: T) -> T:
+    z: P2[T, T] = E[T]()
     y: P2[T, T] = D[T]() # E: Incompatible types in assignment (expression has type D[T], variable has type P2[T, T])\
                          # N: '__main__.D' missing following '__main__.P2' protocol members:\
                          # N: attr2
@@ -426,7 +462,6 @@ class P1(Protocol[T]):
     attr1: T
 class P2(Protocol[T]):
     attr2: T
-
 class P(P1[T], P2[S], Protocol):
     pass
 
@@ -440,7 +475,7 @@ class B:
     attr2: B
 class D(A, B): pass
 
-x: P = D()
+x: P = D()  # Same as P[Any, Any]
 
 var: P[Union[int, P], Union[P, str]] = C() # OK
 var2: P[Union[str, P], Union[P, int]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[str, P[Any, Any]], Union[P[Any, Any], int]])
@@ -493,8 +528,7 @@ n = NonProtoShape()
 tm: Template
 
 # The compatibility matrix below matches behavior for *nominal* subclasses with self-types;
-# should be updated if the latter changes
-
+# these should be updated if the latter changes.
 s = t # E: Incompatible types in assignment (expression has type "Triangle", variable has type "Shape")
 s = r
 s = c
@@ -510,7 +544,7 @@ n2: NonProtoShape = s2 # E: Incompatible types in assignment (expression has typ
 -- Recursive protocol types
 -- ------------------------
 
-[case testBasicRecursiveProtocols]
+[case testRecursiveProtocols1]
 from typing import Protocol, Sequence, List, Generic, TypeVar
 
 T = TypeVar('T')
@@ -531,11 +565,10 @@ t = C() # E: Incompatible types in assignment (expression has type "C", variable
 [builtins fixtures/list.pyi]
 [out]
 
-[case testComplexRecursiveProtocols]
+[case testRecursiveProtocols2]
 from typing import Protocol, TypeVar
 
 T = TypeVar('T')
-
 class Linked(Protocol[T]):
     val: T
     next: Linked[T]
@@ -548,7 +581,6 @@ def last(seq: Linked[T]) -> T:
     pass
 
 reveal_type(last(L())) # E: Revealed type is 'builtins.int*'
-
 [builtins fixtures/list.pyi]
 [out]
 
@@ -755,8 +787,12 @@ class P(Protocol):
 class C:
     def f(self, x: Union[int, str]) -> None:
         pass
+class D:
+    def f(self, x: int) -> None:
+        pass
 
 x: P = C()
+x = D() # E: Incompatible types in assignment (expression has type "D", variable has type "P")
 [out]
 
 -- Join and meet with protocol types
@@ -777,7 +813,6 @@ y: P2
 l = [x, y]
 
 reveal_type(l) # E: Revealed type is 'builtins.list[__main__.P*]'
-
 [builtins fixtures/list.pyi]
 [out]
 
@@ -796,7 +831,6 @@ y: C
 l = [x, y]
 
 reveal_type(l) # E: Revealed type is 'builtins.list[__main__.P*]'
-
 [builtins fixtures/list.pyi]
 [out]
 
@@ -830,24 +864,24 @@ reveal_type(f(g)) # E: Revealed type is '__main__.C*'
 [out]
 
 [case testInferProtocolFromProtocol]
-from typing import Protocol, Sequence, TypeVar, Union
-
-class Box(Protocol):
-    content: int
+from typing import Protocol, Sequence, TypeVar, Generic
 
 T = TypeVar('T')
+class Box(Protocol[T]):
+    content: T
 class Linked(Protocol[T]):
     val: T
     next: Linked[T]
 
-class L:
-    val: Box
-    next: L
+class L(Generic[T]):
+    val: Box[T]
+    next: L[T]
 
 def last(seq: Linked[T]) -> T:
     pass
 
-reveal_type(last(L())) # E: Revealed type is '__main__.Box*'
+reveal_type(last(L[int]())) # E: Revealed type is '__main__.Box*[builtins.int*]'
+reveal_type(last(L[str]()).content) # E: Revealed type is 'builtins.str*'
 [out]
 
 [case testOverloadOnProtocol]
