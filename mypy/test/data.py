@@ -12,6 +12,8 @@ from typing import Callable, List, Tuple, Set, Optional, Iterator, Any
 
 from mypy.myunit import TestCase, SkipTestCaseException
 
+from mypy.defaults import allow_fixtures
+
 
 def parse_test_cases(
         path: str,
@@ -63,7 +65,8 @@ def parse_test_cases(
                     assert arg is not None
                     file_entry = (join(base_path, arg), '\n'.join(p[i].data))
                     if p[i].id == 'file':
-                        files.append(file_entry)
+                        if arg != 'builtins.py' or allow_fixtures():
+                            files.append(file_entry)
                     elif p[i].id == 'outfile':
                         output_files.append(file_entry)
                 elif p[i].id in ('builtins', 'builtins_py2'):
@@ -77,7 +80,8 @@ def parse_test_cases(
                         # Python 2
                         fnam = '__builtin__.pyi'
                     with open(mpath) as f:
-                        files.append((join(base_path, fnam), f.read()))
+                        if allow_fixtures():
+                            files.append((join(base_path, fnam), f.read()))
                 elif p[i].id == 'stale':
                     arg = p[i].arg
                     if arg is None:
