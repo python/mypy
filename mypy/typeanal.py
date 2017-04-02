@@ -307,14 +307,14 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_type_var(self, t: TypeVarType) -> Type:
         return t
 
-    def visit_callable_type(self, t: CallableType) -> Type:
+    def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         with self.tvar_scope_frame():
             if self.aliasing:
                 variables = t.variables
             else:
                 variables = self.bind_function_type_variables(t, t)
-            ret = t.copy_modified(arg_types=self.anal_array(t.arg_types, nested=False),
-                                  ret_type=self.anal_type(t.ret_type, nested=False),
+            ret = t.copy_modified(arg_types=self.anal_array(t.arg_types, nested=nested),
+                                  ret_type=self.anal_type(t.ret_type, nested=nested),
                                   fallback=t.fallback or self.builtin_type('builtins.function'),
                                   variables=self.anal_var_defs(variables))
         return ret
@@ -398,7 +398,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return ret.accept(self)
 
     @contextmanager
-    def tvar_scope_frame(self):
+    def tvar_scope_frame(self) -> None:
         old_scope = self.tvar_scope
         self.tvar_scope = TypeVarScope(self.tvar_scope)
         yield

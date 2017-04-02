@@ -940,14 +940,6 @@ from typing import Generic
 class A(Generic[int]): pass # E: Free type variable expected in Generic[...]
 [out]
 
-[case testInvalidTypeWithinNestedGenericClass]
-from typing import Generic, TypeVar
-T = TypeVar('T')
-class A(Generic[T]):
-    class B(Generic[T]): pass \
-          # E: Free type variable expected in Generic[...]
-[out]
-
 [case testIncludingGenericTwiceInBaseClassList]
 from typing import Generic, TypeVar
 T = TypeVar('T')

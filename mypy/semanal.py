@@ -498,7 +498,7 @@ class SemanticAnalyzer(NodeVisitor):
             assert isinstance(defn.type, CallableType)
             # Signature must be analyzed in the surrounding scope so that
             # class-level imported names and type variables are in scope.
-            defn.type = self.anal_type(defn.type)
+            defn.type = self.type_analyzer().visit_callable_type(defn.type, nested=False)
             self.check_function_signature(defn)
             if isinstance(defn, FuncDef):
                 defn.type = set_callable_name(defn.type, defn)
@@ -2972,14 +2972,14 @@ class SemanticAnalyzer(NodeVisitor):
     #
 
     @contextmanager
-    def new_tvar_scope(self):
+    def new_tvar_scope(self) -> None:
         old_scope = self.tvar_scope
         self.tvar_scope = TypeVarScope()
         yield
         self.tvar_scope = old_scope
 
     @contextmanager
-    def tvar_scope_frame(self):
+    def tvar_scope_frame(self) -> None:
         old_scope = self.tvar_scope
         self.tvar_scope = TypeVarScope(self.tvar_scope)
         yield
