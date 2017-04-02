@@ -257,24 +257,9 @@ class TypeAnalyser(TypeVisitor[Type]):
         """Get all type variable names that are present in a generic type alias
         in order of textual appearance (recursively, if needed).
         """
-        tvars = []  # type: List[str]
-        typ_args = get_typ_args(tp)
-        for arg in typ_args:
-            tvar = self.get_tvar_name(arg)
-            if tvar:
-                tvars.append(tvar)
-            else:
-                subvars = self.get_type_var_names(arg)
-                if subvars:
-                    tvars.extend(subvars)
-        # Get unique type variables in order of appearance
-        all_tvars = set(tvars)
-        new_tvars = []
-        for t in tvars:
-            if t in all_tvars:
-                new_tvars.append(t)
-                all_tvars.remove(t)
-        return new_tvars
+        return [name for name, _
+                in tp.accept(TypeVariableQuery(self.lookup, self.tvar_scope,
+                                               include_callables=True,include_bound=True))]
 
     def get_tvar_name(self, t: Type) -> Optional[str]:
         if not isinstance(t, UnboundType):
@@ -627,17 +612,20 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 TypeVarList = List[Tuple[str, TypeVarExpr]]
 
 def _concat_type_var_lists(a: TypeVarList, b: TypeVarList) -> TypeVarList:
-    return b + a
+    return b + [v for v in a if v not in b]
 
 class TypeVariableQuery(TypeQuery[TypeVarList]):
 
     def __init__(self,
                  lookup: Callable[[str, Context], SymbolTableNode],
                  scope: 'TypeVarScope',
-                 include_callables: bool):
+                 include_callables: bool,
+                 *,
+                 include_bound: bool = False):
         self.include_callables = include_callables
         self.lookup = lookup
         self.scope = scope
+        self.include_bound = include_bound
         super().__init__(default=[], strategy=_concat_type_var_lists)
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
@@ -650,7 +638,8 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
     def visit_unbound_type(self, t: UnboundType) -> TypeVarList:
         name = t.name
         node = self.lookup(name, t)
-        if node and node.kind == TVAR and self.scope.get_binding(node) is None:
+        if node and node.kind == TVAR and (
+                self.include_bound or self.scope.get_binding(node) is None):
             assert isinstance(node.node, TypeVarExpr)
             return[(name, node.node)]
         elif not self.include_callables and self._seems_like_callable(t):
