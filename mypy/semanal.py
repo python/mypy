@@ -85,7 +85,7 @@ from mypy.types import (
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVariableQuery,
+    TypeVariableQuery, TypeVarList,
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -670,7 +670,7 @@ class SemanticAnalyzer(NodeVisitor):
         Note that this is performed *before* semantic analysis.
         """
         removed = []  # type: List[int]
-        declared_tvars = []  # type: List[Tuple[str, TypeVarExpr]]
+        declared_tvars = []  # type: TypeVarList
         type_vars = []  # type: List[TypeVarDef]
         for i, base_expr in enumerate(defn.base_type_exprs):
             try:
@@ -707,7 +707,7 @@ class SemanticAnalyzer(NodeVisitor):
             tvar_defs.append(self.tvar_scope.get_binding(tvar_expr.fullname()))
         defn.type_vars = tvar_defs
 
-    def analyze_typevar_declaration(self, t: Type) -> Optional[List[Tuple[str, TypeVarExpr]]]:
+    def analyze_typevar_declaration(self, t: Type) -> Optional[TypeVarList]:
         if not isinstance(t, UnboundType):
             return None
         unbound = t
@@ -715,7 +715,7 @@ class SemanticAnalyzer(NodeVisitor):
         if sym is None or sym.node is None:
             return None
         if sym.node.fullname() == 'typing.Generic':
-            tvars = []  # type: List[Tuple[str, TypeVarExpr]]
+            tvars = []  # type: TypeVarList
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
@@ -736,9 +736,8 @@ class SemanticAnalyzer(NodeVisitor):
             return unbound.name, sym.node
         return None
 
-    def get_all_bases_tvars(self, defn: ClassDef,
-                            removed: List[int]) -> List[Tuple[str, TypeVarExpr]]:
-        tvars = []  # type: List[Tuple[str, TypeVarExpr]]
+    def get_all_bases_tvars(self, defn: ClassDef, removed: List[int]) -> TypeVarList:
+        tvars = []  # type: TypeVarList
         for i, base_expr in enumerate(defn.base_type_exprs):
             if i not in removed:
                 try:
@@ -746,8 +745,8 @@ class SemanticAnalyzer(NodeVisitor):
                 except TypeTranslationError:
                     # This error will be caught later.
                     continue
-                tvars.extend(base.accept(TypeVariableQuery(
-                    self.lookup_qualified, self.tvar_scope)))
+                base_tvars = base.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))
+                tvars.extend(base_tvars)
         return self.remove_dups(tvars)
 
     def remove_dups(self, tvars: List[T]) -> List[T]:
