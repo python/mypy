@@ -509,7 +509,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Bind the type variables again to visit the body.
             if defn.type:
                 a = self.type_analyzer()
-                a.bind_function_type_variables(defn.type, defn)
+                a.bind_function_type_variables(cast(CallableType, defn.type), defn)
             self.function_stack.append(defn)
             self.enter()
             for arg in defn.arguments:

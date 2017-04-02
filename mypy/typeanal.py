@@ -421,12 +421,15 @@ class TypeAnalyser(TypeVisitor[Type]):
                 tvars.append(tvar_expr)
         return list(zip(names, tvars))
 
-    def bind_function_type_variables(self, fun_type: CallableType, defn: Context) -> None:
+    def bind_function_type_variables(self,
+                                     fun_type: CallableType, defn: Context) -> List[TypeVarDef]:
         """Find the type variables of the function type and bind them in our tvar_scope.
         """
         if fun_type.variables:
             for var in fun_type.variables:
-                self.tvar_scope.bind_fun_tvar(var.name, self.lookup(var.name, var).node)
+                var_expr = self.lookup(var.name, var).node
+                assert isinstance(var_expr, TypeVarExpr)
+                self.tvar_scope.bind_fun_tvar(var.name, var_expr)
             return fun_type.variables
         typevars = self.infer_type_variables(fun_type)
         # Do not define a new type variable if already defined in scope.
@@ -617,7 +620,7 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
                  scope: 'TypeVarScope',
                  *,
                  include_callables: bool = True,
-                 include_bound: bool = False):
+                 include_bound: bool = False) -> None:
         self.include_callables = include_callables
         self.lookup = lookup
         self.scope = scope
