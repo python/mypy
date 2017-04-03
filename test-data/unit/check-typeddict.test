@@ -704,6 +704,7 @@ reveal_type(u(m_s_i, c)) # E: Revealed type is 'typing.Mapping*[builtins.str, bu
 reveal_type(u(c, m_s_s)) # E: Revealed type is 'Union[typing.Mapping*[builtins.str, builtins.str], TypedDict(a=builtins.int, b=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])]'
 reveal_type(u(c, m_i_i)) # E: Revealed type is 'Union[typing.Mapping*[builtins.int, builtins.int], TypedDict(a=builtins.int, b=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])]'
 reveal_type(u(c, m_s_a)) # E: Revealed type is 'Union[typing.Mapping*[builtins.str, Any], TypedDict(a=builtins.int, b=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])]'
+[builtins fixtures/dict.pyi]
 
 
 -- Use dict literals
