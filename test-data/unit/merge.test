@@ -528,11 +528,6 @@ TypeInfo<2>(
   Names(
     f<3>))
 ==>
-TypeInfo<4>(
-  Name(target.C)
-  Bases(builtins.object<1>)
-  Mro(target.C<4>, builtins.object<1>)
-  Names())
 TypeInfo<0>(
   Name(target.A)
   Bases(builtins.object<1>)
@@ -544,6 +539,11 @@ TypeInfo<2>(
   Mro(target.B<2>, target.A<0>, builtins.object<1>)
   Names(
     f<3>))
+TypeInfo<4>(
+  Name(target.C)
+  Bases(builtins.object<1>)
+  Mro(target.C<4>, builtins.object<1>)
+  Names())
 
 [case testModuleAttribute]
 import target

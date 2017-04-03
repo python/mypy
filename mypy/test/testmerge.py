@@ -175,7 +175,7 @@ class ASTMergeSuite(DataSuite):
 
     def dump_typeinfos_recursive(self, names: SymbolTable) -> List[str]:
         a = []
-        for name, node in names.items():
+        for name, node in sorted(names.items(), key=lambda x: x[0]):
             if isinstance(node.node, TypeInfo):
                 a.extend(self.dump_typeinfo(node.node))
                 a.extend(self.dump_typeinfos_recursive(node.node.names))
