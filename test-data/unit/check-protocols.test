@@ -659,6 +659,12 @@ class C2(P):
 
 C()
 C2()
+
+class P2(Protocol):
+    attr: int = 1
+
+class B(P2): pass
+B() # OK, attr is not abstract
 [out]
 
 [case testClassVarsInProtocols]
