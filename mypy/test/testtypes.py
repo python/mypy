@@ -11,7 +11,7 @@ from mypy.join import join_types, join_simple
 from mypy.meet import meet_types
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type,
-    Instance, NoneTyp, ErrorType, Overloaded, TypeType, UnionType, UninhabitedType,
+    Instance, NoneTyp, Overloaded, TypeType, UnionType, UninhabitedType,
     true_only, false_only, TypeVarId
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
@@ -136,8 +136,7 @@ class TypeOpsSuite(Suite):
     # erase_type
 
     def test_trivial_erase(self) -> None:
-        for t in (self.fx.a, self.fx.o, self.fx.nonet,
-                  self.fx.anyt, self.fx.err):
+        for t in (self.fx.a, self.fx.o, self.fx.nonet, self.fx.anyt):
             self.assert_erase(t, t)
 
     def test_erase_with_type_variable(self) -> None:
@@ -393,12 +392,15 @@ class JoinSuite(Suite):
 
         self.assert_join(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.b, self.fx.b),
-                         self.fx.function)
+                         self.callable(self.fx.b, self.fx.b))
         self.assert_join(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.a, self.fx.a),
-                         self.fx.function)
+                         self.callable(self.fx.a, self.fx.a))
         self.assert_join(self.callable(self.fx.a, self.fx.b),
                          self.fx.function,
+                         self.fx.function)
+        self.assert_join(self.callable(self.fx.a, self.fx.b),
+                         self.callable(self.fx.d, self.fx.b),
                          self.fx.function)
 
     def test_type_vars(self) -> None:
@@ -455,15 +457,6 @@ class JoinSuite(Suite):
                        self.callable(self.fx.a, self.fx.b)]:
                 if str(t1) != str(t2):
                     self.assert_join(t1, t2, self.fx.o)
-
-    def test_error_type(self) -> None:
-        self.assert_join(self.fx.err, self.fx.anyt, self.fx.anyt)
-
-        # Meet against any type except dynamic results in ErrorType.
-        for t in [self.fx.a, self.fx.o, NoneTyp(), UnboundType('x'),
-                  self.fx.t, self.tuple(),
-                  self.callable(self.fx.a, self.fx.b)]:
-            self.assert_join(t, self.fx.err, self.fx.err)
 
     def test_simple_generics(self) -> None:
         self.assert_join(self.fx.ga, self.fx.ga, self.fx.ga)
@@ -553,7 +546,7 @@ class JoinSuite(Suite):
         self.assert_join(self.fx.e, self.fx.e2, self.fx.f)
 
         # Ambiguous result
-        self.assert_join(self.fx.e2, self.fx.e3, self.fx.err)
+        self.assert_join(self.fx.e2, self.fx.e3, self.fx.anyt)
 
     def test_generic_interfaces(self) -> None:
         self.skip()  # FIX
@@ -570,13 +563,14 @@ class JoinSuite(Suite):
     def test_simple_type_objects(self) -> None:
         t1 = self.type_callable(self.fx.a, self.fx.a)
         t2 = self.type_callable(self.fx.b, self.fx.b)
+        tr = self.type_callable(self.fx.b, self.fx.a)
 
         self.assert_join(t1, t1, t1)
         j = join_types(t1, t1)
         assert isinstance(j, CallableType)
         assert_true(j.is_type_obj())
 
-        self.assert_join(t1, t2, self.fx.type_type)
+        self.assert_join(t1, t2, tr)
         self.assert_join(t1, self.fx.type_type, self.fx.type_type)
         self.assert_join(self.fx.type_type, self.fx.type_type,
                          self.fx.type_type)
@@ -604,12 +598,10 @@ class JoinSuite(Suite):
         expected = str(join)
         assert_equal(actual, expected,
                      'join({}, {}) == {{}} ({{}} expected)'.format(s, t))
-        if not isinstance(s, ErrorType) and not isinstance(result, ErrorType):
-            assert_true(is_subtype(s, result),
-                        '{} not subtype of {}'.format(s, result))
-        if not isinstance(t, ErrorType) and not isinstance(result, ErrorType):
-            assert_true(is_subtype(t, result),
-                        '{} not subtype of {}'.format(t, result))
+        assert_true(is_subtype(s, result),
+                    '{} not subtype of {}'.format(s, result))
+        assert_true(is_subtype(t, result),
+                    '{} not subtype of {}'.format(t, result))
 
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
@@ -670,10 +662,10 @@ class MeetSuite(Suite):
 
         self.assert_meet(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.b, self.fx.b),
-                         NoneTyp())
+                         self.callable(self.fx.a, self.fx.b))
         self.assert_meet(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.a, self.fx.a),
-                         NoneTyp())
+                         self.callable(self.fx.a, self.fx.b))
 
     def test_type_vars(self) -> None:
         self.assert_meet(self.fx.t, self.fx.t, self.fx.t)
@@ -709,15 +701,6 @@ class MeetSuite(Suite):
                   UnboundType('x'), self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_meet(t, self.fx.anyt, t)
-
-    def test_error_type(self) -> None:
-        self.assert_meet(self.fx.err, self.fx.anyt, self.fx.err)
-
-        # Meet against any type except dynamic results in ErrorType.
-        for t in [self.fx.a, self.fx.o, NoneTyp(), UnboundType('x'),
-                  self.fx.t, self.tuple(),
-                  self.callable(self.fx.a, self.fx.b)]:
-            self.assert_meet(t, self.fx.err, self.fx.err)
 
     def test_simple_generics(self) -> None:
         self.assert_meet(self.fx.ga, self.fx.ga, self.fx.ga)
@@ -805,12 +788,10 @@ class MeetSuite(Suite):
         expected = str(meet)
         assert_equal(actual, expected,
                      'meet({}, {}) == {{}} ({{}} expected)'.format(s, t))
-        if not isinstance(s, ErrorType) and not isinstance(result, ErrorType):
-            assert_true(is_subtype(result, s),
-                        '{} not subtype of {}'.format(result, s))
-        if not isinstance(t, ErrorType) and not isinstance(result, ErrorType):
-            assert_true(is_subtype(result, t),
-                        '{} not subtype of {}'.format(result, t))
+        assert_true(is_subtype(result, s),
+                    '{} not subtype of {}'.format(result, s))
+        assert_true(is_subtype(result, t),
+                    '{} not subtype of {}'.format(result, t))
 
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)

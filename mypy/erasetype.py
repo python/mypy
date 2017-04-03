@@ -1,7 +1,7 @@
 from typing import Optional, Container, Callable
 
 from mypy.types import (
-    Type, TypeVisitor, UnboundType, ErrorType, AnyType, NoneTyp, TypeVarId,
+    Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarId,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, TypeTranslator, TypeList, UninhabitedType, TypeType
 )
@@ -28,9 +28,6 @@ def erase_type(typ: Type) -> Type:
 class EraseTypeVisitor(TypeVisitor[Type]):
     def visit_unbound_type(self, t: UnboundType) -> Type:
         assert False, 'Not supported'
-
-    def visit_error_type(self, t: ErrorType) -> Type:
-        return t
 
     def visit_type_list(self, t: TypeList) -> Type:
         assert False, 'Not supported'

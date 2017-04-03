@@ -31,7 +31,7 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
-    Instance, NoneTyp, ErrorType, strip_type, TypeType,
+    Instance, NoneTyp, strip_type, TypeType,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance
 )
@@ -2135,9 +2135,6 @@ class TypeChecker(NodeVisitor[None]):
             joined = UninhabitedType()  # type: Type
             for item in iterable.items:
                 joined = join_types(joined, item)
-            if isinstance(joined, ErrorType):
-                self.fail(messages.CANNOT_INFER_ITEM_TYPE, expr)
-                return AnyType()
             return joined
         else:
             # Non-tuple iterable.
@@ -2769,8 +2766,16 @@ def flatten(t: Expression) -> List[Expression]:
         return [t]
 
 
+def flatten_types(t: Type) -> List[Type]:
+    """Flatten a nested sequence of tuples into one list of nodes."""
+    if isinstance(t, TupleType):
+        return [b for a in t.items for b in flatten_types(a)]
+    else:
+        return [t]
+
+
 def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> List[TypeRange]:
-    all_types = [type_map[e] for e in flatten(expr)]
+    all_types = flatten_types(type_map[expr])
     types = []  # type: List[TypeRange]
     for type in all_types:
         if isinstance(type, FunctionLike) and type.is_type_obj():

@@ -110,8 +110,7 @@ class ConditionalTypeBinder:
         return None
 
     def put(self, expr: Expression, typ: Type) -> None:
-        # TODO: replace with isinstance(expr, BindableTypes)
-        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
+        if not isinstance(expr, BindableTypes):
             return
         if not expr.literal:
             return
@@ -203,8 +202,7 @@ class ConditionalTypeBinder:
                     type: Type,
                     declared_type: Type,
                     restrict_any: bool = False) -> None:
-        # TODO: replace with isinstance(expr, BindableTypes)
-        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
+        if not isinstance(expr, BindableTypes):
             return None
         if not expr.literal:
             return
