@@ -1412,3 +1412,19 @@ def f(x: Union[int, A], a: Type[A]) -> None:
 
 [builtins fixtures/isinstancelist.pyi]
 
+
+[case testIsinstanceVariableSubstitution]
+T = (int, str)
+U = (list, T)
+x: object = None
+
+if isinstance(x, T):
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+if isinstance(x, U):
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.list[Any], builtins.int, builtins.str]'
+
+if isinstance(x, (set, (list, T))):
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.set[Any], builtins.list[Any], builtins.int, builtins.str]'
+
+[builtins fixtures/isinstancelist.pyi]

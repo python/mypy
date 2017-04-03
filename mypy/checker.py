@@ -2756,8 +2756,16 @@ def flatten(t: Expression) -> List[Expression]:
         return [t]
 
 
+def flatten_types(t: Type) -> List[Type]:
+    """Flatten a nested sequence of tuples into one list of nodes."""
+    if isinstance(t, TupleType):
+        return [b for a in t.items for b in flatten_types(a)]
+    else:
+        return [t]
+
+
 def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> List[TypeRange]:
-    all_types = [type_map[e] for e in flatten(expr)]
+    all_types = flatten_types(type_map[expr])
     types = []  # type: List[TypeRange]
     for type in all_types:
         if isinstance(type, FunctionLike) and type.is_type_obj():
