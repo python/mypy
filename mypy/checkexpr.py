@@ -179,7 +179,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.check_typeddict_call(e.callee.node.typeddict_type,
                                              e.arg_kinds, e.arg_names, e.args, e)
         self.try_infer_partial_type(e)
-        callee_type = self.accept(e.callee)
+        context_type = CallableType([self.accept(a) for a in e.args], e.arg_kinds, e.arg_names,
+                                    ret_type=self.type_context[-1] or AnyType(),
+                                    fallback=self.named_type('builtins.function'))
+        callee_type = self.accept(e.callee, context_type)
         if (self.chk.options.disallow_untyped_calls and
                 self.chk.in_checked_function() and
                 isinstance(callee_type, CallableType)
