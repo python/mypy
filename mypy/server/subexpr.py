@@ -5,7 +5,7 @@ from typing import List
 from mypy.nodes import (
     Expression, Node, MemberExpr, YieldFromExpr, YieldExpr, CallExpr, OpExpr, ComparisonExpr,
     SliceExpr, CastExpr, RevealTypeExpr, UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr,
-    IndexExpr, GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication, FuncExpr,
+    IndexExpr, GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication, LambdaExpr,
     StarExpr, BackquoteExpr, AwaitExpr
 )
 from mypy.traverser import TraverserVisitor
@@ -116,7 +116,7 @@ class SubexpressionFinder(TraverserVisitor):
         self.add(e)
         super().visit_type_application(e)
 
-    def visit_func_expr(self, e: FuncExpr) -> None:
+    def visit_lambda_expr(self, e: LambdaExpr) -> None:
         self.add(e)
         super().visit_func_expr(e)
 

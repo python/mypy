@@ -191,6 +191,8 @@ class ASTMergeSuite(DataSuite):
         # To make the results repeatable, we try to generate unique and
         # deterministic sort keys.
         for module_id in sorted(graph):
+            if module_id == 'builtins':
+                continue
             type_map = graph[module_id].type_checker.type_map
             if type_map:
                 a.append('## {}'.format(module_id))

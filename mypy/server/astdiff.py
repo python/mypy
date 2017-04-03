@@ -11,7 +11,7 @@ from typing import Set, List, TypeVar
 
 from mypy.nodes import SymbolTable, SymbolTableNode, FuncBase, TypeInfo, Var
 from mypy.types import (
-    Type, TypeVisitor, UnboundType, ErrorType, TypeList, AnyType, Void, NoneTyp, UninhabitedType,
+    Type, TypeVisitor, UnboundType, TypeList, AnyType, NoneTyp, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
     UnionType, Overloaded, PartialType, TypeType
 )
@@ -137,17 +137,11 @@ class IdenticalTypeVisitor(TypeVisitor[bool]):
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return False
 
-    def visit_error_type(self, left: ErrorType) -> bool:
-        return False
-
     def visit_type_list(self, t: TypeList) -> bool:
         assert False, 'Not supported'
 
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)
-
-    def visit_void(self, left: Void) -> bool:
-        return isinstance(self.right, Void)
 
     def visit_none_type(self, left: NoneTyp) -> bool:
         return isinstance(self.right, NoneTyp)

@@ -13,7 +13,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, TypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Void, Overloaded
+    Overloaded
 )
 
 
@@ -194,9 +194,6 @@ class TypeReplaceVisitor(TypeVisitor[None]):
 
     def visit_union_type(self, typ: UnionType) -> None:
         raise NotImplementedError
-
-    def visit_void(self, typ: Void) -> None:
-        pass
 
     # Helpers
 

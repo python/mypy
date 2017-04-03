@@ -78,7 +78,6 @@ from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
     TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
-    Void,
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -469,7 +468,7 @@ class SemanticAnalyzer(NodeVisitor):
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, AnyType):
             pass
-        elif isinstance(type, (EllipsisType, TupleType, Void)):
+        elif isinstance(type, (EllipsisType, TupleType)):
             # TODO: Need to process tuple items?
             pass
         elif isinstance(type, Instance):
@@ -719,9 +718,8 @@ class SemanticAnalyzer(NodeVisitor):
         if self.analyze_namedtuple_classdef(defn):
             # just analyze the class body so we catch type errors in default values
             self.enter_class(defn)
-            yield False
+            yield True
             self.leave_class()
-            return
         else:
             self.setup_class_def_analysis(defn)
 

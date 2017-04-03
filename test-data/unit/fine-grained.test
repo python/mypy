@@ -383,7 +383,7 @@ main:3: error: "module" has no attribute "g"
 [case testAddBaseClassMethodCausingInvalidOverride]
 import m
 class B(m.A):
-    def f(self) -> None: pass
+    def f(self) -> str: pass
 [file m.py]
 class A: pass
 [file m.py.2]
@@ -396,10 +396,10 @@ main:3: error: Return type of "f" incompatible with supertype "A"
 [case testModifyBaseClassMethodCausingInvalidOverride]
 import m
 class B(m.A):
-    def f(self) -> None: pass
+    def f(self) -> str: pass
 [file m.py]
 class A:
-    def f(self) -> None: pass
+    def f(self) -> str: pass
 [file m.py.2]
 class A:
     def f(self) -> int: pass

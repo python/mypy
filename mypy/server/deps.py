@@ -11,7 +11,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, Instance, AnyType, NoneTyp, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Void, FunctionLike
+    FunctionLike
 )
 from mypy.server.trigger import make_trigger
 
@@ -223,9 +223,6 @@ class TypeDependenciesVisitor(TypeVisitor[List[str]]):
 
     def visit_union_type(self, typ: UnionType) -> List[str]:
         raise NotImplementedError
-
-    def visit_void(self, typ: Void) -> List[str]:
-        return []
 
 
 def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
