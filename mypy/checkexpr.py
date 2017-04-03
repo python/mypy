@@ -2435,9 +2435,12 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             (isinstance(actual, Instance) and actual.type.fallback_to_any)):
         # These could match anything at runtime.
         return 2
-    if isinstance(formal, CallableType) and isinstance(actual, (CallableType, Overloaded)):
-        # TODO: do more sophisticated callable matching
-        return 2
+    if isinstance(formal, CallableType):
+        if isinstance(actual, (CallableType, Overloaded)):
+            # TODO: do more sophisticated callable matching
+            return 2
+        if isinstance(actual, TypeType):
+            return 2 if is_subtype(actual, formal) else 0
     if isinstance(actual, NoneTyp):
         if not experiments.STRICT_OPTIONAL:
             # NoneTyp matches anything if we're not doing strict Optional checking

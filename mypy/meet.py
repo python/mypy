@@ -220,7 +220,13 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
-            return combine_similar_callables(t, self.s)
+            if is_equivalent(t, self.s):
+                return combine_similar_callables(t, self.s)
+            result = meet_similar_callables(t, self.s)
+            if isinstance(result.ret_type, UninhabitedType):
+                # Return a plain None or <uninhabited> instead of a weird function.
+                return self.default(self.s)
+            return result
         else:
             return self.default(self.s)
 
@@ -279,3 +285,21 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 return UninhabitedType()
             else:
                 return NoneTyp()
+
+
+def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
+    from mypy.join import join_types
+    arg_types = []  # type: List[Type]
+    for i in range(len(t.arg_types)):
+        arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
+    # TODO in combine_similar_callables also applies here (names and kinds)
+    # The fallback type can be either 'function' or 'type'. The result should have 'function' as
+    # fallback only if both operands have it as 'function'.
+    if t.fallback.type.fullname() != 'builtins.function':
+        fallback = t.fallback
+    else:
+        fallback = s.fallback
+    return t.copy_modified(arg_types=arg_types,
+                           ret_type=meet_types(t.ret_type, s.ret_type),
+                           fallback=fallback,
+                           name=None)
