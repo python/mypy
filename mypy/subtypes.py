@@ -563,10 +563,6 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         # from unions, which could filter out some bogus messages.
         return True
 
-    def visit_error_type(self, left: ErrorType) -> bool:
-        # This isn't a real type.
-        return False
-
     def visit_type_list(self, left: TypeList) -> bool:
         assert False, 'Should not happen'
 
