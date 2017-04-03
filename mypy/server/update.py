@@ -283,13 +283,23 @@ def find_targets_recursive(
 def reprocess_nodes(manager: BuildManager,
                     graph: Dict[str, State],
                     module_id: str,
-                    nodes: Set[DeferredNode],
+                    nodeset: Set[DeferredNode],
                     deps: Dict[str, Set[str]]) -> Set[str]:
     """Reprocess a set of nodes within a single module.
 
     Return fired triggers.
     """
     file_node = manager.modules[module_id]
+
+    def key(node: DeferredNode) -> str:
+        fullname = node.node.fullname()
+        if isinstance(node.node, FuncDef) and fullname is None:
+            assert node.node.info is not None
+            fullname = '%s.%s' % (node.node.info.fullname(), node.node.name())
+        return fullname
+
+    # Some nodes by full name so that the order of processing is deterministic.
+    nodes = sorted(nodeset, key=key)
 
     # Strip semantic analysis information.
     for deferred in nodes:
@@ -319,7 +329,7 @@ def reprocess_nodes(manager: BuildManager,
     old_types_map = get_enclosing_namespace_types(nodes)
 
     # Type check.
-    graph[module_id].type_checker.check_second_pass(list(nodes))  # TODO: check return value
+    graph[module_id].type_checker.check_second_pass(nodes)  # TODO: check return value
 
     # Check if any attribute types were changed and need to be propagated further.
     new_triggered = get_triggered_namespace_items(old_types_map)
@@ -333,8 +343,8 @@ def reprocess_nodes(manager: BuildManager,
 NamespaceNode = Union[TypeInfo, MypyFile]
 
 
-def get_enclosing_namespace_types(nodes: Set[DeferredNode]) -> Dict[NamespaceNode,
-                                                                    Dict[str, Type]]:
+def get_enclosing_namespace_types(nodes: List[DeferredNode]) -> Dict[NamespaceNode,
+                                                                     Dict[str, Type]]:
     types = {}  # type: Dict[NamespaceNode, Dict[str, Type]]
     for deferred in nodes:
         info = deferred.active_typeinfo
@@ -365,7 +375,7 @@ def get_triggered_namespace_items(old_types_map: Dict[NamespaceNode, Dict[str, T
 
 
 def update_deps(module_id: str,
-                nodes: Set[DeferredNode],
+                nodes: List[DeferredNode],
                 graph: Dict[str, State],
                 deps: Dict[str, Set[str]]) -> None:
     for deferred in nodes:
