@@ -442,6 +442,8 @@ class ASTConverter(ast27.NodeTransformer):
         seen_names = set()  # type: Set[str]
         for name in names:
             if name in seen_names:
+                if name.arg == '_':
+                    continue
                 self.fail("duplicate argument '{}' in function definition".format(name), line, 0)
                 break
             seen_names.add(name)

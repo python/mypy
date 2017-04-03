@@ -267,6 +267,9 @@ _ = ""
 _ = ""  # type: int
 (_, _) = ("", 1.0 + "")  # E: Unsupported left operand type for + ("float")
 (_, _) = (1.0, "")
+for (_, _) in ((1, "a"), (2, "b")): pass
+
+def f(_: int, _: str) -> None: pass
 
 [case testGlobalDefinedInBlockWithType]
 
