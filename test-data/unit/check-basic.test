@@ -261,6 +261,13 @@ main:3: error: Incompatible types in assignment (expression has type "B", variab
 main:7: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 main:9: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
+[case testUnderscoreVariableIsFresh]
+_ = 1
+_ = ""
+_ = ""  # type: int
+(_, _) = ("", 1.0 + "")  # E: Unsupported left operand type for + ("float")
+(_, _) = (1.0, "")
+
 [case testGlobalDefinedInBlockWithType]
 
 class A: pass
