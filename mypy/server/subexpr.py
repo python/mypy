@@ -118,7 +118,7 @@ class SubexpressionFinder(TraverserVisitor):
 
     def visit_lambda_expr(self, e: LambdaExpr) -> None:
         self.add(e)
-        super().visit_func_expr(e)
+        super().visit_lambda_expr(e)
 
     def visit_star_expr(self, e: StarExpr) -> None:
         self.add(e)
