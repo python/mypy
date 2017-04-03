@@ -671,7 +671,6 @@ class SemanticAnalyzer(NodeVisitor):
         """
         removed = []  # type: List[int]
         declared_tvars = []  # type: TypeVarList
-        type_vars = []  # type: List[TypeVarDef]
         for i, base_expr in enumerate(defn.base_type_exprs):
             try:
                 base = expr_to_unanalyzed_type(base_expr)
@@ -703,8 +702,7 @@ class SemanticAnalyzer(NodeVisitor):
             del defn.base_type_exprs[i]
         tvar_defs = []  # type: List[TypeVarDef]
         for name, tvar_expr in declared_tvars:
-            self.tvar_scope.bind_class_tvar(name, tvar_expr)
-            tvar_defs.append(self.tvar_scope.get_binding(tvar_expr.fullname()))
+            tvar_defs.append(self.tvar_scope.bind_class_tvar(name, tvar_expr))
         defn.type_vars = tvar_defs
 
     def analyze_typevar_declaration(self, t: Type) -> Optional[TypeVarList]:

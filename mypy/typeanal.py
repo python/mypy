@@ -214,7 +214,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     return AnyType()
                 # Allow unbound type variables when defining an alias
                 if not (self.aliasing and sym.kind == TVAR and
-                        self.tvar_scope.get_binding(sym) == None):
+                        self.tvar_scope.get_binding(sym) is None):
                     self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = sym.node  # type: TypeInfo
@@ -365,11 +365,11 @@ class TypeAnalyser(TypeVisitor[Type]):
         if len(t.args) == 0:
             # Callable (bare). Treat as Callable[..., Any].
             ret = CallableType([AnyType(), AnyType()],
-                                [nodes.ARG_STAR, nodes.ARG_STAR2],
-                                [None, None],
-                                ret_type=AnyType(),
-                                fallback=fallback,
-                                is_ellipsis_args=True)
+                               [nodes.ARG_STAR, nodes.ARG_STAR2],
+                               [None, None],
+                               ret_type=AnyType(),
+                               fallback=fallback,
+                               is_ellipsis_args=True)
         elif len(t.args) == 2:
             ret_type = t.args[1]
             if isinstance(t.args[0], TypeList):
@@ -383,11 +383,11 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif isinstance(t.args[0], EllipsisType):
                 # Callable[..., RET] (with literal ellipsis; accept arbitrary arguments)
                 ret = CallableType([AnyType(), AnyType()],
-                                    [nodes.ARG_STAR, nodes.ARG_STAR2],
-                                    [None, None],
-                                    ret_type=ret_type,
-                                    fallback=fallback,
-                                    is_ellipsis_args=True)
+                                   [nodes.ARG_STAR, nodes.ARG_STAR2],
+                                   [None, None],
+                                   ret_type=ret_type,
+                                   fallback=fallback,
+                                   is_ellipsis_args=True)
             else:
                 self.fail('The first argument to Callable must be a list of types or "..."', t)
                 return AnyType()
@@ -608,10 +608,13 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def visit_type_type(self, t: TypeType) -> None:
         pass
 
+
 TypeVarList = List[Tuple[str, TypeVarExpr]]
+
 
 def _concat_type_var_lists(a: TypeVarList, b: TypeVarList) -> TypeVarList:
     return b + [v for v in a if v not in b]
+
 
 class TypeVariableQuery(TypeQuery[TypeVarList]):
 
