@@ -65,7 +65,8 @@ def parse_test_cases(
                     assert arg is not None
                     file_entry = (join(base_path, arg), '\n'.join(p[i].data))
                     if p[i].id == 'file':
-                        files.append(file_entry)
+                        if arg != 'builtins.py' or ALLOW_FIXTURES:
+                            files.append(file_entry)
                     elif p[i].id == 'outfile':
                         output_files.append(file_entry)
                 elif p[i].id in ('builtins', 'builtins_py2'):
