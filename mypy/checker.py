@@ -17,16 +17,22 @@ from mypy.nodes import (
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
-    UnicodeExpr, OpExpr, UnaryExpr, LambdaExpr, TempNode, SymbolTableNode,
-    Context, Decorator, PrintStmt, LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt,
-    ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, ImportFrom, ImportAll, ImportBase,
-    ARG_POS, CONTRAVARIANT, COVARIANT, ExecStmt, GlobalDecl, Import, NonlocalDecl,
-    MDEF, Node, literal, literal_hash,
+    BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, RevealTypeExpr, SuperExpr,
+    TypeApplication, DictExpr, SliceExpr, LambdaExpr, TempNode, SymbolTableNode,
+    Context, ListComprehension, ConditionalExpr, GeneratorExpr,
+    Decorator, SetExpr, TypeVarExpr, NewTypeExpr, PrintStmt,
+    LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt, ComparisonExpr, StarExpr,
+    YieldFromExpr, NamedTupleExpr, TypedDictExpr, SetComprehension,
+    DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
+    RefExpr, YieldExpr, BackquoteExpr, Import, ImportFrom, ImportAll, ImportBase,
+    AwaitExpr, PromoteExpr, Node, EnumCallExpr, literal, literal_hash,
+    ARG_POS, MDEF,
+    CONTRAVARIANT, COVARIANT
 )
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
-    Instance, NoneTyp, ErrorType, strip_type, TypeType,
+    Instance, NoneTyp, strip_type, TypeType,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance
 )
@@ -45,7 +51,7 @@ from mypy.typevars import fill_typevars, has_no_typevars
 from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
-from mypy.visitor import StatementVisitor
+from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
@@ -70,7 +76,7 @@ DeferredNode = NamedTuple(
     ])
 
 
-class TypeChecker(StatementVisitor[None]):
+class TypeChecker(NodeVisitor[None]):
     """Mypy type checker.
 
     Type check mypy source files that have been semantically analyzed.
@@ -1617,7 +1623,7 @@ class TypeChecker(StatementVisitor[None]):
             partial_type = PartialType(None, name, [init_type])
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname()
-            if (isinstance(lvalue, NameExpr) and
+            if (isinstance(lvalue, (NameExpr, MemberExpr)) and
                     (fullname == 'builtins.list' or
                      fullname == 'builtins.set' or
                      fullname == 'builtins.dict') and
@@ -2128,9 +2134,6 @@ class TypeChecker(StatementVisitor[None]):
             joined = UninhabitedType()  # type: Type
             for item in iterable.items:
                 joined = join_types(joined, item)
-            if isinstance(joined, ErrorType):
-                self.fail(messages.CANNOT_INFER_ITEM_TYPE, expr)
-                return AnyType()
             return joined
         else:
             # Non-tuple iterable.
@@ -2259,21 +2262,7 @@ class TypeChecker(StatementVisitor[None]):
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         self.binder.handle_continue()
-
-    def visit_exec_stmt(self, s: ExecStmt) -> None:
-        pass
-
-    def visit_global_decl(self, s: GlobalDecl) -> None:
-        pass
-
-    def visit_nonlocal_decl(self, s: NonlocalDecl) -> None:
-        pass
-
-    def visit_var(self, s: Var) -> None:
-        pass
-
-    def visit_pass_stmt(self, s: PassStmt) -> None:
-        pass
+        return None
 
     #
     # Helpers

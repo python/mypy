@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
-    Type, AnyType, TypeVisitor, UnboundType, ErrorType, NoneTyp, TypeVarType,
+    Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType,
     Instance, CallableType, TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType,
     DeletedType, UninhabitedType, TypeType
 )
@@ -124,9 +124,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         self.s = s
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        if isinstance(self.s, ErrorType):
-            return ErrorType()
-        elif isinstance(self.s, NoneTyp):
+        if isinstance(self.s, NoneTyp):
             if experiments.STRICT_OPTIONAL:
                 return AnyType()
             else:
@@ -135,9 +133,6 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return self.s
         else:
             return AnyType()
-
-    def visit_error_type(self, t: ErrorType) -> Type:
-        return t
 
     def visit_type_list(self, t: TypeList) -> Type:
         assert False, 'Not supported'
@@ -164,30 +159,21 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             else:
                 return UninhabitedType()
         else:
-            if not isinstance(self.s, ErrorType):
-                return t
-            else:
-                return ErrorType()
+            return t
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
-        if not isinstance(self.s, ErrorType):
-            return t
-        else:
-            return ErrorType()
+        return t
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
-        if not isinstance(self.s, ErrorType):
-            if isinstance(self.s, NoneTyp):
-                if experiments.STRICT_OPTIONAL:
-                    return t
-                else:
-                    return self.s
-            elif isinstance(self.s, UninhabitedType):
-                return self.s
-            else:
+        if isinstance(self.s, NoneTyp):
+            if experiments.STRICT_OPTIONAL:
                 return t
+            else:
+                return self.s
+        elif isinstance(self.s, UninhabitedType):
+            return self.s
         else:
-            return ErrorType()
+            return t
 
     def visit_erased_type(self, t: ErasedType) -> Type:
         return self.s
@@ -288,8 +274,6 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def default(self, typ: Type) -> Type:
         if isinstance(typ, UnboundType):
             return AnyType()
-        elif isinstance(typ, ErrorType):
-            return ErrorType()
         else:
             if experiments.STRICT_OPTIONAL:
                 return UninhabitedType()

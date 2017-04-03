@@ -498,7 +498,7 @@ def outer(x: T) -> T:
 [case testClassMemberTypeVarInFunctionBody]
 from typing import TypeVar
 class C:
-    T = TypeVar('T', int)
+    T = TypeVar('T', bound=int)
     def f(self, x: T) -> T:
         A = C.T
         return x

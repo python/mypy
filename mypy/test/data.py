@@ -437,6 +437,8 @@ def fix_cobertura_filename(line: str) -> str:
 ##
 
 
+# This function name is special to pytest.  See
+# http://doc.pytest.org/en/latest/writing_plugins.html#initialization-command-line-and-configuration-hooks
 def pytest_addoption(parser: Any) -> None:
     group = parser.getgroup('mypy')
     group.addoption('--update-data', action='store_true', default=False,
@@ -444,6 +446,8 @@ def pytest_addoption(parser: Any) -> None:
                          ' (supported only for certain tests)')
 
 
+# This function name is special to pytest.  See
+# http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
 def pytest_pycollect_makeitem(collector: Any, name: str, obj: Any) -> Any:
     if not isinstance(obj, type) or not issubclass(obj, DataSuite):
         return None
