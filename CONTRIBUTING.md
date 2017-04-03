@@ -103,6 +103,17 @@ You may also find other pages in the
 helpful in developing your change.
 
 
+Core developer guidelines
+-------------------------
+
+Core developers should follow these rules when processing pull requests:
+
+* Always wait for tests to pass before merging PRs.
+* Use "[Squash and merge](https://github.com/blog/2141-squash-your-commits)"
+  to merge PRs.
+* Delete branches for merged PRs (by core devs pushing to the main repo).
+
+
 Issue-tracker conventions
 -------------------------
 

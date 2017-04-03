@@ -223,13 +223,6 @@ class UnboundType(Type):
                            [deserialize_type(a) for a in data['args']])
 
 
-class ErrorType(Type):
-    """The error type is used as the result of failed type operations."""
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_error_type(self)
-
-
 class TypeList(Type):
     """A list of types [...].
 
@@ -1199,9 +1192,6 @@ class TypeVisitor(Generic[T]):
     def visit_type_list(self, t: TypeList) -> T:
         raise self._notimplemented_helper('type_list')
 
-    def visit_error_type(self, t: ErrorType) -> T:
-        raise self._notimplemented_helper('error_type')
-
     @abstractmethod
     def visit_any(self, t: AnyType) -> T:
         pass
@@ -1274,9 +1264,6 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:
-        return t
-
-    def visit_error_type(self, t: ErrorType) -> Type:
         return t
 
     def visit_any(self, t: AnyType) -> Type:
@@ -1374,9 +1361,6 @@ class TypeStrVisitor(TypeVisitor[str]):
 
     def visit_type_list(self, t: TypeList) -> str:
         return '<TypeList {}>'.format(self.list_str(t.items))
-
-    def visit_error_type(self, t: ErrorType) -> str:
-        return '<ERROR>'
 
     def visit_any(self, t: AnyType) -> str:
         return 'Any'
@@ -1542,9 +1526,6 @@ class TypeQuery(TypeVisitor[bool]):
         return self.default
 
     def visit_type_list(self, t: TypeList) -> bool:
-        return self.default
-
-    def visit_error_type(self, t: ErrorType) -> bool:
         return self.default
 
     def visit_any(self, t: AnyType) -> bool:

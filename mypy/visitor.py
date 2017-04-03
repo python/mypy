@@ -157,6 +157,10 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_enum_call_expr(self, o: 'mypy.nodes.EnumCallExpr') -> T:
+        pass
+
+    @abstractmethod
     def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> T:
         pass
 
@@ -512,6 +516,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
         pass
 
     def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> T:
+        pass
+
+    def visit_enum_call_expr(self, o: 'mypy.nodes.EnumCallExpr') -> T:
         pass
 
     def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> T:

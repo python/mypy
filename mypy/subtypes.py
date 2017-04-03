@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Callable
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, ErrorType, FormalArgument, NoneTyp,
+    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
 )
@@ -51,17 +51,30 @@ def is_subtype(left: Type, right: Type,
             or isinstance(right, ErasedType)):
         return True
     elif isinstance(right, UnionType) and not isinstance(left, UnionType):
-        return any(is_subtype(left, item, type_parameter_checker,
-                              ignore_pos_arg_names=ignore_pos_arg_names)
-                   for item in right.items)
+        # Normally, when 'left' is not itself a union, the only way
+        # 'left' can be a subtype of the union 'right' is if it is a
+        # subtype of one of the items making up the union.
+        is_subtype_of_item = any(is_subtype(left, item, type_parameter_checker,
+                                            ignore_pos_arg_names=ignore_pos_arg_names)
+                                 for item in right.items)
+        # However, if 'left' is a type variable T, T might also have
+        # an upper bound which is itself a union. This case will be
+        # handled below by the SubtypeVisitor. We have to check both
+        # possibilities, to handle both cases like T <: Union[T, U]
+        # and cases like T <: B where B is the upper bound of T and is
+        # a union. (See #2314.)
+        if not isinstance(left, TypeVarType):
+            return is_subtype_of_item
+        elif is_subtype_of_item:
+            return True
+        # otherwise, fall through
     # Treat builtins.type the same as Type[Any]
     elif is_named_instance(left, 'builtins.type'):
             return is_subtype(TypeType(AnyType()), right)
     elif is_named_instance(right, 'builtins.type'):
             return is_subtype(left, TypeType(AnyType()))
-    else:
-        return left.accept(SubtypeVisitor(right, type_parameter_checker,
-                                          ignore_pos_arg_names=ignore_pos_arg_names))
+    return left.accept(SubtypeVisitor(right, type_parameter_checker,
+                                      ignore_pos_arg_names=ignore_pos_arg_names))
 
 
 def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
@@ -95,9 +108,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return True
-
-    def visit_error_type(self, left: ErrorType) -> bool:
-        return False
 
     def visit_type_list(self, t: TypeList) -> bool:
         assert False, 'Not supported'
