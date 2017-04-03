@@ -31,7 +31,7 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
-    Instance, NoneTyp, ErrorType, strip_type, TypeType,
+    Instance, NoneTyp, strip_type, TypeType,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance
 )
@@ -2133,9 +2133,6 @@ class TypeChecker(NodeVisitor[None]):
             joined = UninhabitedType()  # type: Type
             for item in iterable.items:
                 joined = join_types(joined, item)
-            if isinstance(joined, ErrorType):
-                self.fail(messages.CANNOT_INFER_ITEM_TYPE, expr)
-                return AnyType()
             return joined
         else:
             # Non-tuple iterable.

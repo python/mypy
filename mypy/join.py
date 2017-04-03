@@ -5,7 +5,7 @@ from typing import cast, List
 
 from mypy.types import (
     Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType,
-    ErrorType, TypeVarType, CallableType, TupleType, TypedDictType, ErasedType, TypeList,
+    TypeVarType, CallableType, TupleType, TypedDictType, ErasedType, TypeList,
     UnionType, FunctionLike, Overloaded, PartialType, DeletedType,
     UninhabitedType, TypeType, true_or_false
 )
@@ -63,8 +63,6 @@ def join_types(s: Type, t: Type) -> Type:
     """Return the least upper bound of s and t.
 
     For example, the join of 'int' and 'object' is 'object'.
-
-    If the join does not exist, return an ErrorType instance.
     """
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
         # if types are restricted in different ways, use the more general versions
@@ -101,19 +99,13 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         self.s = s
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        if isinstance(self.s, ErrorType):
-            return ErrorType()
-        else:
-            return AnyType()
+        return AnyType()
 
     def visit_union_type(self, t: UnionType) -> Type:
         if is_subtype(self.s, t):
             return t
         else:
             return UnionType.make_simplified_union([self.s, t])
-
-    def visit_error_type(self, t: ErrorType) -> Type:
-        return t
 
     def visit_type_list(self, t: TypeList) -> Type:
         assert False, 'Not supported'
@@ -127,8 +119,6 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 return t
             elif isinstance(self.s, UnboundType):
                 return AnyType()
-            elif isinstance(self.s, ErrorType):
-                return ErrorType()
             else:
                 return UnionType.make_simplified_union([self.s, t])
         else:
@@ -264,8 +254,6 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return object_from_instance(typ)
         elif isinstance(typ, UnboundType):
             return AnyType()
-        elif isinstance(typ, ErrorType):
-            return ErrorType()
         elif isinstance(typ, TupleType):
             return self.default(typ.fallback)
         elif isinstance(typ, TypedDictType):
@@ -280,8 +268,6 @@ class TypeJoinVisitor(TypeVisitor[Type]):
 
 def join_instances(t: Instance, s: Instance) -> Type:
     """Calculate the join of two instance types.
-
-    Return ErrorType if the result is ambiguous.
     """
     if t.type == s.type:
         # Simplest case: join two types with the same base type (but
