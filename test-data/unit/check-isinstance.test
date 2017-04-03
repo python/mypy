@@ -1448,6 +1448,7 @@ def f(x: Type[int]) -> None:
     else:
         reveal_type(x)  # Unreachable
     reveal_type(x) # E: Revealed type is 'Type[builtins.int]'
+[builtins fixtures/isinstance.pyi]
 
 
 [case testIsinstanceVariableSubstitution]
