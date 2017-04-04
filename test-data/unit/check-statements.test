@@ -226,7 +226,7 @@ class B:
 class C: pass
 [out]
 main:3: error: Unsupported operand types for + ("A" and "B")
-main:4: error: Result type of + incompatible in assignment
+main:4: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 main:5: error: Unsupported left operand type for + ("C")
 
 [case testMinusAssign]
@@ -246,7 +246,7 @@ class B:
 class C: pass
 [out]
 main:3: error: Unsupported operand types for - ("A" and "B")
-main:4: error: Result type of - incompatible in assignment
+main:4: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 main:5: error: Unsupported left operand type for - ("C")
 
 [case testMulAssign]
@@ -1517,7 +1517,12 @@ main:8: error: Incompatible types in assignment (expression has type "A", variab
 
 [case testAugmentedAssignmentIntFloat]
 weight0 = 65.5
+reveal_type(weight0)  # E: Revealed type is 'builtins.float'
 weight0 = 65
+reveal_type(weight0)  # E: Revealed type is 'builtins.int'
+weight0 *= 'a'  # E: Incompatible types in assignment (expression has type "str", variable has type "float")
 weight0 *= 0.5
+reveal_type(weight0)  # E: Revealed type is 'builtins.float'
+weight0 *= object()  # E: Unsupported operand types for * ("float" and "object")
 
 [builtins fixtures/float.pyi]
