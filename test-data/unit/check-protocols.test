@@ -482,63 +482,36 @@ var2: P[Union[str, P], Union[P, int]] = C() # E: Incompatible types in assignmen
 
 [out]
 
-[case testSelfTypesWithProtocols]
+[case testSelfTypesWithProtocolsBehaveAsWithNominal]
 from typing import Protocol, TypeVar
 
 T = TypeVar('T', bound=Shape)
-
 class Shape(Protocol):
-    def combine(self: T, other: T) -> T:
-        pass
-
-class Template(Protocol):
-    def combine(self, other: Template) -> Template:
-        pass
-
-class Triangle:
-    def combine(self, other: Shape) -> Shape:
-        pass
-
-class Rectangle:
-    def combine(self, other: T) -> T:
-        pass
-
-class Circle:
-    def combine(self: T, other: Shape) -> T:
-        pass
-
-class Bad:
-    def combine(self, other: int) -> str:
-        pass
-
-class AnotherShape(Protocol):
     def combine(self: T, other: T) -> T:
         pass
 
 class NonProtoShape:
     def combine(self: T, other: T) -> T:
         pass
+class Circle:
+    def combine(self: T, other: Shape) -> T:
+        pass
+class Triangle:
+    def combine(self, other: Shape) -> Shape:
+        pass
+class Bad:
+    def combine(self, other: int) -> str:
+        pass
 
+def f(s: Shape) -> None: pass
 s: Shape
-a: AnotherShape
-t = Triangle()
-r = Rectangle()
-c = Circle()
-n = NonProtoShape()
-tm: Template
 
-# The compatibility matrix below matches behavior for *nominal* subclasses with self-types;
-# these should be updated if the latter changes.
-s = t # E: Incompatible types in assignment (expression has type "Triangle", variable has type "Shape")
-s = r
-s = c
+f(NonProtoShape())
+f(Circle())
+s = Triangle() # E: Incompatible types in assignment (expression has type "Triangle", variable has type "Shape")
 s = Bad() # E: Incompatible types in assignment (expression has type "Bad", variable has type "Shape")
-s = a
-s = n
-tm = n # E: Incompatible types in assignment (expression has type "NonProtoShape", variable has type "Template")
-tm = r
-s2: Shape
-n2: NonProtoShape = s2 # E: Incompatible types in assignment (expression has type "Shape", variable has type "NonProtoShape")
+
+n2: NonProtoShape = s # E: Incompatible types in assignment (expression has type "Shape", variable has type "NonProtoShape")
 [out]
 
 -- Recursive protocol types
