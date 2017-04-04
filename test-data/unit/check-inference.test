@@ -686,7 +686,7 @@ g('a')() # E: List[str] not callable
 # call, would be preferable here.
 g(['a']) # E: Argument 1 to "g" has incompatible type List[str]; expected List[<uninhabited>]
 
-h(g(['a'])) # E: Argument 1 to "g" has incompatible type List[str]; expected List[<uninhabited>]
+h(g(['a']))
 
 def i(x: Union[List[T], List[U]], y: List[T], z: List[U]) -> None: pass
 a = [1]

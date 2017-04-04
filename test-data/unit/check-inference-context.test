@@ -570,13 +570,10 @@ class B: pass
 [builtins fixtures/list.pyi]
 
 [case testInferLambdaTypeUsingContext]
-x = (lambda x: x + 1)(1)  # type: str
+x : str = (lambda x: x + 1)(1)  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 reveal_type((lambda x, y: x + y)(1, 2))  # E: Revealed type is 'builtins.int'
 (lambda x, y: x + y)(1, "")  # E: Unsupported operand types for + ("int" and "str")
 (lambda *, x, y: x + y)(x=1, y="")  # E: Unsupported operand types for + ("int" and "str")
-[out]
-main:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-main:1: error: Incompatible return value type (got "int", expected "str")
 
 [case testInferLambdaAsGenericFunctionArgument]
 from typing import TypeVar, List, Any, Callable
