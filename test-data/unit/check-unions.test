@@ -470,7 +470,6 @@ x: Union[int, Any]
 a: Any
 if bool():
     x = a
-    # TODO: Maybe we should infer Any as the type instead.
     reveal_type(x)  # E: Revealed type is 'Any'
 reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
 [builtins fixtures/bool.pyi]
