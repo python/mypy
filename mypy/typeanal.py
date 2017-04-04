@@ -152,6 +152,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
+                    self.implicit_any('Tuple without type args', t)
                     return self.builtin_type('builtins.tuple')
                 if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                     # Tuple[T, ...] (uniform, variable-length tuple)
@@ -174,6 +175,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                 return self.analyze_callable_type(t)
             elif fullname == 'typing.Type':
                 if len(t.args) == 0:
+                    self.implicit_any('Type without type args', t)
                     return TypeType(AnyType(), line=t.line)
                 if len(t.args) != 1:
                     self.fail('Type[...] must have exactly one type argument', t)
@@ -183,6 +185,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                 if self.nesting_level > 0:
                     self.fail('Invalid type: ClassVar nested inside other type', t)
                 if len(t.args) == 0:
+                    self.implicit_any('ClassVar without type args', t)
                     return AnyType(line=t.line)
                 if len(t.args) != 1:
                     self.fail('ClassVar[...] must have at most one type argument', t)
@@ -202,6 +205,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                 act_len = len(an_args)
                 if exp_len > 0 and act_len == 0:
                     # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
+                    self.implicit_any('Generic type without type args', t)
                     return self.replace_alias_tvars(override, all_vars, [AnyType()] * exp_len,
                                                     t.line, t.column)
                 if exp_len == 0 and act_len == 0:
@@ -220,6 +224,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                     # context. This is slightly problematic as it allows using the type 'Any'
                     # as a base class -- however, this will fail soon at runtime so the problem
                     # is pretty minor.
+                    self.implicit_any('Assigning value of type Any', t)
                     return AnyType()
                 # Allow unbound type variables when defining an alias
                 if not (self.aliasing and sym.kind == TVAR and
@@ -259,6 +264,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                                             fallback=instance)
                 return instance
         else:
+            self.implicit_any('Fallback', t)
             return AnyType()
 
     def get_type_var_names(self, tp: Type) -> List[str]:
@@ -374,6 +380,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
         fallback = self.builtin_type('builtins.function')
         if len(t.args) == 0:
             # Callable (bare). Treat as Callable[..., Any].
+            self.implicit_any('Callable without type args', t)
             ret = CallableType([AnyType(), AnyType()],
                                [nodes.ARG_STAR, nodes.ARG_STAR2],
                                [None, None],
@@ -492,6 +499,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
     def tuple_type(self, items: List[Type]) -> TupleType:
         return TupleType(items, fallback=self.builtin_type('builtins.tuple', [AnyType()]))
 
+    def implicit_any(self, details: str, t: Type) -> None:
+        msg = 'Type Any created implicitly: ' + details
+        self.fail(msg, t, implicit_any=True)  # type: ignore
+
 
 class TypeAnalyserPass3(TypeVisitor[None]):
     """Analyze type argument counts and values of generic types.
@@ -522,6 +533,8 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         if len(t.args) != len(info.type_vars):
             if len(t.args) == 0:
                 # Insert implicit 'Any' type arguments.
+                if t.type.fullname() not in ('typing.Generator'):
+                    self.implicit_any('{} without type args'.format(t), t)
                 t.args = [AnyType()] * len(info.type_vars)
                 return
             # Invalid number of type parameters.
@@ -623,6 +636,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_type_type(self, t: TypeType) -> None:
         pass
+
+    def implicit_any(self, details: str, t: Type) -> None:
+        msg = 'Type Any created implicitly: ' + details
+        self.fail(msg, t, implicit_any=True)  # type: ignore
 
 
 TypeVarList = List[Tuple[str, TypeVarExpr]]

@@ -27,6 +27,7 @@ class Options:
         "show_none_errors",
         "warn_no_return",
         "warn_return_any",
+        "warn_implicit_any",
         "ignore_errors",
         "strict_boolean",
     }
@@ -69,6 +70,9 @@ class Options:
         # Warn about returning objects of type Any when the function is
         # declared with a precise type
         self.warn_return_any = False
+
+        # Warn about implicit creation of Any type (work in progress)
+        self.warn_implicit_any = False
 
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
