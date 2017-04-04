@@ -71,6 +71,9 @@ class FineGrainedSuite(DataSuite):
             a.append('==')
             a.extend(new_messages)
 
+        # Normalize paths in test output (for Windows).
+        a = [line.replace('\\', '/') for line in a]
+
         assert_string_arrays_equal(
             testcase.output, a,
             'Invalid output ({}, line {})'.format(testcase.file,
