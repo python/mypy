@@ -1428,7 +1428,7 @@ class TypeStrVisitor(TypeVisitor[str]):
         s = self.list_str(t.items)
         if t.fallback and t.fallback.type:
             fallback_name = t.fallback.type.fullname()
-            if fallback_name != 'builtins.tuple':
+            if fallback_name not in ('builtins.tuple', 'builtins.object'):
                 return 'Tuple[{}, fallback={}]'.format(s, t.fallback.accept(self))
         return 'Tuple[{}]'.format(s)
 
