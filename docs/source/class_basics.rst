@@ -157,6 +157,55 @@ Protocols and structural subtyping
 **********************************
 
 Mypy provides support for structural subtyping and protocol classes.
+To define a protocol class, one must inherit the special ``typing.Protocol``
+class:
+
+.. code-block:: python
+
+   from typing import Protocol
+
+   class SupportsClose(Protocol):
+       def close(self) -> None:
+          ...
+
+   class UnrelatedClass:
+       # some methods
+       def close(self) -> None:
+          self.resource.release()
+
+   def close_all(things: Sequence[SupportsClose]) -> None:
+       for thing in things:
+           thing.close()
+
+   close_all([UnrelatedClass(), open('some/file')])  # This passes type check
+
+Subprotocols are also supported. Inheriting from an existing protocol does
+not automatically turn a subclass into a protocol, it just creates a usual
+ABC. The ``typing.Protocol`` base must always be explicitly present.
+Generic and recursive protocols are also supported:
+
+.. code-block:: python
+
+   from typing import Protocol, TypeVar
+
+   T = TypeVar('T')
+   class Linked(Protocol[T]):
+       val: T
+       next: 'Linked[T]'
+
+   class L:
+       val: int
+       next: 'L'
+
+   def last(seq: Linked[T]) -> T:
+       ...
+
+   result = last(L())  # The inferred type of 'result' is 'int'
+
+See :ref:`generic-classes` for more details on generic classes.
+The standard ABCs in ``typing`` module are protocols, so that the following
+class will be considered a subtype of ``typing.Sized`` and
+``typing.Iterable[int]``:
 
 .. code-block:: python
 
@@ -164,20 +213,39 @@ Mypy provides support for structural subtyping and protocol classes.
 
    class Bucket:
        ...
-       def __len__(self) -> int: ...
-       def __iter__(self) -> Iterator[int]: ...
+       def __len__(self) -> int:
+           return 22
+       def __iter__(self) -> Iterator[int]:
+           yield 22
 
    def collect(items: Iterable[int]) -> int: ...
    result: int = collect(Bucket())  # Passes type check
 
-Users can also define protocols.
+To use a protocol class with ``isinstance()``, one needs to decorate it with
+a special ``typing.runtime`` decorator. It will add support for basic runtime
+structural checks:
 
 .. code-block:: python
 
-  from typing import Protocol
+   from typing import Protocol, runtime
 
-  class SupportsClose(Protocol):
-      def close(self) -> None:
-          ...
+   @runtime
+   class Portable(Protocol):
+       handles: int
 
-Protocols can be generic. See :ref:`generic-classes`.
+   class Mug:
+       def __init__(self) -> None:
+           self.handles = 1
+
+   mug = Mug()
+   if isinstance(mug, Portable):
+      use(mug.handles)  # Works statically and at runtime.
+
+See `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ for
+specification of structural subtyping in Python.
+
+.. note::
+
+   The support for structural subtyping is still experimental. Some features
+   might be not yet implemented, mypy could pass unsafe code or reject
+   working code.

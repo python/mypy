@@ -109,8 +109,8 @@ Mypy provides support for both `nominal subtyping
 `structural subtyping
 <https://en.wikipedia.org/wiki/Structural_type_system>`_. Some argue
 that structural subtyping is better suited for languages with duck
-typing such as Python. Mypy however primarily uses nominal subtyping.
-Here are some reasons why:
+typing such as Python. Mypy however primarily uses nominal subtyping,
+leaving structural subtyping opt-in. Here are some reasons why:
 
 1. It is easy to generate short and informative error messages when
    using a nominal type system. This is especially important when
@@ -129,7 +129,7 @@ However, structural subtyping can also be useful. For example, a "public API"
 will be more flexible and convenient for users if it is typed with protocols.
 Also, using protocol types removes the necessity to explicitly declare
 implementations of ABCs. Finally, protocol types may feel more natural for
-Python programmers. As a rule of thumb, we recommend using protocols for
+Python programmers. As a rule of thumb, one could prefer protocols for
 function argument types and normal classes for return types. For more details
 about protocol types and structural subtyping see :ref:`protocol-types` and
 `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_.
