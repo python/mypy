@@ -444,3 +444,22 @@ l = reveal_type([]) # type: List[Union[bool, int, float]] \
 reveal_type(l) \
     # E: Revealed type is 'builtins.list[Union[builtins.bool, builtins.int, builtins.float]]'
 [builtins fixtures/list.pyi]
+
+[case testUnionSimplificationWithBoolIntAndFloat2]
+from typing import List, Union
+l = reveal_type([]) # type: List[Union[bool, int, float, str]] \
+    # E: Revealed type is 'builtins.list[Union[builtins.float, builtins.str]]'
+reveal_type(l) \
+    # E: Revealed type is 'builtins.list[Union[builtins.bool, builtins.int, builtins.float, builtins.str]]'
+[builtins fixtures/list.pyi]
+
+[case testAssignAnyToUnion]
+from typing import Union, Any
+x: Union[int, str]
+a: Any
+if bool():
+    x = a
+    # TODO: Maybe we should infer Any as the type instead.
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/bool.pyi]

@@ -228,8 +228,8 @@ class ConditionalTypeBinder:
                 and not restrict_any):
             pass
         elif (isinstance(type, AnyType)
-              and (not isinstance(declared_type, UnionType)
-                   or not any(isinstance(item, NoneTyp) for item in declared_type.items))):
+              and not (isinstance(declared_type, UnionType)
+                       and any(isinstance(item, AnyType) for item in declared_type.items))):
             # Assigning an Any value doesn't affect the type to avoid false negatives, unless
             # there is an Any item in a declared union type.
             self.put(expr, declared_type)
