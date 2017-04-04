@@ -447,8 +447,6 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         seen_names = set()  # type: Set[str]
         for name in names:
             if name.arg in seen_names:
-                if name.arg == '_':
-                    continue
                 self.fail("duplicate argument '{}' in function definition".format(name.arg),
                           name.lineno, name.col_offset)
                 break

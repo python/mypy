@@ -262,14 +262,24 @@ main:7: error: Incompatible types in assignment (expression has type "A", variab
 main:9: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testUnderscoreVariableIsFresh]
+from typing import Tuple
 _ = 1
 _ = ""
 _ = ""  # type: int
 (_, _) = ("", 1.0 + "")  # E: Unsupported left operand type for + ("float")
 (_, _) = (1.0, "")
 for (_, _) in ((1, "a"), (2, "b")): pass
+(None for (_, _) in ((1, "a"), (2, "b")))
 
-def f(_: int, _: str) -> None: pass
+class A:
+    def __enter__(self) -> Tuple[int, str]: ...
+    def __exit__(self, *_) -> None: ...
+
+with A() as (_, _): pass
+
+def f(_: int) -> None:
+    _ = ""
+    _, _ = (1.0, b"")
 
 [case testGlobalDefinedInBlockWithType]
 
