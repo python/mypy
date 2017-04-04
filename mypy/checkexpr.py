@@ -33,7 +33,7 @@ from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
-from mypy.meet import meet_simple
+from mypy.meet import narrow_declared_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent
 from mypy import applytype
@@ -2256,7 +2256,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if expr.literal >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
             if restriction:
-                ans = meet_simple(known_type, restriction)
+                ans = narrow_declared_type(known_type, restriction)
                 return ans
         return known_type
 

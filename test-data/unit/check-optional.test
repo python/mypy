@@ -75,6 +75,7 @@ if x is None:
   reveal_type(x)  # E: Revealed type is 'builtins.None'
 else:
   reveal_type(x)  # E: Revealed type is 'builtins.int'
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 [builtins fixtures/bool.pyi]
 
 [case testAnyCanBeNone]
@@ -162,6 +163,15 @@ x = None
 x = 1
 reveal_type(x)  # E: Revealed type is 'builtins.int'
 
+[case testInferOptionalAnyType]
+from typing import Any
+x = None
+a = None  # type: Any
+if bool():
+  x = a
+  reveal_type(x)  # E: Revealed type is 'Any'
+reveal_type(x)  # E: Revealed type is 'Union[Any, builtins.None]'
+[builtins fixtures/bool.pyi]
 
 [case testInferOptionalTypeFromOptional]
 from typing import Optional
@@ -537,9 +547,10 @@ f = lambda x: None
 f(0)
 [builtins fixtures/function.pyi]
 
-[case testUnionSimplificationWithStrictOptional]
+[case testDontSimplifyNoneUnionsWithStrictOptional]
 from typing import Any, TypeVar, Union
-class C(Any): pass
+A = None  # type: Any
+class C(A): pass
 T = TypeVar('T')
 S = TypeVar('S')
 def u(x: T, y: S) -> Union[S, T]: pass
@@ -549,9 +560,39 @@ a = None # type: Any
 reveal_type(u(C(), None))  # E: Revealed type is 'Union[builtins.None, __main__.C*]'
 reveal_type(u(None, C()))  # E: Revealed type is 'Union[__main__.C*, builtins.None]'
 
-# This will be fixed later
-reveal_type(u(a, None))  # E: Revealed type is 'Any'
-reveal_type(u(None, a))  # E: Revealed type is 'Any'
+reveal_type(u(a, None))  # E: Revealed type is 'Union[builtins.None, Any]'
+reveal_type(u(None, a))  # E: Revealed type is 'Union[Any, builtins.None]'
 
 reveal_type(u(1, None))  # E: Revealed type is 'Union[builtins.None, builtins.int*]'
 reveal_type(u(None, 1))  # E: Revealed type is 'Union[builtins.int*, builtins.None]'
+
+[case testOptionalAndAnyBaseClass]
+from typing import Any, Optional
+A = None  # type: Any
+class C(A):
+    pass
+x = None  # type: Optional[C]
+x.foo()  # E: Some element of union has no attribute "foo"
+
+[case testIsinstanceAndOptionalAndAnyBase]
+from typing import Any, Optional
+
+B = None  # type: Any
+class A(B): pass
+
+def f(a: Optional[A]):
+    reveal_type(a) # E: Revealed type is 'Union[__main__.A, builtins.None]'
+    if a is not None:
+        reveal_type(a) # E: Revealed type is '__main__.A'
+    else:
+        reveal_type(a) # E: Revealed type is 'builtins.None'
+    reveal_type(a) # E: Revealed type is 'Union[__main__.A, builtins.None]'
+[builtins fixtures/isinstance.pyi]
+
+[case testFlattenOptionalUnion]
+from typing import Optional, Union
+
+x: Optional[Union[int, str]]
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.None]'
+y: Optional[Union[int, None]]
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
