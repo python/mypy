@@ -277,7 +277,6 @@ U = Enum('U', *['a'])
 V = Enum('U', **{'a': 1})
 W = Enum('W', 'a b')
 W.c
-[builtins fixtures/dict.pyi]
 [out]
 main:2: error: Too few arguments for Enum()
 main:3: error: Enum() expects a string, tuple, list or dict literal as the second argument
