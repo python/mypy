@@ -327,9 +327,12 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
             return True
     with pop_on_exit(assuming, left, right):
         if right.type.protocol_members is None:
-            # This type has not been yet analyzed, probably a call from make_simplified_union
+            # This type has not been yet analyzed, probably a call from make_simplified_union.
             return False
         for member in right.type.protocol_members:
+            # nominal subtyping currently ignores '__init__' and '__new__' signatures
+            if member in ('__init__', '__new__'):
+                continue
             supertype = find_member(member, right, left)
             subtype = find_member(member, left, left)
             # Useful for debugging:

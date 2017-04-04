@@ -276,9 +276,8 @@ class C:
         pass
 
 x: P
-x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P")
-# The above is because of incompatible __init__, maybe we could allow this?
-# (mypy allows incompatible __init__ in nominal subclasses.)
+x = B()
+# The above has an incompatible __init__, but mypy ignores this for nominal subtypes?
 x = C(1)
 
 class P2(Protocol):
