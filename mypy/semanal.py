@@ -293,7 +293,7 @@ class SemanticAnalyzer(NodeVisitor):
                     if defn.name() in self.type.names:
                         # Redefinition. Conditional redefinition is okay.
                         n = self.type.names[defn.name()].node
-                        if not self.set_original_def(n, defn):
+                        if not defn.set_original_def(n):
                             self.name_already_defined(defn.name(), defn)
                     self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
                 self.prepare_method_signature(defn)
@@ -303,7 +303,7 @@ class SemanticAnalyzer(NodeVisitor):
                     if defn.name() in self.locals[-1]:
                         # Redefinition. Conditional redefinition is okay.
                         n = self.locals[-1][defn.name()].node
-                        if not self.set_original_def(n, defn):
+                        if not defn.set_original_def(n):
                             self.name_already_defined(defn.name(), defn)
                     else:
                         self.add_local(defn, defn)
@@ -313,7 +313,7 @@ class SemanticAnalyzer(NodeVisitor):
                     symbol = self.globals.get(defn.name())
                     if isinstance(symbol.node, FuncDef) and symbol.node != defn:
                         # This is redefinition. Conditional redefinition is okay.
-                        if not self.set_original_def(symbol.node, defn):
+                        if not defn.set_original_def(symbol.node):
                             # Report error.
                             self.check_no_global(defn.name(), defn, True)
             if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
@@ -351,22 +351,6 @@ class SemanticAnalyzer(NodeVisitor):
                     else:
                         leading_type = fill_typevars(self.type)
                     func.type = replace_implicit_first_type(functype, leading_type)
-
-    @staticmethod
-    def set_original_def(previous: Node, new: FuncDef) -> bool:
-        """If 'new' conditionally redefine 'previous', set 'previous' as original
-
-        We reject straight redefinitions of functions, as they are usually
-        a programming error. For example:
-
-        . def f(): ...
-        . def f(): ...  # Error: 'f' redefined
-        """
-        if isinstance(previous, (FuncDef, Var)) and new.is_conditional:
-            new.original_def = previous
-            return True
-        else:
-            return False
 
     def update_function_type_variables(self, defn: FuncDef) -> None:
         """Make any type variables in the signature of defn explicit.
@@ -678,7 +662,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Analyze class body.
             defn.defs.accept(self)
 
-            self.calculate_abstract_status(defn.info)
+            defn.info.calculate_abstract_status()
             self.setup_type_promotion(defn)
 
             self.leave_class()
@@ -720,34 +704,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
-
-    @staticmethod
-    def calculate_abstract_status(typ: TypeInfo) -> None:
-        """Calculate abstract status of a class.
-
-        Set is_abstract of the type to True if the type has an unimplemented
-        abstract attribute.  Also compute a list of abstract attributes.
-        """
-        concrete = set()  # type: Set[str]
-        abstract = []  # type: List[str]
-        for base in typ.mro:
-            for name, symnode in base.names.items():
-                node = symnode.node
-                if isinstance(node, OverloadedFuncDef):
-                    # Unwrap an overloaded function definition. We can just
-                    # check arbitrarily the first overload item. If the
-                    # different items have a different abstract status, there
-                    # should be an error reported elsewhere.
-                    func = node.items[0]  # type: Node
-                else:
-                    func = node
-                if isinstance(func, Decorator):
-                    fdef = func.func
-                    if fdef.is_abstract and name not in concrete:
-                        typ.is_abstract = True
-                        abstract.append(name)
-                concrete.add(name)
-        typ.abstract_attributes = sorted(abstract)
 
     def setup_type_promotion(self, defn: ClassDef) -> None:
         """Setup extra, ad-hoc subtyping relationships between classes (promotion).
@@ -798,13 +754,13 @@ class SemanticAnalyzer(NodeVisitor):
 
         all_tvars = self.get_all_bases_tvars(defn, removed)
         if declared_tvars:
-            if len(self.remove_dups(declared_tvars)) < len(declared_tvars):
+            if len(remove_dups(declared_tvars)) < len(declared_tvars):
                 self.fail("Duplicate type variables in Generic[...]", defn)
-            declared_tvars = self.remove_dups(declared_tvars)
+            declared_tvars = remove_dups(declared_tvars)
             if not set(all_tvars).issubset(set(declared_tvars)):
                 self.fail("If Generic[...] is present it should list all type variables", defn)
                 # In case of error, Generic tvars will go first
-                declared_tvars = self.remove_dups(declared_tvars + all_tvars)
+                declared_tvars = remove_dups(declared_tvars + all_tvars)
         else:
             declared_tvars = all_tvars
         for j, (name, tvar_expr) in enumerate(declared_tvars):
@@ -838,7 +794,7 @@ class SemanticAnalyzer(NodeVisitor):
                     # This error will be caught later.
                     continue
                 tvars.extend(self.get_tvars(base))
-        return self.remove_dups(tvars)
+        return remove_dups(tvars)
 
     def get_tvars(self, tp: Type) -> List[Tuple[str, TypeVarExpr]]:
         tvars = []  # type: List[Tuple[str, TypeVarExpr]]
@@ -854,18 +810,7 @@ class SemanticAnalyzer(NodeVisitor):
                 tvars.append(tvar)
             else:
                 tvars.extend(self.get_tvars(arg))
-        return self.remove_dups(tvars)
-
-    @staticmethod
-    def remove_dups(tvars: List[T]) -> List[T]:
-        # Get unique elements in order of appearance
-        all_tvars = set(tvars)
-        new_tvars = []  # type: List[T]
-        for t in tvars:
-            if t in all_tvars:
-                new_tvars.append(t)
-                all_tvars.remove(t)
-        return new_tvars
+        return remove_dups(tvars)
 
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
         """Prepare for the analysis of a class definition."""
@@ -959,7 +904,7 @@ class SemanticAnalyzer(NodeVisitor):
         info = defn.info
         for base in info.bases:
             baseinfo = base.type
-            if self.is_base_class(info, baseinfo):
+            if info.is_base_class(baseinfo):
                 self.fail('Cycle in inheritance hierarchy', defn, blocker=True)
                 # Clear bases to forcefully get rid of the cycle.
                 info.bases = []
@@ -972,22 +917,6 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail('Duplicate base class "%s"' % dup.name(), defn, blocker=True)
             return False
         return True
-
-    @staticmethod
-    def is_base_class(t: TypeInfo, s: TypeInfo) -> bool:
-        """Determine if t is a base class of s (but do not use mro)."""
-        # Search the base class graph for t, starting from s.
-        worklist = [s]
-        visited = {s}
-        while worklist:
-            nxt = worklist.pop()
-            if nxt == t:
-                return True
-            for base in nxt.bases:
-                if base.type not in visited:
-                    worklist.append(base.type)
-                    visited.add(base.type)
-        return False
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
         error_context = defn  # type: Context
@@ -1156,7 +1085,7 @@ class SemanticAnalyzer(NodeVisitor):
                 existing_symbol = self.globals.get(imported_id)
                 if existing_symbol:
                     # Import can redefine a variable. They get special treatment.
-                    if self.process_import_over_existing_name(
+                    if process_import_over_existing_name(
                             imported_id, existing_symbol, node, imp):
                         continue
                 # 'from m import x as x' exports x in a stub file.
@@ -1170,34 +1099,13 @@ class SemanticAnalyzer(NodeVisitor):
             elif module and not missing:
                 # Missing attribute.
                 message = "Module '{}' has no attribute '{}'".format(import_id, id)
-                extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
+                extra = undefined_name_extra_info('{}.{}'.format(import_id, id))
                 if extra:
                     message += " {}".format(extra)
                 self.fail(message, imp)
             else:
                 # Missing module.
                 self.add_unknown_symbol(as_id or id, imp, is_import=True)
-
-    @staticmethod
-    def process_import_over_existing_name(imported_id: str, existing_symbol: SymbolTableNode,
-                                          module_symbol: SymbolTableNode,
-                                          import_node: ImportBase) -> bool:
-        if (existing_symbol.kind in (LDEF, GDEF, MDEF) and
-                isinstance(existing_symbol.node, (Var, FuncDef, TypeInfo))):
-            # This is a valid import over an existing definition in the file. Construct a dummy
-            # assignment that we'll use to type check the import.
-            lvalue = NameExpr(imported_id)
-            lvalue.kind = existing_symbol.kind
-            lvalue.node = existing_symbol.node
-            rvalue = NameExpr(imported_id)
-            rvalue.kind = module_symbol.kind
-            rvalue.node = module_symbol.node
-            assignment = AssignmentStmt([lvalue], rvalue)
-            for node in assignment, lvalue, rvalue:
-                node.set_line(import_node)
-            import_node.assignments.append(assignment)
-            return True
-        return False
 
     def normalize_type_alias(self, node: SymbolTableNode,
                              ctx: Context) -> SymbolTableNode:
@@ -1244,7 +1152,7 @@ class SemanticAnalyzer(NodeVisitor):
                     existing_symbol = self.globals.get(name)
                     if existing_symbol:
                         # Import can redefine a variable. They get special treatment.
-                        if self.process_import_over_existing_name(
+                        if process_import_over_existing_name(
                                 name, existing_symbol, node, i):
                             continue
                     self.add_symbol(name, SymbolTableNode(node.kind, node.node,
@@ -1455,7 +1363,7 @@ class SemanticAnalyzer(NodeVisitor):
         elif isinstance(lval, MemberExpr):
             if not add_global:
                 self.analyze_member_lvalue(lval)
-            if explicit_type and not self.is_self_member_ref(lval):
+            if explicit_type and not is_self_member_ref(lval):
                 self.fail('Type cannot be declared in assignment to non-self '
                           'attribute', lval)
         elif isinstance(lval, IndexExpr):
@@ -1495,7 +1403,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_member_lvalue(self, lval: MemberExpr) -> None:
         lval.accept(self)
-        if (self.is_self_member_ref(lval) and
+        if (is_self_member_ref(lval) and
                 self.type.get(lval.name) is None):
             # Implicit attribute definition in __init__.
             lval.is_def = True
@@ -1507,14 +1415,6 @@ class SemanticAnalyzer(NodeVisitor):
             lval.node = v
             self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         self.check_lvalue_validity(lval.node, lval)
-
-    @staticmethod
-    def is_self_member_ref(memberexpr: MemberExpr) -> bool:
-        """Does memberexpr to refer to an attribute of self?"""
-        if not isinstance(memberexpr.expr, NameExpr):
-            return False
-        node = memberexpr.expr.node
-        return isinstance(node, Var) and node.is_self
 
     def check_lvalue_validity(self, node: Union[Expression, SymbolNode], ctx: Context) -> None:
         if isinstance(node, TypeVarExpr):
@@ -1572,7 +1472,7 @@ class SemanticAnalyzer(NodeVisitor):
             node = lvalue.node
             if isinstance(node, Var):
                 node.is_classvar = True
-        elif not isinstance(lvalue, MemberExpr) or self.is_self_member_ref(lvalue):
+        elif not isinstance(lvalue, MemberExpr) or is_self_member_ref(lvalue):
             # In case of member access, report error only when assigning to self
             # Other kinds of member assignments should be already reported
             self.fail_invalid_classvar(lvalue)
@@ -2411,7 +2311,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def name_not_defined(self, name: str, ctx: Context) -> None:
         message = "Name '{}' is not defined".format(name)
-        extra = self.undefined_name_extra_info(name)
+        extra = undefined_name_extra_info(name)
         if extra:
             message += ' {}'.format(extra)
         self.fail(message, ctx)
@@ -2439,13 +2339,6 @@ class SemanticAnalyzer(NodeVisitor):
                 self.function_stack[-1].is_dynamic()):
             return
         self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity='note')
-
-    @staticmethod
-    def undefined_name_extra_info(fullname: str) -> Optional[str]:
-        if fullname in obsolete_name_mapping:
-            return "(it's now called '{}')".format(obsolete_name_mapping[fullname])
-        else:
-            return None
 
     def accept(self, node: Node) -> None:
         try:
@@ -2563,7 +2456,7 @@ class FirstPass(NodeVisitor):
                 # Ah this is an imported name. We can't resolve them now, so we'll postpone
                 # this until the main phase of semantic analysis.
                 return
-            if not sem.set_original_def(original_sym.node, func):
+            if not func.set_original_def(original_sym.node):
                 # Report error.
                 sem.check_no_global(func.name(), func)
         else:
@@ -2848,6 +2741,34 @@ class ThirdPass(TraverserVisitor):
         return Instance(sym.node, args or [])
 
 
+def process_import_over_existing_name(imported_id: str, existing_symbol: SymbolTableNode,
+                                      module_symbol: SymbolTableNode,
+                                      import_node: ImportBase) -> bool:
+    if (existing_symbol.kind in (LDEF, GDEF, MDEF) and
+            isinstance(existing_symbol.node, (Var, FuncDef, TypeInfo))):
+        # This is a valid import over an existing definition in the file. Construct a dummy
+        # assignment that we'll use to type check the import.
+        lvalue = NameExpr(imported_id)
+        lvalue.kind = existing_symbol.kind
+        lvalue.node = existing_symbol.node
+        rvalue = NameExpr(imported_id)
+        rvalue.kind = module_symbol.kind
+        rvalue.node = module_symbol.node
+        assignment = AssignmentStmt([lvalue], rvalue)
+        for node in assignment, lvalue, rvalue:
+            node.set_line(import_node)
+        import_node.assignments.append(assignment)
+        return True
+    return False
+
+
+def undefined_name_extra_info(fullname: str) -> Optional[str]:
+    if fullname in obsolete_name_mapping:
+        return "(it's now called '{}')".format(obsolete_name_mapping[fullname])
+    else:
+        return None
+
+
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
         return sig.copy_modified(arg_types=[new] + sig.arg_types[1:])
@@ -2927,6 +2848,14 @@ def remove_imported_names_from_symtable(names: SymbolTable,
             removed.append(name)
     for name in removed:
         del names[name]
+
+
+def is_self_member_ref(memberexpr: MemberExpr) -> bool:
+    """Does memberexpr to refer to an attribute of self?"""
+    if not isinstance(memberexpr.expr, NameExpr):
+        return False
+    node = memberexpr.expr.node
+    return isinstance(node, Var) and node.is_self
 
 
 def infer_reachability_of_if_statement(s: IfStmt,
@@ -3219,3 +3148,14 @@ def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
             if isinstance(t.ret_type, CallableType):
                 return t.ret_type
     return None
+
+
+def remove_dups(tvars: List[T]) -> List[T]:
+    # Get unique elements in order of appearance
+    all_tvars = set(tvars)
+    new_tvars = []  # type: List[T]
+    for t in tvars:
+        if t in all_tvars:
+            new_tvars.append(t)
+            all_tvars.remove(t)
+    return new_tvars

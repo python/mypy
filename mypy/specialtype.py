@@ -22,8 +22,9 @@ if TYPE_CHECKING:
 
 
 class Special:
-    """
-    Groups special-cased types:
+    """Handling of special-cased types.
+
+    Special-cased types include:
     * NamedTuple
     * TypedDict
     * NewType
@@ -111,11 +112,6 @@ class Special:
                     default_items[name] = stmt.rvalue
         return items, types, default_items
 
-    @staticmethod
-    def is_typeddict(expr: Expression) -> bool:
-        return (isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and
-                expr.node.typeddict_type is not None)
-
     def analyze_typeddict_classdef(self, defn: ClassDef) -> bool:
         # special case for TypedDict
         possible = False
@@ -123,7 +119,7 @@ class Special:
             if isinstance(base_expr, RefExpr):
                 base_expr.accept(self.semanalyzer)
                 if (base_expr.fullname == 'mypy_extensions.TypedDict' or
-                        self.is_typeddict(base_expr)):
+                        is_typeddict(base_expr)):
                     possible = True
         if possible:
             node = self.lookup(defn.name, defn)
@@ -139,9 +135,9 @@ class Special:
                 # Extending/merging existing TypedDicts
                 if any(not isinstance(expr, RefExpr) or
                        expr.fullname != 'mypy_extensions.TypedDict' and
-                       not self.is_typeddict(expr) for expr in defn.base_type_exprs):
+                       not is_typeddict(expr) for expr in defn.base_type_exprs):
                     self.fail("All bases of a new TypedDict must be TypedDict types", defn)
-                typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
+                typeddict_bases = list(filter(is_typeddict, defn.base_type_exprs))
                 newfields = []  # type: List[str]
                 newtypes = []  # type: List[Type]
                 tpdict = None  # type: OrderedDict[str, Type]
@@ -297,7 +293,7 @@ class Special:
 
         # Add __init__ method
         args = [Argument(Var('cls'), NoneTyp(), None, ARG_POS),
-                self.make_argument('item', old_type)]
+                Argument(Var('item'), old_type, None, ARG_POS)]
         signature = CallableType(
             arg_types=[cast(Type, None), old_type],
             arg_kinds=[arg.kind for arg in args],
@@ -342,13 +338,12 @@ class Special:
 
     def process_typevar_declaration(self, s: AssignmentStmt) -> None:
         """Check if s declares a TypeVar; it yes, store it in symbol table."""
-        call = self.get_typevar_declaration(s)
-        if not call:
-            return
-
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return None
         lvalue = s.lvalues[0]
-        assert isinstance(lvalue, NameExpr)
-        name = lvalue.name
+        call, calleename, name = self.get_call(s.rvalue, lvalue.name, fresh=False)
+        if calleename != 'typing.TypeVar':
+            return None
         if not lvalue.is_def:
             if s.type:
                 self.fail("Cannot declare the type of a type variable", s)
@@ -393,23 +388,6 @@ class Special:
             self.fail(msg.format(call.args[0].value, name), context)
             return False
         return True
-
-    @staticmethod
-    def get_typevar_declaration(s: AssignmentStmt) -> Optional[CallExpr]:
-        """Returns the TypeVar() call expression if `s` is a type var declaration
-        or None otherwise.
-        """
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return None
-        if not isinstance(s.rvalue, CallExpr):
-            return None
-        call = s.rvalue
-        callee = call.callee
-        if not isinstance(callee, RefExpr):
-            return None
-        if callee.fullname != 'typing.TypeVar':
-            return None
-        return call
 
     def process_typevar_parameters(self,
                                    args: List[Expression],
@@ -700,10 +678,6 @@ class Special:
                          Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED_OPT)])
         return info
 
-    @staticmethod
-    def make_argument(name: str, type: Type) -> Argument:
-        return Argument(Var(name), type, None, ARG_POS)
-
     def process_typeddict_definition(self, s: AssignmentStmt) -> None:
         """Check if s defines a TypedDict; if yes, store the definition in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
@@ -741,7 +715,8 @@ class Special:
             call.analyzed.set_line(call.line, call.column)
         return info
 
-    def get_call(self, expr: Expression, var_name: str) -> Tuple[CallExpr, str, str]:
+    def get_call(self, expr: Expression, var_name: str, *,
+                 fresh: bool = True) -> Tuple[CallExpr, str, str]:
         (call, calleename, name) = None, '', ''
         if isinstance(expr, CallExpr):
             call = expr
@@ -750,7 +725,7 @@ class Special:
                 calleename = callee.fullname
                 if len(call.args) > 0:
                     name = getattr(call.args[0], 'value', var_name)
-                    if isinstance(name, str):
+                    if isinstance(name, str) and fresh:
                         if name != var_name or self.semanalyzer.is_func_scope():
                             # Give it a unique name derived from the line number.
                             name += '@' + str(call.line)
@@ -910,3 +885,8 @@ class Special:
                                                       List[Optional[Expression]], bool]:
         self.fail(message, context)
         return [], [], False
+
+
+def is_typeddict(expr: Expression) -> bool:
+    return (isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and
+            expr.node.typeddict_type is not None)
