@@ -28,8 +28,8 @@ class Special:
     Also handles analysis of special constructs:
     * Enum (functional style)
     * TypeVar
-    
-    The interface consists of 
+
+    The interface consists of
     * process_declarations()
     * analyze_*
     """
@@ -82,8 +82,8 @@ class Special:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
                 if (not isinstance(stmt, PassStmt) and
-                        not (isinstance(stmt, ExpressionStmt) and
-                                 isinstance(stmt.expr, EllipsisExpr))):
+                    not (isinstance(stmt, ExpressionStmt) and
+                         isinstance(stmt.expr, EllipsisExpr))):
                     self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
@@ -92,7 +92,8 @@ class Special:
                 # Append name and type in this case...
                 name = stmt.lvalues[0].name
                 items.append(name)
-                types.append(AnyType() if stmt.type is None else self.semanalyzer.anal_type(stmt.type))
+                types.append(AnyType() if stmt.type is None
+                             else self.semanalyzer.anal_type(stmt.type))
                 # ...despite possible minor failures that allow further analyzis.
                 if name.startswith('_'):
                     self.fail('NamedTuple field name cannot start with an underscore: {}'
@@ -192,7 +193,8 @@ class Special:
                     continue
                 # Append name and type in this case...
                 fields.append(name)
-                types.append(AnyType() if stmt.type is None else self.semanalyzer.anal_type(stmt.type))
+                types.append(AnyType() if stmt.type is None
+                             else self.semanalyzer.anal_type(stmt.type))
                 # ...despite possible minor failures that allow further analyzis.
                 if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
                     self.fail(TPDICT_CLASS_ERROR, stmt)
@@ -496,12 +498,12 @@ class Special:
 
     def check_namedtuple(self, expr: Expression, var_name: str = None) -> Optional[TypeInfo]:
         """Check if a call defines a namedtuple.
-    
+
         The optional var_name argument is the name of the variable to
         which this is assigned, if any.
-    
+
         If it does, return the corresponding TypeInfo. Return None otherwise.
-    
+
         If the definition is invalid but looks like a namedtuple,
         report errors but return (some) TypeInfo.
         """
@@ -572,7 +574,8 @@ class Special:
                       + ', '.join(underscore), call)
         return items, types, ok
 
-    def parse_namedtuple_fields_with_types(self, nodes: List[Expression]) -> Tuple[List[str], List[Type], bool]:
+    def parse_namedtuple_fields_with_types(self, nodes: List[Expression]
+                                           ) -> Tuple[List[str], List[Type], bool]:
         items = []  # type: List[str]
         types = []  # type: List[Type]
         for item in nodes:
@@ -725,12 +728,12 @@ class Special:
 
     def check_typeddict(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
         """Check if a call defines a TypedDict.
-    
+
         The optional var_name argument is the name of the variable to
         which this is assigned, if any.
-    
+
         If it does, return the corresponding TypeInfo. Return None otherwise.
-    
+
         If the definition is invalid but looks like a TypedDict,
         report errors but return (some) TypeInfo.
         """
@@ -811,13 +814,13 @@ class Special:
 
     def check_enum_call(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
         """Check if a call defines an Enum.
-    
+
         Example:
-    
+
           A = enum.Enum('A', 'foo bar')
-    
+
         is equivalent to:
-    
+
           class A(enum.Enum):
               foo = 1
               bar = 2
