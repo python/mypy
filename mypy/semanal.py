@@ -700,7 +700,7 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
     def analyze_class_body(self, defn: ClassDef) -> Iterator[bool]:
         self.clean_up_bases_and_infer_type_variables(defn)
         if self.specialtype.analyze_typeddict_classdef(defn):
-            yield Fals
+            yield False
             return
         if self.specialtype.analyze_namedtuple_classdef(defn):
             # just analyze the class body so we catch type errors in default values
