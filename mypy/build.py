@@ -876,6 +876,20 @@ def write_cache(id: str, path: str, tree: MypyFile,
         data_str = json.dumps(data, sort_keys=True)
     interface_hash = compute_hash(data_str)
 
+    # Obtain and set up metadata
+    try:
+        st = manager.get_stat(path)
+    except OSError as err:
+        manager.log("Cannot get stat for {}: %s".format(path, err))
+        # Remove apparently-invalid cache files.
+        for filename in [data_json, meta_json]:
+            try:
+                os.remove(filename)
+            except OSError:
+                pass
+        # Still return the interface hash we computed.
+        return interface_hash
+
     # Write data cache file, if applicable
     if old_interface_hash == interface_hash:
         # If the interface is unchanged, the cached data is guaranteed
@@ -889,13 +903,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
         data_mtime = os.path.getmtime(data_json_tmp)
         os.replace(data_json_tmp, data_json)
         manager.trace("Interface for {} has changed".format(id))
-
-    # Obtain and set up metadata
-    try:
-        st = manager.get_stat(path)
-    except OSError:
-        manager.log("Cannot write {}".format(path))
-        return interface_hash
 
     mtime = st.st_mtime
     size = st.st_size
