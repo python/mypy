@@ -1508,7 +1508,8 @@ class SemanticAnalyzer(NodeVisitor):
             self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         self.check_lvalue_validity(lval.node, lval)
 
-    def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
+    @staticmethod
+    def is_self_member_ref(memberexpr: MemberExpr) -> bool:
         """Does memberexpr to refer to an attribute of self?"""
         if not isinstance(memberexpr.expr, NameExpr):
             return False
@@ -1520,6 +1521,16 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail('Invalid assignment target', ctx)
         elif isinstance(node, TypeInfo):
             self.fail(CANNOT_ASSIGN_TO_TYPE, ctx)
+
+    def store_info(self, info: TypeInfo, name: str) -> None:
+        # Store it as a global just in case it would remain anonymous.
+        # (Or in the nearest class if there is one.)
+        # called from specialtype
+        stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
+        if self.type:
+            self.type.names[name] = stnode
+        else:
+            self.globals[name] = stnode
 
     def store_declared_types(self, lvalue: Lvalue, typ: Type) -> None:
         if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):

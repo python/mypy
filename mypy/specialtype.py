@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from typing import List, Dict, Tuple, cast, Optional
+from typing import List, Dict, Tuple, cast, Optional, Callable
 
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
@@ -16,7 +16,6 @@ from mypy.types import (
     NoneTyp, CallableType, Instance, Type, TypeVarType, AnyType,
     TypeVarDef, TupleType, UnboundType, TypedDictType, TypeType,
 )
-from mypy.semanal import SemanticAnalyzer
 from mypy import join
 
 
@@ -34,9 +33,8 @@ class Special:
     * process_declarations()
     * analyze_*
     """
-    semanalyzer = None  # type: SemanticAnalyzer
 
-    def __init__(self, semanalyzer: SemanticAnalyzer) -> None:
+    def __init__(self, semanalyzer: 'mypy.semanal.SemanticAnalyzer') -> None:
         self.semanalyzer = semanalyzer
         # Delegations:
         self.fail = semanalyzer.fail
@@ -476,19 +474,25 @@ class Special:
             variance = INVARIANT
         return (variance, upper_bound)
 
-    def process_namedtuple_definition(self, s: AssignmentStmt) -> None:
-        """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
+    def process_call(self, s: AssignmentStmt, check: Callable[[Expression, str], TypeInfo]):
+        """Check if s defines a legal node; if yes, store the definition in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
         lvalue = s.lvalues[0]
         name = lvalue.name
-        named_tuple = self.check_namedtuple(s.rvalue, name)
-        if named_tuple is None:
+        info = check(s.rvalue, name)
+        if info is None:
             return
-        # Yes, it's a valid namedtuple definition. Add it to the symbol table.
+        # Yes, it's a valid definition. Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = GDEF   # TODO locally defined namedtuple
-        node.node = named_tuple
+        node.node = info
+
+    def process_namedtuple_definition(self, s: AssignmentStmt) -> None:
+        self.process_call(s, self.check_namedtuple)
+
+    def process_enum_call(self, s: AssignmentStmt) -> None:
+        self.process_call(s, self.check_enum_call)
 
     def check_namedtuple(self, expr: Expression, var_name: str = None) -> Optional[TypeInfo]:
         """Check if a call defines a namedtuple.
@@ -519,13 +523,7 @@ class Special:
             # Give it a unique name derived from the line number.
             name += '@' + str(call.line)
         info = self.build_namedtuple_typeinfo(name, items, types, {})
-        # Store it as a global just in case it would remain anonymous.
-        # (Or in the nearest class if there is one.)
-        stnode = SymbolTableNode(GDEF, info, self.semanalyzer.cur_mod_id)
-        if self.semanalyzer.type:
-            self.semanalyzer.type.names[name] = stnode
-        else:
-            self.semanalyzer.globals[name] = stnode
+        self.semanalyzer.store_info(info, name)
         call.analyzed = NamedTupleExpr(info)
         call.analyzed.set_line(call.line, call.column)
         return info
@@ -753,13 +751,7 @@ class Special:
             # Give it a unique name derived from the line number.
             name += '@' + str(call.line)
         info = self.build_typeddict_typeinfo(name, items, types)
-        # Store it as a global just in case it would remain anonymous.
-        # (Or in the nearest class if there is one.)
-        stnode = SymbolTableNode(GDEF, info, self.semanalyzer.cur_mod_id)
-        if self.semanalyzer.type:
-            self.semanalyzer.type.names[name] = stnode
-        else:
-            self.semanalyzer.globals[name] = stnode
+        self.semanalyzer.store_info(info, name)
         call.analyzed = TypedDictExpr(info)
         call.analyzed.set_line(call.line, call.column)
         return info
@@ -817,21 +809,6 @@ class Special:
 
         return info
 
-    def process_enum_call(self, s: AssignmentStmt) -> None:
-        """Check if s defines an Enum; if yes, store the definition in symbol table."""
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return
-        lvalue = s.lvalues[0]
-        name = lvalue.name
-        enum_call = self.check_enum_call(s.rvalue, name)
-        if enum_call is None:
-            return
-        # Yes, it's a valid Enum definition. Add it to the symbol table.
-        node = self.lookup(name, s)
-        if node:
-            node.kind = GDEF   # TODO locally defined Enum
-            node.node = enum_call
-
     def check_enum_call(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
         """Check if a call defines an Enum.
     
@@ -863,13 +840,7 @@ class Special:
             # Give it a unique name derived from the line number.
             name += '@' + str(call.line)
         info = self.build_enum_call_typeinfo(name, items, fullname)
-        # Store it as a global just in case it would remain anonymous.
-        # (Or in the nearest class if there is one.)
-        stnode = SymbolTableNode(GDEF, info, self.semanalyzer.cur_mod_id)
-        if self.semanalyzer.type:
-            self.semanalyzer.type.names[name] = stnode
-        else:
-            self.semanalyzer.globals[name] = stnode
+        self.semanalyzer.store_info(info, name)
         call.analyzed = EnumCallExpr(info, items, values)
         call.analyzed.set_line(call.line, call.column)
         return info
