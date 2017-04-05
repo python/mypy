@@ -70,7 +70,8 @@ LAST_PASS = 1  # Pass numbers start at 0
 DeferredNode = NamedTuple(
     'DeferredNode',
     [
-        ('node', Union[FuncDef, MypyFile]),  # In batch mode only FuncDef is supported
+        # In batch mode only FuncDef and LambdaExpr are supported
+        ('node', Union[FuncDef, LambdaExpr, MypyFile]),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
         ('active_typeinfo', Optional[TypeInfo]),  # And its TypeInfo (for semantic analysis
                                                   # self type handling)
@@ -203,7 +204,7 @@ class TypeChecker(NodeVisitor[None]):
         else:
             assert not self.deferred_nodes
         self.deferred_nodes = []
-        done = set()  # type: Set[Union[FuncDef, MypyFile]]
+        done = set()  # type: Set[Union[FuncDef, LambdaExpr, MypyFile]]
         for node, type_name, active_typeinfo in todo:
             if node in done:
                 continue
@@ -216,9 +217,11 @@ class TypeChecker(NodeVisitor[None]):
                     self.check_partial(node)
         return True
 
-    def check_partial(self, node: Union[FuncDef, MypyFile]) -> None:
+    def check_partial(self, node: Union[FuncDef, LambdaExpr, MypyFile]) -> None:
         if isinstance(node, MypyFile):
             self.check_top_level(node)
+        elif isinstance(node, LambdaExpr):
+            self.expr_checker.accept(node)
         else:
             self.accept(node)
 
