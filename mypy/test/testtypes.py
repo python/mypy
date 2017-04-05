@@ -650,7 +650,7 @@ class MeetSuite(Suite):
 
         self.assert_meet(self.tuple(self.fx.a, self.fx.a),
                          self.fx.std_tuple,
-                         NoneTyp())
+                         self.tuple(self.fx.a, self.fx.a))
         self.assert_meet(self.tuple(self.fx.a),
                          self.tuple(self.fx.a, self.fx.a),
                          NoneTyp())

@@ -522,7 +522,13 @@ class MessageBuilder:
             name = callee.name[1:-1]
             n -= 1
             msg = '{} item {} has incompatible type {}'.format(
-                name[0].upper() + name[1:], n, self.format_simple(arg_type))
+                name.title(), n, self.format_simple(arg_type))
+        elif callee.name == '<dict>':
+            name = callee.name[1:-1]
+            n -= 1
+            key_type, value_type = cast(TupleType, arg_type).items
+            msg = '{} entry {} has incompatible type {}: {}'.format(
+                name.title(), n, self.format_simple(key_type), self.format_simple(value_type))
         elif callee.name == '<list-comprehension>':
             msg = 'List comprehension has incompatible type List[{}]'.format(
                 strip_quotes(self.format(arg_type)))
