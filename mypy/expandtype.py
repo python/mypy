@@ -7,6 +7,8 @@ from mypy.types import (
     FunctionLike, TypeVarDef
 )
 
+import mypy
+
 
 def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
     """Substitute any type variable references in a type given by a type
@@ -109,7 +111,10 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return Overloaded(items)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        return t.copy_modified(items=self.expand_types(t.items))
+        new_items = self.expand_types(t.items)
+        new_fallback_arg = mypy.join.join_type_list(new_items)
+        new_fallback = t.fallback.copy_modified(args=[new_fallback_arg])
+        return t.copy_modified(items=new_items, fallback=new_fallback)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         return t.copy_modified(item_types=self.expand_types(t.items.values()))

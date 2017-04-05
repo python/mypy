@@ -367,7 +367,7 @@ Point3D = TypedDict('Point3D', {'x': int, 'y': int, 'z': int})
 p1 = TaggedPoint(type='2d', x=0, y=0)
 p2 = Point3D(x=1, y=1, z=1)
 joined_points = [p1, p2]
-reveal_type(p1)             # E: Revealed type is 'TypedDict(type=builtins.str, x=builtins.int, y=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.object])'
+reveal_type(p1)             # E: Revealed type is 'TypedDict(type=builtins.str, x=builtins.int, y=builtins.int, _fallback=typing.Mapping[builtins.str, Union[builtins.str, builtins.int]])'
 reveal_type(p2)             # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, z=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
 reveal_type(joined_points)  # E: Revealed type is 'builtins.list[TypedDict(x=builtins.int, y=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])]'
 [builtins fixtures/dict.pyi]

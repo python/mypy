@@ -1486,7 +1486,7 @@ f(1, thing_in_kwargs=["hey"])
 from typing import Tuple, Any
 def f(x, *args): # type: (...) -> None
     success_tuple_type = args # type: Tuple[Any, ...]
-    fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type Tuple[Any, ...], variable has type None)
+    fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type tuple, variable has type None)
 f(1, "hello")
 [builtins fixtures/tuple.pyi]
 [out]

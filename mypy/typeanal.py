@@ -18,6 +18,7 @@ from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.subtypes import is_subtype
 from mypy import nodes
+from mypy import join
 from mypy import experiments
 
 
@@ -137,7 +138,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
-                    return self.builtin_type('builtins.tuple')
+                    return self.builtin_type('builtins.tuple', [AnyType()])
                 if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                     # Tuple[T, ...] (uniform, variable-length tuple)
                     instance = self.builtin_type('builtins.tuple', [self.anal_type(t.args[0])])
@@ -211,37 +212,35 @@ class TypeAnalyser(TypeVisitor[Type]):
                     self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = sym.node  # type: TypeInfo
-            if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
-                return TupleType(self.anal_array(t.args),
-                                 Instance(info, [AnyType()], t.line),
-                                 t.line)
-            else:
-                # Analyze arguments and construct Instance type. The
-                # number of type arguments and their values are
-                # checked only later, since we do not always know the
-                # valid count at this point. Thus we may construct an
-                # Instance with an invalid number of type arguments.
-                instance = Instance(info, self.anal_array(t.args), t.line, t.column)
-                tup = info.tuple_type
-                if tup is not None:
-                    # The class has a Tuple[...] base class so it will be
-                    # represented as a tuple type.
-                    if t.args:
-                        self.fail('Generic tuple types not supported', t)
-                        return AnyType()
-                    return tup.copy_modified(items=self.anal_array(tup.items),
-                                             fallback=instance)
-                td = info.typeddict_type
-                if td is not None:
-                    # The class has a TypedDict[...] base class so it will be
-                    # represented as a typeddict type.
-                    if t.args:
-                        self.fail('Generic TypedDict types not supported', t)
-                        return AnyType()
-                    # Create a named TypedDictType
-                    return td.copy_modified(item_types=self.anal_array(list(td.items.values())),
-                                            fallback=instance)
-                return instance
+            if info.fullname() == 'builtins.tuple':
+                assert not t.args
+                t.args = [AnyType()]
+            # Analyze arguments and construct Instance type. The
+            # number of type arguments and their values are
+            # checked only later, since we do not always know the
+            # valid count at this point. Thus we may construct an
+            # Instance with an invalid number of type arguments.
+            instance = Instance(info, self.anal_array(t.args), t.line, t.column)
+            tup = info.tuple_type
+            if tup is not None:
+                # The class has a Tuple[...] base class so it will be
+                # represented as a tuple type.
+                if t.args:
+                    self.fail('Generic tuple types not supported', t)
+                    return AnyType()
+                return tup.copy_modified(items=self.anal_array(tup.items),
+                                         fallback=instance)
+            td = info.typeddict_type
+            if td is not None:
+                # The class has a TypedDict[...] base class so it will be
+                # represented as a typeddict type.
+                if t.args:
+                    self.fail('Generic TypedDict types not supported', t)
+                    return AnyType()
+                # Create a named TypedDictType
+                return td.copy_modified(item_types=self.anal_array(list(td.items.values())),
+                                        fallback=instance)
+            return instance
         else:
             return AnyType()
 
@@ -332,7 +331,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             self.fail('At most one star type allowed in a tuple', t)
             if t.implicit:
                 return TupleType([AnyType() for _ in t.items],
-                                 self.builtin_type('builtins.tuple'),
+                                 self.builtin_type('builtins.tuple', [AnyType()]),
                                  t.line)
             else:
                 return AnyType()
@@ -520,6 +519,11 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def visit_tuple_type(self, t: TupleType) -> None:
         for item in t.items:
             item.accept(self)
+        # if it's not builtins.tuple, then its bases should have tuple[Any]
+        # TODO: put assert here if it's not too slow
+        if type(t.fallback) == Instance and t.fallback.type.fullname() == 'builtins.tuple':
+            fallback_item = join.join_type_list(t.items)
+            t.fallback.args = [fallback_item]
 
     def visit_typeddict_type(self, t: TypedDictType) -> None:
         for item_type in t.items.values():

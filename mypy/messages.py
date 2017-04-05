@@ -260,7 +260,10 @@ class MessageBuilder:
                 return '"{}"'.format(base_str)
             elif itype.type.fullname() == 'builtins.tuple':
                 item_type_str = strip_quotes(self.format(itype.args[0]))
-                return 'Tuple[{}, ...]'.format(item_type_str)
+                if isinstance(itype.args[0], AnyType):
+                    return 'tuple'
+                else:
+                    return 'Tuple[{}, ...]'.format(item_type_str)
             elif itype.type.fullname() in reverse_type_aliases:
                 alias = reverse_type_aliases[itype.type.fullname()]
                 alias = alias.split('.')[-1]

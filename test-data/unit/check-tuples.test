@@ -91,7 +91,7 @@ from typing import Tuple
 t1 = None # type: Tuple[A, A]
 t2 = None # type: tuple
 
-t1 = t2 # E: Incompatible types in assignment (expression has type Tuple[Any, ...], variable has type "Tuple[A, A]")
+t1 = t2 # E: Incompatible types in assignment (expression has type tuple, variable has type "Tuple[A, A]")
 t2 = t1
 
 class A: pass
@@ -702,6 +702,7 @@ B()[100]
 [case testValidTupleBaseClass]
 from typing import Tuple
 class A(tuple): pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testTupleBaseClass2-skip]
@@ -913,7 +914,7 @@ def f(a: Tuple) -> None: pass
 f(())
 f((1,))
 f(('', ''))
-f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected Tuple[Any, ...]
+f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected tuple
 [builtins fixtures/tuple.pyi]
 
 [case testTupleSingleton]

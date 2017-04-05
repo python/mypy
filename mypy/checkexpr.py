@@ -1740,7 +1740,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #
             #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
             constructor = CallableType(
-                [TupleType([kt, vt], self.named_type('builtins.tuple'))],
+                [TupleType([kt, vt], self.chk.named_generic_type('builtins.tuple', [AnyType()]))],
                 [nodes.ARG_STAR],
                 [None],
                 self.chk.named_generic_type('builtins.dict', [kt, vt]),
