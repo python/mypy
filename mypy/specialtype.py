@@ -5,7 +5,7 @@ This module is used only by the SemanticAnalyzer, and is tightly coupled with it
 
 from collections import OrderedDict
 
-from typing import List, Dict, Tuple, cast, Optional, Callable, TYPE_CHECKING
+from typing import List, Dict, Tuple, cast, Optional, TYPE_CHECKING
 
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
@@ -24,6 +24,15 @@ from mypy.types import (
 from mypy import join
 if TYPE_CHECKING:
     import mypy.semanal
+
+
+class DeclInfo:
+    var_name = None  # type: str
+    name = None  # type: str
+    fullname = None  # type: str
+    calleename = None  # type: str
+    call = None  # type: CallExpr
+    is_def = None  # type: bool
 
 
 class Special:
@@ -54,11 +63,98 @@ class Special:
         self.str_type = semanalyzer.str_type
 
     def process_declaration(self, s: AssignmentStmt) -> None:
-        self.process_newtype_declaration(s)
-        self.process_typevar_declaration(s)
-        self.process_namedtuple_definition(s)
-        self.process_typeddict_definition(s)
-        self.process_enum_call(s)
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return
+        var_name = s.lvalues[0].name
+        is_def = s.lvalues[0].is_def
+        call, calleename, name = self.get_call(s.rvalue, var_name)
+        node = self.lookup(var_name, s)
+        if node is None:
+            return
+        fullname = node.fullname
+        info, tvar = self.dispatch_call(call, calleename, name,
+                                        var_name, fullname)
+        if tvar is not None:
+            node = self.lookup(name, s)
+            node.kind = UNBOUND_TVAR
+            node.node = tvar
+            tvar.line = call.line
+            call.analyzed = tvar
+        if (info or tvar) and not is_def:
+            tname = calleename.split('.')[-1]
+            if tname == 'TypeVar':
+                tname = 'type variable'
+            if s.type:
+                self.fail("Cannot declare the type of a %s" % tname, s)
+            else:
+                self.fail("Cannot redefine '%s' as a %s" % (var_name, tname), s)
+        if info is None:
+            return
+        # Yes, it's a valid definition. Add it to the symbol table.
+        node.kind = GDEF   # TODO locally defined type
+        node.node = info
+
+    def dispatch_call(self, call: CallExpr, calleename: str,
+                      name: str, var_name: str, fullname: str) -> Tuple[TypeInfo, TypeVarExpr]:
+        tvar = None  # type: TypeVarExpr
+        if calleename == 'typing.NewType':
+            info = self.check_newtype(call, var_name)
+        elif calleename == 'typing.TypeVar':
+            tvar = self.check_typevar(call, name, fullname)
+            info = None
+        elif calleename in ('collections.namedtuple', 'typing.NamedTuple'):
+            info = self.check_namedtuple(call, calleename, name)
+        elif calleename in ('enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag'):
+            info = self.check_enum_call(call, calleename, name)
+        elif calleename == 'mypy_extensions.TypedDict':
+            info = self.check_typeddict(call, name)
+        else:
+            info = None
+        return info, tvar
+
+    def check_typevar(self, call: CallExpr, name: str, fullname: str) -> Optional[TypeVarExpr]:
+        """Check if s declares a TypeVar; it yes, store it in symbol table."""
+        if not self.check_typevar_name(call, name, context=call):
+            return None
+
+        # Constraining types
+        n_values = call.arg_kinds[1:].count(ARG_POS)
+        values = self.analyze_types(call.args[1:1 + n_values])
+
+        res = self.process_typevar_arguments(call.args[1 + n_values:],
+                                             call.arg_names[1 + n_values:],
+                                             call.arg_kinds[1 + n_values:],
+                                             n_values,
+                                             context=call)
+        if res is None:
+            return None
+        variance, upper_bound = res
+        return TypeVarExpr(name, fullname, values, upper_bound, variance)
+
+    def check_newtype(self, call: CallExpr, var_name: str = None) -> Optional[TypeInfo]:
+        """Check if s declares a NewType; if yes, store it in symbol table."""
+        # Extract and check all information from newtype declaration
+
+        # This dummy NewTypeExpr marks the call as sufficiently analyzed; it will be
+        # overwritten later with a fully complete NewTypeExpr if there are no other
+        # errors with the NewType() call.
+
+        old_type = self.check_newtype_args(var_name, call, call)
+        call.analyzed = NewTypeExpr(var_name, old_type, line=call.line)
+        if old_type is None:
+            return None
+
+        # Create the corresponding class definition if the aliased type is subtypeable
+        if isinstance(old_type, TupleType):
+            newtype_class_info = self.build_newtype_typeinfo(var_name, old_type, old_type.fallback)
+            newtype_class_info.tuple_type = old_type
+        elif isinstance(old_type, Instance):
+            newtype_class_info = self.build_newtype_typeinfo(var_name, old_type, old_type)
+        else:
+            message = "Argument 2 to NewType(...) must be subclassable (got {})"
+            self.fail(message.format(old_type), call)
+            return None
+        return newtype_class_info
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
         for base_expr in defn.base_type_exprs:
@@ -206,62 +302,6 @@ class Special:
                     self.fail('Right hand side values are not supported in TypedDict', stmt)
         return fields, types
 
-    def process_newtype_declaration(self, s: AssignmentStmt) -> None:
-        """Check if s declares a NewType; if yes, store it in symbol table."""
-        # Extract and check all information from newtype declaration
-        name, call = self.analyze_newtype_declaration(s)
-        if name is None or call is None:
-            return
-
-        old_type = self.check_newtype_args(name, call, s)
-        call.analyzed = NewTypeExpr(name, old_type, line=call.line)
-        if old_type is None:
-            return
-
-        # Create the corresponding class definition if the aliased type is subtypeable
-        if isinstance(old_type, TupleType):
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type.fallback)
-            newtype_class_info.tuple_type = old_type
-        elif isinstance(old_type, Instance):
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
-        else:
-            message = "Argument 2 to NewType(...) must be subclassable (got {})"
-            self.fail(message.format(old_type), s)
-            return
-
-        # If so, add it to the symbol table.
-        node = self.lookup(name, s)
-        if node is None:
-            self.fail("Could not find {} in current namespace".format(name), s)
-            return
-        # TODO: why does NewType work in local scopes despite always being of kind GDEF?
-        node.kind = GDEF
-        call.analyzed.info = node.node = newtype_class_info
-
-    def analyze_newtype_declaration(self, s: AssignmentStmt
-                                    ) -> Tuple[Optional[str], Optional[CallExpr]]:
-        """Return the NewType call expression if `s` is a newtype declaration or None otherwise."""
-        name, call = None, None
-        if (len(s.lvalues) == 1
-                and isinstance(s.lvalues[0], NameExpr)
-                and isinstance(s.rvalue, CallExpr)
-                and isinstance(s.rvalue.callee, RefExpr)
-                and s.rvalue.callee.fullname == 'typing.NewType'):
-            lvalue = s.lvalues[0]
-            name = s.lvalues[0].name
-            if not lvalue.is_def:
-                if s.type:
-                    self.fail("Cannot declare the type of a NewType declaration", s)
-                else:
-                    self.fail("Cannot redefine '%s' as a NewType" % name, s)
-
-            # This dummy NewTypeExpr marks the call as sufficiently analyzed; it will be
-            # overwritten later with a fully complete NewTypeExpr if there are no other
-            # errors with the NewType() call.
-            call = s.rvalue
-
-        return name, call
-
     def check_newtype_args(self, name: str, call: CallExpr, context: Context) -> Optional[Type]:
         has_failed = False
         args, arg_kinds = call.args, call.arg_kinds
@@ -341,44 +381,24 @@ class Special:
                 result.append(AnyType())
         return result
 
-    def process_typevar_declaration(self, s: AssignmentStmt) -> None:
-        """Check if s declares a TypeVar; it yes, store it in symbol table."""
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return None
-        lvalue = s.lvalues[0]
-        call, calleename, name = self.get_call(s.rvalue, lvalue.name, fresh=False)
-        if calleename != 'typing.TypeVar':
-            return None
-        if not lvalue.is_def:
-            if s.type:
-                self.fail("Cannot declare the type of a type variable", s)
-            else:
-                self.fail("Cannot redefine '%s' as a type variable" % name, s)
-            return
+    def check_namedtuple(self, call: CallExpr, calleename: str, name: str) -> Optional[TypeInfo]:
+        """Check if a call defines a namedtuple.
 
-        if not self.check_typevar_name(call, name, s):
-            return
+        The optional var_name argument is the name of the variable to
+        which this is assigned, if any.
 
-        # Constraining types
-        n_values = call.arg_kinds[1:].count(ARG_POS)
-        values = self.analyze_types(call.args[1:1 + n_values])
+        If it does, return the corresponding TypeInfo. Return None otherwise.
 
-        res = self.process_typevar_parameters(call.args[1 + n_values:],
-                                              call.arg_names[1 + n_values:],
-                                              call.arg_kinds[1 + n_values:],
-                                              n_values,
-                                              s)
-        if res is None:
-            return
-        variance, upper_bound = res
-
-        # Yes, it's a valid type variable definition! Add it to the symbol table.
-        node = self.lookup(name, s)
-        node.kind = UNBOUND_TVAR
-        TypeVar = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
-        TypeVar.line = call.line
-        call.analyzed = TypeVar
-        node.node = TypeVar
+        If the definition is invalid but looks like a namedtuple,
+        report errors but return (some) TypeInfo.
+        """
+        items, types, ok = self.parse_namedtuple_args(call, calleename)
+        info = self.build_namedtuple_typeinfo(name, items, types)
+        if ok:
+            self.semanalyzer.store_info(info, name)
+            call.analyzed = NamedTupleExpr(info)
+            call.analyzed.set_line(call.line, call.column)
+        return info
 
     def check_typevar_name(self, call: CallExpr, name: str, context: Context) -> bool:
         if len(call.args) < 1:
@@ -394,23 +414,23 @@ class Special:
             return False
         return True
 
-    def process_typevar_parameters(self,
-                                   args: List[Expression],
-                                   names: List[Optional[str]],
-                                   kinds: List[int],
-                                   num_values: int,
-                                   context: Context) -> Optional[Tuple[int, Type]]:
+    def process_typevar_arguments(self,
+                                  args: List[Expression],
+                                  names: List[Optional[str]],
+                                  kinds: List[int],
+                                  num_values: int,
+                                  context: Context) -> Optional[Tuple[int, Type]]:
         has_values = (num_values > 0)
         covariant = False
         contravariant = False
         upper_bound = self.object_type()  # type: Type
-        for param_value, param_name, param_kind in zip(args, names, kinds):
-            if not param_kind == ARG_NAMED:
+        for arg_value, arg_name, arg_kind in zip(args, names, kinds):
+            if not arg_kind == ARG_NAMED:
                 self.fail("Unexpected argument to TypeVar()", context)
                 return None
-            if param_name == 'covariant':
-                if isinstance(param_value, NameExpr):
-                    if param_value.name == 'True':
+            if arg_name == 'covariant':
+                if isinstance(arg_value, NameExpr):
+                    if arg_value.name == 'True':
                         covariant = True
                     else:
                         self.fail("TypeVar 'covariant' may only be 'True'", context)
@@ -418,9 +438,9 @@ class Special:
                 else:
                     self.fail("TypeVar 'covariant' may only be 'True'", context)
                     return None
-            elif param_name == 'contravariant':
-                if isinstance(param_value, NameExpr):
-                    if param_value.name == 'True':
+            elif arg_name == 'contravariant':
+                if isinstance(arg_value, NameExpr):
+                    if arg_value.name == 'True':
                         contravariant = True
                     else:
                         self.fail("TypeVar 'contravariant' may only be 'True'", context)
@@ -428,23 +448,23 @@ class Special:
                 else:
                     self.fail("TypeVar 'contravariant' may only be 'True'", context)
                     return None
-            elif param_name == 'bound':
+            elif arg_name == 'bound':
                 if has_values:
                     self.fail("TypeVar cannot have both values and an upper bound", context)
                     return None
                 try:
-                    upper_bound = self.semanalyzer.expr_to_analyzed_type(param_value)
+                    upper_bound = self.semanalyzer.expr_to_analyzed_type(arg_value)
                 except TypeTranslationError:
-                    self.fail("TypeVar 'bound' must be a type", param_value)
+                    self.fail("TypeVar 'bound' must be a type", arg_value)
                     return None
-            elif param_name == 'values':
+            elif arg_name == 'values':
                 # Probably using obsolete syntax with values=(...). Explain the current syntax.
                 self.fail("TypeVar 'values' argument not supported", context)
                 self.fail("Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))",
                           context)
                 return None
             else:
-                self.fail("Unexpected argument to TypeVar(): {}".format(param_name), context)
+                self.fail("Unexpected argument to TypeVar(): {}".format(arg_name), context)
                 return None
 
         if covariant and contravariant:
@@ -461,116 +481,24 @@ class Special:
             variance = INVARIANT
         return (variance, upper_bound)
 
-    def process_call(self, s: AssignmentStmt,
-                     check: Callable[[Expression, str], TypeInfo]) -> None:
-        """Check if s defines a legal node; if yes, store the definition in symbol table."""
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return
-        lvalue = s.lvalues[0]
-        name = lvalue.name
-        info = check(s.rvalue, name)
-        if info is None:
-            return
-        # Yes, it's a valid definition. Add it to the symbol table.
-        node = self.lookup(name, s)
-        node.kind = GDEF   # TODO locally defined type
-        node.node = info
-
-    def process_namedtuple_definition(self, s: AssignmentStmt) -> None:
-        self.process_call(s, self.check_namedtuple)
-
-    def process_enum_call(self, s: AssignmentStmt) -> None:
-        self.process_call(s, self.check_enum_call)
-
-    def check_namedtuple(self, expr: Expression, var_name: str = None) -> Optional[TypeInfo]:
-        """Check if a call defines a namedtuple.
+    def check_typeddict(self, call: CallExpr, name: str) -> Optional[TypeInfo]:
+        """Check if a call defines a TypedDict.
 
         The optional var_name argument is the name of the variable to
         which this is assigned, if any.
 
         If it does, return the corresponding TypeInfo. Return None otherwise.
 
-        If the definition is invalid but looks like a namedtuple,
+        If the definition is invalid but looks like a TypedDict,
         report errors but return (some) TypeInfo.
         """
-
-        call, calleename, name = self.get_call(expr, var_name)
-        if calleename not in ('collections.namedtuple', 'typing.NamedTuple'):
-            return None
-        items, types, ok = self.parse_namedtuple_args(call, calleename)
-        info = self.build_namedtuple_typeinfo(name, items, types)
+        items, types, ok = self.parse_typeddict_args(call)
+        info = self.build_typeddict_typeinfo(name, items, types)
         if ok:
             self.semanalyzer.store_info(info, name)
-            call.analyzed = NamedTupleExpr(info)
+            call.analyzed = TypedDictExpr(info)
             call.analyzed.set_line(call.line, call.column)
         return info
-
-    def parse_namedtuple_args(self, call: CallExpr,
-                              fullname: str) -> Tuple[List[str], List[Type], bool]:
-        # TODO: Share code with check_argument_count in checkexpr.py?
-        args = call.args
-        if len(args) < 2:
-            return self.fail_namedtuple_arg("Too few arguments for namedtuple()", call)
-        if len(args) > 2:
-            # FIX incorrect. There are two additional parameters
-            return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
-        if call.arg_kinds != [ARG_POS, ARG_POS]:
-            return self.fail_namedtuple_arg("Unexpected arguments to namedtuple()", call)
-        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
-            return self.fail_namedtuple_arg(
-                "namedtuple() expects a string literal as the first argument", call)
-        types = []  # type: List[Type]
-        ok = True
-        if not isinstance(args[1], (ListExpr, TupleExpr)):
-            if (fullname == 'collections.namedtuple'
-                    and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
-                str_expr = cast(StrExpr, args[1])
-                items = str_expr.value.replace(',', ' ').split()
-            else:
-                return self.fail_namedtuple_arg(
-                    "List or tuple literal expected as the second argument to namedtuple()", call)
-        else:
-            listexpr = args[1]
-            if fullname == 'collections.namedtuple':
-                # The fields argument contains just names, with implicit Any types.
-                if any(not isinstance(item, (StrExpr, BytesExpr, UnicodeExpr))
-                       for item in listexpr.items):
-                    return self.fail_namedtuple_arg("String literal expected as namedtuple() item",
-                                                    call)
-                items = [cast(StrExpr, item).value for item in listexpr.items]
-            else:
-                # The fields argument contains (name, type) tuples.
-                items, types, ok = self.parse_namedtuple_fields_with_types(listexpr.items)
-        if not types:
-            types = [AnyType() for _ in items]
-        underscore = [item for item in items if item.startswith('_')]
-        if underscore:
-            self.fail("namedtuple() field names cannot start with an underscore: "
-                      + ', '.join(underscore), call)
-        return items, types, ok
-
-    def parse_namedtuple_fields_with_types(self, nodes: List[Expression]
-                                           ) -> Tuple[List[str], List[Type], bool]:
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
-        for item in nodes:
-            if isinstance(item, TupleExpr):
-                if len(item.items) != 2:
-                    return self.fail_namedtuple_arg("Invalid NamedTuple field definition",
-                                                    item)
-                name, type_node = item.items
-                if isinstance(name, (StrExpr, BytesExpr, UnicodeExpr)):
-                    items.append(name.value)
-                else:
-                    return self.fail_namedtuple_arg("Invalid NamedTuple() field name", item)
-                try:
-                    type = expr_to_unanalyzed_type(type_node)
-                except TypeTranslationError:
-                    return self.fail_namedtuple_arg('Invalid field type', type_node)
-                types.append(self.semanalyzer.anal_type(type))
-            else:
-                return self.fail_namedtuple_arg("Tuple expected as NamedTuple() field", item)
-        return items, types, True
 
     def fail_namedtuple_arg(self, message: str,
                             context: Context) -> Tuple[List[str], List[Type], bool]:
@@ -587,8 +515,9 @@ class Special:
         return info
 
     def analyze_callexpr_as_type(self, call: CallExpr) -> Optional[Type]:
-        info = self.check_namedtuple(call)
-        if info is None:
+        call, calleename, name = self.get_call(call, '')
+        info, tvar = self.dispatch_call(call, calleename, name, '', '')
+        if info is None or info.tuple_type is None:
             # Some form of namedtuple is the only valid type that looks like a call
             # expression. This isn't a valid type.
             return None
@@ -683,45 +612,7 @@ class Special:
                          Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED_OPT)])
         return info
 
-    def process_typeddict_definition(self, s: AssignmentStmt) -> None:
-        """Check if s defines a TypedDict; if yes, store the definition in symbol table."""
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return
-        lvalue = s.lvalues[0]
-        name = lvalue.name
-        typed_dict = self.check_typeddict(s.rvalue, name)
-        if typed_dict is None:
-            return
-        # Yes, it's a valid TypedDict definition. Add it to the symbol table.
-        node = self.lookup(name, s)
-        if node:
-            node.kind = GDEF   # TODO locally defined TypedDict
-            node.node = typed_dict
-
-    def check_typeddict(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
-        """Check if a call defines a TypedDict.
-
-        The optional var_name argument is the name of the variable to
-        which this is assigned, if any.
-
-        If it does, return the corresponding TypeInfo. Return None otherwise.
-
-        If the definition is invalid but looks like a TypedDict,
-        report errors but return (some) TypeInfo.
-        """
-        call, calleename, name = self.get_call(node, var_name)
-        if calleename != 'mypy_extensions.TypedDict':
-            return None
-        items, types, ok = self.parse_typeddict_args(call)
-        info = self.build_typeddict_typeinfo(name, items, types)
-        if ok:
-            self.semanalyzer.store_info(info, name)
-            call.analyzed = TypedDictExpr(info)
-            call.analyzed.set_line(call.line, call.column)
-        return info
-
-    def get_call(self, expr: Expression, var_name: str, *,
-                 fresh: bool = True) -> Tuple[CallExpr, str, str]:
+    def get_call(self, expr: Expression, var_name: str) -> Tuple[CallExpr, str, str]:
         (call, calleename, name) = None, '', ''
         if isinstance(expr, CallExpr):
             call = expr
@@ -730,6 +621,7 @@ class Special:
                 calleename = callee.fullname
                 if len(call.args) > 0:
                     name = getattr(call.args[0], 'value', var_name)
+                    fresh = (calleename is None or not calleename.endswith("TypeVar"))
                     if isinstance(name, str) and fresh:
                         if name != var_name or self.semanalyzer.is_func_scope():
                             # Give it a unique name derived from the line number.
@@ -737,6 +629,50 @@ class Special:
                     else:
                         name = var_name
         return (call, calleename, name)
+
+    def parse_namedtuple_args(self, call: CallExpr,
+                              fullname: str) -> Tuple[List[str], List[Type], bool]:
+        # TODO: Share code with check_argument_count in checkexpr.py?
+        args = call.args
+        if len(args) < 2:
+            return self.fail_namedtuple_arg("Too few arguments for namedtuple()", call)
+        if len(args) > 2:
+            # FIX incorrect. There are two additional parameters
+            return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
+        if call.arg_kinds != [ARG_POS, ARG_POS]:
+            return self.fail_namedtuple_arg("Unexpected arguments to namedtuple()", call)
+        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
+            return self.fail_namedtuple_arg(
+                "namedtuple() expects a string literal as the first argument", call)
+        types = []  # type: List[Type]
+        ok = True
+        if not isinstance(args[1], (ListExpr, TupleExpr)):
+            if (fullname == 'collections.namedtuple'
+                    and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
+                str_expr = cast(StrExpr, args[1])
+                items = str_expr.value.replace(',', ' ').split()
+            else:
+                return self.fail_namedtuple_arg(
+                    "List or tuple literal expected as the second argument to namedtuple()", call)
+        else:
+            listexpr = args[1]
+            if fullname == 'collections.namedtuple':
+                # The fields argument contains just names, with implicit Any types.
+                if any(not isinstance(item, (StrExpr, BytesExpr, UnicodeExpr))
+                       for item in listexpr.items):
+                    return self.fail_namedtuple_arg("String literal expected as namedtuple() item",
+                                                    call)
+                items = [cast(StrExpr, item).value for item in listexpr.items]
+            else:
+                # The fields argument contains (name, type) tuples.
+                items, types, ok = self.parse_namedtuple_fields_with_types(listexpr.items)
+        if not types:
+            types = [AnyType() for _ in items]
+        underscore = [item for item in items if item.startswith('_')]
+        if underscore:
+            self.fail("namedtuple() field names cannot start with an underscore: "
+                      + ', '.join(underscore), call)
+        return items, types, ok
 
     def parse_typeddict_args(self, call: CallExpr) -> Tuple[List[str], List[Type], bool]:
         # TODO: Share code with check_argument_count in checkexpr.py?
@@ -757,75 +693,6 @@ class Special:
         dictexpr = args[1]
         items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items)
         return items, types, ok
-
-    def parse_typeddict_fields_with_types(self, dict_items: List[Tuple[Expression, Expression]],
-                                          ) -> Tuple[List[str], List[Type], bool]:
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
-        for (field_name_expr, field_type_expr) in dict_items:
-            if isinstance(field_name_expr, (StrExpr, BytesExpr, UnicodeExpr)):
-                items.append(field_name_expr.value)
-            else:
-                return self.fail_typeddict_arg("Invalid TypedDict() field name", field_name_expr)
-            try:
-                type = expr_to_unanalyzed_type(field_type_expr)
-            except TypeTranslationError:
-                return self.fail_typeddict_arg('Invalid field type', field_type_expr)
-            types.append(self.semanalyzer.anal_type(type))
-        return items, types, True
-
-    def fail_typeddict_arg(self, message: str,
-                           context: Context) -> Tuple[List[str], List[Type], bool]:
-        self.fail(message, context)
-        return [], [], False
-
-    def build_typeddict_typeinfo(self, name: str, items: List[str],
-                                 types: List[Type]) -> TypeInfo:
-        mapping_value_type = join.join_type_list(types)
-        fallback = (self.named_type_or_none('typing.Mapping',
-                                            [self.str_type(), mapping_value_type])
-                    or self.object_type())
-
-        info = self.basic_new_typeinfo(name, fallback)
-        info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), fallback)
-
-        return info
-
-    def check_enum_call(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
-        """Check if a call defines an Enum.
-
-        Example:
-
-          A = enum.Enum('A', 'foo bar')
-
-        is equivalent to:
-
-          class A(enum.Enum):
-              foo = 1
-              bar = 2
-        """
-        call, calleename, name = self.get_call(node, var_name)
-        if calleename not in ('enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag'):
-            return None
-        items, values, ok = self.parse_enum_call_args(call, calleename.split('.')[-1])
-        info = self.build_enum_call_typeinfo(name, items, calleename)
-        if ok:
-            self.semanalyzer.store_info(info, name)
-            call.analyzed = EnumCallExpr(info, items, values)
-            call.analyzed.set_line(call.line, call.column)
-        return info
-
-    def build_enum_call_typeinfo(self, name: str, items: List[str], fullname: str) -> TypeInfo:
-        base = self.named_type_or_none(fullname)
-        assert base is not None
-        info = self.basic_new_typeinfo(name, base)
-        info.is_enum = True
-        for item in items:
-            var = Var(item)
-            var.info = info
-            var.is_property = True
-            info.names[item] = SymbolTableNode(MDEF, var)
-        return info
 
     def parse_enum_call_args(self, call: CallExpr,
                              class_name: str) -> Tuple[List[str],
@@ -884,6 +751,95 @@ class Special:
             values = [None] * len(items)
         assert len(items) == len(values)
         return items, values, True
+
+    def parse_namedtuple_fields_with_types(self, nodes: List[Expression]
+                                           ) -> Tuple[List[str], List[Type], bool]:
+        items = []  # type: List[str]
+        types = []  # type: List[Type]
+        for item in nodes:
+            if isinstance(item, TupleExpr):
+                if len(item.items) != 2:
+                    return self.fail_namedtuple_arg("Invalid NamedTuple field definition",
+                                                    item)
+                name, type_node = item.items
+                if isinstance(name, (StrExpr, BytesExpr, UnicodeExpr)):
+                    items.append(name.value)
+                else:
+                    return self.fail_namedtuple_arg("Invalid NamedTuple() field name", item)
+                try:
+                    type = expr_to_unanalyzed_type(type_node)
+                except TypeTranslationError:
+                    return self.fail_namedtuple_arg('Invalid field type', type_node)
+                types.append(self.semanalyzer.anal_type(type))
+            else:
+                return self.fail_namedtuple_arg("Tuple expected as NamedTuple() field", item)
+        return items, types, True
+
+    def parse_typeddict_fields_with_types(self, dict_items: List[Tuple[Expression, Expression]],
+                                          ) -> Tuple[List[str], List[Type], bool]:
+        items = []  # type: List[str]
+        types = []  # type: List[Type]
+        for (field_name_expr, field_type_expr) in dict_items:
+            if isinstance(field_name_expr, (StrExpr, BytesExpr, UnicodeExpr)):
+                items.append(field_name_expr.value)
+            else:
+                return self.fail_typeddict_arg("Invalid TypedDict() field name", field_name_expr)
+            try:
+                type = expr_to_unanalyzed_type(field_type_expr)
+            except TypeTranslationError:
+                return self.fail_typeddict_arg('Invalid field type', field_type_expr)
+            types.append(self.semanalyzer.anal_type(type))
+        return items, types, True
+
+    def fail_typeddict_arg(self, message: str,
+                           context: Context) -> Tuple[List[str], List[Type], bool]:
+        self.fail(message, context)
+        return [], [], False
+
+    def build_typeddict_typeinfo(self, name: str, items: List[str],
+                                 types: List[Type]) -> TypeInfo:
+        mapping_value_type = join.join_type_list(types)
+        fallback = (self.named_type_or_none('typing.Mapping',
+                                            [self.str_type(), mapping_value_type])
+                    or self.object_type())
+
+        info = self.basic_new_typeinfo(name, fallback)
+        info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), fallback)
+
+        return info
+
+    def check_enum_call(self, call: CallExpr, calleename: str, name: str) -> Optional[TypeInfo]:
+        """Check if a call defines an Enum.
+
+        Example:
+
+          A = enum.Enum('A', 'foo bar')
+
+        is equivalent to:
+
+          class A(enum.Enum):
+              foo = 1
+              bar = 2
+        """
+        items, values, ok = self.parse_enum_call_args(call, calleename.split('.')[-1])
+        info = self.build_enum_call_typeinfo(name, items, calleename)
+        if ok:
+            self.semanalyzer.store_info(info, name)
+            call.analyzed = EnumCallExpr(info, items, values)
+            call.analyzed.set_line(call.line, call.column)
+        return info
+
+    def build_enum_call_typeinfo(self, name: str, items: List[str], fullname: str) -> TypeInfo:
+        base = self.named_type_or_none(fullname)
+        assert base is not None
+        info = self.basic_new_typeinfo(name, base)
+        info.is_enum = True
+        for item in items:
+            var = Var(item)
+            var.info = info
+            var.is_property = True
+            info.names[item] = SymbolTableNode(MDEF, var)
+        return info
 
     def fail_enum_call_arg(self, message: str,
                            context: Context) -> Tuple[List[str],
