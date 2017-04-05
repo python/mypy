@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from typing import List, Dict, Tuple, cast, Optional, Callable
+from typing import List, Dict, Tuple, cast, Optional, Callable, TYPE_CHECKING
 
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
@@ -17,6 +17,8 @@ from mypy.types import (
     TypeVarDef, TupleType, UnboundType, TypedDictType, TypeType,
 )
 from mypy import join
+if TYPE_CHECKING:
+    import mypy.semanal
 
 
 class Special:
@@ -476,7 +478,8 @@ class Special:
             variance = INVARIANT
         return (variance, upper_bound)
 
-    def process_call(self, s: AssignmentStmt, check: Callable[[Expression, str], TypeInfo]):
+    def process_call(self, s: AssignmentStmt,
+                     check: Callable[[Expression, str], TypeInfo]) -> None:
         """Check if s defines a legal node; if yes, store the definition in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
@@ -487,7 +490,7 @@ class Special:
             return
         # Yes, it's a valid definition. Add it to the symbol table.
         node = self.lookup(name, s)
-        node.kind = GDEF   # TODO locally defined namedtuple
+        node.kind = GDEF   # TODO locally defined type
         node.node = info
 
     def process_namedtuple_definition(self, s: AssignmentStmt) -> None:
@@ -507,27 +510,16 @@ class Special:
         If the definition is invalid but looks like a namedtuple,
         report errors but return (some) TypeInfo.
         """
-        if not isinstance(expr, CallExpr):
+
+        call, calleename, name = self.get_call(expr, var_name)
+        if calleename not in ('collections.namedtuple', 'typing.NamedTuple'):
             return None
-        call = expr
-        callee = call.callee
-        if not isinstance(callee, RefExpr):
-            return None
-        fullname = callee.fullname
-        if fullname not in ('collections.namedtuple', 'typing.NamedTuple'):
-            return None
-        items, types, ok = self.parse_namedtuple_args(call, fullname)
-        if not ok:
-            # Error. Construct dummy return value.
-            return self.build_namedtuple_typeinfo('namedtuple', [], [], {})
-        name = cast(StrExpr, call.args[0]).value
-        if name != var_name or self.semanalyzer.is_func_scope():
-            # Give it a unique name derived from the line number.
-            name += '@' + str(call.line)
-        info = self.build_namedtuple_typeinfo(name, items, types, {})
-        self.semanalyzer.store_info(info, name)
-        call.analyzed = NamedTupleExpr(info)
-        call.analyzed.set_line(call.line, call.column)
+        items, types, ok = self.parse_namedtuple_args(call, calleename)
+        info = self.build_namedtuple_typeinfo(name, items, types)
+        if ok:
+            self.semanalyzer.store_info(info, name)
+            call.analyzed = NamedTupleExpr(info)
+            call.analyzed.set_line(call.line, call.column)
         return info
 
     def parse_namedtuple_args(self, call: CallExpr,
@@ -621,7 +613,8 @@ class Special:
         return TupleType(info.tuple_type.items, fallback=fallback)
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str], types: List[Type],
-                                  default_items: Dict[str, Expression]) -> TypeInfo:
+                                  default_items: Dict[str, Expression] = None) -> TypeInfo:
+        default_items = default_items or {}
         strtype = self.str_type()
         object_type = self.object_type()
         basetuple_type = self.named_type('__builtins__.tuple', [AnyType()])
@@ -737,27 +730,33 @@ class Special:
         If the definition is invalid but looks like a TypedDict,
         report errors but return (some) TypeInfo.
         """
-        if not isinstance(node, CallExpr):
-            return None
-        call = node
-        callee = call.callee
-        if not isinstance(callee, RefExpr):
-            return None
-        if callee.fullname != 'mypy_extensions.TypedDict':
+        call, calleename, name = self.get_call(node, var_name)
+        if calleename != 'mypy_extensions.TypedDict':
             return None
         items, types, ok = self.parse_typeddict_args(call)
-        if not ok:
-            # Error. Construct dummy return value.
-            return self.build_typeddict_typeinfo('TypedDict', [], [])
-        name = cast(StrExpr, call.args[0]).value
-        if name != var_name or self.semanalyzer.is_func_scope():
-            # Give it a unique name derived from the line number.
-            name += '@' + str(call.line)
         info = self.build_typeddict_typeinfo(name, items, types)
-        self.semanalyzer.store_info(info, name)
-        call.analyzed = TypedDictExpr(info)
-        call.analyzed.set_line(call.line, call.column)
+        if ok:
+            self.semanalyzer.store_info(info, name)
+            call.analyzed = TypedDictExpr(info)
+            call.analyzed.set_line(call.line, call.column)
         return info
+
+    def get_call(self, expr: Expression, var_name: str) -> Tuple[CallExpr, str, str]:
+        (call, calleename, name) = None, '', ''
+        if isinstance(expr, CallExpr):
+            call = expr
+            callee = call.callee
+            if isinstance(callee, RefExpr):
+                calleename = callee.fullname
+                if len(call.args) > 0:
+                    name = getattr(call.args[0], 'value', var_name)
+                    if isinstance(name, str):
+                        if name != var_name or self.semanalyzer.is_func_scope():
+                            # Give it a unique name derived from the line number.
+                            name += '@' + str(call.line)
+                    else:
+                        name = var_name
+        return (call, calleename, name)
 
     def parse_typeddict_args(self, call: CallExpr) -> Tuple[List[str], List[Type], bool]:
         # TODO: Share code with check_argument_count in checkexpr.py?
@@ -825,27 +824,15 @@ class Special:
               foo = 1
               bar = 2
         """
-        if not isinstance(node, CallExpr):
+        call, calleename, name = self.get_call(node, var_name)
+        if calleename not in ('enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag'):
             return None
-        call = node
-        callee = call.callee
-        if not isinstance(callee, RefExpr):
-            return None
-        fullname = callee.fullname
-        if fullname not in ('enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag'):
-            return None
-        items, values, ok = self.parse_enum_call_args(call, fullname.split('.')[-1])
-        if not ok:
-            # Error. Construct dummy return value.
-            return self.build_enum_call_typeinfo('Enum', [], fullname)
-        name = cast(StrExpr, call.args[0]).value
-        if name != var_name or self.semanalyzer.is_func_scope():
-            # Give it a unique name derived from the line number.
-            name += '@' + str(call.line)
-        info = self.build_enum_call_typeinfo(name, items, fullname)
-        self.semanalyzer.store_info(info, name)
-        call.analyzed = EnumCallExpr(info, items, values)
-        call.analyzed.set_line(call.line, call.column)
+        items, values, ok = self.parse_enum_call_args(call, calleename.split('.')[-1])
+        info = self.build_enum_call_typeinfo(name, items, calleename)
+        if ok:
+            self.semanalyzer.store_info(info, name)
+            call.analyzed = EnumCallExpr(info, items, values)
+            call.analyzed.set_line(call.line, call.column)
         return info
 
     def build_enum_call_typeinfo(self, name: str, items: List[str], fullname: str) -> TypeInfo:
