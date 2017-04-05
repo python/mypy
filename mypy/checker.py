@@ -236,7 +236,8 @@ class TypeChecker(NodeVisitor[None]):
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         node = self.scope.top_function()
-        if self.pass_num < LAST_PASS and node is not None and isinstance(node, FuncDef):
+        if (self.pass_num < LAST_PASS and node is not None
+                and isinstance(node, (FuncDef, LambdaExpr))):
             # Don't report an error yet. Just defer.
             if self.errors.type_name:
                 type_name = self.errors.type_name[-1]
