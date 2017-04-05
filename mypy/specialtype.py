@@ -1,3 +1,8 @@
+"""Special case semantic analysis for type-expressions, such as namedtuple.
+
+This module is used only by the SemanticAnalyzer, and is tightly coupled with it.
+"""
+
 from collections import OrderedDict
 
 from typing import List, Dict, Tuple, cast, Optional, Callable, TYPE_CHECKING

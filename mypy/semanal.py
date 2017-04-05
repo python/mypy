@@ -66,8 +66,9 @@ from mypy.nodes import (
     IntExpr, FloatExpr, UnicodeExpr, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
     collections_type_aliases, get_member_expr_fullname,
 )
+import mypy.nodes
 from mypy.typevars import has_no_typevars, fill_typevars
-from mypy.visitor import NodeVisitor
+from mypy.visitor import AbstractNodeVisitor, NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE
@@ -150,7 +151,7 @@ FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone bod
 FUNCTION_SECOND_PHASE = 2  # Only analyze body
 
 
-class SemanticAnalyzer(NodeVisitor):
+class SemanticAnalyzer(AbstractNodeVisitor[None]):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a
@@ -655,7 +656,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.analyze_metaclass(defn)
 
             for decorator in defn.decorators:
-                self.analyze_class_decorator(defn, decorator)
+                decorator.accept(self)
 
             self.enter_class(defn)
 
@@ -701,9 +702,6 @@ class SemanticAnalyzer(NodeVisitor):
         self.bound_tvars = self.tvar_stack.pop()
         if self.bound_tvars:
             enable_typevars(self.bound_tvars)
-
-    def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
-        decorator.accept(self)
 
     def setup_type_promotion(self, defn: ClassDef) -> None:
         """Setup extra, ad-hoc subtyping relationships between classes (promotion).
@@ -1622,7 +1620,7 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_try_stmt(self, s: TryStmt) -> None:
         self.analyze_try_stmt(s, self)
 
-    def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor,
+    def analyze_try_stmt(self, s: TryStmt, visitor: AbstractNodeVisitor,
                          add_global: bool = False) -> None:
         s.body.accept(visitor)
         for type, var, handler in zip(s.types, s.vars, s.handlers):
@@ -1733,6 +1731,9 @@ class SemanticAnalyzer(NodeVisitor):
             s.variables1.accept(self)
         if s.variables2:
             s.variables2.accept(self)
+
+    def visit_pass_stmt(self, o: 'mypy.nodes.PassStmt') -> T:
+        pass
 
     #
     # Expressions
@@ -2106,6 +2107,52 @@ class SemanticAnalyzer(NodeVisitor):
         elif not self.function_stack[-1].is_coroutine:
             self.fail("'await' outside coroutine ('async def')", expr)
         expr.expr.accept(self)
+
+    def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> None:
+        pass
+
+    def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> None:
+        pass
+
+    def visit_int_expr(self, o: 'mypy.nodes.IntExpr') -> None:
+        pass
+
+    def visit_complex_expr(self, o: 'mypy.nodes.ComplexExpr') -> None:
+        pass
+
+    def visit_float_expr(self, o: 'mypy.nodes.FloatExpr') -> None:
+        pass
+
+    def visit_bytes_expr(self, o: 'mypy.nodes.BytesExpr') -> None:
+        pass
+
+    def visit_str_expr(self, o: 'mypy.nodes.StrExpr') -> None:
+        pass
+
+    def visit_unicode_expr(self, o: 'mypy.nodes.UnicodeExpr') -> None:
+        pass
+
+    def visit_enum_call_expr(self, o: 'mypy.nodes.EnumCallExpr') -> None:
+        pass
+
+    def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> None:
+        pass
+
+    def visit_newtype_expr(self, o: 'mypy.nodes.NewTypeExpr') -> None:
+        pass
+
+    def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> None:
+        pass
+
+    def visit_ellipsis(self, o: 'mypy.nodes.EllipsisExpr') -> None:
+        pass
+
+    def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> None:
+        # this method is actually visited
+        pass
+
+    def visit_var(self, o: 'mypy.nodes.Var') -> None:
+        assert False
 
     #
     # Helpers
