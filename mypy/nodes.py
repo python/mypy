@@ -9,7 +9,7 @@ from typing import (
 
 import mypy.strconv
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
-from mypy.util import dump_tagged, short_type
+from mypy.util import short_type, IdMapper
 
 
 class Context:
@@ -368,6 +368,8 @@ class FuncBase(Node):
     # Type signature. This is usually CallableType or Overloaded, but it can be something else for
     # decorated functions/
     type = None  # type: mypy.types.Type
+    # Original, not semantically analyzed type (used for reprocessing)
+    unanalyzed_type = None  # type: mypy.types.Type
     # If method, reference to TypeInfo
     info = None  # type: TypeInfo
     is_property = False
@@ -512,6 +514,7 @@ class FuncItem(FuncBase):
         self.max_pos = self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT)
         self.body = body
         self.type = typ
+        self.unanalyzed_type = typ
         self.expanded = []
 
         self.min_args = 0
@@ -836,6 +839,8 @@ class AssignmentStmt(Statement):
     rvalue = None  # type: Expression
     # Declared type in a comment, may be None.
     type = None  # type: mypy.types.Type
+    # Original, not semantically analyzed type in annotation (used for reprocessing)
+    unanalyzed_type = None  # type: Optional[mypy.types.Type]
     # This indicates usage of PEP 526 type annotation syntax in assignment.
     new_syntax = False  # type: bool
 
@@ -844,6 +849,7 @@ class AssignmentStmt(Statement):
         self.lvalues = lvalues
         self.rvalue = rvalue
         self.type = type
+        self.unanalyzed_type = type
         self.new_syntax = new_syntax
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
@@ -2024,8 +2030,11 @@ class TypeInfo(SymbolNode):
         self.assuming = []
         self.assuming_proper = []
         self.inferring = []
-        if defn.type_vars:
-            for vd in defn.type_vars:
+        self.add_type_vars()
+
+    def add_type_vars(self) -> None:
+        if self.defn.type_vars:
+            for vd in self.defn.type_vars:
                 self.type_vars.append(vd.name)
 
     def name(self) -> str:
@@ -2144,14 +2153,41 @@ class TypeInfo(SymbolNode):
 
         This includes the most important information about the type.
         """
+        return self.dump()
+
+    def dump(self,
+             str_conv: 'mypy.strconv.StrConv' = None,
+             type_str_conv: 'mypy.types.TypeStrVisitor' = None) -> str:
+        """Return a string dump of the contents of the TypeInfo."""
+        if not str_conv:
+            str_conv = mypy.strconv.StrConv()
         base = None  # type: str
+
+        def type_str(typ: 'mypy.types.Type') -> str:
+            if type_str_conv:
+                return typ.accept(type_str_conv)
+            return str(typ)
+
+        head = 'TypeInfo' + str_conv.format_id(self)
         if self.bases:
-            base = 'Bases({})'.format(', '.join(str(base)
+            base = 'Bases({})'.format(', '.join(type_str(base)
                                                 for base in self.bases))
-        return dump_tagged(['Name({})'.format(self.fullname()),
-                            base,
-                            ('Names', sorted(self.names.keys()))],
-                           'TypeInfo')
+        mro = 'Mro({})'.format(', '.join(item.fullname() + str_conv.format_id(item)
+                                         for item in self.mro))
+        names = []
+        for name in sorted(self.names):
+            description = name + str_conv.format_id(self.names[name].node)
+            node = self.names[name].node
+            if isinstance(node, Var) and node.type:
+                description += ' ({})'.format(type_str(node.type))
+            names.append(description)
+        return mypy.strconv.dump_tagged(
+            ['Name({})'.format(self.fullname()),
+             base,
+             mro,
+             ('Names', names)],
+            head,
+            str_conv=str_conv)
 
     def serialize(self) -> JsonDict:
         # NOTE: This is where all ClassDefs originate, so there shouldn't be duplicates.
