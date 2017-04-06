@@ -112,6 +112,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         new_fallback = expand_type(t.fallback, self.variables)
+        assert isinstance(new_fallback, Instance)
         return t.copy_modified(items=self.expand_types(t.items), fallback=new_fallback)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
