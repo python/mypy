@@ -1130,6 +1130,20 @@ def f(a: Callable[[int, int, int], int] = lambda *a, **k: 1):
     pass
 [builtins fixtures/dict.pyi]
 
+[case testLambdaDeferredSpecialCase]
+from typing import Callable
+
+class A:
+    def f(self) -> None:
+        h(lambda: self.x)
+
+    def g(self) -> None:
+        self.x = 1
+
+def h(x: Callable[[], int]) -> None:
+    pass
+
+
 -- Boolean operators
 -- -----------------
 

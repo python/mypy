@@ -1,7 +1,7 @@
 from typing import (Dict, List, Set, Iterator, Union)
 from contextlib import contextmanager
 
-from mypy.types import Type, AnyType, PartialType
+from mypy.types import Type, AnyType, PartialType, UnionType, NoneTyp
 from mypy.nodes import (Key, Node, Expression, Var, RefExpr, SymbolTableNode)
 
 from mypy.subtypes import is_subtype
@@ -227,7 +227,11 @@ class ConditionalTypeBinder:
         if (isinstance(self.most_recent_enclosing_type(expr, type), AnyType)
                 and not restrict_any):
             pass
-        elif isinstance(type, AnyType):
+        elif (isinstance(type, AnyType)
+              and not (isinstance(declared_type, UnionType)
+                       and any(isinstance(item, AnyType) for item in declared_type.items))):
+            # Assigning an Any value doesn't affect the type to avoid false negatives, unless
+            # there is an Any item in a declared union type.
             self.put(expr, declared_type)
         else:
             self.put(expr, type)

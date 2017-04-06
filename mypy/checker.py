@@ -33,7 +33,7 @@ from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, strip_type, TypeType,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    true_only, false_only, function_type, is_named_instance
+    true_only, false_only, function_type, is_named_instance, union_items
 )
 from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder
@@ -65,13 +65,16 @@ T = TypeVar('T')
 LAST_PASS = 1  # Pass numbers start at 0
 
 
-# A node which is postponed to be type checked during the next pass.
+# A node which is postponed to be processed during the next pass.
+# This is used for both batch mode and fine-grained incremental mode.
 DeferredNode = NamedTuple(
     'DeferredNode',
     [
-        ('node', FuncItem),
+        # In batch mode only FuncDef and LambdaExpr are supported
+        ('node', Union[FuncDef, LambdaExpr, MypyFile]),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
-        ('active_class', Optional[Type]),  # And its type (for selftype handling)
+        ('active_typeinfo', Optional[TypeInfo]),  # And its TypeInfo (for semantic analysis
+                                                  # self type handling)
     ])
 
 
@@ -167,7 +170,7 @@ class TypeChecker(NodeVisitor[None]):
 
         Deferred functions will be processed by check_second_pass().
         """
-        self.errors.set_file(self.path)
+        self.errors.set_file(self.path, self.tree.fullname())
         with self.enter_partial_types():
             with self.binder.top_frame_context():
                 for d in self.tree.defs:
@@ -187,19 +190,22 @@ class TypeChecker(NodeVisitor[None]):
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                           all_.node)
 
-    def check_second_pass(self) -> bool:
+    def check_second_pass(self, todo: List[DeferredNode] = None) -> bool:
         """Run second or following pass of type checking.
 
         This goes through deferred nodes, returning True if there were any.
         """
-        if not self.deferred_nodes:
+        if not todo and not self.deferred_nodes:
             return False
-        self.errors.set_file(self.path)
+        self.errors.set_file(self.path, self.tree.fullname())
         self.pass_num += 1
-        todo = self.deferred_nodes
+        if not todo:
+            todo = self.deferred_nodes
+        else:
+            assert not self.deferred_nodes
         self.deferred_nodes = []
-        done = set()  # type: Set[FuncItem]
-        for node, type_name, active_class in todo:
+        done = set()  # type: Set[Union[FuncDef, LambdaExpr, MypyFile]]
+        for node, type_name, active_typeinfo in todo:
             if node in done:
                 continue
             # This is useful for debugging:
@@ -207,18 +213,34 @@ class TypeChecker(NodeVisitor[None]):
             #       (self.pass_num, type_name, node.fullname() or node.name()))
             done.add(node)
             with self.errors.enter_type(type_name) if type_name else nothing():
-                with self.scope.push_class(active_class) if active_class else nothing():
-                    if isinstance(node, Statement):
-                        self.accept(node)
-                    elif isinstance(node, Expression):
-                        self.expr_checker.accept(node)
-                    else:
-                        assert False
+                with self.scope.push_class(active_typeinfo) if active_typeinfo else nothing():
+                    self.check_partial(node)
         return True
+
+    def check_partial(self, node: Union[FuncDef, LambdaExpr, MypyFile]) -> None:
+        if isinstance(node, MypyFile):
+            self.check_top_level(node)
+        elif isinstance(node, LambdaExpr):
+            self.expr_checker.accept(node)
+        else:
+            self.accept(node)
+
+    def check_top_level(self, node: MypyFile) -> None:
+        """Check only the top-level of a module, skipping function definitions."""
+        with self.enter_partial_types():
+            with self.binder.top_frame_context():
+                for d in node.defs:
+                    # TODO: Type check class bodies.
+                    if not isinstance(d, (FuncDef, ClassDef)):
+                        d.accept(self)
+
+        assert not self.current_node_deferred
+        # TODO: Handle __all__
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         node = self.scope.top_function()
-        if self.pass_num < LAST_PASS and node is not None:
+        if (self.pass_num < LAST_PASS and node is not None
+                and isinstance(node, (FuncDef, LambdaExpr))):
             # Don't report an error yet. Just defer.
             if self.errors.type_name:
                 type_name = self.errors.type_name[-1]
@@ -635,7 +657,7 @@ class TypeChecker(NodeVisitor[None]):
                 for i in range(len(typ.arg_types)):
                     arg_type = typ.arg_types[i]
 
-                    ref_type = self.scope.active_class()
+                    ref_type = self.scope.active_self_type()  # type: Optional[Type]
                     if (isinstance(defn, FuncDef) and ref_type is not None and i == 0
                             and not defn.is_static
                             and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
@@ -817,44 +839,45 @@ class TypeChecker(NodeVisitor[None]):
         # of x in __radd__ would not be A, the methods could be
         # non-overlapping.
 
-        if isinstance(forward_type, CallableType):
-            # TODO check argument kinds
-            if len(forward_type.arg_types) < 1:
-                # Not a valid operator method -- can't succeed anyway.
-                return
+        for forward_item in union_items(forward_type):
+            if isinstance(forward_item, CallableType):
+                # TODO check argument kinds
+                if len(forward_item.arg_types) < 1:
+                    # Not a valid operator method -- can't succeed anyway.
+                    return
 
-            # Construct normalized function signatures corresponding to the
-            # operator methods. The first argument is the left operand and the
-            # second operand is the right argument -- we switch the order of
-            # the arguments of the reverse method.
-            forward_tweaked = CallableType(
-                [forward_base, forward_type.arg_types[0]],
-                [nodes.ARG_POS] * 2,
-                [None] * 2,
-                forward_type.ret_type,
-                forward_type.fallback,
-                name=forward_type.name)
-            reverse_args = reverse_type.arg_types
-            reverse_tweaked = CallableType(
-                [reverse_args[1], reverse_args[0]],
-                [nodes.ARG_POS] * 2,
-                [None] * 2,
-                reverse_type.ret_type,
-                fallback=self.named_type('builtins.function'),
-                name=reverse_type.name)
+                # Construct normalized function signatures corresponding to the
+                # operator methods. The first argument is the left operand and the
+                # second operand is the right argument -- we switch the order of
+                # the arguments of the reverse method.
+                forward_tweaked = CallableType(
+                    [forward_base, forward_item.arg_types[0]],
+                    [nodes.ARG_POS] * 2,
+                    [None] * 2,
+                    forward_item.ret_type,
+                    forward_item.fallback,
+                    name=forward_item.name)
+                reverse_args = reverse_type.arg_types
+                reverse_tweaked = CallableType(
+                    [reverse_args[1], reverse_args[0]],
+                    [nodes.ARG_POS] * 2,
+                    [None] * 2,
+                    reverse_type.ret_type,
+                    fallback=self.named_type('builtins.function'),
+                    name=reverse_type.name)
 
-            if is_unsafe_overlapping_signatures(forward_tweaked,
-                                                reverse_tweaked):
-                self.msg.operator_method_signatures_overlap(
-                    reverse_class.name(), reverse_name,
-                    forward_base.type.name(), forward_name, context)
-        elif isinstance(forward_type, Overloaded):
-            for item in forward_type.items():
-                self.check_overlapping_op_methods(
-                    reverse_type, reverse_name, reverse_class,
-                    item, forward_name, forward_base, context)
-        elif not isinstance(forward_type, AnyType):
-            self.msg.forward_operator_not_callable(forward_name, context)
+                if is_unsafe_overlapping_signatures(forward_tweaked,
+                                                    reverse_tweaked):
+                    self.msg.operator_method_signatures_overlap(
+                        reverse_class.name(), reverse_name,
+                        forward_base.type.name(), forward_name, context)
+            elif isinstance(forward_item, Overloaded):
+                for item in forward_item.items():
+                    self.check_overlapping_op_methods(
+                        reverse_type, reverse_name, reverse_class,
+                        item, forward_name, forward_base, context)
+            elif not isinstance(forward_item, AnyType):
+                self.msg.forward_operator_not_callable(forward_name, context)
 
     def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.
@@ -945,7 +968,7 @@ class TypeChecker(NodeVisitor[None]):
             # The name of the method is defined in the base class.
 
             # Construct the type of the overriding method.
-            typ = bind_self(self.function_type(defn), self.scope.active_class())
+            typ = bind_self(self.function_type(defn), self.scope.active_self_type())
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
@@ -958,7 +981,7 @@ class TypeChecker(NodeVisitor[None]):
                     assert False, str(base_attr.node)
             if isinstance(original_type, FunctionLike):
                 original = map_type_from_supertype(
-                    bind_self(original_type, self.scope.active_class()),
+                    bind_self(original_type, self.scope.active_self_type()),
                     defn.info, base)
                 # Check that the types are compatible.
                 # TODO overloaded signatures
@@ -1050,7 +1073,7 @@ class TypeChecker(NodeVisitor[None]):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
             with self.binder.top_frame_context():
-                with self.scope.push_class(fill_typevars(defn.info)):
+                with self.scope.push_class(defn.info):
                     self.accept(defn.defs)
             self.binder = old_binder
             if not defn.has_incompatible_baseclass:
@@ -1316,8 +1339,8 @@ class TypeChecker(NodeVisitor[None]):
                     # Class-level function objects and classmethods become bound
                     # methods: the former to the instance, the latter to the
                     # class
-                    base_type = bind_self(base_type, self.scope.active_class())
-                    compare_type = bind_self(compare_type, self.scope.active_class())
+                    base_type = bind_self(base_type, self.scope.active_self_type())
+                    compare_type = bind_self(compare_type, self.scope.active_self_type())
 
                 # If we are a static method, ensure to also tell the
                 # lvalue it now contains a static method
@@ -1346,7 +1369,8 @@ class TypeChecker(NodeVisitor[None]):
 
             if base_type:
                 if not has_no_typevars(base_type):
-                    instance = cast(Instance, self.scope.active_class())
+                    # TODO: Handle TupleType, don't cast
+                    instance = cast(Instance, self.scope.active_self_type())
                     itype = map_instance_to_supertype(instance, base)
                     base_type = expand_type_by_instance(base_type, itype)
 
@@ -2995,7 +3019,7 @@ def is_node_static(node: Node) -> Optional[bool]:
 
 class Scope:
     # We keep two stacks combined, to maintain the relative order
-    stack = None  # type: List[Union[Type, FuncItem, MypyFile]]
+    stack = None  # type: List[Union[TypeInfo, FuncItem, MypyFile]]
 
     def __init__(self, module: MypyFile) -> None:
         self.stack = [module]
@@ -3006,9 +3030,15 @@ class Scope:
                 return e
         return None
 
-    def active_class(self) -> Optional[Type]:
-        if isinstance(self.stack[-1], Type):
+    def active_class(self) -> Optional[TypeInfo]:
+        if isinstance(self.stack[-1], TypeInfo):
             return self.stack[-1]
+        return None
+
+    def active_self_type(self) -> Optional[Union[Instance, TupleType]]:
+        info = self.active_class()
+        if info:
+            return fill_typevars(info)
         return None
 
     @contextmanager
@@ -3018,8 +3048,8 @@ class Scope:
         self.stack.pop()
 
     @contextmanager
-    def push_class(self, t: Type) -> Iterator[None]:
-        self.stack.append(t)
+    def push_class(self, info: TypeInfo) -> Iterator[None]:
+        self.stack.append(info)
         yield
         self.stack.pop()
 

@@ -27,7 +27,8 @@ _T_co = TypeVar('_T_co', covariant=True)
 class tuple(Sequence[_T_co], Generic[_T_co]): pass
 class function: pass
 class int: pass
+class float: pass
 class str: pass
-class bool: pass
+class bool(int): pass
 
 property = object() # Dummy definition.
