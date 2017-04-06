@@ -163,7 +163,8 @@ class Special:
             return None
         return newtype_class_info
 
-    def lookup_base(self, defn: ClassDef, p: Callable[[RefExpr], bool] = lambda _: False) -> Optional[SymbolTableNode]:
+    def lookup_base(self, defn: ClassDef,
+                    p: Callable[[RefExpr], bool] = lambda _: False) -> Optional[SymbolTableNode]:
         res = None
         for base_expr in defn.base_type_exprs:
             if isinstance(base_expr, RefExpr):
@@ -260,10 +261,12 @@ class Special:
         return ([], [])
 
     def analyze_typeddict_bases(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
-        typeddict_bases = [cast(RefExpr, expr) for expr in defn.base_type_exprs if is_typeddict(expr)]
+        typeddict_bases = [cast(RefExpr, expr) for expr in defn.base_type_exprs
+                           if is_typeddict(expr)]
         if typeddict_bases != defn.base_type_exprs:
             self.fail("All bases of a new TypedDict must be TypedDict types", defn)
-        typeddict_bases = [expr for expr in typeddict_bases if expr.fullname != 'mypy_extensions.TypedDict']
+        typeddict_bases = [expr for expr in typeddict_bases
+                           if expr.fullname != 'mypy_extensions.TypedDict']
         newfields = []  # type: List[str]
         newtypes = []  # type: List[Type]
         for base in typeddict_bases:
