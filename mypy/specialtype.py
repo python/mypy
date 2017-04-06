@@ -5,7 +5,7 @@ This module is used only by the SemanticAnalyzer, and is tightly coupled with it
 
 from collections import OrderedDict
 
-from typing import List, Dict, Tuple, cast, Optional, TYPE_CHECKING
+from typing import List, Dict, Tuple, cast, Optional, Union, Callable, TYPE_CHECKING
 
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
@@ -121,12 +121,13 @@ class Special:
         n_values = call.arg_kinds[1:].count(ARG_POS)
         values = self.analyze_types(call.args[1:1 + n_values])
 
-        res = self.process_typevar_arguments(call.args[1 + n_values:],
-                                             call.arg_names[1 + n_values:],
-                                             call.arg_kinds[1 + n_values:],
-                                             n_values,
-                                             context=call)
-        if res is None:
+        res = self.parse_typevar_args(call.args[1 + n_values:],
+                                      call.arg_names[1 + n_values:],
+                                      call.arg_kinds[1 + n_values:],
+                                      n_values)
+        if isinstance(res, str):
+            for msg in res.split('\n'):
+                self.fail(msg, call)
             return None
         variance, upper_bound = res
         return TypeVarExpr(name, fullname, values, upper_bound, variance)
@@ -139,7 +140,7 @@ class Special:
         # overwritten later with a fully complete NewTypeExpr if there are no other
         # errors with the NewType() call.
 
-        old_type = self.check_newtype_args(var_name, call, call)
+        old_type = self.parse_newtype_args(var_name, call, call)
         call.analyzed = NewTypeExpr(var_name, old_type, line=call.line)
         if old_type is None:
             return None
@@ -156,27 +157,24 @@ class Special:
             return None
         return newtype_class_info
 
-    def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
+    def lookup_base(self, defn: ClassDef, p: Callable[[RefExpr], bool] = lambda _: False) -> Optional[SymbolTableNode]:
+        res = None
         for base_expr in defn.base_type_exprs:
             if isinstance(base_expr, RefExpr):
                 base_expr.accept(self.semanalyzer)
-                if base_expr.fullname == 'typing.NamedTuple':
-                    node = self.lookup(defn.name, defn)
-                    if node is not None:
-                        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
-                        items, types, default_items = self.check_namedtuple_classdef(defn)
-                        node.node = self.build_namedtuple_typeinfo(
-                            defn.name, items, types, default_items)
-                        return True
-        return False
+                if p(base_expr):
+                    res = self.lookup(defn.name, defn)
+        return res
 
-    def check_namedtuple_classdef(
-            self, defn: ClassDef) -> Tuple[List[str], List[Type], Dict[str, Expression]]:
-        NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
-                                'expected "field_name: field_type"')
+    def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
+        node = self.lookup_base(defn, lambda x: x.fullname == 'typing.NamedTuple')
+        if node is None:
+            return False
         if self.semanalyzer.options.python_version < (3, 6):
             self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
-            return [], [], {}
+        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
+        NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
+                                'expected "field_name: field_type"')
         if len(defn.base_type_exprs) > 1:
             self.fail('NamedTuple should be a single base', defn)
         items = []  # type: List[str]
@@ -186,8 +184,8 @@ class Special:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
                 if (not isinstance(stmt, PassStmt) and
-                    not (isinstance(stmt, ExpressionStmt) and
-                         isinstance(stmt.expr, EllipsisExpr))):
+                        not (isinstance(stmt, ExpressionStmt) and
+                                 isinstance(stmt.expr, EllipsisExpr))):
                     self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
@@ -211,64 +209,47 @@ class Special:
                                   stmt)
                 else:
                     default_items[name] = stmt.rvalue
-        return items, types, default_items
+        node.node = self.build_namedtuple_typeinfo(defn.name, items, types, default_items)
+        return True
 
     def analyze_typeddict_classdef(self, defn: ClassDef) -> bool:
         # special case for TypedDict
-        possible = False
-        for base_expr in defn.base_type_exprs:
-            if isinstance(base_expr, RefExpr):
-                base_expr.accept(self.semanalyzer)
-                if (base_expr.fullname == 'mypy_extensions.TypedDict' or
-                        is_typeddict(base_expr)):
-                    possible = True
-        if possible:
-            node = self.lookup(defn.name, defn)
-            if node is not None:
-                node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
-                if (len(defn.base_type_exprs) == 1 and
-                        isinstance(defn.base_type_exprs[0], RefExpr) and
-                        defn.base_type_exprs[0].fullname == 'mypy_extensions.TypedDict'):
-                    # Building a new TypedDict
-                    fields, types = self.check_typeddict_classdef(defn)
-                    node.node = self.build_typeddict_typeinfo(defn.name, fields, types)
-                    return True
-                # Extending/merging existing TypedDicts
-                if any(not isinstance(expr, RefExpr) or
-                       expr.fullname != 'mypy_extensions.TypedDict' and
-                       not is_typeddict(expr) for expr in defn.base_type_exprs):
-                    self.fail("All bases of a new TypedDict must be TypedDict types", defn)
-                typeddict_bases = list(filter(is_typeddict, defn.base_type_exprs))
-                newfields = []  # type: List[str]
-                newtypes = []  # type: List[Type]
-                tpdict = None  # type: OrderedDict[str, Type]
-                for base in typeddict_bases:
-                    assert isinstance(base, RefExpr)
-                    assert isinstance(base.node, TypeInfo)
-                    assert isinstance(base.node.typeddict_type, TypedDictType)
-                    tpdict = base.node.typeddict_type.items
-                    newdict = tpdict.copy()
-                    for key in tpdict:
-                        if key in newfields:
-                            self.fail('Cannot overwrite TypedDict field "{}" while merging'
-                                      .format(key), defn)
-                            newdict.pop(key)
-                    newfields.extend(newdict.keys())
-                    newtypes.extend(newdict.values())
-                fields, types = self.check_typeddict_classdef(defn, newfields)
-                newfields.extend(fields)
-                newtypes.extend(types)
-                node.node = self.build_typeddict_typeinfo(defn.name, newfields, newtypes)
-                return True
-        return False
+        node = self.lookup_base(defn, is_typeddict)
+        print(node)
+        if node is None:
+            return False
+        if self.semanalyzer.options.python_version < (3, 6):
+            self.fail('TypedDict class syntax is only supported in Python 3.6', defn)
+        typeddict_bases = [cast(RefExpr, expr) for expr in defn.base_type_exprs if is_typeddict(expr)]
+        if typeddict_bases != defn.base_type_exprs:
+            self.fail("All bases of a new TypedDict must be TypedDict types", defn)
+        typeddict_bases = [expr for expr in typeddict_bases if expr.fullname != 'mypy_extensions.TypedDict']
+        newfields = []  # type: List[str]
+        newtypes = []  # type: List[Type]
+        for base in typeddict_bases:
+            assert isinstance(base, RefExpr)
+            assert isinstance(base.node, TypeInfo)
+            assert isinstance(base.node.typeddict_type, TypedDictType)
+            tpdict = base.node.typeddict_type.items
+            newdict = tpdict.copy()
+            for key in tpdict:
+                if key in newfields:
+                    self.fail('Cannot overwrite TypedDict field "{}" while merging'
+                              .format(key), defn)
+                    newdict.pop(key)
+            newfields.extend(newdict.keys())
+            newtypes.extend(newdict.values())
+        fields, types = self.check_typeddict_classdef(defn, newfields)
+        newfields.extend(fields)
+        newtypes.extend(types)
+        node.node = self.build_typeddict_typeinfo(defn.name, newfields, newtypes)
+        node.kind = GDEF
+        return True
 
     def check_typeddict_classdef(self, defn: ClassDef,
                                  oldfields: List[str] = None) -> Tuple[List[str], List[Type]]:
         TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
                               'expected "field_name: field_type"')
-        if self.semanalyzer.options.python_version < (3, 6):
-            self.fail('TypedDict class syntax is only supported in Python 3.6', defn)
-            return [], []
         fields = []  # type: List[str]
         types = []  # type: List[Type]
         for stmt in defn.defs.body:
@@ -302,7 +283,7 @@ class Special:
                     self.fail('Right hand side values are not supported in TypedDict', stmt)
         return fields, types
 
-    def check_newtype_args(self, name: str, call: CallExpr, context: Context) -> Optional[Type]:
+    def parse_newtype_args(self, name: str, call: CallExpr, context: Context) -> Optional[Type]:
         has_failed = False
         args, arg_kinds = call.args, call.arg_kinds
         if len(args) != 2 or arg_kinds[0] != ARG_POS or arg_kinds[1] != ARG_POS:
@@ -414,73 +395,6 @@ class Special:
             return False
         return True
 
-    def process_typevar_arguments(self,
-                                  args: List[Expression],
-                                  names: List[Optional[str]],
-                                  kinds: List[int],
-                                  num_values: int,
-                                  context: Context) -> Optional[Tuple[int, Type]]:
-        has_values = (num_values > 0)
-        covariant = False
-        contravariant = False
-        upper_bound = self.object_type()  # type: Type
-        for arg_value, arg_name, arg_kind in zip(args, names, kinds):
-            if not arg_kind == ARG_NAMED:
-                self.fail("Unexpected argument to TypeVar()", context)
-                return None
-            if arg_name == 'covariant':
-                if isinstance(arg_value, NameExpr):
-                    if arg_value.name == 'True':
-                        covariant = True
-                    else:
-                        self.fail("TypeVar 'covariant' may only be 'True'", context)
-                        return None
-                else:
-                    self.fail("TypeVar 'covariant' may only be 'True'", context)
-                    return None
-            elif arg_name == 'contravariant':
-                if isinstance(arg_value, NameExpr):
-                    if arg_value.name == 'True':
-                        contravariant = True
-                    else:
-                        self.fail("TypeVar 'contravariant' may only be 'True'", context)
-                        return None
-                else:
-                    self.fail("TypeVar 'contravariant' may only be 'True'", context)
-                    return None
-            elif arg_name == 'bound':
-                if has_values:
-                    self.fail("TypeVar cannot have both values and an upper bound", context)
-                    return None
-                try:
-                    upper_bound = self.semanalyzer.expr_to_analyzed_type(arg_value)
-                except TypeTranslationError:
-                    self.fail("TypeVar 'bound' must be a type", arg_value)
-                    return None
-            elif arg_name == 'values':
-                # Probably using obsolete syntax with values=(...). Explain the current syntax.
-                self.fail("TypeVar 'values' argument not supported", context)
-                self.fail("Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))",
-                          context)
-                return None
-            else:
-                self.fail("Unexpected argument to TypeVar(): {}".format(arg_name), context)
-                return None
-
-        if covariant and contravariant:
-            self.fail("TypeVar cannot be both covariant and contravariant", context)
-            return None
-        elif num_values == 1:
-            self.fail("TypeVar cannot have only a single constraint", context)
-            return None
-        elif covariant:
-            variance = COVARIANT
-        elif contravariant:
-            variance = CONTRAVARIANT
-        else:
-            variance = INVARIANT
-        return (variance, upper_bound)
-
     def check_typeddict(self, call: CallExpr, name: str) -> Optional[TypeInfo]:
         """Check if a call defines a TypedDict.
 
@@ -499,11 +413,6 @@ class Special:
             call.analyzed = TypedDictExpr(info)
             call.analyzed.set_line(call.line, call.column)
         return info
-
-    def fail_namedtuple_arg(self, message: str,
-                            context: Context) -> Tuple[List[str], List[Type], bool]:
-        self.fail(message, context)
-        return [], [], False
 
     def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
         class_def = ClassDef(name, Block([]))
@@ -752,6 +661,45 @@ class Special:
         assert len(items) == len(values)
         return items, values, True
 
+    def parse_typevar_args(self,
+                           args: List[Expression],
+                           names: List[Optional[str]],
+                           kinds: List[int],
+                           num_values: int) -> Union[str, Tuple[int, Type]]:
+        has_values = (num_values > 0)
+        upper_bound = self.object_type()  # type: Type
+        variance = INVARIANT
+        for arg_value, arg_name, arg_kind in zip(args, names, kinds):
+            if arg_name in ('contravariant', 'covariant'):
+                if variance != INVARIANT:
+                    return "TypeVar cannot be both covariant and contravariant"
+                if isinstance(arg_value, NameExpr) and arg_value.name == 'True':
+                    if arg_name == 'contravariant':
+                        variance = CONTRAVARIANT
+                    else:
+                        variance = COVARIANT
+                else:
+                    return "TypeVar '{}' may only be 'True'".format(arg_name)
+            elif arg_name == 'bound':
+                if has_values:
+                    return "TypeVar cannot have both values and an upper bound"
+                try:
+                    upper_bound = self.semanalyzer.expr_to_analyzed_type(arg_value)
+                except TypeTranslationError:
+                    return "TypeVar 'bound' must be a type"
+            elif arg_name == 'values':
+                # Probably using obsolete syntax with values=(...). Explain the current syntax.
+                return ("TypeVar 'values' argument not supported\n"
+                        "Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))")
+            else:
+                res = "Unexpected argument to TypeVar()"
+                if arg_name:
+                    res += ": " + arg_name
+                return res
+        if num_values == 1:
+            return "TypeVar cannot have only a single constraint"
+        return (variance, upper_bound)
+
     def parse_namedtuple_fields_with_types(self, nodes: List[Expression]
                                            ) -> Tuple[List[str], List[Type], bool]:
         items = []  # type: List[str]
@@ -790,11 +738,6 @@ class Special:
                 return self.fail_typeddict_arg('Invalid field type', field_type_expr)
             types.append(self.semanalyzer.anal_type(type))
         return items, types, True
-
-    def fail_typeddict_arg(self, message: str,
-                           context: Context) -> Tuple[List[str], List[Type], bool]:
-        self.fail(message, context)
-        return [], [], False
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type]) -> TypeInfo:
@@ -841,6 +784,16 @@ class Special:
             info.names[item] = SymbolTableNode(MDEF, var)
         return info
 
+    def fail_typeddict_arg(self, message: str,
+                           context: Context) -> Tuple[List[str], List[Type], bool]:
+        self.fail(message, context)
+        return [], [], False
+
+    def fail_namedtuple_arg(self, message: str,
+                            context: Context) -> Tuple[List[str], List[Type], bool]:
+        self.fail(message, context)
+        return [], [], False
+
     def fail_enum_call_arg(self, message: str,
                            context: Context) -> Tuple[List[str],
                                                       List[Optional[Expression]], bool]:
@@ -849,5 +802,8 @@ class Special:
 
 
 def is_typeddict(expr: Expression) -> bool:
-    return (isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and
-            expr.node.typeddict_type is not None)
+    if not isinstance(expr, RefExpr):
+        return False
+    if expr.fullname == 'mypy_extensions.TypedDict':
+        return True
+    return isinstance(expr.node, TypeInfo) and expr.node.typeddict_type is not None
