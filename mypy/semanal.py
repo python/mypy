@@ -702,11 +702,6 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
         if self.specialtype.analyze_typeddict_classdef(defn):
             yield False
             return
-        if self.specialtype.analyze_namedtuple_classdef(defn):
-            # just analyze the class body so we catch type errors in default values
-            self.enter_class(defn)
-            yield True
-            self.leave_class()
         else:
             self.setup_class_def_analysis(defn)
 
@@ -718,6 +713,7 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
             for decorator in defn.decorators:
                 decorator.accept(self)
 
+            self.specialtype.analyze_namedtuple_classdef(defn)
             self.enter_class(defn)
 
             yield True

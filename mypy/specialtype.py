@@ -14,7 +14,7 @@ from mypy.nodes import (
     DictExpr, CallExpr, RefExpr, Context, SymbolTable, UNBOUND_TVAR,
     MDEF, Decorator, TypeVarExpr, NewTypeExpr, StrExpr, BytesExpr,
     ARG_POS, ARG_NAMED, ARG_NAMED_OPT, NamedTupleExpr, TypedDictExpr, Argument,
-    UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr,
+    UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, Statement,
     COVARIANT, CONTRAVARIANT, INVARIANT, ARG_OPT, SymbolTableNode
 )
 from mypy.types import (
@@ -33,6 +33,12 @@ class DeclInfo:
     calleename = None  # type: str
     call = None  # type: CallExpr
     is_def = None  # type: bool
+
+
+NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
+                        'expected "field_name: field_type"')
+TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
+                      'expected "field_name: field_type"')
 
 
 class Special:
@@ -166,37 +172,67 @@ class Special:
                     res = self.lookup(defn.name, defn)
         return res
 
+    def analyze_typeddict_classdef(self, defn: ClassDef) -> bool:
+        node = self.lookup_base(defn, is_typeddict)
+        if node is None:
+            return False
+        if self.semanalyzer.options.python_version < (3, 6):
+            self.fail('TypedDict class syntax is only supported in Python 3.6', defn)
+        fields, types = self.analyze_typeddict_bases(defn)
+        newfields = []  # type: List[str]
+        newtypes = []  # type: List[Type]
+        for stmt in defn.defs.body:
+            if not isinstance(stmt, AssignmentStmt):
+                # Still allow pass or ... (for empty TypedDict's).
+                if not isinstance(stmt, (PassStmt, ExpressionStmt, EllipsisExpr)):
+                    self.fail(TPDICT_CLASS_ERROR, stmt)
+            elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
+                # An assignment, but an invalid one.
+                self.fail(TPDICT_CLASS_ERROR, stmt)
+            else:
+                name = stmt.lvalues[0].name
+                if name in fields:
+                    self.fail('Cannot overwrite TypedDict field "{}" while extending'
+                              .format(name), stmt)
+                if name in newfields:
+                    self.fail('Duplicate TypedDict field "{}"'.format(name), stmt)
+                if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
+                    self.fail(TPDICT_CLASS_ERROR, stmt)
+                elif not isinstance(stmt.rvalue, TempNode):
+                    # x: int assigns rvalue to TempNode(AnyType())
+                    self.fail('Right hand side values are not supported in TypedDict', stmt)
+                type = AnyType() if stmt.type is None else self.semanalyzer.anal_type(stmt.type)
+                newfields.append(name)
+                newtypes.append(type)
+
+        fields.extend(newfields)
+        types.extend(newtypes)
+        node.node = self.build_typeddict_typeinfo(defn.name, fields, types)
+        node.kind = GDEF
+        return True
+
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
         node = self.lookup_base(defn, lambda x: x.fullname == 'typing.NamedTuple')
         if node is None:
             return False
         if self.semanalyzer.options.python_version < (3, 6):
             self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
-        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
-        NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
-                                'expected "field_name: field_type"')
-        if len(defn.base_type_exprs) > 1:
-            self.fail('NamedTuple should be a single base', defn)
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
+        fields, types = self.analyze_namedtuple_bases(defn)
+        newfields = []  # type: List[str]
+        newtypes = []  # type: List[Type]
         default_items = {}  # type: Dict[str, Expression]
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
-                if (not isinstance(stmt, PassStmt) and
-                        not (isinstance(stmt, ExpressionStmt) and
-                                 isinstance(stmt.expr, EllipsisExpr))):
+                if not isinstance(stmt, (PassStmt, ExpressionStmt, EllipsisExpr)):
                     self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
                 self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             else:
-                # Append name and type in this case...
                 name = stmt.lvalues[0].name
-                items.append(name)
-                types.append(AnyType() if stmt.type is None
-                             else self.semanalyzer.anal_type(stmt.type))
-                # ...despite possible minor failures that allow further analyzis.
+                if name in newfields:
+                    self.fail('Duplicate NamedTuple field "{}"'.format(name), stmt)
                 if name.startswith('_'):
                     self.fail('NamedTuple field name cannot start with an underscore: {}'
                               .format(name), stmt)
@@ -209,17 +245,21 @@ class Special:
                                   stmt)
                 else:
                     default_items[name] = stmt.rvalue
-        node.node = self.build_namedtuple_typeinfo(defn.name, items, types, default_items)
+                type = AnyType() if stmt.type is None else self.semanalyzer.anal_type(stmt.type)
+                newfields.append(name)
+                newtypes.append(type)
+        fields.extend(newfields)
+        types.extend(newtypes)
+        node.node = self.build_namedtuple_typeinfo(defn.name, fields, types, default_items)
+        node.kind = GDEF
         return True
 
-    def analyze_typeddict_classdef(self, defn: ClassDef) -> bool:
-        # special case for TypedDict
-        node = self.lookup_base(defn, is_typeddict)
-        print(node)
-        if node is None:
-            return False
-        if self.semanalyzer.options.python_version < (3, 6):
-            self.fail('TypedDict class syntax is only supported in Python 3.6', defn)
+    def analyze_namedtuple_bases(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
+        if len(defn.base_type_exprs) > 1:
+            self.fail('NamedTuple should be a single base', defn)
+        return ([], [])
+
+    def analyze_typeddict_bases(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
         typeddict_bases = [cast(RefExpr, expr) for expr in defn.base_type_exprs if is_typeddict(expr)]
         if typeddict_bases != defn.base_type_exprs:
             self.fail("All bases of a new TypedDict must be TypedDict types", defn)
@@ -239,49 +279,7 @@ class Special:
                     newdict.pop(key)
             newfields.extend(newdict.keys())
             newtypes.extend(newdict.values())
-        fields, types = self.check_typeddict_classdef(defn, newfields)
-        newfields.extend(fields)
-        newtypes.extend(types)
-        node.node = self.build_typeddict_typeinfo(defn.name, newfields, newtypes)
-        node.kind = GDEF
-        return True
-
-    def check_typeddict_classdef(self, defn: ClassDef,
-                                 oldfields: List[str] = None) -> Tuple[List[str], List[Type]]:
-        TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
-                              'expected "field_name: field_type"')
-        fields = []  # type: List[str]
-        types = []  # type: List[Type]
-        for stmt in defn.defs.body:
-            if not isinstance(stmt, AssignmentStmt):
-                # Still allow pass or ... (for empty TypedDict's).
-                if (not isinstance(stmt, PassStmt) and
-                    not (isinstance(stmt, ExpressionStmt) and
-                         isinstance(stmt.expr, EllipsisExpr))):
-                    self.fail(TPDICT_CLASS_ERROR, stmt)
-            elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
-                # An assignment, but an invalid one.
-                self.fail(TPDICT_CLASS_ERROR, stmt)
-            else:
-                name = stmt.lvalues[0].name
-                if name in (oldfields or []):
-                    self.fail('Cannot overwrite TypedDict field "{}" while extending'
-                              .format(name), stmt)
-                    continue
-                if name in fields:
-                    self.fail('Duplicate TypedDict field "{}"'.format(name), stmt)
-                    continue
-                # Append name and type in this case...
-                fields.append(name)
-                types.append(AnyType() if stmt.type is None
-                             else self.semanalyzer.anal_type(stmt.type))
-                # ...despite possible minor failures that allow further analyzis.
-                if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
-                    self.fail(TPDICT_CLASS_ERROR, stmt)
-                elif not isinstance(stmt.rvalue, TempNode):
-                    # x: int assigns rvalue to TempNode(AnyType())
-                    self.fail('Right hand side values are not supported in TypedDict', stmt)
-        return fields, types
+        return newfields, newtypes
 
     def parse_newtype_args(self, name: str, call: CallExpr, context: Context) -> Optional[Type]:
         has_failed = False
