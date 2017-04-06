@@ -9,13 +9,16 @@ from typing import List, Dict, Tuple, cast, Optional, Union, Callable, TYPE_CHEC
 
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
-    TypeInfo, AssignmentStmt, FuncDef, ClassDef, Var, GDEF, Expression,
-    Block, NameExpr, TupleExpr, ListExpr, ExpressionStmt, PassStmt,
-    DictExpr, CallExpr, RefExpr, Context, SymbolTable, UNBOUND_TVAR,
-    MDEF, Decorator, TypeVarExpr, NewTypeExpr, StrExpr, BytesExpr,
-    ARG_POS, ARG_NAMED, ARG_NAMED_OPT, NamedTupleExpr, TypedDictExpr, Argument,
-    UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, Statement,
-    COVARIANT, CONTRAVARIANT, INVARIANT, ARG_OPT, SymbolTableNode
+    TypeVarExpr, NewTypeExpr, NamedTupleExpr, TypedDictExpr, EnumCallExpr,
+    TypeInfo, SymbolTableNode, SymbolTable, Context, TempNode,
+    Var, Argument, NameExpr, RefExpr,
+    AssignmentStmt, FuncDef, ClassDef, Block,
+    Expression, EllipsisExpr, ExpressionStmt, PassStmt,
+    TupleExpr, ListExpr, DictExpr, CallExpr, Decorator,
+    StrExpr, BytesExpr, UnicodeExpr,
+    COVARIANT, CONTRAVARIANT, INVARIANT,
+    ARG_OPT, ARG_POS, ARG_NAMED, ARG_NAMED_OPT,
+    GDEF, MDEF, UNBOUND_TVAR,
 )
 from mypy.types import (
     NoneTyp, CallableType, Instance, Type, TypeVarType, AnyType,
@@ -24,15 +27,6 @@ from mypy.types import (
 from mypy import join
 if TYPE_CHECKING:
     import mypy.semanal
-
-
-class DeclInfo:
-    var_name = None  # type: str
-    name = None  # type: str
-    fullname = None  # type: str
-    calleename = None  # type: str
-    call = None  # type: CallExpr
-    is_def = None  # type: bool
 
 
 NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
