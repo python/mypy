@@ -15,11 +15,6 @@ from mypy.nodes import (
 )
 
 from mypy.sharedparse import argument_elide_name
-import mypy
-
-MYPY = False
-if MYPY:
-    from mypy import join
 
 
 T = TypeVar('T')
@@ -876,7 +871,7 @@ class TupleType(Type):
 
     def slice(self, begin: int, stride: int, end: int) -> 'TupleType':
         new_items = self.items[begin:end:stride]
-        fallback_args = [mypy.join.join_type_list(new_items)]
+        fallback_args = [UnionType.make_simplified_union(new_items)]
         new_fallback = self.fallback.copy_modified(args=fallback_args)
         return TupleType(new_items, new_fallback,
                          self.line, self.column, self.implicit)
@@ -1718,7 +1713,7 @@ def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -
     if isinstance(tp, Instance):
         return Instance(tp.type, new_args, line, column)
     if isinstance(tp, TupleType):
-        fallback_args = [mypy.join.join_type_list(new_args)]
+        fallback_args = [UnionType.make_simplified_union(new_args)]
         fallback = tp.fallback.copy_modified(args=fallback_args)
         return tp.copy_modified(items=new_args, fallback=fallback)
     if isinstance(tp, UnionType):

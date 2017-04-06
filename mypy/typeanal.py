@@ -18,7 +18,6 @@ from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.subtypes import is_subtype
 from mypy import nodes
-from mypy import join
 from mypy import experiments
 
 
@@ -521,8 +520,8 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             item.accept(self)
         # if it's not builtins.tuple, then its bases should have tuple[Any]
         # TODO: put assert here if it's not too slow
-        if type(t.fallback) == Instance and t.fallback.type.fullname() == 'builtins.tuple':
-            fallback_item = join.join_type_list(t.items)
+        if isinstance(t.fallback, Instance) and t.fallback.type.fullname() == 'builtins.tuple':
+            fallback_item = UnionType.make_simplified_union(t.items)
             t.fallback.args = [fallback_item]
 
     def visit_typeddict_type(self, t: TypedDictType) -> None:

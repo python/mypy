@@ -1701,7 +1701,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     tt = self.accept(item, type_context_items[j])
                     j += 1
                 items.append(tt)
-        fallback_item = join.join_type_list(items)
+        fallback_item = UnionType.make_simplified_union(items)
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
