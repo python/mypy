@@ -58,7 +58,7 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
-    LambdaExpr, MDEF, Decorator, SetExpr, TypeVarExpr,
+    LambdaExpr, MDEF, Decorator, SetExpr, TypeVarExpr, TempNode,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromExpr, NonlocalDecl, SymbolNode,
@@ -713,7 +713,6 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
             for decorator in defn.decorators:
                 decorator.accept(self)
 
-            self.specialtype.analyze_namedtuple_classdef(defn)
             self.enter_class(defn)
 
             yield True
@@ -724,6 +723,8 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
             self.leave_class()
 
             self.unbind_class_type_vars()
+
+            self.specialtype.dispatch_classdef(defn)
 
     def enter_class(self, defn: ClassDef) -> None:
         # Remember previous active class
@@ -1217,13 +1218,12 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
             pass
 
     def add_unknown_symbol(self, name: str, context: Context, is_import: bool = False) -> None:
-        var = Var(name)
+        var = Var(name, AnyType())
         if self.type:
             var._fullname = self.type.fullname() + "." + name
         else:
             var._fullname = self.qualified_name(name)
         var.is_ready = True
-        var.type = AnyType()
         var.is_suppressed_import = is_import
         self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
 
@@ -1258,7 +1258,8 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
-            self.analyze_lvalue(lval, explicit_type=s.type is not None)
+            self.analyze_lvalue(lval, explicit_type=s.type is not None,
+                                is_initialized=not isinstance(s.rvalue, TempNode))
         self.check_classvar(s)
         s.rvalue.accept(self)
         if s.type:
@@ -1354,7 +1355,7 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
-                       explicit_type: bool = False) -> None:
+                       explicit_type: bool = False, is_initialized: bool = True) -> None:
         """Analyze an lvalue or assignment target.
 
         Only if add_global is True, add name to globals table. If nested
@@ -1372,6 +1373,7 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
                 v = Var(lval.name)
                 v.set_line(lval)
                 v._fullname = self.qualified_name(lval.name)
+                v.is_inferred = not explicit_type
                 v.is_ready = False  # Type not inferred yet
                 lval.node = v
                 lval.is_def = True
@@ -1389,6 +1391,7 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
                 # Define new local name.
                 v = Var(lval.name)
                 v.set_line(lval)
+                v.is_inferred = not explicit_type
                 lval.node = v
                 lval.is_def = True
                 lval.kind = LDEF
@@ -1399,8 +1402,9 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
                 # Define a new attribute within class body.
                 v = Var(lval.name)
                 v.info = self.type
-                v.is_initialized_in_class = True
+                v.is_initialized_in_class = is_initialized
                 v.set_line(lval)
+                v.is_inferred = not explicit_type
                 lval.node = v
                 lval.is_def = True
                 lval.kind = MDEF
@@ -1432,7 +1436,7 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
             self.analyze_tuple_or_list_lvalue(lval, add_global, explicit_type)
         elif isinstance(lval, StarExpr):
             if nested:
-                self.analyze_lvalue(lval.expr, nested, add_global, explicit_type)
+                self.analyze_lvalue(lval.expr, nested, add_global, explicit_type, is_initialized)
             else:
                 self.fail('Starred assignment target must be in a list or tuple', lval)
         else:
@@ -1452,7 +1456,7 @@ class SemanticAnalyzer(AbstractNodeVisitor[None]):
                 star_exprs[0].valid = True
             for i in items:
                 self.analyze_lvalue(i, nested=True, add_global=add_global,
-                                    explicit_type = explicit_type)
+                                    explicit_type=explicit_type)
 
     def analyze_member_lvalue(self, lval: MemberExpr) -> None:
         lval.accept(self)
@@ -2544,7 +2548,8 @@ class FirstPass(NodeVisitor):
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         if self.sem.is_module_scope():
             for lval in s.lvalues:
-                self.analyze_lvalue(lval, explicit_type=s.type is not None)
+                self.analyze_lvalue(lval, explicit_type=s.type is not None,
+                                    is_initialized=s.rvalue is not None)
 
     def visit_func_def(self, func: FuncDef) -> None:
         sem = self.sem
@@ -2696,9 +2701,11 @@ class FirstPass(NodeVisitor):
         if self.sem.is_module_scope():
             self.sem.analyze_try_stmt(s, self, add_global=self.sem.is_module_scope())
 
-    def analyze_lvalue(self, lvalue: Lvalue, explicit_type: bool = False) -> None:
+    def analyze_lvalue(self, lvalue: Lvalue, explicit_type: bool = False,
+                       is_initialized: bool = True) -> None:
         self.sem.analyze_lvalue(lvalue, add_global=self.sem.is_module_scope(),
-                                explicit_type=explicit_type)
+                                explicit_type=explicit_type,
+                                is_initialized=is_initialized)
 
     def kind_by_scope(self) -> int:
         if self.sem.is_module_scope():

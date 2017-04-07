@@ -212,7 +212,9 @@ class Special:
             return False
         if self.semanalyzer.options.python_version < (3, 6):
             self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
-        fields, types = self.analyze_namedtuple_bases(defn)
+        if len(defn.base_type_exprs) > 1:
+            self.fail('NamedTuple should be a single base', defn)
+        fields, types = [], []
         newfields = []  # type: List[str]
         newtypes = []  # type: List[Type]
         default_items = {}  # type: Dict[str, Expression]
@@ -249,10 +251,125 @@ class Special:
         node.kind = GDEF
         return True
 
-    def analyze_namedtuple_bases(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
-        if len(defn.base_type_exprs) > 1:
-            self.fail('NamedTuple should be a single base', defn)
-        return ([], [])
+    def dispatch_classdef(self, defn: ClassDef) -> bool:
+        node = self.lookup_base(defn, lambda x: x.fullname == 'typing.NamedTuple')
+        if node is None:
+            return False
+        self.analyze_namedtuple_classdef_1(defn.info)
+        return True
+
+    def analyze_namedtuple_classdef_1(self, info: TypeInfo) -> None:
+        if self.semanalyzer.options.python_version < (3, 6):
+            self.fail('NamedTuple class syntax is only supported in Python 3.6', info)
+        if len(info.direct_base_classes()) > 1:
+            self.fail('NamedTuple should be a single base', info)
+        fields = []  # type: List[str]
+        types = []  # type: List[Type]
+        default_items = {}  # type: Dict[str, Expression]
+        for name, sym in info.names.items():
+            node = sym.node
+            if name.startswith('_'):
+                self.fail('NamedTuple field name cannot start with an underscore: {}'
+                          .format(name), node)
+            if isinstance(node, Var):
+                if node.type and not node.is_inferred:
+                    fields.append(name)
+                    types.append(node.type)
+                    if node.is_initialized_in_class:
+                        default_items[name] = EllipsisExpr()
+                    elif default_items:
+                        self.fail('Non-default NamedTuple fields cannot follow default fields',
+                                  node)
+                else:
+                    self.fail(NAMEDTUP_CLASS_ERROR, node)
+        self.update_namedtuple_typeinfo(info, fields, types, default_items)
+
+    def update_namedtuple_typeinfo(self, info: TypeInfo, items: List[str], types: List[Type],
+                                   default_items: Dict[str, Expression] = None) -> None:
+        default_items = default_items or {}
+        strtype = self.str_type()
+        object_type = self.object_type()
+        basetuple_type = self.named_type('__builtins__.tuple', [AnyType()])
+        dictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
+                   or object_type)
+        # Actual signature should return OrderedDict[str, Union[types]]
+        ordereddictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
+                          or object_type)
+        fallback = self.named_type('__builtins__.tuple')
+        # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
+        # but it can't be expressed. 'new' and 'len' should be callable types.
+        iterable_type = self.named_type_or_none('typing.Iterable', [AnyType()])
+        function_type = self.named_type('__builtins__.function')
+
+        info.bases += [fallback]
+        info.is_named_tuple = True
+        info.tuple_type = TupleType(types, fallback)
+
+        def add_field(var: Var, is_initialized_in_class: bool = False,
+                      is_property: bool = False) -> None:
+            var.info = info
+            var.is_initialized_in_class = is_initialized_in_class
+            var.is_property = is_property
+            info.names[var.name()] = SymbolTableNode(MDEF, var)
+
+        vars = [Var(item, typ) for item, typ in zip(items, types)]
+        for var in vars:
+            add_field(var, is_property=True)
+
+        tuple_of_strings = TupleType([strtype for _ in items], basetuple_type)
+        add_field(Var('_fields', tuple_of_strings), is_initialized_in_class=True)
+        add_field(Var('_field_types', dictype), is_initialized_in_class=True)
+        add_field(Var('_field_defaults', dictype), is_initialized_in_class=True)
+        add_field(Var('_source', strtype), is_initialized_in_class=True)
+
+        tvd = TypeVarDef('NT', 1, [], info.tuple_type)
+        selftype = TypeVarType(tvd)
+
+        def add_method(funcname: str,
+                       ret: Type,
+                       args: List[Argument],
+                       name: str = None,
+                       is_classmethod: bool = False,
+                       ) -> None:
+            if is_classmethod:
+                first = [Argument(Var('cls'), TypeType(selftype), None, ARG_POS)]
+            else:
+                first = [Argument(Var('self'), selftype, None, ARG_POS)]
+            args = first + args
+
+            types = [arg.type_annotation for arg in args]
+            items = [arg.variable.name() for arg in args]
+            arg_kinds = [arg.kind for arg in args]
+            signature = CallableType(types, arg_kinds, items, ret, function_type,
+                                     name=name or info.name() + '.' + funcname)
+            signature.variables = [tvd]
+            func = FuncDef(funcname, args, Block([]), typ=signature)
+            func.info = info
+            func.is_class = is_classmethod
+            if is_classmethod:
+                v = Var(funcname, signature)
+                v.is_classmethod = True
+                v.info = info
+                dec = Decorator(func, [NameExpr('classmethod')], v)
+                info.names[funcname] = SymbolTableNode(MDEF, dec)
+            else:
+                info.names[funcname] = SymbolTableNode(MDEF, func)
+
+        add_method('_replace', ret=selftype,
+                   args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars])
+
+        def make_init_arg(var: Var) -> Argument:
+            default = default_items.get(var.name(), None)
+            kind = ARG_POS if default is None else ARG_OPT
+            return Argument(var, var.type, default, kind)
+
+        add_method('__init__', ret=NoneTyp(), name=info.name(),
+                   args=[make_init_arg(var) for var in vars])
+        add_method('_asdict', args=[], ret=ordereddictype)
+        add_method('_make', ret=selftype, is_classmethod=True,
+                   args=[Argument(Var('iterable', iterable_type), iterable_type, None, ARG_POS),
+                         Argument(Var('new'), AnyType(), EllipsisExpr(), ARG_NAMED_OPT),
+                         Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED_OPT)])
 
     def analyze_typeddict_bases(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
         typeddict_bases = [cast(RefExpr, expr) for expr in defn.base_type_exprs

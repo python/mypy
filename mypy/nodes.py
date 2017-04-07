@@ -2,9 +2,10 @@
 
 import os
 from abc import abstractmethod
+from collections import OrderedDict
 
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, MutableMapping
 )
 
 import mypy.strconv
@@ -675,9 +676,9 @@ class Var(SymbolNode):
     type = None  # type: mypy.types.Type # Declared or inferred type, or None
     # Is this the first argument to an ordinary method (usually "self")?
     is_self = False
+    is_inferred = False
     is_ready = False  # If inferred, is the inferred type available?
     # Is this initialized explicitly to a non-None value in class body?
-    is_inferred = False
     is_initialized_in_class = False
     is_staticmethod = False
     is_classmethod = False
@@ -2400,7 +2401,7 @@ class SymbolTableNode:
         return stnode
 
 
-class SymbolTable(Dict[str, SymbolTableNode]):
+class SymbolTable(OrderedDict, MutableMapping[str, SymbolTableNode]):
     def __str__(self) -> str:
         a = []  # type: List[str]
         for key, value in self.items():
