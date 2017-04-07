@@ -86,6 +86,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy.specialtype import Special
+import mypy.specialtype
 
 
 T = TypeVar('T')
@@ -2548,8 +2549,7 @@ class FirstPass(NodeVisitor):
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         if self.sem.is_module_scope():
             for lval in s.lvalues:
-                self.analyze_lvalue(lval, explicit_type=s.type is not None,
-                                    is_initialized=s.rvalue is not None)
+                self.analyze_lvalue(lval, explicit_type=s.type is not None)
 
     def visit_func_def(self, func: FuncDef) -> None:
         sem = self.sem
@@ -2607,6 +2607,8 @@ class FirstPass(NodeVisitor):
             sem.function_stack.pop()
 
     def visit_class_def(self, cdef: ClassDef) -> None:
+        for expr in cdef.base_type_exprs:
+            expr.accept(self)
         kind = self.kind_by_scope()
         if kind == LDEF:
             return

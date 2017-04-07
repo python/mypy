@@ -35,6 +35,61 @@ TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
                       'expected "field_name: field_type"')
 
 
+# TODO: this is problematic due to the requirement in ClassDef to do type analysis before constrution
+
+def build_namedtuple_classdef_from_call(call: CallExpr, fullname: str
+                                        ) -> Union[str, ClassDef]:
+    # TODO: Share code with check_argument_count in checkexpr.py?
+    args = call.args
+    if len(args) < 2:
+        return "Too few arguments for namedtuple()"
+    if len(args) > 2:
+        # FIX incorrect. There are two additional parameters
+        return "Too many arguments for namedtuple()"
+    if call.arg_kinds != [ARG_POS, ARG_POS]:
+        return "Unexpected arguments to namedtuple()"
+    String = (StrExpr, BytesExpr, UnicodeExpr)
+    if not isinstance(args[0], String):
+        return "namedtuple() expects a string literal as the first argument"
+    typename = args[0].value
+    typedecls = []  # type: List[Type]
+    if not isinstance(args[1], (ListExpr, TupleExpr)):
+        if (fullname == 'collections.namedtuple' and isinstance(args[1], String)):
+            str_expr = cast(StrExpr, args[1])
+            names = str_expr.value.replace(',', ' ').split()
+        else:
+            return "List or tuple literal expected as the second argument to namedtuple()"
+    else:
+        listexpr = args[1]
+        if fullname == 'collections.namedtuple':
+            # The fields argument contains just names, with implicit Any types.
+            if any(not isinstance(item, String) for item in listexpr.items):
+                return "String literal expected as namedtuple() item"
+            names = [cast(StrExpr, item).value for item in listexpr.items]
+        else:
+            # The fields argument contains (name, type) tuples.
+            names = []
+            for item in listexpr.items:
+                if isinstance(item, TupleExpr):
+                    if len(item.items) != 2:
+                        return "Invalid NamedTuple field definition"
+                    name, type_node = item.items
+                    if not isinstance(type_node, RefExpr):
+                        return "TEMP: cannot parse complex annotations for namedtuple"
+                    if isinstance(name, String):
+                        names.append(name.value)
+                    typedecls.append(UnboundType(type_node.fullname))
+                else:
+                    return "Tuple expected as NamedTuple() field"
+    if not typedecls:
+        typedecls = [AnyType() for _ in names]
+    return ClassDef(typename,
+                    defs=Block([AssignmentStmt([NameExpr(name)], NameExpr('None'),
+                                               decl, new_syntax=True)
+                                for name, decl in zip(names, typedecls)]),
+                    base_type_exprs=[NameExpr('typing.NamedTuple')])
+
+
 class Special:
     """Handling of special-cased types.
 
@@ -103,7 +158,17 @@ class Special:
             tvar = self.check_typevar(call, name, fullname)
             info = None
         elif calleename in ('collections.namedtuple', 'typing.NamedTuple'):
-            info = self.check_namedtuple(call, calleename, name)
+            if call.analyzed:
+                raise Exception(str(call.analyzed))
+                defn = call.analyzed.defn
+                if isinstance(defn, str):
+                    self.fail(defn)
+                else:
+                    self.semanalyzer.analyze_class_body(defn)
+                    self.analyze_namedtuple_classdef_1(defn.info)
+                info = defn.info
+            else:
+                info = self.check_namedtuple(call, calleename, name)
         elif calleename in ('enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag'):
             info = self.check_enum_call(call, calleename, name)
         elif calleename == 'mypy_extensions.TypedDict':
