@@ -150,10 +150,8 @@ main:5: error: Revealed type is '__main__.E'
 from enum import IntEnum
 class E(IntEnum):
     a = 1
-E[1]
-[out]
-main:4: error: Enum index should be a string (actual index type "int")
-
+E[1]  # E: Enum index should be a string (actual index type "int")
+x = E[1]  # E: Enum index should be a string (actual index type "int")
 
 [case testEnumIndexIsNotAnAlias]
 from enum import Enum
