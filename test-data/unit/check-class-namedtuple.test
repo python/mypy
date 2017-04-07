@@ -480,3 +480,16 @@ Y(y=1, x='1').method()
 class CallsBaseInit(X):
     def __init__(self, x: str) -> None:
         super().__init__(x)
+
+[case testNewNamedTupleGeneric]
+# flags: --python-version 3.6
+from typing import NamedTuple, Generic, TypeVar
+T = TypeVar('T')
+class A(NamedTuple, Generic[T]):
+    x: T
+    y: str
+
+a : A[int]
+reveal_type(a.x)  # E: Revealed type is 'builtins.int*'
+b : A[str]
+reveal_type(b.x)  # E: Revealed type is 'builtins.str*'
