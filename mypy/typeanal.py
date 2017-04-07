@@ -61,6 +61,10 @@ def analyze_type_alias(node: Expression,
                     base.fullname in type_constructors or
                     base.kind == TYPE_ALIAS):
                 return None
+            # Enums can't be generic, and without this check we may incorrectly interpret indexing
+            # an Enum class as creating a type alias.
+            if isinstance(base.node, TypeInfo) and base.node.is_enum:
+                return None
         else:
             return None
     else:
