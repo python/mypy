@@ -83,6 +83,31 @@ x = 1
 [out]
 x: int
 
+[case testAnnotatedVariable]
+x: int = 1
+[out]
+x: int
+
+[case testAnnotatedVariableGeneric]
+x: Foo[int, str] = ...
+[out]
+x: 'Foo[int, str]'
+
+[case testAnnotatedVariableOldSyntax]
+x = 1  # type: int
+[out]
+x: int
+
+[case testAnnotatedVariableNone]
+x: None
+[out]
+x: None
+
+[case testAnnotatedVariableNoneOldSyntax]
+x = None  # type: None
+[out]
+x: None
+
 [case testMultipleVariable]
 x = y = 1
 [out]
@@ -197,6 +222,12 @@ from typing import Any
 
 x: Any
 y: Any
+
+[case testMultipleAssignmentAnnotated]
+x, y = 1, "2" # type: int, str
+[out]
+x: int
+y: str
 
 [case testMultipleAssignment2]
 [x, y] = 1, 2

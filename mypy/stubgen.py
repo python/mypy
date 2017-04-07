@@ -35,6 +35,7 @@ TODO:
  - we don't seem to always detect properties ('closed' in 'io', for example)
 """
 
+import builtins
 import glob
 import importlib
 import json
@@ -63,6 +64,7 @@ from mypy.nodes import (
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
 from mypy.options import Options as MypyOptions
+from mypy.types import Type, TypeStrVisitor, UnboundType, NoneTyp, TupleType
 
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
@@ -230,6 +232,30 @@ VAR = 'VAR'
 NOT_IN_ALL = 'NOT_IN_ALL'
 
 
+class AnnotationPrinter(TypeStrVisitor):
+
+    def __init__(self, stubgen: 'StubGenerator') -> None:
+        super().__init__()
+        self.stubgen = stubgen
+        self.requires_quotes = False
+
+    def visit_unbound_type(self, t: UnboundType)-> str:
+        s = t.name
+        base = s.split('.')[0]
+        # if the name is not defined, assume a forward reference
+        if (not self.requires_quotes and
+                base not in dir(builtins) and
+                not any(base in vs for vs in self.stubgen._vars)):
+            self.requires_quotes = True
+
+        if t.args != []:
+            s += '[{}]'.format(self.list_str(t.args))
+        return s
+
+    def visit_none_type(self, t: NoneTyp) -> str:
+        return "None"
+
+
 class StubGenerator(mypy.traverser.TraverserVisitor):
     def __init__(self, _all_: Optional[List[str]], pyversion: Tuple[int, int],
                  include_private: bool = False) -> None:
@@ -365,17 +391,20 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 assert isinstance(o.rvalue, CallExpr)
                 self.process_namedtuple(lvalue, o.rvalue)
                 continue
-            if isinstance(lvalue, TupleExpr):
+            if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
                 items = lvalue.items
-            elif isinstance(lvalue, ListExpr):
-                items = lvalue.items
+                if isinstance(o.type, TupleType):
+                    annotations = o.type.items
+                else:
+                    annotations = [None] * len(items)
             else:
                 items = [lvalue]
+                annotations = [o.type]
             sep = False
             found = False
-            for item in items:
+            for item, annotation in zip(items, annotations):
                 if isinstance(item, NameExpr):
-                    init = self.get_init(item.name, o.rvalue)
+                    init = self.get_init(item.name, o.rvalue, annotation)
                     if init:
                         found = True
                         if not sep and not self._indent and \
@@ -474,7 +503,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.add_import_line('import %s as %s\n' % (id, target_name))
                 self.record_name(target_name)
 
-    def get_init(self, lvalue: str, rvalue: Expression) -> Optional[str]:
+    def get_init(self, lvalue: str, rvalue: Expression, annotation: Type=None) -> Optional[str]:
         """Return initializer for a variable.
 
         Return None if we've generated one already or if the variable is internal.
@@ -486,7 +515,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if self.is_private_name(lvalue) or self.is_not_in_all(lvalue):
             return None
         self._vars[-1].append(lvalue)
-        typename = self.get_str_type_of_node(rvalue)
+        if annotation is not None:
+            printer = AnnotationPrinter(self)
+            typename = annotation.accept(printer)
+            if printer.requires_quotes:
+                typename = "'{}'".format(typename)
+        else:
+            typename = self.get_str_type_of_node(rvalue)
         return '%s%s: %s\n' % (self._indent, lvalue, typename)
 
     def add(self, string: str) -> None:
