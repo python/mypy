@@ -226,6 +226,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if tup is not None:
                     # The class has a Tuple[...] base class so it will be
                     # represented as a tuple type.
+                    if t.args and not info.is_named_tuple:
+                        self.fail('Generic tuple types not supported', t)
+                        return AnyType()
                     return tup.copy_modified(items=self.anal_array(tup.items),
                                              fallback=instance)
                 td = info.typeddict_type
