@@ -81,20 +81,20 @@ def g(): ...
 [case testVariable]
 x = 1
 [out]
-x = ...  # type: int
+x: int
 
 [case testMultipleVariable]
 x = y = 1
 [out]
-x = ...  # type: int
-y = ...  # type: int
+x: int
+y: int
 
 [case testClassVariable]
 class C:
     x = 1
 [out]
 class C:
-    x = ...  # type: int
+    x: int
 
 [case testSelfAssignment]
 class C:
@@ -103,7 +103,7 @@ class C:
         x.y = 2
 [out]
 class C:
-    x = ...  # type: int
+    x: int
     def __init__(self) -> None: ...
 
 [case testSelfAndClassBodyAssignment]
@@ -114,10 +114,10 @@ class C:
         self.x = 1
         self.x = 1
 [out]
-x = ...  # type: int
+x: int
 
 class C:
-    x = ...  # type: int
+    x: int
     def __init__(self) -> None: ...
 
 [case testEmptyClass]
@@ -195,16 +195,16 @@ x, y = 1, 2
 [out]
 from typing import Any
 
-x = ...  # type: Any
-y = ...  # type: Any
+x: Any
+y: Any
 
 [case testMultipleAssignment2]
 [x, y] = 1, 2
 [out]
 from typing import Any
 
-x = ...  # type: Any
-y = ...  # type: Any
+x: Any
+y: Any
 
 [case testKeywordOnlyArg]
 def f(x, *, y=1): ...
@@ -333,7 +333,7 @@ class A:
     def f(self): ...
 [out]
 class A:
-    x = ...  # type: int
+    x: int
     def f(self): ...
 
 [case testSkipMultiplePrivateDefs]
@@ -369,7 +369,7 @@ x = 1
 [out]
 from re import match as match, sub as sub
 
-x = ...  # type: int
+x: int
 
 [case testExportModule_import]
 import re
@@ -379,7 +379,7 @@ y = 2
 [out]
 import re as re
 
-x = ...  # type: int
+x: int
 
 [case testExportModuleAs_import]
 import re as rex
@@ -389,7 +389,7 @@ y = 2
 [out]
 import re as rex
 
-x = ...  # type: int
+x: int
 
 [case testExportModuleInPackage_import]
 import urllib.parse as p
@@ -418,7 +418,7 @@ class C:
 [out]
 def f(): ...
 
-x = ...  # type: int
+x: int
 
 class C:
     def g(self): ...
@@ -577,7 +577,7 @@ class A:
 [out]
 class A:
     class B:
-        x = ...  # type: int
+        x: int
         def f(self): ...
     def g(self): ...
 
@@ -625,7 +625,7 @@ class A:
 from typing import Any, Optional
 
 class A:
-    x = ...  # type: Any
+    x: Any
     def __init__(self, a: Optional[Any] = ...) -> None: ...
 
 -- More features/fixes:
