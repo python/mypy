@@ -487,7 +487,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return None
         self._vars[-1].append(lvalue)
         typename = self.get_str_type_of_node(rvalue)
-        return '%s%s = ...  # type: %s\n' % (self._indent, lvalue, typename)
+        return '%s%s: %s\n' % (self._indent, lvalue, typename)
 
     def add(self, string: str) -> None:
         """Add text to generated stub."""
