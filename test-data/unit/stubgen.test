@@ -398,7 +398,7 @@ from re import match, search, sub
 __all__ = ['match', 'sub', 'x']
 x = 1
 [out]
-from re import match as match, sub as sub
+from re import match, sub
 
 x: int
 
@@ -408,7 +408,7 @@ __all__ = ['re', 'x']
 x = 1
 y = 2
 [out]
-import re as re
+import re
 
 x: int
 
@@ -429,11 +429,16 @@ __all__ = ['p']
 import urllib.parse as p
 
 [case testExportModuleInPackageUnsupported_import]
-import urllib.parse
 __all__ = ['urllib']
 [out]
 # Names in __all__ with no definition:
 #   urllib
+
+[case testExportModuleInPackage_import]
+import urllib.parse
+__all__ = ['urllib']
+[out]
+import urllib.parse
 
 [case testRelativeImportAll]
 from .x import *
@@ -525,7 +530,6 @@ def f(): ...
 X = _namedtuple('X', 'a b')
 def g(): ...
 [out]
-from collections import namedtuple as _namedtuple
 from collections import namedtuple
 
 def f(): ...
@@ -615,12 +619,12 @@ class A:
 [case testExportViaRelativeImport]
 from .api import get
 [out]
-from .api import get as get
+from .api import get
 
 [case testExportViaRelativePackageImport]
 from .packages.urllib3.contrib import parse
 [out]
-from .packages.urllib3.contrib import parse as parse
+from .packages.urllib3.contrib import parse
 
 [case testNoExportViaRelativeImport]
 from . import get
@@ -631,7 +635,7 @@ from .x import X
 class A(X):
      pass
 [out]
-from .x import X as X
+from .x import X
 
 class A(X): ...
 
@@ -658,6 +662,54 @@ from typing import Any, Optional
 class A:
     x: Any
     def __init__(self, a: Optional[Any] = ...) -> None: ...
+
+[case testAnnotationImportsFrom]
+import foo
+from collection import defaultdict
+x: defaultdict
+
+[out]
+from collection import defaultdict
+
+x: defaultdict
+
+[case testAnnotationImports]
+import foo
+import collection
+x: collection.defaultdict
+
+[out]
+import collection
+
+x: collection.defaultdict
+
+
+[case testAnnotationImports]
+from typing import List
+import collection
+x: List[collection.defaultdict]
+
+[out]
+import collection
+from typing import List
+
+x: List[collection.defaultdict]
+
+
+[case testAnnotationFwRefs]
+x: C
+
+class C:
+    attr: C
+
+y: C
+[out]
+x: 'C'
+
+class C:
+    attr: 'C'
+
+y: C
 
 -- More features/fixes:
 --   do not export deleted names

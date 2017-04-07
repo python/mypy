@@ -45,9 +45,10 @@ import subprocess
 import sys
 import textwrap
 import traceback
+from collections import defaultdict
 
 from typing import (
-    Any, List, Dict, Tuple, Iterable, Iterator, Optional, NamedTuple, Set, Union, cast
+    Any, List, Dict, Tuple, Iterable, Iterator, Mapping, Optional, NamedTuple, Set, Union, cast
 )
 
 import mypy.build
@@ -242,6 +243,7 @@ class AnnotationPrinter(TypeStrVisitor):
     def visit_unbound_type(self, t: UnboundType)-> str:
         s = t.name
         base = s.split('.')[0]
+        self.stubgen.import_tracker.require_name(base)
         # if the name is not defined, assume a forward reference
         if (not self.requires_quotes and
                 base not in dir(builtins) and
@@ -256,27 +258,73 @@ class AnnotationPrinter(TypeStrVisitor):
         return "None"
 
 
+class ImportTracker:
+
+    def __init__(self) -> None:
+        self.module_for = {}  # type: Dict[str, Optional[str]]
+        self.direct_imports = {}  # type: Dict[str, str]
+        self.reverse_alias = {}  # type: Dict[str, str]
+        self.required_names = set()  # type: Set[str]
+
+    def add_import_from(self, module: str, names: List[Tuple[str, Optional[str]]]) -> None:
+        for name, alias in names:
+            self.module_for[alias or name] = module
+            if alias:
+                self.reverse_alias[alias] = name
+
+    def add_import(self, module: str, alias: str=None) -> None:
+        name = module.split('.')[0]
+        self.module_for[alias or name] = None
+        self.direct_imports[name] = module
+        if alias:
+            self.reverse_alias[alias] = name
+
+    def require_name(self, name: str) -> None:
+        self.required_names.add(name.split('.')[0])
+
+    def import_lines(self) -> List[str]:
+        result = []
+        module_map = defaultdict(list)  # type: Mapping[str, List[str]]
+        for name in self.required_names:
+            if name not in self.module_for:
+                continue
+            m = self.module_for[name]
+            if m is not None:
+                if name in self.reverse_alias:
+                    name = '{} as {}'.format(self.reverse_alias[name], name)
+                module_map[m].append(name)
+            else:
+                if name in self.reverse_alias:
+                    name, alias = self.reverse_alias[name], name
+                    result.append("import {} as {}\n".format(self.direct_imports[name], alias))
+                else:
+                    result.append("import {}\n".format(self.direct_imports[name]))
+        for module, names in module_map.items():
+            result.append("from {} import {}\n".format(module, ', '.join(sorted(names))))
+        return result
+
+
 class StubGenerator(mypy.traverser.TraverserVisitor):
     def __init__(self, _all_: Optional[List[str]], pyversion: Tuple[int, int],
                  include_private: bool = False) -> None:
         self._all_ = _all_
         self._output = []  # type: List[str]
         self._import_lines = []  # type: List[str]
-        self._imports = []  # type: List[str]
         self._indent = ''
         self._vars = [[]]  # type: List[List[str]]
         self._state = EMPTY
         self._toplevel_names = []  # type: List[str]
-        self._classes = set()  # type: Set[str]
-        self._base_classes = []  # type: List[str]
         self._pyversion = pyversion
         self._include_private = include_private
+        self.import_tracker = ImportTracker()
+        # Add imports that could be implicitly generated
+        self.import_tracker.add_import_from("collections", [("namedtuple", None)])
+        self.import_tracker.add_import_from("typing", [("Any", None), ("Optional", None)])
+        # Names in __all__ are required
+        for name in _all_ or ():
+            self.import_tracker.require_name(name)
 
     def visit_mypy_file(self, o: MypyFile) -> None:
-        self._classes = find_classes(o)
-        for node in o.defs:
-            if isinstance(node, ClassDef):
-                self._base_classes.extend(self.get_base_types(node))
         super().visit_mypy_file(o)
         undefined_names = [name for name in self._all_ or []
                            if name not in self._toplevel_names]
@@ -356,6 +404,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         base_types = self.get_base_types(o)
         if base_types:
             self.add('(%s)' % ', '.join(base_types))
+            for base in base_types:
+                self.import_tracker.require_name(base)
         self.add(':\n')
         n = len(self._output)
         self._indent += '    '
@@ -363,6 +413,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         super().visit_class_def(o)
         self._indent = self._indent[:-4]
         self._vars.pop()
+        self._vars[-1].append(o.name)
         if len(self._output) == n:
             if self._state == EMPTY_CLASS and sep is not None:
                 self._output[sep] = ''
@@ -380,7 +431,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             elif isinstance(base, MemberExpr):
                 modname = get_qualified_name(base.expr)
                 base_types.append('%s.%s' % (modname, base.name))
-                self.add_import_line('import %s\n' % modname)
         return base_types
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
@@ -426,7 +476,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 (isinstance(callee, MemberExpr) and callee.name == 'namedtuple'))
 
     def process_namedtuple(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
-        self.add_import_line('from collections import namedtuple\n')
+        self.import_tracker.require_name('namedtuple')
         if self._state != EMPTY:
             self.add('\n')
         name = repr(getattr(rvalue.args[0], 'value', '<ERROR>'))
@@ -438,7 +488,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         else:
             items = '<ERROR>'
         self.add('%s = namedtuple(%s, %s)\n' % (lvalue.name, name, items))
-        self._classes.add(lvalue.name)
         self._state = CLASS
 
     def visit_if_stmt(self, o: IfStmt) -> None:
@@ -457,51 +506,35 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def visit_import_from(self, o: ImportFrom) -> None:
         exported_names = set()  # type: Set[str]
+        self.import_tracker.add_import_from('.' * o.relative + o.id, o.names)
+        self._vars[-1].extend(alias or name for name, alias in o.names)
+        for name, alias in o.names:
+            self.record_name(alias or name)
+
         if self._all_:
             # Include import froms that import names defined in __all__.
             names = [name for name, alias in o.names
                      if name in self._all_ and alias is None]
             exported_names.update(names)
-            self.import_and_export_names(o.id, o.relative, names)
         else:
             # Include import from targets that import from a submodule of a package.
             if o.relative:
                 sub_names = [name for name, alias in o.names
                              if alias is None]
                 exported_names.update(sub_names)
-                self.import_and_export_names(o.id, o.relative, sub_names)
-        # Import names used as base classes.
-        base_names = [(name, alias) for name, alias in o.names
-                      if alias or name in self._base_classes and name not in exported_names]
-        if base_names:
-            imp_names = []  # type: List[str]
-            for name, alias in base_names:
-                if alias is not None and alias != name:
-                    imp_names.append('%s as %s' % (name, alias))
-                else:
-                    imp_names.append(name)
-            self.add_import_line('from %s%s import %s\n' % (
-                '.' * o.relative, o.id, ', '.join(imp_names)))
-
-    def import_and_export_names(self, module_id: str, relative: int, names: Iterable[str]) -> None:
-        """Import names from a module and export them (via from ... import x as x)."""
-        if names and module_id:
-            full_module_name = '%s%s' % ('.' * relative, module_id)
-            imported_names = ', '.join(['%s as %s' % (name, name) for name in names])
-            self.add_import_line('from %s import %s\n' % (full_module_name, imported_names))
-            for name in names:
-                self.record_name(name)
+                if o.id:
+                    for name in sub_names:
+                        self.import_tracker.require_name(name)
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
+            self.import_tracker.add_import(id, as_id)
             if as_id is None:
                 target_name = id.split('.')[0]
             else:
                 target_name = as_id
-            if self._all_ and target_name in self._all_ and (as_id is not None or
-                                                             '.' not in id):
-                self.add_import_line('import %s as %s\n' % (id, target_name))
-                self.record_name(target_name)
+            self._vars[-1].append(target_name)
+            self.record_name(target_name)
 
     def get_init(self, lvalue: str, rvalue: Expression, annotation: Type=None) -> Optional[str]:
         """Return initializer for a variable.
@@ -533,8 +566,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
         The import will be internal to the stub.
         """
-        if name not in self._imports:
-            self._imports.append(name)
+        self.import_tracker.require_name(name)
 
     def add_import_line(self, line: str) -> None:
         """Add a line of text to the import section, unless it's already there."""
@@ -544,10 +576,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def output(self) -> str:
         """Return the text for the stub."""
         imports = ''
-        if self._imports:
-            imports += 'from typing import %s\n' % ", ".join(sorted(self._imports))
         if self._import_lines:
             imports += ''.join(self._import_lines)
+        imports += ''.join(self.import_tracker.import_lines())
         if imports and self._output:
             imports += '\n'
         return imports + ''.join(self._output)
@@ -623,17 +654,6 @@ def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
                 results.append((lvalue.name, o.rvalue))
 
     fdef.accept(SelfTraverser())
-    return results
-
-
-def find_classes(node: MypyFile) -> Set[str]:
-    results = set()  # type: Set[str]
-
-    class ClassTraverser(mypy.traverser.TraverserVisitor):
-        def visit_class_def(self, o: ClassDef) -> None:
-            results.add(o.name)
-
-    node.accept(ClassTraverser())
     return results
 
 
