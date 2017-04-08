@@ -65,7 +65,7 @@ from mypy.nodes import (
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
 from mypy.options import Options as MypyOptions
-from mypy.types import Type, TypeStrVisitor, UnboundType, NoneTyp, TupleType
+from mypy.types import Type, TypeStrVisitor, AnyType, UnboundType, NoneTyp, TupleType
 
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
@@ -357,21 +357,36 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             var = arg_.variable
             kind = arg_.kind
             name = var.name()
+            annotated_type = o.type.arg_types[i] if o.type else None
+            if annotated_type and not (i == 0 and name == 'self' and isinstance(annotated_type, AnyType)):
+                annotation = ": {}".format(self.print_annotation(annotated_type))
+            else:
+                annotation = ""
             init_stmt = arg_.initialization_statement
             if init_stmt:
+                if isinstance(init_stmt.rvalue, NameExpr) and init_stmt.rvalue.name == 'None':
+                    initializer = 'None'
+                else:
+                    initializer = '...'
                 if kind in (ARG_NAMED, ARG_NAMED_OPT) and '*' not in args:
                     args.append('*')
-                typename = self.get_str_type_of_node(init_stmt.rvalue, True)
-                arg = '{}: {} = ...'.format(name, typename)
+                if not annotation:
+                    typename = self.get_str_type_of_node(init_stmt.rvalue, True)
+                    annotation = ': {}=...'.format(typename)
+                else:
+                    annotation += '={}'.format(initializer)
+                arg = name + annotation
             elif kind == ARG_STAR:
-                arg = '*%s' % name
+                arg = '*%s%s' % (name, annotation)
             elif kind == ARG_STAR2:
-                arg = '**%s' % name
+                arg = '**%s%s' % (name, annotation)
             else:
-                arg = name
+                arg = name + annotation
             args.append(arg)
         retname = None
-        if o.name() == '__init__':
+        if o.type:
+            retname = self.print_annotation(o.type.ret_type)
+        elif o.name() == '__init__':
             retname = 'None'
         retfield = ''
         if retname is not None:
@@ -549,10 +564,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return None
         self._vars[-1].append(lvalue)
         if annotation is not None:
-            printer = AnnotationPrinter(self)
-            typename = annotation.accept(printer)
-            if printer.requires_quotes:
-                typename = "'{}'".format(typename)
+            typename = self.print_annotation(annotation)
         else:
             typename = self.get_str_type_of_node(rvalue)
         return '%s%s: %s\n' % (self._indent, lvalue, typename)
@@ -624,6 +636,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return 'Optional[Any]'
         self.add_typing_import('Any')
         return 'Any'
+
+    def print_annotation(self, t: Type) -> str:
+        printer = AnnotationPrinter(self)
+        typename = t.accept(printer)
+        if printer.requires_quotes:
+            typename = "'{}'".format(typename)
+        return typename
 
     def is_top_level(self) -> bool:
         """Are we processing the top level of a file?"""
