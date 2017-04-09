@@ -3035,10 +3035,10 @@ class Meta(type):
     def __add__(cls, x: X) -> str: ...
 
 class Concrete(metaclass=Meta):
-    def __add__(cls, x: X) -> str: ...
+    pass
 
 reveal_type(Concrete + X())  # E: Revealed type is 'builtins.str'
-Concrete + "hello"  # E: Unsupported operand types for + ("Meta" and "str")
+Concrete + "hello"  # E: Unsupported operand types for + (Type[Concrete] and "str")
 
 [case testMetaclassGetitem]
 class M(type):
