@@ -218,7 +218,6 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
     if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
         v = vv.var
-
     if isinstance(v, Var):
         return analyze_var(name, v, itype, info, node, is_lvalue, msg,
                            original_type, not_ready_callback)
@@ -632,11 +631,14 @@ def bind_self(method: F, original_type: Type = None) -> F:
         arg_types = func.arg_types[1:]
         ret_type = func.ret_type
         variables = func.variables
+    if isinstance(original_type, FunctionLike) and original_type.is_type_obj():
+        original_type = original_type.fallback
     res = func.copy_modified(arg_types=arg_types,
                              arg_kinds=func.arg_kinds[1:],
                              arg_names=func.arg_names[1:],
                              variables=variables,
-                             ret_type=ret_type)
+                             ret_type=ret_type,
+                             bound_args=[original_type])
     return cast(F, res)
 
 
