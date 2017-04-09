@@ -1110,6 +1110,8 @@ class SemanticAnalyzer(NodeVisitor):
         # the MRO. Fix MRO if needed.
         if info.mro and info.mro[-1].fullname() != 'builtins.object':
             info.mro.append(self.object_type().type)
+        if defn.info.is_enum and defn.type_vars:
+            self.fail("Enum class cannot be generic", defn)
 
     def expr_to_analyzed_type(self, expr: Expression) -> Type:
         if isinstance(expr, CallExpr):
