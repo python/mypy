@@ -745,6 +745,8 @@ class CallableType(FunctionLike):
                 'is_ellipsis_args': self.is_ellipsis_args,
                 'implicit': self.implicit,
                 'is_classmethod_class': self.is_classmethod_class,
+                'bound_args': [(None if t is None else t.serialize())
+                               for t in self.bound_args],
                 }
 
     @classmethod
@@ -762,6 +764,8 @@ class CallableType(FunctionLike):
                             is_ellipsis_args=data['is_ellipsis_args'],
                             implicit=data['implicit'],
                             is_classmethod_class=data['is_classmethod_class'],
+                            bound_args=[(None if t is None else deserialize_type(t))
+                                        for t in data['bound_args']],
                             )
 
 
