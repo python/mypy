@@ -1964,6 +1964,8 @@ class TypeInfo(SymbolNode):
     assuming_proper = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
     # Ditto for temporary stack of recursive constraint inference.
     inferring = None  # type: List[mypy.types.Instance]
+    cache = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
+    cache_proper = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
 
     # Classes inheriting from Enum shadow their true members with a __getattr__, so we
     # have to treat them as a special case.
@@ -2030,6 +2032,8 @@ class TypeInfo(SymbolNode):
         self.assuming = []
         self.assuming_proper = []
         self.inferring = []
+        self.cache = set()
+        self.cache_proper = set()
         self.add_type_vars()
 
     def add_type_vars(self) -> None:

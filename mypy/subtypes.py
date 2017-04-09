@@ -147,10 +147,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and right.fallback.type.is_enum:
             return is_subtype(left, right.fallback)
         if isinstance(right, Instance):
+            if (left, right) in right.type.cache:
+                return True
             for base in left.type.mro:
                 if base._promote and is_subtype(
                         base._promote, self.right, self.check_type_parameter,
                         ignore_pos_arg_names=self.ignore_pos_arg_names):
+                    right.type.cache.add((left, right))
                     return True
             rname = right.type.fullname()
             # Always try a nominal check if possible,
@@ -162,6 +165,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                               for lefta, righta, tvar in
                               zip(t.args, right.args, right.type.defn.type_vars))
                 if nominal:
+                    right.type.cache.add((left, right))
                     return True
             if right.type.is_protocol and is_protocol_implementation(left, right):
                 return True
@@ -360,10 +364,10 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
             # this rule is copied from nominal check in checker.py
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 return False
-    # This additional push serves as poor man's subtype cache.
-    # (This already gives a decent speed-up.)
-    # TODO: Implement a general fast subtype cache?
-    assuming.append((left, right))
+    if allow_any:
+        right.type.cache.add((left, right))
+    else:
+        right.type.cache_proper.add((left, right))
     return True
 
 
@@ -781,8 +785,11 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_instance(self, left: Instance) -> bool:
         right = self.right
         if isinstance(right, Instance):
+            if (left, right) in right.type.cache_proper:
+                return True
             for base in left.type.mro:
                 if base._promote and is_proper_subtype(base._promote, right):
+                    right.type.cache_proper.add((left, right))
                     return True
 
             if left.type.has_base(right.type.fullname()):
@@ -799,6 +806,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 nominal = all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
                               zip(left.args, right.args, right.type.defn.type_vars))
                 if nominal:
+                    right.type.cache_proper.add((left, right))
                     return True
             if (right.type.is_protocol and
                     is_protocol_implementation(left, right, allow_any=False)):

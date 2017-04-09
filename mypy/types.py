@@ -56,6 +56,12 @@ class Type(mypy.nodes.Context):
     def __repr__(self) -> str:
         return self.accept(TypeStrVisitor())
 
+    def __hash__(self) -> int:
+        return hash(type(self))
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, type(self))
+
     def serialize(self) -> Union[JsonDict, str]:
         raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
 
@@ -210,6 +216,15 @@ class UnboundType(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_unbound_type(self)
 
+    def __hash__(self) -> int:
+        return hash((UnboundType, self.name, self.optional, tuple(self.args)))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, UnboundType):
+            return False
+        return (self.name == other.name and self.optional == other.optional and
+                self.args == other.args)
+
     def serialize(self) -> JsonDict:
         return {'.class': 'UnboundType',
                 'name': self.name,
@@ -244,6 +259,14 @@ class TypeList(Type):
         return {'.class': 'TypeList',
                 'items': [t.serialize() for t in self.items],
                 }
+
+    def __hash__(self) -> int:
+        return hash((TypeList, tuple(self.items)))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeList):
+            return False
+        return self.items == other.items
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TypeList':
@@ -388,6 +411,14 @@ class Instance(Type):
 
     type_ref = None  # type: str
 
+    def __hash__(self) -> int:
+        return hash((Instance, self.type, tuple(self.args)))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Instance):
+            return False
+        return self.type == other.type and self.args == other.args
+
     def serialize(self) -> Union[JsonDict, str]:
         assert self.type is not None
         type_ref = self.type.alt_fullname or self.type.fullname()
@@ -449,6 +480,14 @@ class TypeVarType(Type):
             return UnionType.make_simplified_union(self.values)
         else:
             return self.upper_bound
+
+    def __hash__(self) -> int:
+        return hash((TypeVarType, self.id))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeVarType):
+            return False
+        return self.id == other.id
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
@@ -723,6 +762,23 @@ class CallableType(FunctionLike):
             a.append(tv.id)
         return a
 
+    def __hash__(self) -> int:
+        return hash((CallableType, self.ret_type, self.is_type_obj(),
+                     self.is_ellipsis_args, self.name) +
+                    tuple(self.arg_types) + tuple(self.arg_names) + tuple(self.arg_kinds))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, CallableType):
+            return (self.ret_type == other.ret_type and
+                    self.arg_types == other.arg_types and
+                    self.arg_names == other.arg_names and
+                    self.arg_kinds == other.arg_kinds and
+                    self.name == other.name and
+                    self.is_type_obj() == other.is_type_obj() and
+                    self.is_ellipsis_args == other.is_ellipsis_args)
+        else:
+            return False
+
     def serialize(self) -> JsonDict:
         # TODO: As an optimization, leave out everything related to
         # generic functions for non-generic functions.
@@ -803,6 +859,14 @@ class Overloaded(FunctionLike):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_overloaded(self)
 
+    def __hash__(self) -> int:
+        return hash((Overloaded, tuple(self.items())))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Overloaded):
+            return False
+        return self.items() == other.items()
+
     def serialize(self) -> JsonDict:
         return {'.class': 'Overloaded',
                 'items': [t.serialize() for t in self.items()],
@@ -843,6 +907,14 @@ class TupleType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_tuple_type(self)
+
+    def __hash__(self) -> int:
+        return hash((TupleType, tuple(self.items), self.fallback))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TupleType):
+            return False
+        return self.items == other.items and self.fallback == other.fallback
 
     def serialize(self) -> JsonDict:
         return {'.class': 'TupleType',
@@ -893,6 +965,20 @@ class TypedDictType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_typeddict_type(self)
+
+    def __hash__(self) -> int:
+        return hash((TypedDictType, tuple(self.items.items())))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, TypedDictType):
+            if self.items.keys() != other.items.keys():
+                return False
+            for (_, left_item_type, right_item_type) in self.zip(other):
+                if not left_item_type == right_item_type:
+                    return False
+            return True
+        else:
+            return False
 
     def serialize(self) -> JsonDict:
         return {'.class': 'TypedDictType',
@@ -964,6 +1050,14 @@ class StarType(Type):
         self.type = type
         super().__init__(line, column)
 
+    def __hash__(self) -> int:
+        return hash((StarType, self.type))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, StarType):
+            return False
+        return self.type == other.type
+
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_star_type(self)
 
@@ -978,6 +1072,14 @@ class UnionType(Type):
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
         super().__init__(line, column)
+
+    def __hash__(self) -> int:
+        return hash(frozenset(self.items))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, UnionType):
+            return False
+        return frozenset(self.items) == frozenset(other.items)
 
     @staticmethod
     def make_union(items: List[Type], line: int = -1, column: int = -1) -> Type:
@@ -1158,6 +1260,14 @@ class TypeType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)
+
+    def __hash__(self) -> int:
+        return hash((TypeType, self.item))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeType):
+            return False
+        return self.item == other.item
 
     def serialize(self) -> JsonDict:
         return {'.class': 'TypeType', 'item': self.item.serialize()}
