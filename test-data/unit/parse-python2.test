@@ -291,7 +291,7 @@ lambda (x, y): z
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    FuncExpr:1(
+    LambdaExpr:1(
       Args(
         Var(__tuple_arg_1))
       Block:1(
@@ -308,7 +308,7 @@ lambda (x,): z
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    FuncExpr:1(
+    LambdaExpr:1(
       Args(
         Var(__tuple_arg_1))
       Block:1(
@@ -324,7 +324,7 @@ lambda (x): z
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    FuncExpr:1(
+    LambdaExpr:1(
       Args(
         Var(x))
       Block:1(

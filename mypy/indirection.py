@@ -45,9 +45,6 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     def visit_type_list(self, t: types.TypeList) -> Set[str]:
         return self._visit(*t.items)
 
-    def visit_error_type(self, t: types.ErrorType) -> Set[str]:
-        return set()
-
     def visit_any(self, t: types.AnyType) -> Set[str]:
         return set()
 

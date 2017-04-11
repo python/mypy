@@ -2,6 +2,7 @@
 
 import os.path
 import os
+import posixpath
 import re
 from os import remove, rmdir
 import shutil
@@ -27,7 +28,10 @@ def parse_test_cases(
     myunit and pytest codepaths -- if something looks redundant,
     that's likely the reason.
     """
-
+    if native_sep:
+        join = os.path.join
+    else:
+        join = posixpath.join  # type: ignore
     if not include_path:
         include_path = os.path.dirname(path)
     with open(path, encoding='utf-8') as f:
@@ -57,7 +61,7 @@ def parse_test_cases(
                     # Record an extra file needed for the test case.
                     arg = p[i].arg
                     assert arg is not None
-                    file_entry = (os.path.join(base_path, arg), '\n'.join(p[i].data))
+                    file_entry = (join(base_path, arg), '\n'.join(p[i].data))
                     if p[i].id == 'file':
                         files.append(file_entry)
                     elif p[i].id == 'outfile':
@@ -66,14 +70,14 @@ def parse_test_cases(
                     # Use a custom source file for the std module.
                     arg = p[i].arg
                     assert arg is not None
-                    mpath = os.path.join(os.path.dirname(path), arg)
+                    mpath = join(os.path.dirname(path), arg)
                     if p[i].id == 'builtins':
                         fnam = 'builtins.pyi'
                     else:
                         # Python 2
                         fnam = '__builtin__.pyi'
                     with open(mpath) as f:
-                        files.append((os.path.join(base_path, fnam), f.read()))
+                        files.append((join(base_path, fnam), f.read()))
                 elif p[i].id == 'stale':
                     arg = p[i].arg
                     if arg is None:
@@ -118,6 +122,8 @@ def parse_test_cases(
             if ok:
                 input = expand_includes(p[i0].data, include_path)
                 expand_errors(input, tcout, 'main')
+                for file_path, contents in files:
+                    expand_errors(contents.split('\n'), tcout, file_path)
                 lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
                 tc = DataDrivenTestCase(p[i0].arg, input, tcout, tcout2, path,
                                         p[i0].line, lastline, perform,
@@ -431,6 +437,8 @@ def fix_cobertura_filename(line: str) -> str:
 ##
 
 
+# This function name is special to pytest.  See
+# http://doc.pytest.org/en/latest/writing_plugins.html#initialization-command-line-and-configuration-hooks
 def pytest_addoption(parser: Any) -> None:
     group = parser.getgroup('mypy')
     group.addoption('--update-data', action='store_true', default=False,
@@ -438,6 +446,8 @@ def pytest_addoption(parser: Any) -> None:
                          ' (supported only for certain tests)')
 
 
+# This function name is special to pytest.  See
+# http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
 def pytest_pycollect_makeitem(collector: Any, name: str, obj: Any) -> Any:
     if not isinstance(obj, type) or not issubclass(obj, DataSuite):
         return None

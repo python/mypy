@@ -157,6 +157,97 @@ class B(A): pass
 B()# E: Cannot instantiate abstract class 'B' with abstract attributes 'f' and 'g'
 [out]
 
+[case testInstantiationAbstractsInTypeForFunctions]
+from typing import Type
+from abc import abstractmethod
+
+class A:
+    @abstractmethod
+    def m(self) -> None: pass
+class B(A): pass
+class C(B):
+    def m(self) -> None:
+        pass
+
+def f(cls: Type[A]) -> A:
+    return cls()  # OK
+def g() -> A:
+    return A()  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
+
+f(A)  # E: Only non-abstract class can be given where 'Type[__main__.A]' is expected
+f(B)  # E: Only non-abstract class can be given where 'Type[__main__.A]' is expected
+f(C)  # OK
+x: Type[B]
+f(x)  # OK
+[out]
+
+[case testInstantiationAbstractsInTypeForAliases]
+from typing import Type
+from abc import abstractmethod
+
+class A:
+    @abstractmethod
+    def m(self) -> None: pass
+class B(A): pass
+class C(B):
+    def m(self) -> None:
+        pass
+
+def f(cls: Type[A]) -> A:
+    return cls()  # OK
+
+Alias = A
+GoodAlias = C
+Alias()  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
+GoodAlias()
+f(Alias)  # E: Only non-abstract class can be given where 'Type[__main__.A]' is expected
+f(GoodAlias)
+[out]
+
+[case testInstantiationAbstractsInTypeForVariables]
+from typing import Type
+from abc import abstractmethod
+
+class A:
+    @abstractmethod
+    def m(self) -> None: pass
+class B(A): pass
+class C(B):
+    def m(self) -> None:
+        pass
+
+var: Type[A]
+var()
+var = A # E: Can only assign non-abstract classes to a variable of type 'Type[__main__.A]'
+var = B # E: Can only assign non-abstract classes to a variable of type 'Type[__main__.A]'
+var = C # OK
+
+var_old = None # type: Type[A] # Old syntax for variable annotations
+var_old()
+var_old = A # E: Can only assign non-abstract classes to a variable of type 'Type[__main__.A]'
+var_old = B # E: Can only assign non-abstract classes to a variable of type 'Type[__main__.A]'
+var_old = C # OK
+[out]
+
+[case testInstantiationAbstractsInTypeForClassMethods]
+from typing import Type
+from abc import abstractmethod
+
+class Logger:
+    @staticmethod
+    def log(a: Type[C]):
+        pass
+class C:
+    @classmethod
+    def action(cls) -> None:
+        cls() #OK for classmethods
+        Logger.log(cls)  #OK for classmethods
+    @abstractmethod
+    def m(self) -> None:
+        pass
+[builtins fixtures/classmethod.pyi]
+[out]
+
 [case testInstantiatingClassWithInheritedAbstractMethodAndSuppression]
 from abc import abstractmethod, ABCMeta
 import typing
@@ -410,6 +501,8 @@ class B(object, A): pass \
       # E: Cannot determine consistent method resolution order (MRO) for "B"
 
 [case testOverloadedAbstractMethod]
+from foo import *
+[file foo.pyi]
 from abc import abstractmethod, ABCMeta
 from typing import overload
 
@@ -432,9 +525,11 @@ B().f(1)
 a = B() # type: A
 a.f(1)
 a.f('')
-a.f(B()) # E: No overload variant of "f" of "A" matches argument types [__main__.B]
+a.f(B()) # E: No overload variant of "f" of "A" matches argument types [foo.B]
 
 [case testOverloadedAbstractMethodWithAlternativeDecoratorOrder]
+from foo import *
+[file foo.pyi]
 from abc import abstractmethod, ABCMeta
 from typing import overload
 
@@ -457,9 +552,11 @@ B().f(1)
 a = B() # type: A
 a.f(1)
 a.f('')
-a.f(B()) # E: No overload variant of "f" of "A" matches argument types [__main__.B]
+a.f(B()) # E: No overload variant of "f" of "A" matches argument types [foo.B]
 
 [case testOverloadedAbstractMethodVariantMissingDecorator1]
+from foo import *
+[file foo.pyi]
 from abc import abstractmethod, ABCMeta
 from typing import overload
 
@@ -473,6 +570,8 @@ class A(metaclass=ABCMeta):
 [out]
 
 [case testOverloadedAbstractMethodVariantMissingDecorator1]
+from foo import *
+[file foo.pyi]
 from abc import abstractmethod, ABCMeta
 from typing import overload
 

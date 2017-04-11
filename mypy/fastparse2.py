@@ -18,7 +18,9 @@ from functools import wraps
 import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set
-from mypy.sharedparse import special_function_elide_names, argument_elide_name
+from mypy.sharedparse import (
+    special_function_elide_names, argument_elide_name,
+)
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
@@ -28,10 +30,10 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, FuncExpr, ComparisonExpr, DictionaryComprehension,
+    UnaryExpr, LambdaExpr, ComparisonExpr, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     Expression, Statement, BackquoteExpr, PrintStmt, ExecStmt,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart,
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType
@@ -85,7 +87,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     if errors is None:
         errors = Errors()
         raise_on_error = True
-    errors.set_file('<input>' if fnam is None else fnam)
+    errors.set_file('<input>' if fnam is None else fnam, None)
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
         assert pyversion[0] < 3 and not is_stub_file
@@ -225,11 +227,12 @@ class ASTConverter(ast27.NodeTransformer):
 
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
         ret = []  # type: List[Statement]
-        current_overload = []
+        current_overload = []  # type: List[OverloadPart]
         current_overload_name = None
-        # mypy doesn't actually check that the decorator is literally @overload
         for stmt in stmts:
-            if isinstance(stmt, Decorator) and stmt.name() == current_overload_name:
+            if (current_overload_name is not None
+                    and isinstance(stmt, (Decorator, FuncDef))
+                    and stmt.name() == current_overload_name):
                 current_overload.append(stmt)
             else:
                 if len(current_overload) == 1:
@@ -723,7 +726,7 @@ class ASTConverter(ast27.NodeTransformer):
 
     # Lambda(arguments args, expr body)
     @with_line
-    def visit_Lambda(self, n: ast27.Lambda) -> FuncExpr:
+    def visit_Lambda(self, n: ast27.Lambda) -> LambdaExpr:
         args, decompose_stmts = self.transform_args(n.args, n.lineno)
 
         n_body = ast27.Return(n.body)
@@ -733,7 +736,7 @@ class ASTConverter(ast27.NodeTransformer):
         if decompose_stmts:
             body.body = decompose_stmts + body.body
 
-        return FuncExpr(args, body)
+        return LambdaExpr(args, body)
 
     # IfExp(expr test, expr body, expr orelse)
     @with_line

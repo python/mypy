@@ -225,6 +225,9 @@ third_party_modules = {
     'PyQt4',
     'PyQt5',
     'pylons',
+
+    # for use in tests
+    '__dummy_third_party1',
 }
 
 # Modules and packages common to Python 2.7 and 3.x.
@@ -422,6 +425,9 @@ common_std_lib_modules = {
     'xml.sax.xmlreader',
     'zipfile',
     'zlib',
+    # fake names to use in tests
+    '__dummy_stdlib1',
+    '__dummy_stdlib2',
 }
 
 # Python 2 standard library modules.

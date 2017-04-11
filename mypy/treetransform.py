@@ -14,12 +14,13 @@ from mypy.nodes import (
     CastExpr, RevealTypeExpr, TupleExpr, GeneratorExpr, ListComprehension, ListExpr,
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
-    SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
+    SliceExpr, OpExpr, UnaryExpr, LambdaExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, TypeVarExpr, NewTypeExpr, PromoteExpr,
     ComparisonExpr, TempNode, StarExpr, Statement, Expression,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
+    OverloadPart, EnumCallExpr,
 )
 from mypy.types import Type, FunctionLike
 from mypy.traverser import TraverserVisitor
@@ -143,8 +144,8 @@ class TransformVisitor(NodeVisitor[Node]):
         else:
             return new
 
-    def visit_func_expr(self, node: FuncExpr) -> FuncExpr:
-        new = FuncExpr([self.copy_argument(arg) for arg in node.arguments],
+    def visit_lambda_expr(self, node: LambdaExpr) -> LambdaExpr:
+        new = LambdaExpr([self.copy_argument(arg) for arg in node.arguments],
                        self.block(node.body),
                        cast(FunctionLike, self.optional_type(node.type)))
         self.copy_function_attributes(new, node)
@@ -160,14 +161,15 @@ class TransformVisitor(NodeVisitor[Node]):
         new.line = original.line
 
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> OverloadedFuncDef:
-        items = [self.visit_decorator(decorator)
-                 for decorator in node.items]
+        items = [cast(OverloadPart, item.accept(self)) for item in node.items]
         for newitem, olditem in zip(items, node.items):
             newitem.line = olditem.line
         new = OverloadedFuncDef(items)
         new._fullname = node._fullname
         new.type = self.type(node.type)
         new.info = node.info
+        if node.impl:
+            new.impl = cast(OverloadPart, node.impl.accept(self))
         return new
 
     def visit_class_def(self, node: ClassDef) -> ClassDef:
@@ -484,6 +486,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> NamedTupleExpr:
         return NamedTupleExpr(node.info)
+
+    def visit_enum_call_expr(self, node: EnumCallExpr) -> EnumCallExpr:
+        return EnumCallExpr(node.info, node.items, node.values)
 
     def visit_typeddict_expr(self, node: TypedDictExpr) -> Node:
         return TypedDictExpr(node.info)

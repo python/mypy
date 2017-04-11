@@ -5,12 +5,13 @@ Mypy: Optional Static Typing for Python
 [![Chat at https://gitter.im/python/mypy](https://badges.gitter.im/python/mypy.svg)](https://gitter.im/python/mypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 
-Got a question? File an issue!
-------------------------------
+Got a question? Join us on Gitter!
+----------------------------------
 
 We don't have a mailing list; but we are always happy to answer
-questions on [gitter chat](https://gitter.im/python/mypy) or filed as
-issues in our trackers:
+questions on [gitter chat](https://gitter.im/python/mypy).  If you are
+sure you've found a bug please search our issue trackers for a
+duplicate before filing a new issue:
 
 - [mypy tracker](https://github.com/python/mypy/issues)
   for mypy isues

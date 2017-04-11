@@ -1,0 +1,608 @@
+-- Test cases for AST merge (user for fine-grained incremental checking)
+
+[case testFunction]
+import target
+[file target.py]
+def f() -> int:
+    pass
+[file target.py.next]
+def f() -> int:
+    pass
+[out]
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  FuncDef:1<2>(
+    f
+    def () -> builtins.int<3>
+    Block:1<4>(
+      PassStmt:2<5>())))
+==>
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  FuncDef:1<2>(
+    f
+    def () -> builtins.int<3>
+    Block:1<6>(
+      PassStmt:2<7>())))
+
+[case testClass]
+import target
+[file target.py]
+class A:
+    def f(self, x: str) -> int:
+        pass
+[file target.py.next]
+class A:
+    def f(self, x: int) -> str:
+        pass
+[out]
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  ClassDef:1<2>(
+    A
+    FuncDef:2<3>(
+      f
+      Args(
+        Var(self)
+        Var(x))
+      def (self: target.A<4>, x: builtins.str<5>) -> builtins.int<6>
+      Block:2<7>(
+        PassStmt:3<8>()))))
+==>
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  ClassDef:1<9>(
+    A
+    FuncDef:2<3>(
+      f
+      Args(
+        Var(self)
+        Var(x))
+      def (self: target.A<4>, x: builtins.int<6>) -> builtins.str<5>
+      Block:2<10>(
+        PassStmt:3<11>()))))
+
+[case testClass_typeinfo]
+import target
+[file target.py]
+class A:
+    def f(self, x: str) -> int: pass
+    def g(self, x: str) -> int: pass
+[file target.py.next]
+class A:
+    def f(self, x: int) -> str: pass
+    def h(self, x: int) -> str: pass
+[out]
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names(
+    f<2>
+    g<3>))
+==>
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names(
+    f<2>
+    h<4>))
+
+[case testConstructInstance]
+import target
+[file target.py]
+class A:
+    def f(self) -> B:
+        return B()
+class B: pass
+[file target.py.next]
+class B: pass
+class A:
+    def f(self) -> B:
+        1
+        return B()
+[out]
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  ClassDef:1<2>(
+    A
+    FuncDef:2<3>(
+      f
+      Args(
+        Var(self))
+      def (self: target.A<4>) -> target.B<5>
+      Block:2<6>(
+        ReturnStmt:3<7>(
+          CallExpr:3<8>(
+            NameExpr(B [target.B<5>])
+            Args())))))
+  ClassDef:4<9>(
+    B
+    PassStmt:4<10>()))
+==>
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  ClassDef:1<11>(
+    B
+    PassStmt:1<12>())
+  ClassDef:2<13>(
+    A
+    FuncDef:3<3>(
+      f
+      Args(
+        Var(self))
+      def (self: target.A<4>) -> target.B<5>
+      Block:3<14>(
+        ExpressionStmt:4<15>(
+          IntExpr(1))
+        ReturnStmt:5<16>(
+          CallExpr:5<17>(
+            NameExpr(B [target.B<5>])
+            Args()))))))
+
+[case testCallMethod]
+import target
+[file target.py]
+class A:
+    def f(self) -> None:
+        self.f()
+[file target.py.next]
+class A:
+    def f(self) -> None:
+        self.f()
+[out]
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  ClassDef:1<2>(
+    A
+    FuncDef:2<3>(
+      f
+      Args(
+        Var(self))
+      def (self: target.A<4>)
+      Block:2<5>(
+        ExpressionStmt:3<6>(
+          CallExpr:3<7>(
+            MemberExpr:3<8>(
+              NameExpr(self [l<9>])
+              f)
+            Args()))))))
+==>
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  ClassDef:1<10>(
+    A
+    FuncDef:2<3>(
+      f
+      Args(
+        Var(self))
+      def (self: target.A<4>)
+      Block:2<11>(
+        ExpressionStmt:3<12>(
+          CallExpr:3<13>(
+            MemberExpr:3<14>(
+              NameExpr(self [l<15>])
+              f)
+            Args()))))))
+
+[case testClassAttribute]
+import target
+[file target.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.x
+[file target.py.next]
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.x
+[out]
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  ClassDef:1<2>(
+    A
+    FuncDef:2<3>(
+      f
+      Args(
+        Var(self))
+      def (self: target.A<4>)
+      Block:2<5>(
+        AssignmentStmt:3<6>(
+          MemberExpr:3<8>(
+            NameExpr(self [l<9>])
+            x*<7>)
+          IntExpr(1))
+        ExpressionStmt:4<10>(
+          MemberExpr:4<11>(
+            NameExpr(self [l<9>])
+            x))))))
+==>
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  ClassDef:1<12>(
+    A
+    FuncDef:2<3>(
+      f
+      Args(
+        Var(self))
+      def (self: target.A<4>)
+      Block:2<13>(
+        AssignmentStmt:3<14>(
+          MemberExpr:3<15>(
+            NameExpr(self [l<16>])
+            x*<7>)
+          IntExpr(1))
+        ExpressionStmt:4<17>(
+          MemberExpr:4<18>(
+            NameExpr(self [l<16>])
+            x))))))
+
+[case testClassAttribute_typeinfo]
+import target
+[file target.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.x
+        self.y = A()
+[file target.py.next]
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.x
+        self.y = A()
+[out]
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names(
+    f<2>
+    x<3> (builtins.int<4>)
+    y<5> (target.A<0>)))
+==>
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names(
+    f<2>
+    x<3> (builtins.int<4>)
+    y<5> (target.A<0>)))
+
+[case testFunction_symtable]
+import target
+[file target.py]
+def f() -> int:
+    pass
+[file target.py.next]
+def f() -> int:
+    pass
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    f: FuncDef<1>
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    f: FuncDef<1>
+
+[case testClass_symtable]
+import target
+[file target.py]
+class A: pass
+class B: pass
+[file target.py.next]
+class A: pass
+class C: pass
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    A: TypeInfo<1>
+    B: TypeInfo<2>
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    A: TypeInfo<1>
+    C: TypeInfo<3>
+
+[case testTopLevelExpression]
+import target
+[file target.py]
+class A: pass
+A()
+[file target.py.next]
+class A: pass
+class B: pass
+A()
+B()
+[out]
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  ClassDef:1<2>(
+    A
+    PassStmt:1<3>())
+  ExpressionStmt:2<4>(
+    CallExpr:2<5>(
+      NameExpr(A [target.A<6>])
+      Args())))
+==>
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  ClassDef:1<7>(
+    A
+    PassStmt:1<8>())
+  ClassDef:2<9>(
+    B
+    PassStmt:2<10>())
+  ExpressionStmt:3<11>(
+    CallExpr:3<12>(
+      NameExpr(A [target.A<6>])
+      Args()))
+  ExpressionStmt:4<13>(
+    CallExpr:4<14>(
+      NameExpr(B [target.B<15>])
+      Args())))
+
+[case testExpression_types]
+import target
+[file target.py]
+class A: pass
+def f(a: A) -> None:
+    1
+    a
+[file target.py.next]
+class A: pass
+def f(a: A) -> None:
+    a
+    1
+[out]
+## target
+IntExpr:3: builtins.int<0>
+NameExpr:4: target.A<1>
+==>
+## target
+NameExpr:3: target.A<1>
+IntExpr:4: builtins.int<0>
+
+[case testClassAttribute_types]
+import target
+[file target.py]
+class A:
+    def f(self) -> None:
+        self.x = A()
+        self.x
+        self.y = 1
+        self.y
+[file target.py.next]
+class A:
+    def f(self) -> None:
+        self.y = 1
+        self.y
+        self.x = A()
+        self.x
+[out]
+## target
+CallExpr:3: target.A<0>
+MemberExpr:3: target.A<0>
+NameExpr:3: def () -> target.A<0>
+NameExpr:3: target.A<0>
+MemberExpr:4: target.A<0>
+NameExpr:4: target.A<0>
+IntExpr:5: builtins.int<1>
+MemberExpr:5: builtins.int<1>
+NameExpr:5: target.A<0>
+MemberExpr:6: builtins.int<1>
+NameExpr:6: target.A<0>
+==>
+## target
+IntExpr:3: builtins.int<1>
+MemberExpr:3: builtins.int<1>
+NameExpr:3: target.A<0>
+MemberExpr:4: builtins.int<1>
+NameExpr:4: target.A<0>
+CallExpr:5: target.A<0>
+MemberExpr:5: target.A<0>
+NameExpr:5: def () -> target.A<0>
+NameExpr:5: target.A<0>
+MemberExpr:6: target.A<0>
+NameExpr:6: target.A<0>
+
+[case testMethod_types]
+import target
+[file target.py]
+class A:
+    def f(self) -> A:
+        return self.f()
+[file target.py.next]
+class A:
+    # Extra line to change line numbers
+    def f(self) -> A:
+        return self.f()
+[out]
+## target
+CallExpr:3: target.A<0>
+MemberExpr:3: def () -> target.A<0>
+NameExpr:3: target.A<0>
+==>
+## target
+CallExpr:4: target.A<0>
+MemberExpr:4: def () -> target.A<0>
+NameExpr:4: target.A<0>
+
+[case testRenameFunction]
+import target
+[file target.py]
+def f() -> int: pass
+[file target.py.next]
+def g() -> int: pass
+[out]
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  FuncDef:1<2>(
+    f
+    def () -> builtins.int<3>
+    Block:1<4>(
+      PassStmt:1<5>())))
+==>
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  FuncDef:1<6>(
+    g
+    def () -> builtins.int<3>
+    Block:1<7>(
+      PassStmt:1<8>())))
+
+[case testRenameFunction_symtable]
+import target
+[file target.py]
+def f() -> int: pass
+[file target.py.next]
+def g() -> int: pass
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    f: FuncDef<1>
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    g: FuncDef<2>
+
+[case testMergeWithBaseClass_typeinfo]
+import target
+[file target.py]
+class A: pass
+class B(A):
+    def f(self) -> None: pass
+[file target.py.next]
+class C: pass
+class A: pass
+class B(A):
+    def f(self) -> None: pass
+[out]
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names())
+TypeInfo<2>(
+  Name(target.B)
+  Bases(target.A<0>)
+  Mro(target.B<2>, target.A<0>, builtins.object<1>)
+  Names(
+    f<3>))
+==>
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names())
+TypeInfo<2>(
+  Name(target.B)
+  Bases(target.A<0>)
+  Mro(target.B<2>, target.A<0>, builtins.object<1>)
+  Names(
+    f<3>))
+TypeInfo<4>(
+  Name(target.C)
+  Bases(builtins.object<1>)
+  Mro(target.C<4>, builtins.object<1>)
+  Names())
+
+[case testModuleAttribute]
+import target
+[file target.py]
+x = 1
+[file target.py.next]
+x = 2
+[out]
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  AssignmentStmt:1<2>(
+    NameExpr(x [target.x<3>])
+    IntExpr(1)
+    builtins.int<4>))
+==>
+MypyFile:1<0>(
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  AssignmentStmt:1<5>(
+    NameExpr(x [target.x<3>])
+    IntExpr(2)
+    builtins.int<4>))
+
+[case testNestedClassMethod_typeinfo]
+import target
+[file target.py]
+class A:
+    class B:
+        def f(self) -> None: pass
+[file target.py.next]
+class A:
+    class B:
+        def f(self) -> None: pass
+[out]
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names(
+    B<2>))
+TypeInfo<2>(
+  Name(target.A.B)
+  Bases(builtins.object<1>)
+  Mro(target.A.B<2>, builtins.object<1>)
+  Names(
+    f<3>))
+==>
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names(
+    B<2>))
+TypeInfo<2>(
+  Name(target.A.B)
+  Bases(builtins.object<1>)
+  Mro(target.A.B<2>, builtins.object<1>)
+  Names(
+    f<3>))
