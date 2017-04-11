@@ -1731,6 +1731,19 @@ reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
 i = f(3)
 reveal_type(i)  # E: Revealed type is 'builtins.int*'
 
+[case testGenericFunctionReturnAsDecorator]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+def deco(__i: int) -> Callable[[T], T]: pass
+
+@deco(3)
+def lol(x: int) -> str: ...
+
+reveal_type(lol)  # E: Revealed type is 'def (x: builtins.int) -> builtins.str'
+s = lol(4)
+reveal_type(s)  # E: Revealed type is 'builtins.str'
+
 [case testGenericFunctionOnReturnTypeOnly]
 from typing import TypeVar, List
 
