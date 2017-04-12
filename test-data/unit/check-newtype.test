@@ -302,7 +302,7 @@ c = NewType('c', str)   # type: str
 main:4: error: Cannot redefine 'a' as a NewType
 main:7: error: Cannot assign to a type
 main:7: error: Cannot redefine 'b' as a NewType
-main:9: error: Cannot declare the type of a NewType declaration
+main:9: error: Cannot declare the type of a NewType
 
 [case testNewTypeAddingExplicitTypesFails]
 from typing import NewType

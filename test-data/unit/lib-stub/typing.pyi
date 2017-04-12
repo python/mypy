@@ -14,7 +14,7 @@ Tuple = 0
 Callable = 0
 builtinclass = 0
 _promote = 0
-NamedTuple = 0
+class NamedTuple: pass
 Type = 0
 no_type_check = 0
 ClassVar = 0

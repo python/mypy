@@ -721,10 +721,8 @@ y() # Expected: "str" not callable
 from typing import TypeVar, Generic, Tuple
 T = TypeVar('T')
 class Test(Generic[T], Tuple[T]): pass
-x = Test() # type: Test[int]
+x = Test() # type: Test[int]  # E: Generic tuple types not supported
 [builtins fixtures/tuple.pyi]
-[out]
-main:4: error: Generic tuple types not supported
 
 
 -- Variable-length tuples (Tuple[t, ...] with literal '...')

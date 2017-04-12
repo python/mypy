@@ -181,7 +181,7 @@ class Bad(TypedDict):
     x: str # E: Duplicate TypedDict field "x"
 
 b: Bad
-reveal_type(b) # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=__main__.Bad)'
+reveal_type(b) # E: Revealed type is 'TypedDict(x=builtins.str, _fallback=__main__.Bad)'
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictWithClassOverwriting2]
@@ -209,7 +209,7 @@ class Point2(Point1):
     x: float # E: Cannot overwrite TypedDict field "x" while extending
 
 p2: Point2
-reveal_type(p2) # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=__main__.Point2)'
+reveal_type(p2) # E: Revealed type is 'TypedDict(x=builtins.float, _fallback=__main__.Point2)'
 [builtins fixtures/dict.pyi]
 
 

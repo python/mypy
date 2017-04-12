@@ -2,13 +2,14 @@
 
 import os
 from abc import abstractmethod
+from collections import OrderedDict
 
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, MutableMapping
 )
 
 import mypy.strconv
-from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
+from mypy.visitor import AbstractNodeVisitor, StatementVisitor, ExpressionVisitor
 from mypy.util import short_type, IdMapper
 
 
@@ -144,7 +145,7 @@ class Node(Context):
         # TODO this should be just 'column'
         return self.column
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: AbstractNodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
 
 
@@ -271,7 +272,7 @@ class MypyFile(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: AbstractNodeVisitor[T]) -> T:
         return visitor.visit_mypy_file(self)
 
     def is_package_init_file(self) -> bool:
@@ -564,6 +565,21 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_func_def(self)
 
+    def set_original_def(self, previous: Node) -> bool:
+        """If 'self' conditionally redefine 'previous', set 'previous' as original
+
+        We reject straight redefinitions of functions, as they are usually
+        a programming error. For example:
+
+        . def f(): ...
+        . def f(): ...  # Error: 'f' redefined
+        """
+        if isinstance(previous, (FuncDef, Var)) and self.is_conditional:
+            self.original_def = previous
+            return True
+        else:
+            return False
+
     def serialize(self) -> JsonDict:
         # We're deliberating omitting arguments and storing only arg_names and
         # arg_kinds for space-saving reasons (arguments is not used in later
@@ -660,9 +676,9 @@ class Var(SymbolNode):
     type = None  # type: mypy.types.Type # Declared or inferred type, or None
     # Is this the first argument to an ordinary method (usually "self")?
     is_self = False
+    is_inferred = False
     is_ready = False  # If inferred, is the inferred type available?
     # Is this initialized explicitly to a non-None value in class body?
-    is_inferred = False
     is_initialized_in_class = False
     is_staticmethod = False
     is_classmethod = False
@@ -2065,6 +2081,33 @@ class TypeInfo(SymbolNode):
                     return None
         return None
 
+    def calculate_abstract_status(self) -> None:
+        """Calculate abstract status of a class.
+
+        Set is_abstract of the type to True if the type has an unimplemented
+        abstract attribute.  Also compute a list of abstract attributes.
+        """
+        concrete = set()  # type: Set[str]
+        abstract = []  # type: List[str]
+        for base in self.mro:
+            for name, symnode in base.names.items():
+                node = symnode.node
+                if isinstance(node, OverloadedFuncDef):
+                    # Unwrap an overloaded function definition. We can just
+                    # check arbitrarily the first overload item. If the
+                    # different items have a different abstract status, there
+                    # should be an error reported elsewhere.
+                    func = node.items[0]  # type: Node
+                else:
+                    func = node
+                if isinstance(func, Decorator):
+                    fdef = func.func
+                    if fdef.is_abstract and name not in concrete:
+                        self.is_abstract = True
+                        abstract.append(name)
+                concrete.add(name)
+        self.abstract_attributes = sorted(abstract)
+
     def calculate_mro(self) -> None:
         """Calculate and set mro (method resolution order).
 
@@ -2124,6 +2167,21 @@ class TypeInfo(SymbolNode):
         Omit base classes of other base classes.
         """
         return [base.type for base in self.bases]
+
+    def is_base_class(self, s: 'TypeInfo') -> bool:
+        """Determine if self is a base class of s (but do not use mro)."""
+        # Search the base class graph for t, starting from s.
+        worklist = [s]
+        visited = {s}
+        while worklist:
+            nxt = worklist.pop()
+            if nxt == self:
+                return True
+            for base in nxt.bases:
+                if base.type not in visited:
+                    worklist.append(base.type)
+                    visited.add(base.type)
+        return False
 
     def __str__(self) -> str:
         """Return a string representation of the type.
@@ -2343,7 +2401,7 @@ class SymbolTableNode:
         return stnode
 
 
-class SymbolTable(Dict[str, SymbolTableNode]):
+class SymbolTable(OrderedDict, MutableMapping[str, SymbolTableNode]):
     def __str__(self) -> str:
         a = []  # type: List[str]
         for key, value in self.items():
