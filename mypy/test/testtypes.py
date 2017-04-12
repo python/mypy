@@ -392,12 +392,15 @@ class JoinSuite(Suite):
 
         self.assert_join(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.b, self.fx.b),
-                         self.fx.function)
+                         self.callable(self.fx.b, self.fx.b))
         self.assert_join(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.a, self.fx.a),
-                         self.fx.function)
+                         self.callable(self.fx.a, self.fx.a))
         self.assert_join(self.callable(self.fx.a, self.fx.b),
                          self.fx.function,
+                         self.fx.function)
+        self.assert_join(self.callable(self.fx.a, self.fx.b),
+                         self.callable(self.fx.d, self.fx.b),
                          self.fx.function)
 
     def test_type_vars(self) -> None:
@@ -560,13 +563,14 @@ class JoinSuite(Suite):
     def test_simple_type_objects(self) -> None:
         t1 = self.type_callable(self.fx.a, self.fx.a)
         t2 = self.type_callable(self.fx.b, self.fx.b)
+        tr = self.type_callable(self.fx.b, self.fx.a)
 
         self.assert_join(t1, t1, t1)
         j = join_types(t1, t1)
         assert isinstance(j, CallableType)
         assert_true(j.is_type_obj())
 
-        self.assert_join(t1, t2, self.fx.type_type)
+        self.assert_join(t1, t2, tr)
         self.assert_join(t1, self.fx.type_type, self.fx.type_type)
         self.assert_join(self.fx.type_type, self.fx.type_type,
                          self.fx.type_type)
@@ -646,7 +650,7 @@ class MeetSuite(Suite):
 
         self.assert_meet(self.tuple(self.fx.a, self.fx.a),
                          self.fx.std_tuple,
-                         NoneTyp())
+                         self.tuple(self.fx.a, self.fx.a))
         self.assert_meet(self.tuple(self.fx.a),
                          self.tuple(self.fx.a, self.fx.a),
                          NoneTyp())
@@ -658,10 +662,10 @@ class MeetSuite(Suite):
 
         self.assert_meet(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.b, self.fx.b),
-                         NoneTyp())
+                         self.callable(self.fx.a, self.fx.b))
         self.assert_meet(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.a, self.fx.a),
-                         NoneTyp())
+                         self.callable(self.fx.a, self.fx.b))
 
     def test_type_vars(self) -> None:
         self.assert_meet(self.fx.t, self.fx.t, self.fx.t)

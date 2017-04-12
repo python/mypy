@@ -1,13 +1,11 @@
 from typing import Dict, List, Set, Iterator, Union
 from contextlib import contextmanager
 
-from mypy.types import Type, AnyType, PartialType
-from mypy.nodes import Key, Expression, Var, RefExpr, literal, literal_hash
-
+from mypy.types import Type, AnyType, PartialType, UnionType
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
-
+from mypy.nodes import Key, Expression, Var, RefExpr, literal, literal_hash
 from mypy.nodes import IndexExpr, MemberExpr, NameExpr
 
 
@@ -110,8 +108,7 @@ class ConditionalTypeBinder:
         return None
 
     def put(self, expr: Expression, typ: Type) -> None:
-        # TODO: replace with isinstance(expr, BindableTypes)
-        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
+        if not isinstance(expr, BindableTypes):
             return
         if not literal(expr):
             return
@@ -203,8 +200,7 @@ class ConditionalTypeBinder:
                     type: Type,
                     declared_type: Type,
                     restrict_any: bool = False) -> None:
-        # TODO: replace with isinstance(expr, BindableTypes)
-        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
+        if not isinstance(expr, BindableTypes):
             return None
         if not literal(expr):
             return
@@ -229,7 +225,11 @@ class ConditionalTypeBinder:
         if (isinstance(self.most_recent_enclosing_type(expr, type), AnyType)
                 and not restrict_any):
             pass
-        elif isinstance(type, AnyType):
+        elif (isinstance(type, AnyType)
+              and not (isinstance(declared_type, UnionType)
+                       and any(isinstance(item, AnyType) for item in declared_type.items))):
+            # Assigning an Any value doesn't affect the type to avoid false negatives, unless
+            # there is an Any item in a declared union type.
             self.put(expr, declared_type)
         else:
             self.put(expr, type)
