@@ -2563,7 +2563,6 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail('Too many arguments', dec.func)
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType()
-                dec.type = dec.var.type
                 no_type_check = True
         for i in reversed(removed):
             del dec.decorators[i]
