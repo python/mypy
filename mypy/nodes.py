@@ -8,8 +8,8 @@ from typing import (
 )
 
 import mypy.strconv
-from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
-from mypy.util import short_type, IdMapper
+from mypy.visitor import AbstractNodeVisitor, StatementVisitor, ExpressionVisitor
+from mypy.util import short_type
 
 
 class Context:
@@ -144,7 +144,7 @@ class Node(Context):
         # TODO this should be just 'column'
         return self.column
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: AbstractNodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
 
 
@@ -271,7 +271,7 @@ class MypyFile(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: AbstractNodeVisitor[T]) -> T:
         return visitor.visit_mypy_file(self)
 
     def is_package_init_file(self) -> bool:

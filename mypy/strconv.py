@@ -7,10 +7,10 @@ from typing import Any, List, Tuple, Optional, Union, Sequence, Dict
 
 from mypy.util import short_type, IdMapper
 import mypy.nodes
-from mypy.visitor import NodeVisitor
+from mypy.visitor import AbstractNodeVisitor
 
 
-class StrConv(NodeVisitor[str]):
+class StrConv(AbstractNodeVisitor[str]):
     """Visitor for converting a node to a human-readable string.
 
     For example, an MypyFile node from program '1' is converted into
@@ -502,6 +502,9 @@ class StrConv(NodeVisitor[str]):
 
     def visit_backquote_expr(self, o: 'mypy.nodes.BackquoteExpr') -> str:
         return self.dump([o.expr], o)
+
+    def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> str:
+        return self.dump([o.type], o)
 
 
 def dump_tagged(nodes: Sequence[object], tag: str, str_conv: 'StrConv') -> str:

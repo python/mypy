@@ -1,6 +1,6 @@
 """Generic node traverser visitor"""
 
-from mypy.visitor import NodeVisitor
+from mypy.visitor import AbstractNodeVisitor
 from mypy.nodes import (
     Block, MypyFile, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
     ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
@@ -9,11 +9,16 @@ from mypy.nodes import (
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr
+    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr,
+    TempNode, PromoteExpr, NewTypeExpr, TypedDictExpr, EnumCallExpr, NamedTupleExpr,
+    TypeAliasExpr, TypeVarExpr, DictionaryComprehension, SetComprehension, SuperExpr,
+    NameExpr, EllipsisExpr, ComplexExpr, FloatExpr, UnicodeExpr, BytesExpr, StrExpr,
+    IntExpr, ExecStmt, PrintStmt, PassStmt, ContinueStmt, BreakStmt, NonlocalDecl,
+    GlobalDecl, ImportAll, Var, ImportFrom, Import,
 )
 
 
-class TraverserVisitor(NodeVisitor[None]):
+class TraverserVisitor(AbstractNodeVisitor[None]):
     """A parse tree visitor that traverses the parse tree during visiting.
 
     It does not peform any actions outside the traversal. Subclasses
@@ -211,7 +216,20 @@ class TraverserVisitor(NodeVisitor[None]):
                 cond.accept(self)
         o.left_expr.accept(self)
 
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
+        for index, sequence, conditions in zip(o.indices, o.sequences,
+                                               o.condlists):
+            sequence.accept(self)
+            index.accept(self)
+            for cond in conditions:
+                cond.accept(self)
+        o.key.accept(self)
+        o.value.accept(self)
+
     def visit_list_comprehension(self, o: ListComprehension) -> None:
+        o.generator.accept(self)
+
+    def visit_set_comprehension(self, o: SetComprehension) -> None:
         o.generator.accept(self)
 
     def visit_conditional_expr(self, o: ConditionalExpr) -> None:
@@ -233,3 +251,90 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_await_expr(self, o: AwaitExpr) -> None:
         o.expr.accept(self)
+
+    def visit_import(self, o: Import) -> None:
+        for a in o.assignments:
+            a.accept(self)
+
+    def visit_import_from(self, o: ImportFrom) -> None:
+        for a in o.assignments:
+            a.accept(self)
+
+    def visit_print_stmt(self, o: PrintStmt) -> None:
+        for arg in o.args:
+            arg.accept(self)
+
+    def visit_exec_stmt(self, o: ExecStmt) -> None:
+        o.expr.accept(self)
+
+    def visit_import_all(self, o: ImportAll) -> None:
+        pass
+
+    def visit_global_decl(self, o: GlobalDecl) -> None:
+        pass
+
+    def visit_nonlocal_decl(self, o: NonlocalDecl) -> None:
+        pass
+
+    def visit_var(self, o: Var) -> None:
+        pass
+
+    def visit_break_stmt(self, o: BreakStmt) -> None:
+        pass
+
+    def visit_continue_stmt(self, o: ContinueStmt) -> None:
+        pass
+
+    def visit_pass_stmt(self, o: PassStmt) -> None:
+        pass
+
+    def visit_int_expr(self, o: IntExpr) -> None:
+        pass
+
+    def visit_str_expr(self, o: StrExpr) -> None:
+        pass
+
+    def visit_bytes_expr(self, o: BytesExpr) -> None:
+        pass
+
+    def visit_unicode_expr(self, o: UnicodeExpr) -> None:
+        pass
+
+    def visit_float_expr(self, o: FloatExpr) -> None:
+        pass
+
+    def visit_complex_expr(self, o: ComplexExpr) -> None:
+        pass
+
+    def visit_ellipsis(self, o: EllipsisExpr) -> None:
+        pass
+
+    def visit_name_expr(self, o: NameExpr) -> None:
+        pass
+
+    def visit_super_expr(self, o: SuperExpr) -> None:
+        pass
+
+    def visit_type_var_expr(self, o: TypeVarExpr) -> None:
+        pass
+
+    def visit_type_alias_expr(self, o: TypeAliasExpr) -> None:
+        pass
+
+    def visit_namedtuple_expr(self, o: NamedTupleExpr) -> None:
+        pass
+
+    def visit_enum_call_expr(self, o: EnumCallExpr) -> None:
+        pass
+
+    def visit_typeddict_expr(self, o: TypedDictExpr) -> None:
+        pass
+
+    def visit_newtype_expr(self, o: NewTypeExpr) -> None:
+        pass
+
+    def visit__promote_expr(self, o: PromoteExpr) -> None:
+        pass
+
+    def visit_temp_node(self, o: TempNode) -> None:
+        pass
