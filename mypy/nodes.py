@@ -1988,9 +1988,6 @@ class TypeInfo(SymbolNode):
     # Is this a newtype type?
     is_newtype = False
 
-    # Alternative to fullname() for 'anonymous' classes.
-    alt_fullname = None  # type: Optional[str]
-
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype'
@@ -2171,8 +2168,7 @@ class TypeInfo(SymbolNode):
         data = {'.class': 'TypeInfo',
                 'module_name': self.module_name,
                 'fullname': self.fullname(),
-                'alt_fullname': self.alt_fullname,
-                'names': self.names.serialize(self.alt_fullname or self.fullname()),
+                'names': self.names.serialize(self.fullname()),
                 'defn': self.defn.serialize(),
                 'abstract_attributes': self.abstract_attributes,
                 'type_vars': self.type_vars,
@@ -2194,7 +2190,6 @@ class TypeInfo(SymbolNode):
         module_name = data['module_name']
         ti = TypeInfo(names, defn, module_name)
         ti._fullname = data['fullname']
-        ti.alt_fullname = data['alt_fullname']
         # TODO: Is there a reason to reconstruct ti.subtypes?
         ti.abstract_attributes = data['abstract_attributes']
         ti.type_vars = data['type_vars']
@@ -2303,14 +2298,7 @@ class SymbolTableNode:
         else:
             if self.node is not None:
                 if prefix is not None:
-                    # Check whether this is an alias for another object.
-                    # If the object's canonical full name differs from
-                    # the full name computed from prefix and name,
-                    # it's an alias, and we serialize it as a cross ref.
-                    if isinstance(self.node, TypeInfo):
-                        fullname = self.node.alt_fullname or self.node.fullname()
-                    else:
-                        fullname = self.node.fullname()
+                    fullname = self.node.fullname()
                     if (fullname is not None and '.' in fullname and
                             fullname != prefix + '.' + name):
                         data['cross_ref'] = fullname
