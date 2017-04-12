@@ -77,9 +77,6 @@ class TypeInfo(SymbolNode):
     # Is this a newtype type?
     is_newtype = False
 
-    # Alternative to fullname() for 'anonymous' classes.
-    alt_fullname = None  # type: Optional[str]
-
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype'
@@ -301,8 +298,7 @@ class TypeInfo(SymbolNode):
         data = {'.class': 'TypeInfo',
                 'module_name': self.module_name,
                 'fullname': self.fullname(),
-                'alt_fullname': self.alt_fullname,
-                'names': self.names.serialize(self.alt_fullname or self.fullname()),
+                'names': self.names.serialize(self.fullname()),
                 'defn': self.defn.serialize(),
                 'abstract_attributes': self.abstract_attributes,
                 'type_vars': self.type_vars,
@@ -324,7 +320,6 @@ class TypeInfo(SymbolNode):
         module_name = data['module_name']
         ti = TypeInfo(names, defn, module_name)
         ti._fullname = data['fullname']
-        ti.alt_fullname = data['alt_fullname']
         # TODO: Is there a reason to reconstruct ti.subtypes?
         ti.abstract_attributes = data['abstract_attributes']
         ti.type_vars = data['type_vars']

@@ -8,7 +8,7 @@ from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, MutableMapping, TYPE_CHECKING
 )
 import mypy.strconv
-from mypy.visitor import AbstractNodeVisitor, StatementVisitor, ExpressionVisitor
+from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
 from mypy.util import short_type
 if TYPE_CHECKING:
     from mypy.typeinfo import TypeInfo
@@ -143,7 +143,7 @@ class Node(Context):
         # TODO this should be just 'column'
         return self.column
 
-    def accept(self, visitor: AbstractNodeVisitor[T]) -> T:
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
 
 
@@ -270,7 +270,7 @@ class MypyFile(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
-    def accept(self, visitor: AbstractNodeVisitor[T]) -> T:
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_mypy_file(self)
 
     def is_package_init_file(self) -> bool:
@@ -2022,15 +2022,7 @@ class SymbolTableNode:
         else:
             if self.node is not None:
                 if prefix is not None:
-                    # Check whether this is an alias for another object.
-                    # If the object's canonical full name differs from
-                    # the full name computed from prefix and name,
-                    # it's an alias, and we serialize it as a cross ref.
-                    import mypy.typeinfo
-                    if isinstance(self.node, mypy.typeinfo.TypeInfo):
-                        fullname = self.node.alt_fullname or self.node.fullname()
-                    else:
-                        fullname = self.node.fullname()
+                    fullname = self.node.fullname()
                     if (fullname is not None and '.' in fullname and
                             fullname != prefix + '.' + name):
                         data['cross_ref'] = fullname

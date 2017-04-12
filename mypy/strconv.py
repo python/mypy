@@ -7,10 +7,10 @@ from typing import Any, List, Tuple, Optional, Union, Sequence, Dict
 
 from mypy.util import short_type, IdMapper
 import mypy.nodes
-from mypy.visitor import AbstractNodeVisitor
+from mypy.visitor import NodeVisitor
 
 
-class StrConv(AbstractNodeVisitor[str]):
+class StrConv(NodeVisitor[str]):
     """Visitor for converting a node to a human-readable string.
 
     For example, an MypyFile node from program '1' is converted into

@@ -24,10 +24,10 @@ from mypy.nodes import (
 )
 from mypy.types import Type, FunctionLike
 from mypy.traverser import TraverserVisitor
-from mypy.visitor import AbstractNodeVisitor
+from mypy.visitor import NodeVisitor
 
 
-class TransformVisitor(AbstractNodeVisitor[Node]):
+class TransformVisitor(NodeVisitor[Node]):
     """Transform a semantically analyzed AST (or subtree) to an identical copy.
 
     Use the node() method to transform an AST node.
