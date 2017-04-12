@@ -377,4 +377,5 @@ def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
 class MroError(Exception):
     """Raised if a consistent mro cannot be determined for a class."""
 
+
 deserialize_map['TypeInfo'] = TypeInfo.deserialize

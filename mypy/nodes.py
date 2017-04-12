@@ -2102,11 +2102,11 @@ class SymbolTable(OrderedDict, MutableMapping[str, SymbolTableNode]):
         return st
 
 
-def get_flags(node: Node, names: List[str]) -> List[str]:
+def get_flags(node: Any, names: List[str]) -> List[str]:
     return [name for name in names if getattr(node, name)]
 
 
-def set_flags(node: Node, flags: List[str]) -> None:
+def set_flags(node: Any, flags: List[str]) -> None:
     for name in flags:
         setattr(node, name, True)
 

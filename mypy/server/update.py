@@ -52,8 +52,9 @@ from mypy.build import BuildManager, State
 from mypy.checker import DeferredNode
 from mypy.errors import Errors
 from mypy.nodes import (
-    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef
+    MypyFile, FuncDef, Expression, SymbolNode, Var, FuncBase, ClassDef
 )
+from mypy.typeinfo import TypeInfo
 from mypy.types import Type
 from mypy.server.astdiff import compare_symbol_tables, is_identical_type
 from mypy.server.astmerge import merge_asts
