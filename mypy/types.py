@@ -13,8 +13,8 @@ from mypy.nodes import (
     INVARIANT, SymbolNode,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
-
 from mypy.sharedparse import argument_elide_name
+from mypy.util import IdMapper
 
 
 T = TypeVar('T')
@@ -221,13 +221,6 @@ class UnboundType(Type):
         assert data['.class'] == 'UnboundType'
         return UnboundType(data['name'],
                            [deserialize_type(a) for a in data['args']])
-
-
-class ErrorType(Type):
-    """The error type is used as the result of failed type operations."""
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_error_type(self)
 
 
 class TypeList(Type):
@@ -997,6 +990,23 @@ class UnionType(Type):
 
     @staticmethod
     def make_simplified_union(items: List[Type], line: int = -1, column: int = -1) -> Type:
+        """Build union type with redundant union items removed.
+
+        If only a single item remains, this may return a non-union type.
+
+        Examples:
+
+        * [int, str] -> Union[int, str]
+        * [int, object] -> object
+        * [int, int] -> int
+        * [int, Any] -> Union[int, Any] (Any types are not simplified away!)
+        * [Any, Any] -> Any
+
+        Note: This must NOT be used during semantic analysis, since TypeInfos may not
+              be fully initialized.
+        """
+        # TODO: Make this a function living somewhere outside mypy.types. Most other non-trivial
+        #       type operations are not static methods, so this is inconsistent.
         while any(isinstance(typ, UnionType) for typ in items):
             all_items = []  # type: List[Type]
             for typ in items:
@@ -1006,11 +1016,7 @@ class UnionType(Type):
                     all_items.append(typ)
             items = all_items
 
-        if any(isinstance(typ, AnyType) for typ in items):
-            return AnyType()
-
-        from mypy.subtypes import is_subtype
-        from mypy.sametypes import is_same_type
+        from mypy.subtypes import is_proper_subtype
 
         removed = set()  # type: Set[int]
         for i, ti in enumerate(items):
@@ -1018,10 +1024,8 @@ class UnionType(Type):
             # Keep track of the truishness info for deleted subtypes which can be relevant
             cbt = cbf = False
             for j, tj in enumerate(items):
-                if (i != j
-                    and is_subtype(tj, ti)
-                    and (not (isinstance(tj, Instance) and tj.type.fallback_to_any)
-                         or is_same_type(ti, tj))):
+                if (i != j and is_proper_subtype(tj, ti)):
+                    # We found a redundant item in the union.
                     removed.add(j)
                     cbt = cbt or tj.can_be_true
                     cbf = cbf or tj.can_be_false
@@ -1188,9 +1192,6 @@ class TypeVisitor(Generic[T]):
     def visit_type_list(self, t: TypeList) -> T:
         raise self._notimplemented_helper('type_list')
 
-    def visit_error_type(self, t: ErrorType) -> T:
-        raise self._notimplemented_helper('error_type')
-
     @abstractmethod
     def visit_any(self, t: AnyType) -> T:
         pass
@@ -1263,9 +1264,6 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:
-        return t
-
-    def visit_error_type(self, t: ErrorType) -> Type:
         return t
 
     def visit_any(self, t: AnyType) -> Type:
@@ -1355,6 +1353,9 @@ class TypeStrVisitor(TypeVisitor[str]):
      - Represent the NoneTyp type as None.
     """
 
+    def __init__(self, id_mapper: IdMapper = None) -> None:
+        self.id_mapper = id_mapper
+
     def visit_unbound_type(self, t: UnboundType)-> str:
         s = t.name + '?'
         if t.args != []:
@@ -1363,9 +1364,6 @@ class TypeStrVisitor(TypeVisitor[str]):
 
     def visit_type_list(self, t: TypeList) -> str:
         return '<TypeList {}>'.format(self.list_str(t.items))
-
-    def visit_error_type(self, t: ErrorType) -> str:
-        return '<ERROR>'
 
     def visit_any(self, t: AnyType) -> str:
         return 'Any'
@@ -1395,6 +1393,8 @@ class TypeStrVisitor(TypeVisitor[str]):
             s += '*'
         if t.args != []:
             s += '[{}]'.format(self.list_str(t.args))
+        if self.id_mapper:
+            s += '<{}>'.format(self.id_mapper.id(t.type))
         return s
 
     def visit_type_var(self, t: TypeVarType) -> str:
@@ -1420,14 +1420,14 @@ class TypeStrVisitor(TypeVisitor[str]):
                 s += '**'
             if t.arg_names[i]:
                 s += t.arg_names[i] + ': '
-            s += str(t.arg_types[i])
+            s += t.arg_types[i].accept(self)
             if t.arg_kinds[i] in (ARG_OPT, ARG_NAMED_OPT):
                 s += ' ='
 
         s = '({})'.format(s)
 
         if not isinstance(t.ret_type, NoneTyp):
-            s += ' -> {}'.format(t.ret_type)
+            s += ' -> {}'.format(t.ret_type.accept(self))
 
         if t.variables:
             s = '{} {}'.format(t.variables, s)
@@ -1541,9 +1541,6 @@ class TypeQuery(Generic[T], TypeVisitor[T]):
 
     def visit_type_list(self, t: TypeList) -> T:
         return self.query_types(t.items)
-
-    def visit_error_type(self, t: ErrorType) -> T:
-        return self.default
 
     def visit_any(self, t: AnyType) -> T:
         return self.default
@@ -1728,7 +1725,7 @@ def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -
     if isinstance(tp, TupleType):
         return tp.copy_modified(items=new_args)
     if isinstance(tp, UnionType):
-        return UnionType.make_simplified_union(new_args, line, column)
+        return UnionType(new_args, line, column)
     if isinstance(tp, CallableType):
         return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1],
                                 line=line, column=column)
@@ -1754,6 +1751,20 @@ def get_type_vars(typ: Type) -> List[TypeVarType]:
             tvars.append(var)
             included.add(var.id)
     return tvars
+
+
+def union_items(typ: Type) -> List[Type]:
+    """Return the flattened items of a union type.
+
+    For non-union types, return a list containing just the argument.
+    """
+    if isinstance(typ, UnionType):
+        items = []
+        for item in typ.items:
+            items.extend(union_items(item))
+        return items
+    else:
+        return [typ]
 
 
 deserialize_map = {
