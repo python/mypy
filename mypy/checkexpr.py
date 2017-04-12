@@ -2382,7 +2382,7 @@ class ArgInferSecondPassQuery(types.TypeQuery[bool]):
     a type variable.
     """
     def __init__(self) -> None:
-        super().__init__(False, types.ANY_TYPE_STRATEGY)
+        super().__init__(any)
 
     def visit_callable_type(self, t: CallableType) -> bool:
         return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
@@ -2391,7 +2391,7 @@ class ArgInferSecondPassQuery(types.TypeQuery[bool]):
 class HasTypeVarQuery(types.TypeQuery[bool]):
     """Visitor for querying whether a type has a type variable component."""
     def __init__(self) -> None:
-        super().__init__(False, types.ANY_TYPE_STRATEGY)
+        super().__init__(any)
 
     def visit_type_var(self, t: TypeVarType) -> bool:
         return True
@@ -2404,7 +2404,7 @@ def has_erased_component(t: Type) -> bool:
 class HasErasedComponentsQuery(types.TypeQuery[bool]):
     """Visitor for querying whether a type has an erased component."""
     def __init__(self) -> None:
-        super().__init__(False, types.ANY_TYPE_STRATEGY)
+        super().__init__(any)
 
     def visit_erased_type(self, t: ErasedType) -> bool:
         return True

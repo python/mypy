@@ -1,7 +1,8 @@
 """Semantic analysis of types"""
 
 from collections import OrderedDict
-from typing import Callable, List, Optional, Set, Tuple, Generator
+from typing import Callable, List, Optional, Set, Tuple, Generator, TypeVar, Iterable
+from itertools import chain
 
 from contextlib import contextmanager
 
@@ -22,6 +23,9 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.subtypes import is_subtype
 from mypy import nodes
 from mypy import experiments
+
+
+T = TypeVar('T')
 
 
 type_constructors = {
@@ -531,8 +535,8 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             t.invalid = True
         elif info.defn.type_vars:
             # Check type argument values.
-            for (i, arg), TypeVar in zip(enumerate(t.args), info.defn.type_vars):
-                if TypeVar.values:
+            for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
+                if tvar.values:
                     if isinstance(arg, TypeVarType):
                         arg_values = arg.values
                         if not arg_values:
@@ -543,11 +547,11 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     else:
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values,
-                                               TypeVar.values, i + 1, t)
-                if not is_subtype(arg, TypeVar.upper_bound):
+                                               tvar.values, i + 1, t)
+                if not is_subtype(arg, tvar.upper_bound):
                     self.fail('Type argument "{}" of "{}" must be '
                               'a subtype of "{}"'.format(
-                                  arg, info.name(), TypeVar.upper_bound), t)
+                                  arg, info.name(), tvar.upper_bound), t)
         for arg in t.args:
             arg.accept(self)
 
@@ -616,8 +620,19 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 TypeVarList = List[Tuple[str, TypeVarExpr]]
 
 
-def _concat_type_var_lists(a: TypeVarList, b: TypeVarList) -> TypeVarList:
-    return b + [v for v in a if v not in b]
+def remove_dups(tvars: Iterable[T]) -> List[T]:
+    # Get unique elements in order of appearance
+    all_tvars = set()  # type: Set[T]
+    new_tvars = []  # type: List[T]
+    for t in tvars:
+        if t not in all_tvars:
+            new_tvars.append(t)
+            all_tvars.add(t)
+    return new_tvars
+
+
+def flatten_tvars(ll: Iterable[List[T]]) -> List[T]:
+    return remove_dups(chain.from_iterable(ll))
 
 
 class TypeVariableQuery(TypeQuery[TypeVarList]):
@@ -632,7 +647,7 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
         self.lookup = lookup
         self.scope = scope
         self.include_bound = include_bound
-        super().__init__(default=[], strategy=_concat_type_var_lists)
+        super().__init__(flatten_tvars)
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
         if not type.args:
@@ -657,7 +672,7 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
         if self.include_callables:
             return super().visit_callable_type(t)
         else:
-            return self.default
+            return []
 
 
 def make_optional_type(t: Type) -> Type:

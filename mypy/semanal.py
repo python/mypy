@@ -85,7 +85,7 @@ from mypy.types import (
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVariableQuery, TypeVarList,
+    TypeVariableQuery, TypeVarList, remove_dups,
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -742,13 +742,13 @@ class SemanticAnalyzer(NodeVisitor):
 
         all_tvars = self.get_all_bases_tvars(defn, removed)
         if declared_tvars:
-            if len(self.remove_dups(declared_tvars)) < len(declared_tvars):
+            if len(remove_dups(declared_tvars)) < len(declared_tvars):
                 self.fail("Duplicate type variables in Generic[...]", defn)
-            declared_tvars = self.remove_dups(declared_tvars)
+            declared_tvars = remove_dups(declared_tvars)
             if not set(all_tvars).issubset(set(declared_tvars)):
                 self.fail("If Generic[...] is present it should list all type variables", defn)
                 # In case of error, Generic tvars will go first
-                declared_tvars = self.remove_dups(declared_tvars + all_tvars)
+                declared_tvars = remove_dups(declared_tvars + all_tvars)
         else:
             declared_tvars = all_tvars
         if declared_tvars:
@@ -801,17 +801,7 @@ class SemanticAnalyzer(NodeVisitor):
                     continue
                 base_tvars = base.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))
                 tvars.extend(base_tvars)
-        return self.remove_dups(tvars)
-
-    def remove_dups(self, tvars: List[T]) -> List[T]:
-        # Get unique elements in order of appearance
-        all_tvars = set(tvars)
-        new_tvars = []  # type: List[T]
-        for t in tvars:
-            if t in all_tvars:
-                new_tvars.append(t)
-                all_tvars.remove(t)
-        return new_tvars
+        return remove_dups(tvars)
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
         # special case for NamedTuple
