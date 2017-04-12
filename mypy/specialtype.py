@@ -35,8 +35,6 @@ TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
                       'expected "field_name: field_type"')
 
 
-# TODO: this is problematic due to the requirement in ClassDef to do type analysis before constrution
-
 def build_namedtuple_classdef_from_call(call: CallExpr, fullname: str
                                         ) -> Union[str, ClassDef]:
     # TODO: Share code with check_argument_count in checkexpr.py?
