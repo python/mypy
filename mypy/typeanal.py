@@ -658,6 +658,8 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
             return super().visit_callable_type(t)
         else:
             return self.default
+
+
 def make_optional_type(t: Type) -> Type:
     """Return the type corresponding to Optional[t].
 
