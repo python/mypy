@@ -9,7 +9,7 @@ from typing import (
 
 import mypy.strconv
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
-from mypy.util import short_type, IdMapper
+from mypy.util import short_type
 
 
 class Context:
