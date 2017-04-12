@@ -7,7 +7,7 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
     AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    get_type_vars,
+    get_type_vars, union_items
 )
 from mypy.nodes import (
     BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
@@ -43,6 +43,9 @@ def analyze_type_alias(node: Expression,
     # that we don't support straight string literals as type aliases
     # (only string literals within index expressions).
     if isinstance(node, RefExpr):
+        # Note that this misses the case where someone tried to use a
+        # class-referenced type variable as a type alias.  It's easier to catch
+        # that one in checkmember.py
         if node.kind == UNBOUND_TVAR or node.kind == BOUND_TVAR:
             fail_func('Type variable "{}" is invalid as target for type alias'.format(
                 node.fullname), node)
@@ -57,6 +60,10 @@ def analyze_type_alias(node: Expression,
             if not (isinstance(base.node, TypeInfo) or
                     base.fullname in type_constructors or
                     base.kind == TYPE_ALIAS):
+                return None
+            # Enums can't be generic, and without this check we may incorrectly interpret indexing
+            # an Enum class as creating a type alias.
+            if isinstance(base.node, TypeInfo) and base.node.is_enum:
                 return None
         else:
             return None
@@ -109,7 +116,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             t.optional = False
             # We don't need to worry about double-wrapping Optionals or
             # wrapping Anys: Union simplification will take care of that.
-            return UnionType.make_simplified_union([self.visit_unbound_type(t), NoneTyp()])
+            return make_optional_type(self.visit_unbound_type(t))
         sym = self.lookup(t.name, t)
         if sym is not None:
             if sym.node is None:
@@ -129,7 +136,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return TypeVarType(sym.tvar_def, t.line)
             elif fullname == 'builtins.None':
                 return NoneTyp()
-            elif fullname == 'typing.Any':
+            elif fullname == 'typing.Any' or fullname == 'builtins.Any':
                 return AnyType()
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
@@ -151,7 +158,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     self.fail('Optional[...] must have exactly one type argument', t)
                     return AnyType()
                 item = self.anal_type(t.args[0])
-                return UnionType.make_simplified_union([item, NoneTyp()])
+                return make_optional_type(item)
             elif fullname == 'typing.Callable':
                 return self.analyze_callable_type(t)
             elif fullname == 'typing.Type':
@@ -174,7 +181,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     self.fail('Invalid type: ClassVar cannot be generic', t)
                     return AnyType()
                 return item
-            elif fullname == 'mypy_extensions.NoReturn':
+            elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
                 return UninhabitedType(is_noreturn=True)
             elif sym.kind == TYPE_ALIAS:
                 override = sym.type_override
@@ -557,3 +564,21 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_type_type(self, t: TypeType) -> None:
         pass
+
+
+def make_optional_type(t: Type) -> Type:
+    """Return the type corresponding to Optional[t].
+
+    Note that we can't use normal union simplification, since this function
+    is called during semantic analysis and simplification only works during
+    type checking.
+    """
+    if not experiments.STRICT_OPTIONAL:
+        return t
+    if isinstance(t, NoneTyp):
+        return t
+    if isinstance(t, UnionType):
+        items = [item for item in union_items(t)
+                 if not isinstance(item, NoneTyp)]
+        return UnionType(items + [NoneTyp()], t.line, t.column)
+    return UnionType([t, NoneTyp()], t.line, t.column)

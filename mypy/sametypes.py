@@ -1,7 +1,7 @@
 from typing import Sequence
 
 from mypy.types import (
-    Type, UnboundType, ErrorType, AnyType, NoneTyp, TupleType, TypedDictType,
+    Type, UnboundType, AnyType, NoneTyp, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     TypeList, Overloaded, PartialType, DeletedType, UninhabitedType, TypeType
 )
@@ -54,9 +54,6 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return True
-
-    def visit_error_type(self, left: ErrorType) -> bool:
-        return False
 
     def visit_type_list(self, t: TypeList) -> bool:
         assert False, 'Not supported'

@@ -1,4 +1,4 @@
-class Any: pass
+Any = 0
 
 class object:
     def __init__(self):
