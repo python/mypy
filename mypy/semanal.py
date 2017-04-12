@@ -69,7 +69,7 @@ from mypy.nodes import (
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
     collections_type_aliases, get_member_expr_fullname,
 )
-from mypy.typeinfo import MroError
+from mypy.typeinfo import MroError, TypeInfo
 from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
