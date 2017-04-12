@@ -6,6 +6,10 @@ import pipes
 import subprocess
 import sys
 
+MYPY = False
+if MYPY:
+    from typing import Iterator
+
 
 def is_git_repo(dir: str) -> bool:
     """Is the given directory version-controlled with git?"""
@@ -23,7 +27,7 @@ def have_git() -> bool:
         return False
 
 
-def get_submodules(dir: str):
+def get_submodules(dir: str) -> "Iterator[str]":
     """Return a list of all git top-level submodules in a given directory."""
     # It would be nicer to do
     # "git submodule foreach 'echo MODULE $name $path $sha1 $toplevel'"

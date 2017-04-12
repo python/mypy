@@ -5,7 +5,7 @@ from typing import cast, Callable, List, Optional, TypeVar
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
     Overloaded, TypeVarType, UnionType, PartialType,
-    DeletedType, NoneTyp, TypeType, function_type
+    DeletedType, NoneTyp, TypeType, function_type, get_type_vars,
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
@@ -14,9 +14,9 @@ from mypy.nodes import (
 )
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
-from mypy.expandtype import expand_type_by_instance, expand_type
+from mypy.expandtype import expand_type_by_instance, expand_type, freshen_function_type_vars
 from mypy.infer import infer_type_arguments
-from mypy.semanal import fill_typevars
+from mypy.typevars import fill_typevars
 from mypy import messages
 from mypy import subtypes
 MYPY = False
@@ -75,11 +75,13 @@ def analyze_member_access(name: str,
         if method:
             if method.is_property:
                 assert isinstance(method, OverloadedFuncDef)
-                return analyze_var(name, method.items[0].var, typ, info, node, is_lvalue, msg,
+                first_item = cast(Decorator, method.items[0])
+                return analyze_var(name, first_item.var, typ, info, node, is_lvalue, msg,
                                    original_type, not_ready_callback)
             if is_lvalue:
                 msg.cant_assign_to_method(node)
             signature = function_type(method, builtin_type('builtins.function'))
+            signature = freshen_function_type_vars(signature)
             if name == '__new__':
                 # __new__ is special and behaves like a static method -- don't strip
                 # the first argument.
@@ -87,7 +89,9 @@ def analyze_member_access(name: str,
             else:
                 signature = bind_self(signature, original_type)
             typ = map_instance_to_supertype(typ, method.info)
-            return expand_type_by_instance(signature, typ)
+            member_type = expand_type_by_instance(signature, typ)
+            freeze_type_vars(member_type)
+            return member_type
         else:
             # Not a method.
             return analyze_member_var_access(name, typ, info, node,
@@ -133,7 +137,7 @@ def analyze_member_access(name: str,
             if not is_operator:
                 # When Python sees an operator (eg `3 == 4`), it automatically translates that
                 # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
-                # optimation.
+                # optimization.
                 #
                 # While it normally it doesn't matter which of the two versions are used, it
                 # does cause inconsistencies when working with classes. For example, translating
@@ -183,6 +187,8 @@ def analyze_member_access(name: str,
             if result:
                 return result
         fallback = builtin_type('builtins.type')
+        if item is not None:
+            fallback = item.type.metaclass_type or fallback
         return analyze_member_access(name, fallback, node, is_lvalue, is_super,
                                      is_operator, builtin_type, not_ready_callback, msg,
                                      original_type=original_type, chk=chk)
@@ -218,16 +224,20 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                            original_type, not_ready_callback)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
-    elif not v and name not in ['__getattr__', '__setattr__']:
+    elif not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
         if not is_lvalue:
-            method = info.get_method('__getattr__')
-            if method:
-                function = function_type(method, builtin_type('builtins.function'))
-                bound_method = bind_self(function, original_type)
-                typ = map_instance_to_supertype(itype, method.info)
-                getattr_type = expand_type_by_instance(bound_method, typ)
-                if isinstance(getattr_type, CallableType):
-                    return getattr_type.ret_type
+            for method_name in ('__getattribute__', '__getattr__'):
+                method = info.get_method(method_name)
+                # __getattribute__ is defined on builtins.object and returns Any, so without
+                # the guard this search will always find object.__getattribute__ and conclude
+                # that the attribute exists
+                if method and method.info.fullname() != 'builtins.object':
+                    function = function_type(method, builtin_type('builtins.function'))
+                    bound_method = bind_self(function, original_type)
+                    typ = map_instance_to_supertype(itype, method.info)
+                    getattr_type = expand_type_by_instance(bound_method, typ)
+                    if isinstance(getattr_type, CallableType):
+                        return getattr_type.ret_type
 
     if itype.type.fallback_to_any:
         return AnyType()
@@ -261,6 +271,8 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
         if is_lvalue and var.is_property and not var.is_settable_property:
             # TODO allow setting attributes in subclass (although it is probably an error)
             msg.read_only_property(name, info, node)
+        if is_lvalue and var.is_classvar:
+            msg.cant_assign_to_classvar(name, node)
         if var.is_initialized_in_class and isinstance(t, FunctionLike) and not t.is_type_obj():
             if is_lvalue:
                 if var.is_property:
@@ -289,6 +301,16 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
             not_ready_callback(var.name(), node)
         # Implicit 'Any' type.
         return AnyType()
+
+
+def freeze_type_vars(member_type: Type) -> None:
+    if isinstance(member_type, CallableType):
+        for v in member_type.variables:
+            v.id.meta_level = 0
+    if isinstance(member_type, Overloaded):
+        for it in member_type.items():
+            for v in it.variables:
+                v.id.meta_level = 0
 
 
 def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: MessageBuilder,
@@ -375,6 +397,8 @@ def analyze_class_attribute_access(itype: Instance,
     if t:
         if isinstance(t, PartialType):
             return handle_partial_attribute_type(t, is_lvalue, msg, node.node)
+        if not is_method and (isinstance(t, TypeVarType) or get_type_vars(t)):
+            msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, context)
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
         return add_class_tvars(t, itype, is_classmethod, builtin_type, original_type)
     elif isinstance(node.node, Var):
@@ -382,7 +406,9 @@ def analyze_class_attribute_access(itype: Instance,
         return AnyType()
 
     if isinstance(node.node, TypeVarExpr):
-        return TypeVarType(node.tvar_def, node.tvar_def.line, node.tvar_def.column)
+        msg.fail('Type variable "{}.{}" cannot be used as an expression'.format(
+                 itype.type.name(), name), context)
+        return AnyType()
 
     if isinstance(node.node, TypeInfo):
         return type_object_type(node.node, builtin_type)
@@ -445,7 +471,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
         # Must be an invalid class definition.
         return AnyType()
     else:
-        fallback = builtin_type('builtins.type')
+        fallback = info.metaclass_type or builtin_type('builtins.type')
         if init_method.info.fullname() == 'builtins.object':
             # No non-default __init__ -> look at __new__ instead.
             new_method = info.get_method('__new__')
@@ -511,7 +537,6 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
         ret_type=fill_typevars(info), fallback=type_type, name=None, variables=variables,
         special_sig=special_sig)
     c = callable_type.with_name('"{}"'.format(info.name()))
-    c.is_classmethod_class = True
     return c
 
 
@@ -615,7 +640,7 @@ def bind_self(method: F, original_type: Type = None) -> F:
     return cast(F, res)
 
 
-def erase_to_bound(t: Type):
+def erase_to_bound(t: Type) -> Type:
     if isinstance(t, TypeVarType):
         return t.upper_bound
     if isinstance(t, TypeType):

@@ -87,7 +87,8 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
 
 def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> None:
     testcase_path = os.path.join(testcase.old_cwd, testcase.file)
-    data_lines = open(testcase_path).read().splitlines()
+    with open(testcase_path) as f:
+        data_lines = f.read().splitlines()
     test = '\n'.join(data_lines[testcase.line:testcase.lastline])
 
     mapping = {}  # type: Dict[str, List[str]]

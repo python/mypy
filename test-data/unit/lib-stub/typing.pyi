@@ -17,6 +17,8 @@ NamedTuple = 0
 Type = 0
 no_type_check = 0
 Callable = 0
+ClassVar = 0
+NoReturn = 0
 
 # Type aliases.
 List = 0
@@ -57,6 +59,22 @@ class Generator(Iterator[T], Generic[T, U, V]):
 
     @abstractmethod
     def __iter__(self) -> 'Generator[T, U, V]': pass
+
+class AsyncGenerator(AsyncIterator[T], Generic[T, U]):
+    @abstractmethod
+    def __anext__(self) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def asend(self, value: U) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def athrow(self, typ: Any, val: Any=None, tb: Any=None) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def aclose(self) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def __aiter__(self) -> 'AsyncGenerator[T, U]': pass
 
 class Awaitable(Generic[T]):
     @abstractmethod

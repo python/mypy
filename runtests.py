@@ -28,9 +28,13 @@ from typing import Dict, List, Optional, Set, Iterable
 
 from mypy.waiter import Waiter, LazySubprocess
 from mypy import util
+from mypy.test.config import test_data_prefix
+from mypy.test.testpythoneval import python_eval_files, python_34_eval_files
 
 import itertools
 import os
+import re
+import json
 
 
 # Ideally, all tests would be `discover`able so that they can be driven
@@ -38,14 +42,17 @@ import os
 
 class Driver:
 
-    def __init__(self, whitelist: List[str], blacklist: List[str],
-            arglist: List[str], verbosity: int, parallel_limit: int,
+    def __init__(self, *, whitelist: List[str], blacklist: List[str],
+            lf: bool, ff: bool,
+            arglist: List[str], pyt_arglist: List[str],
+            verbosity: int, parallel_limit: int,
             xfail: List[str], coverage: bool) -> None:
         self.whitelist = whitelist
         self.blacklist = blacklist
         self.arglist = arglist
+        self.pyt_arglist = pyt_arglist
         self.verbosity = verbosity
-        self.waiter = Waiter(verbosity=verbosity, limit=parallel_limit, xfail=xfail)
+        self.waiter = Waiter(verbosity=verbosity, limit=parallel_limit, xfail=xfail, lf=lf, ff=ff)
         self.versions = get_versions()
         self.cwd = os.getcwd()
         self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
@@ -58,9 +65,9 @@ class Driver:
         if not paths:
             return
         if old_val is not None:
-            new_val = ':'.join(itertools.chain(paths, [old_val]))
+            new_val = os.pathsep.join(itertools.chain(paths, [old_val]))
         else:
-            new_val = ':'.join(paths)
+            new_val = os.pathsep.join(paths)
         self.env[name] = new_val
 
     def allow(self, name: str) -> bool:
@@ -104,7 +111,7 @@ class Driver:
         else:
             args = [sys.executable, '-m', 'pytest'] + pytest_args
 
-        self.waiter.add(LazySubprocess(full_name, args, env=self.env))
+        self.waiter.add(LazySubprocess(full_name, args, env=self.env), sequential=True)
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
@@ -148,11 +155,11 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
-    def add_flake8(self, name: str, file: str, cwd: Optional[str] = None) -> None:
-        name = 'lint %s' % name
+    def add_flake8(self, cwd: Optional[str] = None) -> None:
+        name = 'lint'
         if not self.allow(name):
             return
-        largs = ['flake8', file]
+        largs = ['flake8', '-j0']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
@@ -164,21 +171,17 @@ class Driver:
 def add_basic(driver: Driver) -> None:
     if False:
         driver.add_mypy('file setup.py', 'setup.py')
-    driver.add_flake8('file setup.py', 'setup.py')
     driver.add_mypy('file runtests.py', 'runtests.py')
-    driver.add_flake8('file runtests.py', 'runtests.py')
     driver.add_mypy('legacy entry script', 'scripts/mypy')
-    driver.add_flake8('legacy entry script', 'scripts/mypy')
     driver.add_mypy('legacy myunit script', 'scripts/myunit')
-    driver.add_flake8('legacy myunit script', 'scripts/myunit')
     # needs typed_ast installed:
     driver.add_mypy('fast-parse', '--fast-parse', 'test-data/samples/hello.py')
 
 
 def add_selftypecheck(driver: Driver) -> None:
-    driver.add_mypy_package('package mypy', 'mypy', '--fast-parser', '--warn-no-return')
-    driver.add_mypy_package('package mypy', 'mypy', '--fast-parser',
-                            '--config-file', 'mypy_strict_optional.ini')
+    driver.add_mypy_package('package mypy nonstrict optional', 'mypy', '--config-file',
+                            'mypy_self_check.ini')
+    driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_strict_optional.ini')
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
@@ -203,17 +206,20 @@ def add_imports(driver: Driver) -> None:
         mod = file_to_module(f)
         if not mod.endswith('.__main__'):
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
-        driver.add_flake8('module %s' % mod, f)
 
 
-PYTEST_FILES = ['mypy/test/{}.py'.format(name) for name in [
-    'testcheck', 'testextensions',
+PYTEST_FILES = [os.path.join('mypy', 'test', '{}.py'.format(name)) for name in [
+    'testcheck',
+    'testextensions',
+    'testdeps',
+    'testdiff',
+    'testfinegrained',
+    'testmerge',
 ]]
 
 
 def add_pytest(driver: Driver) -> None:
-    for f in PYTEST_FILES:
-        driver.add_pytest(f, [f] + driver.arglist, True)
+    driver.add_pytest('pytest', PYTEST_FILES + driver.arglist + driver.pyt_arglist, True)
 
 
 def add_myunit(driver: Driver) -> None:
@@ -233,9 +239,27 @@ def add_myunit(driver: Driver) -> None:
 
 
 def add_pythoneval(driver: Driver) -> None:
-    driver.add_python_mod('eval-test', 'mypy.myunit',
-                          '-m', 'mypy.test.testpythoneval', *driver.arglist,
-                         coverage=True)
+    cases = set()
+    case_re = re.compile(r'^\[case ([^\]]+)\]$')
+    for file in python_eval_files + python_34_eval_files:
+        with open(os.path.join(test_data_prefix, file), 'r') as f:
+            for line in f:
+                m = case_re.match(line)
+                if m:
+                    case_name = m.group(1)
+                    assert case_name[:4] == 'test'
+                    cases.add(case_name[4:5])
+
+    for prefix in sorted(cases):
+        driver.add_python_mod(
+            'eval-test-' + prefix,
+            'mypy.myunit',
+            '-m',
+            'mypy.test.testpythoneval',
+            'test_testpythoneval_PythonEvaluationSuite.test' + prefix + '*',
+            *driver.arglist,
+            coverage=True
+        )
 
 
 def add_cmdline(driver: Driver) -> None:
@@ -278,11 +302,13 @@ def add_stdlibsamples(driver: Driver) -> None:
 
 def add_samples(driver: Driver) -> None:
     for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
-        driver.add_mypy('file %s' % f, f, '--fast-parser')
+        driver.add_mypy('file %s' % f, f)
 
 
 def usage(status: int) -> None:
-    print('Usage: %s [-h | -v | -q | [-x] FILTER | -a ARG] ... [-- FILTER ...]' % sys.argv[0])
+    print('Usage: %s [-h | -v | -q | --lf | --ff | [-x] FILTER | -a ARG | -p ARG]'
+          '... [-- FILTER ...]'
+          % sys.argv[0])
     print()
     print('Run mypy tests. If given no arguments, run all tests.')
     print()
@@ -294,9 +320,12 @@ def usage(status: int) -> None:
     print('Options:')
     print('  -h, --help             show this help')
     print('  -v, --verbose          increase driver verbosity')
+    print('  --lf                   rerun only the tests that failed at the last run')
+    print('  --ff                   run all tests but run the last failures first')
     print('  -q, --quiet            decrease driver verbosity')
     print('  -jN                    run N tasks at once (default: one per CPU)')
     print('  -a, --argument ARG     pass an argument to myunit tasks')
+    print('  -p, --pytest_arg ARG   pass an argument to pytest tasks')
     print('                         (-v: verbose; glob pattern: filter by test name)')
     print('  -l, --list             list included tasks (after filtering) and exit')
     print('  FILTER                 include tasks matching FILTER')
@@ -322,6 +351,8 @@ def sanity() -> None:
 
 
 def main() -> None:
+    import time
+    t0 = time.perf_counter()
     sanity()
 
     verbosity = 0
@@ -329,13 +360,16 @@ def main() -> None:
     whitelist = []  # type: List[str]
     blacklist = []  # type: List[str]
     arglist = []  # type: List[str]
+    pyt_arglist = []  # type: List[str]
+    lf = False
+    ff = False
     list_only = False
     coverage = False
 
     allow_opts = True
     curlist = whitelist
     for a in sys.argv[1:]:
-        if curlist is not arglist and allow_opts and a.startswith('-'):
+        if not (curlist is arglist or curlist is pyt_arglist) and allow_opts and a.startswith('-'):
             if curlist is not whitelist:
                 break
             if a == '--':
@@ -353,6 +387,14 @@ def main() -> None:
                 curlist = blacklist
             elif a == '-a' or a == '--argument':
                 curlist = arglist
+            elif a == '-p' or a == '--pytest_arg':
+                curlist = pyt_arglist
+            # will also pass this option to pytest
+            elif a == '--lf':
+                lf = True
+            # will also pass this option to pytest
+            elif a == '--ff':
+                ff = True
             elif a == '-l' or a == '--list':
                 list_only = True
             elif a == '-c' or a == '--coverage':
@@ -368,23 +410,33 @@ def main() -> None:
         sys.exit('-x must be followed by a filter')
     if curlist is arglist:
         sys.exit('-a must be followed by an argument')
+    if curlist is pyt_arglist:
+        sys.exit('-p must be followed by an argument')
+    if lf and ff:
+        sys.exit('use either --lf or --ff, not both')
     # empty string is a substring of all names
     if not whitelist:
         whitelist.append('')
+    if lf:
+        pyt_arglist.append('--lf')
+    if ff:
+        pyt_arglist.append('--ff')
 
-    driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
-            verbosity=verbosity, parallel_limit=parallel_limit, xfail=[], coverage=coverage)
+    driver = Driver(whitelist=whitelist, blacklist=blacklist, lf=lf, ff=ff,
+                    arglist=arglist, pyt_arglist=pyt_arglist, verbosity=verbosity,
+                    parallel_limit=parallel_limit, xfail=[], coverage=coverage)
 
     driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
     driver.prepend_path('MYPYPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [join(driver.cwd, 'lib-typing', v) for v in driver.versions])
 
+    driver.add_flake8()
+    add_pytest(driver)
     add_pythoneval(driver)
     add_cmdline(driver)
     add_basic(driver)
     add_selftypecheck(driver)
-    add_pytest(driver)
     add_myunit(driver)
     add_imports(driver)
     add_stubs(driver)
@@ -396,6 +448,8 @@ def main() -> None:
         return
 
     exit_code = driver.waiter.run()
+    t1 = time.perf_counter()
+    print('total runtime:', t1 - t0, 'sec')
 
     if verbosity >= 1:
         times = driver.waiter.times2 if verbosity >= 2 else driver.waiter.times1

@@ -16,3 +16,5 @@ def DefaultNamedArg(name=None, typ: T = ...) -> T: pass
 def StarArg(typ: T = ...) -> T: pass
 
 def KwArg(typ: T = ...) -> T: pass
+
+class NoReturn: pass

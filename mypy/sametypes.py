@@ -1,7 +1,7 @@
 from typing import Sequence
 
 from mypy.types import (
-    Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, TypedDictType,
+    Type, UnboundType, AnyType, NoneTyp, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     ArgumentList, Overloaded, PartialType, DeletedType, UninhabitedType, TypeType
 )
@@ -55,17 +55,11 @@ class SameTypeVisitor(TypeVisitor[bool]):
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return True
 
-    def visit_error_type(self, left: ErrorType) -> bool:
-        return False
-
     def visit_type_list(self, t: ArgumentList) -> bool:
         assert False, 'Not supported'
 
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)
-
-    def visit_void(self, left: Void) -> bool:
-        return isinstance(self.right, Void)
 
     def visit_none_type(self, left: NoneTyp) -> bool:
         return isinstance(self.right, NoneTyp)
@@ -123,9 +117,18 @@ class SameTypeVisitor(TypeVisitor[bool]):
             return False
 
     def visit_union_type(self, left: UnionType) -> bool:
-        # XXX This is a test for syntactic equality, not equivalence
         if isinstance(self.right, UnionType):
-            return is_same_types(left.items, self.right.items)
+            # Check that everything in left is in right
+            for left_item in left.items:
+                if not any(is_same_type(left_item, right_item) for right_item in self.right.items):
+                    return False
+
+            # Check that everything in right is in left
+            for right_item in self.right.items:
+                if not any(is_same_type(right_item, left_item) for left_item in left.items):
+                    return False
+
+            return True
         else:
             return False
 

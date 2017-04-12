@@ -1,22 +1,22 @@
 """Semantic analysis of types"""
 
 from collections import OrderedDict
-from typing import Callable, cast, List, Optional
+from typing import Callable, List, Optional, Set
 
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
-    AnyType, CallableType, Void, NoneTyp, DeletedType, ArgumentList, TypeVarDef, TypeVisitor,
+    AnyType, CallableType, NoneTyp, DeletedType, ArgumentList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    ArgKindException, ArgNameException
+    ArgKindException, ArgNameException, get_type_vars, union_items
 )
 from mypy.nodes import (
     BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
     TypeInfo, Context, SymbolTableNode, Var, Expression,
-    IndexExpr, RefExpr
+    IndexExpr, RefExpr, nongen_builtins,
 )
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.subtypes import satisfies_upper_bound
+from mypy.subtypes import is_subtype
 from mypy import nodes
 from mypy import experiments
 
@@ -33,7 +33,8 @@ type_constructors = {
 def analyze_type_alias(node: Expression,
                        lookup_func: Callable[[str, Context], SymbolTableNode],
                        lookup_fqn_func: Callable[[str], SymbolTableNode],
-                       fail_func: Callable[[str, Context], None]) -> Type:
+                       fail_func: Callable[[str, Context], None],
+                       allow_unnormalized: bool = False) -> Type:
     """Return type if node is valid as a type alias rvalue.
 
     Return None otherwise. 'node' must have been semantically analyzed.
@@ -42,6 +43,9 @@ def analyze_type_alias(node: Expression,
     # that we don't support straight string literals as type aliases
     # (only string literals within index expressions).
     if isinstance(node, RefExpr):
+        # Note that this misses the case where someone tried to use a
+        # class-referenced type variable as a type alias.  It's easier to catch
+        # that one in checkmember.py
         if node.kind == UNBOUND_TVAR or node.kind == BOUND_TVAR:
             fail_func('Type variable "{}" is invalid as target for type alias'.format(
                 node.fullname), node)
@@ -57,6 +61,10 @@ def analyze_type_alias(node: Expression,
                     base.fullname in type_constructors or
                     base.kind == TYPE_ALIAS):
                 return None
+            # Enums can't be generic, and without this check we may incorrectly interpret indexing
+            # an Enum class as creating a type alias.
+            if isinstance(base.node, TypeInfo) and base.node.is_enum:
+                return None
         else:
             return None
     else:
@@ -68,8 +76,17 @@ def analyze_type_alias(node: Expression,
     except TypeTranslationError:
         fail_func('Invalid type alias', node)
         return None
-    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, fail_func, aliasing=True)
+    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, fail_func, aliasing=True,
+                            allow_unnormalized=allow_unnormalized)
     return type.accept(analyzer)
+
+
+def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
+    msg = '"{}" is not subscriptable'.format(name.split('.')[-1])
+    replacement = nongen_builtins[name]
+    if replacement and propose_alt:
+        msg += ', use "{}" instead'.format(replacement)
+    return msg
 
 
 class TypeAnalyser(TypeVisitor[Type]):
@@ -82,18 +99,24 @@ class TypeAnalyser(TypeVisitor[Type]):
                  lookup_func: Callable[[str, Context], SymbolTableNode],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
                  fail_func: Callable[[str, Context], None], *,
-                 aliasing: bool = False) -> None:
+                 aliasing: bool = False,
+                 allow_tuple_literal: bool = False,
+                 allow_unnormalized: bool = False) -> None:
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
         self.aliasing = aliasing
+        self.allow_tuple_literal = allow_tuple_literal
+        # Positive if we are analyzing arguments of another (outer) type
+        self.nesting_level = 0
+        self.allow_unnormalized = allow_unnormalized
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if t.optional:
             t.optional = False
             # We don't need to worry about double-wrapping Optionals or
             # wrapping Anys: Union simplification will take care of that.
-            return UnionType.make_simplified_union([self.visit_unbound_type(t), NoneTyp()])
+            return make_optional_type(self.visit_unbound_type(t))
         sym = self.lookup(t.name, t)
         if sym is not None:
             if sym.node is None:
@@ -102,6 +125,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                     self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
                 return AnyType()
             fullname = sym.node.fullname()
+            if (fullname in nongen_builtins and t.args and
+                    not sym.normalized and not self.allow_unnormalized):
+                self.fail(no_subscript_builtin_alias(fullname), t)
             if sym.kind == BOUND_TVAR:
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(
@@ -109,11 +135,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 assert sym.tvar_def is not None
                 return TypeVarType(sym.tvar_def, t.line)
             elif fullname == 'builtins.None':
-                if experiments.STRICT_OPTIONAL:
-                    return NoneTyp(is_ret_type=t.is_ret_type)
-                else:
-                    return Void()
-            elif fullname == 'typing.Any':
+                return NoneTyp()
+            elif fullname == 'typing.Any' or fullname == 'builtins.Any':
                 return AnyType()
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
@@ -121,24 +144,21 @@ class TypeAnalyser(TypeVisitor[Type]):
                     return self.builtin_type('builtins.tuple')
                 if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                     # Tuple[T, ...] (uniform, variable-length tuple)
-                    instance = self.builtin_type('builtins.tuple', [t.args[0].accept(self)])
+                    instance = self.builtin_type('builtins.tuple', [self.anal_type(t.args[0])])
                     instance.line = t.line
                     return instance
                 return self.tuple_type(self.anal_array(t.args))
             elif fullname == 'typing.Union':
                 items = self.anal_array(t.args)
-                items = [item for item in items if not isinstance(item, Void)]
+                if not experiments.STRICT_OPTIONAL:
+                    items = [item for item in items if not isinstance(item, NoneTyp)]
                 return UnionType.make_union(items)
             elif fullname == 'typing.Optional':
                 if len(t.args) != 1:
                     self.fail('Optional[...] must have exactly one type argument', t)
                     return AnyType()
-                items = self.anal_array(t.args)
-                if experiments.STRICT_OPTIONAL:
-                    return UnionType.make_simplified_union([items[0], NoneTyp()])
-                else:
-                    # Without strict Optional checking Optional[t] is just an alias for t.
-                    return items[0]
+                item = self.anal_type(t.args[0])
+                return make_optional_type(item)
             elif fullname == 'typing.Callable':
                 return self.analyze_callable_type(t)
             elif fullname == 'typing.Type':
@@ -146,9 +166,23 @@ class TypeAnalyser(TypeVisitor[Type]):
                     return TypeType(AnyType(), line=t.line)
                 if len(t.args) != 1:
                     self.fail('Type[...] must have exactly one type argument', t)
-                items = self.anal_array(t.args)
-                item = items[0]
+                item = self.anal_type(t.args[0])
                 return TypeType(item, line=t.line)
+            elif fullname == 'typing.ClassVar':
+                if self.nesting_level > 0:
+                    self.fail('Invalid type: ClassVar nested inside other type', t)
+                if len(t.args) == 0:
+                    return AnyType(line=t.line)
+                if len(t.args) != 1:
+                    self.fail('ClassVar[...] must have at most one type argument', t)
+                    return AnyType()
+                item = self.anal_type(t.args[0])
+                if isinstance(item, TypeVarType) or get_type_vars(item):
+                    self.fail('Invalid type: ClassVar cannot be generic', t)
+                    return AnyType()
+                return item
+            elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
+                return UninhabitedType(is_noreturn=True)
             elif sym.kind == TYPE_ALIAS:
                 override = sym.type_override
                 an_args = self.anal_array(t.args)
@@ -266,9 +300,6 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_any(self, t: AnyType) -> Type:
         return t
 
-    def visit_void(self, t: Void) -> Type:
-        return t
-
     def visit_none_type(self, t: NoneTyp) -> Type:
         return t
 
@@ -289,31 +320,38 @@ class TypeAnalyser(TypeVisitor[Type]):
         return t
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        return t.copy_modified(arg_types=self.anal_array(t.arg_types),
-                               ret_type=t.ret_type.accept(self),
+        return t.copy_modified(arg_types=self.anal_array(t.arg_types, nested=False),
+                               ret_type=self.anal_type(t.ret_type, nested=False),
                                fallback=t.fallback or self.builtin_type('builtins.function'),
                                variables=self.anal_var_defs(t.variables))
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        if t.implicit:
+        # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
+        # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
+        if t.implicit and not self.allow_tuple_literal:
             self.fail('Invalid tuple literal type', t)
             return AnyType()
         star_count = sum(1 for item in t.items if isinstance(item, StarType))
         if star_count > 1:
             self.fail('At most one star type allowed in a tuple', t)
-            return AnyType()
+            if t.implicit:
+                return TupleType([AnyType() for _ in t.items],
+                                 self.builtin_type('builtins.tuple'),
+                                 t.line)
+            else:
+                return AnyType()
         fallback = t.fallback if t.fallback else self.builtin_type('builtins.tuple', [AnyType()])
         return TupleType(self.anal_array(t.items), fallback, t.line)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         items = OrderedDict([
-            (item_name, item_type.accept(self))
+            (item_name, self.anal_type(item_type))
             for (item_name, item_type) in t.items.items()
         ])
         return TypedDictType(items, t.fallback)
 
     def visit_star_type(self, t: StarType) -> Type:
-        return StarType(t.type.accept(self), t.line)
+        return StarType(self.anal_type(t.type), t.line)
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.anal_array(t.items), t.line)
@@ -326,7 +364,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return AnyType()
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType(t.item.accept(self), line=t.line)
+        return TypeType(self.anal_type(t.item), line=t.line)
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.builtin_type('builtins.function')
@@ -339,7 +377,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                                 fallback=fallback,
                                 is_ellipsis_args=True)
         elif len(t.args) == 2:
-            ret_type = t.args[1].accept(self)
+            ret_type = self.anal_type(t.args[1])
             if isinstance(t.args[0], ArgumentList):
                 # Callable[[ARG, ...], RET] (ordinary callable type)
                 args = t.args[0].types
@@ -367,11 +405,20 @@ class TypeAnalyser(TypeVisitor[Type]):
         self.fail('Invalid function type', t)
         return AnyType()
 
-    def anal_array(self, a: List[Type]) -> List[Type]:
+    def anal_array(self, a: List[Type], nested: bool = True) -> List[Type]:
         res = []  # type: List[Type]
         for t in a:
-            res.append(t.accept(self))
+            res.append(self.anal_type(t, nested))
         return res
+
+    def anal_type(self, t: Type, nested: bool = True) -> Type:
+        if nested:
+            self.nesting_level += 1
+        try:
+            return t.accept(self)
+        finally:
+            if nested:
+                self.nesting_level -= 1
 
     def anal_var_defs(self, var_defs: List[TypeVarDef]) -> List[TypeVarDef]:
         a = []  # type: List[TypeVarDef]
@@ -454,7 +501,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values,
                                                TypeVar.values, i + 1, t)
-                if not satisfies_upper_bound(arg, TypeVar.upper_bound):
+                if not is_subtype(arg, TypeVar.upper_bound):
                     self.fail('Type argument "{}" of "{}" must be '
                               'a subtype of "{}"'.format(
                                   arg, info.name(), TypeVar.upper_bound), t)
@@ -501,9 +548,6 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def visit_any(self, t: AnyType) -> None:
         pass
 
-    def visit_void(self, t: Void) -> None:
-        pass
-
     def visit_none_type(self, t: NoneTyp) -> None:
         pass
 
@@ -524,3 +568,21 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_type_type(self, t: TypeType) -> None:
         pass
+
+
+def make_optional_type(t: Type) -> Type:
+    """Return the type corresponding to Optional[t].
+
+    Note that we can't use normal union simplification, since this function
+    is called during semantic analysis and simplification only works during
+    type checking.
+    """
+    if not experiments.STRICT_OPTIONAL:
+        return t
+    if isinstance(t, NoneTyp):
+        return t
+    if isinstance(t, UnionType):
+        items = [item for item in union_items(t)
+                 if not isinstance(item, NoneTyp)]
+        return UnionType(items + [NoneTyp()], t.line, t.column)
+    return UnionType([t, NoneTyp()], t.line, t.column)

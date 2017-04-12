@@ -147,6 +147,25 @@ ee_def = specific_1 # E: Incompatible types in assignment (expression has type C
 
 [builtins fixtures/dict.pyi]
 
+[case testSubtypingFunctionsDecorated]
+from typing import Any
+
+# untyped decorator
+def deco(f): pass
+
+class A:
+    @deco
+    def f(self) -> Any:
+        pass
+
+class B(A):
+    @deco
+    def f(self) -> Any:
+        pass
+
+[builtins fixtures/list.pyi]
+
+
 [case testLackOfNames]
 def f(__a: int, __b: str) -> None: pass
 def g(a: int, b: str) -> None: pass
@@ -158,7 +177,7 @@ ff = g
 gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg('a', int), Arg('b', str)], None])
 
 [case testLackOfNamesFastparse]
-# flags: --fast-parser
+
 
 def f(__a: int, __b: str) -> None: pass
 def g(a: int, b: str) -> None: pass
@@ -189,7 +208,7 @@ from typing import Callable
 f = None # type: Callable[[], None]
 g = None # type: Callable[[], object]
 f = g  # E: Incompatible types in assignment (expression has type Callable[[], object], variable has type Callable[[], None])
-g = f  # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type Callable[[], object])
+g = f  # OK
 
 f = f
 g = g
@@ -245,6 +264,8 @@ class A:
 def f() -> None: pass
 
 [case testFunctionTypesWithOverloads]
+from foo import *
+[file foo.pyi]
 from typing import Callable, overload
 f = None # type: Callable[[AA], A]
 g = None # type: Callable[[B], B]
@@ -277,6 +298,8 @@ def j(x: A) -> AA:
     pass
 
 [case testOverloadWithThreeItems]
+from foo import *
+[file foo.pyi]
 from typing import Callable, overload
 g1 = None # type: Callable[[A], A]
 g2 = None # type: Callable[[B], B]
@@ -316,6 +339,20 @@ class D:
     def __init__(self, a, b): pass
 f([D])  # E: List item 0 has incompatible type
 [builtins fixtures/list.pyi]
+
+[case testSubtypingTypeTypeAsCallable]
+from typing import Callable, Type
+class A: pass
+x = None  # type: Callable[..., A]
+y = None  # type: Type[A]
+x = y
+
+[case testSubtypingCallableAsTypeType]
+from typing import Callable, Type
+class A: pass
+x = None  # type: Callable[..., A]
+y = None  # type: Type[A]
+y = x  # E: Incompatible types in assignment (expression has type Callable[..., A], variable has type Type[A])
 
 -- Default argument values
 -- -----------------------
@@ -446,6 +483,8 @@ a.f()
 a.f(a) # E: Too many arguments
 
 [case testOverloadedMethodAsDataAttribute]
+from foo import *
+[file foo.pyi]
 from typing import overload
 class B: pass
 class A:
@@ -457,7 +496,7 @@ class A:
 a = None # type: A
 a.g()
 a.g(B())
-a.g(a) # E: No overload variant matches argument types [__main__.A]
+a.g(a) # E: No overload variant matches argument types [foo.A]
 
 [case testMethodAsDataAttributeInferredFromDynamicallyTypedMethod]
 
@@ -1677,13 +1716,13 @@ class A:
 def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
-main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
+main:1: error: Ellipses cannot accompany other argument types in function type signature.
 
 [case testEllipsisWithSomethingBeforeItFails]
 def f(x, y, z): # type: (int, ...) -> None
     pass
 [out]
-main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
+main:1: error: Ellipses cannot accompany other argument types in function type signature.
 
 [case testRejectCovariantArgument]
 from typing import TypeVar, Generic
@@ -1824,7 +1863,7 @@ f(__a=1) # E: Unexpected keyword argument "__a" for "f"
 main:1: note: "f" defined here
 
 [case testPositionalOnlyArgFastparse]
-# flags: --fast-parser
+
 
 def f(__a: int) -> None: pass
 
@@ -1846,7 +1885,7 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 [builtins fixtures/bool.pyi]
 
 [case testMagicMethodPositionalOnlyArgFastparse]
-# flags: --fast-parser
+
 
 class A(object):
     def __eq__(self, other) -> bool: return True # We are all equal.
@@ -1863,6 +1902,6 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 def f(a, (b, c), d): pass
 
 [case testTupleArgumentsFastparse]
-# flags: --fast-parser --python-version 2.7
+# flags: --python-version 2.7
 
 def f(a, (b, c), d): pass

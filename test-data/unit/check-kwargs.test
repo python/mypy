@@ -56,8 +56,7 @@ class A: pass
 [case testGivingSameKeywordArgumentTwice]
 import typing
 def f(a: 'A', b: 'B') -> None: pass
-f(a=A(), b=B(), a=A()) # E: "f" gets multiple values for keyword argument "a"
-f(b=B(), a=A(), b=B()) # E: "f" gets multiple values for keyword argument "b"
+f(a=A(), b=B(), a=A()) # E: keyword argument repeated
 class A: pass
 class B: pass
 
@@ -93,12 +92,6 @@ f = None # type: Any
 f(x=f(), z=None()) # E: None not callable
 f(f, zz=None()) # E: None not callable
 f(x=None)
-
-[case testDuplicateKeywordArgumentWithDynamicallyTypedCallable]
-from typing import Any
-f = None # type: Any
-# Postpone checking to runtime
-f(x=None, x=None)
 
 [case testKeywordArgumentWithFunctionObject]
 from typing import Callable
@@ -141,7 +134,7 @@ class A: pass
 class B: pass
 
 [case testKeywordOnlyArgumentsFastparse]
-# flags: --fast-parser
+
 import typing
 def f(a: 'A', *, b: 'B' = None) -> None: pass
 def g(a: 'A', *, b: 'B') -> None: pass
@@ -180,7 +173,7 @@ f(a, **b)
 
 [case testKeywordArgAfterVarArgs]
 import typing
-def f(*a: 'A', b: 'B' = None,) -> None: pass
+def f(*a: 'A', b: 'B' = None) -> None: pass
 f()
 f(A())
 f(A(), A())
@@ -319,26 +312,6 @@ f(z=1)
 f(x=1, y=1)
 f(x='', y=1) # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 f(x=1, y='') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
-[builtins fixtures/dict.pyi]
-
-[case testFunctionWithBareAsteriskAndVarArgs]
-class A: pass
-class B: pass
-def f(x: int, *args: str, *, y: A = None, **kw: B) -> None: pass
-f(1)
-f(1, '', '')
-f(1, y=A(), z=B())
-f(1, '', '', y=A(), z=B())
-f(1, '', '', z=B(), y=A())
-[builtins fixtures/dict.pyi]
-
-[case testFunctionWithBareAsteriskAndVarArgs2]
-class A: pass
-class B: pass
-def f(x: int, *args: str, *, y: A = None, **kw: B) -> None: pass
-f(1, 2) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
-f(1, y=1) # E: Argument 2 to "f" has incompatible type "int"; expected "A"
-f(1, z=1) # E: Argument 2 to "f" has incompatible type "int"; expected "B"
 [builtins fixtures/dict.pyi]
 
 [case testCallsWithStars]

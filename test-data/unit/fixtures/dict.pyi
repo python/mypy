@@ -1,6 +1,6 @@
 # Builtins stub used in dictionary-related test cases.
 
-from typing import TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload
+from typing import TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union
 
 T = TypeVar('T')
 KT = TypeVar('KT')
@@ -19,11 +19,16 @@ class dict(Iterable[KT], Mapping[KT, VT], Generic[KT, VT]):
     def __setitem__(self, k: KT, v: VT) -> None: pass
     def __iter__(self) -> Iterator[KT]: pass
     def update(self, a: Mapping[KT, VT]) -> None: pass
+    @overload
+    def get(self, k: KT) -> Optional[VT]: pass
+    @overload
+    def get(self, k: KT, default: Union[KT, T]) -> Union[VT, T]: pass
 
 class int: # for convenience
     def __add__(self, x: int) -> int: pass
 
 class str: pass # for keyword argument key type
+class unicode: pass # needed for py2 docstrings
 
 class list(Iterable[T], Generic[T]): # needed by some test cases
     def __iter__(self) -> Iterator[T]: pass
@@ -35,3 +40,4 @@ class float: pass
 class bool: pass
 
 class ellipsis: pass
+class BaseException: pass

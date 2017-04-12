@@ -152,13 +152,14 @@ f(**params)
 
 [case testFromFutureImportUnicodeLiterals2_python2]
 from __future__ import unicode_literals
-def f(x: str) -> None: pass
+def f(x): # type: (str) -> None
+  pass
 f(b'')
 f(u'')
 f('')
 [out]
-_program.py:4: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
 _program.py:5: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+_program.py:6: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
 
 [case testStrUnicodeCompatibility_python2]
 import typing
@@ -391,9 +392,11 @@ f(b'')
 [file m.pyi]
 from typing import overload
 @overload
-def f(x: unicode) -> int: pass
+def f(x): # type: (unicode) -> int
+  pass
 @overload
-def f(x: bytearray) -> int: pass
+def f(x): # type: (bytearray) -> int
+  pass
 [out]
 _program.py:2: error: No overload variant of "f" matches argument types [builtins.int]
 
@@ -465,7 +468,7 @@ re.subn(upat, lambda m: u'', u'')[0] + u''
 
 [case testYieldRegressionTypingAwaitable_python2]
 # Make sure we don't reference typing.Awaitable in Python 2 mode.
-def g() -> int:
+def g():  # type: () -> int
     yield
 [out]
 _program.py:2: error: The return type of a generator function should be "Generator" or one of its supertypes

@@ -16,12 +16,14 @@ from mypy.types import (
 from mypy.visitor import NodeVisitor
 
 
-def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
-    node_fixer = NodeFixer(modules)
+def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile],
+                          quick_and_dirty: bool) -> None:
+    node_fixer = NodeFixer(modules, quick_and_dirty)
     node_fixer.visit_symbol_table(tree.names)
 
 
-def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
+def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile],
+                          quick_and_dirty: bool) -> None:
     compute_all_mros(tree.names, modules)
 
 
@@ -38,11 +40,10 @@ def compute_all_mros(symtab: SymbolTable, modules: Dict[str, MypyFile]) -> None:
 class NodeFixer(NodeVisitor[None]):
     current_info = None  # type: Optional[TypeInfo]
 
-    def __init__(self, modules: Dict[str, MypyFile], type_fixer: 'TypeFixer' = None) -> None:
+    def __init__(self, modules: Dict[str, MypyFile], quick_and_dirty: bool) -> None:
         self.modules = modules
-        if type_fixer is None:
-            type_fixer = TypeFixer(self.modules)
-        self.type_fixer = type_fixer
+        self.quick_and_dirty = quick_and_dirty
+        self.type_fixer = TypeFixer(self.modules, quick_and_dirty)
 
     # NOTE: This method isn't (yet) part of the NodeVisitor API.
     def visit_type_info(self, info: TypeInfo) -> None:
@@ -76,10 +77,13 @@ class NodeFixer(NodeVisitor[None]):
                 if cross_ref in self.modules:
                     value.node = self.modules[cross_ref]
                 else:
-                    stnode = lookup_qualified_stnode(self.modules, cross_ref)
-                    assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
-                    value.node = stnode.node
-                    value.type_override = stnode.type_override
+                    stnode = lookup_qualified_stnode(self.modules, cross_ref,
+                                                     self.quick_and_dirty)
+                    if stnode is not None:
+                        value.node = stnode.node
+                        value.type_override = stnode.type_override
+                    elif not self.quick_and_dirty:
+                        assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
             else:
                 if isinstance(value.node, TypeInfo):
                     # TypeInfo has no accept().  TODO: Add it?
@@ -102,6 +106,8 @@ class NodeFixer(NodeVisitor[None]):
             o.type.accept(self.type_fixer)
         for item in o.items:
             item.accept(self)
+        if o.impl:
+            o.impl.accept(self)
 
     def visit_decorator(self, d: Decorator) -> None:
         if self.current_info is not None:
@@ -132,8 +138,9 @@ class NodeFixer(NodeVisitor[None]):
 
 
 class TypeFixer(TypeVisitor[None]):
-    def __init__(self, modules: Dict[str, MypyFile]) -> None:
+    def __init__(self, modules: Dict[str, MypyFile], quick_and_dirty: bool) -> None:
         self.modules = modules
+        self.quick_and_dirty = quick_and_dirty
 
     def visit_instance(self, inst: Instance) -> None:
         # TODO: Combine Instances that are exactly the same?
@@ -141,7 +148,7 @@ class TypeFixer(TypeVisitor[None]):
         if type_ref is None:
             return  # We've already been here.
         del inst.type_ref
-        node = lookup_qualified(self.modules, type_ref)
+        node = lookup_qualified(self.modules, type_ref, self.quick_and_dirty)
         if isinstance(node, TypeInfo):
             inst.type = node
             # TODO: Is this needed or redundant?
@@ -230,19 +237,24 @@ class TypeFixer(TypeVisitor[None]):
         t.item.accept(self)
 
 
-def lookup_qualified(modules: Dict[str, MypyFile], name: str) -> SymbolNode:
-    stnode = lookup_qualified_stnode(modules, name)
+def lookup_qualified(modules: Dict[str, MypyFile], name: str,
+                     quick_and_dirty: bool) -> SymbolNode:
+    stnode = lookup_qualified_stnode(modules, name, quick_and_dirty)
     if stnode is None:
         return None
     else:
         return stnode.node
 
 
-def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> SymbolTableNode:
+def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
+                            quick_and_dirty: bool) -> Optional[SymbolTableNode]:
     head = name
     rest = []
     while True:
-        assert '.' in head, "Cannot find %s" % (name,)
+        if '.' not in head:
+            if not quick_and_dirty:
+                assert '.' in head, "Cannot find %s" % (name,)
+            return None
         head, tail = head.rsplit('.', 1)
         rest.append(tail)
         mod = modules.get(head)
@@ -250,9 +262,15 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> SymbolTa
             break
     names = mod.names
     while True:
-        assert rest, "Cannot find %s" % (name,)
+        if not rest:
+            if not quick_and_dirty:
+                assert rest, "Cannot find %s" % (name,)
+            return None
         key = rest.pop()
-        assert key in names, "Cannot find %s for %s" % (key, name)
+        if key not in names:
+            return None
+        elif not quick_and_dirty:
+            assert key in names, "Cannot find %s for %s" % (key, name)
         stnode = names[key]
         if not rest:
             return stnode

@@ -13,14 +13,23 @@ from mypy.nodes import (
     INVARIANT, SymbolNode,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
-
-from mypy import experiments
 from mypy.sharedparse import argument_elide_name
+from mypy.util import IdMapper
 
 
 T = TypeVar('T')
 
 JsonDict = Dict[str, Any]
+
+
+def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
+    if isinstance(data, str):
+        return Instance.deserialize(data)
+    classname = data['.class']
+    method = deserialize_map.get(classname)
+    if method is not None:
+        return method(data)
+    raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
 class Type(mypy.nodes.Context):
@@ -47,18 +56,12 @@ class Type(mypy.nodes.Context):
     def __repr__(self) -> str:
         return self.accept(TypeStrVisitor())
 
-    def serialize(self) -> JsonDict:
+    def serialize(self) -> Union[JsonDict, str]:
         raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'Type':
-        classname = data['.class']
-        glo = globals()
-        if classname in glo:
-            cl = glo[classname]
-            if 'deserialize' in cl.__dict__:
-                return cl.deserialize(data)
-        raise NotImplementedError('unexpected .class {}'.format(classname))
+        raise NotImplementedError('Cannot deserialize {} instance'.format(cls.__name__))
 
 
 class TypeVarId:
@@ -172,8 +175,8 @@ class TypeVarDef(mypy.nodes.Context):
         return TypeVarDef(data['name'],
                           data['id'],
                           None if data['values'] is None
-                          else [Type.deserialize(v) for v in data['values']],
-                          Type.deserialize(data['upper_bound']),
+                          else [deserialize_type(v) for v in data['values']],
+                          deserialize_type(data['upper_bound']),
                           data['variance'],
                           )
 
@@ -185,8 +188,6 @@ class UnboundType(Type):
     args = None  # type: List[Type]
     # should this type be wrapped in an Optional?
     optional = False
-    # is this type a return type?
-    is_ret_type = False
 
     # special case for X[()]
     empty_tuple_index = False
@@ -197,14 +198,12 @@ class UnboundType(Type):
                  line: int = -1,
                  column: int = -1,
                  optional: bool = False,
-                 is_ret_type: bool = False,
                  empty_tuple_index: bool = False) -> None:
         if not args:
             args = []
         self.name = name
         self.args = args
         self.optional = optional
-        self.is_ret_type = is_ret_type
         self.empty_tuple_index = empty_tuple_index
         super().__init__(line, column)
 
@@ -221,14 +220,7 @@ class UnboundType(Type):
     def deserialize(cls, data: JsonDict) -> 'UnboundType':
         assert data['.class'] == 'UnboundType'
         return UnboundType(data['name'],
-                           [Type.deserialize(a) for a in data['args']])
-
-
-class ErrorType(Type):
-    """The error type is used as the result of failed type operations."""
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_error_type(self)
+                           [deserialize_type(a) for a in data['args']])
 
 
 class ArgumentList(Type):
@@ -266,11 +258,11 @@ class ArgumentList(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'ArgumentList':
         assert data['.class'] == 'ArgumentList' or data['.class'] == 'TypeList'
-        types = [Type.deserialize(t) for t in data['items']]
+        types = [deserialize_type(t) for t in data['items']]
         names = cast(List[Optional[str]], data.get('names', [None] * len(types)))
         kinds = cast(List[int], data.get('kinds', [ARG_POS] * len(types)))
         return ArgumentList(
-            types=[Type.deserialize(t) for t in data['items']],
+            types=types,
             names=names,
             kinds=kinds,
         )
@@ -295,44 +287,15 @@ class AnyType(Type):
         return AnyType()
 
 
-class Void(Type):
-    """The return type 'None'.
-
-    This can only be used as the return type in a callable type and as
-    the result type of calling such callable.
-    """
-
-    can_be_true = False
-    source = ''   # May be None; function that generated this value
-
-    def __init__(self, source: str = None, line: int = -1, column: int = -1) -> None:
-        self.source = source
-        super().__init__(line, column)
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_void(self)
-
-    def with_source(self, source: str) -> 'Void':
-        return Void(source, self.line, self.column)
-
-    def serialize(self) -> JsonDict:
-        return {'.class': 'Void'}
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'Void':
-        assert data['.class'] == 'Void'
-        return Void()
-
-
 class UninhabitedType(Type):
     """This type has no members.
 
-    This type is almost the bottom type, except it is not a subtype of Void.
+    This type is the bottom type.
     With strict Optional checking, it is the only common subtype between all
     other types, which allows `meet` to be well defined.  Without strict
     Optional checking, NoneTyp fills this role.
 
-    In general, for any type T that isn't Void:
+    In general, for any type T:
         join(UninhabitedType, T) = T
         meet(UninhabitedType, T) = UninhabitedType
         is_subtype(UninhabitedType, T) = True
@@ -340,58 +303,46 @@ class UninhabitedType(Type):
 
     can_be_true = False
     can_be_false = False
+    is_noreturn = False  # Does this come from a NoReturn?  Purely for error messages.
 
-    def __init__(self, line: int = -1, column: int = -1) -> None:
+    def __init__(self, is_noreturn: bool = False, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
+        self.is_noreturn = is_noreturn
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_uninhabited_type(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'UninhabitedType'}
+        return {'.class': 'UninhabitedType',
+                'is_noreturn': self.is_noreturn}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'UninhabitedType':
         assert data['.class'] == 'UninhabitedType'
-        return UninhabitedType()
+        return UninhabitedType(is_noreturn=data['is_noreturn'])
 
 
 class NoneTyp(Type):
     """The type of 'None'.
 
-    Without strict Optional checking:
-        This is only used internally during type inference.  Programs
-        cannot declare a variable of this type, and the type checker
-        refuses to infer this type for a variable. However, subexpressions
-        often have this type. Note that this is not used as the result
-        type when calling a function with a void type, even though
-        semantically such a function returns a None value; the void type
-        is used instead so that we can report an error if the caller tries
-        to do anything with the return value.
-
-    With strict Optional checking:
-        This type can be written by users as 'None', except as the return value
-        of a function, where 'None' means Void.
+    This type can be written by users as 'None'.
     """
 
     can_be_true = False
 
-    def __init__(self, is_ret_type: bool = False, line: int = -1, column: int = -1) -> None:
+    def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.is_ret_type = is_ret_type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_none_type(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'NoneTyp',
-                'is_ret_type': self.is_ret_type,
-                }
+        return {'.class': 'NoneTyp'}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'NoneTyp':
         assert data['.class'] == 'NoneTyp'
-        return NoneTyp(is_ret_type=data['is_ret_type'])
+        return NoneTyp()
 
 
 class ErasedType(Type):
@@ -436,13 +387,14 @@ class Instance(Type):
     The list of type variables may be empty.
     """
 
-    type = None  # type: mypy.nodes.TypeInfo
+    type = None  # type: Optional[mypy.nodes.TypeInfo]
     args = None  # type: List[Type]
     erased = False  # True if result of type variable substitution
     invalid = False  # True if recovered after incorrect number of type arguments error
 
-    def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
+    def __init__(self, typ: Optional[mypy.nodes.TypeInfo], args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
+        assert(typ is None or typ.fullname() not in ["builtins.Any", "typing.Any"])
         self.type = typ
         self.args = args
         self.erased = erased
@@ -453,23 +405,29 @@ class Instance(Type):
 
     type_ref = None  # type: str
 
-    def serialize(self) -> JsonDict:
+    def serialize(self) -> Union[JsonDict, str]:
+        assert self.type is not None
+        type_ref = self.type.alt_fullname or self.type.fullname()
+        if not self.args:
+            return type_ref
         data = {'.class': 'Instance',
                 }  # type: JsonDict
-        assert self.type is not None
-        data['type_ref'] = self.type.alt_fullname or self.type.fullname()
-        if self.args:
-            data['args'] = [arg.serialize() for arg in self.args]
+        data['type_ref'] = type_ref
+        data['args'] = [arg.serialize() for arg in self.args]
         return data
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'Instance':
+    def deserialize(cls, data: Union[JsonDict, str]) -> 'Instance':
+        if isinstance(data, str):
+            inst = Instance(None, [])
+            inst.type_ref = data
+            return inst
         assert data['.class'] == 'Instance'
         args = []  # type: List[Type]
         if 'args' in data:
             args_list = data['args']
             assert isinstance(args_list, list)
-            args = [Type.deserialize(arg) for arg in args_list]
+            args = [deserialize_type(arg) for arg in args_list]
         inst = Instance(None, args)
         inst.type_ref = data['type_ref']  # Will be fixed up by fixup.py later.
         return inst
@@ -524,8 +482,8 @@ class TypeVarType(Type):
         assert data['.class'] == 'TypeVarType'
         tvdef = TypeVarDef(data['name'],
                            data['id'],
-                           [Type.deserialize(v) for v in data['values']],
-                           Type.deserialize(data['upper_bound']),
+                           [deserialize_type(v) for v in data['values']],
+                           deserialize_type(data['upper_bound']),
                            data['variance'])
         return TypeVarType(tvdef)
 
@@ -550,12 +508,11 @@ class FunctionLike(Type):
     @abstractmethod
     def with_name(self, name: str) -> 'FunctionLike': pass
 
+    @abstractmethod
+    def get_name(self) -> str: pass
+
     # Corresponding instance type (e.g. builtins.type)
     fallback = None  # type: Instance
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'FunctionLike':
-        return cast(FunctionLike, super().deserialize(data))
 
 
 _dummy = object()  # type: Any
@@ -608,6 +565,8 @@ class CallableType(FunctionLike):
     # Defined for signatures that require special handling (currently only value is 'dict'
     # for a signature similar to 'dict')
     special_sig = None  # type: Optional[str]
+    # Was this callable generated by analyzing Type[...] instantiation?
+    from_type_type = False  # type: bool
 
     def __init__(self,
                  arg_types: List[Type],
@@ -624,6 +583,7 @@ class CallableType(FunctionLike):
                  implicit: bool = False,
                  is_classmethod_class: bool = False,
                  special_sig: Optional[str] = None,
+                 from_type_type: bool = False,
                  ) -> None:
         self._process_kinds_on_init(arg_kinds)
         self._process_names_on_init(arg_names)
@@ -642,7 +602,9 @@ class CallableType(FunctionLike):
         self.variables = variables
         self.is_ellipsis_args = is_ellipsis_args
         self.implicit = implicit
+        self.is_classmethod_class = is_classmethod_class
         self.special_sig = special_sig
+        self.from_type_type = from_type_type
         super().__init__(line, column)
 
     def _process_names_on_init(self, arg_names):
@@ -692,7 +654,8 @@ class CallableType(FunctionLike):
                       line: int = _dummy,
                       column: int = _dummy,
                       is_ellipsis_args: bool = _dummy,
-                      special_sig: Optional[str] = _dummy) -> 'CallableType':
+                      special_sig: Optional[str] = _dummy,
+                      from_type_type: bool = _dummy) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
@@ -709,10 +672,12 @@ class CallableType(FunctionLike):
             implicit=self.implicit,
             is_classmethod_class=self.is_classmethod_class,
             special_sig=special_sig if special_sig is not _dummy else self.special_sig,
+            from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
         )
 
     def is_type_obj(self) -> bool:
-        return self.fallback.type is not None and self.fallback.type.fullname() == 'builtins.type'
+        t = self.fallback.type
+        return t is not None and t.is_metaclass()
 
     def is_concrete_type_obj(self) -> bool:
         return self.is_type_obj() and self.is_classmethod_class
@@ -722,17 +687,20 @@ class CallableType(FunctionLike):
         ret = self.ret_type
         if isinstance(ret, TupleType):
             ret = ret.fallback
-        return cast(Instance, ret).type
+        if isinstance(ret, TypeVarType):
+            ret = ret.upper_bound
+        assert isinstance(ret, Instance)
+        return ret.type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_callable_type(self)
 
     def with_name(self, name: str) -> 'CallableType':
         """Return a copy of this type with the specified name."""
-        ret = self.ret_type
-        if isinstance(ret, Void):
-            ret = ret.with_source(name)
-        return self.copy_modified(ret_type=ret, name=name)
+        return self.copy_modified(ret_type=self.ret_type, name=name)
+
+    def get_name(self) -> str:
+        return self.name
 
     def max_fixed_args(self) -> int:
         n = len(self.arg_types)
@@ -846,11 +814,11 @@ class CallableType(FunctionLike):
     def deserialize(cls, data: JsonDict) -> 'CallableType':
         assert data['.class'] == 'CallableType'
         # TODO: Set definition to the containing SymbolNode?
-        return CallableType([(None if t is None else Type.deserialize(t))
+        return CallableType([(None if t is None else deserialize_type(t))
                              for t in data['arg_types']],
                             data['arg_kinds'],
                             data['arg_names'],
-                            Type.deserialize(data['ret_type']),
+                            deserialize_type(data['ret_type']),
                             Instance.deserialize(data['fallback']),
                             name=data['name'],
                             variables=[TypeVarDef.deserialize(v) for v in data['variables']],
@@ -880,7 +848,7 @@ class Overloaded(FunctionLike):
         return self._items
 
     def name(self) -> str:
-        return self._items[0].name
+        return self.get_name()
 
     def is_type_obj(self) -> bool:
         # All the items must have the same type object status, so it's
@@ -897,6 +865,9 @@ class Overloaded(FunctionLike):
         for it in self._items:
             ni.append(it.with_name(name))
         return Overloaded(ni)
+
+    def get_name(self) -> str:
+        return self._items[0].name
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_overloaded(self)
@@ -952,7 +923,7 @@ class TupleType(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TupleType':
         assert data['.class'] == 'TupleType'
-        return TupleType([Type.deserialize(t) for t in data['items']],
+        return TupleType([deserialize_type(t) for t in data['items']],
                          Instance.deserialize(data['fallback']),
                          implicit=data['implicit'])
 
@@ -1001,10 +972,11 @@ class TypedDictType(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TypedDictType':
         assert data['.class'] == 'TypedDictType'
-        return TypedDictType(OrderedDict([(n, Type.deserialize(t)) for (n, t) in data['items']]),
+        return TypedDictType(OrderedDict([(n, deserialize_type(t))
+                                          for (n, t) in data['items']]),
                              Instance.deserialize(data['fallback']))
 
-    def as_anonymous(self):
+    def as_anonymous(self) -> 'TypedDictType':
         if self.fallback.type.fullname() == 'typing.Mapping':
             return self
         assert self.fallback.type.typeddict_type is not None
@@ -1027,7 +999,7 @@ class TypedDictType(Type):
             value_type
         ])
 
-    def names_are_wider_than(self, other: 'TypedDictType'):
+    def names_are_wider_than(self, other: 'TypedDictType') -> bool:
         return len(other.items.keys() - self.items.keys()) == 0
 
     def zip(self, right: 'TypedDictType') -> Iterable[Tuple[str, Type, Type]]:
@@ -1083,13 +1055,27 @@ class UnionType(Type):
         elif len(items) == 1:
             return items[0]
         else:
-            if experiments.STRICT_OPTIONAL:
-                return UninhabitedType()
-            else:
-                return Void()
+            return UninhabitedType()
 
     @staticmethod
     def make_simplified_union(items: List[Type], line: int = -1, column: int = -1) -> Type:
+        """Build union type with redundant union items removed.
+
+        If only a single item remains, this may return a non-union type.
+
+        Examples:
+
+        * [int, str] -> Union[int, str]
+        * [int, object] -> object
+        * [int, int] -> int
+        * [int, Any] -> Union[int, Any] (Any types are not simplified away!)
+        * [Any, Any] -> Any
+
+        Note: This must NOT be used during semantic analysis, since TypeInfos may not
+              be fully initialized.
+        """
+        # TODO: Make this a function living somewhere outside mypy.types. Most other non-trivial
+        #       type operations are not static methods, so this is inconsistent.
         while any(isinstance(typ, UnionType) for typ in items):
             all_items = []  # type: List[Type]
             for typ in items:
@@ -1099,17 +1085,16 @@ class UnionType(Type):
                     all_items.append(typ)
             items = all_items
 
-        if any(isinstance(typ, AnyType) for typ in items):
-            return AnyType()
+        from mypy.subtypes import is_proper_subtype
 
-        from mypy.subtypes import is_subtype
         removed = set()  # type: Set[int]
         for i, ti in enumerate(items):
             if i in removed: continue
             # Keep track of the truishness info for deleted subtypes which can be relevant
             cbt = cbf = False
             for j, tj in enumerate(items):
-                if i != j and is_subtype(tj, ti):
+                if (i != j and is_proper_subtype(tj, ti)):
+                    # We found a redundant item in the union.
                     removed.add(j)
                     cbt = cbt or tj.can_be_true
                     cbf = cbf or tj.can_be_false
@@ -1146,7 +1131,7 @@ class UnionType(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'UnionType':
         assert data['.class'] == 'UnionType'
-        return UnionType([Type.deserialize(t) for t in data['items']])
+        return UnionType([deserialize_type(t) for t in data['items']])
 
 
 class PartialType(Type):
@@ -1235,7 +1220,10 @@ class TypeType(Type):
 
     def __init__(self, item: Type, *, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.item = item
+        if isinstance(item, CallableType) and item.is_type_obj():
+            self.item = item.fallback
+        else:
+            self.item = item
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)
@@ -1246,7 +1234,7 @@ class TypeType(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TypeType':
         assert data['.class'] == 'TypeType'
-        return TypeType(Type.deserialize(data['item']))
+        return TypeType(deserialize_type(data['item']))
 
 
 #
@@ -1273,15 +1261,8 @@ class TypeVisitor(Generic[T]):
     def visit_type_list(self, t: ArgumentList) -> T:
         raise self._notimplemented_helper('type_list')
 
-    def visit_error_type(self, t: ErrorType) -> T:
-        raise self._notimplemented_helper('error_type')
-
     @abstractmethod
     def visit_any(self, t: AnyType) -> T:
-        pass
-
-    @abstractmethod
-    def visit_void(self, t: Void) -> T:
         pass
 
     @abstractmethod
@@ -1354,13 +1335,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_type_list(self, t: ArgumentList) -> Type:
         return t
 
-    def visit_error_type(self, t: ErrorType) -> Type:
-        return t
-
     def visit_any(self, t: AnyType) -> Type:
-        return t
-
-    def visit_void(self, t: Void) -> Type:
         return t
 
     def visit_none_type(self, t: NoneTyp) -> Type:
@@ -1447,6 +1422,9 @@ class TypeStrVisitor(TypeVisitor[str]):
      - Represent the NoneTyp type as None.
     """
 
+    def __init__(self, id_mapper: IdMapper = None) -> None:
+        self.id_mapper = id_mapper
+
     def visit_unbound_type(self, t: UnboundType)-> str:
         s = t.name + '?'
         if t.args != []:
@@ -1456,14 +1434,8 @@ class TypeStrVisitor(TypeVisitor[str]):
     def visit_type_list(self, t: ArgumentList) -> str:
         return '<ArgumentList {}>'.format(self.list_str(t.types))
 
-    def visit_error_type(self, t: ErrorType) -> str:
-        return '<ERROR>'
-
     def visit_any(self, t: AnyType) -> str:
         return 'Any'
-
-    def visit_void(self, t: Void) -> str:
-        return 'void'
 
     def visit_none_type(self, t: NoneTyp) -> str:
         # Fully qualify to make this distinct from the None value.
@@ -1490,6 +1462,8 @@ class TypeStrVisitor(TypeVisitor[str]):
             s += '*'
         if t.args != []:
             s += '[{}]'.format(self.list_str(t.args))
+        if self.id_mapper:
+            s += '<{}>'.format(self.id_mapper.id(t.type))
         return s
 
     def visit_type_var(self, t: TypeVarType) -> str:
@@ -1515,14 +1489,14 @@ class TypeStrVisitor(TypeVisitor[str]):
                 s += '**'
             if t.arg_names[i]:
                 s += t.arg_names[i] + ': '
-            s += str(t.arg_types[i])
+            s += t.arg_types[i].accept(self)
             if t.arg_kinds[i] in (ARG_OPT, ARG_NAMED_OPT):
                 s += ' ='
 
         s = '({})'.format(s)
 
-        if not isinstance(t.ret_type, Void):
-            s += ' -> {}'.format(t.ret_type)
+        if not isinstance(t.ret_type, NoneTyp):
+            s += ' -> {}'.format(t.ret_type.accept(self))
 
         if t.variables:
             s = '{} {}'.format(t.variables, s)
@@ -1628,13 +1602,7 @@ class TypeQuery(TypeVisitor[bool]):
     def visit_type_list(self, t: ArgumentList) -> bool:
         return self.default
 
-    def visit_error_type(self, t: ErrorType) -> bool:
-        return self.default
-
     def visit_any(self, t: AnyType) -> bool:
-        return self.default
-
-    def visit_void(self, t: Void) -> bool:
         return self.default
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
@@ -1789,20 +1757,24 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
         # Implicit type signature with dynamic types.
         # Overloaded functions always have a signature, so func must be an ordinary function.
         assert isinstance(func, mypy.nodes.FuncItem), str(func)
-        fdef = cast(mypy.nodes.FuncItem, func)
-        name = func.name()
-        if name:
-            name = '"{}"'.format(name)
+        return callable_type(cast(mypy.nodes.FuncItem, func), fallback)
 
-        return CallableType(
-            [AnyType()] * len(fdef.arg_names),
-            fdef.arg_kinds,
-            [None if argument_elide_name(n) else n for n in fdef.arg_names],
-            AnyType(),
-            fallback,
-            name,
-            implicit=True,
-        )
+
+def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
+                  ret_type: Type = None) -> CallableType:
+    name = fdef.name()
+    if name:
+        name = '"{}"'.format(name)
+
+    return CallableType(
+        [AnyType()] * len(fdef.arg_names),
+        fdef.arg_kinds,
+        [None if argument_elide_name(n) else n for n in fdef.arg_names],
+        ret_type or AnyType(),
+        fallback,
+        name,
+        implicit=True,
+    )
 
 
 def get_typ_args(tp: Type) -> List[Type]:
@@ -1822,8 +1794,50 @@ def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -
     if isinstance(tp, TupleType):
         return tp.copy_modified(items=new_args)
     if isinstance(tp, UnionType):
-        return UnionType.make_simplified_union(new_args, line, column)
+        return UnionType(new_args, line, column)
     if isinstance(tp, CallableType):
         return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1],
                                 line=line, column=column)
     return tp
+
+
+def get_type_vars(typ: Type) -> List[TypeVarType]:
+    """Get all type variables that are present in an already analyzed type,
+    without duplicates, in order of textual appearance.
+    Similar to TypeAnalyser.get_type_var_names.
+    """
+    all_vars = []  # type: List[TypeVarType]
+    for t in get_typ_args(typ):
+        if isinstance(t, TypeVarType):
+            all_vars.append(t)
+        else:
+            all_vars.extend(get_type_vars(t))
+    # Remove duplicates while preserving order
+    included = set()  # type: Set[TypeVarId]
+    tvars = []
+    for var in all_vars:
+        if var.id not in included:
+            tvars.append(var)
+            included.add(var.id)
+    return tvars
+
+
+def union_items(typ: Type) -> List[Type]:
+    """Return the flattened items of a union type.
+
+    For non-union types, return a list containing just the argument.
+    """
+    if isinstance(typ, UnionType):
+        items = []
+        for item in typ.items:
+            items.extend(union_items(item))
+        return items
+    else:
+        return [typ]
+
+
+deserialize_map = {
+    key: obj.deserialize  # type: ignore
+    for key, obj in globals().items()
+    if isinstance(obj, type) and issubclass(obj, Type) and obj is not Type
+}

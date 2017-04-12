@@ -648,9 +648,9 @@ s = None  # type: str
 s = A() + B() # E: Unsupported operand types for + ("A" and "B")
 
 [case testBinaryOperatorWithAnyRightOperand]
-from typing import Any
+from typing import Any, cast
 class A: pass
-A() + Any(1)
+A() + cast(Any, 1)
 
 [case testReverseComparisonOperator]
 
@@ -806,7 +806,8 @@ main:4: error: Incompatible types in assignment (expression has type "A", target
 main:5: error: Unsupported target for indexed assignment
 
 [case testOverloadedIndexing]
-
+from foo import *
+[file foo.pyi]
 from typing import overload
 
 a, b, c = None, None, None  # type: (A, B, C)
@@ -858,9 +859,9 @@ b = cast(Any, a)
 [case testAnyCast]
 from typing import cast, Any
 a, b = None, None # type: (A, B)
-a = Any(a())     # Fail
-a = Any(b)
-b = Any(a)
+a = cast(Any, a())     # Fail
+a = cast(Any, b)
+b = cast(Any, a)
 class A: pass
 class B: pass
 [out]
@@ -895,7 +896,6 @@ main:6: error: "f" does not return a value
 
 [case testNoneReturnTypeWithStatements]
 import typing
-raise f() # Fail
 if f():   # Fail
     pass
 elif f(): # Fail
@@ -904,14 +904,15 @@ while f(): # Fail
     pass
 def g() -> object:
     return f() # Fail
+raise f() # Fail
 
 def f() -> None: pass
 [builtins fixtures/exception.pyi]
 [out]
 main:2: error: "f" does not return a value
-main:3: error: "f" does not return a value
-main:5: error: "f" does not return a value
-main:7: error: "f" does not return a value
+main:4: error: "f" does not return a value
+main:6: error: "f" does not return a value
+main:9: error: "f" does not return a value
 main:10: error: "f" does not return a value
 
 [case testNoneReturnTypeWithExpressions]
@@ -921,8 +922,8 @@ a = None # type: A
 f() + a     # E: "f" does not return a value
 a + f()     # E: "f" does not return a value
 f() == a    # E: "f" does not return a value
-a != f()    # E: Unsupported left operand type for != ("A")
-cast(A, f()) # E: "f" does not return a value
+a != f()    # E: "f" does not return a value
+cast(A, f())
 f().foo     # E: "f" does not return a value
 
 def f() -> None: pass
@@ -933,9 +934,9 @@ class A:
 [case testNoneReturnTypeWithExpressions2]
 
 a, b = None, None # type: (A, bool)
-a < f()    # E: Unsupported left operand type for < ("A")
+f() in a   # Fail (see output)
+a < f()    # E: "f" does not return a value
 f() <= a   # E: "f" does not return a value
-f() in a   # E: Unsupported right operand type for in ("A")
 a in f()   # E: "f" does not return a value
 -f()       # E: "f" does not return a value
 not f()    # E: "f" does not return a value
@@ -947,6 +948,9 @@ class A:
     def __add__(self, x: 'A') -> 'A':
         pass
 [builtins fixtures/bool.pyi]
+[out]
+main:3: error: "f" does not return a value
+main:3: error: Unsupported right operand type for in ("A")
 
 
 -- Slicing
@@ -1047,6 +1051,22 @@ a = None # type: Any
 
 [case testStringInterpolationInvalidPlaceholder]
 '%W' % 1  # E: Unsupported format character 'W'
+'%b' % 1  # E: Format character 'b' is only supported on bytes patterns
+
+[case testStringInterPolationPython2]
+# flags: --python-version 2.7
+b'%b' % 1  # E: Format character 'b' is only supported in Python 3.5 and later
+b'%s' % 1
+b'%a' % 1  # E: Format character 'a' is only supported in Python 3
+
+[case testBytesInterpolationBefore35]
+# flags: --python-version 3.4
+b'%b' % 1  # E: Unsupported left operand type for % ("bytes")
+
+[case testBytesInterpolation]
+b'%b' % 1  # E: Incompatible types in string interpolation (expression has type "int", placeholder has type "bytes")
+b'%b' % b'1'
+b'%a' % 3
 
 [case testStringInterpolationWidth]
 '%2f' % 3.14
@@ -1148,6 +1168,10 @@ main:4: error: Incompatible types in string interpolation (expression has type "
 def foo(a: bytes, b: bytes):
     b'%s:%s' % (a, b)
 foo(b'a', b'b') == b'a:b'
+
+[case testStringInterpolationStarArgs]
+x = (1, 2)
+"%d%d" % (*x,)
 
 [case testBytePercentInterpolationSupported]
 b'%s' % (b'xyz',)
@@ -1304,9 +1328,9 @@ from typing import Iterator
 # The implementation is mostly identical to list comprehensions, so a single
 # test case is ok.
 a = None # type: Iterator[int]
-a = x for x in a
+a = (x for x in a)
 b = None # type: Iterator[str]
-b = x for x in a # E: Generator has incompatible item type "int"
+b = (x for x in a) # E: Generator has incompatible item type "int"
 [builtins fixtures/for.pyi]
 
 
@@ -1454,6 +1478,7 @@ def f(x: int) -> None:
 [out]
 main:1: error: The return type of a generator function should be "Generator" or one of its supertypes
 main:2: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+main:2: error: "f" does not return a value
 
 [case testYieldExpressionWithNone]
 from typing import Iterator
@@ -1497,8 +1522,8 @@ def g() -> Iterator[int]:
 [case testDictWithKeywordArgsOnly]
 from typing import Dict, Any
 d1 = dict(a=1, b=2) # type: Dict[str, int]
-d2 = dict(a=1, b='') # type: Dict[str, int] # E: List item 1 has incompatible type "Tuple[str, str]"
-d3 = dict(a=1) # type: Dict[int, int] # E: List item 0 has incompatible type "Tuple[str, int]"
+d2 = dict(a=1, b='') # type: Dict[str, int] # E: Dict entry 1 has incompatible type "str": "str"
+d3 = dict(a=1) # type: Dict[int, int] # E: Dict entry 0 has incompatible type "str": "int"
 d4 = dict(a=1, b=1)
 d4.xyz # E: Dict[str, int] has no attribute "xyz"
 d5 = dict(a=1, b='') # type: Dict[str, Any]
@@ -1636,12 +1661,12 @@ None < None  # E: Unsupported left operand type for < (None)
 [builtins fixtures/ops.pyi]
 
 [case testDictWithStarExpr]
-# flags: --fast-parser
+
 b = {'z': 26, *a}  # E: invalid syntax
 [builtins fixtures/dict.pyi]
 
 [case testDictWithStarStarExpr]
-# flags: --fast-parser
+
 from typing import Dict
 a = {'a': 1}
 b = {'z': 26, **a}

@@ -4,13 +4,13 @@ from collections import OrderedDict
 from typing import cast, List
 
 from mypy.types import (
-    Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
-    ErrorType, TypeVarType, CallableType, TupleType, TypedDictType, ErasedType, ArgumentList,
+    Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType,
+    TypeVarType, CallableType, TupleType, TypedDictType, ErasedType, ArgumentList,
     UnionType, FunctionLike, Overloaded, PartialType, DeletedType,
     UninhabitedType, TypeType, true_or_false
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
+from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype
 
 from mypy import experiments
 
@@ -29,10 +29,10 @@ def join_simple(declaration: Type, s: Type, t: Type) -> Type:
     if isinstance(s, ErasedType):
         return t
 
-    if is_subtype(s, t):
+    if is_proper_subtype(s, t):
         return t
 
-    if is_subtype(t, s):
+    if is_proper_subtype(t, s):
         return s
 
     if isinstance(declaration, UnionType):
@@ -63,8 +63,6 @@ def join_types(s: Type, t: Type) -> Type:
     """Return the least upper bound of s and t.
 
     For example, the join of 'int' and 'object' is 'object'.
-
-    If the join does not exist, return an ErrorType instance.
     """
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
         # if types are restricted in different ways, use the more general versions
@@ -101,10 +99,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         self.s = s
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
-            return ErrorType()
-        else:
-            return AnyType()
+        return AnyType()
 
     def visit_union_type(self, t: UnionType) -> Type:
         if is_subtype(self.s, t):
@@ -112,20 +107,11 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         else:
             return UnionType.make_simplified_union([self.s, t])
 
-    def visit_error_type(self, t: ErrorType) -> Type:
-        return t
-
     def visit_type_list(self, t: ArgumentList) -> Type:
         assert False, 'Not supported'
 
     def visit_any(self, t: AnyType) -> Type:
         return t
-
-    def visit_void(self, t: Void) -> Type:
-        if isinstance(self.s, Void):
-            return t
-        else:
-            return ErrorType()
 
     def visit_none_type(self, t: NoneTyp) -> Type:
         if experiments.STRICT_OPTIONAL:
@@ -133,27 +119,16 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 return t
             elif isinstance(self.s, UnboundType):
                 return AnyType()
-            elif isinstance(self.s, Void) or isinstance(self.s, ErrorType):
-                return ErrorType()
             else:
                 return UnionType.make_simplified_union([self.s, t])
         else:
-            if not isinstance(self.s, Void):
-                return self.s
-            else:
-                return self.default(self.s)
+            return self.s
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
-        if not isinstance(self.s, Void):
-            return self.s
-        else:
-            return self.default(self.s)
+        return self.s
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
-        if not isinstance(self.s, Void):
-            return self.s
-        else:
-            return self.default(self.s)
+        return self.s
 
     def visit_erased_type(self, t: ErasedType) -> Type:
         return self.s
@@ -177,9 +152,14 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        # TODO: Consider subtyping instead of just similarity.
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
-            return combine_similar_callables(t, self.s)
+            if is_equivalent(t, self.s):
+                return combine_similar_callables(t, self.s)
+            result = join_similar_callables(t, self.s)
+            if any(isinstance(tp, (NoneTyp, UninhabitedType)) for tp in result.arg_types):
+                # We don't want to return unusable Callable, attempt fallback instead.
+                return join_types(t.fallback, self.s)
+            return result
         elif isinstance(self.s, Overloaded):
             # Switch the order of arguments to that we'll get to visit_overloaded.
             return join_types(t, self.s)
@@ -214,7 +194,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         #   join(Ov([int, Any] -> Any, [str, Any] -> Any), [Any, int] -> Any) ==
         #       Ov([Any, int] -> Any, [Any, int] -> Any)
         #
-        # TODO: Use callable subtyping instead of just similarity.
+        # TODO: Consider more cases of callable subtyping.
         result = []  # type: List[CallableType]
         s = self.s
         if isinstance(s, FunctionLike):
@@ -222,7 +202,10 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             for t_item in t.items():
                 for s_item in s.items():
                     if is_similar_callables(t_item, s_item):
-                        result.append(combine_similar_callables(t_item, s_item))
+                        if is_equivalent(t_item, s_item):
+                            result.append(combine_similar_callables(t_item, s_item))
+                        elif is_subtype(t_item, s_item):
+                            result.append(s_item)
             if result:
                 # TODO: Simplify redundancies from the result.
                 if len(result) == 1:
@@ -279,8 +262,6 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return object_from_instance(typ)
         elif isinstance(typ, UnboundType):
             return AnyType()
-        elif isinstance(typ, Void) or isinstance(typ, ErrorType):
-            return ErrorType()
         elif isinstance(typ, TupleType):
             return self.default(typ.fallback)
         elif isinstance(typ, TypedDictType):
@@ -295,8 +276,6 @@ class TypeJoinVisitor(TypeVisitor[Type]):
 
 def join_instances(t: Instance, s: Instance) -> Type:
     """Calculate the join of two instance types.
-
-    Return ErrorType if the result is ambiguous.
     """
     if t.type == s.type:
         # Simplest case: join two types with the same base type (but
@@ -352,12 +331,30 @@ def is_better(t: Type, s: Type) -> bool:
 
 
 def is_similar_callables(t: CallableType, s: CallableType) -> bool:
-    """Return True if t and s are equivalent and have identical numbers of
+    """Return True if t and s have identical numbers of
     arguments, default arguments and varargs.
     """
 
-    return (len(t.arg_types) == len(s.arg_types) and t.min_args == s.min_args
-            and t.is_var_arg == s.is_var_arg and is_equivalent(t, s))
+    return (len(t.arg_types) == len(s.arg_types) and t.min_args == s.min_args and
+            t.is_var_arg == s.is_var_arg)
+
+
+def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
+    from mypy.meet import meet_types
+    arg_types = []  # type: List[Type]
+    for i in range(len(t.arg_types)):
+        arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
+    # TODO in combine_similar_callables also applies here (names and kinds)
+    # The fallback type can be either 'function' or 'type'. The result should have 'type' as
+    # fallback only if both operands have it as 'type'.
+    if t.fallback.type.fullname() != 'builtins.type':
+        fallback = t.fallback
+    else:
+        fallback = s.fallback
+    return t.copy_modified(arg_types=arg_types,
+                           ret_type=join_types(t.ret_type, s.ret_type),
+                           fallback=fallback,
+                           name=None)
 
 
 def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
@@ -387,13 +384,8 @@ def object_from_instance(instance: Instance) -> Instance:
 def join_type_list(types: List[Type]) -> Type:
     if not types:
         # This is a little arbitrary but reasonable. Any empty tuple should be compatible
-        # with all variable length tuples, and this makes it possible. A better approach
-        # would be to use a special bottom type, which we do when strict Optional
-        # checking is enabled.
-        if experiments.STRICT_OPTIONAL:
-            return UninhabitedType()
-        else:
-            return NoneTyp()
+        # with all variable length tuples, and this makes it possible.
+        return UninhabitedType()
     joined = types[0]
     for t in types[1:]:
         joined = join_types(joined, t)

@@ -9,14 +9,20 @@ if sys.version_info < (3, 2, 0):
     sys.stderr.write("ERROR: You need Python 3.2 or later to use mypy.\n")
     exit(1)
 
-from distutils.core import setup
-from distutils.command.build_py import build_py
-from mypy.version import base_version
+# This requires setuptools when building; setuptools is not needed
+# when installing from a wheel file (though it is still neeeded for
+# alternative forms of installing, as suggested by README.md).
+from setuptools import setup
+from setuptools.command.build_py import build_py
+from mypy.version import base_version, __version__
 from mypy import git
 
 git.verify_git_integrity_or_abort(".")
 
-version = base_version
+if any(dist_arg in sys.argv[1:] for dist_arg in ('bdist_wheel', 'sdist')):
+    version = base_version
+else:
+    version = __version__
 description = 'Optional static typing for Python'
 long_description = '''
 Mypy -- Optional Static Typing for Python
@@ -81,19 +87,27 @@ classifiers = [
     'Programming Language :: Python :: 3.3',
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
+    'Programming Language :: Python :: 3.6',
     'Topic :: Software Development',
 ]
 
 
 package_dir = {'mypy': 'mypy'}
-if sys.version_info < (3, 5, 0):
-    package_dir[''] = 'lib-typing/3.2'
 
 scripts = ['scripts/mypy', 'scripts/stubgen']
 if os.name == 'nt':
     scripts.append('scripts/mypy.bat')
 
-setup(name='mypy-lang',
+# These requirements are used when installing by other means than bdist_wheel.
+# E.g. "pip3 install ." or
+# "pip3 install git+git://github.com/python/mypy.git"
+# (as suggested by README.md).
+install_requires = []
+install_requires.append('typed-ast >= 1.0.3, < 1.1.0')
+if sys.version_info < (3, 5):
+    install_requires.append('typing >= 3.5.3')
+
+setup(name='mypy',
       version=version,
       description=description,
       long_description=long_description,
@@ -103,10 +117,11 @@ setup(name='mypy-lang',
       license='MIT License',
       platforms=['POSIX'],
       package_dir=package_dir,
-      py_modules=['typing'] if sys.version_info < (3, 5, 0) else [],
+      py_modules=[],
       packages=['mypy'],
       scripts=scripts,
       data_files=data_files,
       classifiers=classifiers,
       cmdclass={'build_py': CustomPythonBuild},
+      install_requires=install_requires,
       )

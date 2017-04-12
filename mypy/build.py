@@ -22,6 +22,10 @@ from os.path import dirname, basename
 
 from typing import (AbstractSet, Dict, Iterable, Iterator, List,
                     NamedTuple, Optional, Set, Tuple, Union)
+# Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
+MYPY = False
+if MYPY:
+    from typing import Deque
 
 from mypy.nodes import (MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
@@ -61,8 +65,9 @@ class BuildResult:
       errors:  List of error messages.
     """
 
-    def __init__(self, manager: 'BuildManager') -> None:
+    def __init__(self, manager: 'BuildManager', graph: Graph) -> None:
         self.manager = manager
+        self.graph = graph
         self.files = manager.modules
         self.types = manager.all_types
         self.errors = manager.errors.messages()
@@ -180,8 +185,8 @@ def build(sources: List[BuildSource],
                            )
 
     try:
-        dispatch(sources, manager)
-        return BuildResult(manager)
+        graph = dispatch(sources, manager)
+        return BuildResult(manager, graph)
     finally:
         manager.log("Build finished in %.3f seconds with %d modules, %d types, and %d errors" %
                     (time.time() - manager.start_time,
@@ -361,7 +366,7 @@ class BuildManager:
                  version_id: str) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
-        self.errors = Errors(options.hide_error_context, options.show_column_numbers)
+        self.errors = Errors(options.show_error_context, options.show_column_numbers)
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = tuple(lib_path)
         self.source_set = source_set
@@ -470,7 +475,7 @@ class BuildManager:
         return tree
 
     def module_not_found(self, path: str, line: int, id: str) -> None:
-        self.errors.set_file(path)
+        self.errors.set_file(path, id)
         stub_msg = "(Stub files are from https://github.com/python/typeshed)"
         if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
                 (self.options.python_version[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
@@ -486,9 +491,12 @@ class BuildManager:
                                'or using the "--ignore-missing-imports" flag would help)',
                                severity='note', only_once=True)
 
-    def report_file(self, file: MypyFile, type_map: Dict[Expression, Type]) -> None:
+    def report_file(self,
+                    file: MypyFile,
+                    type_map: Dict[Expression, Type],
+                    options: Options) -> None:
         if self.source_set.is_source(file):
-            self.reports.file(file, type_map)
+            self.reports.file(file, type_map, options)
 
     def log(self, *message: str) -> None:
         if self.options.verbosity >= 1:
@@ -784,6 +792,9 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # Ignore cache if (relevant) options aren't the same.
     cached_options = m.options
     current_options = manager.options.clone_for_module(id).select_options_affecting_cache()
+    if manager.options.quick_and_dirty:
+        # In quick_and_dirty mode allow non-quick_and_dirty cache files.
+        cached_options['quick_and_dirty'] = True
     if cached_options != current_options:
         manager.trace('Metadata abandoned for {}: options differ'.format(id))
         return None
@@ -1114,6 +1125,7 @@ class State:
                  caller_state: 'State' = None,
                  caller_line: int = 0,
                  ancestor_for: 'State' = None,
+                 root_source: bool = False,
                  ) -> None:
         assert id or path or source is not None, "Neither id, path nor source given"
         self.manager = manager
@@ -1148,6 +1160,7 @@ class State:
                 # - skip -> don't analyze, make the type Any
                 follow_imports = self.options.follow_imports
                 if (follow_imports != 'normal'
+                    and not root_source  # Honor top-level modules
                     and path.endswith('.py')  # Stubs are always normal
                     and id != 'builtins'  # Builtins is always normal
                     and not (caller_state and
@@ -1218,7 +1231,7 @@ class State:
         # so we'd need to cache the decision.
         manager = self.manager
         manager.errors.set_import_context([])
-        manager.errors.set_file(ancestor_for.xpath)
+        manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
         manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
                               severity='note', only_once=True)
         manager.errors.report(-1, -1,
@@ -1230,7 +1243,7 @@ class State:
         manager = self.manager
         save_import_context = manager.errors.import_context()
         manager.errors.set_import_context(self.caller_state.import_context)
-        manager.errors.set_file(self.caller_state.xpath)
+        manager.errors.set_file(self.caller_state.xpath, self.caller_state.id)
         line = self.caller_line
         manager.errors.report(line, 0,
                               "Import of '%s' ignored" % (id,),
@@ -1241,6 +1254,13 @@ class State:
         manager.errors.set_import_context(save_import_context)
 
     def add_ancestors(self) -> None:
+        if self.path is not None:
+            _, name = os.path.split(self.path)
+            base, _ = os.path.splitext(name)
+            if '.' in base:
+                # This is just a weird filename, don't add anything
+                self.ancestors = []
+                return
         # All parent packages are new ancestors.
         ancestors = []
         parent = self.id
@@ -1306,10 +1326,12 @@ class State:
         self.manager.modules[self.id] = self.tree
 
     def fix_cross_refs(self) -> None:
-        fixup_module_pass_one(self.tree, self.manager.modules)
+        fixup_module_pass_one(self.tree, self.manager.modules,
+                              self.manager.options.quick_and_dirty)
 
     def calculate_mros(self) -> None:
-        fixup_module_pass_two(self.tree, self.manager.modules)
+        fixup_module_pass_two(self.tree, self.manager.modules,
+                              self.manager.options.quick_and_dirty)
 
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
@@ -1380,7 +1402,8 @@ class State:
         # this before processing imports, since this may mark some
         # import statements as unreachable.
         first = FirstPass(manager.semantic_analyzer)
-        first.visit_file(self.tree, self.xpath, self.id, self.options)
+        with self.wrap_context():
+            first.visit_file(self.tree, self.xpath, self.id, self.options)
 
         # Initialize module symbol table, which was populated by the
         # semantic analyzer.
@@ -1407,7 +1430,7 @@ class State:
                 continue
             if id == '':
                 # Must be from a relative import.
-                manager.errors.set_file(self.xpath)
+                manager.errors.set_file(self.xpath, self.id)
                 manager.errors.report(line, 0,
                                       "No parent module -- cannot perform relative import",
                                       blocker=True)
@@ -1470,7 +1493,7 @@ class State:
             if self.options.dump_inference_stats:
                 dump_type_stats(self.tree, self.xpath, inferred=True,
                                 typemap=self.type_checker.type_map)
-            manager.report_file(self.tree, self.type_checker.type_map)
+            manager.report_file(self.tree, self.type_checker.type_map, self.options)
 
     def _patch_indirect_dependencies(self,
                                      module_refs: Set[str],
@@ -1501,7 +1524,14 @@ class State:
         return valid_refs
 
     def write_cache(self) -> None:
-        if self.path and self.options.incremental and not self.manager.errors.is_errors():
+        ok = self.path and self.options.incremental
+        if ok:
+            if self.manager.options.quick_and_dirty:
+                is_errors = self.manager.errors.is_errors_for_file(self.path)
+            else:
+                is_errors = self.manager.errors.is_errors()
+            ok = not is_errors
+        if ok:
             dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
             new_interface_hash = write_cache(
                 self.id, self.path, self.tree,
@@ -1516,17 +1546,21 @@ class State:
                 self.interface_hash = new_interface_hash
 
 
-def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
+def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     manager.log("Mypy version %s" % __version__)
     graph = load_graph(sources, manager)
+    if not graph:
+        print("Nothing to do?!")
+        return graph
     manager.log("Loaded graph with %d nodes" % len(graph))
     if manager.options.dump_graph:
         dump_graph(graph)
-        return
+        return graph
     process_graph(graph, manager)
     if manager.options.warn_unused_ignores:
         # TODO: This could also be a per-module option.
         manager.errors.generate_unused_ignore_notes()
+    return graph
 
 
 class NodeInfo:
@@ -1591,16 +1625,17 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # The deque is used to implement breadth-first traversal.
     # TODO: Consider whether to go depth-first instead.  This may
     # affect the order in which we process files within import cycles.
-    new = collections.deque()  # type: collections.deque[State]
+    new = collections.deque()  # type: Deque[State]
     entry_points = set()  # type: Set[str]
     # Seed the graph with the initial root sources.
     for bs in sources:
         try:
-            st = State(id=bs.module, path=bs.path, source=bs.text, manager=manager)
+            st = State(id=bs.module, path=bs.path, source=bs.text, manager=manager,
+                       root_source=True)
         except ModuleNotFound:
             continue
         if st.id in graph:
-            manager.errors.set_file(st.xpath)
+            manager.errors.set_file(st.xpath, st.id)
             manager.errors.report(-1, -1, "Duplicate module named '%s'" % st.id)
             manager.errors.raise_error()
         graph[st.id] = st
@@ -1614,7 +1649,9 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
             # so we ignore any suppressed module not explicitly re-included
             # from the command line.
             ignored = dep in st.suppressed and dep not in entry_points
-            if dep not in graph and not ignored:
+            if ignored:
+                manager.missing_modules.add(dep)
+            elif dep not in graph:
                 try:
                     if dep in st.ancestors:
                         # TODO: Why not 'if dep not in st.dependencies' ?
@@ -1686,7 +1723,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             deps.update(graph[id].dependencies)
         deps -= ascc
         stale_deps = {id for id in deps if not graph[id].is_interface_fresh()}
-        fresh = fresh and not stale_deps
+        if not manager.options.quick_and_dirty:
+            fresh = fresh and not stale_deps
         undeps = set()
         if fresh:
             # Check if any dependencies that were suppressed according
@@ -1701,7 +1739,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # All cache files are fresh.  Check that no dependency's
             # cache file is newer than any scc node's cache file.
             oldest_in_scc = min(graph[id].meta.data_mtime for id in scc)
-            viable = {id for id in deps if not graph[id].is_interface_fresh()}
+            viable = {id for id in stale_deps if graph[id].meta is not None}
             newest_in_deps = 0 if not viable else max(graph[dep].meta.data_mtime for dep in viable)
             if manager.options.verbosity >= 3:  # Dump all mtimes for extreme debugging.
                 all_ids = sorted(ascc | viable, key=lambda id: graph[id].meta.data_mtime)
@@ -1719,7 +1757,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                     manager.trace(" %5s %.0f %s" % (key, graph[id].meta.data_mtime, id))
             # If equal, give the benefit of the doubt, due to 1-sec time granularity
             # (on some platforms).
-            if oldest_in_scc < newest_in_deps:
+            if manager.options.quick_and_dirty and stale_deps:
+                fresh_msg = "fresh(ish)"
+            elif oldest_in_scc < newest_in_deps:
                 fresh = False
                 fresh_msg = "out of date by %.0f seconds" % (newest_in_deps - oldest_in_scc)
             else:
@@ -1737,7 +1777,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
         scc_str = " ".join(scc)
         if fresh:
-            manager.log("Queuing fresh SCC (%s)" % scc_str)
+            manager.log("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
             fresh_scc_queue.append(scc)
         else:
             if len(fresh_scc_queue) > 0:
@@ -1759,7 +1799,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 manager.log("Processing SCC singleton (%s) as %s" % (scc_str, fresh_msg))
             else:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
-            process_stale_scc(graph, scc)
+            process_stale_scc(graph, scc, manager)
 
     sccs_left = len(fresh_scc_queue)
     if sccs_left:
@@ -1826,26 +1866,46 @@ def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
         graph[id].calculate_mros()
 
 
-def process_stale_scc(graph: Graph, scc: List[str]) -> None:
-    """Process the modules in one SCC from source code."""
-    for id in scc:
+def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
+    """Process the modules in one SCC from source code.
+
+    Exception: If quick_and_dirty is set, use the cache for fresh modules.
+    """
+    if manager.options.quick_and_dirty:
+        fresh = [id for id in scc if graph[id].is_fresh()]
+        fresh_set = set(fresh)  # To avoid running into O(N**2)
+        stale = [id for id in scc if id not in fresh_set]
+        if fresh:
+            manager.log("  Fresh ids: %s" % (", ".join(fresh)))
+        if stale:
+            manager.log("  Stale ids: %s" % (", ".join(stale)))
+    else:
+        fresh = []
+        stale = scc
+    for id in fresh:
+        graph[id].load_tree()
+    for id in stale:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
         graph[id].fix_suppressed_dependencies(graph)
-    for id in scc:
+    for id in fresh:
+        graph[id].fix_cross_refs()
+    for id in stale:
         graph[id].semantic_analysis()
-    for id in scc:
+    for id in stale:
         graph[id].semantic_analysis_pass_three()
-    for id in scc:
+    for id in fresh:
+        graph[id].calculate_mros()
+    for id in stale:
         graph[id].type_check_first_pass()
     more = True
     while more:
         more = False
-        for id in scc:
+        for id in stale:
             if graph[id].type_check_second_pass():
                 more = True
-    for id in scc:
+    for id in stale:
         graph[id].finish_passes()
         graph[id].write_cache()
         graph[id].mark_as_rechecked()

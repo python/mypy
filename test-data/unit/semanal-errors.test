@@ -1,11 +1,3 @@
-[case testPropagatingParseErrors]
-in 1
-def f():
-  1 1
-[out]
-main:1: error: Parse error before in
-main:3: error: Parse error before numeric literal
-
 [case testUndefinedVariableInGlobalStatement]
 import typing
 x
@@ -95,8 +87,9 @@ from typing import overload
 class A: pass
 @overload
 def f(): pass
-@overload
-def f(x: A[int]) -> None: pass # E: "A" expects no type arguments, but 1 given
+@overload # E: "A" expects no type arguments, but 1 given
+def f(x: A[int]) -> None: pass
+def f(*args): pass
 [out]
 
 [case testInvalidNumberOfGenericArgsInBaseType]
@@ -109,13 +102,6 @@ class B(A[int]): pass # E: "A" expects no type arguments, but 1 given
 from typing import cast
 class A: pass
 x = cast(A[int], 1) # E: "A" expects no type arguments, but 1 given
-[out]
-
-[case testInvalidNumberOfGenericArgsInTypeApplication]
-import typing
-class A: pass
-class B: pass
-x = A[B[int]]() # E: "B" expects no type arguments, but 1 given
 [out]
 
 [case testInvalidNumberOfGenericArgsInNestedGenericType]
@@ -148,16 +134,6 @@ z = 0 # type: x
 [out]
 main:4: error: Invalid type "__main__.f"
 main:5: error: Invalid type "__main__.x"
-
-[case testTwoStarsInType]
-import typing
-x, x2 = 1 # type: *object, *object
-y, y2 = 1 # type: object, (*object, *object)
-z, z2 = 1 # type: *object, (object, *object)
-[out]
-main:2: error: At most one star type allowed in a tuple
-main:3: error: At most one star type allowed in a tuple
-main:4: error: Star type only allowed for starred expressions
 
 [case testGlobalVarRedefinition]
 import typing
@@ -377,57 +353,78 @@ yield
 main:1: error: 'yield' outside function
 main:2: error: 'yield' outside function
 
-[case testInvalidLvalues]
+[case testInvalidLvalues1]
 1 = 1
-(1) = 1
-(1, 1) = 1
-[1, 1] = 1
-() = 1
 [out]
-main:1: error: Invalid assignment target
-main:2: error: Invalid assignment target
-main:3: error: Invalid assignment target
-main:4: error: Invalid assignment target
-main:5: error: Can't assign to ()
---' (hack to fix syntax highlighting)
+main:1: error: can't assign to literal
 
 [case testInvalidLvalues2]
-x = y = z = 1
-x, (y, 1) = 1
-x, [y, 1] = 1
-x, [y, [z, 1]] = 1
-x, (y, (z, 1)) = 1
-x, (y) = 1 # ok
-x, (y, (z, z)) = 1 # ok
+(1) = 1
 [out]
-main:2: error: Invalid assignment target
-main:3: error: Invalid assignment target
-main:4: error: Invalid assignment target
-main:5: error: Invalid assignment target
+main:1: error: can't assign to literal
 
 [case testInvalidLvalues3]
-x = 1
+(1, 1) = 1
+[out]
+main:1: error: can't assign to literal
+
+[case testInvalidLvalues4]
+[1, 1] = 1
+[out]
+main:1: error: can't assign to literal
+
+[case testInvalidLvalues5]
+() = 1
+[out]
+main:1: error: can't assign to ()
+
+[case testInvalidLvalues6]
+x = y = z = 1  # ok
+x, (y, 1) = 1
+[out]
+main:2: error: can't assign to literal
+
+[case testInvalidLvalues7]
+x, [y, 1] = 1
+[out]
+main:1: error: can't assign to literal
+
+[case testInvalidLvalues8]
+x, [y, [z, 1]] = 1
+[out]
+main:1: error: can't assign to literal
+
+[case testInvalidLvalues9]
+x, (y) = 1 # ok
+x, (y, (z, z)) = 1 # ok
+x, (y, (z, 1)) = 1
+[out]
+main:3: error: can't assign to literal
+
+[case testInvalidLvalues10]
 x + x = 1
+[out]
+main:1: error: can't assign to operator
+
+[case testInvalidLvalues11]
 -x = 1
+[out]
+main:1: error: can't assign to operator
+
+[case testInvalidLvalues12]
 1.1 = 1
+[out]
+main:1: error: can't assign to literal
+
+[case testInvalidLvalues13]
 'x' = 1
+[out]
+main:1: error: can't assign to literal
+
+[case testInvalidLvalues14]
 x() = 1
 [out]
-main:2: error: Invalid assignment target
-main:3: error: Invalid assignment target
-main:4: error: Invalid assignment target
-main:5: error: Invalid assignment target
-main:6: error: Invalid assignment target
-
-[case testInvalidStarType]
-a = 1  # type: *int
-[out]
-main:1: error: Star type only allowed for starred expressions
-
-[case testInvalidStarType]
-*a, b = 1  # type: int, int
-[out]
-main:1: error: Star type expected for starred expression
+main:1: error: can't assign to function call
 
 [case testTwoStarExpressions]
 a, *b, *c = 1
@@ -477,11 +474,17 @@ a = 1
 [out]
 main:2: error: Can use starred expression only as assignment target
 
-[case testInvalidDel]
-import typing
+[case testInvalidDel1]
 x = 1
-del x(1)  # E: Invalid delete target
-del x + 1 # E: Invalid delete target
+del x(1)  # E: can't delete function call
+[out]
+
+[case testInvalidDel2]
+x = 1
+del x + 1 # E: can't delete operator
+[out]
+
+[case testInvalidDel3]
 del z     # E: Name 'z' is not defined
 [out]
 
@@ -649,6 +652,7 @@ def f() -> None:
     x = 1
     def p(): pass # fail
 [out]
+main:3: error: An overloaded function outside a stub file must have an implementation
 main:8: error: Name 'p' already defined
 
 [case testNestedFunctionInMethod]
@@ -758,7 +762,7 @@ class A(A): pass # E: Cycle in inheritance hierarchy
 [case testAssignToTypeDef]
 import typing
 class A: pass
-A = None # E: Invalid assignment target
+A = None # E: Cannot assign to a type
 [out]
 
 [case testInvalidCastTargetSyntax]
@@ -797,10 +801,10 @@ cast(str, *None) # E: 'cast' must be called with 2 positional arguments
 cast(str, target=None) # E: 'cast' must be called with 2 positional arguments
 [out]
 
-[case testInvalidArgsToAny]
+[case testInvalidAnyCall]
 from typing import Any
-Any(str, None) # E: 'Any' expects 1 argument
-Any(arg=str)   # E: 'Any' must be called with 1 positional argument
+Any(str, None)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
+Any(arg=str)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
 [out]
 
 [case testArgumentListAsType]
@@ -840,7 +844,7 @@ import typing
 def f(): pass
 f() = 1 # type: int
 [out]
-main:3: error: Invalid assignment target
+main:3: error: can't assign to function call
 
 [case testIndexedAssignmentWithTypeDeclaration]
 import typing
@@ -906,10 +910,14 @@ x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
 
 [case testInvalidLvalueWithExplicitType]
 a = 1
+a() = None # type: int  # E: can't assign to function call
+[out]
+
+[case testInvalidLvalueWithExplicitType2]
+a = 1
 a[1] = None # type: int # E: Unexpected type declaration
 a.x = None # type: int \
     # E: Type cannot be declared in assignment to non-self attribute
-a() = None # type: int  # E: Invalid assignment target
 [out]
 
 [case testInvalidLvalueWithExplicitType3]
@@ -968,10 +976,11 @@ a = TypeVar()       # E: Too few arguments for TypeVar()
 b = TypeVar(x='b')  # E: TypeVar() expects a string literal as first argument
 c = TypeVar(1)      # E: TypeVar() expects a string literal as first argument
 d = TypeVar('D')    # E: String argument 1 'D' to TypeVar(...) does not match variable name 'd'
-e = TypeVar('e', int, str, x=1) # E: Unexpected argument to TypeVar(): x
-f = TypeVar('f', (int, str)) # E: Type expected
-g = TypeVar('g', x=(int, str)) # E: Unexpected argument to TypeVar(): x
-h = TypeVar('h', bound=1) # E: TypeVar 'bound' must be a type
+e = TypeVar('e', int, str, x=1)   # E: Unexpected argument to TypeVar(): x
+f = TypeVar('f', (int, str), int) # E: Type expected
+g = TypeVar('g', int)             # E: TypeVar cannot have only a single constraint
+h = TypeVar('h', x=(int, str))    # E: Unexpected argument to TypeVar(): x
+i = TypeVar('i', bound=1)         # E: TypeVar 'bound' must be a type
 [out]
 
 [case testMoreInvalidTypevarArguments]
@@ -1048,22 +1057,22 @@ def f(x: 'foo'): pass # E: Name 'foo' is not defined
 [out]
 
 [case testInvalidStrLiteralType2]
-def f(x: 'int['): pass # E: Parse error before end of line
+def f(x: 'int['): pass # E: syntax error in type comment
 [out]
 
 [case testInconsistentOverload]
 from typing import overload
 def dec(x): pass
-@overload
+@dec  # E: The implementation for an overloaded function must come last
 def f(): pass
-@dec  # E: 'overload' decorator expected
+@overload
 def f(): pass
 [out]
 
 [case testInconsistentOverload2]
 from typing import overload
 def dec(x): pass
-@dec  # E: 'overload' decorator expected
+@dec  # E: The implementation for an overloaded function must come last
 def f(): pass
 @overload
 def f(): pass
@@ -1072,9 +1081,9 @@ def f(): pass
 [case testMissingOverloadDecorator]
 from typing import overload
 def dec(x): pass
-@dec  # E: 'overload' decorator expected
+@dec
 def f(): pass
-@dec  # E: 'overload' decorator expected
+@dec  # E: Name 'f' already defined
 def f(): pass
 [out]
 
@@ -1146,7 +1155,7 @@ class A:
 [case testOverloadedProperty2]
 from typing import overload
 class A:
-    @overload
+    @overload  # E: An overloaded function outside a stub file must have an implementation
     def f(self) -> int: pass
     @property  # E: Decorated property not supported
     @overload
@@ -1220,7 +1229,7 @@ main:1: note: (Did you mean 'typing.Callable'?)
 
 [case testInvalidWithTarget]
 def f(): pass
-with f() as 1: pass  # E: Invalid assignment target
+with f() as 1: pass  # E: can't assign to literal
 [out]
 
 [case testUseObsoleteNameForTypeVar]
@@ -1255,7 +1264,7 @@ import typing
 def f() -> None:
     f() = 1  # type: int
 [out]
-main:3: error: Invalid assignment target
+main:3: error: can't assign to function call
 
 [case testInvalidReferenceToAttributeOfOuterClass]
 class A:
@@ -1283,24 +1292,24 @@ y = 1
 [out]
 
 [case testMissingStubForThirdPartyModule]
-import nosexcover
+import __dummy_third_party1
 [out]
-main:1: error: No library stub file for module 'nosexcover'
+main:1: error: No library stub file for module '__dummy_third_party1'
 main:1: note: (Stub files are from https://github.com/python/typeshed)
 
 [case testMissingStubForStdLibModule]
-import tabnanny
+import __dummy_stdlib1
 [out]
-main:1: error: No library stub file for standard library module 'tabnanny'
+main:1: error: No library stub file for standard library module '__dummy_stdlib1'
 main:1: note: (Stub files are from https://github.com/python/typeshed)
 
 [case testMissingStubForTwoModules]
-import tabnanny
-import xdrlib
+import __dummy_stdlib1
+import __dummy_stdlib2
 [out]
-main:1: error: No library stub file for standard library module 'tabnanny'
+main:1: error: No library stub file for standard library module '__dummy_stdlib1'
 main:1: note: (Stub files are from https://github.com/python/typeshed)
-main:2: error: No library stub file for standard library module 'xdrlib'
+main:2: error: No library stub file for standard library module '__dummy_stdlib2'
 
 [case testListComprehensionSpecialScoping]
 class A:

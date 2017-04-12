@@ -14,12 +14,13 @@ from mypy.nodes import (
     CastExpr, RevealTypeExpr, TupleExpr, GeneratorExpr, ListComprehension, ListExpr,
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
-    SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
+    SliceExpr, OpExpr, UnaryExpr, LambdaExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, TypeVarExpr, NewTypeExpr, PromoteExpr,
     ComparisonExpr, TempNode, StarExpr, Statement, Expression,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
+    OverloadPart, EnumCallExpr,
 )
 from mypy.types import Type, FunctionLike
 from mypy.traverser import TraverserVisitor
@@ -143,8 +144,8 @@ class TransformVisitor(NodeVisitor[Node]):
         else:
             return new
 
-    def visit_func_expr(self, node: FuncExpr) -> FuncExpr:
-        new = FuncExpr([self.copy_argument(arg) for arg in node.arguments],
+    def visit_lambda_expr(self, node: LambdaExpr) -> LambdaExpr:
+        new = LambdaExpr([self.copy_argument(arg) for arg in node.arguments],
                        self.block(node.body),
                        cast(FunctionLike, self.optional_type(node.type)))
         self.copy_function_attributes(new, node)
@@ -160,14 +161,15 @@ class TransformVisitor(NodeVisitor[Node]):
         new.line = original.line
 
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> OverloadedFuncDef:
-        items = [self.visit_decorator(decorator)
-                 for decorator in node.items]
+        items = [cast(OverloadPart, item.accept(self)) for item in node.items]
         for newitem, olditem in zip(items, node.items):
             newitem.line = olditem.line
         new = OverloadedFuncDef(items)
         new._fullname = node._fullname
         new.type = self.type(node.type)
         new.info = node.info
+        if node.impl:
+            new.impl = cast(OverloadPart, node.impl.accept(self))
         return new
 
     def visit_class_def(self, node: ClassDef) -> ClassDef:
@@ -246,13 +248,14 @@ class TransformVisitor(NodeVisitor[Node]):
         return ForStmt(self.expr(node.index),
                        self.expr(node.expr),
                        self.block(node.body),
-                       self.optional_block(node.else_body))
+                       self.optional_block(node.else_body),
+                       self.optional_type(node.index_type))
 
     def visit_return_stmt(self, node: ReturnStmt) -> ReturnStmt:
         return ReturnStmt(self.optional_expr(node.expr))
 
     def visit_assert_stmt(self, node: AssertStmt) -> AssertStmt:
-        return AssertStmt(self.expr(node.expr))
+        return AssertStmt(self.expr(node.expr), self.optional_expr(node.msg))
 
     def visit_del_stmt(self, node: DelStmt) -> DelStmt:
         return DelStmt(self.expr(node.expr))
@@ -286,7 +289,8 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_with_stmt(self, node: WithStmt) -> WithStmt:
         return WithStmt(self.expressions(node.expr),
                         self.optional_expressions(node.target),
-                        self.block(node.body))
+                        self.block(node.body),
+                        self.optional_type(node.target_type))
 
     def visit_print_stmt(self, node: PrintStmt) -> PrintStmt:
         return PrintStmt(self.expressions(node.args),
@@ -437,10 +441,11 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_dictionary_comprehension(self, node: DictionaryComprehension
                                        ) -> DictionaryComprehension:
         return DictionaryComprehension(self.expr(node.key), self.expr(node.value),
-                             [self.expr(index) for index in node.indices],
-                             [self.expr(s) for s in node.sequences],
-                             [[self.expr(cond) for cond in conditions]
-                              for conditions in node.condlists])
+                                       [self.expr(index) for index in node.indices],
+                                       [self.expr(s) for s in node.sequences],
+                                       [[self.expr(cond) for cond in conditions]
+                                        for conditions in node.condlists],
+                                       node.is_async)
 
     def visit_generator_expr(self, node: GeneratorExpr) -> GeneratorExpr:
         return self.duplicate_generator(node)
@@ -450,7 +455,8 @@ class TransformVisitor(NodeVisitor[Node]):
                              [self.expr(index) for index in node.indices],
                              [self.expr(s) for s in node.sequences],
                              [[self.expr(cond) for cond in conditions]
-                              for conditions in node.condlists])
+                              for conditions in node.condlists],
+                             node.is_async)
 
     def visit_slice_expr(self, node: SliceExpr) -> SliceExpr:
         return SliceExpr(self.optional_expr(node.begin_index),
@@ -480,6 +486,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> NamedTupleExpr:
         return NamedTupleExpr(node.info)
+
+    def visit_enum_call_expr(self, node: EnumCallExpr) -> EnumCallExpr:
+        return EnumCallExpr(node.info, node.items, node.values)
 
     def visit_typeddict_expr(self, node: TypedDictExpr) -> Node:
         return TypedDictExpr(node.info)

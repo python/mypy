@@ -6,7 +6,6 @@ import shutil
 import sys
 import time
 import typed_ast
-import typed_ast.ast35
 
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -28,16 +27,13 @@ from mypy import experiments
 # List of files that contain test case descriptions.
 files = [
     'check-basic.test',
+    'check-callable.test',
     'check-classes.test',
-    'check-expressions.test',
     'check-statements.test',
     'check-generics.test',
-    'check-tuples.test',
     'check-dynamic-typing.test',
-    'check-functions.test',
     'check-inference.test',
     'check-inference-context.test',
-    'check-varargs.test',
     'check-kwargs.test',
     'check-overloading.test',
     'check-type-checks.test',
@@ -45,9 +41,7 @@ files = [
     'check-multiple-inheritance.test',
     'check-super.test',
     'check-modules.test',
-    'check-generic-subtyping.test',
     'check-typevar-values.test',
-    'check-python2.test',
     'check-unsupported.test',
     'check-unreachable-code.test',
     'check-unions.test',
@@ -68,19 +62,23 @@ files = [
     'check-async-await.test',
     'check-newtype.test',
     'check-class-namedtuple.test',
-    'check-columns.test',
     'check-selftype.test',
+    'check-python2.test',
+    'check-columns.test',
+    'check-functions.test',
+    'check-tuples.test',
+    'check-expressions.test',
+    'check-generic-subtyping.test',
+    'check-varargs.test',
+    'check-newsyntax.test',
+    'check-underscores.test',
+    'check-classvar.test',
+    'check-enum.test',
 ]
-
-if 'annotation' in typed_ast.ast35.Assign._fields:
-    files.append('check-newsyntax.test')
-
-if 'contains_underscores' in typed_ast.ast35.Num._fields:
-    files.append('check-underscores.test')
 
 
 class TypeCheckSuite(DataSuite):
-    def __init__(self, *, update_data=False):
+    def __init__(self, *, update_data: bool = False) -> None:
         self.update_data = update_data
 
     @classmethod
@@ -120,7 +118,7 @@ class TypeCheckSuite(DataSuite):
         if os.path.exists(dn):
             shutil.rmtree(dn)
 
-    def run_case_once(self, testcase: DataDrivenTestCase, incremental=0) -> None:
+    def run_case_once(self, testcase: DataDrivenTestCase, incremental: int = 0) -> None:
         find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental)
@@ -149,7 +147,7 @@ class TypeCheckSuite(DataSuite):
                             os.utime(target, times=(new_time, new_time))
 
         # Parse options after moving files (in case mypy.ini is being moved).
-        options = self.parse_options(original_program_text, testcase)
+        options = self.parse_options(original_program_text, testcase, incremental)
         options.use_builtins_fixtures = True
         options.show_traceback = True
         if 'optional' in testcase.file:
@@ -303,9 +301,14 @@ class TypeCheckSuite(DataSuite):
         else:
             return [('__main__', 'main', program_text)]
 
-    def parse_options(self, program_text: str, testcase: DataDrivenTestCase) -> Options:
+    def parse_options(self, program_text: str, testcase: DataDrivenTestCase,
+                      incremental: int) -> Options:
         options = Options()
         flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
+        if incremental == 2:
+            flags2 = re.search('# flags2: (.*)$', program_text, flags=re.MULTILINE)
+            if flags2:
+                flags = flags2
 
         flag_list = None
         if flags:

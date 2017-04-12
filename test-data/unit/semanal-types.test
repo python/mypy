@@ -355,17 +355,6 @@ MypyFile:1(
       NameExpr(C [__main__.C])
       __main__.C[builtins.str, builtins.int])))
 
-[case testCastToAny]
-from typing import Any
-Any(None)
-[out]
-MypyFile:1(
-  ImportFrom:1(typing, [Any])
-  ExpressionStmt:2(
-    CastExpr:2(
-      NameExpr(None [builtins.None])
-      Any)))
-
 [case testCastToTupleType]
 from typing import Tuple, cast
 cast(Tuple[int, str], None)
@@ -733,14 +722,25 @@ MypyFile:1(
 [case testOverloadedFunction]
 from typing import overload
 @overload
-def f(o: object) -> int: o
+def f(a: object) -> int: a
 @overload
 def f(a: str) -> object: a
+
+def f(a: Any) -> Any: return a
+
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [overload])
   OverloadedFuncDef:2(
-    Overload(def (o: builtins.object) -> builtins.int, \
+    FuncDef:7(
+      f
+      Args(
+        Var(a))
+      def (a: Any) -> Any
+      Block:7(
+        ReturnStmt:7(
+          NameExpr(a [l]))))
+    Overload(def (a: builtins.object) -> builtins.int, \
              def (a: builtins.str) -> builtins.object)
     Decorator:2(
       Var(f)
@@ -748,11 +748,11 @@ MypyFile:1(
       FuncDef:3(
         f
         Args(
-          Var(o))
-        def (o: builtins.object) -> builtins.int
+          Var(a))
+        def (a: builtins.object) -> builtins.int
         Block:3(
           ExpressionStmt:3(
-            NameExpr(o [l])))))
+            NameExpr(a [l])))))
     Decorator:4(
       Var(f)
       NameExpr(overload [typing.overload])
@@ -771,11 +771,21 @@ from typing import overload
 def f() -> None: pass
 @overload
 def f(x: int) -> None: pass
+
+def f(*args) -> None: pass
+
 x = f
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [overload])
   OverloadedFuncDef:2(
+    FuncDef:7(
+      f
+      def (*args: Any)
+      VarArg(
+        Var(args))
+      Block:7(
+        PassStmt:7()))
     Overload(def (), def (x: builtins.int))
     Decorator:2(
       Var(f)
@@ -795,7 +805,7 @@ MypyFile:1(
         def (x: builtins.int)
         Block:5(
           PassStmt:5()))))
-  AssignmentStmt:6(
+  AssignmentStmt:9(
     NameExpr(x* [__main__.x])
     NameExpr(f [__main__.f])))
 
@@ -806,6 +816,9 @@ def f():
     def g(): pass
     @overload
     def g(x): pass
+
+    def g(*args): pass
+
     y = g
 [out]
 MypyFile:1(
@@ -814,6 +827,12 @@ MypyFile:1(
     f
     Block:2(
       OverloadedFuncDef:3(
+        FuncDef:8(
+          g
+          VarArg(
+            Var(args))
+          Block:8(
+            PassStmt:8()))
         Overload(def () -> Any, def (x: Any) -> Any)
         Decorator:3(
           Var(g)
@@ -831,7 +850,7 @@ MypyFile:1(
               Var(x))
             Block:6(
               PassStmt:6()))))
-      AssignmentStmt:7(
+      AssignmentStmt:10(
         NameExpr(y* [l])
         NameExpr(g [l])))))
 

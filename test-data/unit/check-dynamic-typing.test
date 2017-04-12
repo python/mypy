@@ -79,8 +79,8 @@ n = 0
 d in a  # E: Unsupported right operand type for in ("A")
 d and a
 d or a
-c = d and b # Unintuitive type inference?
-c = d or b  # Unintuitive type inference?
+c = d and b # E: Incompatible types in assignment (expression has type "Union[Any, bool]", variable has type "C")
+c = d or b  # E: Incompatible types in assignment (expression has type "Union[Any, bool]", variable has type "C")
 
 c = d + a
 c = d - a
@@ -123,8 +123,8 @@ n = 0
 a and d
 a or d
 c = a in d
-c = b and d # Unintuitive type inference?
-c = b or d  # Unintuitive type inference?
+c = b and d # E: Incompatible types in assignment (expression has type "Union[bool, Any]", variable has type "C")
+c = b or d  # E: Incompatible types in assignment (expression has type "Union[bool, Any]", variable has type "C")
 b = a + d
 b = a / d
 
@@ -230,8 +230,8 @@ a = None # type: A
 b = None # type: B
 b = cast(A, d) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = cast(A, d)
-b = Any(d)
-a = Any(f())
+b = cast(Any, d)
+a = cast(Any, f())
 def f() -> None: pass
 
 [case testCompatibilityOfDynamicWithOtherTypes]
@@ -537,7 +537,7 @@ f11 = None # type: Callable[[], Any]
 f2 = None # type: Callable[[], A]
 f3 = None # type: Callable[[], None]
 
-f2 = f3 # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type Callable[[], A])
+f2 = f3
 
 f1 = f2
 f1 = f3

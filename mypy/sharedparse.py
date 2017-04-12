@@ -38,6 +38,7 @@ MAGIC_METHODS = {
     "__imod__",
     "__imul__",
     "__init__",
+    "__init_subclass__",
     "__int__",
     "__invert__",
     "__ior__",
@@ -86,6 +87,7 @@ MAGIC_METHODS = {
 
 MAGIC_METHODS_ALLOWING_KWARGS = {
     "__init__",
+    "__init_subclass__",
     "__new__",
 }
 

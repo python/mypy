@@ -16,15 +16,17 @@ from typing import _type_check  # type: ignore
 
 def _check_fails(cls, other):
     try:
-        if sys._getframe(1).f_globals['__name__'] not in ['abc', 'functools']:
+        if sys._getframe(1).f_globals['__name__'] not in ['abc', 'functools', 'typing']:
             # Typed dicts are only for static structural subtyping.
             raise TypeError('TypedDict does not support instance and class checks')
     except (AttributeError, ValueError):
         pass
     return False
 
+
 def _dict_new(cls, *args, **kwargs):
     return dict(*args, **kwargs)
+
 
 def _typeddict_new(cls, _typename, _fields=None, **kwargs):
     if _fields is None:
@@ -33,6 +35,7 @@ def _typeddict_new(cls, _typename, _fields=None, **kwargs):
         raise TypeError("TypedDict takes either a dict or keyword arguments,"
                         " but not both")
     return _TypedDictMeta(_typename, (), {'__annotations__': dict(_fields)})
+
 
 class _TypedDictMeta(type):
     def __new__(cls, name, bases, ns):
@@ -107,3 +110,6 @@ def StarArg(typ=Any):
 
 def KwArg(typ=Any):
     return typ
+
+# Return type that indicates a function does not return
+class NoReturn: pass

@@ -3,6 +3,63 @@ Revision history
 
 List of major changes to this document:
 
+- March 2017
+    * Publish ``mypy`` version 0.500 on PyPI.
+
+    * Add :ref:`noreturn`.
+
+    * Add :ref:`generic-subclasses`.
+
+    * Add :ref:`variance-of-generics`.
+
+    * Add :ref:`invariance-vs-covariance`.
+
+    * Updates to :ref:`python-36`.
+
+    * Updates to :ref:`integrating-mypy`.
+
+    * Updates to :ref:`command-line`:
+
+      * Add option ``--warn-return-any``.
+
+      * Add option ``--strict-boolean``.
+
+      * Add option ``--strict``.
+
+    * Updates to :ref:`config-file`:
+
+      * ``warn_no_return`` is on by default.
+
+      * Read settings from ``setup.cfg`` if ``mypy.ini`` does not exist.
+
+      * Add option ``warn_return_any``.
+
+      * Add option ``strict_boolean``.
+
+- January 2017
+    * Publish ``mypy`` version 0.470 on PyPI.
+
+    * Change package name from ``mypy-lang`` to ``mypy``.
+
+    * Add :ref:`integrating-mypy`.
+
+    * Add :ref:`cheat-sheet-py3`.
+
+    * Major update to :ref:`finding-imports`.
+
+    * Add :ref:`--ignore-missing-imports <ignore-missing-imports>`.
+
+    * Updates to :ref:`config-file`.
+
+    * Document underscore support in numeric literals.
+
+    * Document that arguments prefixed with ``__`` are positional-only.
+
+    * Document that ``--hide-error-context`` is now on by default,
+      and there is a new flag ``--show-error-context``.
+
+    * Add ``ignore_errors`` to :ref:`per-module-flags`.
+
 - November 2016
     * Publish ``mypy-lang`` version 0.4.6 on PyPI.
 

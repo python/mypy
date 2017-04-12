@@ -784,6 +784,7 @@ class Popen(object):
             self.stdin.close()
         # Wait for the process to terminate, to avoid zombies.
         self.wait()
+        return False
 
     def __del__(self, _maxsize: int = sys.maxsize,
                 _active: List['Popen'] = _active) -> None:
@@ -1402,9 +1403,9 @@ class Popen(object):
         def _handle_exitstatus(
                 self, sts: int,
                 _WIFSIGNALED: Callable[[int], bool] = os.WIFSIGNALED,
-                _WTERMSIG: Callable[[int], bool] = os.WTERMSIG,
+                _WTERMSIG: Callable[[int], int] = os.WTERMSIG,
                 _WIFEXITED: Callable[[int], bool] = os.WIFEXITED,
-                _WEXITSTATUS: Callable[[int], bool] = os.WEXITSTATUS) -> None:
+                _WEXITSTATUS: Callable[[int], int] = os.WEXITSTATUS) -> None:
             # This method is called (indirectly) by __del__, so it cannot
             # refer to anything outside of its local scope."""
             if _WIFSIGNALED(sts):

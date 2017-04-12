@@ -5,6 +5,17 @@
 -- Errors expected in the first run should be in the `[out1]` section, and
 -- errors expected in the second run should be in the `[out2]` section. If a
 -- section is omitted, it is expected there are no errors on that run.
+-- (Note that [out] is equivalent to [out1].)
+--
+-- The list of modules to be checked can be specified using
+-- # cmd: mypy -m mod1 mod2 mod3
+-- To check a different list on the second run, use
+-- # cmd2: mypy -m mod1 mod3
+--
+-- Extra command line flags may be specified using
+-- # flags: --some-flag
+-- If the second run requires different flags, those can be specified using
+-- # flags2: --another-flag
 --
 -- Any files that we expect to be rechecked should be annotated in the [rechecked]
 -- annotation, and any files expect to be stale (aka have a modified interface)
@@ -1553,6 +1564,7 @@ from funcs import callee
 from classes import Outer
 def caller(a: Outer.Inner) -> int:
     callee(a)
+    return 0
 
 [case testIncrementalLoadsParentAfterChild]
 # cmd: mypy -m r.s
@@ -1767,6 +1779,85 @@ main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapp
 main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
 main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
 
+[case testIncrementalInnerClassAttrInMethod]
+import crash
+nonexisting
+[file crash.py]
+class C:
+    def f(self) -> None:
+        class A:
+            pass
+        self.a = A()
+[out1]
+main:2: error: Name 'nonexisting' is not defined
+[out2]
+main:2: error: Name 'nonexisting' is not defined
+
+[case testIncrementalInnerClassAttrInMethodReveal]
+import crash
+reveal_type(crash.C().a)
+reveal_type(crash.D().a)
+[file crash.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class C:
+    def f(self) -> None:
+        class A:
+            pass
+        self.a = A()
+reveal_type(C().a)
+class D:
+    def f(self) -> None:
+        class A:
+            def g(self) -> None:
+                class B(Generic[T]):
+                    pass
+                self.b = B[int]()
+        self.a = A().b
+reveal_type(D().a)
+[out1]
+tmp/crash.py:8: error: Revealed type is 'crash.A@5'
+tmp/crash.py:17: error: Revealed type is 'crash.B@13[builtins.int*]'
+main:2: error: Revealed type is 'crash.A@5'
+main:3: error: Revealed type is 'crash.B@13[builtins.int*]'
+[out2]
+tmp/crash.py:8: error: Revealed type is 'crash.A@5'
+tmp/crash.py:17: error: Revealed type is 'crash.B@13[builtins.int*]'
+main:2: error: Revealed type is 'crash.A@5'
+main:3: error: Revealed type is 'crash.B@13[builtins.int*]'
+
+[case testGenericMethodRestoreMetaLevel]
+from typing import Dict
+
+d = {}  # type: Dict[str, int]
+g = d.get  # This should not crash: see https://github.com/python/mypy/issues/2804
+[builtins fixtures/dict.pyi]
+
+[case testGenericMethodRestoreMetaLevel2]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+class D:
+    def m(self, x: T) -> T:
+        return x
+
+g = D().m  # This should not crash: see https://github.com/python/mypy/issues/2804
+[builtins fixtures/dict.pyi]
+
+[case testGenericMethodRestoreMetaLevel3]
+from typing import TypeVar
+T = TypeVar('T')
+
+class C:
+    def m(self, x: T) -> T:
+        return x
+
+class D(C):
+    def __init__(self) -> None:
+        self.d = super().m # This should not crash: see https://github.com/python/mypy/issues/2804
+[builtins fixtures/dict.pyi]
+
 [case testIncrementalPerFileFlags]
 # flags: --config-file tmp/mypy.ini
 import a
@@ -1778,3 +1869,318 @@ warn_no_return = False
 [[mypy-a]
 warn_no_return = True
 [rechecked]
+
+[case testIncrementalClassVar]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar
+A().x = 0
+[out1]
+main:4: error: Cannot assign to class variable "x" via instance
+[out2]
+main:4: error: Cannot assign to class variable "x" via instance
+
+[case testIncrementalClassVarGone]
+import m
+m.A().x = 0
+[file m.py]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+[file m.py.next]
+class A:
+    x = None  # type: int
+[out1]
+main:2: error: Cannot assign to class variable "x" via instance
+
+[case testCachingClassVar]
+import b
+[file a.py]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+[file b.py]
+import a
+[file b.py.next]
+import a
+a.A().x = 0
+[out2]
+tmp/b.py:2: error: Cannot assign to class variable "x" via instance
+
+[case testQuickAndDirty1]
+# flags: --quick-and-dirty
+import b, c
+[file a.py]
+def a(): pass
+[file b.py]
+import a
+import c
+[file c.py]
+import a
+import b
+[file a.py.next]
+def a(x): pass
+[rechecked a]
+[stale a]
+
+[case testQuickAndDirty2]
+# flags: --quick-and-dirty
+import b, c
+[file a.py]
+def a(): pass
+[file b.py]
+import a
+import c
+[file c.py]
+import a
+import b
+[file b.py.next]
+import a
+import c
+x = 0
+[rechecked b]
+[stale b]
+
+[case testQuickAndDirty3]
+# flags: --quick-and-dirty
+# flags2: --incremental
+import a, b
+[file a.py]
+import b
+[file b.py]
+import a
+[rechecked a, b, builtins]
+[stale a, b, builtins]
+
+[case testQuickAndDirty4]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+def foo() -> int: return ''
+[file b.py]
+import a
+[file a.py.next]
+def foo() -> int: return 0
+[out1]
+tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
+[out2]
+[rechecked a]
+[stale a]
+
+[case testQuickAndDirty5]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+[file b.py]
+import a
+[file a.py.next]
+import b
+def foo() -> int: return ''
+[out1]
+[out2]
+tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
+[rechecked a]
+[stale]
+
+[case testQuickAndDirty6]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+def foo() -> int: return ''
+[file b.py]
+import a
+[file a.py.next]
+import b
+def foo() -> int: return 0.5
+[out1]
+tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
+[out2]
+tmp/a.py:2: error: Incompatible return value type (got "float", expected "int")
+[rechecked a]
+[stale]
+
+[case testQuickAndDirty7]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+[file b.py]
+import a
+class C: pass
+def f() -> int: pass
+[file a.py.next]
+import b
+reveal_type(b.C)
+reveal_type(b.f)
+[out1]
+[out2]
+tmp/a.py:2: error: Revealed type is 'def () -> b.C'
+tmp/a.py:3: error: Revealed type is 'def () -> builtins.int'
+[rechecked a]
+[stale]
+
+[case testQuickAndDirty8]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+class C: pass
+def f() -> int: pass
+[file b.py]
+import a
+[file b.py.next]
+import a
+reveal_type(a.C)
+reveal_type(a.f)
+[out1]
+[out2]
+tmp/b.py:2: error: Revealed type is 'def () -> a.C'
+tmp/b.py:3: error: Revealed type is 'def () -> builtins.int'
+[rechecked b]
+[stale]
+
+-- (The behavior for blockers is actually no different than in regular incremental mode)
+[case testQuickAndDirty9]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+class B: pass
+class C(B, B): pass  # blocker
+[file b.py]
+import a
+[file a.py.next]
+import b
+class B: pass
+class C(B): pass
+[out1]
+tmp/a.py:3: error: Duplicate base class "B"
+[out2]
+[rechecked a, b]
+[stale a, b]
+
+[case testQuickAndDirty10]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+class B: pass
+class C(B): pass
+[file b.py]
+import a
+[file a.py.next]
+import b
+class B: pass
+class C(B, B): pass  # blocker
+[out1]
+[out2]
+tmp/a.py:3: error: Duplicate base class "B"
+[rechecked a, b]
+[stale a, b]
+
+[case testQuickAndDirty11]
+# flags: --quick-and-dirty
+import a, b, c, d
+[file a.py]
+import d
+def f(): pass
+[file b.py]
+from a import f
+[file c.py]
+from b import f
+[file d.py]
+from c import f
+[file a.py.next]
+import d
+def g(): pass  # renamed f to g
+[file c.py.next]
+from a import g
+
+[case testQuickAndDirty12]
+# flags: --quick-and-dirty
+import a, b, c, d
+[file a.py]
+import d
+class C:
+    def f(self): pass
+[file b.py]
+from a import C
+[file c.py]
+from b import C
+[file d.py]
+from c import C
+C().f()
+[file a.py.next]
+import d
+class C:
+    def g(self): pass  # renamed f to g
+[file c.py.next]
+from a import C
+[out1]
+[out2]
+
+[case testQuickAndDirty13]
+# flags: --quick-and-dirty
+import a, b, c
+[file a.py]
+import c
+class C:
+    x = 0
+[file b.py]
+import a
+x = a.C.x  # type: int
+[file c.py]
+import b
+x = b.x
+[file a.py.next]
+import c
+class C:
+    pass  # Removed x
+[out1]
+[out2]
+[rechecked a]
+[stale a]
+
+[case testQuickAndDirty14]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+def f(x: b.S) -> b.S: return x
+[file b.py]
+import a
+S = str
+[file a.py.next]
+import b
+def f(x: b.S) -> int: return 0
+
+[case testQuickAndDirty15]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+def f(x: b.P) -> b.P: return x
+[file b.py]
+from typing import NamedTuple
+import a
+P = NamedTuple('P', (('x', int),))
+[file a.py.next]
+import b
+def f(x: b.P) -> int: return 0
+
+[case testQuickAndDirty16]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+def f(x: b.T) -> b.T: return x
+[file b.py]
+from typing import TypeVar
+import a
+T = TypeVar('T')
+[file a.py.next]
+import b
+def f(x: b.T) -> int: return 0

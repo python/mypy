@@ -491,7 +491,7 @@ x = 1
 
 [case testAssignToFuncDefViaImport]
 from m import *  # E: Incompatible import of "x" (imported name has type "int", local name has type "str")
-f = None # E: Need type annotation for variable
+f = None
 x = ''
 [file m.py]
 def f(): pass
@@ -1146,7 +1146,8 @@ import y
 [file x.py]
 class Base:
     pass
-def foo() -> None:
+def foo():
+    # type: () -> None
     import y
     i = y.Sub.iattr  # type: int
     f = y.Sub.fattr  # type: float
@@ -1358,7 +1359,7 @@ def do_something(dic: Row) -> None:
 def do_another() -> Row:
     return {}
 
-do_something({'good': 'bad'}) # E: List item 0 has incompatible type "Tuple[str, str]"
+do_something({'good': 'bad'}) # E: Dict entry 0 has incompatible type "str": "str"
 reveal_type(do_another()) # E: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
 
 [file ex2a.py]

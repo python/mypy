@@ -36,7 +36,6 @@ TODO:
 """
 
 import glob
-import imp
 import importlib
 import json
 import os.path
@@ -44,8 +43,11 @@ import pkgutil
 import subprocess
 import sys
 import textwrap
+import traceback
 
-from typing import Any, List, Dict, Tuple, Iterable, Optional, NamedTuple, Set
+from typing import (
+    Any, List, Dict, Tuple, Iterable, Iterator, Optional, NamedTuple, Set, Union, cast
+)
 
 import mypy.build
 import mypy.parse
@@ -71,24 +73,33 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('modules', List[str]),
                                  ('ignore_errors', bool),
                                  ('recursive', bool),
-                                 ('fast_parser', bool),
                                  ])
+
+
+class CantImport(Exception):
+    pass
 
 
 def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
                              add_header: bool = False, sigs: Dict[str, str] = {},
                              class_sigs: Dict[str, str] = {},
                              pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                             fast_parser: bool = False,
                              no_import: bool = False,
                              search_path: List[str] = [],
                              interpreter: str = sys.executable) -> None:
     target = module.replace('.', '/')
-    result = find_module_path_and_all(module=module,
-                                      pyversion=pyversion,
-                                      no_import=no_import,
-                                      search_path=search_path,
-                                      interpreter=interpreter)
+    try:
+        result = find_module_path_and_all(module=module,
+                                          pyversion=pyversion,
+                                          no_import=no_import,
+                                          search_path=search_path,
+                                          interpreter=interpreter)
+    except CantImport:
+        if not quiet:
+            traceback.print_exc()
+        print('Failed to import %s; skipping it' % module)
+        return
+
     if not result:
         # C module
         target = os.path.join(output_dir, target + '.pyi')
@@ -107,7 +118,7 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
         target = os.path.join(output_dir, target)
         generate_stub(module_path, output_dir, module_all,
                       target=target, add_header=add_header, module=module,
-                      pyversion=pyversion, fast_parser=fast_parser)
+                      pyversion=pyversion)
     if not quiet:
         print('Created %s' % target)
 
@@ -127,8 +138,10 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             module_path, module_all = load_python_module_info(module, interpreter)
         else:
             # TODO: Support custom interpreters.
-            mod = importlib.import_module(module)
-            imp.reload(mod)
+            try:
+                mod = importlib.import_module(module)
+            except Exception:
+                raise CantImport(module)
             if is_c_module(mod):
                 return None
             module_path = mod.__file__
@@ -172,12 +185,12 @@ def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optiona
 
 def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
                   target: str = None, add_header: bool = False, module: str = None,
-                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                  fast_parser: bool = False) -> None:
-    source = open(path, 'rb').read()
+                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION
+                  ) -> None:
+    with open(path, 'rb') as f:
+        source = f.read()
     options = MypyOptions()
     options.python_version = pyversion
-    options.fast_parser = fast_parser
     try:
         ast = mypy.parse.parse(source, fnam=path, errors=None, options=options)
     except mypy.errors.CompileError as e:
@@ -340,6 +353,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
         for lvalue in o.lvalues:
             if isinstance(lvalue, NameExpr) and self.is_namedtuple(o.rvalue):
+                assert isinstance(o.rvalue, CallExpr)
                 self.process_namedtuple(lvalue, o.rvalue)
                 continue
             if isinstance(lvalue, TupleExpr):
@@ -373,7 +387,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return ((isinstance(callee, NameExpr) and callee.name.endswith('namedtuple')) or
                 (isinstance(callee, MemberExpr) and callee.name == 'namedtuple'))
 
-    def process_namedtuple(self, lvalue, rvalue):
+    def process_namedtuple(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
         self.add_import_line('from collections import namedtuple\n')
         if self._state != EMPTY:
             self.add('\n')
@@ -381,7 +395,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if isinstance(rvalue.args[1], StrExpr):
             items = repr(rvalue.args[1].value)
         elif isinstance(rvalue.args[1], ListExpr):
-            list_items = rvalue.args[1].items
+            list_items = cast(List[StrExpr], rvalue.args[1].items)
             items = '[%s]' % ', '.join(repr(item.value) for item in list_items)
         else:
             items = '<ERROR>'
@@ -584,7 +598,7 @@ def get_qualified_name(o: Expression) -> str:
         return '<ERROR>'
 
 
-def walk_packages(packages: List[str]):
+def walk_packages(packages: List[str]) -> Iterator[str]:
     for package_name in packages:
         package = __import__(package_name)
         yield package.__name__
@@ -606,7 +620,8 @@ def main() -> None:
         all_sigs = []  # type: Any
         all_class_sigs = []  # type: Any
         for path in glob.glob('%s/*.rst' % options.doc_dir):
-            func_sigs, class_sigs = parse_all_signatures(open(path).readlines())
+            with open(path) as f:
+                func_sigs, class_sigs = parse_all_signatures(f.readlines())
             all_sigs += func_sigs
             all_class_sigs += class_sigs
         sigs = dict(find_unique_signatures(all_sigs))
@@ -618,7 +633,6 @@ def main() -> None:
                                      sigs=sigs,
                                      class_sigs=class_sigs,
                                      pyversion=options.pyversion,
-                                     fast_parser=options.fast_parser,
                                      no_import=options.no_import,
                                      search_path=options.search_path,
                                      interpreter=options.interpreter)
@@ -638,7 +652,6 @@ def parse_options() -> Options:
     doc_dir = ''
     search_path = []  # type: List[str]
     interpreter = ''
-    fast_parser = False
     while args and args[0].startswith('-'):
         if args[0] == '--doc-dir':
             doc_dir = args[1]
@@ -653,8 +666,6 @@ def parse_options() -> Options:
             args = args[1:]
         elif args[0] == '--recursive':
             recursive = True
-        elif args[0] == '--fast-parser':
-            fast_parser = True
         elif args[0] == '--ignore-errors':
             ignore_errors = True
         elif args[0] == '--py2':
@@ -677,8 +688,7 @@ def parse_options() -> Options:
                    interpreter=interpreter,
                    modules=args,
                    ignore_errors=ignore_errors,
-                   recursive=recursive,
-                   fast_parser=fast_parser)
+                   recursive=recursive)
 
 
 def default_python2_interpreter() -> str:
@@ -706,7 +716,6 @@ def usage() -> None:
         Options:
           --py2           run in Python 2 mode (default: Python 3 mode)
           --recursive     traverse listed modules to generate inner package modules as well
-          --fast-parser   enable experimental fast parser
           --ignore-errors ignore errors when trying to generate stubs for modules
           --no-import     don't import the modules, just parse and analyze them
                           (doesn't work with C extension modules and doesn't

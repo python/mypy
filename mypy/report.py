@@ -16,6 +16,7 @@ import sys
 
 from mypy.nodes import MypyFile, Expression, FuncDef
 from mypy import stats
+from mypy.options import Options
 from mypy.traverser import TraverserVisitor
 from mypy.types import Type
 from mypy.version import __version__
@@ -56,9 +57,9 @@ class Reports:
         self.named_reporters[report_type] = reporter
         return reporter
 
-    def file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
+    def file(self, tree: MypyFile, type_map: Dict[Expression, Type], options: Options) -> None:
         for reporter in self.reporters:
-            reporter.on_file(tree, type_map)
+            reporter.on_file(tree, type_map, options)
 
     def finish(self) -> None:
         for reporter in self.reporters:
@@ -70,7 +71,7 @@ class AbstractReporter(metaclass=ABCMeta):
         self.output_dir = output_dir
 
     @abstractmethod
-    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
+    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type], options: Options) -> None:
         pass
 
     @abstractmethod
@@ -104,15 +105,23 @@ class LineCountReporter(AbstractReporter):
 
         stats.ensure_dir_exists(output_dir)
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
+    def on_file(self,
+                tree: MypyFile,
+                type_map: Dict[Expression, Type],
+                options: Options) -> None:
         # Count physical lines.  This assumes the file's encoding is a
         # superset of ASCII (or at least uses \n in its line endings).
-        physical_lines = len(open(tree.path, 'rb').readlines())
+        with open(tree.path, 'rb') as f:
+            physical_lines = len(f.readlines())
 
         func_counter = FuncCounterVisitor()
         tree.accept(func_counter)
         unannotated_funcs, annotated_funcs = func_counter.counts
         total_funcs = annotated_funcs + unannotated_funcs
+
+        # Don't count lines or functions as annotated if they have their errors ignored.
+        if options.ignore_errors:
+            annotated_funcs = 0
 
         imputed_annotated_lines = (physical_lines * annotated_funcs // total_funcs
                                    if total_funcs else physical_lines)
@@ -224,8 +233,12 @@ class LineCoverageReporter(AbstractReporter):
 
         stats.ensure_dir_exists(output_dir)
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
-        tree_source = open(tree.path).readlines()
+    def on_file(self,
+                tree: MypyFile,
+                type_map: Dict[Expression, Type],
+                options: Options) -> None:
+        with open(tree.path) as f:
+            tree_source = f.readlines()
 
         coverage_visitor = LineCoverageVisitor(tree_source)
         tree.accept(coverage_visitor)
@@ -252,7 +265,9 @@ class OldHtmlReporter(AbstractReporter):
     variables to preserve state for the index.
     """
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
+    def on_file(self,
+                tree: MypyFile,
+                type_map: Dict[Expression, Type], options: Options) -> None:
         stats.generate_html_report(tree, tree.path, type_map, self.output_dir)
 
     def on_finish(self) -> None:
@@ -292,7 +307,10 @@ class MemoryXmlReporter(AbstractReporter):
         self.last_xml = None  # type: etree._ElementTree
         self.files = []  # type: List[FileInfo]
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
+    def on_file(self,
+                tree: MypyFile,
+                type_map: Dict[Expression, Type],
+                options: Options) -> None:
         self.last_xml = None
         path = os.path.relpath(tree.path)
         if stats.is_special_module(path):
@@ -402,7 +420,10 @@ class CoberturaXmlReporter(AbstractReporter):
         self.doc = etree.ElementTree(self.root)
         self.root_package = CoberturaPackage('.')
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
+    def on_file(self,
+                tree: MypyFile,
+                type_map: Dict[Expression, Type],
+                options: Options) -> None:
         path = os.path.relpath(tree.path)
         visitor = stats.StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
         tree.accept(visitor)
@@ -495,7 +516,10 @@ class XmlReporter(AbstractXmlReporter):
     that makes it fail from file:// URLs but work on http:// URLs.
     """
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
+    def on_file(self,
+                tree: MypyFile,
+                type_map: Dict[Expression, Type],
+                options: Options) -> None:
         last_xml = self.memory_xml.last_xml
         if last_xml is None:
             return
@@ -533,7 +557,10 @@ class XsltHtmlReporter(AbstractXmlReporter):
         self.xslt_html = etree.XSLT(etree.parse(self.memory_xml.xslt_html_path))
         self.param_html = etree.XSLT.strparam('html')
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
+    def on_file(self,
+                tree: MypyFile,
+                type_map: Dict[Expression, Type],
+                options: Options) -> None:
         last_xml = self.memory_xml.last_xml
         if last_xml is None:
             return
@@ -571,7 +598,10 @@ class XsltTxtReporter(AbstractXmlReporter):
 
         self.xslt_txt = etree.XSLT(etree.parse(self.memory_xml.xslt_txt_path))
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
+    def on_file(self,
+                tree: MypyFile,
+                type_map: Dict[Expression, Type],
+                options: Options) -> None:
         pass
 
     def on_finish(self) -> None:
