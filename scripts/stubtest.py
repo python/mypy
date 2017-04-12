@@ -14,7 +14,8 @@ from collections import defaultdict
 from mypy import build
 from mypy.build import default_data_dir, default_lib_path, find_modules_recursive
 from mypy.errors import CompileError
-from mypy.nodes import MypyFile, TypeInfo, FuncItem
+from mypy.nodes import MypyFile, FuncItem
+from mypy.typeinfo import TypeInfo
 from mypy.options import Options
 
 

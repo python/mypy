@@ -15,10 +15,10 @@ from mypy.types import (
     UninhabitedType
 )
 from mypy.nodes import (
-    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
+    Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2
 )
-
+from mypy.typeinfo import TypeInfo
 
 # Constants that represent simple type checker error message, i.e. messages
 # that do not have any parameters.

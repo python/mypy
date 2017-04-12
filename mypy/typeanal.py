@@ -11,9 +11,10 @@ from mypy.types import (
 )
 from mypy.nodes import (
     BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
-    TypeInfo, Context, SymbolTableNode, Var, Expression,
+    Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins,
 )
+from mypy.typeinfo import TypeInfo
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.subtypes import is_subtype

@@ -301,7 +301,13 @@ class StatementVisitor(Generic[T]):
         pass
 
 
-class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
+class AbstractNodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
+    # Not in superclasses:
+    def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> T:
+        pass
+
+
+class NodeVisitor(Generic[T], AbstractNodeVisitor[T]):
     """Empty base class for parse tree node visitors.
 
     The T type argument specifies the return type of the visit
@@ -310,11 +316,6 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
 
     TODO make the default return value explicit
     """
-
-    # Not in superclasses:
-
-    def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> T:
-        pass
 
     # Module structure
 

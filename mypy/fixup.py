@@ -4,10 +4,11 @@ from typing import Any, Dict, Optional
 
 from mypy.nodes import (
     MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
-    TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
+    FuncDef, OverloadedFuncDef, Decorator, Var,
     TypeVarExpr, ClassDef,
     LDEF, MDEF, GDEF
 )
+from mypy.typeinfo import TypeInfo
 from mypy.types import (
     CallableType, EllipsisType, Instance, Overloaded, TupleType, TypedDictType,
     TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,

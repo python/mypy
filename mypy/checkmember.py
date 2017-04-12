@@ -8,10 +8,11 @@ from mypy.types import (
     DeletedType, NoneTyp, TypeType, function_type, get_type_vars,
 )
 from mypy.nodes import (
-    TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
+    FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
     ARG_POS, ARG_STAR, ARG_STAR2,
     Decorator, OverloadedFuncDef,
 )
+from mypy.typeinfo import TypeInfo
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type, freshen_function_type_vars

@@ -11,7 +11,7 @@ from mypy.test.helpers import assert_string_arrays_equal, testfile_pyversion
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.errors import CompileError
-from mypy.nodes import TypeInfo
+from mypy.typeinfo import TypeInfo
 from mypy.treetransform import TransformVisitor
 from mypy.types import Type
 from mypy.options import Options

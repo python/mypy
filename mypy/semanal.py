@@ -50,7 +50,7 @@ from typing import (
 )
 
 from mypy.nodes import (
-    MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
+    MypyFile, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import, Expression, Lvalue,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
@@ -59,9 +59,9 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
-    LambdaExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
+    LambdaExpr, MDEF, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, MroError, type_aliases,
+    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, type_aliases,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
@@ -69,6 +69,7 @@ from mypy.nodes import (
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
     collections_type_aliases, get_member_expr_fullname,
 )
+from mypy.typeinfo import MroError
 from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -340,7 +341,7 @@ class SemanticAnalyzer(NodeVisitor):
                             self.type.names[defn.name()].node != defn):
                         # Redefinition. Conditional redefinition is okay.
                         n = self.type.names[defn.name()].node
-                        if not self.set_original_def(n, defn):
+                        if not defn.set_original_def(n):
                             self.name_already_defined(defn.name(), defn)
                     self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
                 self.prepare_method_signature(defn)
@@ -350,7 +351,7 @@ class SemanticAnalyzer(NodeVisitor):
                     if defn.name() in self.locals[-1]:
                         # Redefinition. Conditional redefinition is okay.
                         n = self.locals[-1][defn.name()].node
-                        if not self.set_original_def(n, defn):
+                        if not defn.set_original_def(n):
                             self.name_already_defined(defn.name(), defn)
                     else:
                         self.add_local(defn, defn)
@@ -360,7 +361,7 @@ class SemanticAnalyzer(NodeVisitor):
                     symbol = self.globals.get(defn.name())
                     if isinstance(symbol.node, FuncDef) and symbol.node != defn:
                         # This is redefinition. Conditional redefinition is okay.
-                        if not self.set_original_def(symbol.node, defn):
+                        if not defn.set_original_def(symbol.node):
                             # Report error.
                             self.check_no_global(defn.name(), defn, True)
             if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
@@ -379,8 +380,8 @@ class SemanticAnalyzer(NodeVisitor):
                     # A coroutine defined as `async def foo(...) -> T: ...`
                     # has external return type `Awaitable[T]`.
                     defn.type = defn.type.copy_modified(
-                        ret_type = self.named_type_or_none('typing.Awaitable',
-                                                           [defn.type.ret_type]))
+                        ret_type=self.named_type_or_none('typing.Awaitable',
+                                                         [defn.type.ret_type]))
             self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef) -> None:
@@ -398,21 +399,6 @@ class SemanticAnalyzer(NodeVisitor):
                     else:
                         leading_type = fill_typevars(self.type)
                     func.type = replace_implicit_first_type(functype, leading_type)
-
-    def set_original_def(self, previous: Node, new: FuncDef) -> bool:
-        """If 'new' conditionally redefine 'previous', set 'previous' as original
-
-        We reject straight redefinitions of functions, as they are usually
-        a programming error. For example:
-
-        . def f(): ...
-        . def f(): ...  # Error: 'f' redefined
-        """
-        if isinstance(previous, (FuncDef, Var)) and new.is_conditional:
-            new.original_def = previous
-            return True
-        else:
-            return False
 
     def update_function_type_variables(self, defn: FuncDef) -> None:
         """Make any type variables in the signature of defn explicit.
@@ -735,7 +721,7 @@ class SemanticAnalyzer(NodeVisitor):
 
             yield True
 
-            self.calculate_abstract_status(defn.info)
+            defn.info.calculate_abstract_status()
             self.setup_type_promotion(defn)
 
             self.leave_class()
@@ -777,33 +763,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
-
-    def calculate_abstract_status(self, typ: TypeInfo) -> None:
-        """Calculate abstract status of a class.
-
-        Set is_abstract of the type to True if the type has an unimplemented
-        abstract attribute.  Also compute a list of abstract attributes.
-        """
-        concrete = set()  # type: Set[str]
-        abstract = []  # type: List[str]
-        for base in typ.mro:
-            for name, symnode in base.names.items():
-                node = symnode.node
-                if isinstance(node, OverloadedFuncDef):
-                    # Unwrap an overloaded function definition. We can just
-                    # check arbitrarily the first overload item. If the
-                    # different items have a different abstract status, there
-                    # should be an error reported elsewhere.
-                    func = node.items[0]  # type: Node
-                else:
-                    func = node
-                if isinstance(func, Decorator):
-                    fdef = func.func
-                    if fdef.is_abstract and name not in concrete:
-                        typ.is_abstract = True
-                        abstract.append(name)
-                concrete.add(name)
-        typ.abstract_attributes = sorted(abstract)
 
     def setup_type_promotion(self, defn: ClassDef) -> None:
         """Setup extra, ad-hoc subtyping relationships between classes (promotion).
@@ -3500,7 +3459,7 @@ class FirstPass(NodeVisitor):
                 # Ah this is an imported name. We can't resolve them now, so we'll postpone
                 # this until the main phase of semantic analysis.
                 return
-            if not sem.set_original_def(original_sym.node, func):
+            if not func.set_original_def(original_sym.node):
                 # Report error.
                 sem.check_no_global(func.name(), func)
         else:

@@ -12,8 +12,7 @@ from typing import (
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
     SymbolTable, Statement, MypyFile, Var, Expression, Lvalue,
-    OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
-    ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
+    OverloadedFuncDef, FuncDef, FuncItem, FuncBase, ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
@@ -28,6 +27,7 @@ from mypy.nodes import (
     AwaitExpr, PromoteExpr, Node, EnumCallExpr,
     ARG_POS, MDEF,
     CONTRAVARIANT, COVARIANT)
+from mypy.typeinfo import TypeInfo
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,

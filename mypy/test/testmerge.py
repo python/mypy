@@ -8,8 +8,9 @@ from mypy import build
 from mypy.build import BuildManager, BuildSource, State
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
-    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression
+    Node, MypyFile, SymbolTable, SymbolTableNode, Expression
 )
+from mypy.typeinfo import TypeInfo
 from mypy.options import Options
 from mypy.server.astmerge import merge_asts
 from mypy.server.subexpr import get_subexpressions

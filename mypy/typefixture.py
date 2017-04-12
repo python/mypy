@@ -10,8 +10,9 @@ from mypy.types import (
     Instance, CallableType, TypeVarDef, TypeType, UninhabitedType
 )
 from mypy.nodes import (
-    TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
+    ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
     COVARIANT)
+from mypy.typeinfo import TypeInfo
 
 
 class TypeFixture:

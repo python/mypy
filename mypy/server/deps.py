@@ -5,8 +5,9 @@ from typing import Dict, List, Set
 from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
-    ImportFrom, CallExpr, TypeInfo, Var, LDEF
+    ImportFrom, CallExpr, Var, LDEF
 )
+from mypy.typeinfo import TypeInfo
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, Instance, AnyType, NoneTyp, TypeVisitor, CallableType, DeletedType, PartialType,
