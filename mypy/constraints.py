@@ -6,8 +6,7 @@ from mypy import experiments
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarType,
     Instance, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
-    DeletedType, UninhabitedType, TypeType, TypeVarId, TypeQuery, ALL_TYPES_STRATEGY,
-    is_named_instance
+    DeletedType, UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
@@ -252,7 +251,7 @@ def is_complete_type(typ: Type) -> bool:
 
 class CompleteTypeVisitor(TypeQuery[bool]):
     def __init__(self) -> None:
-        super().__init__(default=True, strategy=ALL_TYPES_STRATEGY)
+        super().__init__(all)
 
     def visit_none_type(self, t: NoneTyp) -> bool:
         return experiments.STRICT_OPTIONAL

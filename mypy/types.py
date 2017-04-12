@@ -1500,40 +1500,15 @@ class TypeStrVisitor(TypeVisitor[str]):
         ])
 
 
-# Combination strategies for boolean type queries
-def ANY_TYPE_STRATEGY(current: bool, accumulated: bool) -> bool:
-    """True if any type's result is True"""
-    if accumulated:
-        raise ShortCircuitQuery()
-    return current
-
-
-def ALL_TYPES_STRATEGY(current: bool, accumulated: bool) -> bool:
-    """True if all types' results are True"""
-    if not accumulated:
-        raise ShortCircuitQuery()
-    return current
-
-
-class ShortCircuitQuery(Exception):
-    pass
-
-
 class TypeQuery(Generic[T], TypeVisitor[T]):
     """Visitor for performing queries of types.
 
-    default is used as the query result unless a method for that type is
-    overridden.
+    strategy is used to combine results for a series of types
 
-    strategy is used to combine a partial result with a result for a particular
-    type in a series of types.
-
-    Common use cases involve a boolean query using ANY_TYPE_STRATEGY and a
-    default of False or ALL_TYPES_STRATEGY and a default of True.
+    Common use cases involve a boolean query using `any` or `all`
     """
 
-    def __init__(self, default: T, strategy: Callable[[T, T], T]) -> None:
-        self.default = default
+    def __init__(self, strategy: Callable[[Iterable[T]], T]) -> None:
         self.strategy = strategy
 
     def visit_unbound_type(self, t: UnboundType) -> T:
@@ -1543,22 +1518,22 @@ class TypeQuery(Generic[T], TypeVisitor[T]):
         return self.query_types(t.items)
 
     def visit_any(self, t: AnyType) -> T:
-        return self.default
+        return self.strategy([])
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> T:
-        return self.default
+        return self.strategy([])
 
     def visit_none_type(self, t: NoneTyp) -> T:
-        return self.default
+        return self.strategy([])
 
     def visit_erased_type(self, t: ErasedType) -> T:
-        return self.default
+        return self.strategy([])
 
     def visit_deleted_type(self, t: DeletedType) -> T:
-        return self.default
+        return self.strategy([])
 
     def visit_type_var(self, t: TypeVarType) -> T:
-        return self.default
+        return self.strategy([])
 
     def visit_partial_type(self, t: PartialType) -> T:
         return self.query_types(t.inner_types)
@@ -1589,20 +1564,14 @@ class TypeQuery(Generic[T], TypeVisitor[T]):
         return t.item.accept(self)
 
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
-        return self.default
+        return self.strategy([])
 
     def query_types(self, types: Iterable[Type]) -> T:
         """Perform a query for a list of types.
 
         Use the strategy to combine the results.
         """
-        res = self.default
-        try:
-            for t in types:
-                res = self.strategy(t.accept(self), res)
-        except ShortCircuitQuery:
-            pass
-        return res
+        return self.strategy(t.accept(self) for t in types)
 
 
 def strip_type(typ: Type) -> Type:
