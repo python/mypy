@@ -42,7 +42,7 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.test.config import ALLOW_FIXTURES
+from mypy.defaults import ALLOW_FIXTURES
 
 
 # We need to know the location of this file to load data, but

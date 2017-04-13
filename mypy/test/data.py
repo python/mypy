@@ -12,7 +12,7 @@ from typing import Callable, List, Tuple, Set, Optional, Iterator, Any
 
 from mypy.myunit import TestCase, SkipTestCaseException
 
-from mypy.test.config import ALLOW_FIXTURES
+from mypy.defaults import ALLOW_FIXTURES
 
 
 def parse_test_cases(
