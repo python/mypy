@@ -485,7 +485,10 @@ class MessageBuilder:
         target = ''
         if callee.name:
             name = callee.name
-            base = extract_type(name)
+            if callee.bound_args and callee.bound_args[0] is not None:
+                base = self.format(callee.bound_args[0])
+            else:
+                base = extract_type(name)
 
             for op, method in op_methods.items():
                 for variant in method, '__r' + method[2:]:

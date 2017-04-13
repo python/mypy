@@ -577,7 +577,7 @@ print(tuple(a))
 import typing
 [1] + iter([2, 3])
 [out]
-_program.py:2: error: Unsupported operand types for + ("list" and Iterator[int])
+_program.py:2: error: Unsupported operand types for + (List[int] and Iterator[int])
 
 [case testInferHeterogeneousListOfIterables]
 from typing import Sequence
@@ -1095,10 +1095,10 @@ MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
 _program.py:6: error: Argument 1 to "defaultdict" has incompatible type List[_T]; expected Callable[[], str]
-_program.py:9: error: Invalid index type "str" for "dict"; expected type "int"
+_program.py:9: error: Invalid index type "str" for defaultdict[int, str]; expected type "int"
 _program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
 _program.py:19: error: Dict entry 0 has incompatible type "str": List[<uninhabited>]
-_program.py:23: error: Invalid index type "str" for "dict"; expected type "int"
+_program.py:23: error: Invalid index type "str" for MyDDict[Dict[_KT, _VT]]; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
 import collections
@@ -1120,7 +1120,7 @@ def f(d: collections.defaultdict[int, str]) -> None:
 _program.py:5: error: "defaultdict" is not subscriptable
 _program.py:6: error: "Counter" is not subscriptable
 _program.py:9: error: "defaultdict" is not subscriptable
-_program.py:12: error: Invalid index type "int" for "dict"; expected type "str"
+_program.py:12: error: Invalid index type "int" for defaultdict[str, int]; expected type "str"
 _program.py:14: error: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
 
 [case testCollectionsAliases]
@@ -1148,7 +1148,7 @@ reveal_type(o6)
 
 [out]
 _testCollectionsAliases.py:5: error: Revealed type is 'collections.Counter[builtins.int]'
-_testCollectionsAliases.py:6: error: Invalid index type "str" for "dict"; expected type "int"
+_testCollectionsAliases.py:6: error: Invalid index type "str" for Counter[int]; expected type "int"
 _testCollectionsAliases.py:9: error: Revealed type is 'collections.ChainMap[builtins.int, builtins.str]'
 _testCollectionsAliases.py:12: error: Revealed type is 'collections.deque[builtins.int]'
 _testCollectionsAliases.py:15: error: Revealed type is 'collections.Counter[builtins.int*]'

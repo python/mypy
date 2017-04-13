@@ -29,7 +29,7 @@ from typing import Dict, Any
 d: Dict[int, str] = {}
 d[42] = 'ab'
 d[42] = 42  # E: Incompatible types in assignment (expression has type "int", target has type "str")
-d['ab'] = 'ab'  # E: Invalid index type "str" for "dict"; expected type "int"
+d['ab'] = 'ab'  # E: Invalid index type "str" for Dict[int, str]; expected type "int"
 [builtins fixtures/dict.pyi]
 [out]
 

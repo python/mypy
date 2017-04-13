@@ -679,7 +679,7 @@ while bool():
         x + 'a'
         break
     x + [1]
-    x + 'a'           # E: Unsupported operand types for + ("list" and "str")
+    x + 'a'           # E: Unsupported operand types for + (List[int] and "str")
 x + [1]               # E: Unsupported operand types for + (likely involving Union)
 
 [builtins fixtures/isinstancelist.pyi]

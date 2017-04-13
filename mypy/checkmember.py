@@ -632,11 +632,14 @@ def bind_self(method: F, original_type: Type = None) -> F:
         arg_types = func.arg_types[1:]
         ret_type = func.ret_type
         variables = func.variables
+    if isinstance(original_type, CallableType) and original_type.is_type_obj():
+        original_type = TypeType(original_type.ret_type)
     res = func.copy_modified(arg_types=arg_types,
                              arg_kinds=func.arg_kinds[1:],
                              arg_names=func.arg_names[1:],
                              variables=variables,
-                             ret_type=ret_type)
+                             ret_type=ret_type,
+                             bound_args=[original_type])
     return cast(F, res)
 
 

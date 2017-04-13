@@ -2709,6 +2709,8 @@ def find_isinstance_check(node: Expression,
         return None, {}
     elif isinstance(node, CallExpr):
         if refers_to_fullname(node.callee, 'builtins.isinstance'):
+            if len(node.args) != 2:  # the error will be reported later
+                return {}, {}
             expr = node.args[0]
             if expr.literal == LITERAL_TYPE:
                 vartype = type_map[expr]
