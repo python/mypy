@@ -284,9 +284,9 @@ class B: pass
 class C: pass
 [out]
 main:8: error: Incompatible types in assignment (expression has type "C", variable has type "B")
-main:9: error: Unsupported operand types for + ("A" and "C")
+main:9: error: Unsupported operand types for + (A[B, C] and "C")
 main:10: error: Incompatible types in assignment (expression has type "B", variable has type "C")
-main:11: error: Invalid index type "B" for "A"; expected type "C"
+main:11: error: Invalid index type "B" for A[B, C]; expected type "C"
 
 [case testOperatorAssignmentWithIndexLvalue1]
 from typing import TypeVar, Generic
@@ -310,7 +310,7 @@ class C:
 [out]
 main:7: error: Unsupported operand types for + ("C" and "B")
 main:7: error: Incompatible types in assignment (expression has type "B", target has type "C")
-main:8: error: Invalid index type "C" for "A"; expected type "B"
+main:8: error: Invalid index type "C" for A[C]; expected type "B"
 
 [case testOperatorAssignmentWithIndexLvalue2]
 from typing import TypeVar, Generic
@@ -331,9 +331,9 @@ class B: pass
 class C:
     def __add__(self, o: 'C') -> 'C': pass
 [out]
-main:7: error: Invalid index type "B" for "A"; expected type "C"
-main:8: error: Invalid index type "C" for "A"; expected type "B"
-main:9: error: Invalid index type "B" for "A"; expected type "C"
+main:7: error: Invalid index type "B" for A[C]; expected type "C"
+main:8: error: Invalid index type "C" for A[C]; expected type "B"
+main:9: error: Invalid index type "B" for A[C]; expected type "C"
 
 
 -- Nested generic types

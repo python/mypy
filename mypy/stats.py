@@ -7,8 +7,7 @@ from typing import Any, Dict, List, cast, Tuple
 
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, AnyType, Instance, FunctionLike, TupleType, TypeVarType,
-    TypeQuery, ANY_TYPE_STRATEGY, CallableType
+    Type, AnyType, Instance, FunctionLike, TupleType, TypeVarType, TypeQuery, CallableType
 )
 from mypy import nodes
 from mypy.nodes import (
@@ -226,9 +225,9 @@ def is_imprecise(t: Type) -> bool:
     return t.accept(HasAnyQuery())
 
 
-class HasAnyQuery(TypeQuery):
+class HasAnyQuery(TypeQuery[bool]):
     def __init__(self) -> None:
-        super().__init__(False, ANY_TYPE_STRATEGY)
+        super().__init__(any)
 
     def visit_any(self, t: AnyType) -> bool:
         return True

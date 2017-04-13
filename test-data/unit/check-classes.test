@@ -3039,7 +3039,7 @@ class Concrete(metaclass=Meta):
     pass
 
 reveal_type(Concrete + X())  # E: Revealed type is 'builtins.str'
-Concrete + "hello"  # E: Unsupported operand types for + ("Meta" and "str")
+Concrete + "hello"  # E: Unsupported operand types for + (Type[Concrete] and "str")
 
 [case testMetaclassGetitem]
 class M(type):
