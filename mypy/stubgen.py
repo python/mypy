@@ -493,6 +493,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             elif isinstance(base, MemberExpr):
                 modname = get_qualified_name(base.expr)
                 base_types.append('%s.%s' % (modname, base.name))
+            elif isinstance(base, IndexExpr):
+                p = AliasPrinter(self)
+                base_types.append(base.accept(p))
         return base_types
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
