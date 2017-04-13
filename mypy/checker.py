@@ -2683,8 +2683,7 @@ def convert_to_typetype(type_map: TypeMap) -> TypeMap:
         elif isinstance(typ, Instance):
             converted_type_map[expr] = TypeType(typ)
         else:
-            # TODO: verify this is ok
-            # unknown object, don't know how to convert
+            # unknown type; error was likely reported earlier
             return {}
     return converted_type_map
 
@@ -2734,7 +2733,8 @@ def find_isinstance_check(node: Expression,
                 elif isinstance(vartype, TypeType):
                     vartype = vartype.item
                 else:
-                    # TODO: verify this is ok
+                    # any other object whose type we don't know precisely
+                    # for example, Any or Instance of type type
                     return {}, {}  # unknown type
                 yes_map, no_map = conditional_type_map(expr, vartype, type)
                 yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
