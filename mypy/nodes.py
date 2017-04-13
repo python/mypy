@@ -14,12 +14,33 @@ from mypy.util import short_type
 
 class Context:
     """Base type for objects that are valid as error message locations."""
-    @abstractmethod
-    def get_line(self) -> int: pass
 
-    @abstractmethod
-    def get_column(self) -> int: pass
+    line = 0
+    column = 0
 
+    def __init__(self, line: int = -1, column: int = -1) -> None:
+        self.line = line
+        self.column = column
+
+    def set_line(self, target: Union['Context', int], column: int = None) -> None:
+        """If target is a node, pull line (and column) information
+        into this node. If column is specified, this will override any column
+        information coming from a node.
+        """
+        if isinstance(target, int):
+            self.line = target
+        else:
+            self.line = target.line
+            self.column = target.column
+
+        if column is not None:
+            self.column = column
+
+    def get_line(self) -> int:
+        return self.line
+
+    def get_column(self) -> int:
+        return self.column
 
 if False:
     # break import cycle only needed for mypy
@@ -122,7 +143,7 @@ class Node(Context):
             return repr(self)
         return ans
 
-    def set_line(self, target: Union['Node', int], column: int = None) -> None:
+    def set_line(self, target: Union['Context', int], column: int = None) -> None:
         """If target is a node, pull line (and column) information
         into this node. If column is specified, this will override any column
         information coming from a node.
@@ -468,7 +489,7 @@ class Argument(Node):
         assign = AssignmentStmt([lvalue], rvalue)
         return assign
 
-    def set_line(self, target: Union[Node, int], column: int = None) -> None:
+    def set_line(self, target: Union[Context, int], column: int = None) -> None:
         super().set_line(target, column)
 
         if self.initializer:
@@ -525,7 +546,7 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(self, target: Union[Node, int], column: int = None) -> None:
+    def set_line(self, target: Union[Context, int], column: int = None) -> None:
         super().set_line(target, column)
         for arg in self.arguments:
             arg.set_line(self.line, self.column)

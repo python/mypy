@@ -35,20 +35,8 @@ def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
 class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
 
-    line = 0
-    column = 0
     can_be_true = True
     can_be_false = True
-
-    def __init__(self, line: int = -1, column: int = -1) -> None:
-        self.line = line
-        self.column = column
-
-    def get_line(self) -> int:
-        return self.line
-
-    def get_column(self) -> int:
-        return self.column
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         raise RuntimeError('Not implemented')
