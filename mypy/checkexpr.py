@@ -184,9 +184,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     try:
                         node = self.chk.lookup_qualified(typ.name)
                     except KeyError:
+                        # Undefined names should already be reported in semantic analysis.
                         node = None
                 if (isinstance(typ, IndexExpr)
                         and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr))
+                        # node.kind == TYPE_ALIAS only for aliases like It = Iterable[int].
                         or isinstance(typ, NameExpr) and node and node.kind == nodes.TYPE_ALIAS):
                     self.msg.type_arguments_not_allowed(e)
         self.try_infer_partial_type(e)
