@@ -58,15 +58,16 @@ import mypy.traverser
 from mypy import defaults
 from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
-    ListExpr, ComparisonExpr, CallExpr, ClassDef, MypyFile, Decorator, AssignmentStmt,
+    ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
+    ClassDef, MypyFile, Decorator, AssignmentStmt,
     IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase,
-    ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
+    ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
 from mypy.options import Options as MypyOptions
 from mypy.types import Type, TypeStrVisitor, AnyType, CallableType, UnboundType, NoneTyp, TupleType
-
+from mypy.visitor import NodeVisitor
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('no_import', bool),
@@ -258,6 +259,50 @@ class AnnotationPrinter(TypeStrVisitor):
         return "None"
 
 
+class AliasPrinter(NodeVisitor[str]):
+
+    def __init__(self, stubgen: 'StubGenerator') -> None:
+        self.stubgen = stubgen
+        super().__init__()
+
+    def visit_call_expr(self, node: CallExpr) -> str:
+        callee = node.callee.accept(self)
+        args = []
+        for name, arg, kind in zip(node.arg_names, node.args, node.arg_kinds):
+            if kind == ARG_POS:
+                args.append(arg.accept(self))
+            elif kind == ARG_STAR:
+                args.append('*' + arg.accept(self))
+            elif kind == ARG_STAR2:
+                args.append('**' + arg.accept(self))
+            elif kind == ARG_NAMED:
+                args.append('{}={}'.format(name, arg.accept(self)))
+            else:
+                raise ValueError("Unknown argument kind %d in call" % kind)
+        return "{}({})".format(callee, ", ".join(args))
+
+    def visit_name_expr(self, node: NameExpr) -> str:
+        self.stubgen.import_tracker.require_name(node.name)
+        return node.name
+
+    def visit_str_expr(self, node: StrExpr) -> str:
+        return repr(node.value)
+
+    def visit_index_expr(self, node: IndexExpr) -> str:
+        base = node.base.accept(self)
+        index = node.index.accept(self)
+        return "{}[{}]".format(base, index)
+
+    def visit_tuple_expr(self, node: TupleExpr) -> str:
+        return ", ".join(n.accept(self) for n in node.items)
+
+    def visit_list_expr(self, node: ListExpr) -> str:
+        return "[{}]".format(", ".join(n.accept(self) for n in node.items))
+
+    def visit_ellipsis(self, node: EllipsisExpr) -> str:
+        return "..."
+
+
 class ImportTracker:
 
     def __init__(self) -> None:
@@ -285,7 +330,7 @@ class ImportTracker:
     def import_lines(self) -> List[str]:
         result = []
         module_map = defaultdict(list)  # type: Mapping[str, List[str]]
-        for name in self.required_names:
+        for name in sorted(self.required_names):
             if name not in self.module_for:
                 continue
             m = self.module_for[name]
@@ -299,7 +344,7 @@ class ImportTracker:
                     result.append("import {} as {}\n".format(self.direct_imports[name], alias))
                 else:
                     result.append("import {}\n".format(self.direct_imports[name]))
-        for module, names in module_map.items():
+        for module, names in sorted(module_map.items()):
             result.append("from {} import {}\n".format(module, ', '.join(sorted(names))))
         return result
 
@@ -319,7 +364,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.import_tracker = ImportTracker()
         # Add imports that could be implicitly generated
         self.import_tracker.add_import_from("collections", [("namedtuple", None)])
-        self.import_tracker.add_import_from("typing", [("Any", None), ("Optional", None)])
+        typing_imports = "Any Optional TypeVar".split()
+        self.import_tracker.add_import_from("typing", [(t, None) for t in typing_imports])
         # Names in __all__ are required
         for name in _all_ or ():
             self.import_tracker.require_name(name)
@@ -457,6 +503,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 assert isinstance(o.rvalue, CallExpr)
                 self.process_namedtuple(lvalue, o.rvalue)
                 continue
+            if (self.is_top_level() and
+                    isinstance(lvalue, NameExpr) and self.is_type_expression(o.rvalue)):
+                self.process_typealias(lvalue, o.rvalue)
+                continue
             if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
                 items = lvalue.items
                 if isinstance(o.type, TupleType):
@@ -505,6 +555,48 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             items = '<ERROR>'
         self.add('%s = namedtuple(%s, %s)\n' % (lvalue.name, name, items))
         self._state = CLASS
+
+    def is_type_expression(self, expr: Expression, top_level: bool=True) -> bool:
+        """Return True for things that look like type expressions
+
+        Used to know if assignments look like typealiases
+        """
+        # Assignment of TypeVar(...) are passed through
+        if (isinstance(expr, CallExpr) and
+                isinstance(expr.callee, NameExpr) and
+                expr.callee.name == 'TypeVar'):
+            return True
+        elif isinstance(expr, EllipsisExpr):
+            return not top_level
+        elif isinstance(expr, NameExpr):
+            if expr.name in ('True', 'False'):
+                return False
+            elif expr.name == 'None':
+                return not top_level
+            else:
+                return True
+        elif isinstance(expr, IndexExpr) and isinstance(expr.base, NameExpr):
+            if isinstance(expr.index, TupleExpr):
+                indices = expr.index.items
+            else:
+                indices = [expr.index]
+            if expr.base.name == 'Callable' and len(indices) == 2:
+                args, ret = indices
+                if isinstance(args, EllipsisExpr):
+                    indices = [ret]
+                elif isinstance(args, ListExpr):
+                    indices = args.items + [ret]
+                else:
+                    return False
+            return all(self.is_type_expression(i, top_level=False) for i in indices)
+        else:
+            return False
+
+    def process_typealias(self, lvalue: NameExpr, rvalue: Expression) -> None:
+        p = AliasPrinter(self)
+        self.add("{} = {}\n".format(lvalue.name, rvalue.accept(p)))
+        self.record_name(lvalue.name)
+        self._vars[-1].append(lvalue.name)
 
     def visit_if_stmt(self, o: IfStmt) -> None:
         # Ignore if __name__ == '__main__'.
