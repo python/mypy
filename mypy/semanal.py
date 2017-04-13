@@ -44,8 +44,9 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from collections import OrderedDict
+from contextlib import contextmanager
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator
 )
 
 from mypy.nodes import (
@@ -242,7 +243,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
         self.options = options
-        self.errors.set_file(fnam)
+        self.errors.set_file(fnam, file_node.fullname())
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
@@ -274,6 +275,52 @@ class SemanticAnalyzer(NodeVisitor):
 
         del self.options
 
+    def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
+        """Refresh a stale target in fine-grained incremental mode."""
+        if isinstance(node, MypyFile):
+            self.refresh_top_level(node)
+        else:
+            self.accept(node)
+
+    def refresh_top_level(self, file_node: MypyFile) -> None:
+        """Reanalyze a stale module top-level in fine-grained incremental mode."""
+        for d in file_node.defs:
+            if isinstance(d, ClassDef):
+                self.refresh_class_def(d)
+            elif not isinstance(d, FuncItem):
+                self.accept(d)
+
+    def refresh_class_def(self, defn: ClassDef) -> None:
+        with self.analyze_class_body(defn) as should_continue:
+            if should_continue:
+                for d in defn.defs.body:
+                    # TODO: Make sure refreshing class bodies works.
+                    if isinstance(d, ClassDef):
+                        self.refresh_class_def(d)
+                    elif not isinstance(d, FuncItem):
+                        self.accept(d)
+
+    @contextmanager
+    def file_context(self, file_node: MypyFile, fnam: str, options: Options,
+                     active_type: Optional[TypeInfo]) -> Iterator[None]:
+        # TODO: Use this above in visit_file
+        self.options = options
+        self.errors.set_file(fnam, file_node.fullname())
+        self.cur_mod_node = file_node
+        self.cur_mod_id = file_node.fullname()
+        self.is_stub_file = fnam.lower().endswith('.pyi')
+        self.globals = file_node.names
+        if active_type:
+            self.enter_class(active_type.defn)
+            # TODO: Bind class type vars
+
+        yield
+
+        if active_type:
+            self.leave_class()
+            self.type = None
+        del self.options
+
     def visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
         if phase_info != FUNCTION_SECOND_PHASE:
@@ -296,7 +343,8 @@ class SemanticAnalyzer(NodeVisitor):
                 # Method definition
                 defn.info = self.type
                 if not defn.is_decorated and not defn.is_overload:
-                    if defn.name() in self.type.names:
+                    if (defn.name() in self.type.names and
+                            self.type.names[defn.name()].node != defn):
                         # Redefinition. Conditional redefinition is okay.
                         n = self.type.names[defn.name()].node
                         if not self.set_original_def(n, defn):
@@ -427,8 +475,12 @@ class SemanticAnalyzer(NodeVisitor):
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, AnyType):
             pass
-        elif isinstance(type, EllipsisType) or isinstance(type, TupleType):
+        elif isinstance(type, (EllipsisType, TupleType)):
+            # TODO: Need to process tuple items?
             pass
+        elif isinstance(type, Instance):
+            for arg in type.args:
+                result.extend(self.find_type_variables_in_type(arg))
         else:
             assert False, 'Unsupported type %s' % type
         return result
@@ -659,13 +711,21 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
+        with self.analyze_class_body(defn) as should_continue:
+            if should_continue:
+                # Analyze class body.
+                defn.defs.accept(self)
+
+    @contextmanager
+    def analyze_class_body(self, defn: ClassDef) -> Iterator[bool]:
         self.clean_up_bases_and_infer_type_variables(defn)
         if self.analyze_typeddict_classdef(defn):
+            yield False
             return
         if self.analyze_namedtuple_classdef(defn):
             # just analyze the class body so we catch type errors in default values
             self.enter_class(defn)
-            defn.defs.accept(self)
+            yield True
             self.leave_class()
         else:
             self.setup_class_def_analysis(defn)
@@ -680,8 +740,7 @@ class SemanticAnalyzer(NodeVisitor):
 
             self.enter_class(defn)
 
-            # Analyze class body.
-            defn.defs.accept(self)
+            yield True
 
             self.calculate_abstract_status(defn.info)
             self.setup_type_promotion(defn)
@@ -1023,6 +1082,8 @@ class SemanticAnalyzer(NodeVisitor):
         # the MRO. Fix MRO if needed.
         if info.mro and info.mro[-1].fullname() != 'builtins.object':
             info.mro.append(self.object_type().type)
+        if defn.info.is_enum and defn.type_vars:
+            self.fail("Enum class cannot be generic", defn)
 
     def expr_to_analyzed_type(self, expr: Expression) -> Type:
         if isinstance(expr, CallExpr):
@@ -2509,7 +2570,6 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail('Too many arguments', dec.func)
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType()
-                dec.type = dec.var.type
                 no_type_check = True
         for i in reversed(removed):
             del dec.decorators[i]
@@ -3367,7 +3427,7 @@ class FirstPass(NodeVisitor):
         self.pyversion = options.python_version
         self.platform = options.platform
         sem.cur_mod_id = mod_id
-        sem.errors.set_file(fnam)
+        sem.errors.set_file(fnam, mod_id)
         sem.globals = SymbolTable()
         sem.global_decls = [set()]
         sem.nonlocal_decls = [set()]
@@ -3614,9 +3674,22 @@ class ThirdPass(TraverserVisitor):
         self.errors = errors
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
-        self.errors.set_file(fnam)
+        self.errors.set_file(fnam, file_node.fullname())
         self.options = options
         self.accept(file_node)
+
+    def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
+        """Refresh a stale target in fine-grained incremental mode."""
+        if isinstance(node, MypyFile):
+            self.refresh_top_level(node)
+        else:
+            self.accept(node)
+
+    def refresh_top_level(self, file_node: MypyFile) -> None:
+        """Reanalyze a stale module top-level in fine-grained incremental mode."""
+        for d in file_node.defs:
+            if not isinstance(d, (FuncItem, ClassDef)):
+                self.accept(d)
 
     def accept(self, node: Node) -> None:
         try:

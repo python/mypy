@@ -1,0 +1,281 @@
+-- Test cases for generating dependencies between ASTs nodes.
+--
+-- The dependencies are used for fined-grained incremental checking.
+
+
+[case testCallFunction]
+def f() -> None:
+    g()
+def g() -> None:
+    pass
+[out]
+<m.g> -> m.f
+
+[case testCallMethod]
+def f(a: A) -> None:
+    a.g()
+class A:
+    def g(self) -> None: pass
+[out]
+<m.A.g> -> m.f
+<m.A> -> <m.f>, m.A, m.f
+
+[case testAccessAttribute]
+def f(a: A) -> None:
+    a.x
+class A:
+    def g(self) -> None:
+        self.x = 1
+[out]
+<m.A.x> -> m.A.g, m.f
+<m.A> -> <m.f>, m.A, m.f
+
+[case testConstructInstance]
+def f() -> None:
+    A()
+class A: pass
+[out]
+<m.A.__init__> -> m.f
+<m.A> -> m.A, m.f
+
+[case testAccessModuleAttribute]
+x = 1
+def f() -> None:
+    x
+[out]
+<m.x> -> m, m.f
+<builtins.int> -> m
+
+[case testAccessModuleAttribute2]
+import n
+def f() -> None:
+    n.x
+[file n.py]
+x = 1
+[out]
+<n.x> -> m.f
+<n> -> m, m.f
+
+[case testImport]
+import n
+[file n.py]
+x = 1
+[out]
+<n> -> m
+
+[case testCallImportedFunction]
+import n
+n.f()
+[file n.py]
+def f() -> None: pass
+[out]
+<n.f> -> m
+<n> -> m
+
+[case testCallImportedFunctionInFunction]
+import n
+def g() -> None:
+    n.f()
+[file n.py]
+def f() -> None: pass
+[out]
+<n.f> -> m.g
+<n> -> m, m.g
+
+[case testInheritanceSimple]
+class A:
+    pass
+class B(A):
+    pass
+[out]
+<m.A.__init__> -> <m.B.__init__>
+<m.A> -> m.A, m.B
+<m.B> -> m.B
+
+[case testInheritanceWithMethodAndAttribute]
+class A:
+    pass
+class B(A):
+    def f(self) -> None:
+        self.x = 1
+[out]
+<m.A.__init__> -> <m.B.__init__>
+<m.A.f> -> m.B.f
+<m.A.x> -> <m.B.x>
+<m.A> -> m.A, m.B
+<m.B.x> -> m.B.f
+<m.B> -> m.B
+
+[case testInheritanceWithMethodAndAttributeAndDeepHierarchy]
+class A:
+    pass
+class B(A):
+    pass
+class C(B):
+    def f(self) -> None:
+        self.x = 1
+[out]
+<m.A.__init__> -> <m.B.__init__>, <m.C.__init__>
+<m.A.f> -> m.C.f
+<m.A.x> -> <m.C.x>
+<m.A> -> m.A, m.B
+<m.B.__init__> -> <m.C.__init__>
+<m.B.f> -> m.C.f
+<m.B.x> -> <m.C.x>
+<m.B> -> m.B, m.C
+<m.C.x> -> m.C.f
+<m.C> -> m.C
+
+[case testInheritAttribute]
+import n
+class B(n.A):
+    def f(self) -> None:
+        a = 1
+        a = self.x
+[file n.py]
+class A:
+    def g(self) -> None:
+        self.x = 1
+[out]
+<m.B.x> -> m.B.f
+<m.B> -> m.B
+<n.A.__init__> -> <m.B.__init__>
+<n.A.f> -> m.B.f
+<n.A.g> -> <m.B.g>
+<n.A.x> -> <m.B.x>
+<n.A> -> m.B
+<n> -> m, m.B
+
+[case testInheritMethod]
+class A:
+    def g(self) -> None: pass
+class B(A):
+    def f(self) -> None:
+        self.g()
+[out]
+<m.A.__init__> -> <m.B.__init__>
+<m.A.f> -> m.B.f
+<m.A.g> -> <m.B.g>
+<m.A> -> m.A, m.B
+<m.B.g> -> m.B.f
+<m.B> -> m.B
+
+[case testPackage]
+import a.b
+def f() -> None:
+    a.b.g()
+[file a/__init__.py]
+[file a/b.py]
+def g() -> None: pass
+[out]
+<a.b.g> -> m.f
+<a.b> -> m, m.f
+<a> -> m.f
+
+[case testClassInPackage]
+import a.b
+def f(x: a.b.A) -> None:
+    x.g()
+    x.y
+[file a/__init__.py]
+[file a/b.py]
+class A:
+    def g(self) -> None:
+        self.y = 1
+[out]
+<a.b.A.g> -> m.f
+<a.b.A.y> -> m.f
+<a.b.A> -> <m.f>, m.f
+<a.b> -> m
+
+[case testPackage__init__]
+import a
+def f() -> None:
+    a.g()
+[file a/__init__.py]
+def g() -> None: pass
+[out]
+<a.g> -> m.f
+<a> -> m, m.f
+
+[case testClassInPackage__init__]
+import a
+def f(x: a.A) -> None:
+    x.g()
+    x.y
+[file a/__init__.py]
+class A:
+    def g(self) -> None:
+        self.y = 1
+[out]
+<a.A.g> -> m.f
+<a.A.y> -> m.f
+<a.A> -> <m.f>, m.f
+<a> -> m
+
+[case testConstructor]
+class A:
+    def __init__(self, x: int) -> None: pass
+def f() -> None:
+    A(1)
+[out]
+<m.A.__init__> -> m.f
+<m.A> -> m.A, m.f
+<builtins.int> -> <m.A.__init__>, m.A.__init__
+
+[case testImportFrom]
+from n import f
+
+def g() -> None:
+    f()
+[file n.py]
+def f() -> None: pass
+[out]
+<n.f> -> m, m.g
+
+[case testNestedClass]
+def f() -> None:
+    b = A.B()
+    b.f()
+class A:
+    class B:
+        def f(self) -> None: pass
+[out]
+<m.A.B.__init__> -> m.f
+<m.A.B.f> -> m.f
+<m.A.B> -> m.A.B, m.f
+<m.A> -> m.A, m.f
+
+[case testNestedClassAttribute]
+def f() -> None:
+    b = A.B()
+    b.x
+class A:
+    class B:
+        def f(self) -> None:
+            self.x = 1
+[out]
+<m.A.B.__init__> -> m.f
+<m.A.B.x> -> m.A.B.f, m.f
+<m.A.B> -> m.A.B, m.f
+<m.A> -> m.A, m.f
+
+[case testNestedClassInAnnotation]
+def f(x: A.B) -> None:
+    pass
+class A:
+    class B: pass
+[out]
+<m.A.B> -> <m.f>, m.A.B, m.f
+<m.A> -> m.A
+
+[case testNestedClassInAnnotation2]
+def f(x: A.B) -> None:
+    x.f()
+class A:
+    class B:
+        def f(self) -> None: pass
+[out]
+<m.A.B.f> -> m.f
+<m.A.B> -> <m.f>, m.A.B, m.f
+<m.A> -> m.A
