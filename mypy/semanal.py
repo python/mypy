@@ -3420,7 +3420,6 @@ class FirstPass(NodeVisitor):
         we generate dummy symbol table nodes for the imported names,
         and these will get resolved in later phases of semantic
         analysis.
-
         """
         sem = self.sem
         self.sem.options = options  # Needed because we sometimes call into it
