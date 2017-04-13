@@ -113,6 +113,13 @@ obsolete_name_mapping = {
     'typing.typevar': 'typing.TypeVar',
 }
 
+# Rename objects placed in _importlib_modulespec due to circular imports
+module_rename_map = {
+    '_importlib_modulespec.ModuleType': 'types.ModuleType',
+    '_importlib_modulespec.ModuleSpec': 'importlib.machinery.ModuleSpec',
+    '_importlib_modulespec.Loader': 'importlib.abc.Loader'
+}
+
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,
 # int is considered a subtype of float, even though there is no
@@ -3445,6 +3452,8 @@ class FirstPass(NodeVisitor):
 
         for d in defs:
             d.accept(self)
+            if isinstance(d, ClassDef):
+                d.info._fullname = module_rename_map.get(d.info._fullname, d.info._fullname)
 
         # Add implicit definition of literals/keywords to builtins, as we
         # cannot define a variable with them explicitly.

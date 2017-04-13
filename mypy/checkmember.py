@@ -415,7 +415,7 @@ def analyze_class_attribute_access(itype: Instance,
 
     if isinstance(node.node, MypyFile):
         # Reference to a module object.
-        return builtin_type('builtins.module')
+        return builtin_type('types.ModuleType')
 
     if is_decorated:
         # TODO: Return type of decorated function. This is quick hack to work around #998.
