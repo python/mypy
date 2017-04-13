@@ -15,8 +15,8 @@ from mypy.util import short_type
 class Context:
     """Base type for objects that are valid as error message locations."""
 
-    line = 0
-    column = 0
+    line = -1
+    column = -1
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         self.line = line
@@ -37,10 +37,13 @@ class Context:
             self.column = column
 
     def get_line(self) -> int:
+        """Don't use. Use x.line."""
         return self.line
 
     def get_column(self) -> int:
+        """Don't use. Use x.column."""
         return self.column
+
 
 if False:
     # break import cycle only needed for mypy
@@ -134,36 +137,11 @@ Key = tuple
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
 
-    line = -1
-    column = -1
-
     def __str__(self) -> str:
         ans = self.accept(mypy.strconv.StrConv())
         if ans is None:
             return repr(self)
         return ans
-
-    def set_line(self, target: Union['Context', int], column: int = None) -> None:
-        """If target is a node, pull line (and column) information
-        into this node. If column is specified, this will override any column
-        information coming from a node.
-        """
-        if isinstance(target, int):
-            self.line = target
-        else:
-            self.line = target.line
-            self.column = target.column
-
-        if column is not None:
-            self.column = column
-
-    def get_line(self) -> int:
-        # TODO this should be just 'line'
-        return self.line
-
-    def get_column(self) -> int:
-        # TODO this should be just 'column'
-        return self.column
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')

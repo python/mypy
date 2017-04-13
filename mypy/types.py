@@ -111,12 +111,11 @@ class TypeVarDef(mypy.nodes.Context):
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type
     variance = INVARIANT  # type: int
-    line = 0
-    column = 0
 
     def __init__(self, name: str, id: Union[TypeVarId, int], values: Optional[List[Type]],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1,
                  column: int = -1) -> None:
+        super().__init__(line, column)
         self.name = name
         if isinstance(id, int):
             id = TypeVarId(id)
@@ -124,20 +123,12 @@ class TypeVarDef(mypy.nodes.Context):
         self.values = values
         self.upper_bound = upper_bound
         self.variance = variance
-        self.line = line
-        self.column = column
 
     @staticmethod
     def new_unification_variable(old: 'TypeVarDef') -> 'TypeVarDef':
         new_id = TypeVarId.new(meta_level=1)
         return TypeVarDef(old.name, new_id, old.values,
                           old.upper_bound, old.variance, old.line, old.column)
-
-    def get_line(self) -> int:
-        return self.line
-
-    def get_column(self) -> int:
-        return self.column
 
     def __repr__(self) -> str:
         if self.values:
