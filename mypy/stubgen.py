@@ -65,7 +65,7 @@ from mypy.nodes import (
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
 from mypy.options import Options as MypyOptions
-from mypy.types import Type, TypeStrVisitor, AnyType, UnboundType, NoneTyp, TupleType
+from mypy.types import Type, TypeStrVisitor, AnyType, CallableType, UnboundType, NoneTyp, TupleType
 
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
@@ -357,8 +357,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             var = arg_.variable
             kind = arg_.kind
             name = var.name()
-            annotated_type = o.type.arg_types[i] if o.type else None
-            if annotated_type and not (i == 0 and name == 'self' and isinstance(annotated_type, AnyType)):
+            annotated_type = o.type.arg_types[i] if isinstance(o.type, CallableType) else None
+            if annotated_type and not (
+                    i == 0 and name == 'self' and isinstance(annotated_type, AnyType)):
                 annotation = ": {}".format(self.print_annotation(annotated_type))
             else:
                 annotation = ""
@@ -384,7 +385,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 arg = name + annotation
             args.append(arg)
         retname = None
-        if o.type:
+        if isinstance(o.type, CallableType):
             retname = self.print_annotation(o.type.ret_type)
         elif o.name() == '__init__':
             retname = 'None'
