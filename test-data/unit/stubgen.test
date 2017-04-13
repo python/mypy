@@ -57,6 +57,16 @@ from typing import Any
 
 def f(x: Any=...): ...
 
+[case testPreserveFunctionAnnotation]
+def f(x: Foo) -> Bar: ...
+[out]
+def f(x: 'Foo') -> 'Bar': ...
+
+[case testPreserveVarAnnotation]
+x: Foo
+[out]
+x: 'Foo'
+
 [case testVarArgs]
 def f(x, *y): ...
 [out]
