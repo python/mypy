@@ -186,12 +186,22 @@ class A:
   def f(self) -> None: self
   @overload
   def f(self, x: 'A') -> None: self
+  def f(self, *args): self
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [overload])
   ClassDef:2(
     A
     OverloadedFuncDef:3(
+      FuncDef:7(
+        f
+        Args(
+          Var(self))
+        VarArg(
+          Var(args))
+        Block:7(
+          ExpressionStmt:7(
+            NameExpr(self [l]))))
       Overload(def (self: __main__.A), \
                def (self: __main__.A, x: __main__.A))
       Decorator:3(

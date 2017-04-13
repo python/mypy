@@ -26,5 +26,8 @@ class list(Iterable[T], Generic[T]):
 class tuple: pass
 class function: pass
 class int: pass
+class float: pass
 class str: pass
-class bool: pass
+class bool(int): pass
+
+property = object() # Dummy definition.

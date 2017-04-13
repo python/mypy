@@ -696,6 +696,53 @@ i(b, a, b)
 i(a, b, b) # E: Argument 1 to "i" has incompatible type List[int]; expected List[str]
 [builtins fixtures/list.pyi]
 
+[case testCallableListJoinInference]
+from typing import Any, Callable
+
+def fun() -> None:
+    callbacks = [
+        callback1,
+        callback2,
+    ]
+
+    for c in callbacks:
+        call(c, 1234) # this must not fail
+
+def callback1(i: int) -> int:
+    return i
+def callback2(i: int) -> str:
+    return 'hello'
+def call(c: Callable[[int], Any], i: int) -> None:
+    c(i)
+[builtins fixtures/list.pyi]
+[out]
+
+[case testCallableMeetAndJoin]
+# flags: --python-version 3.6
+from typing import Callable, Any, TypeVar
+
+class A: ...
+class B(A): ...
+
+def f(c: Callable[[B], int]) -> None: ...
+
+c: Callable[[A], int]
+d: Callable[[B], int]
+
+lst = [c, d]
+reveal_type(lst) # E: Revealed type is 'builtins.list[def (__main__.B) -> builtins.int]'
+
+T = TypeVar('T')
+def meet_test(x: Callable[[T], int], y: Callable[[T], int]) -> T: ...
+
+CA = Callable[[A], A]
+CB = Callable[[B], B]
+
+ca: Callable[[CA], int]
+cb: Callable[[CB], int]
+reveal_type(meet_test(ca, cb)) # E: Revealed type is 'def (__main__.A) -> __main__.B'
+[builtins fixtures/list.pyi]
+[out]
 
 [case testUnionInferenceWithTypeVarValues]
 from typing import TypeVar, Union
@@ -1083,6 +1130,20 @@ def f(a: Callable[[int, int, int], int] = lambda *a, **k: 1):
     pass
 [builtins fixtures/dict.pyi]
 
+[case testLambdaDeferredSpecialCase]
+from typing import Callable
+
+class A:
+    def f(self) -> None:
+        h(lambda: self.x)
+
+    def g(self) -> None:
+        self.x = 1
+
+def h(x: Callable[[], int]) -> None:
+    pass
+
+
 -- Boolean operators
 -- -----------------
 
@@ -1267,8 +1328,22 @@ class A:
     def f(self) -> None:
         # Attributes aren't supported right now.
         self.a = [] # E: Need type annotation for variable
-        self.a.append(1) # E: Cannot determine type of 'a'
-        self.a.append('') # E: Cannot determine type of 'a'
+        self.a.append(1)
+        self.a.append('')
+[builtins fixtures/list.pyi]
+[out]
+
+[case testInferListInitializedToEmptyInClassBodyAndOverriden]
+from typing import List
+
+class A:
+    def __init__(self) -> None:
+        self.x = [] # E: Need type annotation for variable
+
+class B(A):
+    @property
+    def x(self) -> List[int]:
+        return [123]
 [builtins fixtures/list.pyi]
 [out]
 

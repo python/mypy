@@ -2,9 +2,12 @@ from functools import wraps
 import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set
-from mypy.sharedparse import special_function_elide_names, argument_elide_name
+from mypy.sharedparse import (
+    special_function_elide_names, argument_elide_name,
+)
 from mypy.nodes import (
-    MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
+    MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef,
+    OverloadedFuncDef, OverloadPart,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
@@ -68,7 +71,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     if errors is None:
         errors = Errors()
         raise_on_error = True
-    errors.set_file('<input>' if fnam is None else fnam)
+    errors.set_file('<input>' if fnam is None else fnam, None)
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
         assert pyversion[0] >= 3 or is_stub_file
@@ -222,11 +225,12 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
         ret = []  # type: List[Statement]
-        current_overload = []
+        current_overload = []  # type: List[OverloadPart]
         current_overload_name = None
-        # mypy doesn't actually check that the decorator is literally @overload
         for stmt in stmts:
-            if isinstance(stmt, Decorator) and stmt.name() == current_overload_name:
+            if (current_overload_name is not None
+                    and isinstance(stmt, (Decorator, FuncDef))
+                    and stmt.name() == current_overload_name):
                 current_overload.append(stmt)
             else:
                 if len(current_overload) == 1:

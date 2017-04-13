@@ -20,6 +20,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
+    OverloadPart, EnumCallExpr,
 )
 from mypy.types import Type, FunctionLike
 from mypy.traverser import TraverserVisitor
@@ -160,14 +161,15 @@ class TransformVisitor(NodeVisitor[Node]):
         new.line = original.line
 
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> OverloadedFuncDef:
-        items = [self.visit_decorator(decorator)
-                 for decorator in node.items]
+        items = [cast(OverloadPart, item.accept(self)) for item in node.items]
         for newitem, olditem in zip(items, node.items):
             newitem.line = olditem.line
         new = OverloadedFuncDef(items)
         new._fullname = node._fullname
         new.type = self.type(node.type)
         new.info = node.info
+        if node.impl:
+            new.impl = cast(OverloadPart, node.impl.accept(self))
         return new
 
     def visit_class_def(self, node: ClassDef) -> ClassDef:
@@ -484,6 +486,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> NamedTupleExpr:
         return NamedTupleExpr(node.info)
+
+    def visit_enum_call_expr(self, node: EnumCallExpr) -> EnumCallExpr:
+        return EnumCallExpr(node.info, node.items, node.values)
 
     def visit_typeddict_expr(self, node: TypedDictExpr) -> Node:
         return TypedDictExpr(node.info)

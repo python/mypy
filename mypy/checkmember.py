@@ -75,7 +75,8 @@ def analyze_member_access(name: str,
         if method:
             if method.is_property:
                 assert isinstance(method, OverloadedFuncDef)
-                return analyze_var(name, method.items[0].var, typ, info, node, is_lvalue, msg,
+                first_item = cast(Decorator, method.items[0])
+                return analyze_var(name, first_item.var, typ, info, node, is_lvalue, msg,
                                    original_type, not_ready_callback)
             if is_lvalue:
                 msg.cant_assign_to_method(node)
@@ -405,7 +406,9 @@ def analyze_class_attribute_access(itype: Instance,
         return AnyType()
 
     if isinstance(node.node, TypeVarExpr):
-        return TypeVarType(node.tvar_def, node.tvar_def.line, node.tvar_def.column)
+        msg.fail('Type variable "{}.{}" cannot be used as an expression'.format(
+                 itype.type.name(), name), context)
+        return AnyType()
 
     if isinstance(node.node, TypeInfo):
         return type_object_type(node.node, builtin_type)
@@ -534,7 +537,6 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
         ret_type=fill_typevars(info), fallback=type_type, name=None, variables=variables,
         special_sig=special_sig)
     c = callable_type.with_name('"{}"'.format(info.name()))
-    c.is_classmethod_class = True
     return c
 
 
@@ -630,11 +632,14 @@ def bind_self(method: F, original_type: Type = None) -> F:
         arg_types = func.arg_types[1:]
         ret_type = func.ret_type
         variables = func.variables
+    if isinstance(original_type, CallableType) and original_type.is_type_obj():
+        original_type = TypeType(original_type.ret_type)
     res = func.copy_modified(arg_types=arg_types,
                              arg_kinds=func.arg_kinds[1:],
                              arg_names=func.arg_names[1:],
                              variables=variables,
-                             ret_type=ret_type)
+                             ret_type=ret_type,
+                             bound_args=[original_type])
     return cast(F, res)
 
 

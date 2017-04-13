@@ -44,8 +44,9 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from collections import OrderedDict
+from contextlib import contextmanager
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator
 )
 
 from mypy.nodes import (
@@ -64,7 +65,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
+    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
     collections_type_aliases, get_member_expr_fullname,
 )
@@ -235,7 +236,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
         self.options = options
-        self.errors.set_file(fnam)
+        self.errors.set_file(fnam, file_node.fullname())
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
@@ -267,6 +268,52 @@ class SemanticAnalyzer(NodeVisitor):
 
         del self.options
 
+    def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
+        """Refresh a stale target in fine-grained incremental mode."""
+        if isinstance(node, MypyFile):
+            self.refresh_top_level(node)
+        else:
+            self.accept(node)
+
+    def refresh_top_level(self, file_node: MypyFile) -> None:
+        """Reanalyze a stale module top-level in fine-grained incremental mode."""
+        for d in file_node.defs:
+            if isinstance(d, ClassDef):
+                self.refresh_class_def(d)
+            elif not isinstance(d, FuncItem):
+                self.accept(d)
+
+    def refresh_class_def(self, defn: ClassDef) -> None:
+        with self.analyze_class_body(defn) as should_continue:
+            if should_continue:
+                for d in defn.defs.body:
+                    # TODO: Make sure refreshing class bodies works.
+                    if isinstance(d, ClassDef):
+                        self.refresh_class_def(d)
+                    elif not isinstance(d, FuncItem):
+                        self.accept(d)
+
+    @contextmanager
+    def file_context(self, file_node: MypyFile, fnam: str, options: Options,
+                     active_type: Optional[TypeInfo]) -> Iterator[None]:
+        # TODO: Use this above in visit_file
+        self.options = options
+        self.errors.set_file(fnam, file_node.fullname())
+        self.cur_mod_node = file_node
+        self.cur_mod_id = file_node.fullname()
+        self.is_stub_file = fnam.lower().endswith('.pyi')
+        self.globals = file_node.names
+        if active_type:
+            self.enter_class(active_type.defn)
+            # TODO: Bind class type vars
+
+        yield
+
+        if active_type:
+            self.leave_class()
+            self.type = None
+        del self.options
+
     def visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
         if phase_info != FUNCTION_SECOND_PHASE:
@@ -289,7 +336,8 @@ class SemanticAnalyzer(NodeVisitor):
                 # Method definition
                 defn.info = self.type
                 if not defn.is_decorated and not defn.is_overload:
-                    if defn.name() in self.type.names:
+                    if (defn.name() in self.type.names and
+                            self.type.names[defn.name()].node != defn):
                         # Redefinition. Conditional redefinition is okay.
                         n = self.type.names[defn.name()].node
                         if not self.set_original_def(n, defn):
@@ -420,8 +468,12 @@ class SemanticAnalyzer(NodeVisitor):
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, AnyType):
             pass
-        elif isinstance(type, EllipsisType) or isinstance(type, TupleType):
+        elif isinstance(type, (EllipsisType, TupleType)):
+            # TODO: Need to process tuple items?
             pass
+        elif isinstance(type, Instance):
+            for arg in type.args:
+                result.extend(self.find_type_variables_in_type(arg))
         else:
             assert False, 'Unsupported type %s' % type
         return result
@@ -430,25 +482,88 @@ class SemanticAnalyzer(NodeVisitor):
         return self.lookup_qualified(tvar, context).kind == BOUND_TVAR
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
-        t = []  # type: List[CallableType]
-        for i, item in enumerate(defn.items):
-            # TODO support decorated overloaded functions properly
-            item.is_overload = True
-            item.func.is_overload = True
-            item.accept(self)
-            callable = function_type(item.func, self.builtin_type('builtins.function'))
-            assert isinstance(callable, CallableType)
-            t.append(callable)
-            if item.func.is_property and i == 0:
-                # This defines a property, probably with a setter and/or deleter.
-                self.analyze_property_with_multi_part_definition(defn)
-                break
-            if not [dec for dec in item.decorators
-                    if refers_to_fullname(dec, 'typing.overload')]:
-                self.fail("'overload' decorator expected", item)
+        # OverloadedFuncDef refers to any legitimate situation where you have
+        # more than one declaration for the same function in a row.  This occurs
+        # with a @property with a setter or a deleter, and for a classic
+        # @overload.
 
-        defn.type = Overloaded(t)
-        defn.type.line = defn.line
+        # Decide whether to analyze this as a property or an overload.  If an
+        # overload, and we're outside a stub, find the impl and set it.  Remove
+        # the impl from the item list, it's special.
+        types = []  # type: List[CallableType]
+        non_overload_indexes = []
+
+        # See if the first item is a property (and not an overload)
+        first_item = defn.items[0]
+        first_item.is_overload = True
+        first_item.accept(self)
+
+        if isinstance(first_item, Decorator) and first_item.func.is_property:
+            first_item.func.is_overload = True
+            self.analyze_property_with_multi_part_definition(defn)
+            typ = function_type(first_item.func, self.builtin_type('builtins.function'))
+            assert isinstance(typ, CallableType)
+            types = [typ]
+        else:
+            for i, item in enumerate(defn.items):
+                if i != 0:
+                    # The first item was already visited
+                    item.is_overload = True
+                    item.accept(self)
+                # TODO support decorated overloaded functions properly
+                if isinstance(item, Decorator):
+                    callable = function_type(item.func, self.builtin_type('builtins.function'))
+                    assert isinstance(callable, CallableType)
+                    if not any(refers_to_fullname(dec, 'typing.overload')
+                               for dec in item.decorators):
+                        if i == len(defn.items) - 1 and not self.is_stub_file:
+                            # Last item outside a stub is impl
+                            defn.impl = item
+                        else:
+                            # Oops it wasn't an overload after all. A clear error
+                            # will vary based on where in the list it is, record
+                            # that.
+                            non_overload_indexes.append(i)
+                    else:
+                        item.func.is_overload = True
+                        types.append(callable)
+                elif isinstance(item, FuncDef):
+                    if i == len(defn.items) - 1 and not self.is_stub_file:
+                        defn.impl = item
+                    else:
+                        non_overload_indexes.append(i)
+            if non_overload_indexes:
+                if types:
+                    # Some of them were overloads, but not all.
+                    for idx in non_overload_indexes:
+                        if self.is_stub_file:
+                            self.fail("An implementation for an overloaded function "
+                                      "is not allowed in a stub file", defn.items[idx])
+                        else:
+                            self.fail("The implementation for an overloaded function "
+                                      "must come last", defn.items[idx])
+                else:
+                    for idx in non_overload_indexes[1:]:
+                        self.name_already_defined(defn.name(), defn.items[idx])
+                    if defn.impl:
+                        self.name_already_defined(defn.name(), defn.impl)
+                # Remove the non-overloads
+                for idx in reversed(non_overload_indexes):
+                    del defn.items[idx]
+            # If we found an implementation, remove it from the overloads to
+            # consider.
+            if defn.impl is not None:
+                assert defn.impl is defn.items[-1]
+                defn.items = defn.items[:-1]
+
+            elif not self.is_stub_file and not non_overload_indexes:
+                self.fail(
+                    "An overloaded function outside a stub file must have an implementation",
+                    defn)
+
+        if types:
+            defn.type = Overloaded(types)
+            defn.type.line = defn.line
 
         if self.is_class_scope():
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn,
@@ -464,18 +579,19 @@ class SemanticAnalyzer(NodeVisitor):
         """
         defn.is_property = True
         items = defn.items
+        first_item = cast(Decorator, defn.items[0])
         for item in items[1:]:
-            if len(item.decorators) == 1:
+            if isinstance(item, Decorator) and len(item.decorators) == 1:
                 node = item.decorators[0]
                 if isinstance(node, MemberExpr):
                     if node.name == 'setter':
                         # The first item represents the entire property.
-                        defn.items[0].var.is_settable_property = True
+                        first_item.var.is_settable_property = True
                         # Get abstractness from the original definition.
-                        item.func.is_abstract = items[0].func.is_abstract
+                        item.func.is_abstract = first_item.func.is_abstract
+                item.func.accept(self)
             else:
                 self.fail("Decorated property not supported", item)
-            item.func.accept(self)
 
     def next_function_tvar_id(self) -> int:
         return self.next_function_tvar_id_stack[-1]
@@ -588,13 +704,21 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
+        with self.analyze_class_body(defn) as should_continue:
+            if should_continue:
+                # Analyze class body.
+                defn.defs.accept(self)
+
+    @contextmanager
+    def analyze_class_body(self, defn: ClassDef) -> Iterator[bool]:
         self.clean_up_bases_and_infer_type_variables(defn)
         if self.analyze_typeddict_classdef(defn):
+            yield False
             return
         if self.analyze_namedtuple_classdef(defn):
             # just analyze the class body so we catch type errors in default values
             self.enter_class(defn)
-            defn.defs.accept(self)
+            yield True
             self.leave_class()
         else:
             self.setup_class_def_analysis(defn)
@@ -609,8 +733,7 @@ class SemanticAnalyzer(NodeVisitor):
 
             self.enter_class(defn)
 
-            # Analyze class body.
-            defn.defs.accept(self)
+            yield True
 
             self.calculate_abstract_status(defn.info)
             self.setup_type_promotion(defn)
@@ -952,6 +1075,8 @@ class SemanticAnalyzer(NodeVisitor):
         # the MRO. Fix MRO if needed.
         if info.mro and info.mro[-1].fullname() != 'builtins.object':
             info.mro.append(self.object_type().type)
+        if defn.info.is_enum and defn.type_vars:
+            self.fail("Enum class cannot be generic", defn)
 
     def expr_to_analyzed_type(self, expr: Expression) -> Type:
         if isinstance(expr, CallExpr):
@@ -1434,6 +1559,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_typevar_declaration(s)
         self.process_namedtuple_definition(s)
         self.process_typeddict_definition(s)
+        self.process_enum_call(s)
 
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
@@ -1788,7 +1914,7 @@ class SemanticAnalyzer(NodeVisitor):
         res = self.process_typevar_parameters(call.args[1 + n_values:],
                                               call.arg_names[1 + n_values:],
                                               call.arg_kinds[1 + n_values:],
-                                              bool(values),
+                                              n_values,
                                               s)
         if res is None:
             return
@@ -1835,8 +1961,9 @@ class SemanticAnalyzer(NodeVisitor):
     def process_typevar_parameters(self, args: List[Expression],
                                    names: List[Optional[str]],
                                    kinds: List[int],
-                                   has_values: bool,
+                                   num_values: int,
                                    context: Context) -> Optional[Tuple[int, Type]]:
+        has_values = (num_values > 0)
         covariant = False
         contravariant = False
         upper_bound = self.object_type()   # type: Type
@@ -1885,6 +2012,9 @@ class SemanticAnalyzer(NodeVisitor):
 
         if covariant and contravariant:
             self.fail("TypeVar cannot be both covariant and contravariant", context)
+            return None
+        elif num_values == 1:
+            self.fail("TypeVar cannot have only a single constraint", context)
             return None
         elif covariant:
             variance = COVARIANT
@@ -2262,6 +2392,139 @@ class SemanticAnalyzer(NodeVisitor):
 
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail('ClassVar can only be used for assignments in class body', context)
+
+    def process_enum_call(self, s: AssignmentStmt) -> None:
+        """Check if s defines an Enum; if yes, store the definition in symbol table."""
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return
+        lvalue = s.lvalues[0]
+        name = lvalue.name
+        enum_call = self.check_enum_call(s.rvalue, name)
+        if enum_call is None:
+            return
+        # Yes, it's a valid Enum definition. Add it to the symbol table.
+        node = self.lookup(name, s)
+        if node:
+            node.kind = GDEF   # TODO locally defined Enum
+            node.node = enum_call
+
+    def check_enum_call(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
+        """Check if a call defines an Enum.
+
+        Example:
+
+          A = enum.Enum('A', 'foo bar')
+
+        is equivalent to:
+
+          class A(enum.Enum):
+              foo = 1
+              bar = 2
+        """
+        if not isinstance(node, CallExpr):
+            return None
+        call = node
+        callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
+        fullname = callee.fullname
+        if fullname not in ('enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag'):
+            return None
+        items, values, ok = self.parse_enum_call_args(call, fullname.split('.')[-1])
+        if not ok:
+            # Error. Construct dummy return value.
+            return self.build_enum_call_typeinfo('Enum', [], fullname)
+        name = cast(StrExpr, call.args[0]).value
+        if name != var_name or self.is_func_scope():
+            # Give it a unique name derived from the line number.
+            name += '@' + str(call.line)
+        info = self.build_enum_call_typeinfo(name, items, fullname)
+        # Store it as a global just in case it would remain anonymous.
+        # (Or in the nearest class if there is one.)
+        stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
+        if self.type:
+            self.type.names[name] = stnode
+        else:
+            self.globals[name] = stnode
+        call.analyzed = EnumCallExpr(info, items, values)
+        call.analyzed.set_line(call.line, call.column)
+        return info
+
+    def build_enum_call_typeinfo(self, name: str, items: List[str], fullname: str) -> TypeInfo:
+        base = self.named_type_or_none(fullname)
+        assert base is not None
+        info = self.basic_new_typeinfo(name, base)
+        info.is_enum = True
+        for item in items:
+            var = Var(item)
+            var.info = info
+            var.is_property = True
+            info.names[item] = SymbolTableNode(MDEF, var)
+        return info
+
+    def parse_enum_call_args(self, call: CallExpr,
+                             class_name: str) -> Tuple[List[str],
+                                                       List[Optional[Expression]], bool]:
+        args = call.args
+        if len(args) < 2:
+            return self.fail_enum_call_arg("Too few arguments for %s()" % class_name, call)
+        if len(args) > 2:
+            return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
+        if call.arg_kinds != [ARG_POS, ARG_POS]:
+            return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
+        if not isinstance(args[0], (StrExpr, UnicodeExpr)):
+            return self.fail_enum_call_arg(
+                "%s() expects a string literal as the first argument" % class_name, call)
+        items = []
+        values = []  # type: List[Optional[Expression]]
+        if isinstance(args[1], (StrExpr, UnicodeExpr)):
+            fields = args[1].value
+            for field in fields.replace(',', ' ').split():
+                items.append(field)
+        elif isinstance(args[1], (TupleExpr, ListExpr)):
+            seq_items = args[1].items
+            if all(isinstance(seq_item, (StrExpr, UnicodeExpr)) for seq_item in seq_items):
+                items = [cast(StrExpr, seq_item).value for seq_item in seq_items]
+            elif all(isinstance(seq_item, (TupleExpr, ListExpr))
+                     and len(seq_item.items) == 2
+                     and isinstance(seq_item.items[0], (StrExpr, UnicodeExpr))
+                     for seq_item in seq_items):
+                for seq_item in seq_items:
+                    assert isinstance(seq_item, (TupleExpr, ListExpr))
+                    name, value = seq_item.items
+                    assert isinstance(name, (StrExpr, UnicodeExpr))
+                    items.append(name.value)
+                    values.append(value)
+            else:
+                return self.fail_enum_call_arg(
+                    "%s() with tuple or list expects strings or (name, value) pairs" %
+                    class_name,
+                    call)
+        elif isinstance(args[1], DictExpr):
+            for key, value in args[1].items:
+                if not isinstance(key, (StrExpr, UnicodeExpr)):
+                    return self.fail_enum_call_arg(
+                        "%s() with dict literal requires string literals" % class_name, call)
+                items.append(key.value)
+                values.append(value)
+        else:
+            # TODO: Allow dict(x=1, y=2) as a substitute for {'x': 1, 'y': 2}?
+            return self.fail_enum_call_arg(
+                "%s() expects a string, tuple, list or dict literal as the second argument" %
+                class_name,
+                call)
+        if len(items) == 0:
+            return self.fail_enum_call_arg("%s() needs at least one item" % class_name, call)
+        if not values:
+            values = [None] * len(items)
+        assert len(items) == len(values)
+        return items, values, True
+
+    def fail_enum_call_arg(self, message: str,
+                           context: Context) -> Tuple[List[str],
+                                                      List[Optional[Expression]], bool]:
+        self.fail(message, context)
+        return [], [], False
 
     def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:
@@ -3156,7 +3419,7 @@ class FirstPass(NodeVisitor):
         self.pyversion = options.python_version
         self.platform = options.platform
         sem.cur_mod_id = mod_id
-        sem.errors.set_file(fnam)
+        sem.errors.set_file(fnam, mod_id)
         sem.globals = SymbolTable()
         sem.global_decls = [set()]
         sem.nonlocal_decls = [set()]
@@ -3258,6 +3521,26 @@ class FirstPass(NodeVisitor):
         func._fullname = self.sem.qualified_name(func.name())
         if kind == GDEF:
             self.sem.globals[func.name()] = SymbolTableNode(kind, func, self.sem.cur_mod_id)
+        if func.impl:
+            impl = func.impl
+            # Also analyze the function body (in case there are conditional imports).
+            sem = self.sem
+
+            if isinstance(impl, FuncDef):
+                sem.function_stack.append(impl)
+                sem.errors.push_function(func.name())
+                sem.enter()
+                impl.body.accept(self)
+            elif isinstance(impl, Decorator):
+                sem.function_stack.append(impl.func)
+                sem.errors.push_function(func.name())
+                sem.enter()
+                impl.func.body.accept(self)
+            else:
+                assert False, "Implementation of an overload needs to be FuncDef or Decorator"
+            sem.leave()
+            sem.errors.pop_function()
+            sem.function_stack.pop()
 
     def visit_class_def(self, cdef: ClassDef) -> None:
         kind = self.kind_by_scope()
@@ -3381,9 +3664,22 @@ class ThirdPass(TraverserVisitor):
         self.errors = errors
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
-        self.errors.set_file(fnam)
+        self.errors.set_file(fnam, file_node.fullname())
         self.options = options
         self.accept(file_node)
+
+    def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
+        """Refresh a stale target in fine-grained incremental mode."""
+        if isinstance(node, MypyFile):
+            self.refresh_top_level(node)
+        else:
+            self.accept(node)
+
+    def refresh_top_level(self, file_node: MypyFile) -> None:
+        """Reanalyze a stale module top-level in fine-grained incremental mode."""
+        for d in file_node.defs:
+            if not isinstance(d, (FuncItem, ClassDef)):
+                self.accept(d)
 
     def accept(self, node: Node) -> None:
         try:

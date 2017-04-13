@@ -3,7 +3,7 @@
 from typing import List, Dict
 from collections import defaultdict
 
-from mypy.types import Type, NoneTyp, AnyType, ErrorType, UninhabitedType, TypeVarId
+from mypy.types import Type, NoneTyp, AnyType, UninhabitedType, TypeVarId
 from mypy.constraints import Constraint, SUPERTYPE_OF
 from mypy.join import join_types
 from mypy.meet import meet_types
@@ -68,9 +68,6 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
             candidate = bottom
         else:
             candidate = None
-        if isinstance(candidate, ErrorType):
-            res.append(None)
-        else:
-            res.append(candidate)
+        res.append(candidate)
 
     return res

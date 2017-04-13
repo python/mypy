@@ -485,7 +485,10 @@ class MessageBuilder:
         target = ''
         if callee.name:
             name = callee.name
-            base = extract_type(name)
+            if callee.bound_args and callee.bound_args[0] is not None:
+                base = self.format(callee.bound_args[0])
+            else:
+                base = extract_type(name)
 
             for op, method in op_methods.items():
                 for variant in method, '__r' + method[2:]:
@@ -522,7 +525,13 @@ class MessageBuilder:
             name = callee.name[1:-1]
             n -= 1
             msg = '{} item {} has incompatible type {}'.format(
-                name[0].upper() + name[1:], n, self.format_simple(arg_type))
+                name.title(), n, self.format_simple(arg_type))
+        elif callee.name == '<dict>':
+            name = callee.name[1:-1]
+            n -= 1
+            key_type, value_type = cast(TupleType, arg_type).items
+            msg = '{} entry {} has incompatible type {}: {}'.format(
+                name.title(), n, self.format_simple(key_type), self.format_simple(value_type))
         elif callee.name == '<list-comprehension>':
             msg = 'List comprehension has incompatible type List[{}]'.format(
                 strip_quotes(self.format(arg_type)))
@@ -805,6 +814,14 @@ class MessageBuilder:
                                       context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
+
+    def overloaded_signatures_arg_specific(self, index1: int, context: Context) -> None:
+        self.fail('Overloaded function implementation does not accept all possible arguments '
+                  'of signature {}'.format(index1), context)
+
+    def overloaded_signatures_ret_specific(self, index1: int, context: Context) -> None:
+        self.fail('Overloaded function implementation cannot produce return type '
+                  'of signature {}'.format(index1), context)
 
     def operator_method_signatures_overlap(
             self, reverse_class: str, reverse_method: str, forward_class: str,

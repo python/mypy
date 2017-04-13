@@ -431,6 +431,8 @@ class C(Generic[T]):
     def f(self, x: int = None) -> None: pass
 
 [case testTypevarValuesWithOverloadedFunctionSpecialCase]
+from foo import *
+[file foo.pyi]
 from typing import TypeVar, overload, Callable
 
 T = TypeVar('T', int, str)
@@ -448,8 +450,8 @@ def g(x: int) -> int: return x
 @overload
 def g(x: str) -> str: return x
 [out]
-main:7: error: Incompatible types in assignment (expression has type "object", variable has type "int")
-main:7: error: Incompatible types in assignment (expression has type "object", variable has type "str")
+tmp/foo.pyi:7: error: Incompatible types in assignment (expression has type "object", variable has type "int")
+tmp/foo.pyi:7: error: Incompatible types in assignment (expression has type "object", variable has type "str")
 
 [case testGenericFunctionSubtypingWithTypevarValues]
 from typing import TypeVar
@@ -494,12 +496,20 @@ def outer(x: T) -> T:
 [out]
 
 [case testClassMemberTypeVarInFunctionBody]
-from typing import TypeVar
+from typing import TypeVar, List
 class C:
-    T = TypeVar('T', int)
+    T = TypeVar('T', bound=int)
     def f(self, x: T) -> T:
-        A = C.T
-        return x
+        L = List[C.T] # a valid type alias
+        l: L = []
+        reveal_type(l)  # E: Revealed type is 'builtins.list[T`-1]'
+        y: C.T = x
+        l.append(x)
+        C.T  # E: Type variable "C.T" cannot be used as an expression
+        A = C.T  # E: Type variable "C.T" cannot be used as an expression
+        return l[0]
+
+[builtins fixtures/list.pyi]
 
 [case testParameterLessGenericAsRestriction]
 from typing import Sequence, Iterable, TypeVar

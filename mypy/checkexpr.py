@@ -20,7 +20,8 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr,
+    ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF,
     UNBOUND_TVAR, BOUND_TVAR, LITERAL_TYPE
 )
 from mypy import nodes
@@ -32,7 +33,7 @@ from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
-from mypy.meet import meet_simple
+from mypy.meet import narrow_declared_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent
 from mypy import applytype
@@ -160,18 +161,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return result
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
-        if not var.type:
+        if var.type:
+            return var.type
+        else:
             if not var.is_ready and self.chk.in_checked_function():
                 self.chk.handle_cannot_determine_type(var.name(), context)
             # Implicit 'Any' type.
             return AnyType()
-        else:
-            # Look up local type of variable with type (inferred or explicit).
-            val = self.chk.binder.get(var)
-            if val is None:
-                return var.type
-            else:
-                return val
 
     def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         """Type check a call expression."""
@@ -270,12 +266,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for (item_name, item_expected_type) in callee.items.items():
             item_value = kwargs[item_name]
 
-            item_actual_type = self.chk.check_simple_assignment(
+            self.chk.check_simple_assignment(
                 lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
                 msg=messages.INCOMPATIBLE_TYPES,
                 lvalue_name='TypedDict item "{}"'.format(item_name),
                 rvalue_name='expression')
-            items[item_name] = item_actual_type
+            items[item_name] = item_expected_type
 
         mapping_value_type = join.join_type_list(list(items.values()))
         fallback = self.chk.named_generic_type('typing.Mapping',
@@ -365,7 +361,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         arg_messages = arg_messages or self.msg
         if isinstance(callee, CallableType):
-            if callee.is_concrete_type_obj() and callee.type_object().is_abstract:
+            if (isinstance(callable_node, RefExpr)
+                and callable_node.fullname in ('enum.Enum', 'enum.IntEnum',
+                                               'enum.Flag', 'enum.IntFlag')):
+                # An Enum() call that failed SemanticAnalyzer.check_enum_call().
+                return callee.ret_type, callee
+
+            if (callee.is_type_obj() and callee.type_object().is_abstract
+                    # Exceptions for Type[...] and classmethod first argument
+                    and not callee.from_type_type and not callee.is_classmethod_class):
                 type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
                     callee.type_object().name(), type.abstract_attributes,
@@ -451,7 +455,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(item, AnyType):
             return AnyType()
         if isinstance(item, Instance):
-            return type_object_type(item.type, self.named_type)
+            res = type_object_type(item.type, self.named_type)
+            if isinstance(res, CallableType):
+                res = res.copy_modified(from_type_type=True)
+            return res
         if isinstance(item, UnionType):
             return UnionType([self.analyze_type_type_callee(item, context)
                               for item in item.items], item.line)
@@ -849,6 +856,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Check the type of a single argument in a call."""
         if isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
+        # Only non-abstract class can be given where Type[...] is expected...
+        elif (isinstance(caller_type, CallableType) and isinstance(callee_type, TypeType) and
+              caller_type.is_type_obj() and caller_type.type_object().is_abstract and
+              isinstance(callee_type.item, Instance) and callee_type.item.type.is_abstract and
+              # ...except for classmethod first argument
+              not caller_type.is_classmethod_class):
+            messages.fail("Only non-abstract class can be given where '{}' is expected"
+                          .format(callee_type), context)
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return
@@ -1705,6 +1720,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Translate it into a call to dict(), with provisions for **expr.
         """
+        # if the dict literal doesn't match TypedDict, check_typeddict_call_with_dict reports
+        # an error, but returns the TypedDict type that matches the literal it found
+        # that would cause a second error when that TypedDict type is returned upstream
+        # to avoid the second error, we always return TypedDict type that was requested
+        if isinstance(self.type_context[-1], TypedDictType):
+            self.check_typeddict_call_with_dict(
+                callee=self.type_context[-1],
+                kwargs=e,
+                context=e
+            )
+            return self.type_context[-1].copy_modified()
+
         # Collect function arguments, watching out for **expr.
         args = []  # type: List[Expression]  # Regular "key: value"
         stargs = []  # type: List[Expression]  # For "**expr"
@@ -1729,7 +1756,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 [None],
                 self.chk.named_generic_type('builtins.dict', [kt, vt]),
                 self.named_type('builtins.function'),
-                name='<list>',
+                name='<dict>',
                 variables=[ktdef, vtdef])
             rv = self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
         else:
@@ -1952,7 +1979,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
                 if true_map:
                     for var, type in true_map.items():
-                        self.chk.binder.push(var, type)
+                        self.chk.binder.put(var, type)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
@@ -2202,6 +2229,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # TODO: Perhaps return a type object type?
         return AnyType()
 
+    def visit_enum_call_expr(self, e: EnumCallExpr) -> Type:
+        for name, value in zip(e.items, e.values):
+            if value is not None:
+                typ = self.accept(value)
+                if not isinstance(typ, AnyType):
+                    var = e.info.names[name].node
+                    if isinstance(var, Var):
+                        # Inline TypeCheker.set_inferred_type(),
+                        # without the lvalue.  (This doesn't really do
+                        # much, since the value attribute is defined
+                        # to have type Any in the typeshed stub.)
+                        var.type = typ
+                        var.is_inferred = True
+        # TODO: Perhaps return a type object type?
+        return AnyType()
+
     def visit_typeddict_expr(self, e: TypedDictExpr) -> Type:
         # TODO: Perhaps return a type object type?
         return AnyType()
@@ -2224,7 +2267,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if expr.literal >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
             if restriction:
-                ans = meet_simple(known_type, restriction)
+                ans = narrow_declared_type(known_type, restriction)
                 return ans
         return known_type
 
@@ -2343,7 +2386,7 @@ def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> Callabl
     return c.copy_modified(ret_type=new_ret_type)
 
 
-class ArgInferSecondPassQuery(types.TypeQuery):
+class ArgInferSecondPassQuery(types.TypeQuery[bool]):
     """Query whether an argument type should be inferred in the second pass.
 
     The result is True if the type has a type variable in a callable return
@@ -2351,16 +2394,16 @@ class ArgInferSecondPassQuery(types.TypeQuery):
     a type variable.
     """
     def __init__(self) -> None:
-        super().__init__(False, types.ANY_TYPE_STRATEGY)
+        super().__init__(any)
 
     def visit_callable_type(self, t: CallableType) -> bool:
         return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
 
 
-class HasTypeVarQuery(types.TypeQuery):
+class HasTypeVarQuery(types.TypeQuery[bool]):
     """Visitor for querying whether a type has a type variable component."""
     def __init__(self) -> None:
-        super().__init__(False, types.ANY_TYPE_STRATEGY)
+        super().__init__(any)
 
     def visit_type_var(self, t: TypeVarType) -> bool:
         return True
@@ -2370,10 +2413,10 @@ def has_erased_component(t: Type) -> bool:
     return t is not None and t.accept(HasErasedComponentsQuery())
 
 
-class HasErasedComponentsQuery(types.TypeQuery):
+class HasErasedComponentsQuery(types.TypeQuery[bool]):
     """Visitor for querying whether a type has an erased component."""
     def __init__(self) -> None:
-        super().__init__(False, types.ANY_TYPE_STRATEGY)
+        super().__init__(any)
 
     def visit_erased_type(self, t: ErasedType) -> bool:
         return True
@@ -2403,9 +2446,12 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             (isinstance(actual, Instance) and actual.type.fallback_to_any)):
         # These could match anything at runtime.
         return 2
-    if isinstance(formal, CallableType) and isinstance(actual, (CallableType, Overloaded)):
-        # TODO: do more sophisticated callable matching
-        return 2
+    if isinstance(formal, CallableType):
+        if isinstance(actual, (CallableType, Overloaded)):
+            # TODO: do more sophisticated callable matching
+            return 2
+        if isinstance(actual, TypeType):
+            return 2 if is_subtype(actual, formal) else 0
     if isinstance(actual, NoneTyp):
         if not experiments.STRICT_OPTIONAL:
             # NoneTyp matches anything if we're not doing strict Optional checking

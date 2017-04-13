@@ -32,8 +32,7 @@ from mypy.util import try_find_python2_interpreter
 python_eval_files = ['pythoneval.test',
                      'python2eval.test']
 
-python_34_eval_files = ['pythoneval-asyncio.test',
-                        'pythoneval-enum.test']
+python_34_eval_files = ['pythoneval-asyncio.test']
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
