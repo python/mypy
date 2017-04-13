@@ -2830,18 +2830,18 @@ def flatten_types(t: Type) -> List[Type]:
 def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> List[TypeRange]:
     all_types = flatten_types(type_map[expr])
     types = []  # type: List[TypeRange]
-    for type in all_types:
-        if isinstance(type, FunctionLike) and type.is_type_obj():
+    for typ in all_types:
+        if isinstance(typ, FunctionLike) and typ.is_type_obj():
             # Type variables may be present -- erase them, which is the best
             # we can do (outside disallowing them here).
-            type = erase_typevars(type.items()[0].ret_type)
-            types.append(TypeRange(type, is_upper_bound=False))
-        elif isinstance(type, TypeType):
+            typ = erase_typevars(typ.items()[0].ret_type)
+            types.append(TypeRange(typ, is_upper_bound=False))
+        elif isinstance(typ, TypeType):
             # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
             # we indicate this by setting is_upper_bound flag
-            types.append(TypeRange(type.item, is_upper_bound=True))
-        elif isinstance(type, Instance) and type.type.fullname() == 'builtins.type':
-            object_type = Instance(type.type.mro[-1], [])
+            types.append(TypeRange(typ.item, is_upper_bound=True))
+        elif isinstance(typ, Instance) and typ.type.fullname() == 'builtins.type':
+            object_type = Instance(typ.type.mro[-1], [])
             types.append(TypeRange(object_type, is_upper_bound=True))
         else:  # we didn't see an actual type, but rather a variable whose value is unknown to us
             return None
@@ -2992,17 +2992,17 @@ def is_more_precise_signature(t: CallableType, s: CallableType) -> bool:
     return is_more_precise(t.ret_type, s.ret_type)
 
 
-def infer_operator_assignment_method(type: Type, operator: str) -> Tuple[bool, str]:
+def infer_operator_assignment_method(typ: Type, operator: str) -> Tuple[bool, str]:
     """Determine if operator assignment on given value type is in-place, and the method name.
 
     For example, if operator is '+', return (True, '__iadd__') or (False, '__add__')
     depending on which method is supported by the type.
     """
     method = nodes.op_methods[operator]
-    if isinstance(type, Instance):
+    if isinstance(typ, Instance):
         if operator in nodes.ops_with_inplace_method:
             inplace_method = '__i' + method[2:]
-            if type.type.has_readable_member(inplace_method):
+            if typ.type.has_readable_member(inplace_method):
                 return True, inplace_method
     return False, method
 
