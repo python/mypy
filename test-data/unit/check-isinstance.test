@@ -1423,31 +1423,40 @@ def f(x: Union[int, A], a: Type[A]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 
+[case testIssubclassUnreachable]
+from typing import Type, Sequence, Union
+x: Type[str]
+if issubclass(x, int):
+    reveal_type(x)  # unreachable block
+
+
+class X: pass
+class Y(X): pass
+class Z(X): pass
+
+a: Union[Type[Y], Type[Z]]
+if issubclass(a, X):
+    reveal_type(a)  # E: Revealed type is 'Union[Type[__main__.Y], Type[__main__.Z]]'
+else:
+    reveal_type(a)  # unreachable block
+
+[builtins fixtures/isinstancelist.pyi]
+
+
 [case testIssubclass]
-from typing import Type, ClassVar
+from typing import Type
 
 class Goblin:
-    level: int
+    pass
 
 class GoblinAmbusher(Goblin):
-    job: ClassVar[str] = 'Ranger'
+    pass
 
 def test_issubclass(cls: Type[Goblin]) -> None:
     if issubclass(cls, GoblinAmbusher):
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
-        cls.level
-        cls.job
-        ga = cls()
-        ga.level = 15
-        ga.job
-        ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
     else:
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.Goblin]'
-        cls.level
-        cls.job  # E: Type[Goblin] has no attribute "job"
-        g = cls()
-        g.level = 15
-        g.job  # E: "Goblin" has no attribute "job"
 
 
 [builtins fixtures/isinstancelist.pyi]
@@ -1482,7 +1491,7 @@ def test_issubclass(cls: Type[Mob]) -> None:
 
 
 [case testIssubclassTuple]
-from typing import Type, ClassVar
+from typing import Type
 
 class Mob:
     pass

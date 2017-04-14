@@ -2677,6 +2677,8 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
 
 def convert_to_typetype(type_map: TypeMap) -> TypeMap:
     converted_type_map = {}  # type: TypeMap
+    if type_map is None:
+        return None
     for expr, typ in type_map.items():
         if isinstance(typ, UnionType):
             converted_type_map[expr] = UnionType([TypeType(t) for t in typ.items])
