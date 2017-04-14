@@ -187,8 +187,12 @@ class SemanticAnalyzer(NodeVisitor):
     type_stack = None  # type: List[TypeInfo]
     # Type variables that are bound by the directly enclosing class
     bound_tvars = None  # type: List[SymbolTableNode]
-    # Stack of type variables that were bound by outer classess
+    # Type variables bound by the current scope, be it class or function
     tvar_scope = None  # type: TypeVarScope
+    # Type variables bound by current function/method
+    function_tvar_scope = None  # type: TypeVarScope
+    # Stack of type variable scopes bound by current class. Only the last is active.
+    classdef_tvar_scopes = None  # type: List[TypeVarScope]
     # Per-module options
     options = None  # type: Options
 
@@ -223,6 +227,8 @@ class SemanticAnalyzer(NodeVisitor):
         self.type = None
         self.type_stack = []
         self.tvar_scope = TypeVarScope()
+        self.function_tvar_scope = self.tvar_scope
+        self.classdef_tvar_scopes = []
         self.function_stack = []
         self.block_depth = [0]
         self.loop_depth = 0
@@ -417,14 +423,15 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             return False
 
-    def update_function_type_variables(self, fun_type: CallableType, defn: Context) -> None:
+    def update_function_type_variables(self, fun_type: CallableType, defn: FuncItem) -> None:
         """Make any type variables in the signature of defn explicit.
 
         Update the signature of defn to contain type variable definitions
         if defn is generic.
         """
-        a = self.type_analyzer(tvar_scope=TypeVarScope(self.tvar_scope))
-        fun_type.variables = a.bind_function_type_variables(fun_type, defn)
+        with self.tvar_scope_frame():
+            a = self.type_analyzer()
+            fun_type.variables = a.bind_function_type_variables(fun_type, defn)
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         # OverloadedFuncDef refers to any legitimate situation where you have
@@ -540,19 +547,19 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
-        if defn.type:
-            self.check_classvar_in_signature(defn.type)
-            assert isinstance(defn.type, CallableType)
-            # Signature must be analyzed in the surrounding scope so that
-            # class-level imported names and type variables are in scope.
-            defn.type = self.type_analyzer().visit_callable_type(defn.type, nested=False)
-            self.check_function_signature(defn)
-            if isinstance(defn, FuncDef):
-                defn.type = set_callable_name(defn.type, defn)
-        for arg in defn.arguments:
-            if arg.initializer:
-                arg.initializer.accept(self)
         with self.tvar_scope_frame():
+            if defn.type:
+                self.check_classvar_in_signature(defn.type)
+                assert isinstance(defn.type, CallableType)
+                # Signature must be analyzed in the surrounding scope so that
+                # class-level imported names and type variables are in scope.
+                defn.type = self.type_analyzer().visit_callable_type(defn.type, nested=False)
+                self.check_function_signature(defn)
+                if isinstance(defn, FuncDef):
+                    defn.type = set_callable_name(defn.type, defn)
+            for arg in defn.arguments:
+                if arg.initializer:
+                    arg.initializer.accept(self)
             # Bind the type variables again to visit the body.
             if defn.type:
                 a = self.type_analyzer()
@@ -620,34 +627,31 @@ class SemanticAnalyzer(NodeVisitor):
 
     @contextmanager
     def analyze_class_body(self, defn: ClassDef) -> Iterator[bool]:
-        old_scope = self.tvar_scope
-        self.tvar_scope = TypeVarScope()
-        self.clean_up_bases_and_infer_type_variables(defn)
-        if self.analyze_typeddict_classdef(defn):
-            yield False
-            return
-        if self.analyze_namedtuple_classdef(defn):
-            # just analyze the class body so we catch type errors in default values
-            self.enter_class(defn)
-            yield True
-            self.leave_class()
-        else:
-            self.setup_class_def_analysis(defn)
-            self.analyze_base_classes(defn)
-            self.analyze_metaclass(defn)
+        with self.classdef_tvar_scope_frame():
+            self.clean_up_bases_and_infer_type_variables(defn)
+            if self.analyze_typeddict_classdef(defn):
+                yield False
+                return
+            if self.analyze_namedtuple_classdef(defn):
+                # just analyze the class body so we catch type errors in default values
+                self.enter_class(defn)
+                yield True
+                self.leave_class()
+            else:
+                self.setup_class_def_analysis(defn)
+                self.analyze_base_classes(defn)
+                self.analyze_metaclass(defn)
 
-            for decorator in defn.decorators:
-                self.analyze_class_decorator(defn, decorator)
+                for decorator in defn.decorators:
+                    self.analyze_class_decorator(defn, decorator)
 
-            self.enter_class(defn)
-            yield True
+                self.enter_class(defn)
+                yield True
 
-            self.calculate_abstract_status(defn.info)
-            self.setup_type_promotion(defn)
+                self.calculate_abstract_status(defn.info)
+                self.setup_type_promotion(defn)
 
-            self.leave_class()
-
-        self.tvar_scope = old_scope
+                self.leave_class()
 
     def enter_class(self, defn: ClassDef) -> None:
         # Remember previous active class
@@ -785,10 +789,17 @@ class SemanticAnalyzer(NodeVisitor):
             return None
         unbound = t
         sym = self.lookup_qualified(unbound.name, unbound)
-        if sym is not None and sym.kind == TVAR and self.tvar_scope.get_binding(sym) is None:
+        if sym is None or sym.kind != TVAR:
+            return None
+        elif self.tvar_scope.get_binding(sym):
+            # It's bound by our type variable scope
+            return None
+        elif any(s.get_binding(sym) for s in self.classdef_tvar_scopes):
+            # It's bound by some outer class's type variable scope
+            return None
+        else:
             assert isinstance(sym.node, TypeVarExpr)
             return unbound.name, sym.node
-        return None
 
     def get_all_bases_tvars(self, defn: ClassDef, removed: List[int]) -> TypeVarList:
         tvars = []  # type: TypeVarList
@@ -1363,7 +1374,7 @@ class SemanticAnalyzer(NodeVisitor):
         if b:
             self.visit_block(b)
 
-    def type_analyzer(self,
+    def type_analyzer(self, *,
                       tvar_scope: Optional[TypeVarScope] = None,
                       allow_tuple_literal: bool = False,
                       aliasing: bool = False) -> TypeAnalyser:
@@ -1377,10 +1388,13 @@ class SemanticAnalyzer(NodeVisitor):
                             allow_tuple_literal=allow_tuple_literal,
                             allow_unnormalized=self.is_stub_file)
 
-    def anal_type(self, t: Type, allow_tuple_literal: bool = False,
+    def anal_type(self, t: Type, *,
+                  tvar_scope: Optional[TypeVarScope] = None,
+                  allow_tuple_literal: bool = False,
                   aliasing: bool = False) -> Type:
         if t:
             a = self.type_analyzer(
+                tvar_scope=tvar_scope,
                 aliasing=aliasing,
                 allow_tuple_literal=allow_tuple_literal)
             return t.accept(a)
@@ -1395,7 +1409,7 @@ class SemanticAnalyzer(NodeVisitor):
         s.rvalue.accept(self)
         if s.type:
             allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
-            s.type = self.anal_type(s.type, allow_tuple_literal)
+            s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
         else:
             # For simple assignments, allow binding type aliases.
             # Also set the type if the rvalue is a simple literal.
@@ -2498,7 +2512,7 @@ class SemanticAnalyzer(NodeVisitor):
             if self.is_classvar(s.index_type):
                 self.fail_invalid_classvar(s.index)
             allow_tuple_literal = isinstance(s.index, (TupleExpr, ListExpr))
-            s.index_type = self.anal_type(s.index_type, allow_tuple_literal)
+            s.index_type = self.anal_type(s.index_type, allow_tuple_literal=allow_tuple_literal)
             self.store_declared_types(s.index, s.index_type)
 
         self.loop_depth += 1
@@ -2575,7 +2589,7 @@ class SemanticAnalyzer(NodeVisitor):
                     if self.is_classvar(t):
                         self.fail_invalid_classvar(n)
                     allow_tuple_literal = isinstance(n, (TupleExpr, ListExpr))
-                    t = self.anal_type(t, allow_tuple_literal)
+                    t = self.anal_type(t, allow_tuple_literal=allow_tuple_literal)
                     new_types.append(t)
                     self.store_declared_types(n, t)
 
@@ -3019,10 +3033,32 @@ class SemanticAnalyzer(NodeVisitor):
 
     @contextmanager
     def tvar_scope_frame(self) -> Generator:
+        """Prepare our TypeVarScope for a function or method"""
         old_scope = self.tvar_scope
+        old_function_scope = self.function_tvar_scope
         self.tvar_scope = TypeVarScope(self.tvar_scope)
+        self.function_tvar_scope = self.tvar_scope
+        yield
+        self.function_tvar_scope = old_function_scope
+        self.tvar_scope = old_scope
+
+    @contextmanager
+    def classdef_tvar_scope_frame(self) -> Generator:
+        """Prepare our TypeVarScope stack for a newly-declared class.
+
+        The scope for an inner class is based on the surrounding function
+        TypeVarScope, not the surrounding class's -- but it's still an error to
+        try and bind the same variable as the surrounding class, so we keep a
+        stack of those around.
+        """
+        old_class_scope = self.classdef_tvar_scopes
+        old_scope = self.tvar_scope
+        new_scope = TypeVarScope(self.function_tvar_scope)
+        self.classdef_tvar_scopes = old_class_scope + [new_scope]
+        self.tvar_scope = new_scope
         yield
         self.tvar_scope = old_scope
+        self.classdef_tvar_scopes = old_class_scope
 
     def lookup(self, name: str, ctx: Context) -> SymbolTableNode:
         """Look up an unqualified name in all active namespaces."""
