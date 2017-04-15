@@ -370,6 +370,36 @@ type variables defined with special keyword arguments ``covariant`` or
    my_box = Box(Cat())
    look_into(my_box)  # OK, but mypy would complain here for an invariant type
 
+Note that the only change permitted in the variance of the generic class type
+variable as you move down the inheritance hierarchy is from covariant or
+contravariant to invariant. For example, this is valid:
+
+.. code-block:: python
+
+    from typing import Generic, TypeVar, Tuple, Iterable
+
+    K = TypeVar('K')
+    class CovariantSet(Generic[K_co]):
+        def items(self) -> Iterable[K_co]: ...
+
+    K_co = TypeVar('K_co', covariant=True)
+    class InvariantSet(Generic[K], CovariantSet[K]):
+        def __contains__(self, key: K) -> bool: ...
+
+but this is not:
+
+.. code-block:: python
+
+    from typing import Generic, TypeVar, Tuple, Iterable
+
+    K = TypeVar('K')
+    class CovariantSet(Generic[K_co]):
+        def items(self) -> Iterable[K_co]: ...
+
+    K_contra = TypeVar('K_contra', contravariant=True)
+    class ContravariantSet(Generic[K_contra], CovariantSet[K_contra]):
+        def __contains__(self, key: K_contra) -> bool: ...
+
 .. _type-variable-value-restriction:
 
 Type variables with value restriction
