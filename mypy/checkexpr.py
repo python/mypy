@@ -151,7 +151,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = type_object_type(node, self.named_type)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
-            result = self.named_type('builtins.module')
+            result = self.named_type('types.ModuleType')
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
         else:
@@ -178,6 +178,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 e.callee.node.typeddict_type is not None:
             return self.check_typeddict_call(e.callee.node.typeddict_type,
                                              e.arg_kinds, e.arg_names, e.args, e)
+        if isinstance(e.callee, NameExpr) and e.callee.name in ('isinstance', 'issubclass'):
+            for typ in mypy.checker.flatten(e.args[1]):
+                if isinstance(typ, NameExpr):
+                    try:
+                        node = self.chk.lookup_qualified(typ.name)
+                    except KeyError:
+                        # Undefined names should already be reported in semantic analysis.
+                        node = None
+                if (isinstance(typ, IndexExpr)
+                        and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr))
+                        # node.kind == TYPE_ALIAS only for aliases like It = Iterable[int].
+                        or isinstance(typ, NameExpr) and node and node.kind == nodes.TYPE_ALIAS):
+                    self.msg.type_arguments_not_allowed(e)
         self.try_infer_partial_type(e)
         callee_type = self.accept(e.callee)
         if (self.chk.options.disallow_untyped_calls and

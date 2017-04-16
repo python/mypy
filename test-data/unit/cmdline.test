@@ -365,8 +365,8 @@ x += ''  # Error reported here
 a.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:3: error: Unsupported operand types for + ("int" and "str")
 main.py:6: error: Unsupported operand types for + ("int" and "str")
-main.py:7: error: "module" has no attribute "y"
-main.py:8: error: Unsupported operand types for + ("module" and "int")
+main.py:7: error: "ModuleType" has no attribute "y"
+main.py:8: error: Unsupported operand types for + ("ModuleType" and "int")
 
 [case testConfigFollowImportsSilent]
 # cmd: mypy main.py
@@ -386,8 +386,8 @@ x += ''  # No error reported
 [out]
 main.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:4: error: Unsupported operand types for + ("int" and "str")
-main.py:5: error: "module" has no attribute "y"
-main.py:6: error: Unsupported operand types for + ("module" and "int")
+main.py:5: error: "ModuleType" has no attribute "y"
+main.py:6: error: Unsupported operand types for + ("ModuleType" and "int")
 
 [case testConfigFollowImportsSkip]
 # cmd: mypy main.py
