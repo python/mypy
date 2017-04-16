@@ -221,7 +221,7 @@ class UnboundType(Type):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, UnboundType):
-            return False
+            return NotImplemented
         return (self.name == other.name and self.optional == other.optional and
                 self.args == other.args)
 
@@ -265,7 +265,7 @@ class TypeList(Type):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeList):
-            return False
+            return NotImplemented
         return self.items == other.items
 
     @classmethod
@@ -416,7 +416,7 @@ class Instance(Type):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Instance):
-            return False
+            return NotImplemented
         return self.type == other.type and self.args == other.args
 
     def serialize(self) -> Union[JsonDict, str]:
@@ -486,7 +486,7 @@ class TypeVarType(Type):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeVarType):
-            return False
+            return NotImplemented
         return self.id == other.id
 
     def serialize(self) -> JsonDict:
@@ -783,7 +783,7 @@ class CallableType(FunctionLike):
                     self.is_type_obj() == other.is_type_obj() and
                     self.is_ellipsis_args == other.is_ellipsis_args)
         else:
-            return False
+            return NotImplemented
 
     def serialize(self) -> JsonDict:
         # TODO: As an optimization, leave out everything related to
@@ -874,7 +874,7 @@ class Overloaded(FunctionLike):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Overloaded):
-            return False
+            return NotImplemented
         return self.items() == other.items()
 
     def serialize(self) -> JsonDict:
@@ -923,7 +923,7 @@ class TupleType(Type):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TupleType):
-            return False
+            return NotImplemented
         return self.items == other.items and self.fallback == other.fallback
 
     def serialize(self) -> JsonDict:
@@ -988,7 +988,7 @@ class TypedDictType(Type):
                     return False
             return True
         else:
-            return False
+            return NotImplemented
 
     def serialize(self) -> JsonDict:
         return {'.class': 'TypedDictType',
@@ -1065,7 +1065,7 @@ class StarType(Type):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, StarType):
-            return False
+            return NotImplemented
         return self.type == other.type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -1088,7 +1088,7 @@ class UnionType(Type):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, UnionType):
-            return False
+            return NotImplemented
         return frozenset(self.items) == frozenset(other.items)
 
     @staticmethod
@@ -1276,7 +1276,7 @@ class TypeType(Type):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeType):
-            return False
+            return NotImplemented
         return self.item == other.item
 
     def serialize(self) -> JsonDict:
