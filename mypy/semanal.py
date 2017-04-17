@@ -265,8 +265,8 @@ class SemanticAnalyzer(NodeVisitor):
 
         if self.cur_mod_id == 'builtins':
             remove_imported_names_from_symtable(self.globals, 'builtins')
-            for alias_name in ['List', 'Dict', 'Set']:
-                self.globals.pop(alias_name, None)
+            for alias_name in type_aliases:
+                self.globals.pop(alias_name.split('.')[-1], None)
 
         if '__all__' in self.globals:
             for name, g in self.globals.items():
