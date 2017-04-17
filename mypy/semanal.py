@@ -1850,6 +1850,8 @@ class SemanticAnalyzer(NodeVisitor):
             newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type.fallback)
             newtype_class_info.tuple_type = old_type
         elif isinstance(old_type, Instance):
+            if old_type.type.is_protocol:
+                self.fail("NewType cannot be used with protocol classes", s)
             newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
         else:
             message = "Argument 2 to NewType(...) must be subclassable (got {})"

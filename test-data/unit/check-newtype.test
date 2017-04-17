@@ -318,6 +318,19 @@ B = NewType('B', A)
 class C(B): pass  # E: Cannot subclass NewType
 [out]
 
+[case testCannotUseNewTypeWithProtocols]
+from typing import Protocol, NewType
+
+class P(Protocol):
+    attr: int
+class D:
+    attr: int
+
+C = NewType('C', P)  # E: NewType cannot be used with protocol classes
+
+x: C = C(D())  # We still accept this, treating 'C' as non-protocol subclass.
+[out]
+
 [case testNewTypeAny]
 from typing import NewType
 Any = NewType('Any', int)
