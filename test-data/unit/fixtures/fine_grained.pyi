@@ -3,6 +3,8 @@
 # TODO: Migrate to regular stubs once fine-grained incremental is robust
 #       enough to handle them.
 
+import types
+
 class Any: pass
 
 class object:
@@ -21,4 +23,4 @@ class bytes: pass
 class tuple: pass
 class function: pass
 class ellipsis: pass
-class module: pass
+class list: pass
