@@ -156,37 +156,166 @@ base class.
 Protocols and structural subtyping
 **********************************
 
-Mypy provides support for structural subtyping and protocol classes.
+.. note::
+
+   The support for structural subtyping is still experimental. Some features
+   might be not yet implemented, mypy could pass unsafe code or reject
+   working code.
+
+There are two main type systems with respect to subtyping: nominal subtyping
+and structural subtyping. The *nominal* subtyping is based on class hierarchy,
+so that if class ``D`` inherits from class ``C``, then it is a subtype
+of ``C``. This type system is primarily used in mypy since it allows
+to produce clear and concise error messages, and since Python provides native
+``isinstance()`` checks based on class hierarchy. The *structural* subtyping
+however has its own advantages. In this system class ``D`` is a subtype
+of class ``C`` if the former has all attributes of the latter with
+compatible types. For example:
+
+.. code-block:: python
+
+   from typing import Sized
+
+   def my_len(obj: Sized) -> int:
+       ...
+
+   class MyCollection:
+       ...
+       def __len__(self) -> int:
+           return 42
+
+   my_len(MyCollection())  # OK, since 'MyCollection' is a subtype of 'Sized'
+
+This type system is a static equivalent of duck typing, well known by Python
+programmers. Mypy provides an opt-in support for structural subtyping via
+protocol classes described in this section.
+See `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ for
+specification of protocols and structural subtyping in Python.
+
+User defined protocols
+**********************
+
 To define a protocol class, one must inherit the special ``typing.Protocol``
 class:
 
 .. code-block:: python
 
-   from typing import Protocol
+   from typing import Protocol, Iterable
 
    class SupportsClose(Protocol):
        def close(self) -> None:
           ...
 
-   class UnrelatedClass:
+   class Resource:  # Note, this class does not have 'SupportsClose' base.
        # some methods
        def close(self) -> None:
           self.resource.release()
 
-   def close_all(things: Sequence[SupportsClose]) -> None:
+   def close_all(things: Iterable[SupportsClose]) -> None:
        for thing in things:
            thing.close()
 
-   close_all([UnrelatedClass(), open('some/file')])  # This passes type check
+   close_all([Resource(), open('some/file')])  # This passes type check
 
-Subprotocols are also supported. Inheriting from an existing protocol does
-not automatically turn a subclass into a protocol, it just creates a usual
-ABC. The ``typing.Protocol`` base must always be explicitly present.
-Generic and recursive protocols are also supported:
+Defining subprotocols
+*********************
+
+Subprotocols are also supported. Existing protocols can be extended
+and merged using multiple inheritance. For example:
+
+.. code-block:: python
+
+   # continuing from previous example
+
+   class SizedLabeledResource(SupportsClose, Sized, Protocol):
+       label: str
+
+   class AdvancedResource(Resource):
+       def __init__(self, label: str) -> None:
+           self.label = label
+       def __len__(self) -> int:
+           ...
+
+   resource: SizedLabeledResource
+
+   # some code
+
+   resource = AdvancedResource('handle with care')  # OK
+
+Note that inheriting from existing protocols does not automatically turn
+a subclass into a protocol, it just creates a usual (non-protocol) ABC that
+implements given protocols. The ``typing.Protocol`` base must always be
+explicitly present:
+
+.. code-block:: python
+
+   class NewProtocol(Sized):  # This is NOT a protocol
+       new_attr: int
+
+   class Concrete:
+      new_attr: int
+      def __len__(self) -> int:
+          ...
+
+   x: NewProtocol = Concrete()  # Error, nominal subtyping is used by default
+
+Generic protocols
+*****************
+
+Generic protocols are also supported, generic protocols mostly follow
+the normal rules for generic classes, the main difference is that declaring
+variance is not necessary for protocols, mypy can infer it. Examples:
 
 .. code-block:: python
 
    from typing import Protocol, TypeVar
+
+   T = TypeVar('T')
+
+   class Box(Protocol[T]):
+       content: T
+
+   def do_stuff(one: Box[str], other: Box[bytes]) -> None:
+       ...
+
+   class StringWrapper:
+       def __init__(self, content: str) -> None:
+           self.content = content
+
+   class BytesWrapper:
+       def __init__(self, content: bytes) -> None:
+           self.content = content
+
+   do_stuff(StringWrapper('one'), BytesWrapper(b'other'))  # OK
+
+   x: Box[float]
+   y: Box[int]
+   x = y  # This is also OK due to inferred covariance of the protocol 'Box'.
+
+See :ref:`generic-classes` for more details on generic classes and variance.
+
+Recursive protocols
+*******************
+
+Protocols (both generic and non-generic) can be recursive and mutually
+recursive. This could be useful for declaring abstract recursive collections
+such as trees and linked lists:
+
+.. code-block:: python
+
+   from typing import Protocol, TypeVar, Optional
+
+   class TreeLike(Protocol):
+      value: int
+      left: Optional['TreeLike']
+      right: Optional['TreeLike']
+
+   class SimpleTree:
+       def __init__(self, value: int) -> None:
+          self.value = value
+          self.left = self.right = None
+
+   root: TreeLike = SimpleTree(0)  # OK
 
    T = TypeVar('T')
    class Linked(Protocol[T]):
@@ -202,10 +331,15 @@ Generic and recursive protocols are also supported:
 
    result = last(L())  # The inferred type of 'result' is 'int'
 
-See :ref:`generic-classes` for more details on generic classes.
-The standard ABCs in ``typing`` module are protocols, so that the following
-class will be considered a subtype of ``typing.Sized`` and
-``typing.Iterable[int]``:
+Predefined protocols in ``typing`` module
+*****************************************
+
+Most ABCs in ``typing`` module are protocol classes describing
+common Python protocols such as ``Iterator``, ``Awaitable``, ``Mapping``, etc.
+(see `Python Docs <https://docs.python.org/3/library/typing.html>`_
+for an exhaustive list)
+For example, the following class will be considered a subtype of
+``typing.Sized`` and ``typing.Iterable[int]``:
 
 .. code-block:: python
 
@@ -220,6 +354,9 @@ class will be considered a subtype of ``typing.Sized`` and
 
    def collect(items: Iterable[int]) -> int: ...
    result: int = collect(Bucket())  # Passes type check
+
+Using ``isinstance()`` with protocols
+*************************************
 
 To use a protocol class with ``isinstance()``, one needs to decorate it with
 a special ``typing.runtime`` decorator. It will add support for basic runtime
@@ -241,11 +378,9 @@ structural checks:
    if isinstance(mug, Portable):
       use(mug.handles)  # Works statically and at runtime.
 
-See `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ for
-specification of structural subtyping in Python.
-
 .. note::
+   ``isinstance()`` is with protocols not completely safe at runtime.
+   For example, signatures of methods are not checked. The runtime
+   implementation only checks the presence of all protocol members
+   in object's MRO.
 
-   The support for structural subtyping is still experimental. Some features
-   might be not yet implemented, mypy could pass unsafe code or reject
-   working code.

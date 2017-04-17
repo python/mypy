@@ -107,8 +107,9 @@ Can I use structural subtyping?
 Mypy provides support for both `nominal subtyping
 <https://en.wikipedia.org/wiki/Nominative_type_system>`_ and
 `structural subtyping
-<https://en.wikipedia.org/wiki/Structural_type_system>`_. Some argue
-that structural subtyping is better suited for languages with duck
+<https://en.wikipedia.org/wiki/Structural_type_system>`_.
+Support for structural subtyping is considered experimental.
+Some argue that structural subtyping is better suited for languages with duck
 typing such as Python. Mypy however primarily uses nominal subtyping,
 leaving structural subtyping opt-in. Here are some reasons why:
 
