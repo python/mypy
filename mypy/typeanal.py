@@ -408,7 +408,7 @@ class TypeAnalyser(TypeVisitor[Type]):
     @contextmanager
     def tvar_scope_frame(self) -> Generator:
         old_scope = self.tvar_scope
-        self.tvar_scope = TypeVarScope(self.tvar_scope)
+        self.tvar_scope = self.tvar_scope.method_frame()
         yield
         self.tvar_scope = old_scope
 
@@ -437,7 +437,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             for var in fun_type.variables:
                 var_expr = self.lookup(var.name, var).node
                 assert isinstance(var_expr, TypeVarExpr)
-                self.tvar_scope.bind_fun_tvar(var.name, var_expr)
+                self.tvar_scope.bind(var.name, var_expr)
             return fun_type.variables
         typevars = self.infer_type_variables(fun_type)
         # Do not define a new type variable if already defined in scope.
@@ -445,8 +445,11 @@ class TypeAnalyser(TypeVisitor[Type]):
                     if not self.is_defined_type_var(name, defn)]
         defs = []  # type: List[TypeVarDef]
         for name, tvar in typevars:
-            self.tvar_scope.bind_fun_tvar(name, tvar)
+            if not self.tvar_scope.allow_binding(tvar.fullname()):
+                self.fail("Type variable '{}' is bound by an outer class".format(name), defn)
+            self.tvar_scope.bind(name, tvar)
             defs.append(self.tvar_scope.get_binding(tvar.fullname()))
+
         return defs
 
     def is_defined_type_var(self, tvar: str, context: Context) -> bool:

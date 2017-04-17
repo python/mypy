@@ -4,28 +4,58 @@ from mypy.nodes import TypeVarExpr, SymbolTableNode
 
 
 class TypeVarScope:
-    """Scope that holds bindings for type variables. Node fullname -> TypeVarDef.
+    """Scope that holds bindings for type variables. Node fullname -> TypeVarDef."""
 
-    Provide a parent on intitalization when you want to make a child scope."""
+    def __init__(self,
+                 parent: Optional['TypeVarScope'] = None,
+                 is_class_scope: bool = False,
+                 prohibited: Optional['TypeVarScope'] = None) -> None:
+        """Initializer for TypeVarScope
 
-    def __init__(self, parent: Optional['TypeVarScope'] = None) -> None:
+        Parameters:
+        parent: the outer scope for this scope
+        is_class_scope: True if this represents a generic class
+        prohibited: Type variables that aren't strictly in scope exactly,
+                    but can't be bound because they're part of an outer class's scope.
+        """
         self.scope = {}  # type: Dict[str, TypeVarDef]
         self.parent = parent
         self.func_id = 0
         self.class_id = 0
+        self.is_class_scope = is_class_scope
+        self.prohibited = prohibited
         if parent is not None:
             self.func_id = parent.func_id
             self.class_id = parent.class_id
 
-    def bind_fun_tvar(self, name: str, tvar_expr: TypeVarExpr) -> TypeVarDef:
-        self.func_id -= 1
-        return self._bind(name, tvar_expr, self.func_id)
+    def get_function_scope(self) -> Optional['TypeVarScope']:
+        it = self
+        while it.is_class_scope:
+            it = it.parent
+        return it
 
-    def bind_class_tvar(self, name: str, tvar_expr: TypeVarExpr) -> TypeVarDef:
-        self.class_id += 1
-        return self._bind(name, tvar_expr, self.class_id)
+    def allow_binding(self, fullname: str) -> bool:
+        if fullname in self.scope:
+            return False
+        elif self.parent and not self.parent.allow_binding(fullname):
+            return False
+        elif self.prohibited and not self.prohibited.allow_binding(fullname):
+            return False
+        return True
 
-    def _bind(self, name: str, tvar_expr: TypeVarExpr, i: int) -> TypeVarDef:
+    def method_frame(self) -> 'TypeVarScope':
+        return TypeVarScope(self, False, None)
+
+    def class_frame(self) -> 'TypeVarScope':
+        return TypeVarScope(self.get_function_scope(), True, self)
+
+    def bind(self, name: str, tvar_expr: TypeVarExpr) -> TypeVarDef:
+        if self.is_class_scope:
+            self.class_id += 1
+            i = self.class_id
+        else:
+            self.func_id -= 1
+            i = self.func_id
         tvar_def = TypeVarDef(
             name, i, values=tvar_expr.values,
             upper_bound=tvar_expr.upper_bound, variance=tvar_expr.variance,

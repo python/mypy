@@ -189,10 +189,6 @@ class SemanticAnalyzer(NodeVisitor):
     bound_tvars = None  # type: List[SymbolTableNode]
     # Type variables bound by the current scope, be it class or function
     tvar_scope = None  # type: TypeVarScope
-    # Type variables bound by current function/method
-    function_tvar_scope = None  # type: TypeVarScope
-    # Stack of type variable scopes bound by current class. Only the last is active.
-    classdef_tvar_scopes = None  # type: List[TypeVarScope]
     # Per-module options
     options = None  # type: Options
 
@@ -227,8 +223,6 @@ class SemanticAnalyzer(NodeVisitor):
         self.type = None
         self.type_stack = []
         self.tvar_scope = TypeVarScope()
-        self.function_tvar_scope = self.tvar_scope
-        self.classdef_tvar_scopes = []
         self.function_stack = []
         self.block_depth = [0]
         self.loop_depth = 0
@@ -429,7 +423,7 @@ class SemanticAnalyzer(NodeVisitor):
         Update the signature of defn to contain type variable definitions
         if defn is generic.
         """
-        with self.tvar_scope_frame():
+        with self.tvar_scope_frame(self.tvar_scope.method_frame()):
             a = self.type_analyzer()
             fun_type.variables = a.bind_function_type_variables(fun_type, defn)
 
@@ -547,7 +541,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
-        with self.tvar_scope_frame():
+        with self.tvar_scope_frame(self.tvar_scope.method_frame()):
             if defn.type:
                 self.check_classvar_in_signature(defn.type)
                 assert isinstance(defn.type, CallableType)
@@ -627,7 +621,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     @contextmanager
     def analyze_class_body(self, defn: ClassDef) -> Iterator[bool]:
-        with self.classdef_tvar_scope_frame():
+        with self.tvar_scope_frame(self.tvar_scope.class_frame()):
             self.clean_up_bases_and_infer_type_variables(defn)
             if self.analyze_typeddict_classdef(defn):
                 yield False
@@ -762,7 +756,7 @@ class SemanticAnalyzer(NodeVisitor):
             del defn.base_type_exprs[i]
         tvar_defs = []  # type: List[TypeVarDef]
         for name, tvar_expr in declared_tvars:
-            tvar_defs.append(self.tvar_scope.bind_class_tvar(name, tvar_expr))
+            tvar_defs.append(self.tvar_scope.bind(name, tvar_expr))
         defn.type_vars = tvar_defs
 
     def analyze_typevar_declaration(self, t: Type) -> Optional[TypeVarList]:
@@ -791,11 +785,8 @@ class SemanticAnalyzer(NodeVisitor):
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is None or sym.kind != TVAR:
             return None
-        elif self.tvar_scope.get_binding(sym):
+        elif not self.tvar_scope.allow_binding(sym.fullname):
             # It's bound by our type variable scope
-            return None
-        elif any(s.get_binding(sym) for s in self.classdef_tvar_scopes):
-            # It's bound by some outer class's type variable scope
             return None
         else:
             assert isinstance(sym.node, TypeVarExpr)
@@ -3032,33 +3023,11 @@ class SemanticAnalyzer(NodeVisitor):
     #
 
     @contextmanager
-    def tvar_scope_frame(self) -> Generator:
-        """Prepare our TypeVarScope for a function or method"""
+    def tvar_scope_frame(self, frame: TypeVarScope) -> Generator:
         old_scope = self.tvar_scope
-        old_function_scope = self.function_tvar_scope
-        self.tvar_scope = TypeVarScope(self.tvar_scope)
-        self.function_tvar_scope = self.tvar_scope
-        yield
-        self.function_tvar_scope = old_function_scope
-        self.tvar_scope = old_scope
-
-    @contextmanager
-    def classdef_tvar_scope_frame(self) -> Generator:
-        """Prepare our TypeVarScope stack for a newly-declared class.
-
-        The scope for an inner class is based on the surrounding function
-        TypeVarScope, not the surrounding class's -- but it's still an error to
-        try and bind the same variable as the surrounding class, so we keep a
-        stack of those around.
-        """
-        old_class_scope = self.classdef_tvar_scopes
-        old_scope = self.tvar_scope
-        new_scope = TypeVarScope(self.function_tvar_scope)
-        self.classdef_tvar_scopes = old_class_scope + [new_scope]
-        self.tvar_scope = new_scope
+        self.tvar_scope = frame
         yield
         self.tvar_scope = old_scope
-        self.classdef_tvar_scopes = old_class_scope
 
     def lookup(self, name: str, ctx: Context) -> SymbolTableNode:
         """Look up an unqualified name in all active namespaces."""
