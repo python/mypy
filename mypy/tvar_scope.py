@@ -29,6 +29,7 @@ class TypeVarScope:
             self.class_id = parent.class_id
 
     def get_function_scope(self) -> Optional['TypeVarScope']:
+        """Get the nearest parent that's a function scope, not a class scope"""
         it = self
         while it.is_class_scope:
             it = it.parent
@@ -44,9 +45,11 @@ class TypeVarScope:
         return True
 
     def method_frame(self) -> 'TypeVarScope':
+        """A new scope frame for binding a method"""
         return TypeVarScope(self, False, None)
 
     def class_frame(self) -> 'TypeVarScope':
+        """A new scope frame for binding a class. Prohibits *this* class's tvars"""
         return TypeVarScope(self.get_function_scope(), True, self)
 
     def bind(self, name: str, tvar_expr: TypeVarExpr) -> TypeVarDef:
