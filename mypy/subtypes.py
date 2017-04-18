@@ -352,7 +352,8 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
                 is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
             else:
                 is_compat = is_proper_subtype(subtype, supertype)
-            if not is_compat:
+            if not is_compat or isinstance(subtype, NoneTyp):
+                # We want __hash__ = None idiom to work even without --strict-optional
                 return False
             subflags = get_member_flags(member, left.type)
             superflags = get_member_flags(member, right.type)

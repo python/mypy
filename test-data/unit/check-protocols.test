@@ -233,6 +233,32 @@ f1(x2)
 f2(x1)
 [out]
 
+[case testNoneDisablesProtocolImplementation]
+from typing import Protocol
+
+class MyHashable(Protocol):
+    def __my_hash__(self) -> int:
+        return 0
+
+class C:
+    __my_hash__ = None
+
+var: MyHashable = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "MyHashable")
+[out]
+
+[case testNoneDisablesProtocolSubclassingWithStrictOptional]
+# flags: --strict-optional
+from typing import Protocol
+
+class MyHashable(Protocol):
+    def __my_hash__(self) -> int:
+        return 0
+
+class C(MyHashable):
+    __my_hash__ = None  # E: Incompatible types in assignment \
+(expression has type None, base class "MyHashable" defined the type as Callable[[MyHashable], int])
+[out]
+
 -- Semanal errors in protocol types
 -- --------------------------------
 
