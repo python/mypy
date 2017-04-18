@@ -264,7 +264,12 @@ class Errors:
             only_once: if True, only report this exact message once per build
             origin_line: if non-None, override current context as origin
         """
-        type = self.type_name[-1]
+        type = ''
+        try:
+            type = self.type_name[-1]
+        except IndexError:
+            pass
+
         if len(self.function_or_member) > 2:
             type = None  # Omit type context if nested function
         if file is None:
