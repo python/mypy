@@ -9,10 +9,11 @@ from mypy.types import (
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
     ArgKindException, ArgNameException, get_type_vars, union_items
 )
+
 from mypy.nodes import (
     BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
     TypeInfo, Context, SymbolTableNode, Var, Expression,
-    IndexExpr, RefExpr, nongen_builtins,
+    IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds,
 )
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -382,6 +383,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 # Callable[[ARG, ...], RET] (ordinary callable type)
                 args = t.args[0].types
                 try:
+                    check_arg_names(t.args[0].names, [t]*len(args), self.fail, "Callable")
+                    check_arg_kinds(t.args[0].kinds, [t]*len(args), self.fail)
                     return CallableType(self.anal_array(args),
                                         t.args[0].kinds,
                                         t.args[0].names,

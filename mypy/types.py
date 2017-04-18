@@ -585,13 +585,13 @@ class CallableType(FunctionLike):
                  special_sig: Optional[str] = None,
                  from_type_type: bool = False,
                  ) -> None:
-        self._process_kinds_on_init(arg_kinds)
-        self._process_names_on_init(arg_names)
         if variables is None:
             variables = []
         assert len(arg_types) == len(arg_kinds)
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
+        self.is_var_arg = ARG_STAR in arg_kinds
+        self.is_kw_arg = ARG_STAR2 in arg_kinds
         self.arg_names = arg_names
         self.min_args = arg_kinds.count(ARG_POS)
         self.ret_type = ret_type
@@ -606,41 +606,6 @@ class CallableType(FunctionLike):
         self.special_sig = special_sig
         self.from_type_type = from_type_type
         super().__init__(line, column)
-
-    def _process_names_on_init(self, arg_names):
-        seen = set()  # type: Set[str]
-        for name in arg_names:
-            if name is None:
-                continue
-            if name in seen:
-                raise ArgNameException('Duplicate argument name "{}"'.format(name))
-            seen.add(name)
-
-    def _process_kinds_on_init(self, arg_kinds):
-        self.is_var_arg = False
-        self.is_kw_arg = False
-        seen_named = False
-        seen_opt = False
-        for kind in arg_kinds:
-            if kind == ARG_POS:
-                if self.is_var_arg or self.is_kw_arg or seen_named or seen_opt:
-                    raise ArgKindException("Required positional args may not appear "
-                                           "after default, named or star args")
-            elif kind == ARG_OPT:
-                if self.is_var_arg or self.is_kw_arg or seen_named:
-                    raise ArgKindException("Positional default args may not appear "
-                                           "after named or star args")
-                seen_opt = True
-            elif kind == ARG_STAR:
-                if self.is_var_arg or self.is_kw_arg or seen_named:
-                    raise ArgKindException("Star args may not appear after named or star args")
-                self.is_var_arg = True
-            elif kind == ARG_NAMED or kind == ARG_NAMED_OPT:
-                seen_named = True
-            elif kind == ARG_STAR2:
-                if self.is_kw_arg:
-                    raise ArgKindException("You may only have one **kwargs argument")
-                self.is_kw_arg = True
 
     def copy_modified(self,
                       arg_types: List[Type] = _dummy,

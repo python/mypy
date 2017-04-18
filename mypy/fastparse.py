@@ -20,7 +20,8 @@ from mypy.nodes import (
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
+    check_arg_names,
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, ArgumentList, EllipsisType,
@@ -151,6 +152,9 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg)
+
+    def fail_ast(self, msg: str, n: ast3.AST) -> None:
+        self.fail(msg, n.lineno, n.col_offset)
 
     def generic_visit(self, node: ast3.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))
@@ -445,13 +449,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             new_args.append(make_argument(args.kwarg, None, ARG_STAR2))
             names.append(args.kwarg)
 
-        seen_names = set()  # type: Set[str]
-        for name in names:
-            if name.arg in seen_names:
-                self.fail("duplicate argument '{}' in function definition".format(name.arg),
-                          name.lineno, name.col_offset)
-                break
-            seen_names.add(name.arg)
+        check_arg_names([name.arg for name in names], names, self.fail_ast)
 
         return new_args
 
@@ -1010,7 +1008,7 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                 typ = AnyType(implicit=True)  # type: Type
                 for i, arg in enumerate(e.args):
                     if i == 0 and not star:
-                        name = _extract_str(arg)
+                        name = self._extract_str(arg)
                     elif i == 1 and not star or i == 0 and star:
                         typ = self.visit(arg)
                     else:
@@ -1019,7 +1017,7 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                 for k in e.keywords:
                     value = k.value
                     if k.arg == "name" and not star:
-                        name = _extract_str(value)
+                        name = self._extract_str(value)
                     elif k.arg == "typ":
                         typ = self.visit(value)
                     else:
@@ -1036,6 +1034,14 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                 kinds.append(ARG_POS)
 
         return ArgumentList(types, names, kinds, line=self.line)
+
+    def _extract_str(self, n: ast3.AST) -> str:
+        if isinstance(n, ast3.Str):
+            return n.s.strip()
+        elif isinstance(n, ast3.NameConstant) and str(n.value) == 'None':
+            return None
+        self.fail('Expected string literal for argument name, got "{}"'.format(n), n.lineno, n.col_offset)
+        return None
 
     def visit_Name(self, n: ast3.Name) -> Type:
         return UnboundType(n.id, line=self.line)
@@ -1089,5 +1095,4 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> Type:
         l = len(n.elts)
-        return ArgumentList(
-            self.translate_expr_list(n.elts), [None]*l, [ARG_POS]*l, line=self.line)
+        return self.translate_argument_list(n.elts)

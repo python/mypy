@@ -92,6 +92,8 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
                 types.append(expr_to_unanalyzed_type(it))
                 names.append(None)
                 kinds.append(ARG_POS)
+            def fail(message, Expression):
+                raise TypeTranslationError(message)
         return ArgumentList(types, names, kinds,
                         line=expr.line, column=expr.column)
     elif isinstance(expr, (StrExpr, BytesExpr, UnicodeExpr)):

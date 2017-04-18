@@ -1474,13 +1474,13 @@ from mypy_extensions import Arg, StarArg, KwArg
 
 def WrongArg(x, y): return y
 
-def a(f: Callable[[WrongArg('x', int)], int]): pass # E: Parse error before (: Unknown argument constructor WrongArg # E: Parse error before end of line
-def b(f: Callable[[Arg('x', 1)], int]): pass # E: Parse error before numeric literal # E: Parse error before end of line
-def c(f: Callable[[StarArg('x', int)], int]): pass # E: Parse error before "int": Unexpected argument for argument constructor # E: Parse error before end of line
+def a(f: Callable[[WrongArg('x', int)], int]): pass # E: Unknown argument constructor WrongArg
+def b(f: Callable[[Arg('x', 1)], int]): pass # E: invalid type comment or annotation
+def c(f: Callable[[StarArg('x', int)], int]): pass # E: Too many arguments for argument constructor
 def d(f: Callable[[StarArg(int)], int]): pass # ok
 def e(f: Callable[[StarArg(), KwArg()], int]): pass # ok
 def g(f: Callable[[Arg(name='x', typ=int)], int]): pass # ok
-def h(f: Callable[[Arg(gnome='x', typ=int)], int]): pass # E: Parse error before "gnome": Unexpected argument "gnome" for argument constructor # E: Parse error before end of line
+def h(f: Callable[[Arg(gnome='x', typ=int)], int]): pass  # E: Unexpected argument "gnome" for argument constructor
 def i(f: Callable[[Arg(name=None, typ=int)], int]): pass # ok
 
 [builtins fixtures/dict.pyi]
@@ -1493,21 +1493,18 @@ def a(f: Callable[[WrongArg('x', int)], int]): pass # E: Unknown argument constr
 [builtins fixtures/dict.pyi]
 
 [case testCallableFastParseWrongTypeType]
-# flags: --fast-parser
 from typing import Callable
 from mypy_extensions import Arg
-def b(f: Callable[[Arg('x', 1)], int]): pass # E: Bad type for callable argument
+def b(f: Callable[[Arg('x', 1)], int]): pass # E: invalid type comment or annotation
 [builtins fixtures/dict.pyi]
 
 [case testCallableFastParseTooManyStarArg]
-# flags: --fast-parser
 from typing import Callable
 from mypy_extensions import StarArg
 def c(f: Callable[[StarArg('x', int)], int]): pass # E: Too many arguments for argument constructor
 [builtins fixtures/dict.pyi]
 
 [case testCallableFastParseGood]
-# flags: --fast-parser
 from typing import Callable
 from mypy_extensions import StarArg, Arg
 def d(f: Callable[[StarArg(int)], int]): pass # ok
@@ -1517,7 +1514,6 @@ def i(f: Callable[[Arg(name=None, typ=int)], int]): pass # ok
 [builtins fixtures/dict.pyi]
 
 [case testCallableFastParseBadArgArgName]
-# flags: --fast-parser
 from typing import Callable
 from mypy_extensions import Arg
 def h(f: Callable[[Arg(gnome='x', typ=int)], int]): pass # E: Unexpected argument "gnome" for argument constructor
@@ -1539,7 +1535,7 @@ def j(f: Callable[[NamedArg('x'), DefaultArg('y', int)], int]): pass # E: Positi
 from typing import Callable
 from mypy_extensions import Arg, StarArg, KwArg, DefaultArg
 
-def f(f: Callable[[Arg('x', int), int, Arg('x', int)], int]): pass # E: Duplicate argument name "x"
+def f(f: Callable[[Arg('x', int), int, Arg('x', int)], int]): pass # E: duplicate argument 'x' in Callable
 
 [builtins fixtures/dict.pyi]
 
