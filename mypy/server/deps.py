@@ -207,10 +207,12 @@ class TypeDependenciesVisitor(TypeVisitor[List[str]]):
         raise NotImplementedError
 
     def visit_type_type(self, typ: TypeType) -> List[str]:
-        raise NotImplementedError
+        # TODO: replace with actual implementation
+        return []
 
     def visit_type_var(self, typ: TypeVarType) -> List[str]:
-        raise NotImplementedError
+        # TODO: replace with actual implementation
+        return []
 
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:
         raise NotImplementedError
