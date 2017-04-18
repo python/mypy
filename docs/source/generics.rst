@@ -376,29 +376,30 @@ contravariant to invariant. For example, this is valid:
 
 .. code-block:: python
 
-    from typing import Generic, TypeVar, Tuple, Iterable
-
-    K = TypeVar('K')
-    class CovariantSet(Generic[K_co]):
-        def items(self) -> Iterable[K_co]: ...
+    from typing import Generic, TypeVar
 
     K_co = TypeVar('K_co', covariant=True)
-    class InvariantSet(Generic[K], CovariantSet[K]):
-        def __contains__(self, key: K) -> bool: ...
+    class MultisetCo(Generic[K_co]):
+        def choose_random_item(self) -> K_co: ...
 
-but this is not:
+    K = TypeVar('K')
+    class Multiset(Generic[K], MultisetCo[K]):
+        def count(self, key: K) -> int: ...
+
+The following is not valid simply because ``choose_random_item`` does not
+allow contravariance:
 
 .. code-block:: python
 
-    from typing import Generic, TypeVar, Tuple, Iterable
+    from typing import Generic, TypeVar
 
-    K = TypeVar('K')
-    class CovariantSet(Generic[K_co]):
-        def items(self) -> Iterable[K_co]: ...
+    K_co = TypeVar('K_co', covariant=True)
+    class MultisetCo(Generic[K_co]):
+        def choose_random_item(self) -> K_co: ...
 
     K_contra = TypeVar('K_contra', contravariant=True)
-    class ContravariantSet(Generic[K_contra], CovariantSet[K_contra]):
-        def __contains__(self, key: K_contra) -> bool: ...
+    class MultisetContra(Generic[K_contra], MultisetCo[K_contra]):
+        def count(self, key: K) -> int: ...
 
 .. _type-variable-value-restriction:
 
