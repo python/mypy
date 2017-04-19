@@ -65,8 +65,9 @@ class BuildResult:
       errors:  List of error messages.
     """
 
-    def __init__(self, manager: 'BuildManager') -> None:
+    def __init__(self, manager: 'BuildManager', graph: Graph) -> None:
         self.manager = manager
+        self.graph = graph
         self.files = manager.modules
         self.types = manager.all_types
         self.errors = manager.errors.messages()
@@ -184,8 +185,8 @@ def build(sources: List[BuildSource],
                            )
 
     try:
-        dispatch(sources, manager)
-        return BuildResult(manager)
+        graph = dispatch(sources, manager)
+        return BuildResult(manager, graph)
     finally:
         manager.log("Build finished in %.3f seconds with %d modules, %d types, and %d errors" %
                     (time.time() - manager.start_time,
@@ -474,7 +475,7 @@ class BuildManager:
         return tree
 
     def module_not_found(self, path: str, line: int, id: str) -> None:
-        self.errors.set_file(path)
+        self.errors.set_file(path, id)
         stub_msg = "(Stub files are from https://github.com/python/typeshed)"
         if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
                 (self.options.python_version[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
@@ -1242,7 +1243,7 @@ class State:
         # so we'd need to cache the decision.
         manager = self.manager
         manager.errors.set_import_context([])
-        manager.errors.set_file(ancestor_for.xpath)
+        manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
         manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
                               severity='note', only_once=True)
         manager.errors.report(-1, -1,
@@ -1254,7 +1255,7 @@ class State:
         manager = self.manager
         save_import_context = manager.errors.import_context()
         manager.errors.set_import_context(self.caller_state.import_context)
-        manager.errors.set_file(self.caller_state.xpath)
+        manager.errors.set_file(self.caller_state.xpath, self.caller_state.id)
         line = self.caller_line
         manager.errors.report(line, 0,
                               "Import of '%s' ignored" % (id,),
@@ -1441,7 +1442,7 @@ class State:
                 continue
             if id == '':
                 # Must be from a relative import.
-                manager.errors.set_file(self.xpath)
+                manager.errors.set_file(self.xpath, self.id)
                 manager.errors.report(line, 0,
                                       "No parent module -- cannot perform relative import",
                                       blocker=True)
@@ -1557,20 +1558,21 @@ class State:
             self.interface_hash = new_interface_hash
 
 
-def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
+def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     manager.log("Mypy version %s" % __version__)
     graph = load_graph(sources, manager)
     if not graph:
         print("Nothing to do?!")
-        return
+        return graph
     manager.log("Loaded graph with %d nodes" % len(graph))
     if manager.options.dump_graph:
         dump_graph(graph)
-        return
+        return graph
     process_graph(graph, manager)
     if manager.options.warn_unused_ignores:
         # TODO: This could also be a per-module option.
         manager.errors.generate_unused_ignore_notes()
+    return graph
 
 
 class NodeInfo:
@@ -1645,7 +1647,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
         except ModuleNotFound:
             continue
         if st.id in graph:
-            manager.errors.set_file(st.xpath)
+            manager.errors.set_file(st.xpath, st.id)
             manager.errors.report(-1, -1, "Duplicate module named '%s'" % st.id)
             manager.errors.raise_error()
         graph[st.id] = st
