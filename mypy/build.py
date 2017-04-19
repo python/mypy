@@ -880,7 +880,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     try:
         st = manager.get_stat(path)
     except OSError as err:
-        manager.log("Cannot get stat for {}: %s".format(path, err))
+        manager.log("Cannot get stat for {}: {}".format(path, err))
         # Remove apparently-invalid cache files.
         for filename in [data_json, meta_json]:
             try:
