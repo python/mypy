@@ -1444,78 +1444,146 @@ else:
 
 
 [case testIssubclass]
-from typing import Type
+from typing import Type, ClassVar
 
 class Goblin:
-    pass
+    level: int
 
 class GoblinAmbusher(Goblin):
-    pass
+    job: ClassVar[str] = 'Ranger'
 
 def test_issubclass(cls: Type[Goblin]) -> None:
     if issubclass(cls, GoblinAmbusher):
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
+        cls.level
+        cls.job
+        ga = cls()
+        ga.level = 15
+        ga.job
+        ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
     else:
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.Goblin]'
+        cls.level
+        cls.job  # E: Type[Goblin] has no attribute "job"
+        g = cls()
+        g.level = 15
+        g.job  # E: "Goblin" has no attribute "job"
 
 
 [builtins fixtures/isinstancelist.pyi]
 
 
 [case testIssubclassDeepHierarchy]
-from typing import Type
+from typing import Type, ClassVar
 
 class Mob:
     pass
 
 class Goblin(Mob):
-    pass
+    level: int
 
 class GoblinAmbusher(Goblin):
-    pass
+    job: ClassVar[str] = 'Ranger'
 
 def test_issubclass(cls: Type[Mob]) -> None:
     if issubclass(cls, Goblin):
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.Goblin]'
+        cls.level
+        cls.job  # E: Type[Goblin] has no attribute "job"
+        g = cls()
+        g.level = 15
+        g.job  # E: "Goblin" has no attribute "job"
         if issubclass(cls, GoblinAmbusher):
             reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
+            cls.level
+            cls.job
+            g = cls()
+            g.level = 15
+            g.job
+            g.job = 'Warrior' # E: Cannot assign to class variable "job" via instance
     else:
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.Mob]'
+        cls.job  # E: Type[Mob] has no attribute "job"
+        cls.level  # E: Type[Mob] has no attribute "level"
+        m = cls()
+        m.level = 15  # E: "Mob" has no attribute "level"
+        m.job  # E: "Mob" has no attribute "job"
         if issubclass(cls, GoblinAmbusher):
             reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
+            cls.job
+            cls.level
+            ga = cls()
+            ga.level = 15
+            ga.job
+            ga.job = 'Warrior' # E: Cannot assign to class variable "job" via instance
 
     if issubclass(cls, GoblinAmbusher):
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
+        cls.level
+        cls.job
+        ga = cls()
+        ga.level = 15
+        ga.job
+        ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
 
 [builtins fixtures/isinstancelist.pyi]
 
 
 [case testIssubclassTuple]
-from typing import Type
+from typing import Type, ClassVar
 
 class Mob:
     pass
 
 class Goblin(Mob):
-    pass
+    level: int
 
 class GoblinAmbusher(Goblin):
-    pass
+    job: ClassVar[str] = 'Ranger'
 
 class GoblinDigger(Goblin):
-    pass
+    job: ClassVar[str] = 'Thief'
 
 def test_issubclass(cls: Type[Mob]) -> None:
     if issubclass(cls, (Goblin, GoblinAmbusher)):
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.Goblin]'
+        cls.level
+        cls.job  # E: Type[Goblin] has no attribute "job"
+        g = cls()
+        g.level = 15
+        g.job  # E: "Goblin" has no attribute "job"
         if issubclass(cls, GoblinAmbusher):
+            cls.level
             reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
+            cls.job
+            ga = cls()
+            ga.level = 15
+            ga.job
+            ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
     else:
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.Mob]'
+        cls.job  # E: Type[Mob] has no attribute "job"
+        cls.level  # E: Type[Mob] has no attribute "level"
+        m = cls()
+        m.level = 15  # E: "Mob" has no attribute "level"
+        m.job  # E: "Mob" has no attribute "job"
         if issubclass(cls, GoblinAmbusher):
             reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
+            cls.job
+            cls.level
+            ga = cls()
+            ga.level = 15
+            ga.job
+            ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
+
     if issubclass(cls, (GoblinDigger, GoblinAmbusher)):
         reveal_type(cls)  # E: Revealed type is 'Union[Type[__main__.GoblinDigger], Type[__main__.GoblinAmbusher]]'
+        cls.level
+        cls.job
+        g = cls()
+        g.level = 15
+        g.job
+        g.job = "Warrior" # E: Cannot assign to class variable "job" via instance
 
 [builtins fixtures/isinstancelist.pyi]
 
