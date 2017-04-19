@@ -14,6 +14,8 @@ from mypy.defaults import allow_fixtures
 # AssertStringArraysEqual displays special line alignment helper messages if
 # the first different line has at least this many characters,
 MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
+# Maximum lines of actual error output to print (to prevent hitting log size limit)
+MAX_ACTUAL_LINES = 25
 
 
 # should match 'tmp/foo.pyi', 'main.py', etc.
@@ -97,6 +99,9 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
             sys.stderr.write('  ...\n')
 
         for j in range(num_skip_start, len(actual) - num_skip_end):
+            if j - num_skip_start > MAX_ACTUAL_LINES:
+                sys.stderr.write('... (additional lines suppressed)')
+                break
             if j >= len(expected) or expected[j] != actual[j]:
                 sys.stderr.write('  {:<45} (diff)'.format(actual[j]))
             else:
