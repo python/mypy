@@ -860,10 +860,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Make sure directory for cache files exists
     parent = os.path.dirname(data_json)
-    try:
-        os.makedirs(parent)
-    except os.error:
-        pass  # Assume it already exists.
+    os.makedirs(parent, exist_ok=True)
     assert os.path.dirname(meta_json) == parent
 
     # Construct temp file names
