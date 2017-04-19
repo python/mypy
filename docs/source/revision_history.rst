@@ -3,6 +3,9 @@ Revision history
 
 List of major changes to this document:
 
+- April 2017
+    * Remove option ``strict_boolean``.
+
 - March 2017
     * Publish ``mypy`` version 0.500 on PyPI.
 
