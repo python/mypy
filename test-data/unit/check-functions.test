@@ -1447,7 +1447,7 @@ def a(f: F):
 [builtins fixtures/dict.pyi]
 
 [case testCallableParsingFromExpr]
-from typing import Callable
+from typing import Callable, List
 from mypy_extensions import Arg, VarArg, KwArg
 
 def WrongArg(x, y): return y
@@ -1463,8 +1463,9 @@ J = Callable[[VarArg(), KwArg()], int] # ok
 K = Callable[[VarArg(), int], int] # E: Required positional args may not appear after default, named or star args
 L = Callable[[Arg(name='x', typ=int)], int] # ok
 # I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
-# M = Callable[[Arg(gnome='x', typ=int)], int] #  Invalid type alias, Unexpected keyword argument "gnome" for "Arg"
+# M = Callable[[Arg(gnome='x', typ=int)], int]   E: Invalid type alias   E: Unexpected keyword argument "gnome" for "Arg"
 N = Callable[[Arg(name=None, typ=int)], int] # ok
+O = Callable[[List[Arg(int)]], int]  # E: Invalid type
 
 [builtins fixtures/dict.pyi]
 
