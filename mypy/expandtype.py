@@ -63,9 +63,6 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
 
-    def visit_type_list(self, t: TypeList) -> Type:
-        assert False, 'Not supported'
-
     def visit_any(self, t: AnyType) -> Type:
         return t
 
