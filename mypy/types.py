@@ -272,29 +272,18 @@ class TypeList(Type):
     def types(self) -> List[Type]:
         return [a.typ if isinstance(a, CallableArgument) else a for a in self.items]
 
-    @property
-    def names(self) -> List[Optional[str]]:
-        return [a.name if isinstance(a, CallableArgument) else None for a in self.items]
-
-    @property
-    def constructors(self) -> List[Optional[str]]:
-        return [a.constructor if isinstance(a, CallableArgument) else None for a in self.items]
-
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_type_list(self)
 
     def serialize(self) -> JsonDict:
-        return {
-            '.class': 'TypeList',
-            'items': [t.serialize() for t in self.items],
-        }
+        return {'.class': 'TypeList', 'items': [t.serialize() for t in self.items]}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TypeList':
         assert data['.class'] == 'TypeList'
-        items = [Type.deserialize(t) for t in data['items']]
-        return TypeList(items=items)
+        return TypeList([deserialize_type(t) for t in data['items']])
+
 
 class AnyType(Type):
     """The type 'Any'."""
@@ -553,22 +542,6 @@ FormalArgument = NamedTuple('FormalArgument', [
     ('required', bool)])
 
 
-class ArgKindException(Exception):
-    """Raised when the argument kinds are not in the right order"""
-    message = None  # type: str
-
-    def __init__(self, message: str) -> None:
-        self.message = message
-
-
-class ArgNameException(Exception):
-    """Raised when there are duplicate arg names"""
-    message = None  # type: str
-
-    def __init__(self, message: str) -> None:
-        self.message = message
-
-
 class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
 
@@ -621,10 +594,10 @@ class CallableType(FunctionLike):
         assert len(arg_types) == len(arg_kinds)
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
-        self.is_var_arg = ARG_STAR in arg_kinds
-        self.is_kw_arg = ARG_STAR2 in arg_kinds
         self.arg_names = arg_names
         self.min_args = arg_kinds.count(ARG_POS)
+        self.is_var_arg = ARG_STAR in arg_kinds
+        self.is_kw_arg = ARG_STAR2 in arg_kinds
         self.ret_type = ret_type
         self.fallback = fallback
         assert not name or '<bound method' not in name

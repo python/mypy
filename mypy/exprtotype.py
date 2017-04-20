@@ -78,8 +78,8 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
                 raise TypeTranslationError()
         return CallableArgument(typ, name, arg_const, expr.line, expr.column)
     elif isinstance(expr, ListExpr):
-        return TypeList([expr_to_unanalyzed_type(it) for it in expr.items],
-                            line=expr.line, column=expr.column)
+        return TypeList([expr_to_unanalyzed_type(t) for t in expr.items],
+                        line=expr.line, column=expr.column)
     elif isinstance(expr, (StrExpr, BytesExpr, UnicodeExpr)):
         # Parse string literal type.
         try:

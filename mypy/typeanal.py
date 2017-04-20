@@ -7,7 +7,7 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
     AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    ArgKindException, ArgNameException, CallableArgument, get_type_vars, union_items
+    CallableArgument, get_type_vars, union_items
 )
 
 from mypy.nodes import (
@@ -419,17 +419,14 @@ class TypeAnalyser(TypeVisitor[Type]):
                         args.append(arg)
                         names.append(None)
                         kinds.append(ARG_POS)
-                try:
-                    check_arg_names(names, [t]*len(args), self.fail, "Callable")
-                    check_arg_kinds(kinds, [t]*len(args), self.fail)
-                    return CallableType(self.anal_array(args),
-                                        kinds,
-                                        names,
-                                        ret_type=ret_type,
-                                        fallback=fallback)
-                except (ArgKindException, ArgNameException) as e:
-                    self.fail(e.message, t)
-                    return AnyType()
+
+                check_arg_names(names, [t]*len(args), self.fail, "Callable")
+                check_arg_kinds(kinds, [t]*len(args), self.fail)
+                return CallableType(self.anal_array(args),
+                                    kinds,
+                                    names,
+                                    ret_type=ret_type,
+                                    fallback=fallback)
             elif isinstance(t.args[0], EllipsisType):
                 # Callable[..., RET] (with literal ellipsis; accept arbitrary arguments)
                 return CallableType([AnyType(), AnyType()],
