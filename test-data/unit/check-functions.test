@@ -79,7 +79,7 @@ h = h
 
 def l(x) -> None: ...
 def r(__, *, x) -> None: ...
-r = l # E: Incompatible types in assignment (expression has type Callable[[Any], None], variable has type Callable[[Any, NamedArg('x', Any)], None])
+r = l # E: Incompatible types in assignment (expression has type Callable[[Any], None], variable has type Callable[[Any, NamedArg(Any, 'x')], None])
 
 [case testSubtypingFunctionsRequiredLeftArgNotPresent]
 
@@ -114,10 +114,10 @@ hh = h
 ff = gg
 ff_nonames = ff
 ff_nonames = f_nonames # reset
-ff = ff_nonames # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg('a', int), Arg('b', str)], None])
+ff = ff_nonames # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg(int, 'a'), Arg(str, 'b')], None])
 ff = f # reset
-gg = ff # E: Incompatible types in assignment (expression has type Callable[[Arg('a', int), Arg('b', str)], None], variable has type Callable[[Arg('a', int), DefaultArg('b', str)], None])
-gg = hh # E: Incompatible types in assignment (expression has type Callable[[Arg('aa', int), DefaultArg('b', str)], None], variable has type Callable[[Arg('a', int), DefaultArg('b', str)], None])
+gg = ff # E: Incompatible types in assignment (expression has type Callable[[Arg(int, 'a'), Arg(str, 'b')], None], variable has type Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None])
+gg = hh # E: Incompatible types in assignment (expression has type Callable[[Arg(int, 'aa'), DefaultArg(str, 'b')], None], variable has type Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None])
 
 [case testSubtypingFunctionsArgsKwargs]
 from typing import Any, Callable
@@ -143,7 +143,7 @@ ee_var = everything
 ee_var = everywhere
 
 ee_var = specific_1 # The difference between Callable[..., blah] and one with a *args: Any, **kwargs: Any is that the ... goes loosely both ways.
-ee_def = specific_1 # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[StarArg(Any), KwArg(Any)], None])
+ee_def = specific_1 # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[VarArg(Any), KwArg(Any)], None])
 
 [builtins fixtures/dict.pyi]
 
@@ -174,7 +174,7 @@ ff = f
 gg = g
 
 ff = g
-gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg('a', int), Arg('b', str)], None])
+gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg(int, 'a'), Arg(str, 'b')], None])
 
 [case testLackOfNamesFastparse]
 
@@ -186,7 +186,7 @@ ff = f
 gg = g
 
 ff = g
-gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg('a', int), Arg('b', str)], None])
+gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg(int, 'a'), Arg(str, 'b')], None])
 
 [case testFunctionTypeCompatibilityWithOtherTypes]
 from typing import Callable
@@ -1401,7 +1401,7 @@ g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
 from typing import Callable
 from mypy_extensions import Arg
 
-def a(f: Callable[[Arg('x', int)], int]):
+def a(f: Callable[[Arg(int, 'x')], int]):
     f(x=4)
     f(5)
     f(y=3) # E: Unexpected keyword argument "y"
@@ -1412,7 +1412,7 @@ def a(f: Callable[[Arg('x', int)], int]):
 from typing import Callable
 from mypy_extensions import DefaultArg
 
-def a(f: Callable[[DefaultArg('x', int)], int]):
+def a(f: Callable[[DefaultArg(int, 'x')], int]):
     f(x=4)
     f(2)
     f()
@@ -1424,7 +1424,7 @@ def a(f: Callable[[DefaultArg('x', int)], int]):
 from typing import Callable
 from mypy_extensions import Arg
 
-F = Callable[[Arg('x', int)], int]
+F = Callable[[Arg(int, 'x')], int]
 
 def a(f: F):
     f(x=4)
@@ -1437,7 +1437,7 @@ def a(f: F):
 from typing import Callable
 from mypy_extensions import DefaultArg
 
-F = Callable[[DefaultArg('x', int)], int]
+F = Callable[[DefaultArg(int, 'x')], int]
 def a(f: F):
     f(x=4)
     f(2)
@@ -1448,19 +1448,19 @@ def a(f: F):
 
 [case testCallableParsingFromExpr]
 from typing import Callable
-from mypy_extensions import Arg, StarArg, KwArg
+from mypy_extensions import Arg, VarArg, KwArg
 
 def WrongArg(x, y): return y
 # Note that for this test, the 'Value of type "int" is not indexable' errors are silly,
 # and a consequence of Callable being set to an int in the test stub.  We can't set it to
 # something else sensible, because other tests require the stub not have anything
 # that looks like a function call.
-F = Callable[[WrongArg('x', int)], int] # E: Invalid type alias # E: Value of type "int" is not indexable
-G = Callable[[Arg('x', 1)], int] # E: Invalid type alias # E: Value of type "int" is not indexable
-H = Callable[[StarArg('x', int)], int] # E: Invalid type alias # E: Value of type "int" is not indexable # E: Too many arguments for "StarArg"
-I = Callable[[StarArg(int)], int] # ok
-J = Callable[[StarArg(), KwArg()], int] # ok
-K = Callable[[StarArg(), int], int] # E: Required positional args may not appear after default, named or star args
+F = Callable[[WrongArg(int, 'x')], int] # E: Invalid argument constructor "__main__.WrongArg"
+G = Callable[[Arg(1, 'x')], int] # E: Invalid type alias # E: Value of type "int" is not indexable
+H = Callable[[VarArg(int, 'x')], int] # E: VarArg arguments should not have names
+I = Callable[[VarArg(int)], int] # ok
+J = Callable[[VarArg(), KwArg()], int] # ok
+K = Callable[[VarArg(), int], int] # E: Required positional args may not appear after default, named or star args
 L = Callable[[Arg(name='x', typ=int)], int] # ok
 # I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
 # M = Callable[[Arg(gnome='x', typ=int)], int] #  Invalid type alias, Unexpected keyword argument "gnome" for "Arg"
@@ -1470,45 +1470,59 @@ N = Callable[[Arg(name=None, typ=int)], int] # ok
 
 [case testCallableParsing]
 from typing import Callable
-from mypy_extensions import Arg, StarArg, KwArg
+from mypy_extensions import Arg, VarArg, KwArg
 
 def WrongArg(x, y): return y
 
-def a(f: Callable[[WrongArg('x', int)], int]): pass # E: Unknown argument constructor WrongArg
-def b(f: Callable[[Arg('x', 1)], int]): pass # E: invalid type comment or annotation
-def c(f: Callable[[StarArg('x', int)], int]): pass # E: Too many arguments for argument constructor
-def d(f: Callable[[StarArg(int)], int]): pass # ok
-def e(f: Callable[[StarArg(), KwArg()], int]): pass # ok
+def b(f: Callable[[Arg(1, 'x')], int]): pass # E: invalid type comment or annotation
+def d(f: Callable[[VarArg(int)], int]): pass # ok
+def e(f: Callable[[VarArg(), KwArg()], int]): pass # ok
 def g(f: Callable[[Arg(name='x', typ=int)], int]): pass # ok
 def h(f: Callable[[Arg(gnome='x', typ=int)], int]): pass  # E: Unexpected argument "gnome" for argument constructor
 def i(f: Callable[[Arg(name=None, typ=int)], int]): pass # ok
 
 [builtins fixtures/dict.pyi]
 
-[case testCallableFastParseWrongArg]
-# flags: --fast-parser
+[case testCallableTypeAnalysis]
 from typing import Callable
+from mypy_extensions import Arg, VarArg as VARG, KwArg
+import mypy_extensions as ext
+
 def WrongArg(x, y): return y
-def a(f: Callable[[WrongArg('x', int)], int]): pass # E: Unknown argument constructor WrongArg
+def a(f: Callable[[WrongArg(int, 'x')], int]): pass # E: Invalid argument constructor "__main__.WrongArg"
+def b(f: Callable[[BadArg(int, 'x')], int]): pass # E: Name 'BadArg' is not defined
+def d(f: Callable[[ext.VarArg(int)], int]): pass # ok
+def e(f: Callable[[VARG(), ext.KwArg()], int]): pass # ok
+def g(f: Callable[[ext.Arg(name='x', typ=int)], int]): pass # ok
+def i(f: Callable[[Arg(name=None, typ=int)], int]): pass # ok
+
+def f1(*args) -> int: pass
+def f2(*args, **kwargs) -> int: pass
+
+d(f1)
+e(f2)
+d(f2)
+e(f1)  # E: Argument 1 to "e" has incompatible type Callable[[VarArg(Any)], int]; expected Callable[[VarArg(Any), KwArg(Any)], int]
+
 [builtins fixtures/dict.pyi]
 
-[case testCallableFastParseWrongTypeType]
+[case testCallableWrongTypeType]
 from typing import Callable
 from mypy_extensions import Arg
-def b(f: Callable[[Arg('x', 1)], int]): pass # E: invalid type comment or annotation
+def b(f: Callable[[Arg(1, 'x')], int]): pass # E: invalid type comment or annotation
 [builtins fixtures/dict.pyi]
 
-[case testCallableFastParseTooManyStarArg]
+[case testCallableTooManyVarArg]
 from typing import Callable
-from mypy_extensions import StarArg
-def c(f: Callable[[StarArg('x', int)], int]): pass # E: Too many arguments for argument constructor
+from mypy_extensions import VarArg
+def c(f: Callable[[VarArg(int, 'x')], int]): pass # E: VarArg arguments should not have names
 [builtins fixtures/dict.pyi]
 
 [case testCallableFastParseGood]
 from typing import Callable
-from mypy_extensions import StarArg, Arg
-def d(f: Callable[[StarArg(int)], int]): pass # ok
-def e(f: Callable[[StarArg(), KwArg()], int]): pass # ok
+from mypy_extensions import VarArg, Arg, KwArg
+def d(f: Callable[[VarArg(int)], int]): pass # ok
+def e(f: Callable[[VarArg(), KwArg()], int]): pass # ok
 def g(f: Callable[[Arg(name='x', typ=int)], int]): pass # ok
 def i(f: Callable[[Arg(name=None, typ=int)], int]): pass # ok
 [builtins fixtures/dict.pyi]
@@ -1520,22 +1534,22 @@ def h(f: Callable[[Arg(gnome='x', typ=int)], int]): pass # E: Unexpected argumen
 [builtins fixtures/dict.pyi]
 
 [case testCallableKindsOrdering]
-from typing import Callable
-from mypy_extensions import Arg, StarArg, KwArg, DefaultArg
+from typing import Callable, Any
+from mypy_extensions import Arg, VarArg, KwArg, DefaultArg, NamedArg
 
-def f(f: Callable[[StarArg(), int], int]): pass # E: Required positional args may not appear after default, named or star args
-def g(f: Callable[[StarArg(), StarArg()], int]): pass # E: Star args may not appear after named or star args
+def f(f: Callable[[VarArg(), int], int]): pass # E: Required positional args may not appear after default, named or star args
+def g(f: Callable[[VarArg(), VarArg()], int]): pass # E: Star args may not appear after named or star args
 def h(f: Callable[[KwArg(), KwArg()], int]): pass # E: You may only have one **kwargs argument
 def i(f: Callable[[DefaultArg(), int], int]): pass # E: Required positional args may not appear after default, named or star args
-def j(f: Callable[[NamedArg('x'), DefaultArg('y', int)], int]): pass # E: Positional default args may not appear after named or star args
+def j(f: Callable[[NamedArg(Any, 'x'), DefaultArg(int, 'y')], int]): pass # E: Positional default args may not appear after named or star args
 
 [builtins fixtures/dict.pyi]
 
 [case testCallableDuplicateNames]
 from typing import Callable
-from mypy_extensions import Arg, StarArg, KwArg, DefaultArg
+from mypy_extensions import Arg, VarArg, KwArg, DefaultArg
 
-def f(f: Callable[[Arg('x', int), int, Arg('x', int)], int]): pass # E: duplicate argument 'x' in Callable
+def f(f: Callable[[Arg(int, 'x'), int, Arg(int, 'x')], int]): pass # E: duplicate argument 'x' in Callable
 
 [builtins fixtures/dict.pyi]
 
@@ -1544,7 +1558,7 @@ def f(f: Callable[[Arg('x', int), int, Arg('x', int)], int]): pass # E: duplicat
 from typing import Callable
 from mypy_extensions import NamedArg
 
-def a(f: Callable[[NamedArg('x', int)], int]):
+def a(f: Callable[[NamedArg(int, 'x')], int]):
     f(x=4)
     f(2) # E: Too many positional arguments
     f() # E: Missing named argument "x"
@@ -1556,7 +1570,7 @@ def a(f: Callable[[NamedArg('x', int)], int]):
 from typing import Callable
 from mypy_extensions import DefaultNamedArg
 
-def a(f: Callable[[DefaultNamedArg('x', int)], int]):
+def a(f: Callable[[DefaultNamedArg(int, 'x')], int]):
     f(x=4)
     f(2) # E: Too many positional arguments
     f()
@@ -1569,8 +1583,8 @@ from typing import Callable
 from mypy_extensions import Arg, DefaultArg
 
 int_str_fun = None # type: Callable[[int, str], str]
-int_opt_str_fun = None # type: Callable[[int, DefaultArg(None, str)], str]
-int_named_str_fun = None # type: Callable[[int, Arg('s', str)], str]
+int_opt_str_fun = None # type: Callable[[int, DefaultArg(str, None)], str]
+int_named_str_fun = None # type: Callable[[int, Arg(str, 's')], str]
 
 def isf(ii: int, ss: str) -> str:
     return ss
@@ -1583,12 +1597,12 @@ def isf_unnamed(__i: int, __s: str) -> str:
 
 int_str_fun = isf
 int_str_fun = isf_unnamed
-int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type Callable[[int, str], str], variable has type Callable[[int, Arg('s', str)], str])
+int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type Callable[[int, str], str], variable has type Callable[[int, Arg(str, 's')], str])
 int_opt_str_fun = iosf
 int_str_fun = iosf
-int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg('ii', int), Arg('ss', str)], str], variable has type Callable[[int, DefaultArg(None, str)], str])
+int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg(int, 'ii'), Arg(str, 'ss')], str], variable has type Callable[[int, DefaultArg(str)], str])
 
-int_named_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg('ii', int), Arg('ss', str)], str], variable has type Callable[[int, Arg('s', str)], str])
+int_named_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg(int, 'ii'), Arg(str, 'ss')], str], variable has type Callable[[int, Arg(str, 's')], str])
 int_named_str_fun = iosf
 
 [builtins fixtures/dict.pyi]
@@ -1642,7 +1656,7 @@ def g4(*, y: int) -> str: pass
 f(g1)
 f(g2)
 f(g3)
-f(g4) # E: Argument 1 to "f" has incompatible type Callable[[NamedArg('y', int)], str]; expected Callable[..., int]
+f(g4) # E: Argument 1 to "f" has incompatible type Callable[[NamedArg(int, 'y')], str]; expected Callable[..., int]
 
 [case testCallableWithArbitraryArgsSubtypingWithGenericFunc]
 from typing import Callable, TypeVar
@@ -1770,7 +1784,7 @@ def g(x, y): pass
 def h(x): pass
 def j(y) -> Any: pass
 f = h
-f = j # E: Incompatible types in assignment (expression has type Callable[[Arg('y', Any)], Any], variable has type Callable[[Arg('x', Any)], Any])
+f = j # E: Incompatible types in assignment (expression has type Callable[[Arg(Any, 'y')], Any], variable has type Callable[[Arg(Any, 'x')], Any])
 f = g # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[Any], Any])
 
 [case testRedefineFunction2]

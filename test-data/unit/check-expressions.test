@@ -1169,7 +1169,7 @@ def foo(a: bytes, b: bytes):
     b'%s:%s' % (a, b)
 foo(b'a', b'b') == b'a:b'
 
-[case testStringInterpolationStarArgs]
+[case testStringInterpolationVarArgs]
 x = (1, 2)
 "%d%d" % (*x,)
 
@@ -1566,7 +1566,7 @@ d = dict([], x=1)
 d() # E: Dict[str, int] not callable
 [builtins fixtures/dict.pyi]
 
-[case testDictFromIterableAndStarStarArgs]
+[case testDictFromIterableAndStarVarArgs]
 from typing import Dict
 it = [('x', 1)]
 
@@ -1581,7 +1581,7 @@ d2() # E: Dict[Any, Any] not callable
 d3 = dict(it, **kw2) # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type **Dict[str, str]; expected "int"
 [builtins fixtures/dict.pyi]
 
-[case testDictFromIterableAndStarStarArgs2]
+[case testDictFromIterableAndStarVarArgs2]
 it = [(1, 'x')]
 kw = {'x': 'y'}
 d = dict(it, **kw) # E: Keyword argument only valid with "str" key type in call to "dict"

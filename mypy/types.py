@@ -222,6 +222,37 @@ class UnboundType(Type):
         return UnboundType(data['name'],
                            [deserialize_type(a) for a in data['args']])
 
+class CallableArgument(Type):
+    typ = None          # type: Type
+    name = None         # type: Optional[str]
+    constructor = None  # type: str
+
+    def __init__(self, typ: Type, name: str, constructor: str,
+                 line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
+        self.typ = typ
+        self.name = name
+        self.constructor = constructor
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
+        return visitor.visit_callable_argument(self)
+
+    def serialize(self) -> JsonDict:
+        return {
+            '.class': 'CallableArgument',
+            'typ': self.typ.serialize(),
+            'name': self.name,
+            'constructor': self.constructor,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'CallableArgument':
+        assert data['.class'] == 'CallableArgument'
+        return CallableArgument(
+            typ=deserialize_type(data['typ']),
+            name=data['name'],
+            constructor=data['constructor'])
 
 class ArgumentList(Type):
     """Information about argument types and names [...].
@@ -231,42 +262,39 @@ class ArgumentList(Type):
     but a syntactic AST construct.
     """
 
-    types = None  # type: List[Type]
-    names = None  # type: List[Optional[str]]
-    kinds = None  # type: List[int]
+    items = None  # type: List[Type]
 
-    def __init__(self,
-                 types: List[Type],
-                 names: List[Optional[str]],
-                 kinds: List[int],
-                 line: int = -1,
-                 column: int = -1) -> None:
+    def __init__(self, items: List[Type], line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.types = types
-        self.names = names
-        self.kinds = kinds
+        self.items = items
+
+    @property
+    def types(self) -> List[Type]:
+        return [a.typ if isinstance(a, CallableArgument) else a for a in self.items]
+
+    @property
+    def names(self) -> List[Optional[str]]:
+        return [a.name if isinstance(a, CallableArgument) else None for a in self.items]
+
+    @property
+    def constructors(self) -> List[Optional[str]]:
+        return [a.constructor if isinstance(a, CallableArgument) else None for a in self.items]
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_type_list(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'ArgumentList',
-                'items': [t.serialize() for t in self.types],
-                'names': self.names,
-                'kinds': self.kinds}
+        return {
+            '.class': 'ArgumentList',
+            'items': [t.serialize() for t in self.items],
+        }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'ArgumentList':
         assert data['.class'] == 'ArgumentList' or data['.class'] == 'TypeList'
-        types = [deserialize_type(t) for t in data['items']]
-        names = cast(List[Optional[str]], data.get('names', [None] * len(types)))
-        kinds = cast(List[int], data.get('kinds', [ARG_POS] * len(types)))
-        return ArgumentList(
-            types=types,
-            names=names,
-            kinds=kinds,
-        )
-
+        items = [Type.deserialize(t) for t in data['items']]
+        return ArgumentList(items=items)
 
 class AnyType(Type):
     """The type 'Any'."""
@@ -1009,6 +1037,7 @@ class StarType(Type):
         super().__init__(line, column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_star_type(self)
 
 
@@ -1150,6 +1179,7 @@ class EllipsisType(Type):
     """
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_ellipsis_type(self)
 
     def serialize(self) -> JsonDict:
@@ -1233,9 +1263,6 @@ class TypeVisitor(Generic[T]):
     def visit_unbound_type(self, t: UnboundType) -> T:
         pass
 
-    def visit_type_list(self, t: ArgumentList) -> T:
-        raise self._notimplemented_helper('type_list')
-
     @abstractmethod
     def visit_any(self, t: AnyType) -> T:
         pass
@@ -1278,9 +1305,6 @@ class TypeVisitor(Generic[T]):
     def visit_typeddict_type(self, t: TypedDictType) -> T:
         pass
 
-    def visit_star_type(self, t: StarType) -> T:
-        raise self._notimplemented_helper('star_type')
-
     @abstractmethod
     def visit_union_type(self, t: UnionType) -> T:
         pass
@@ -1289,15 +1313,34 @@ class TypeVisitor(Generic[T]):
     def visit_partial_type(self, t: PartialType) -> T:
         pass
 
-    def visit_ellipsis_type(self, t: EllipsisType) -> T:
-        raise self._notimplemented_helper('ellipsis_type')
-
     @abstractmethod
     def visit_type_type(self, t: TypeType) -> T:
         pass
 
 
-class TypeTranslator(TypeVisitor[Type]):
+class SyntheticTypeVisitor(TypeVisitor[T]):
+    """A TypeVisitor that also knows how to visit synthetic AST constructs.
+
+       Not just real types."""
+
+    @abstractmethod
+    def visit_star_type(self, t: StarType) -> T:
+        pass
+
+    @abstractmethod
+    def visit_type_list(self, t: ArgumentList) -> T:
+        pass
+
+    @abstractmethod
+    def visit_callable_argument(self, t: CallableArgument) -> T:
+        pass
+
+    @abstractmethod
+    def visit_ellipsis_type(self, t: EllipsisType) -> T:
+        pass
+
+
+class TypeTranslator(SyntheticTypeVisitor[Type]):
     """Identity type transformation.
 
     Subclass this and override some methods to implement a non-trivial
@@ -1308,6 +1351,9 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_type_list(self, t: ArgumentList) -> Type:
+        return t
+
+    def visit_callable_argument(self, t: CallableArgument) -> Type:
         return t
 
     def visit_any(self, t: AnyType) -> Type:
@@ -1385,7 +1431,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return TypeType(t.item.accept(self), line=t.line, column=t.column)
 
 
-class TypeStrVisitor(TypeVisitor[str]):
+class TypeStrVisitor(SyntheticTypeVisitor[str]):
     """Visitor for pretty-printing types into strings.
 
     This is mostly for debugging/testing.
@@ -1407,7 +1453,14 @@ class TypeStrVisitor(TypeVisitor[str]):
         return s
 
     def visit_type_list(self, t: ArgumentList) -> str:
-        return '<ArgumentList {}>'.format(self.list_str(t.types))
+        return '<ArgumentList {}>'.format(self.list_str(t.items))
+
+    def visit_callable_argument(self, t: CallableArgument) -> str:
+        typ = t.typ.accept(self)
+        if t.name is None:
+            return "{}({})".format(t.constructor, t.typ)
+        else:
+            return "{}({}, {})".format(t.constructor, t.typ, t.name)
 
     def visit_any(self, t: AnyType) -> str:
         return 'Any'
@@ -1544,7 +1597,7 @@ class TypeStrVisitor(TypeVisitor[str]):
         ])
 
 
-class TypeQuery(Generic[T], TypeVisitor[T]):
+class TypeQuery(SyntheticTypeVisitor[T]):
     """Visitor for performing queries of types.
 
     strategy is used to combine results for a series of types
@@ -1559,7 +1612,10 @@ class TypeQuery(Generic[T], TypeVisitor[T]):
         return self.query_types(t.args)
 
     def visit_type_list(self, t: ArgumentList) -> T:
-        return self.query_types(t.types)
+        return self.query_types(t.items)
+
+    def visit_callable_argument(self, t: CallableArgument) -> T:
+        return t.typ.accept(self)
 
     def visit_any(self, t: AnyType) -> T:
         return self.strategy([])

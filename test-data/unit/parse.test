@@ -3121,7 +3121,7 @@ MypyFile:1(
   ExpressionStmt:4(
     IntExpr(4)))
 
-[case testKeywordArgumentAfterStarArgumentInCall]
+[case testKeywordArgumentAfterVarArgumentInCall]
 f(x=1, *y)
 [out]
 MypyFile:1(

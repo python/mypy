@@ -4,7 +4,6 @@ import sys
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
-    ARG_KINDS_BY_CONSTRUCTOR, STAR_ARG_CONSTRUCTORS,
 )
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef,
@@ -25,6 +24,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, ArgumentList, EllipsisType,
+    CallableArgument,
 )
 from mypy import defaults
 from mypy import experiments
@@ -152,9 +152,6 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg)
-
-    def fail_ast(self, msg: str, n: ast3.AST) -> None:
-        self.fail(msg, n.lineno, n.col_offset)
 
     def generic_visit(self, node: ast3.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))
@@ -449,18 +446,12 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             new_args.append(make_argument(args.kwarg, None, ARG_STAR2))
             names.append(args.kwarg)
 
-        check_arg_names([name.arg for name in names], names, self.fail_ast)
+        def fail_arg(msg: str, arg: ast3.arg):
+            self.fail(msg, arg.lineno, arg.col_offset)
+
+        check_arg_names([name.arg for name in names], names, fail_arg)
 
         return new_args
-
-    def stringify_name(self, n: ast3.AST) -> str:
-        if isinstance(n, ast3.Name):
-            return n.id
-        elif isinstance(n, ast3.Attribute):
-            sv = self.stringify_name(n.value)
-            if sv is not None:
-                return "{}.{}".format(sv, n.attr)
-        return None  # Can't do it.
 
     # ClassDef(identifier name,
     #  expr* bases,
@@ -473,7 +464,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         metaclass_arg = find(lambda x: x.arg == 'metaclass', n.keywords)
         metaclass = None
         if metaclass_arg:
-            metaclass = self.stringify_name(metaclass_arg.value)
+            metaclass = stringify_name(metaclass_arg.value)
             if metaclass is None:
                 metaclass = '<error>'  # To be reported later
 
@@ -964,6 +955,21 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     def __init__(self, errors: Errors, line: int = -1) -> None:
         self.errors = errors
         self.line = line
+        self.node_stack = []  # type: List[ast3.AST]
+
+    def visit(self, node):
+        """Modified visit -- keep track of the stack of nodes"""
+        self.node_stack.append(node)
+        try:
+            return super().visit(node)
+        finally:
+            self.node_stack.pop()
+
+    def parent(self) -> ast3.AST:
+        """Return the AST node above the one we are processing"""
+        if len(self.node_stack) < 2:
+            return None
+        return self.node_stack[-2]
 
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg)
@@ -984,63 +990,50 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     def translate_expr_list(self, l: Sequence[ast3.AST]) -> List[Type]:
         return [self.visit(e) for e in l]
 
+    def visit_Call(self, e: ast3.Call) -> Type:
+        # Parse the arg constructor
+        if not isinstance(self.parent(), ast3.List):
+            return self.generic_visit(e)
+        f = e.func
+        constructor = stringify_name(f)
+        if not constructor:
+            self.fail("Expected arg constructor name", e.lineno, e.col_offset)
+            constructor = "BadArgConstructor"
+        name = None  # type: Optional[str]
+        typ = AnyType(implicit=True)  # type: Type
+        for i, arg in enumerate(e.args):
+            if i == 0:
+                typ = self.visit(arg)
+            elif i == 1:
+                name = self._extract_str(arg)
+            else:
+                self.fail("Too many arguments for argument constructor",
+                          f.lineno, f.col_offset)
+        for k in e.keywords:
+            value = k.value
+            if k.arg == "name":
+                name = self._extract_str(value)
+            elif k.arg == "typ":
+                typ = self.visit(value)
+            else:
+                self.fail(
+                    'Unexpected argument "{}" for argument constructor'.format(k.arg),
+                    value.lineno, value.col_offset)
+        return CallableArgument(typ, name, constructor, e.lineno, e.col_offset)
+
+
     def translate_argument_list(self, l: Sequence[ast3.AST]) -> ArgumentList:
         types = []  # type: List[Type]
         names = []  # type: List[Optional[str]]
         kinds = []  # type: List[int]
-        for e in l:
-            if isinstance(e, ast3.Call):
-                # Parse the arg constructor
-                f = e.func
-                if not isinstance(f, ast3.Name):
-                    raise FastParserError("Expected arg constructor name",
-                                          e.lineno, e.col_offset)
-                try:
-                    kind = ARG_KINDS_BY_CONSTRUCTOR[f.id]
-                    star = f.id in STAR_ARG_CONSTRUCTORS
-                except KeyError:
-                    self.fail("Unknown argument constructor {}".format(f.id),
-                              f.lineno, f.col_offset)
-                    kind = ARG_POS
-                    star = False
+        return ArgumentList([self.visit(e) for e in l], line=self.line)
 
-                name = None  # type: Optional[str]
-                typ = AnyType(implicit=True)  # type: Type
-                for i, arg in enumerate(e.args):
-                    if i == 0 and not star:
-                        name = self._extract_str(arg)
-                    elif i == 1 and not star or i == 0 and star:
-                        typ = self.visit(arg)
-                    else:
-                        self.fail("Too many arguments for argument constructor",
-                                  f.lineno, f.col_offset)
-                for k in e.keywords:
-                    value = k.value
-                    if k.arg == "name" and not star:
-                        name = self._extract_str(value)
-                    elif k.arg == "typ":
-                        typ = self.visit(value)
-                    else:
-                        self.fail(
-                            'Unexpected argument "{}" for argument constructor'.format(k.arg),
-                            value.lineno, value.col_offset)
-
-                types.append(typ)
-                names.append(name)
-                kinds.append(kind)
-            else:
-                types.append(self.visit(e))
-                names.append(None)
-                kinds.append(ARG_POS)
-
-        return ArgumentList(types, names, kinds, line=self.line)
-
-    def _extract_str(self, n: ast3.AST) -> str:
+    def _extract_str(self, n: ast3.expr) -> str:
         if isinstance(n, ast3.Str):
             return n.s.strip()
         elif isinstance(n, ast3.NameConstant) and str(n.value) == 'None':
             return None
-        self.fail('Expected string literal for argument name, got "{}"'.format(n), n.lineno, n.col_offset)
+        self.fail('Expected string literal for argument name, got {}'.format(type(n).__name__), self.line, 0)
         return None
 
     def visit_Name(self, n: ast3.Name) -> Type:
@@ -1096,3 +1089,12 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     def visit_List(self, n: ast3.List) -> Type:
         l = len(n.elts)
         return self.translate_argument_list(n.elts)
+
+def stringify_name(n: ast3.AST) -> Optional[str]:
+    if isinstance(n, ast3.Name):
+        return n.id
+    elif isinstance(n, ast3.Attribute):
+        sv = stringify_name(n.value)
+        if sv is not None:
+            return "{}.{}".format(sv, n.attr)
+    return None  # Can't do it.

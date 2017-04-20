@@ -11,7 +11,7 @@ from mypy.nodes import (
 from mypy.types import (
     CallableType, EllipsisType, Instance, Overloaded, TupleType, TypedDictType,
     ArgumentList, TypeVarType, UnboundType, UnionType, TypeVisitor,
-    TypeType
+    TypeType, CallableArgument,
 )
 from mypy.visitor import NodeVisitor
 
@@ -177,8 +177,8 @@ class TypeFixer(TypeVisitor[None]):
                     val.accept(self)
             v.upper_bound.accept(self)
 
-    def visit_ellipsis_type(self, e: EllipsisType) -> None:
-        pass  # Nothing to descend into.
+#    def visit_ellipsis_type(self, e: EllipsisType) -> None:
+#        pass  # Nothing to descend into.
 
     def visit_overloaded(self, t: Overloaded) -> None:
         for ct in t.items():
@@ -210,9 +210,12 @@ class TypeFixer(TypeVisitor[None]):
         if tdt.fallback is not None:
             tdt.fallback.accept(self)
 
-    def visit_type_list(self, tl: ArgumentList) -> None:
-        for t in tl.types:
-            t.accept(self)
+    # def visit_type_list(self, tl: ArgumentList) -> None:
+    #     for t in tl.items:
+    #         t.accept(self)
+
+    # def visit_callable_argument(self, t: CallableArgument) -> None:
+    #     t.typ.accept(self)
 
     def visit_type_var(self, tvt: TypeVarType) -> None:
         if tvt.values:

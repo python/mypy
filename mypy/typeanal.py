@@ -7,13 +7,14 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
     AnyType, CallableType, NoneTyp, DeletedType, ArgumentList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    ArgKindException, ArgNameException, get_type_vars, union_items
+    ArgKindException, ArgNameException, CallableArgument, get_type_vars, union_items
 )
 
 from mypy.nodes import (
     BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
     TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds,
+    ARG_POS, ARG_NAMED, ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
 )
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -28,6 +29,15 @@ type_constructors = {
     'typing.Tuple',
     'typing.Type',
     'typing.Union',
+}
+
+ARG_KINDS_BY_CONSTRUCTOR = {
+    'mypy_extensions.Arg': ARG_POS,
+    'mypy_extensions.DefaultArg': ARG_OPT,
+    'mypy_extensions.NamedArg': ARG_NAMED,
+    'mypy_extensions.DefaultNamedArg': ARG_NAMED_OPT,
+    'mypy_extensions.VarArg': ARG_STAR,
+    'mypy_extensions.KwArg': ARG_STAR2,
 }
 
 
@@ -381,13 +391,40 @@ class TypeAnalyser(TypeVisitor[Type]):
             ret_type = self.anal_type(t.args[1])
             if isinstance(t.args[0], ArgumentList):
                 # Callable[[ARG, ...], RET] (ordinary callable type)
-                args = t.args[0].types
+                args = []   # type: List[Type]
+                names = []  # type: List[str]
+                kinds = []  # type: List[int]
+                for arg in t.args[0].items:
+                    if isinstance(arg, CallableArgument):
+                        args.append(arg.typ)
+                        names.append(arg.name)
+                        if arg.constructor is None:
+                            kinds.append(ARG_POS)
+                            continue
+                        found = self.lookup(arg.constructor, arg)
+                        if found is None:
+                            # Looking it up already put an error message in
+                            kinds.append(ARG_POS)
+                        elif found.fullname not in ARG_KINDS_BY_CONSTRUCTOR:
+                            self.fail('Invalid argument constructor "{}"'.format(
+                                found.fullname), arg)
+                            kinds.append(ARG_POS)
+                        else:
+                            kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
+                            kinds.append(kind)
+                            if arg.name is not None and kind in {ARG_STAR, ARG_STAR2}:
+                                self.fail("{} arguments should not have names".format(
+                                    arg.constructor), arg)
+                    else:
+                        args.append(arg)
+                        names.append(None)
+                        kinds.append(ARG_POS)
                 try:
-                    check_arg_names(t.args[0].names, [t]*len(args), self.fail, "Callable")
-                    check_arg_kinds(t.args[0].kinds, [t]*len(args), self.fail)
+                    check_arg_names(names, [t]*len(args), self.fail, "Callable")
+                    check_arg_kinds(kinds, [t]*len(args), self.fail)
                     return CallableType(self.anal_array(args),
-                                        t.args[0].kinds,
-                                        t.args[0].names,
+                                        kinds,
+                                        names,
                                         ret_type=ret_type,
                                         fallback=fallback)
                 except (ArgKindException, ArgNameException) as e:

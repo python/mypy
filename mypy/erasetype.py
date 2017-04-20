@@ -26,11 +26,6 @@ def erase_type(typ: Type) -> Type:
 
 
 class EraseTypeVisitor(TypeVisitor[Type]):
-    def visit_unbound_type(self, t: UnboundType) -> Type:
-        assert False, 'Not supported'
-
-    def visit_type_list(self, t: ArgumentList) -> Type:
-        assert False, 'Not supported'
 
     def visit_any(self, t: AnyType) -> Type:
         return t
@@ -47,6 +42,9 @@ class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_partial_type(self, t: PartialType) -> Type:
         # Should not get here.
+        raise RuntimeError()
+
+    def visit_unbound_type(self, t: UnboundType) -> Type:
         raise RuntimeError()
 
     def visit_deleted_type(self, t: DeletedType) -> Type:

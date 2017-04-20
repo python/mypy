@@ -107,9 +107,6 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         else:
             return UnionType.make_simplified_union([self.s, t])
 
-    def visit_type_list(self, t: ArgumentList) -> Type:
-        assert False, 'Not supported'
-
     def visit_any(self, t: AnyType) -> Type:
         return t
 

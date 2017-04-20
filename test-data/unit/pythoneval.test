@@ -758,7 +758,7 @@ def f(*args: str) -> str: return args[0]
 map(f, ['x'])
 map(f, [1])
 [out]
-_program.py:4: error: Argument 1 to "map" has incompatible type Callable[[StarArg(str)], str]; expected Callable[[int], str]
+_program.py:4: error: Argument 1 to "map" has incompatible type Callable[[VarArg(str)], str]; expected Callable[[int], str]
 
 [case testMapStr]
 import typing
@@ -962,7 +962,7 @@ x = f()
 y = 1
 y = x
 
-[case testAppendToStarArg]
+[case testAppendToVarArg]
 import typing
 def f(*x: int) -> None:
     x.append(1)

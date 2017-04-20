@@ -93,19 +93,19 @@ TypedDict.__doc__ = \
     syntax forms work for Python 2.7 and 3.2+
     """
 
-def Arg(name=None, typ=Any):
+def Arg(typ=Any, name=None):
     return typ
 
-def DefaultArg(name=None, typ=Any):
+def DefaultArg(typ=Any, name=None):
     return typ
 
-def NamedArg(name=None, typ=Any):
+def NamedArg(typ=Any, name=None):
     return typ
 
-def DefaultNamedArg(name=None, typ=Any):
+def DefaultNamedArg(typ=Any, name=None):
     return typ
 
-def StarArg(typ=Any):
+def VarArg(typ=Any):
     return typ
 
 def KwArg(typ=Any):
