@@ -420,8 +420,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                         names.append(None)
                         kinds.append(ARG_POS)
 
-                check_arg_names(names, [t]*len(args), self.fail, "Callable")
-                check_arg_kinds(kinds, [t]*len(args), self.fail)
+                check_arg_names(names, [t] * len(args), self.fail, "Callable")
+                check_arg_kinds(kinds, [t] * len(args), self.fail)
                 return CallableType(self.anal_array(args),
                                     kinds,
                                     names,

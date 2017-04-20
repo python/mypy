@@ -446,7 +446,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             new_args.append(make_argument(args.kwarg, None, ARG_STAR2))
             names.append(args.kwarg)
 
-        def fail_arg(msg: str, arg: ast3.arg):
+        def fail_arg(msg: str, arg: ast3.arg) -> None:
             self.fail(msg, arg.lineno, arg.col_offset)
 
         check_arg_names([name.arg for name in names], names, fail_arg)
@@ -957,7 +957,7 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         self.line = line
         self.node_stack = []  # type: List[ast3.AST]
 
-    def visit(self, node):
+    def visit(self, node) -> Type:
         """Modified visit -- keep track of the stack of nodes"""
         self.node_stack.append(node)
         try:
@@ -1021,11 +1021,7 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                     value.lineno, value.col_offset)
         return CallableArgument(typ, name, constructor, e.lineno, e.col_offset)
 
-
     def translate_argument_list(self, l: Sequence[ast3.AST]) -> TypeList:
-        types = []  # type: List[Type]
-        names = []  # type: List[Optional[str]]
-        kinds = []  # type: List[int]
         return TypeList([self.visit(e) for e in l], line=self.line)
 
     def _extract_str(self, n: ast3.expr) -> str:
@@ -1033,7 +1029,8 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             return n.s.strip()
         elif isinstance(n, ast3.NameConstant) and str(n.value) == 'None':
             return None
-        self.fail('Expected string literal for argument name, got {}'.format(type(n).__name__), self.line, 0)
+        self.fail('Expected string literal for argument name, got {}'.format(
+            type(n).__name__), self.line, 0)
         return None
 
     def visit_Name(self, n: ast3.Name) -> Type:
@@ -1087,8 +1084,8 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> Type:
-        l = len(n.elts)
         return self.translate_argument_list(n.elts)
+
 
 def stringify_name(n: ast3.AST) -> Optional[str]:
     if isinstance(n, ast3.Name):

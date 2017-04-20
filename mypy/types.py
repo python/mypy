@@ -222,6 +222,7 @@ class UnboundType(Type):
         return UnboundType(data['name'],
                            [deserialize_type(a) for a in data['args']])
 
+
 class CallableArgument(Type):
     typ = None          # type: Type
     name = None         # type: Optional[str]
@@ -253,6 +254,7 @@ class CallableArgument(Type):
             typ=deserialize_type(data['typ']),
             name=data['name'],
             constructor=data['constructor'])
+
 
 class TypeList(Type):
     """Information about argument types and names [...].
@@ -1431,9 +1433,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_callable_argument(self, t: CallableArgument) -> str:
         typ = t.typ.accept(self)
         if t.name is None:
-            return "{}({})".format(t.constructor, t.typ)
+            return "{}({})".format(t.constructor, typ)
         else:
-            return "{}({}, {})".format(t.constructor, t.typ, t.name)
+            return "{}({}, {})".format(t.constructor, typ, t.name)
 
     def visit_any(self, t: AnyType) -> str:
         return 'Any'

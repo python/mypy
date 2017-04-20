@@ -14,6 +14,7 @@ import sys
 # the (convenient) behavior of types provided by typing module.
 from typing import _type_check  # type: ignore
 
+
 def _check_fails(cls, other):
     try:
         if sys._getframe(1).f_globals['__name__'] not in ['abc', 'functools', 'typing']:
@@ -93,23 +94,36 @@ TypedDict.__doc__ = \
     syntax forms work for Python 2.7 and 3.2+
     """
 
+
 def Arg(typ=Any, name=None):
+    """A normal positional argument"""
     return typ
+
 
 def DefaultArg(typ=Any, name=None):
+    """A positional argument with a default value"""
     return typ
+
 
 def NamedArg(typ=Any, name=None):
+    """A keyword-only argument"""
     return typ
+
 
 def DefaultNamedArg(typ=Any, name=None):
+    """A keyword-only argument with a default value"""
     return typ
+
 
 def VarArg(typ=Any):
+    """A *args-style variadic positional argument"""
     return typ
 
+
 def KwArg(typ=Any):
+    """A **kwargs-style variadic keyword argument"""
     return typ
+
 
 # Return type that indicates a function does not return
 class NoReturn: pass

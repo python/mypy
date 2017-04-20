@@ -2435,6 +2435,7 @@ deserialize_map = {
     if isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
 }
 
+
 def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T], None]) -> None:
     is_var_arg = False
     is_kw_arg = False
@@ -2444,8 +2445,8 @@ def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T
         if kind == ARG_POS:
             if is_var_arg or is_kw_arg or seen_named or seen_opt:
                 fail("Required positional args may not appear "
-                          "after default, named or star args",
-                          node)
+                     "after default, named or star args",
+                     node)
                 break
         elif kind == ARG_OPT:
             if is_var_arg or is_kw_arg or seen_named:
@@ -2467,7 +2468,7 @@ def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T
 
 
 def check_arg_names(names: List[str], nodes: List[T], fail: Callable[[str, T], None],
-                     description: str = 'function definition') -> None:
+                    description: str = 'function definition') -> None:
     seen_names = set()  # type: Set[str]
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:
