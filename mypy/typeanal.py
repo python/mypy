@@ -329,14 +329,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
         self.fail('Invalid type', t)
         return AnyType()
 
-    def visit_star_type(self, t: StarType) -> Type:
-        self.fail('Invalid type', t)
-        return AnyType()
-
-    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
-        self.fail('Invalid type', t)
-        return AnyType()
-
     def visit_instance(self, t: Instance) -> Type:
         return t
 
