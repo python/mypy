@@ -42,7 +42,7 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
     def visit_unbound_type(self, t: types.UnboundType) -> Set[str]:
         return self._visit(*t.args)
 
-    def visit_type_list(self, t: types.ArgumentList) -> Set[str]:
+    def visit_type_list(self, t: types.TypeList) -> Set[str]:
         return self._visit(*t.items)
 
     def visit_callable_argument(self, t: types.CallableArgument) -> Set[str]:

@@ -11,7 +11,7 @@ from typing import Set, List, TypeVar
 
 from mypy.nodes import SymbolTable, SymbolTableNode, FuncBase, TypeInfo, Var
 from mypy.types import (
-    Type, TypeVisitor, UnboundType, ArgumentList, AnyType, NoneTyp, UninhabitedType,
+    Type, TypeVisitor, UnboundType, TypeList, AnyType, NoneTyp, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
     UnionType, Overloaded, PartialType, TypeType
 )

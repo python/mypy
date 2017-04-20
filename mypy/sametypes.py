@@ -3,7 +3,7 @@ from typing import Sequence
 from mypy.types import (
     Type, UnboundType, AnyType, NoneTyp, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
-    ArgumentList, Overloaded, PartialType, DeletedType, UninhabitedType, TypeType
+    TypeList, Overloaded, PartialType, DeletedType, UninhabitedType, TypeType
 )
 
 

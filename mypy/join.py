@@ -5,7 +5,7 @@ from typing import cast, List
 
 from mypy.types import (
     Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType,
-    TypeVarType, CallableType, TupleType, TypedDictType, ErasedType, ArgumentList,
+    TypeVarType, CallableType, TupleType, TypedDictType, ErasedType, TypeList,
     UnionType, FunctionLike, Overloaded, PartialType, DeletedType,
     UninhabitedType, TypeType, true_or_false
 )

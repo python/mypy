@@ -23,7 +23,7 @@ from mypy.nodes import (
     check_arg_names,
 )
 from mypy.types import (
-    Type, CallableType, AnyType, UnboundType, TupleType, ArgumentList, EllipsisType,
+    Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
     CallableArgument,
 )
 from mypy import defaults
@@ -1022,11 +1022,11 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         return CallableArgument(typ, name, constructor, e.lineno, e.col_offset)
 
 
-    def translate_argument_list(self, l: Sequence[ast3.AST]) -> ArgumentList:
+    def translate_argument_list(self, l: Sequence[ast3.AST]) -> TypeList:
         types = []  # type: List[Type]
         names = []  # type: List[Optional[str]]
         kinds = []  # type: List[int]
-        return ArgumentList([self.visit(e) for e in l], line=self.line)
+        return TypeList([self.visit(e) for e in l], line=self.line)
 
     def _extract_str(self, n: ast3.expr) -> str:
         if isinstance(n, ast3.Str):

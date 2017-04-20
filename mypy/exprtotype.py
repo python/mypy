@@ -7,7 +7,7 @@ from mypy.nodes import (
 )
 from mypy.fastparse import parse_type_comment
 from mypy.types import (
-    Type, UnboundType, ArgumentList, EllipsisType, AnyType, Optional, CallableArgument,
+    Type, UnboundType, TypeList, EllipsisType, AnyType, Optional, CallableArgument,
 )
 
 
@@ -27,7 +27,7 @@ def _extract_str(expr: Expression) -> Optional[str]:
 def expr_to_unanalyzed_type(expr: Expression) -> Type:
     """Translate an expression to the corresponding type.
 
-    The result is not semantically analyzed. It can be UnboundType or ArgumentList.
+    The result is not semantically analyzed. It can be UnboundType or TypeList.
     Raise TypeTranslationError if the expression cannot represent a type.
     """
     if isinstance(expr, NameExpr):
@@ -78,7 +78,7 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
                 raise TypeTranslationError()
         return CallableArgument(typ, name, arg_const, expr.line, expr.column)
     elif isinstance(expr, ListExpr):
-        return ArgumentList([expr_to_unanalyzed_type(it) for it in expr.items],
+        return TypeList([expr_to_unanalyzed_type(it) for it in expr.items],
                             line=expr.line, column=expr.column)
     elif isinstance(expr, (StrExpr, BytesExpr, UnicodeExpr)):
         # Parse string literal type.

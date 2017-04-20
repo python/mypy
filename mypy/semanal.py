@@ -76,7 +76,7 @@ from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, ArgumentList, TypeVarDef, TypeType,
+    FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
     TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
 )
 from mypy.nodes import implicit_module_attrs
@@ -467,7 +467,7 @@ class SemanticAnalyzer(NodeVisitor):
                 result.append((name, node.node))
             for arg in type.args:
                 result.extend(self.find_type_variables_in_type(arg))
-        elif isinstance(type, ArgumentList):
+        elif isinstance(type, TypeList):
             for item in type.types:
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, UnionType):
@@ -926,7 +926,7 @@ class SemanticAnalyzer(NodeVisitor):
         tvars = []  # type: List[Tuple[str, TypeVarExpr]]
         if isinstance(tp, UnboundType):
             tp_args = tp.args
-        elif isinstance(tp, ArgumentList):
+        elif isinstance(tp, TypeList):
             tp_args = tp.types
         else:
             return tvars

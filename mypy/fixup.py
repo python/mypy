@@ -10,7 +10,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     CallableType, EllipsisType, Instance, Overloaded, TupleType, TypedDictType,
-    ArgumentList, TypeVarType, UnboundType, UnionType, TypeVisitor,
+    TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,
     TypeType, CallableArgument,
 )
 from mypy.visitor import NodeVisitor
@@ -210,7 +210,7 @@ class TypeFixer(TypeVisitor[None]):
         if tdt.fallback is not None:
             tdt.fallback.accept(self)
 
-    # def visit_type_list(self, tl: ArgumentList) -> None:
+    # def visit_type_list(self, tl: TypeList) -> None:
     #     for t in tl.items:
     #         t.accept(self)
 

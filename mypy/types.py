@@ -254,7 +254,7 @@ class CallableArgument(Type):
             name=data['name'],
             constructor=data['constructor'])
 
-class ArgumentList(Type):
+class TypeList(Type):
     """Information about argument types and names [...].
 
     This is only used for the arguments of a Callable type, i.e. for
@@ -286,15 +286,15 @@ class ArgumentList(Type):
 
     def serialize(self) -> JsonDict:
         return {
-            '.class': 'ArgumentList',
+            '.class': 'TypeList',
             'items': [t.serialize() for t in self.items],
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'ArgumentList':
-        assert data['.class'] == 'ArgumentList' or data['.class'] == 'TypeList'
+    def deserialize(cls, data: JsonDict) -> 'TypeList':
+        assert data['.class'] == 'TypeList'
         items = [Type.deserialize(t) for t in data['items']]
-        return ArgumentList(items=items)
+        return TypeList(items=items)
 
 class AnyType(Type):
     """The type 'Any'."""
@@ -1328,7 +1328,7 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
         pass
 
     @abstractmethod
-    def visit_type_list(self, t: ArgumentList) -> T:
+    def visit_type_list(self, t: TypeList) -> T:
         pass
 
     @abstractmethod
@@ -1350,7 +1350,7 @@ class TypeTranslator(SyntheticTypeVisitor[Type]):
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
 
-    def visit_type_list(self, t: ArgumentList) -> Type:
+    def visit_type_list(self, t: TypeList) -> Type:
         return t
 
     def visit_callable_argument(self, t: CallableArgument) -> Type:
@@ -1452,8 +1452,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += '[{}]'.format(self.list_str(t.args))
         return s
 
-    def visit_type_list(self, t: ArgumentList) -> str:
-        return '<ArgumentList {}>'.format(self.list_str(t.items))
+    def visit_type_list(self, t: TypeList) -> str:
+        return '<TypeList {}>'.format(self.list_str(t.items))
 
     def visit_callable_argument(self, t: CallableArgument) -> str:
         typ = t.typ.accept(self)
@@ -1611,7 +1611,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_unbound_type(self, t: UnboundType) -> T:
         return self.query_types(t.args)
 
-    def visit_type_list(self, t: ArgumentList) -> T:
+    def visit_type_list(self, t: TypeList) -> T:
         return self.query_types(t.items)
 
     def visit_callable_argument(self, t: CallableArgument) -> T:

@@ -5,7 +5,7 @@ from typing import Callable, List, Optional, Set
 
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
-    AnyType, CallableType, NoneTyp, DeletedType, ArgumentList, TypeVarDef, TypeVisitor,
+    AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
     ArgKindException, ArgNameException, CallableArgument, get_type_vars, union_items
 )
@@ -320,7 +320,7 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_deleted_type(self, t: DeletedType) -> Type:
         return t
 
-    def visit_type_list(self, t: ArgumentList) -> Type:
+    def visit_type_list(self, t: TypeList) -> Type:
         self.fail('Invalid type', t)
         return AnyType()
 
@@ -389,7 +389,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                                 is_ellipsis_args=True)
         elif len(t.args) == 2:
             ret_type = self.anal_type(t.args[1])
-            if isinstance(t.args[0], ArgumentList):
+            if isinstance(t.args[0], TypeList):
                 # Callable[[ARG, ...], RET] (ordinary callable type)
                 args = []   # type: List[Type]
                 names = []  # type: List[str]
@@ -597,7 +597,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def visit_deleted_type(self, t: DeletedType) -> None:
         pass
 
-    def visit_type_list(self, t: ArgumentList) -> None:
+    def visit_type_list(self, t: TypeList) -> None:
         self.fail('Invalid type', t)
 
     def visit_type_var(self, t: TypeVarType) -> None:

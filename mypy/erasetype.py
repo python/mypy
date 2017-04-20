@@ -3,7 +3,7 @@ from typing import Optional, Container, Callable
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarId,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
-    ErasedType, PartialType, DeletedType, TypeTranslator, ArgumentList, UninhabitedType, TypeType
+    ErasedType, PartialType, DeletedType, TypeTranslator, TypeList, UninhabitedType, TypeType
 )
 from mypy import experiments
 

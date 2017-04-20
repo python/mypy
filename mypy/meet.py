@@ -4,7 +4,7 @@ from typing import List, Optional
 from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType,
-    Instance, CallableType, TupleType, TypedDictType, ErasedType, ArgumentList, UnionType,
+    Instance, CallableType, TupleType, TypedDictType, ErasedType, TypeList, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType
 )
 from mypy.subtypes import is_equivalent, is_subtype

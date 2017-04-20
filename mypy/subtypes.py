@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Callable
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
-    ErasedType, ArgumentList, PartialType, DeletedType, UninhabitedType, TypeType,
+    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType,
     is_named_instance
 )
 import mypy.applytype
