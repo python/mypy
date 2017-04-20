@@ -238,6 +238,7 @@ class TypeList(Type):
         self.items = items
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_type_list(self)
 
     def serialize(self) -> JsonDict:
@@ -975,6 +976,7 @@ class StarType(Type):
         super().__init__(line, column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_star_type(self)
 
 
@@ -1116,6 +1118,7 @@ class EllipsisType(Type):
     """
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_ellipsis_type(self)
 
     def serialize(self) -> JsonDict:
@@ -1199,9 +1202,6 @@ class TypeVisitor(Generic[T]):
     def visit_unbound_type(self, t: UnboundType) -> T:
         pass
 
-    def visit_type_list(self, t: TypeList) -> T:
-        raise self._notimplemented_helper('type_list')
-
     @abstractmethod
     def visit_any(self, t: AnyType) -> T:
         pass
@@ -1244,9 +1244,6 @@ class TypeVisitor(Generic[T]):
     def visit_typeddict_type(self, t: TypedDictType) -> T:
         pass
 
-    def visit_star_type(self, t: StarType) -> T:
-        raise self._notimplemented_helper('star_type')
-
     @abstractmethod
     def visit_union_type(self, t: UnionType) -> T:
         pass
@@ -1255,15 +1252,30 @@ class TypeVisitor(Generic[T]):
     def visit_partial_type(self, t: PartialType) -> T:
         pass
 
-    def visit_ellipsis_type(self, t: EllipsisType) -> T:
-        raise self._notimplemented_helper('ellipsis_type')
-
     @abstractmethod
     def visit_type_type(self, t: TypeType) -> T:
         pass
 
 
-class TypeTranslator(TypeVisitor[Type]):
+class SyntheticTypeVisitor(TypeVisitor[T]):
+    """A TypeVisitor that also knows how to visit synthetic AST constructs.
+
+       Not just real types."""
+
+    @abstractmethod
+    def visit_star_type(self, t: StarType) -> T:
+        pass
+
+    @abstractmethod
+    def visit_type_list(self, t: TypeList) -> T:
+        pass
+
+    @abstractmethod
+    def visit_ellipsis_type(self, t: EllipsisType) -> T:
+        pass
+
+
+class TypeTranslator(SyntheticTypeVisitor[Type]):
     """Identity type transformation.
 
     Subclass this and override some methods to implement a non-trivial
@@ -1351,7 +1363,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return TypeType(t.item.accept(self), line=t.line, column=t.column)
 
 
-class TypeStrVisitor(TypeVisitor[str]):
+class TypeStrVisitor(SyntheticTypeVisitor[str]):
     """Visitor for pretty-printing types into strings.
 
     This is mostly for debugging/testing.
@@ -1510,7 +1522,7 @@ class TypeStrVisitor(TypeVisitor[str]):
         ])
 
 
-class TypeQuery(Generic[T], TypeVisitor[T]):
+class TypeQuery(SyntheticTypeVisitor[T]):
     """Visitor for performing queries of types.
 
     strategy is used to combine results for a series of types
