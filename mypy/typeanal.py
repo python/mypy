@@ -1,7 +1,7 @@
 """Semantic analysis of types"""
 
 from collections import OrderedDict
-from typing import Callable, List, Optional, Set, Tuple, Generator, TypeVar, Iterable
+from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable
 from itertools import chain
 
 from contextlib import contextmanager
