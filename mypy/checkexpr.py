@@ -33,7 +33,7 @@ from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
-from mypy.meet import meet_simple
+from mypy.meet import narrow_declared_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent
 from mypy import applytype
@@ -151,7 +151,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = type_object_type(node, self.named_type)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
-            result = self.named_type('builtins.module')
+            result = self.named_type('types.ModuleType')
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
         else:
@@ -178,6 +178,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 e.callee.node.typeddict_type is not None:
             return self.check_typeddict_call(e.callee.node.typeddict_type,
                                              e.arg_kinds, e.arg_names, e.args, e)
+        if isinstance(e.callee, NameExpr) and e.callee.name in ('isinstance', 'issubclass'):
+            for typ in mypy.checker.flatten(e.args[1]):
+                if isinstance(typ, NameExpr):
+                    try:
+                        node = self.chk.lookup_qualified(typ.name)
+                    except KeyError:
+                        # Undefined names should already be reported in semantic analysis.
+                        node = None
+                if (isinstance(typ, IndexExpr)
+                        and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr))
+                        # node.kind == TYPE_ALIAS only for aliases like It = Iterable[int].
+                        or isinstance(typ, NameExpr) and node and node.kind == nodes.TYPE_ALIAS):
+                    self.msg.type_arguments_not_allowed(e)
         self.try_infer_partial_type(e)
         callee_type = self.accept(e.callee)
         if (self.chk.options.disallow_untyped_calls and
@@ -1745,7 +1758,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 [None],
                 self.chk.named_generic_type('builtins.dict', [kt, vt]),
                 self.named_type('builtins.function'),
-                name='<list>',
+                name='<dict>',
                 variables=[ktdef, vtdef])
             rv = self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
         else:
@@ -2256,7 +2269,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if expr.literal >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
             if restriction:
-                ans = meet_simple(known_type, restriction)
+                ans = narrow_declared_type(known_type, restriction)
                 return ans
         return known_type
 
@@ -2375,7 +2388,7 @@ def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> Callabl
     return c.copy_modified(ret_type=new_ret_type)
 
 
-class ArgInferSecondPassQuery(types.TypeQuery):
+class ArgInferSecondPassQuery(types.TypeQuery[bool]):
     """Query whether an argument type should be inferred in the second pass.
 
     The result is True if the type has a type variable in a callable return
@@ -2383,16 +2396,16 @@ class ArgInferSecondPassQuery(types.TypeQuery):
     a type variable.
     """
     def __init__(self) -> None:
-        super().__init__(False, types.ANY_TYPE_STRATEGY)
+        super().__init__(any)
 
     def visit_callable_type(self, t: CallableType) -> bool:
         return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
 
 
-class HasTypeVarQuery(types.TypeQuery):
+class HasTypeVarQuery(types.TypeQuery[bool]):
     """Visitor for querying whether a type has a type variable component."""
     def __init__(self) -> None:
-        super().__init__(False, types.ANY_TYPE_STRATEGY)
+        super().__init__(any)
 
     def visit_type_var(self, t: TypeVarType) -> bool:
         return True
@@ -2402,10 +2415,10 @@ def has_erased_component(t: Type) -> bool:
     return t is not None and t.accept(HasErasedComponentsQuery())
 
 
-class HasErasedComponentsQuery(types.TypeQuery):
+class HasErasedComponentsQuery(types.TypeQuery[bool]):
     """Visitor for querying whether a type has an erased component."""
     def __init__(self) -> None:
-        super().__init__(False, types.ANY_TYPE_STRATEGY)
+        super().__init__(any)
 
     def visit_erased_type(self, t: ErasedType) -> bool:
         return True
@@ -2435,9 +2448,12 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             (isinstance(actual, Instance) and actual.type.fallback_to_any)):
         # These could match anything at runtime.
         return 2
-    if isinstance(formal, CallableType) and isinstance(actual, (CallableType, Overloaded)):
-        # TODO: do more sophisticated callable matching
-        return 2
+    if isinstance(formal, CallableType):
+        if isinstance(actual, (CallableType, Overloaded)):
+            # TODO: do more sophisticated callable matching
+            return 2
+        if isinstance(actual, TypeType):
+            return 2 if is_subtype(actual, formal) else 0
     if isinstance(actual, NoneTyp):
         if not experiments.STRICT_OPTIONAL:
             # NoneTyp matches anything if we're not doing strict Optional checking

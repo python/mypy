@@ -46,7 +46,7 @@ import b # type: ignore
 reveal_type(a.foo) # E: Revealed type is 'Any'
 reveal_type(b.foo) # E: Revealed type is 'builtins.int'
 a.bar()
-b.bar() # E: "module" has no attribute "bar"
+b.bar() # E: "ModuleType" has no attribute "bar"
 
 [file b.py]
 foo = 3
@@ -76,7 +76,7 @@ class B(A):
 import m
 m.x = object # type: ignore
 m.f() # type: ignore
-m.y # E: "module" has no attribute "y"
+m.y # E: "ModuleType" has no attribute "y"
 [file m.py]
 [builtins fixtures/module.pyi]
 
