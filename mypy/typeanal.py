@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
     AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
+    SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
     get_type_vars, TypeQuery, union_items,
 )
@@ -97,7 +98,7 @@ def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
     return msg
 
 
-class TypeAnalyser(TypeVisitor[Type]):
+class TypeAnalyser(SyntheticTypeVisitor[Type]):
     """Semantic analyzer for types (semantic analysis pass 2).
 
     Converts unbound types into bound types.

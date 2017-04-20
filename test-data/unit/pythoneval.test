@@ -747,8 +747,10 @@ print('>', list(b))
 [case testInternalBuiltinDefinition]
 import typing
 def f(x: _T) -> None: pass
+s: FrozenSet
 [out]
 _program.py:2: error: Name '_T' is not defined
+_program.py:3: error: Name 'FrozenSet' is not defined
 
 [case testVarArgsFunctionSubtyping]
 import typing
@@ -1169,8 +1171,8 @@ collections.Deque()
 typing.deque()
 
 [out]
-_testDequeWrongCase.py:4: error: "module" has no attribute "Deque"
-_testDequeWrongCase.py:5: error: "module" has no attribute "deque"
+_testDequeWrongCase.py:4: error: "ModuleType" has no attribute "Deque"
+_testDequeWrongCase.py:5: error: "ModuleType" has no attribute "deque"
 
 [case testDictUpdateInference]
 from typing import Dict, Optional

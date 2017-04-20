@@ -81,7 +81,6 @@ def is_similar_node_shallow(n: SymbolTableNode, m: SymbolTableNode) -> bool:
                 nn.fallback_to_any == mn.fallback_to_any and
                 nn.is_named_tuple == mn.is_named_tuple and
                 nn.is_newtype == mn.is_newtype and
-                nn.alt_fullname == mn.alt_fullname and
                 is_same_mro(nn.mro, mn.mro))
     if isinstance(n.node, Var) and isinstance(m.node, Var):
         return is_identical_type(n.node.type, m.node.type)
@@ -136,9 +135,6 @@ class IdenticalTypeVisitor(TypeVisitor[bool]):
 
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return False
-
-    def visit_type_list(self, t: TypeList) -> bool:
-        assert False, 'Not supported'
 
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)

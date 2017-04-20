@@ -117,6 +117,13 @@ obsolete_name_mapping = {
     'typing.typevar': 'typing.TypeVar',
 }
 
+# Rename objects placed in _importlib_modulespec due to circular imports
+module_rename_map = {
+    '_importlib_modulespec.ModuleType': 'types.ModuleType',
+    '_importlib_modulespec.ModuleSpec': 'importlib.machinery.ModuleSpec',
+    '_importlib_modulespec.Loader': 'importlib.abc.Loader'
+}
+
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,
 # int is considered a subtype of float, even though there is no
@@ -258,8 +265,8 @@ class SemanticAnalyzer(NodeVisitor):
 
         if self.cur_mod_id == 'builtins':
             remove_imported_names_from_symtable(self.globals, 'builtins')
-            for alias_name in ['List', 'Dict', 'Set']:
-                self.globals.pop(alias_name, None)
+            for alias_name in type_aliases:
+                self.globals.pop(alias_name.split('.')[-1], None)
 
         if '__all__' in self.globals:
             for name, g in self.globals.items():
@@ -2435,7 +2442,6 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail('Too many arguments', dec.func)
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType()
-                dec.type = dec.var.type
                 no_type_check = True
         for i in reversed(removed):
             del dec.decorators[i]
@@ -3326,6 +3332,8 @@ class FirstPass(NodeVisitor):
 
         for d in defs:
             d.accept(self)
+            if isinstance(d, ClassDef):
+                d.info._fullname = module_rename_map.get(d.info._fullname, d.info._fullname)
 
         # Add implicit definition of literals/keywords to builtins, as we
         # cannot define a variable with them explicitly.
