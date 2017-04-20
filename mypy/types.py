@@ -238,6 +238,7 @@ class TypeList(Type):
         self.items = items
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_type_list(self)
 
     def serialize(self) -> JsonDict:
@@ -1267,10 +1268,6 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
 
     @abstractmethod
     def visit_type_list(self, t: TypeList) -> T:
-        pass
-
-    @abstractmethod
-    def visit_callable_argument(self, t: CallableArgument) -> T:
         pass
 
     @abstractmethod
