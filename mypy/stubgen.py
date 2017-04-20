@@ -419,7 +419,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     args.append('*')
                 if not annotation:
                     typename = self.get_str_type_of_node(init_stmt.rvalue, True)
-                    annotation = ': {}=...'.format(typename)
+                    annotation = ': {} = ...'.format(typename)
                 else:
                     annotation += '={}'.format(initializer)
                 arg = name + annotation
