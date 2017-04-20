@@ -957,7 +957,7 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         self.line = line
         self.node_stack = []  # type: List[ast3.AST]
 
-    def visit(self, node) -> Type:
+    def visit(self, node: ast3.AST) -> Type:
         """Modified visit -- keep track of the stack of nodes"""
         self.node_stack.append(node)
         try:
