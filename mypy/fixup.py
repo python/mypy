@@ -15,6 +15,8 @@ from mypy.types import (
 )
 from mypy.visitor import NodeVisitor
 
+from mypy.semanal import rev_module_rename_map
+
 
 def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile],
                           quick_and_dirty: bool) -> None:
@@ -241,6 +243,7 @@ def lookup_qualified(modules: Dict[str, MypyFile], name: str,
 
 def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
                             quick_and_dirty: bool) -> Optional[SymbolTableNode]:
+    name = rev_module_rename_map.get(name, name)
     head = name
     rest = []
     while True:
