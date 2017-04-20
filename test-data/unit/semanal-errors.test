@@ -807,7 +807,7 @@ Any(str, None)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
 Any(arg=str)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
 [out]
 
-[case testArgumentListAsType]
+[case testTypeListAsType]
 def f(x:[int, str]) -> None: # E: Invalid type
     pass
 [out]

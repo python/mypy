@@ -962,7 +962,7 @@ x = f()
 y = 1
 y = x
 
-[case testAppendToVarArg]
+[case testAppendToStarArg]
 import typing
 def f(*x: int) -> None:
     x.append(1)
