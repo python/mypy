@@ -145,12 +145,12 @@ class TypeFixture:
         self.lsta = Instance(self.std_listi, [self.a])  # List[A]
         self.lstb = Instance(self.std_listi, [self.b])  # List[B]
 
-        self.type_a = TypeType(self.a)
-        self.type_b = TypeType(self.b)
-        self.type_c = TypeType(self.c)
-        self.type_d = TypeType(self.d)
-        self.type_t = TypeType(self.t)
-        self.type_any = TypeType(self.anyt)
+        self.type_a = TypeType.make(self.a)
+        self.type_b = TypeType.make(self.b)
+        self.type_c = TypeType.make(self.c)
+        self.type_d = TypeType.make(self.d)
+        self.type_t = TypeType.make(self.t)
+        self.type_any = TypeType.make(self.anyt)
 
     # Helper methods
 

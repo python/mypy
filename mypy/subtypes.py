@@ -70,9 +70,9 @@ def is_subtype(left: Type, right: Type,
         # otherwise, fall through
     # Treat builtins.type the same as Type[Any]
     elif is_named_instance(left, 'builtins.type'):
-            return is_subtype(TypeType(AnyType()), right)
+            return is_subtype(TypeType.make(AnyType()), right)
     elif is_named_instance(right, 'builtins.type'):
-            return is_subtype(left, TypeType(AnyType()))
+            return is_subtype(left, TypeType.make(AnyType()))
     return left.accept(SubtypeVisitor(right, type_parameter_checker,
                                       ignore_pos_arg_names=ignore_pos_arg_names))
 

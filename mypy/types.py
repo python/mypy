@@ -1162,12 +1162,34 @@ class TypeType(Type):
     # a generic class instance, a union, Any, a type variable...
     item = None  # type: Type
 
+    # this class should not be created directly
+    # use make method which may return either TypeType or UnionType
+    # this is to ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]]
     def __init__(self, item: Type, *, line: int = -1, column: int = -1) -> None:
+        raise NotImplementedError
+
+    def _init(self, item: Type, *, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         if isinstance(item, CallableType) and item.is_type_obj():
             self.item = item.fallback
         else:
             self.item = item
+
+    def __new__(cls, *args, **kwargs):  # type: ignore
+        instance = object.__new__(cls)
+        instance._init(*args, **kwargs)
+        return instance
+
+    def __copy__(self) -> 'Type':
+        return TypeType.make(self.item)
+
+    @staticmethod
+    def make(item: Type, *, line: int = -1, column: int = -1) -> Type:
+        if isinstance(item, UnionType):
+            return UnionType([TypeType.make(union_item) for union_item in item.items],
+                             line=line, column=column)
+        else:
+            return TypeType.__new__(TypeType, item, line=line, column=column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)
@@ -1176,9 +1198,9 @@ class TypeType(Type):
         return {'.class': 'TypeType', 'item': self.item.serialize()}
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeType':
+    def deserialize(cls, data: JsonDict) -> Type:
         assert data['.class'] == 'TypeType'
-        return TypeType(deserialize_type(data['item']))
+        return TypeType.make(deserialize_type(data['item']))
 
 
 #
@@ -1360,7 +1382,7 @@ class TypeTranslator(SyntheticTypeVisitor[Type]):
         return Overloaded(items=items)
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType(t.item.accept(self), line=t.line, column=t.column)
+        return TypeType.make(t.item.accept(self), line=t.line, column=t.column)
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
