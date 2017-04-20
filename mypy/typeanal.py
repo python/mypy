@@ -669,7 +669,7 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
         if node and node.kind == TVAR and (
                 self.include_bound_tvars or self.scope.get_binding(node) is None):
             assert isinstance(node.node, TypeVarExpr)
-            return[(name, node.node)]
+            return [(name, node.node)]
         elif not self.include_callables and self._seems_like_callable(t):
             return []
         else:
