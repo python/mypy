@@ -346,12 +346,12 @@ def f(x, [x]): pass
 [out]
 main:1: error: invalid syntax
 
-[case testTupleArgAfterVarArgInPython2]
+[case testTupleArgAfterStarArgInPython2]
 def f(*a, (b, c)): pass
 [out]
 main:1: error: invalid syntax
 
-[case testTupleArgAfterStarVarArgInPython2]
+[case testTupleArgAfterStarStarArgInPython2]
 def f(*a, (b, c)): pass
 [out]
 main:1: error: invalid syntax
