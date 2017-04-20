@@ -120,6 +120,8 @@ module_rename_map = {
     '_importlib_modulespec.Loader': 'importlib.abc.Loader'
 }
 
+rev_module_rename_map = {v: k for (k, v) in module_rename_map.items()}
+
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,
 # int is considered a subtype of float, even though there is no
