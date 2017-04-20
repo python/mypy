@@ -13,10 +13,10 @@ class TypeVarScope:
         """Initializer for TypeVarScope
 
         Parameters:
-        parent: the outer scope for this scope
-        is_class_scope: True if this represents a generic class
-        prohibited: Type variables that aren't strictly in scope exactly,
-                    but can't be bound because they're part of an outer class's scope.
+          parent: the outer scope for this scope
+          is_class_scope: True if this represents a generic class
+          prohibited: Type variables that aren't strictly in scope exactly,
+                      but can't be bound because they're part of an outer class's scope.
         """
         self.scope = {}  # type: Dict[str, TypeVarDef]
         self.parent = parent
@@ -31,7 +31,7 @@ class TypeVarScope:
     def get_function_scope(self) -> Optional['TypeVarScope']:
         """Get the nearest parent that's a function scope, not a class scope"""
         it = self
-        while it.is_class_scope:
+        while it is not None and it.is_class_scope:
             it = it.parent
         return it
 

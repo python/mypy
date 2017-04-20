@@ -266,7 +266,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         """
         return [name for name, _
                 in tp.accept(TypeVariableQuery(self.lookup, self.tvar_scope,
-                                               include_callables=True, include_bound=True))]
+                                               include_callables=True, include_bound_tvars=True))]
 
     def get_tvar_name(self, t: Type) -> Optional[str]:
         if not isinstance(t, UnboundType):
@@ -316,6 +316,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return t
 
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
+        # Every Callable can bind its own type variables, if they're not in the outer scope
         with self.tvar_scope_frame():
             if self.aliasing:
                 variables = t.variables
@@ -406,7 +407,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return ret.accept(self)
 
     @contextmanager
-    def tvar_scope_frame(self) -> Generator:
+    def tvar_scope_frame(self) -> Iterator[None]:
         old_scope = self.tvar_scope
         self.tvar_scope = self.tvar_scope.method_frame()
         yield
@@ -422,6 +423,10 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if name not in names:
                     names.append(name)
                     tvars.append(tvar_expr)
+        # When finding type variables in the return type of a function, don't
+        # look inside Callable types.  Type variables only appearing in
+        # functions in the return type belong to those functions, not the
+        # function we're currently analyzing.
         for name, tvar_expr in type.ret_type.accept(
                 TypeVariableQuery(self.lookup, self.tvar_scope, include_callables=False)):
             if name not in names:
@@ -431,8 +436,7 @@ class TypeAnalyser(TypeVisitor[Type]):
 
     def bind_function_type_variables(self,
                                      fun_type: CallableType, defn: Context) -> List[TypeVarDef]:
-        """Find the type variables of the function type and bind them in our tvar_scope.
-        """
+        """Find the type variables of the function type and bind them in our tvar_scope"""
         if fun_type.variables:
             for var in fun_type.variables:
                 var_expr = self.lookup(var.name, var).node
@@ -645,11 +649,11 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
                  scope: 'TypeVarScope',
                  *,
                  include_callables: bool = True,
-                 include_bound: bool = False) -> None:
+                 include_bound_tvars: bool = False) -> None:
         self.include_callables = include_callables
         self.lookup = lookup
         self.scope = scope
-        self.include_bound = include_bound
+        self.include_bound_tvars = include_bound_tvars
         super().__init__(flatten_tvars)
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
@@ -663,7 +667,7 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
         name = t.name
         node = self.lookup(name, t)
         if node and node.kind == TVAR and (
-                self.include_bound or self.scope.get_binding(node) is None):
+                self.include_bound_tvars or self.scope.get_binding(node) is None):
             assert isinstance(node.node, TypeVarExpr)
             return[(name, node.node)]
         elif not self.include_callables and self._seems_like_callable(t):
