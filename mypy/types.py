@@ -224,11 +224,15 @@ class UnboundType(Type):
 
 
 class CallableArgument(Type):
+    """Represents a Arg(type, 'name') inside a Callable's type list.
+
+    Note that this is a synthetic type for helping parse ASTs, not a real type.
+    """
     typ = None          # type: Type
     name = None         # type: Optional[str]
-    constructor = None  # type: str
+    constructor = None  # type: Optional[str]
 
-    def __init__(self, typ: Type, name: str, constructor: str,
+    def __init__(self, typ: Type, name: Optional[str], constructor: Optional[str],
                  line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.typ = typ

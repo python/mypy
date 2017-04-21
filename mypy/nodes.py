@@ -2445,17 +2445,17 @@ def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T
         if kind == ARG_POS:
             if is_var_arg or is_kw_arg or seen_named or seen_opt:
                 fail("Required positional args may not appear "
-                     "after default, named or star args",
+                     "after default, named or var args",
                      node)
                 break
         elif kind == ARG_OPT:
             if is_var_arg or is_kw_arg or seen_named:
-                fail("Positional default args may not appear after named or star args", node)
+                fail("Positional default args may not appear after named or var args", node)
                 break
             seen_opt = True
         elif kind == ARG_STAR:
             if is_var_arg or is_kw_arg or seen_named:
-                fail("Star args may not appear after named or star args", node)
+                fail("Var args may not appear after named or var args", node)
                 break
             is_var_arg = True
         elif kind == ARG_NAMED or kind == ARG_NAMED_OPT:
@@ -2472,6 +2472,6 @@ def check_arg_names(names: List[str], nodes: List[T], fail: Callable[[str, T], N
     seen_names = set()  # type: Set[str]
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:
-            fail("duplicate argument '{}' in {}".format(name, description), node)
+            fail("Duplicate argument '{}' in {}".format(name, description), node)
             break
         seen_names.add(name)

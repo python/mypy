@@ -94,35 +94,38 @@ TypedDict.__doc__ = \
     syntax forms work for Python 2.7 and 3.2+
     """
 
+# Argument constructors for making more-detailed Callables. These all just
+# return their type argument, to make them complete noops in terms of the
+# `typing` module.
 
-def Arg(typ=Any, name=None):
+def Arg(type=Any, name=None):
     """A normal positional argument"""
-    return typ
+    return type
 
 
-def DefaultArg(typ=Any, name=None):
+def DefaultArg(type=Any, name=None):
     """A positional argument with a default value"""
-    return typ
+    return type
 
 
-def NamedArg(typ=Any, name=None):
+def NamedArg(type=Any, name=None):
     """A keyword-only argument"""
-    return typ
+    return type
 
 
-def DefaultNamedArg(typ=Any, name=None):
+def DefaultNamedArg(type=Any, name=None):
     """A keyword-only argument with a default value"""
-    return typ
+    return type
 
 
-def VarArg(typ=Any):
+def VarArg(type=Any):
     """A *args-style variadic positional argument"""
-    return typ
+    return type
 
 
-def KwArg(typ=Any):
+def KwArg(type=Any):
     """A **kwargs-style variadic keyword argument"""
-    return typ
+    return type
 
 
 # Return type that indicates a function does not return

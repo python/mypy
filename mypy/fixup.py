@@ -11,7 +11,7 @@ from mypy.nodes import (
 from mypy.types import (
     CallableType, EllipsisType, Instance, Overloaded, TupleType, TypedDictType,
     TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,
-    TypeType, CallableArgument,
+    TypeType
 )
 from mypy.visitor import NodeVisitor
 

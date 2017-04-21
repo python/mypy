@@ -404,22 +404,22 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                         args.append(arg.typ)
                         names.append(arg.name)
                         if arg.constructor is None:
-                            kinds.append(ARG_POS)
-                            continue
+                            return AnyType()
                         found = self.lookup(arg.constructor, arg)
                         if found is None:
                             # Looking it up already put an error message in
-                            kinds.append(ARG_POS)
+                            return AnyType()
                         elif found.fullname not in ARG_KINDS_BY_CONSTRUCTOR:
                             self.fail('Invalid argument constructor "{}"'.format(
                                 found.fullname), arg)
-                            kinds.append(ARG_POS)
+                            return AnyType()
                         else:
                             kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
                             kinds.append(kind)
                             if arg.name is not None and kind in {ARG_STAR, ARG_STAR2}:
                                 self.fail("{} arguments should not have names".format(
                                     arg.constructor), arg)
+                                return AnyType()
                     else:
                         args.append(arg)
                         names.append(None)

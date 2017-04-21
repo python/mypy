@@ -3,7 +3,7 @@
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr,
     ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
-    ARG_POS, ARG_NAMED, get_member_expr_fullname
+    ARG_POS, ARG_NAMED, get_member_expr_fullname, UnicodeExpr,
 )
 from mypy.fastparse import parse_type_comment
 from mypy.types import (
@@ -15,10 +15,12 @@ class TypeTranslationError(Exception):
     """Exception raised when an expression is not valid as a type."""
 
 
-def _extract_str(expr: Expression) -> Optional[str]:
+def _extract_argument_name(expr: Expression) -> Optional[str]:
     if isinstance(expr, NameExpr) and expr.name == 'None':
         return None
     elif isinstance(expr, StrExpr):
+        return expr.value
+    elif isinstance(expr, UnicodeExpr):
         return expr.value
     else:
         raise TypeTranslationError()
@@ -55,17 +57,38 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
         else:
             raise TypeTranslationError()
     elif isinstance(expr, CallExpr):
-        if not isinstance(expr.callee, NameExpr):
-            raise TypeTranslationError()
-        arg_const = expr.callee.name
+
+        c = expr.callee
+        names = []
+        # Go through the dotted member expr chain to get the full arg
+        # constructor name to look up
+        while True:
+            if isinstance(c, NameExpr):
+                names.append(c.name)
+                break
+            elif isinstance(c, MemberExpr):
+                names.append(c.name)
+                c = c.expr
+            else:
+                raise TypeTranslationError()
+        arg_const = '.'.join(reversed(names))
+
+        # Go through the constructor args to get its name and type.
         name = None
-        typ = AnyType(implicit=True)  # type: Type
+        default_type = AnyType(implicit=True)
+        typ = default_type  # type: Type
         for i, arg in enumerate(expr.args):
             if expr.arg_names[i] is not None:
                 if expr.arg_names[i] == "name":
-                    name = _extract_str(arg)
+                    if name is not None:
+                        # Two names
+                        raise TypeTranslationError()
+                    name = _extract_argument_name(arg)
                     continue
-                elif expr.arg_names[i] == "typ":
+                elif expr.arg_names[i] == "type":
+                    if typ is not default_type:
+                        # Two types
+                        raise TypeTranslationError()
                     typ = expr_to_unanalyzed_type(arg)
                     continue
                 else:
@@ -73,7 +96,7 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
             elif i == 0:
                 typ = expr_to_unanalyzed_type(arg)
             elif i == 1:
-                name = _extract_str(arg)
+                name = _extract_argument_name(arg)
             else:
                 raise TypeTranslationError()
         return CallableArgument(typ, name, arg_const, expr.line, expr.column)

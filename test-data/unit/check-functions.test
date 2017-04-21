@@ -1449,6 +1449,7 @@ def a(f: F):
 [case testCallableParsingFromExpr]
 from typing import Callable, List
 from mypy_extensions import Arg, VarArg, KwArg
+import mypy_extensions
 
 def WrongArg(x, y): return y
 # Note that for this test, the 'Value of type "int" is not indexable' errors are silly,
@@ -1460,12 +1461,15 @@ G = Callable[[Arg(1, 'x')], int] # E: Invalid type alias # E: Value of type "int
 H = Callable[[VarArg(int, 'x')], int] # E: VarArg arguments should not have names
 I = Callable[[VarArg(int)], int] # ok
 J = Callable[[VarArg(), KwArg()], int] # ok
-K = Callable[[VarArg(), int], int] # E: Required positional args may not appear after default, named or star args
-L = Callable[[Arg(name='x', typ=int)], int] # ok
+K = Callable[[VarArg(), int], int] # E: Required positional args may not appear after default, named or var args
+L = Callable[[Arg(name='x', type=int)], int] # ok
 # I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
-# M = Callable[[Arg(gnome='x', typ=int)], int]   E: Invalid type alias   E: Unexpected keyword argument "gnome" for "Arg"
-N = Callable[[Arg(name=None, typ=int)], int] # ok
+# M = Callable[[Arg(gnome='x', type=int)], int]   E: Invalid type alias   E: Unexpected keyword argument "gnome" for "Arg"
+N = Callable[[Arg(name=None, type=int)], int] # ok
 O = Callable[[List[Arg(int)]], int]  # E: Invalid type
+P = Callable[[mypy_extensions.VarArg(int)], int] # ok
+Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "type"
+R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "name"
 
 [builtins fixtures/dict.pyi]
 
@@ -1478,9 +1482,11 @@ def WrongArg(x, y): return y
 def b(f: Callable[[Arg(1, 'x')], int]): pass # E: invalid type comment or annotation
 def d(f: Callable[[VarArg(int)], int]): pass # ok
 def e(f: Callable[[VarArg(), KwArg()], int]): pass # ok
-def g(f: Callable[[Arg(name='x', typ=int)], int]): pass # ok
-def h(f: Callable[[Arg(gnome='x', typ=int)], int]): pass  # E: Unexpected argument "gnome" for argument constructor
-def i(f: Callable[[Arg(name=None, typ=int)], int]): pass # ok
+def g(f: Callable[[Arg(name='x', type=int)], int]): pass # ok
+def h(f: Callable[[Arg(gnome='x', type=int)], int]): pass  # E: Unexpected argument "gnome" for argument constructor
+def i(f: Callable[[Arg(name=None, type=int)], int]): pass # ok
+def j(f: Callable[[Arg(int, 'x', name='y')], int]): pass # E: "Arg" gets multiple values for keyword argument "name"
+def k(f: Callable[[Arg(int, type=int)], int]): pass # E: "Arg" gets multiple values for keyword argument "type"
 
 [builtins fixtures/dict.pyi]
 
@@ -1494,8 +1500,8 @@ def a(f: Callable[[WrongArg(int, 'x')], int]): pass # E: Invalid argument constr
 def b(f: Callable[[BadArg(int, 'x')], int]): pass # E: Name 'BadArg' is not defined
 def d(f: Callable[[ext.VarArg(int)], int]): pass # ok
 def e(f: Callable[[VARG(), ext.KwArg()], int]): pass # ok
-def g(f: Callable[[ext.Arg(name='x', typ=int)], int]): pass # ok
-def i(f: Callable[[Arg(name=None, typ=int)], int]): pass # ok
+def g(f: Callable[[ext.Arg(name='x', type=int)], int]): pass # ok
+def i(f: Callable[[Arg(name=None, type=int)], int]): pass # ok
 
 def f1(*args) -> int: pass
 def f2(*args, **kwargs) -> int: pass
@@ -1524,25 +1530,25 @@ from typing import Callable
 from mypy_extensions import VarArg, Arg, KwArg
 def d(f: Callable[[VarArg(int)], int]): pass # ok
 def e(f: Callable[[VarArg(), KwArg()], int]): pass # ok
-def g(f: Callable[[Arg(name='x', typ=int)], int]): pass # ok
-def i(f: Callable[[Arg(name=None, typ=int)], int]): pass # ok
+def g(f: Callable[[Arg(name='x', type=int)], int]): pass # ok
+def i(f: Callable[[Arg(name=None, type=int)], int]): pass # ok
 [builtins fixtures/dict.pyi]
 
 [case testCallableFastParseBadArgArgName]
 from typing import Callable
 from mypy_extensions import Arg
-def h(f: Callable[[Arg(gnome='x', typ=int)], int]): pass # E: Unexpected argument "gnome" for argument constructor
+def h(f: Callable[[Arg(gnome='x', type=int)], int]): pass # E: Unexpected argument "gnome" for argument constructor
 [builtins fixtures/dict.pyi]
 
 [case testCallableKindsOrdering]
 from typing import Callable, Any
 from mypy_extensions import Arg, VarArg, KwArg, DefaultArg, NamedArg
 
-def f(f: Callable[[VarArg(), int], int]): pass # E: Required positional args may not appear after default, named or star args
-def g(f: Callable[[VarArg(), VarArg()], int]): pass # E: Star args may not appear after named or star args
+def f(f: Callable[[VarArg(), int], int]): pass # E: Required positional args may not appear after default, named or var args
+def g(f: Callable[[VarArg(), VarArg()], int]): pass # E: Var args may not appear after named or var args
 def h(f: Callable[[KwArg(), KwArg()], int]): pass # E: You may only have one **kwargs argument
-def i(f: Callable[[DefaultArg(), int], int]): pass # E: Required positional args may not appear after default, named or star args
-def j(f: Callable[[NamedArg(Any, 'x'), DefaultArg(int, 'y')], int]): pass # E: Positional default args may not appear after named or star args
+def i(f: Callable[[DefaultArg(), int], int]): pass # E: Required positional args may not appear after default, named or var args
+def j(f: Callable[[NamedArg(Any, 'x'), DefaultArg(int, 'y')], int]): pass # E: Positional default args may not appear after named or var args
 
 [builtins fixtures/dict.pyi]
 
@@ -1550,7 +1556,7 @@ def j(f: Callable[[NamedArg(Any, 'x'), DefaultArg(int, 'y')], int]): pass # E: P
 from typing import Callable
 from mypy_extensions import Arg, VarArg, KwArg, DefaultArg
 
-def f(f: Callable[[Arg(int, 'x'), int, Arg(int, 'x')], int]): pass # E: duplicate argument 'x' in Callable
+def f(f: Callable[[Arg(int, 'x'), int, Arg(int, 'x')], int]): pass # E: Duplicate argument 'x' in Callable
 
 [builtins fixtures/dict.pyi]
 

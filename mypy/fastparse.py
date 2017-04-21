@@ -998,22 +998,28 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         constructor = stringify_name(f)
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
-            constructor = "BadArgConstructor"
         name = None  # type: Optional[str]
-        typ = AnyType(implicit=True)  # type: Type
+        default_type = AnyType(implicit=True)
+        typ = default_type  # type: Type
         for i, arg in enumerate(e.args):
             if i == 0:
                 typ = self.visit(arg)
             elif i == 1:
-                name = self._extract_str(arg)
+                name = self._extract_argument_name(arg)
             else:
                 self.fail("Too many arguments for argument constructor",
                           f.lineno, f.col_offset)
         for k in e.keywords:
             value = k.value
             if k.arg == "name":
-                name = self._extract_str(value)
-            elif k.arg == "typ":
+                if name is not None:
+                    self.fail('"{}" gets multiple values for keyword argument "name"'.format(
+                        constructor), f.lineno, f.col_offset)
+                name = self._extract_argument_name(value)
+            elif k.arg == "type":
+                if typ is not default_type:
+                    self.fail('"{}" gets multiple values for keyword argument "type"'.format(
+                        constructor), f.lineno, f.col_offset)
                 typ = self.visit(value)
             else:
                 self.fail(
@@ -1024,7 +1030,7 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     def translate_argument_list(self, l: Sequence[ast3.AST]) -> TypeList:
         return TypeList([self.visit(e) for e in l], line=self.line)
 
-    def _extract_str(self, n: ast3.expr) -> str:
+    def _extract_argument_name(self, n: ast3.expr) -> str:
         if isinstance(n, ast3.Str):
             return n.s.strip()
         elif isinstance(n, ast3.NameConstant) and str(n.value) == 'None':
