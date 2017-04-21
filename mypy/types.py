@@ -1275,7 +1275,7 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
         pass
 
 
-class TypeTranslator(SyntheticTypeVisitor[Type]):
+class TypeTranslator(TypeVisitor[Type]):
     """Identity type transformation.
 
     Subclass this and override some methods to implement a non-trivial
@@ -1283,9 +1283,6 @@ class TypeTranslator(SyntheticTypeVisitor[Type]):
     """
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        return t
-
-    def visit_type_list(self, t: TypeList) -> Type:
         return t
 
     def visit_any(self, t: AnyType) -> Type:
@@ -1333,14 +1330,8 @@ class TypeTranslator(SyntheticTypeVisitor[Type]):
                              cast(Any, t.fallback.accept(self)),
                              t.line, t.column)
 
-    def visit_star_type(self, t: StarType) -> Type:
-        return StarType(t.type.accept(self), t.line, t.column)
-
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line, t.column)
-
-    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
-        return t
 
     def translate_types(self, types: List[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
