@@ -136,9 +136,6 @@ class IdenticalTypeVisitor(TypeVisitor[bool]):
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return False
 
-    def visit_type_list(self, t: TypeList) -> bool:
-        assert False, 'Not supported'
-
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)
 

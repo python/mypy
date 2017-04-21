@@ -118,9 +118,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return True
 
-    def visit_type_list(self, t: TypeList) -> bool:
-        assert False, 'Not supported'
-
     def visit_any(self, left: AnyType) -> bool:
         return True
 
@@ -759,9 +756,6 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         # doesn't matter much but by returning True we simplify these bad types away
         # from unions, which could filter out some bogus messages.
         return True
-
-    def visit_type_list(self, left: TypeList) -> bool:
-        assert False, 'Should not happen'
 
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)

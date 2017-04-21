@@ -146,9 +146,6 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         else:
             return AnyType()
 
-    def visit_type_list(self, t: TypeList) -> Type:
-        assert False, 'Not supported'
-
     def visit_any(self, t: AnyType) -> Type:
         return self.s
 
