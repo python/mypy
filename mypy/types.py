@@ -244,20 +244,7 @@ class CallableArgument(Type):
         return visitor.visit_callable_argument(self)
 
     def serialize(self) -> JsonDict:
-        return {
-            '.class': 'CallableArgument',
-            'typ': self.typ.serialize(),
-            'name': self.name,
-            'constructor': self.constructor,
-        }
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'CallableArgument':
-        assert data['.class'] == 'CallableArgument'
-        return CallableArgument(
-            typ=deserialize_type(data['typ']),
-            name=data['name'],
-            constructor=data['constructor'])
+        assert False, "Synthetic types don't serialize"
 
 
 class TypeList(Type):
