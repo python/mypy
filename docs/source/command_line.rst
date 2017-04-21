@@ -21,7 +21,7 @@ flag (or its long form ``--help``)::
               [--inferstats] [--custom-typing MODULE]
               [--custom-typeshed-dir DIR] [--scripts-are-modules]
               [--config-file CONFIG_FILE] [--show-column-numbers]
-              [--find-occurrences CLASS.MEMBER] [--strict-boolean]
+              [--find-occurrences CLASS.MEMBER]
               [--cobertura-xml-report DIR] [--html-report DIR]
               [--linecount-report DIR] [--linecoverage-report DIR]
               [--memory-xml-report DIR] [--old-html-report DIR]
@@ -365,11 +365,6 @@ Here are some more useful flags:
 
 - ``--warn-return-any`` causes mypy to generate a warning when returning a value
   with type ``Any`` from a function declared with a non- ``Any`` return type.
-
-- ``--strict-boolean`` will make using non-boolean expressions in conditions
-  an error. This means ``if x`` and ``while x`` are disallowed when ``x`` has any
-  type other than ``bool``. Instead use explicit checks like ``if x > 0`` or
-  ``while x is not None``.
 
 - ``--strict`` mode enables all optional error checking flags.  You can see the
   list of flags enabled by strict mode in the full ``mypy -h`` output.

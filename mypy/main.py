@@ -272,8 +272,6 @@ def process_options(args: List[str],
     parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
                         dest='special-opts:find_occurrences',
                         help="print out all usages of a class member (experimental)")
-    add_invertible_flag('--strict-boolean', default=False, strict_flag=True,
-                        help='enable strict boolean checks in conditions')
     strict_help = "Strict mode. Enables the following flags: {}".format(
         ", ".join(strict_flag_names))
     parser.add_argument('--strict', action='store_true', dest='special-opts:strict',
@@ -292,6 +290,8 @@ def process_options(args: List[str],
     # --dump-graph will dump the contents of the graph of SCCs and exit.
     parser.add_argument('--dump-graph', action='store_true', help=argparse.SUPPRESS)
     # deprecated options
+    add_invertible_flag('--strict-boolean', default=False,
+                        help=argparse.SUPPRESS)
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
                         dest='special-opts:dirty_stubs',
                         help=argparse.SUPPRESS)
@@ -364,6 +364,9 @@ def process_options(args: List[str],
                      )
 
     # Process deprecated options
+    if options.strict_boolean:
+        print("Warning: --strict-boolean is deprecated; "
+              "see https://github.com/python/mypy/issues/3195", file=sys.stderr)
     if special_opts.almost_silent:
         print("Warning: --almost-silent has been replaced by "
               "--follow-imports=errors", file=sys.stderr)
