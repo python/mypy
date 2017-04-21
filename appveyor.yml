@@ -19,6 +19,8 @@ environment:
 
 
 install:
+    - "git config core.symlinks true"
+    - "git reset --hard"
     - "%PYTHON%\\python.exe -m pip install -r test-requirements.txt"
     - "git submodule update --init typeshed"
     - "%PYTHON%\\python.exe setup.py -q install"
