@@ -341,7 +341,7 @@ def sanity() -> None:
         return
     failed = False
     for p in paths.split(os.pathsep):
-        if not os.path.isabs(p):
+        if not os.path.isabs(p) and p != '':
             print('Relative PYTHONPATH entry %r' % p)
             failed = True
     if failed:
