@@ -543,7 +543,6 @@ class CallableType(FunctionLike):
     arg_names = None  # type: List[str]   # None if not a keyword argument
     min_args = 0                    # Minimum number of arguments; derived from arg_kinds
     is_var_arg = False              # Is it a varargs function?  derived from arg_kinds
-    is_kw_arg = False
     ret_type = None  # type: Type   # Return value type
     name = ''                       # Name (may be None; for error messages)
     definition = None  # type: SymbolNode # For error messages.  May be None.
@@ -590,7 +589,6 @@ class CallableType(FunctionLike):
         self.arg_names = arg_names
         self.min_args = arg_kinds.count(ARG_POS)
         self.is_var_arg = ARG_STAR in arg_kinds
-        self.is_kw_arg = ARG_STAR2 in arg_kinds
         self.ret_type = ret_type
         self.fallback = fallback
         assert not name or '<bound method' not in name
