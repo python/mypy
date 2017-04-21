@@ -23,6 +23,7 @@ install:
     - "git reset --hard"
     - "%PYTHON%\\python.exe -m pip install -r test-requirements.txt"
     - "git submodule update --init typeshed"
+    - "cd typeshed && git reset --hard"
     - "%PYTHON%\\python.exe setup.py -q install"
 
 build: off
