@@ -124,8 +124,7 @@ When you're puzzled or when things are complicated
 
    # This is how to deal with varargs.
    # This makes each positional arg and each keyword arg a 'str'.
-   def call(self, *args, **kwargs):
-            # type: (*str, **str) -> str
+   def call(self, *args: str, **kwargs: str) -> str:
             request = make_request(*args, **kwargs)
             return self.do_api_query(request)
 
