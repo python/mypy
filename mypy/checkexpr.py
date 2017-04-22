@@ -21,8 +21,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr,
-    ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF,
-    UNBOUND_TVAR, BOUND_TVAR, LITERAL_TYPE
+    ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE,
 )
 from mypy.typeinfo import TypeInfo
 from mypy import nodes
@@ -1624,7 +1623,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     sym = self.chk.lookup_qualified(arg.name)
                 except KeyError:
                     pass
-                if sym and (sym.kind == UNBOUND_TVAR or sym.kind == BOUND_TVAR):
+                if sym and (sym.kind == TVAR):
                     new_args[i] = AnyType()
             else:
                 new_args[i] = self.replace_tvars_any(arg)

@@ -1703,3 +1703,81 @@ def f(a, (b, c), d): pass
 # flags: --python-version 2.7
 
 def f(a, (b, c), d): pass
+
+-- Type variable shenanagins
+-- -------------------------
+
+[case testGenericFunctionTypeDecl]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+
+f: Callable[[T], T]
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
+def g(__x: T) -> T: pass
+f = g
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
+i = f(3)
+reveal_type(i)  # E: Revealed type is 'builtins.int*'
+
+[case testFunctionReturningGenericFunction]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+def deco() -> Callable[[T], T]: pass
+reveal_type(deco)  # E: Revealed type is 'def () -> def [T] (T`-1) -> T`-1'
+f = deco()
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
+i = f(3)
+reveal_type(i)  # E: Revealed type is 'builtins.int*'
+
+[case testFunctionReturningGenericFunctionPartialBinding]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+def deco(x: U) -> Callable[[T, U], T]: pass
+reveal_type(deco)  # E: Revealed type is 'def [U] (x: U`-1) -> def [T] (T`-2, U`-1) -> T`-2'
+f = deco("foo")
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-2, builtins.str*) -> T`-2'
+i = f(3, "eggs")
+reveal_type(i)  # E: Revealed type is 'builtins.int*'
+
+[case testFunctionReturningGenericFunctionTwoLevelBinding]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+R = TypeVar('R')
+def deco() -> Callable[[T], Callable[[T, R], R]]: pass
+f = deco()
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> def [R] (T`-1, R`-2) -> R`-2'
+g = f(3)
+reveal_type(g)  # E: Revealed type is 'def [R] (builtins.int*, R`-2) -> R`-2'
+s = g(4, "foo")
+reveal_type(s)  # E: Revealed type is 'builtins.str*'
+
+[case testGenericFunctionReturnAsDecorator]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+def deco(__i: int) -> Callable[[T], T]: pass
+
+@deco(3)
+def lol(x: int) -> str: ...
+
+reveal_type(lol)  # E: Revealed type is 'def (x: builtins.int) -> builtins.str'
+s = lol(4)
+reveal_type(s)  # E: Revealed type is 'builtins.str'
+
+[case testGenericFunctionOnReturnTypeOnly]
+from typing import TypeVar, List
+
+T = TypeVar('T')
+
+def make_list() -> List[T]: pass
+
+l: List[int] = make_list()
+
+bad = make_list()  # E: Need type annotation for variable
+[builtins fixtures/list.pyi]
