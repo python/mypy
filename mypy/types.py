@@ -256,11 +256,6 @@ class TypeList(Type):
         assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_type_list(self)
 
-    def serialize(self) -> JsonDict:
-        return {'.class': 'TypeList',
-                'items': [t.serialize() for t in self.items],
-                }
-
     def __hash__(self) -> int:
         return hash((TypeList, tuple(self.items)))
 
@@ -269,10 +264,8 @@ class TypeList(Type):
             return NotImplemented
         return self.items == other.items
 
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeList':
-        assert data['.class'] == 'TypeList'
-        return TypeList([deserialize_type(t) for t in data['items']])
+    def serialize(self) -> JsonDict:
+        assert False, "Sythetic types don't serialize"
 
 
 class AnyType(Type):
@@ -1073,6 +1066,9 @@ class StarType(Type):
         assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_star_type(self)
 
+    def serialize(self) -> JsonDict:
+        assert False, "Sythetic types don't serialize"
+
 
 class UnionType(Type):
     """The union type Union[T1, ..., Tn] (at least one type argument)."""
@@ -1224,12 +1220,7 @@ class EllipsisType(Type):
         return visitor.visit_ellipsis_type(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'EllipsisType'}
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'EllipsisType':
-        assert data['.class'] == 'EllipsisType'
-        return EllipsisType()
+        assert False, "Synthetic types don't serialize"
 
 
 class TypeType(Type):
@@ -1385,7 +1376,7 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
         pass
 
 
-class TypeTranslator(SyntheticTypeVisitor[Type]):
+class TypeTranslator(TypeVisitor[Type]):
     """Identity type transformation.
 
     Subclass this and override some methods to implement a non-trivial
@@ -1393,9 +1384,6 @@ class TypeTranslator(SyntheticTypeVisitor[Type]):
     """
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        return t
-
-    def visit_type_list(self, t: TypeList) -> Type:
         return t
 
     def visit_any(self, t: AnyType) -> Type:
@@ -1443,14 +1431,8 @@ class TypeTranslator(SyntheticTypeVisitor[Type]):
                              cast(Any, t.fallback.accept(self)),
                              t.line, t.column)
 
-    def visit_star_type(self, t: StarType) -> Type:
-        return StarType(t.type.accept(self), t.line, t.column)
-
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line, t.column)
-
-    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
-        return t
 
     def translate_types(self, types: List[Type]) -> List[Type]:
         return [t.accept(self) for t in types]

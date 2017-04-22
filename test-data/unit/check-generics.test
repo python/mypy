@@ -1347,7 +1347,17 @@ class A(Generic[T]):
             self.a = a
         g(self.a)
         g(n) # E: Argument 1 to "g" has incompatible type "int"; expected "T"
-[out]
+
+[case testFunctionInGenericInnerClassTypeVariable]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class Outer(Generic[T]):
+    class Inner:
+        x: T  # E: Invalid type "__main__.T"
+        def f(self, x: T) -> T: ...  # E: Type variable 'T' is bound by an outer class
+        def g(self) -> None:
+            y: T  # E: Invalid type "__main__.T"
 
 
 -- Callable subtyping with generic functions

@@ -2685,6 +2685,21 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     return result
 
 
+def convert_to_typetype(type_map: TypeMap) -> TypeMap:
+    converted_type_map = {}  # type: TypeMap
+    if type_map is None:
+        return None
+    for expr, typ in type_map.items():
+        if isinstance(typ, UnionType):
+            converted_type_map[expr] = UnionType([TypeType(t) for t in typ.items])
+        elif isinstance(typ, Instance):
+            converted_type_map[expr] = TypeType(typ)
+        else:
+            # unknown type; error was likely reported earlier
+            return {}
+    return converted_type_map
+
+
 def find_isinstance_check(node: Expression,
                           type_map: Dict[Expression, Type],
                           ) -> Tuple[TypeMap, TypeMap]:
@@ -2710,8 +2725,32 @@ def find_isinstance_check(node: Expression,
             expr = node.args[0]
             if expr.literal == LITERAL_TYPE:
                 vartype = type_map[expr]
-                types = get_isinstance_type(node.args[1], type_map)
-                return conditional_type_map(expr, vartype, types)
+                type = get_isinstance_type(node.args[1], type_map)
+                return conditional_type_map(expr, vartype, type)
+        elif refers_to_fullname(node.callee, 'builtins.issubclass'):
+            expr = node.args[0]
+            if expr.literal == LITERAL_TYPE:
+                vartype = type_map[expr]
+                type = get_isinstance_type(node.args[1], type_map)
+                if isinstance(vartype, UnionType):
+                    union_list = []
+                    for t in vartype.items:
+                        if isinstance(t, TypeType):
+                            union_list.append(t.item)
+                        else:
+                            #  this is an error that should be reported earlier
+                            #  if we reach here, we refuse to do any type inference
+                            return {}, {}
+                    vartype = UnionType(union_list)
+                elif isinstance(vartype, TypeType):
+                    vartype = vartype.item
+                else:
+                    # any other object whose type we don't know precisely
+                    # for example, Any or Instance of type type
+                    return {}, {}  # unknown type
+                yes_map, no_map = conditional_type_map(expr, vartype, type)
+                yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
+                return yes_map, no_map
         elif refers_to_fullname(node.callee, 'builtins.callable'):
             expr = node.args[0]
             if expr.literal == LITERAL_TYPE:
@@ -2803,18 +2842,18 @@ def flatten_types(t: Type) -> List[Type]:
 def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> List[TypeRange]:
     all_types = flatten_types(type_map[expr])
     types = []  # type: List[TypeRange]
-    for type in all_types:
-        if isinstance(type, FunctionLike) and type.is_type_obj():
+    for typ in all_types:
+        if isinstance(typ, FunctionLike) and typ.is_type_obj():
             # Type variables may be present -- erase them, which is the best
             # we can do (outside disallowing them here).
-            type = erase_typevars(type.items()[0].ret_type)
-            types.append(TypeRange(type, is_upper_bound=False))
-        elif isinstance(type, TypeType):
+            typ = erase_typevars(typ.items()[0].ret_type)
+            types.append(TypeRange(typ, is_upper_bound=False))
+        elif isinstance(typ, TypeType):
             # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
             # we indicate this by setting is_upper_bound flag
-            types.append(TypeRange(type.item, is_upper_bound=True))
-        elif isinstance(type, Instance) and type.type.fullname() == 'builtins.type':
-            object_type = Instance(type.type.mro[-1], [])
+            types.append(TypeRange(typ.item, is_upper_bound=True))
+        elif isinstance(typ, Instance) and typ.type.fullname() == 'builtins.type':
+            object_type = Instance(typ.type.mro[-1], [])
             types.append(TypeRange(object_type, is_upper_bound=True))
         else:  # we didn't see an actual type, but rather a variable whose value is unknown to us
             return None
@@ -2965,17 +3004,17 @@ def is_more_precise_signature(t: CallableType, s: CallableType) -> bool:
     return is_more_precise(t.ret_type, s.ret_type)
 
 
-def infer_operator_assignment_method(type: Type, operator: str) -> Tuple[bool, str]:
+def infer_operator_assignment_method(typ: Type, operator: str) -> Tuple[bool, str]:
     """Determine if operator assignment on given value type is in-place, and the method name.
 
     For example, if operator is '+', return (True, '__iadd__') or (False, '__add__')
     depending on which method is supported by the type.
     """
     method = nodes.op_methods[operator]
-    if isinstance(type, Instance):
+    if isinstance(typ, Instance):
         if operator in nodes.ops_with_inplace_method:
             inplace_method = '__i' + method[2:]
-            if type.type.has_readable_member(inplace_method):
+            if typ.type.has_readable_member(inplace_method):
                 return True, inplace_method
     return False, method
 
