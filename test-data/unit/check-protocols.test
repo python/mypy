@@ -1266,8 +1266,10 @@ T = TypeVar('T')
 S = TypeVar('S')
 
 class P(Protocol[T, S]):
-    x: T
-    y: S
+    @property
+    def x(self) -> T: pass
+    @property
+    def y(self) -> S: pass
 
 class N(NamedTuple):
     x: int
@@ -1296,7 +1298,7 @@ fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected P[int, 
 reveal_type(fun3(z)) # E: Revealed type is 'builtins.object*'
 
 reveal_type(fun3(z3)) # E: Revealed type is 'builtins.int*'
-[builtins fixtures/isinstancelist.pyi]
+[builtins fixtures/list.pyi]
 [out]
 
 
