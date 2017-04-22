@@ -11,12 +11,12 @@ Optional = 0
 TypeVar = 0
 Generic = 0
 Tuple = 0
+Callable = 0
 builtinclass = 0
 _promote = 0
 NamedTuple = 0
 Type = 0
 no_type_check = 0
-Callable = 0
 ClassVar = 0
 NoReturn = 0
 
@@ -93,16 +93,15 @@ class AsyncIterator(AsyncIterable[T], Generic[T]):
     def __anext__(self) -> Awaitable[T]: pass
 
 class Sequence(Iterable[T], Generic[T]):
-    # Use int because slice isn't defined in the default test builtins
     @abstractmethod
-    def __getitem__(self, n: int) -> T: pass
+    def __getitem__(self, n: Any) -> T: pass
 
 class Mapping(Generic[T, U]): pass
 
 class MutableMapping(Generic[T, U]): pass
 
 def NewType(name: str, tp: Type[T]) -> Callable[[T], T]:
-    def new_type(x: T) -> T:
+    def new_type(x):
         return x
     return new_type
 
