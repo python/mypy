@@ -1,6 +1,9 @@
 from typing import Dict, Iterable, List, Optional, Set
 
-from mypy.types import TypeVisitor
+from mypy.visitor import NodeVisitor
+from mypy.types import SyntheticTypeVisitor
+from mypy.nodes import MODULE_REF
+import mypy.nodes as nodes
 import mypy.types as types
 from mypy.util import split_module_names
 
@@ -15,7 +18,7 @@ def extract_module_names(type_name: Optional[str]) -> List[str]:
         return []
 
 
-class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
+class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
     """Returns all module references within a particular type."""
 
     def __init__(self) -> None:

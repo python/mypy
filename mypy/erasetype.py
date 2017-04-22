@@ -26,10 +26,8 @@ def erase_type(typ: Type) -> Type:
 
 
 class EraseTypeVisitor(TypeVisitor[Type]):
-    def visit_unbound_type(self, t: UnboundType) -> Type:
-        assert False, 'Not supported'
 
-    def visit_type_list(self, t: TypeList) -> Type:
+    def visit_unbound_type(self, t: UnboundType) -> Type:
         assert False, 'Not supported'
 
     def visit_any(self, t: AnyType) -> Type:

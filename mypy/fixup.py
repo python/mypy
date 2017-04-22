@@ -15,6 +15,8 @@ from mypy.types import (
 )
 from mypy.visitor import NodeVisitor
 
+from mypy.semanal import rev_module_rename_map
+
 
 def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile],
                           quick_and_dirty: bool) -> None:
@@ -177,9 +179,6 @@ class TypeFixer(TypeVisitor[None]):
                     val.accept(self)
             v.upper_bound.accept(self)
 
-    def visit_ellipsis_type(self, e: EllipsisType) -> None:
-        pass  # Nothing to descend into.
-
     def visit_overloaded(self, t: Overloaded) -> None:
         for ct in t.items():
             ct.accept(self)
@@ -209,10 +208,6 @@ class TypeFixer(TypeVisitor[None]):
                 it.accept(self)
         if tdt.fallback is not None:
             tdt.fallback.accept(self)
-
-    def visit_type_list(self, tl: TypeList) -> None:
-        for t in tl.items:
-            t.accept(self)
 
     def visit_type_var(self, tvt: TypeVarType) -> None:
         if tvt.values:
@@ -248,6 +243,7 @@ def lookup_qualified(modules: Dict[str, MypyFile], name: str,
 
 def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
                             quick_and_dirty: bool) -> Optional[SymbolTableNode]:
+    name = rev_module_rename_map.get(name, name)
     head = name
     rest = []
     while True:
