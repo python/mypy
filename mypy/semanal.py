@@ -3751,7 +3751,7 @@ def add_protocol_members(typ: TypeInfo) -> None:
             if base.is_protocol:
                 for name in base.names:
                     members.add(name)
-    typ.protocol_members = list(members)
+    typ.protocol_members = sorted(list(members))
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

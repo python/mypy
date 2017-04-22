@@ -376,18 +376,26 @@ class B(A): pass
 
 x1: Pco[B]
 y1: Pco[A]
-x1 = y1 # E: Incompatible types in assignment (expression has type Pco[A], variable has type Pco[B])
+x1 = y1 # E: Incompatible types in assignment (expression has type Pco[A], variable has type Pco[B])\
+        # N: Following members of __main__.Pco[__main__.A] have conflicts:\
+        # N: meth: expected def () -> __main__.B*, got def () -> __main__.A*
 y1 = x1
 
 x2: Pcontra[B]
 y2: Pcontra[A]
-y2 = x2 # E: Incompatible types in assignment (expression has type Pcontra[B], variable has type Pcontra[A])
+y2 = x2 # E: Incompatible types in assignment (expression has type Pcontra[B], variable has type Pcontra[A])\
+        # N: Following members of __main__.Pcontra[__main__.B] have conflicts:\
+        # N: meth: expected def (x: __main__.A*), got def (x: __main__.B*)
 x2 = y2
 
 x3: Pinv[B]
 y3: Pinv[A]
-y3 = x3 # E: Incompatible types in assignment (expression has type Pinv[B], variable has type Pinv[A])
-x3 = y3 # E: Incompatible types in assignment (expression has type Pinv[A], variable has type Pinv[B])
+y3 = x3 # E: Incompatible types in assignment (expression has type Pinv[B], variable has type Pinv[A])\
+        # N: Following members of __main__.Pinv[__main__.B] have conflicts:\
+        # N: attr: expected __main__.A*, got __main__.B*
+x3 = y3 # E: Incompatible types in assignment (expression has type Pinv[A], variable has type Pinv[B])\
+        # N: Following members of __main__.Pinv[__main__.A] have conflicts:\
+        # N: attr: expected __main__.B*, got __main__.A*
 [out]
 
 [case testGenericProtocolsInference1]
@@ -474,7 +482,9 @@ class C:
 
 c: C
 var: P2[int, int] = c
-var2: P2[int, str] = c # E: Incompatible types in assignment (expression has type "C", variable has type P2[int, str])
+var2: P2[int, str] = c # E: Incompatible types in assignment (expression has type "C", variable has type P2[int, str])\
+                       # N: Following members of __main__.C have conflicts:\
+                       # N: attr2: expected Tuple[builtins.int*, builtins.str*], got Tuple[builtins.int, builtins.int]
 
 class D(Generic[T]):
     attr1: T
@@ -515,7 +525,10 @@ class D(A, B): pass
 
 x: P = D()  # Same as P[Any, Any]
 
-var: P[Union[int, P], Union[P, str]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[int, P[Any, Any]], Union[P[Any, Any], str]])
+var: P[Union[int, P], Union[P, str]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[int, P[Any, Any]], Union[P[Any, Any], str]])\
+                                           # N: Following members of __main__.C have conflicts:\
+                                           # N: attr1: expected Union[builtins.int, __main__.P[Any, Any]], got builtins.int\
+                                           # N: attr2: expected Union[__main__.P[Any, Any], builtins.str], got builtins.str
 [out]
 
 [case testGenericSubProtocolsExtensionCovariant]
@@ -536,7 +549,10 @@ class C:
     def attr2(self) -> str: pass
 
 var: P[Union[int, P], Union[P, str]] = C() # OK for covariant
-var2: P[Union[str, P], Union[P, int]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[str, P[Any, Any]], Union[P[Any, Any], int]])
+var2: P[Union[str, P], Union[P, int]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[str, P[Any, Any]], Union[P[Any, Any], int]])\
+                                            # N: Following members of __main__.C have conflicts:\
+                                            # N: attr1: expected def () -> Union[builtins.str, __main__.P[Any, Any]], got def () -> builtins.int\
+                                            # N: attr2: expected def () -> Union[__main__.P[Any, Any], builtins.int], got def () -> builtins.str
 [out]
 
 [case testSelfTypesWithProtocolsBehaveAsWithNominal]
@@ -565,8 +581,12 @@ s: Shape
 
 f(NonProtoShape())
 f(Circle())
-s = Triangle() # E: Incompatible types in assignment (expression has type "Triangle", variable has type "Shape")
-s = Bad() # E: Incompatible types in assignment (expression has type "Bad", variable has type "Shape")
+s = Triangle() # E: Incompatible types in assignment (expression has type "Triangle", variable has type "Shape")\
+               # N: Following members of __main__.Triangle have conflicts:\
+               # N: combine: expected def (other: __main__.Triangle*) -> __main__.Triangle*, got def (other: __main__.Shape) -> __main__.Shape
+s = Bad() # E: Incompatible types in assignment (expression has type "Bad", variable has type "Shape")\
+          # N: Following members of __main__.Bad have conflicts:\
+          # N: combine: expected def (other: __main__.Bad*) -> __main__.Bad*, got def (other: builtins.int) -> builtins.str
 
 n2: NonProtoShape = s # E: Incompatible types in assignment (expression has type "Shape", variable has type "NonProtoShape")
 [out]
@@ -719,9 +739,11 @@ x: PInst
 y: PClass
 
 x = CInst()
-x = CClass() # E: Incompatible types in assignment (expression has type "CClass", variable has type "PInst")
+x = CClass() # E: Incompatible types in assignment (expression has type "CClass", variable has type "PInst")\
+             # N: Protocol member __main__.PInst.v: expected instance variable, got class variable
 y = CClass()
-y = CInst()  # E: Incompatible types in assignment (expression has type "CInst", variable has type "PClass")
+y = CInst()  # E: Incompatible types in assignment (expression has type "CInst", variable has type "PClass")\
+             # N: Protocol member __main__.PClass.v: expected class variable, got instance variable
 [out]
 
 [case testPropertyInProtocols]
@@ -741,7 +763,8 @@ y = x
 
 x2: P
 y2: PP
-x2 = y2 # E: Incompatible types in assignment (expression has type "PP", variable has type "P")
+x2 = y2 # E: Incompatible types in assignment (expression has type "PP", variable has type "P")\
+        # N: Protocol member __main__.P.attr: expected settable variable, got read-only attribute
 [builtins fixtures/property.pyi]
 [out]
 
@@ -778,7 +801,8 @@ y3 = z3
 
 y4: PP
 z4: PPS
-z4 = y4 # E: Incompatible types in assignment (expression has type "PP", variable has type "PPS")
+z4 = y4 # E: Incompatible types in assignment (expression has type "PP", variable has type "PPS")\
+        # N: Protocol member __main__.PPS.attr: expected settable variable, got read-only attribute
 [builtins fixtures/property.pyi]
 [out]
 
@@ -809,7 +833,8 @@ x = B()
 
 y: PC
 y = B()
-y = C() # E: Incompatible types in assignment (expression has type "C", variable has type "PC")
+y = C() # E: Incompatible types in assignment (expression has type "C", variable has type "PC")\
+        # N: Protocol member __main__.PC.meth: expected class or static method
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -831,7 +856,9 @@ class D:
         pass
 
 x: P = C()
-x = D() # E: Incompatible types in assignment (expression has type "D", variable has type "P")
+x = D() # E: Incompatible types in assignment (expression has type "D", variable has type "P")\
+        # N: Following members of __main__.D have conflicts:\
+        # N: f: expected Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str), got def (x: builtins.int)
 [out]
 
 -- Join and meet with protocol types

@@ -413,9 +413,24 @@ def find_member(name: str, itype: Instance, subtype: Instance) -> Optional[Type]
     return None
 
 
+def get_all_flags(left: Instance, right: Instance) -> List[Tuple[str, Set[int], Set[int]]]:
+    """Return all attribute flags for members that are present in both
+    'left' and 'right'.
+    """
+    assert right.type.is_protocol
+    all_flags = []  # type: List[Tuple[str, Set[int], Set[int]]]
+    for member in right.type.protocol_members:
+        if find_member(member, left, left):
+            item = (member,
+                    get_member_flags(member, left.type),
+                    get_member_flags(member, right.type))
+            all_flags.append(item)
+    return all_flags
+
+
 def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
-    """Detect whether a member 'name' is settable and whether it is an
-    instance or class variable.
+    """Detect whether a member 'name' is settable, whether it is an
+    instance or class variable, and whether it is class or static method.
     """
     method = info.get_method(name)
     if method:
@@ -487,6 +502,24 @@ def get_missing_members(left: Instance, right: Instance) -> List[str]:
         if not find_member(member, left, left):
             missing.append(member)
     return sorted(missing)
+
+
+def get_conflict_types(left: Instance, right: Instance) -> List[Tuple[str, Type, Type]]:
+    assert right.type.is_protocol
+    conflicts = []  # type: List[Tuple[str, Type, Type]]
+    for member in right.type.protocol_members:
+        if member in ('__init__', '__new__'):
+            continue
+        supertype = find_member(member, right, left)
+        subtype = find_member(member, left, left)
+        if not subtype:
+            continue
+        is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
+        if IS_SETTABLE in get_member_flags(member, right.type):
+            is_compat = is_compat and is_subtype(supertype, subtype)
+        if not is_compat:
+            conflicts.append((member, subtype, supertype))
+    return conflicts
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,
