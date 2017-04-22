@@ -261,10 +261,6 @@ class TypeList(Type):
         super().__init__(line, column)
         self.items = items
 
-    @property
-    def types(self) -> List[Type]:
-        return [a.typ if isinstance(a, CallableArgument) else a for a in self.items]
-
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_type_list(self)
