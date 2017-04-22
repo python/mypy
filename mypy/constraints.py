@@ -348,6 +348,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     inst = mypy.subtypes.find_member(member, instance, instance)
                     temp = mypy.subtypes.find_member(member, template, template)
                     res.extend(infer_constraints(temp, inst, self.direction))
+                    if (mypy.subtypes.IS_SETTABLE in
+                            mypy.subtypes.get_member_flags(member, template.type)):
+                        # Settable members are invariant, add opposite constraints
+                        res.extend(infer_constraints(temp, inst, neg_op(self.direction)))
                 template.type.inferring.pop()
                 return res
             elif (instance.type.is_protocol and self.direction == SUBTYPE_OF and
@@ -359,6 +363,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     inst = mypy.subtypes.find_member(member, instance, instance)
                     temp = mypy.subtypes.find_member(member, template, template)
                     res.extend(infer_constraints(temp, inst, self.direction))
+                    if (mypy.subtypes.IS_SETTABLE in
+                            mypy.subtypes.get_member_flags(member, instance.type)):
+                        res.extend(infer_constraints(temp, inst, neg_op(self.direction)))
                 instance.type.inferring.pop()
                 return res
         if isinstance(actual, AnyType):

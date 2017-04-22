@@ -363,14 +363,13 @@ from typing import TypeVar, Protocol
 T = TypeVar('T')
 
 class Pco(Protocol[T]):
-    attr: T
+    def meth(self) -> T:
+        pass
 class Pcontra(Protocol[T]):
     def meth(self, x: T) -> None:
         pass
 class Pinv(Protocol[T]):
     attr: T
-    def meth(self, x: T) -> None:
-        pass
 
 class A: pass
 class B(A): pass
@@ -437,6 +436,20 @@ class C:
 def fun3(x: P[T, T]) -> T:
     pass
 reveal_type(fun3(C())) # E: Revealed type is 'builtins.int*'
+[out]
+
+[case testProtocolGenericInferenceCovariant]
+from typing import Generic, TypeVar, Protocol
+T = TypeVar('T')
+S = TypeVar('S')
+
+class P(Protocol[T, S]):
+    def x(self) -> T: pass
+    def y(self) -> S: pass
+
+class C:
+    def x(self) -> int: pass
+    def y(self) -> int: pass
 
 def fun4(x: T, y: P[T, T]) -> T:
     pass
@@ -477,7 +490,7 @@ def f(x: T) -> T:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
-[case testGenericSubProtocolsExtension]
+[case testGenericSubProtocolsExtensionInvariant]
 from typing import TypeVar, Protocol, Union
 
 T = TypeVar('T')
@@ -502,9 +515,28 @@ class D(A, B): pass
 
 x: P = D()  # Same as P[Any, Any]
 
-var: P[Union[int, P], Union[P, str]] = C() # OK
-var2: P[Union[str, P], Union[P, int]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[str, P[Any, Any]], Union[P[Any, Any], int]])
+var: P[Union[int, P], Union[P, str]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[int, P[Any, Any]], Union[P[Any, Any], str]])
+[out]
 
+[case testGenericSubProtocolsExtensionCovariant]
+from typing import TypeVar, Protocol, Union
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class P1(Protocol[T]):
+    def attr1(self) -> T: pass
+class P2(Protocol[T]):
+    def attr2(self) -> T: pass
+class P(P1[T], P2[S], Protocol):
+    pass
+
+class C:
+    def attr1(self) -> int: pass
+    def attr2(self) -> str: pass
+
+var: P[Union[int, P], Union[P, str]] = C() # OK for covariant
+var2: P[Union[str, P], Union[P, int]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[str, P[Any, Any]], Union[P[Any, Any], int]])
 [out]
 
 [case testSelfTypesWithProtocolsBehaveAsWithNominal]
@@ -548,7 +580,8 @@ from typing import Protocol, Sequence, List, Generic, TypeVar
 T = TypeVar('T')
 
 class Traversable(Protocol):
-    leaves: Sequence[Traversable]
+    @property
+    def leaves(self) -> Sequence[Traversable]: pass
 
 class C: pass
 
@@ -569,11 +602,11 @@ from typing import Protocol, TypeVar
 T = TypeVar('T')
 class Linked(Protocol[T]):
     val: T
-    next: Linked[T]
+    def next(self) -> Linked[T]: pass
 
 class L:
     val: int
-    next: L
+    def next(self) -> L: pass
 
 def last(seq: Linked[T]) -> T:
     pass
@@ -586,10 +619,12 @@ reveal_type(last(L())) # E: Revealed type is 'builtins.int*'
 from typing import Protocol, Sequence, List
 
 class P1(Protocol):
-    attr1: Sequence[P2]
+    @property
+    def attr1(self) -> Sequence[P2]: pass
 
 class P2(Protocol):
-    attr2: Sequence[P1]
+    @property
+    def attr2(self) -> Sequence[P1]: pass
 
 class C: pass
 
@@ -875,11 +910,11 @@ class Box(Protocol[T]):
     content: T
 class Linked(Protocol[T]):
     val: T
-    next: Linked[T]
+    def next(self) -> Linked[T]: pass
 
 class L(Generic[T]):
     val: Box[T]
-    next: L[T]
+    def next(self) -> L[T]: pass
 
 def last(seq: Linked[T]) -> T:
     pass

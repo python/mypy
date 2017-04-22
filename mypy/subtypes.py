@@ -354,6 +354,10 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
                 return False
             subflags = get_member_flags(member, left.type)
             superflags = get_member_flags(member, right.type)
+            if IS_SETTABLE in superflags:
+                # Check opposite direction for settable attributes.
+                if not is_subtype(supertype, subtype):
+                    return False
             if (IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags or
                     IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags):
                 return False
