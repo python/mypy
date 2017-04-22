@@ -98,6 +98,7 @@ TypedDict.__doc__ = \
 # return their type argument, to make them complete noops in terms of the
 # `typing` module.
 
+
 def Arg(type=Any, name=None):
     """A normal positional argument"""
     return type
