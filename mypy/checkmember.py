@@ -286,7 +286,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # methods: the former to the instance, the latter to the
                 # class.
                 functype = t
-                check_method_type(functype, itype, var.is_classmethod, node, msg)
+                check_method_type(functype, original_type, var.is_classmethod, node, msg)
                 signature = bind_self(functype, original_type)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
@@ -350,12 +350,8 @@ def check_method_type(functype: FunctionLike, original_type: Instance, is_classm
             # (This is sufficient for the current treatment of @classmethod,
             # but probably needs to be revisited when we implement Type[C]
             # or advanced variants of it like Type[<args>, C].)
-            if is_classmethod and isinstance(selfarg, CallableType) and selfarg.is_type_obj():
-                selfarg = selfarg.ret_type
-            # If this is a method of a tuple class, correct for the fact that
-            # we passed to typ.fallback in analyze_member_access. See #1432.
-            if isinstance(selfarg, TupleType):
-                selfarg = selfarg.fallback
+            if is_classmethod:
+                original_type = TypeType(original_type)
             if not subtypes.is_subtype(original_type, erase_to_bound(selfarg)):
                 msg.invalid_method_type(original_type, item, is_classmethod, context)
 
