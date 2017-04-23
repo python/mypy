@@ -591,6 +591,21 @@ s = Bad() # E: Incompatible types in assignment (expression has type "Bad", vari
 n2: NonProtoShape = s # E: Incompatible types in assignment (expression has type "Shape", variable has type "NonProtoShape")
 [out]
 
+[case testBadVarianceInProtocols]
+from typing import Protocol, TypeVar
+
+T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class Proto(Protocol[T_co, T_contra]):
+    def one(self, x: T_co) -> None:  # E: Cannot use a covariant type variable as a parameter
+        pass
+    def other(self) -> T_contra:  # E: Cannot use a contravariant type variable as return type
+        pass
+
+[builtins fixtures/list.pyi]
+[out]
+
 -- Recursive protocol types
 -- ------------------------
 
@@ -1413,6 +1428,42 @@ main:11: note: __int__
 
 -- Additional test and corner cases for protocols
 -- ----------------------------------------------
+
+[case testAnyWithProtocols]
+from typing import Protocol, Any, TypeVar
+
+T = TypeVar('T')
+
+class P1(Protocol):
+    attr1: int
+class P2(Protocol[T]):
+    attr2: T
+class P3(Protocol):
+    attr: P3
+
+def f1(x: P1) -> None: pass
+def f2(x: P2[str]) -> None: pass
+def f3(x: P3) -> None: pass
+
+class C1:
+    attr1: Any
+class C2:
+    attr2: Any
+class C3:
+    attr: Any
+
+f1(C1())
+f2(C2())
+f3(C3())
+
+f2(C3())  # E: Argument 1 to "f2" has incompatible type "C3"; expected P2[str]\
+          # N: '__main__.C3' missing following '__main__.P2' protocol members:\
+          # N: attr2
+a: Any
+f1(a)
+f2(a)
+f3(a)
+[out]
 
 [case testErrorsForProtocolsInDifferentPlaces]
 from typing import Protocol
