@@ -782,8 +782,9 @@ class TypeChecker(NodeVisitor[None]):
             # TODO check self argument kind
 
             # Check for the issue described above.
-            arg_type = typ.arg_types[1]
             other_method = nodes.normal_from_reverse_op[method]
+            arg_type = typ.arg_types[1]
+            arg_types = [arg_type]
             if isinstance(arg_type, Instance):
                 if not arg_type.type.has_readable_member(other_method):
                     return
@@ -792,15 +793,16 @@ class TypeChecker(NodeVisitor[None]):
             elif isinstance(arg_type, UnionType):
                 if not arg_type.has_readable_member(other_method):
                     return
+                arg_types = list(arg_type.iter_deep())
             else:
                 return
-
-            typ2 = self.expr_checker.analyze_external_member_access(
-                other_method, arg_type, defn)
-            self.check_overlapping_op_methods(
-                typ, method, defn.info,
-                typ2, other_method, cast(Instance, arg_type),
-                defn)
+            for arg_type in arg_types:
+                typ2 = self.expr_checker.analyze_external_member_access(
+                    other_method, arg_type, defn)
+                self.check_overlapping_op_methods(
+                    typ, method, defn.info,
+                    typ2, other_method, cast(Instance, arg_type),
+                    defn)
 
     def check_overlapping_op_methods(self,
                                      reverse_type: CallableType,

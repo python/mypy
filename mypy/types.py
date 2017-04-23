@@ -5,7 +5,7 @@ import copy
 from collections import OrderedDict
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional, Union, Iterable,
-    NamedTuple, Callable,
+    NamedTuple, Callable, Iterator,
 )
 
 import mypy.nodes
@@ -1061,6 +1061,13 @@ class UnionType(Type):
         return all((isinstance(x, UnionType) and x.has_readable_member(name)) or
                    (isinstance(x, Instance) and x.type.has_readable_member(name))
                    for x in self.items)
+
+    def iter_deep(self) -> Iterator[Type]:
+        for x in self.items:
+            if isinstance(x, UnionType):
+                yield from x.iter_deep()
+            else:
+                yield x
 
     def serialize(self) -> JsonDict:
         return {'.class': 'UnionType',
