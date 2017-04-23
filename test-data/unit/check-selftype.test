@@ -342,9 +342,12 @@ class E:
 [case testSelfTypeProperty]
 from typing import TypeVar
 
-T = TypeVar('T', bound='A')
+T = TypeVar('T', bound='X')
 
-class A:
+class X:
+    pass
+
+class A(X):
     @property
     def member(self: T) -> T:
         pass

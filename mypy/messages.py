@@ -768,11 +768,9 @@ class MessageBuilder:
     def cannot_determine_type_in_base(self, name: str, base: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s' in base class '%s'" % (name, base), context)
 
-    def invalid_method_type(self, sig: CallableType, context: Context) -> None:
-        self.fail('Invalid method type', context)
-
-    def invalid_class_method_type(self, sig: CallableType, context: Context) -> None:
-        self.fail('Invalid class method type', context)
+    def invalid_method_type(self, arg: Type, sig: CallableType, is_classmethod: bool, context: Context) -> None:
+        kind = 'class attribute function' if is_classmethod else 'attribute function'
+        self.fail('Invalid self argument %s to %s %s' % (self.format(arg), kind, self.format(sig)), context)
 
     def incompatible_conditional_function_def(self, defn: FuncDef) -> None:
         self.fail('All conditional function variants must have identical '

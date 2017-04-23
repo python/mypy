@@ -338,33 +338,26 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
         return None
 
 
-def check_method_type(functype: FunctionLike, itype: Instance, is_classmethod: bool,
+def check_method_type(functype: FunctionLike, original_type: Instance, is_classmethod: bool,
                       context: Context, msg: MessageBuilder) -> None:
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
-            msg.invalid_method_type(item, context)
-        elif not is_classmethod:
-            # Check that self argument has type 'Any' or valid instance type.
+            msg.fail('Attribute function of type %s does not accept self argument' % msg.format(item), context)
+        else:
+            # Check that self argument has type 'Any' or valid instance/class type.
             selfarg = item.arg_types[0]
+            # (This is sufficient for the current treatment of @classmethod,
+            # but probably needs to be revisited when we implement Type[C]
+            # or advanced variants of it like Type[<args>, C].)
+            if is_classmethod and isinstance(selfarg, CallableType) and selfarg.is_type_obj():
+                selfarg = selfarg.ret_type
             # If this is a method of a tuple class, correct for the fact that
             # we passed to typ.fallback in analyze_member_access. See #1432.
             if isinstance(selfarg, TupleType):
                 selfarg = selfarg.fallback
-            if not subtypes.is_subtype(selfarg, itype):
-                msg.invalid_method_type(item, context)
-        else:
-            # Check that cls argument has type 'Any' or valid class type.
-            # (This is sufficient for the current treatment of @classmethod,
-            # but probably needs to be revisited when we implement Type[C]
-            # or advanced variants of it like Type[<args>, C].)
-            clsarg = item.arg_types[0]
-            if isinstance(clsarg, CallableType) and clsarg.is_type_obj():
-                if not subtypes.is_equivalent(clsarg.ret_type, itype):
-                    msg.invalid_class_method_type(item, context)
-            else:
-                if not subtypes.is_equivalent(clsarg, AnyType()):
-                    msg.invalid_class_method_type(item, context)
+            if not subtypes.is_subtype(original_type, erase_to_bound(selfarg)):
+                msg.invalid_method_type(original_type, item, is_classmethod, context)
 
 
 def analyze_class_attribute_access(itype: Instance,
