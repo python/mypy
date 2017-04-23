@@ -338,12 +338,13 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
         return None
 
 
-def check_method_type(functype: FunctionLike, original_type: Instance, is_classmethod: bool,
+def check_method_type(functype: FunctionLike, original_type: Type, is_classmethod: bool,
                       context: Context, msg: MessageBuilder) -> None:
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
-            msg.fail('Attribute function of type %s does not accept self argument' % msg.format(item), context)
+            msg.fail('Attribute function of type %s does not accept self argument'
+                     % msg.format(item), context)
         else:
             # Check that self argument has type 'Any' or valid instance/class type.
             selfarg = item.arg_types[0]
