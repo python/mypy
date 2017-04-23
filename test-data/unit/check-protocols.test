@@ -1410,3 +1410,78 @@ foo('no way')
 main:11: error: Argument 1 to "foo" has incompatible type "str"; expected "SupportsInt"
 main:11: note: 'builtins.str' missing following 'typing.SupportsInt' protocol members:
 main:11: note: __int__
+
+-- Additional test and corner cases for protocols
+-- ----------------------------------------------
+
+[case testErrorsForProtocolsInDifferentPlaces]
+from typing import Protocol
+
+class P(Protocol):
+    attr1: int
+    attr2: str
+    attr3: int
+
+class C:
+    attr1: str
+    @property
+    def attr2(self) -> int: pass
+
+x: P = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P")\
+           # N: '__main__.C' missing following '__main__.P' protocol members:\
+           # N: attr3\
+           # N: Following members of __main__.C have conflicts:\
+           # N: attr1: expected builtins.int, got builtins.str\
+           # N: attr2: expected builtins.str, got builtins.int\
+           # N: Protocol member __main__.P.attr2: expected settable variable, got read-only attribute
+
+def f(x: P) -> P:
+    return C() # E: Incompatible return value type (got "C", expected "P")\
+               # N: '__main__.C' missing following '__main__.P' protocol members:\
+               # N: attr3\
+               # N: Following members of __main__.C have conflicts:\
+               # N: attr1: expected builtins.int, got builtins.str\
+               # N: attr2: expected builtins.str, got builtins.int\
+               # N: Protocol member __main__.P.attr2: expected settable variable, got read-only attribute
+
+f(C()) # E: Argument 1 to "f" has incompatible type "C"; expected "P"\
+       # N: '__main__.C' missing following '__main__.P' protocol members:\
+       # N: attr3\
+       # N: Following members of __main__.C have conflicts:\
+       # N: attr1: expected builtins.int, got builtins.str\
+       # N: attr2: expected builtins.str, got builtins.int\
+       # N: Protocol member __main__.P.attr2: expected settable variable, got read-only attribute
+[builtins fixtures/list.pyi]
+[out]
+
+[case testIterableProtocolOnClass]
+from typing import TypeVar, Iterator
+T = TypeVar('T', bound='A')
+
+class A:
+    def __iter__(self: T) -> Iterator[T]: pass
+
+class B(A): pass
+
+reveal_type(list(b for b in B()))  # E: Revealed type is 'builtins.list[__main__.B*]'
+reveal_type(list(B()))  # E: Revealed type is 'builtins.list[__main__.B*]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testIterableProtocolOnMetaclass]
+from typing import TypeVar, Iterator, Type
+T = TypeVar('T', bound='E')
+
+class EMeta(type):
+    def __iter__(self: Type[T]) -> Iterator[T]: pass
+
+class E(metaclass=EMeta):
+    pass
+
+class C(E):
+    pass
+
+reveal_type(list(c for c in C))  # E: Revealed type is 'builtins.list[__main__.C*]'
+reveal_type(list(C))  # E: Revealed type is 'builtins.list[__main__.C*]'
+[builtins fixtures/list.pyi]
+[out]

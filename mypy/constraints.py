@@ -307,7 +307,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     # Non-leaf types
 
     def visit_instance(self, template: Instance) -> List[Constraint]:
-        actual = self.actual
+        original_actual = actual = self.actual
         res = []  # type: List[Constraint]
         if isinstance(actual, CallableType) and actual.fallback is not None:
             actual = actual.fallback
@@ -345,8 +345,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     mypy.subtypes.is_subtype(instance, erase_typevars(template))):
                 template.type.inferring.append(template)
                 for member in template.type.protocol_members:
-                    inst = mypy.subtypes.find_member(member, instance, instance)
-                    temp = mypy.subtypes.find_member(member, template, template)
+                    inst = mypy.subtypes.find_member(member, instance, original_actual)
+                    temp = mypy.subtypes.find_member(member, template, original_actual)
                     res.extend(infer_constraints(temp, inst, self.direction))
                     if (mypy.subtypes.IS_SETTABLE in
                             mypy.subtypes.get_member_flags(member, template.type)):
@@ -360,7 +360,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                   mypy.subtypes.is_subtype(erase_typevars(template), instance)):
                 instance.type.inferring.append(instance)
                 for member in instance.type.protocol_members:
-                    inst = mypy.subtypes.find_member(member, instance, instance)
+                    inst = mypy.subtypes.find_member(member, instance, template)
                     temp = mypy.subtypes.find_member(member, template, template)
                     res.extend(infer_constraints(temp, inst, self.direction))
                     if (mypy.subtypes.IS_SETTABLE in

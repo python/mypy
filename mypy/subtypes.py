@@ -373,7 +373,7 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
     return True
 
 
-def find_member(name: str, itype: Instance, subtype: Instance) -> Optional[Type]:
+def find_member(name: str, itype: Instance, subtype: Type) -> Optional[Type]:
     """Find the type of member by 'name' in 'itype's TypeInfo. Apply type arguments
     from 'itype', and bind 'self' to 'subtype'. Return None if member was not found.
     """
@@ -458,7 +458,7 @@ def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
     return set()
 
 
-def find_var_type(var: Var, itype: Instance, subtype: Instance) -> Type:
+def find_var_type(var: Var, itype: Instance, subtype: Type) -> Type:
     """Find type of a variable 'var' (maybe also a decorated method).
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
     """
@@ -478,7 +478,7 @@ def find_var_type(var: Var, itype: Instance, subtype: Instance) -> Type:
     return typ
 
 
-def map_method(method: FuncBase, itype: Instance, subtype: Instance) -> Type:
+def map_method(method: FuncBase, itype: Instance, subtype: Type) -> Type:
     """Map 'method' to the base where it was defined. Apply type arguments
     from 'itype', and bind 'self' type to 'subtype'.
     This function should be used only for non-decorated methods. Decorated
