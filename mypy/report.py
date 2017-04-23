@@ -200,7 +200,7 @@ class LineCoverageVisitor(TraverserVisitor):
             if cur_indent is None:
                 # Consume the line, but don't mark it as belonging to the function yet.
                 cur_line += 1
-            elif cur_indent > start_indent:
+            elif start_indent is not None and cur_indent > start_indent:
                 # A non-blank line that belongs to the function.
                 cur_line += 1
                 end_line = cur_line
@@ -211,7 +211,7 @@ class LineCoverageVisitor(TraverserVisitor):
         is_typed = defn.type is not None
         for line in range(start_line, end_line):
             old_indent, _ = self.lines_covered[line]
-            assert start_indent > old_indent
+            assert start_indent is not None and start_indent > old_indent
             self.lines_covered[line] = (start_indent, is_typed)
 
         # Visit the body, in case there are nested functions
@@ -304,7 +304,7 @@ class MemoryXmlReporter(AbstractReporter):
         self.css_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.css')
         xsd_path = os.path.join(reports.data_dir, 'xml', 'mypy.xsd')
         self.schema = etree.XMLSchema(etree.parse(xsd_path))
-        self.last_xml = None  # type: etree._ElementTree
+        self.last_xml = None  # type: Optional[etree._ElementTree]
         self.files = []  # type: List[FileInfo]
 
     def on_file(self,
@@ -535,7 +535,8 @@ class XmlReporter(AbstractXmlReporter):
         out_path = os.path.join(self.output_dir, 'index.xml')
         out_xslt = os.path.join(self.output_dir, 'mypy-html.xslt')
         out_css = os.path.join(self.output_dir, 'mypy-html.css')
-        last_xml.write(out_path, encoding='utf-8')
+        if last_xml is not None:
+            last_xml.write(out_path, encoding='utf-8')
         shutil.copyfile(self.memory_xml.xslt_html_path, out_xslt)
         shutil.copyfile(self.memory_xml.css_html_path, out_css)
         print('Generated XML report:', os.path.abspath(out_path))
@@ -577,9 +578,10 @@ class XsltHtmlReporter(AbstractXmlReporter):
         last_xml = self.memory_xml.last_xml
         out_path = os.path.join(self.output_dir, 'index.html')
         out_css = os.path.join(self.output_dir, 'mypy-html.css')
-        transformed_html = bytes(self.xslt_html(last_xml, ext=self.param_html))
-        with open(out_path, 'wb') as out_file:
-            out_file.write(transformed_html)
+        if last_xml is not None:
+            transformed_html = bytes(self.xslt_html(last_xml, ext=self.param_html))
+            with open(out_path, 'wb') as out_file:
+                out_file.write(transformed_html)
         shutil.copyfile(self.memory_xml.css_html_path, out_css)
         print('Generated HTML report (via XSLT):', os.path.abspath(out_path))
 
@@ -608,9 +610,10 @@ class XsltTxtReporter(AbstractXmlReporter):
         last_xml = self.memory_xml.last_xml
         out_path = os.path.join(self.output_dir, 'index.txt')
         stats.ensure_dir_exists(os.path.dirname(out_path))
-        transformed_txt = bytes(self.xslt_txt(last_xml))
-        with open(out_path, 'wb') as out_file:
-            out_file.write(transformed_txt)
+        if last_xml is not None:
+            transformed_txt = bytes(self.xslt_txt(last_xml))
+            with open(out_path, 'wb') as out_file:
+                out_file.write(transformed_txt)
         print('Generated TXT report (via XSLT):', os.path.abspath(out_path))
 
 

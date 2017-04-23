@@ -24,10 +24,9 @@ class StrConv(NodeVisitor[str]):
 
     def __init__(self, show_ids: bool = False) -> None:
         self.show_ids = show_ids
+        self.id_mapper = None  # type: IdMapper
         if show_ids:
             self.id_mapper = IdMapper()
-        else:
-            self.id_mapper = None
 
     def get_id(self, o: object) -> int:
         return self.id_mapper.id(o)
@@ -504,7 +503,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr], o)
 
 
-def dump_tagged(nodes: Sequence[object], tag: str, str_conv: 'StrConv') -> str:
+def dump_tagged(nodes: Sequence[object], tag: Optional[str], str_conv: 'StrConv') -> str:
     """Convert an array into a pretty-printed multiline string representation.
 
     The format is

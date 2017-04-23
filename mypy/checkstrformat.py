@@ -20,6 +20,7 @@ from mypy.messages import MessageBuilder
 FormatStringExpr = Union[StrExpr, BytesExpr, UnicodeExpr]
 Checkers = Tuple[Callable[[Expression], None], Callable[[Type], None]]
 
+
 class ConversionSpecifier:
     def __init__(self, key: str, flags: str, width: str, precision: str, type: str) -> None:
         self.key = key
@@ -105,7 +106,7 @@ class StringFormatterChecker:
         return specifiers
 
     def analyze_conversion_specifiers(self, specifiers: List[ConversionSpecifier],
-                                      context: Context) -> bool:
+                                      context: Context) -> Optional[bool]:
         has_star = any(specifier.has_star() for specifier in specifiers)
         has_key = any(specifier.has_key() for specifier in specifiers)
         all_have_keys = all(
@@ -114,10 +115,10 @@ class StringFormatterChecker:
 
         if has_key and has_star:
             self.msg.string_interpolation_with_star_and_key(context)
-            return False
+            return None
         if has_key and not all_have_keys:
             self.msg.string_interpolation_mixing_key_and_non_keys(context)
-            return False
+            return None
         return has_key
 
     def check_simple_str_interpolation(self, specifiers: List[ConversionSpecifier],
