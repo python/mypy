@@ -243,7 +243,9 @@ def lookup_qualified(modules: Dict[str, MypyFile], name: str,
 
 def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
                             quick_and_dirty: bool) -> Optional[SymbolTableNode]:
-    name = rev_module_rename_map.get(name, name)
+    if '_importlib_modulespec' in modules:
+        # we are using python 3, so renaming is necessary
+        name = rev_module_rename_map.get(name, name)
     head = name
     rest = []
     while True:
