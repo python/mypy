@@ -84,9 +84,9 @@ main:6: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 import typing
 MYPY = 0
 if MYPY:
-    None + 1 # E: Unsupported left operand type for + (None)
+    object() + 1 # E: Unsupported left operand type for + ("object")
 else:
-    None + ''
+    object() + 1
 [builtins fixtures/bool.pyi]
 
 [case testTypeCheckingConditional]

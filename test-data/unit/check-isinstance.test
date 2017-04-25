@@ -434,13 +434,13 @@ def foo() -> Union[int, str]: pass
 
 x = foo()
 x = 1
-x = x + 1
+x + 1
 x = foo()
-x = x + 1                # E: Unsupported operand types for + (likely involving Union)
+x + 1                # E: Unsupported operand types for + (likely involving Union)
 if isinstance(x, str):
-   x = x + 1             # E: Unsupported operand types for + ("str" and "int")
+   x + 1             # E: Unsupported operand types for + ("str" and "int")
    x = 1
-   x = x + 1
+   x + 1
 
 [builtins fixtures/isinstancelist.pyi]
 
@@ -463,11 +463,11 @@ from typing import Union
 x = None # type: Union[int, str]
 
 if isinstance(x, str):
-    x = x + 1   # E: Unsupported operand types for + ("str" and "int")
-    x = x + 'a'
+    x + 1   # E: Unsupported operand types for + ("str" and "int")
+    x + 'a'
 else:
-    x = x + 'a' # E: Unsupported operand types for + ("int" and "str")
-    x = x + 1
+    x + 'a' # E: Unsupported operand types for + ("int" and "str")
+    x + 1
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceIndexing]

@@ -194,7 +194,7 @@ x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has t
 [builtins fixtures/dict.pyi]
 
 [case testNoReturnImportFromTyping]
-from typing import NoReturn
+from mypy_extensions import NoReturn
 
 def h() -> NoReturn:
   if bool():
