@@ -1461,8 +1461,11 @@ class TypeChecker(NodeVisitor[None]):
         rvalue_type = self.expr_checker.accept(rvalue)  # TODO maybe elsewhere; redundant
         undefined_rvalue = False
 
-        if isinstance(rvalue_type, UnionType) and len(rvalue_type.relevant_items()) == 1:
-            rvalue_type = rvalue_type.relevant_items()[0]
+        if isinstance(rvalue_type, UnionType):
+            # If this is an Optional type in non-strict Optional code, unwrap it.
+            relevant_items = rvalue_type.relevant_items()
+            if len(relevant_items) == 1:
+                rvalue_type = relevant_items[0]
 
         if isinstance(rvalue_type, AnyType):
             for lv in lvalues:
@@ -1492,9 +1495,13 @@ class TypeChecker(NodeVisitor[None]):
                 # Infer rvalue again, now in the correct type context.
                 lvalue_type = self.lvalue_type_for_inference(lvalues, rvalue_type)
                 reinferred_rvalue_type = self.expr_checker.accept(rvalue, lvalue_type)
-                if (isinstance(reinferred_rvalue_type, UnionType) and
-                        len(reinferred_rvalue_type.relevant_items()) == 1):
-                    reinferred_rvalue_type = reinferred_rvalue_type.relevant_items()[0]
+
+                if isinstance(reinferred_rvalue_type, UnionType):
+                    # If this is an Optional type in non-strict Optional code, unwrap it.
+                    relevant_items = reinferred_rvalue_type.relevant_items()
+                    if len(relevant_items) == 1:
+                        reinferred_rvalue_type = relevant_items[0]
+
                 assert isinstance(reinferred_rvalue_type, TupleType)
                 rvalue_type = reinferred_rvalue_type
 
