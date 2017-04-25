@@ -901,7 +901,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             f.write(data_str)
             f.write('\n')
         data_mtime = os.path.getmtime(data_json_tmp)
-        os.replace(data_json_tmp, data_json)
+        util.replace(data_json_tmp, data_json)
         manager.trace("Interface for {} has changed".format(id))
 
     mtime = st.st_mtime
@@ -927,7 +927,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             json.dump(meta, f, indent=2, sort_keys=True)
         else:
             json.dump(meta, f)
-    os.replace(meta_json_tmp, meta_json)
+    util.replace(meta_json_tmp, meta_json)
 
     return interface_hash
 
