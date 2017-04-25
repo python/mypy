@@ -18,6 +18,5 @@ install:
   - python setup.py install
 
 script:
-  - if [[ $TRAVIS_PYTHON_VERSION != '3.6' ]]; then python runtests.py -x lint; fi
+  - python runtests.py -x lint
   - if [[ $TRAVIS_PYTHON_VERSION == '3.6' ]]; then flake8; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.6' ]]; then NO_BUILTINS_FIXTURES=1 python runtests.py -x lint -x "unit-test mypy.test.testtypegen" -x "unit-test mypy.test.testtransform" -x "unit-test mypy.test.testsemanal"; fi
