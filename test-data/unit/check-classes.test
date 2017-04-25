@@ -2055,7 +2055,8 @@ foo(X)
 from typing import Type, Any
 def foo(arg: Type[Any]):
     x = arg.member_name
-    # Member acces is ok and types as Any
+    arg.member_name = 42
+    # Member access is ok and types as Any
     reveal_type(x)  # E: Revealed type is 'Any'
     # But Type[Any] is distinct from Any
     y: int = arg  # E: Incompatible types in assignment (expression has type Type[Any], variable has type "int")
