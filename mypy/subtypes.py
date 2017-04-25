@@ -146,12 +146,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             if (left, right) in right.type.cache:
                 return True
-            for base in left.type.mro:
-                if base._promote and is_subtype(
-                        base._promote, self.right, self.check_type_parameter,
-                        ignore_pos_arg_names=self.ignore_pos_arg_names):
-                    right.type.cache.add((left, right))
-                    return True
+            # NOTE: left.type.mro may be None in quick mode if there
+            # was an error somewhere.
+            if left.type.mro is not None:
+                for base in left.type.mro:
+                    if base._promote and is_subtype(
+                            base._promote, self.right, self.check_type_parameter,
+                            ignore_pos_arg_names=self.ignore_pos_arg_names):
+                        right.type.cache.add((left, right))
+                        return True
             rname = right.type.fullname()
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.

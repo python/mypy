@@ -117,13 +117,18 @@ obsolete_name_mapping = {
     'typing.typevar': 'typing.TypeVar',
 }
 
+# Used for python 3 only
 # Rename objects placed in _importlib_modulespec due to circular imports
+# Safe in python 2 because no one will ask for these keys
 module_rename_map = {
     '_importlib_modulespec.ModuleType': 'types.ModuleType',
     '_importlib_modulespec.ModuleSpec': 'importlib.machinery.ModuleSpec',
     '_importlib_modulespec.Loader': 'importlib.abc.Loader'
 }
 
+# Must not be used in python 2 (it will replace correct names with incorrect)
+# The check for version is currently made at the point of use
+# TODO: consider moving these maps from global scope to somewhere where python version is known
 rev_module_rename_map = {v: k for (k, v) in module_rename_map.items()}
 
 # Hard coded type promotions (shared between all Python versions).
