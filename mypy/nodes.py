@@ -9,7 +9,7 @@ from typing import (
 
 import mypy.strconv
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
-from mypy.util import short_type, IdMapper
+from mypy.util import short_type
 
 
 class Context:
@@ -39,12 +39,12 @@ LDEF = 0  # type: int
 GDEF = 1  # type: int
 MDEF = 2  # type: int
 MODULE_REF = 3  # type: int
-# Type variable declared using TypeVar(...) has kind UNBOUND_TVAR. It's not
-# valid as a type. A type variable is valid as a type (kind BOUND_TVAR) within
+# Type variable declared using TypeVar(...) has kind TVAR. It's not
+# valid as a type unless bound in a TypeVarScope.  That happens within:
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
-UNBOUND_TVAR = 4  # type: int
-BOUND_TVAR = 5  # type: int
+TVAR = 4  # type: int
+
 TYPE_ALIAS = 6  # type: int
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
@@ -65,8 +65,7 @@ node_kinds = {
     GDEF: 'Gdef',
     MDEF: 'Mdef',
     MODULE_REF: 'ModuleRef',
-    UNBOUND_TVAR: 'UnboundTvar',
-    BOUND_TVAR: 'Tvar',
+    TVAR: 'Tvar',
     TYPE_ALIAS: 'TypeAlias',
     UNBOUND_IMPORTED: 'UnboundImported',
 }
@@ -571,7 +570,6 @@ class Decorator(SymbolNode, Statement):
     func = None  # type: FuncDef                # Decorated function
     decorators = None  # type: List[Expression] # Decorators, at least one  # XXX Not true
     var = None  # type: Var                     # Represents the decorated function obj
-    type = None  # type: mypy.types.Type
     is_overload = False
 
     def __init__(self, func: FuncDef, decorators: List[Expression],
@@ -1899,9 +1897,6 @@ class TypeInfo(SymbolNode):
     # Is this a newtype type?
     is_newtype = False
 
-    # Alternative to fullname() for 'anonymous' classes.
-    alt_fullname = None  # type: Optional[str]
-
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype'
@@ -2082,8 +2077,7 @@ class TypeInfo(SymbolNode):
         data = {'.class': 'TypeInfo',
                 'module_name': self.module_name,
                 'fullname': self.fullname(),
-                'alt_fullname': self.alt_fullname,
-                'names': self.names.serialize(self.alt_fullname or self.fullname()),
+                'names': self.names.serialize(self.fullname()),
                 'defn': self.defn.serialize(),
                 'abstract_attributes': self.abstract_attributes,
                 'type_vars': self.type_vars,
@@ -2105,7 +2099,6 @@ class TypeInfo(SymbolNode):
         module_name = data['module_name']
         ti = TypeInfo(names, defn, module_name)
         ti._fullname = data['fullname']
-        ti.alt_fullname = data['alt_fullname']
         # TODO: Is there a reason to reconstruct ti.subtypes?
         ti.abstract_attributes = data['abstract_attributes']
         ti.type_vars = data['type_vars']
@@ -2128,8 +2121,7 @@ class SymbolTableNode:
     #  - LDEF: local definition (of any kind)
     #  - GDEF: global (module-level) definition
     #  - MDEF: class member definition
-    #  - UNBOUND_TVAR: TypeVar(...) definition, not bound
-    #  - TVAR: type variable in a bound scope (generic function / generic clas)
+    #  - TVAR: TypeVar(...) definition
     #  - MODULE_REF: reference to a module
     #  - TYPE_ALIAS: type alias
     #  - UNBOUND_IMPORTED: temporary kind for imported names
@@ -2137,8 +2129,6 @@ class SymbolTableNode:
     # AST node of definition (FuncDef/Var/TypeInfo/Decorator/TypeVarExpr,
     # or None for a bound type variable).
     node = None  # type: Optional[SymbolNode]
-    # Type variable definition (for bound type variables only)
-    tvar_def = None  # type: Optional[mypy.types.TypeVarDef]
     # Module id (e.g. "foo.bar") or None
     mod_id = ''
     # If this not None, override the type of the 'node' attribute.
@@ -2154,13 +2144,11 @@ class SymbolTableNode:
 
     def __init__(self, kind: int, node: Optional[SymbolNode], mod_id: str = None,
                  typ: 'mypy.types.Type' = None,
-                 tvar_def: 'mypy.types.TypeVarDef' = None,
                  module_public: bool = True, normalized: bool = False) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
         self.mod_id = mod_id
-        self.tvar_def = tvar_def
         self.module_public = module_public
         self.normalized = normalized
 
@@ -2204,8 +2192,6 @@ class SymbolTableNode:
         data = {'.class': 'SymbolTableNode',
                 'kind': node_kinds[self.kind],
                 }  # type: JsonDict
-        if self.tvar_def:
-            data['tvar_def'] = self.tvar_def.serialize()
         if not self.module_public:
             data['module_public'] = False
         if self.kind == MODULE_REF:
@@ -2214,14 +2200,7 @@ class SymbolTableNode:
         else:
             if self.node is not None:
                 if prefix is not None:
-                    # Check whether this is an alias for another object.
-                    # If the object's canonical full name differs from
-                    # the full name computed from prefix and name,
-                    # it's an alias, and we serialize it as a cross ref.
-                    if isinstance(self.node, TypeInfo):
-                        fullname = self.node.alt_fullname or self.node.fullname()
-                    else:
-                        fullname = self.node.fullname()
+                    fullname = self.node.fullname()
                     if (fullname is not None and '.' in fullname and
                             fullname != prefix + '.' + name):
                         data['cross_ref'] = fullname
@@ -2247,8 +2226,6 @@ class SymbolTableNode:
             if 'type_override' in data:
                 typ = mypy.types.deserialize_type(data['type_override'])
             stnode = SymbolTableNode(kind, node, typ=typ)
-        if 'tvar_def' in data:
-            stnode.tvar_def = mypy.types.TypeVarDef.deserialize(data['tvar_def'])
         if 'module_public' in data:
             stnode.module_public = data['module_public']
         return stnode

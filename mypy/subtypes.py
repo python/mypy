@@ -109,9 +109,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return True
 
-    def visit_type_list(self, t: TypeList) -> bool:
-        assert False, 'Not supported'
-
     def visit_any(self, left: AnyType) -> bool:
         return True
 
@@ -138,11 +135,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and right.fallback.type.is_enum:
             return is_subtype(left, right.fallback)
         if isinstance(right, Instance):
-            for base in left.type.mro:
-                if base._promote and is_subtype(
-                        base._promote, self.right, self.check_type_parameter,
-                        ignore_pos_arg_names=self.ignore_pos_arg_names):
-                    return True
+            # NOTO: left.type.mro may be None in quick mode if there
+            # was an error somewhere.
+            if left.type.mro is not None:
+                for base in left.type.mro:
+                    if base._promote and is_subtype(
+                            base._promote, self.right, self.check_type_parameter,
+                            ignore_pos_arg_names=self.ignore_pos_arg_names):
+                        return True
             rname = right.type.fullname()
             if not left.type.has_base(rname) and rname != 'builtins.object':
                 return False
@@ -562,9 +562,6 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         # doesn't matter much but by returning True we simplify these bad types away
         # from unions, which could filter out some bogus messages.
         return True
-
-    def visit_type_list(self, left: TypeList) -> bool:
-        assert False, 'Should not happen'
 
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)
