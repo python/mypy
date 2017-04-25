@@ -5,6 +5,10 @@ environment:
       PYTHON_VERSION: "3.6.x"
       PYTHON_ARCH: "32"
 
+    - PYTHON: "C:\\Python36-x64"
+      PYTHON_VERSION: "3.6.x"
+      PYTHON_ARCH: "64"
+
 
 install:
     - "git config core.symlinks true"
