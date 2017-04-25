@@ -2720,7 +2720,7 @@ def find_isinstance_check(node: Expression,
                 return conditional_type_map(expr, vartype, type)
         elif refers_to_fullname(node.callee, 'builtins.issubclass'):
             expr = node.args[0]
-            if expr.literal == LITERAL_TYPE:
+            if literal(expr) == LITERAL_TYPE:
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
                 if isinstance(vartype, UnionType):
