@@ -1066,9 +1066,7 @@ class UnionType(Type):
                    for x in self.relevant_items())
 
     def relevant_items(self) -> List[Type]:
-        """Returns all Union items relevant to current context.  In particular,
-        removes NoneTypes from Unions in non-strict-Optional code
-        """
+        """Removes NoneTypes from Unions when strict Optional checking is off."""
         if experiments.STRICT_OPTIONAL:
             return self.items
         else:
