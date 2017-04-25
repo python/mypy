@@ -6,7 +6,6 @@ import os
 import sys
 import math
 import time
-from functools import partial
 from xml.sax.saxutils import escape
 from typing import (
     TypeVar, List, Tuple, Optional, Sequence, Dict, Callable, Iterable, Type, Union, AnyStr, cast
@@ -143,49 +142,31 @@ class IdMapper:
         return self.id_map[o]
 
 
-# default timeout is short in case this functions is called individually for many files
-# batch processing results in better performance
-def wait_for(funcs: Iterable[Callable[[], None]],
-             exc: Iterable[Type[BaseException]] = (),
-             timeout: float = 0.1,
-             msg: str = 'file operations') -> None:
-    '''
-    Execute functions in funcs (without arguments)
-    Wait and retry all functions that raised exception that matches exc
-    Increase wait time exponentially, give up after a total wait of timeout seconds
-    Reraises the latest exception seen if timeout exceeded
-    '''
-    exc = tuple(exc)
-    last_exc = None
-    pending = set(funcs)
-    n_iter = max(1, math.ceil(math.log2(timeout / 0.001)))
-    for i in range(n_iter):
-        if not pending:
-            return
-        # last wait is ~ timeout/2, so that total wait ~ timeout
-        wait = timeout / 2 ** (n_iter - i)
-        failed = set()
-        for func in pending:
-            try:
-                func()
-            except exc as e:
-                last_exc = e
-                failed.add(func)
-        pending = failed
-        time.sleep(wait)
-    sys.stderr.write('timed out waiting for {}'.format(msg))
-    raise last_exc
-
-
 if sys.version_info >= (3, 6):
     PathType = Union[AnyStr, os.PathLike]
 else:
     PathType = AnyStr
 
 
-def _replace(src: PathType, dest: PathType) -> None:
-    repl = cast(Callable[[], None], partial(os.replace, src, dest))
-    wait_for([repl], (OSError,), 0.1)
+def _replace(src: PathType, dest: PathType, timeout: float = 10) -> None:
+    '''
+    Replace src with dest using os.replace(src, dest)
+    Wait and retry if OSError exception is raised
+    Increase wait time exponentially until total wait of timeout sec
+    On timeout, give up and reraise the last exception seen
+    '''
+    n_iter = max(1, math.ceil(math.log2(timeout / 0.001)))
+    for i in range(n_iter):
+        # last wait is ~ timeout/2, so that total wait ~ timeout
+        wait = timeout / 2 ** (n_iter - i - 1)
+        try:
+            os.replace(src, dest)
+        except PermissionError:
+            if i == n_iter - 1:
+                raise
+        else:
+            return
+        time.sleep(wait)
 
 
 if sys.platform.startswith("win"):
