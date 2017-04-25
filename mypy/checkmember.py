@@ -176,6 +176,8 @@ def analyze_member_access(name: str,
         item = None
         if isinstance(typ.item, Instance):
             item = typ.item
+        elif isinstance(typ.item, AnyType):
+            return AnyType()
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound

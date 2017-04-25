@@ -2051,6 +2051,16 @@ class X: pass
 foo(X)
 [out]
 
+[case testTypeUsingTypeCTypeAnyMember]
+from typing import Type, Any
+def foo(arg: Type[Any]):
+    x = arg.member_name
+    # Member acces is ok and types as Any
+    reveal_type(x)  # E: Revealed type is 'Any'
+    # But Type[Any] is distinct from Any
+    y: int = arg  # E: Incompatible types in assignment (expression has type Type[Any], variable has type "int")
+[out]
+
 [case testTypeUsingTypeCTypeNoArg]
 from typing import Type
 def foo(arg: Type):
