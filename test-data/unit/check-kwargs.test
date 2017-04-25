@@ -258,6 +258,39 @@ class A: pass
 class B: pass
 [builtins fixtures/dict.pyi]
 
+[case testKwargsAllowedInDunderCall]
+class Formatter:
+    def __call__(
+        self,
+        message: str,
+        bold: bool = False,
+    ) -> str:
+        if bold:
+            message = f"** {message} **"
+        return message
+
+formatter = Formatter()
+print(formatter("test", bold=True))
+reveal_type(formatter.__call__)  # E: Revealed type is 'def (message: builtins.str, bold: builtins.bool =) -> builtins.str'
+[out]
+
+[case testKwargsAllowedInDunderCallKwOnly]
+class Formatter:
+    def __call__(
+        self,
+        message: str,
+        *,
+        bold: bool = False,
+    ) -> str:
+        if bold:
+            message = f"** {message} **"
+        return message
+
+formatter = Formatter()
+print(formatter("test", bold=True))
+reveal_type(formatter.__call__)  # E: Revealed type is 'def (message: builtins.str, *, bold: builtins.bool =) -> builtins.str'
+[out]
+
 [case testInvalidTypeForKeywordVarArg]
 from typing import Dict
 def f( **kwargs: 'A') -> None: pass
