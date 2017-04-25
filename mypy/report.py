@@ -532,11 +532,11 @@ class XmlReporter(AbstractXmlReporter):
 
     def on_finish(self) -> None:
         last_xml = self.memory_xml.last_xml
+        assert last_xml is not None
         out_path = os.path.join(self.output_dir, 'index.xml')
         out_xslt = os.path.join(self.output_dir, 'mypy-html.xslt')
         out_css = os.path.join(self.output_dir, 'mypy-html.css')
-        if last_xml is not None:
-            last_xml.write(out_path, encoding='utf-8')
+        last_xml.write(out_path, encoding='utf-8')
         shutil.copyfile(self.memory_xml.xslt_html_path, out_xslt)
         shutil.copyfile(self.memory_xml.css_html_path, out_css)
         print('Generated XML report:', os.path.abspath(out_path))
@@ -576,12 +576,12 @@ class XsltHtmlReporter(AbstractXmlReporter):
 
     def on_finish(self) -> None:
         last_xml = self.memory_xml.last_xml
+        assert last_xml is not None
         out_path = os.path.join(self.output_dir, 'index.html')
         out_css = os.path.join(self.output_dir, 'mypy-html.css')
-        if last_xml is not None:
-            transformed_html = bytes(self.xslt_html(last_xml, ext=self.param_html))
-            with open(out_path, 'wb') as out_file:
-                out_file.write(transformed_html)
+        transformed_html = bytes(self.xslt_html(last_xml, ext=self.param_html))
+        with open(out_path, 'wb') as out_file:
+            out_file.write(transformed_html)
         shutil.copyfile(self.memory_xml.css_html_path, out_css)
         print('Generated HTML report (via XSLT):', os.path.abspath(out_path))
 
@@ -608,12 +608,12 @@ class XsltTxtReporter(AbstractXmlReporter):
 
     def on_finish(self) -> None:
         last_xml = self.memory_xml.last_xml
+        assert last_xml is not None
         out_path = os.path.join(self.output_dir, 'index.txt')
         stats.ensure_dir_exists(os.path.dirname(out_path))
-        if last_xml is not None:
-            transformed_txt = bytes(self.xslt_txt(last_xml))
-            with open(out_path, 'wb') as out_file:
-                out_file.write(transformed_txt)
+        transformed_txt = bytes(self.xslt_txt(last_xml))
+        with open(out_path, 'wb') as out_file:
+            out_file.write(transformed_txt)
         print('Generated TXT report (via XSLT):', os.path.abspath(out_path))
 
 

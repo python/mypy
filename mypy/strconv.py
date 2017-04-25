@@ -24,12 +24,14 @@ class StrConv(NodeVisitor[str]):
 
     def __init__(self, show_ids: bool = False) -> None:
         self.show_ids = show_ids
-        self.id_mapper = None  # type: IdMapper
+        self.id_mapper = None  # type: Optional[IdMapper]
         if show_ids:
             self.id_mapper = IdMapper()
 
-    def get_id(self, o: object) -> int:
-        return self.id_mapper.id(o)
+    def get_id(self, o: object) -> Optional[int]:
+        if self.id_mapper:
+            return self.id_mapper.id(o)
+        return None
 
     def format_id(self, o: object) -> str:
         if self.id_mapper:
@@ -46,6 +48,7 @@ class StrConv(NodeVisitor[str]):
         """
         tag = short_type(obj) + ':' + str(obj.get_line())
         if self.show_ids:
+            assert self.id_mapper is not None
             tag += '<{}>'.format(self.get_id(obj))
         return dump_tagged(nodes, tag, self)
 
