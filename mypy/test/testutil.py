@@ -1,4 +1,4 @@
-from typing import Iterator
+from typing import Iterator, Tuple
 import time
 import os
 import sys
@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from threading import Thread
 from unittest import TestCase, main, skipUnless
 from mypy import util
+from mypy.build import random_string
 
 
 WIN32 = sys.platform.startswith("win")
@@ -29,50 +30,51 @@ def lock_file(filename: str, duration: float) -> Iterator[Thread]:
 
 @skipUnless(WIN32, "only relevant for Windows")
 class ReliableReplace(TestCase):
+    # will be cleaned up automatically when this class goes out of scope
     tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-',
                                          dir=os.path.abspath('tmp-test-dirs'))
-    src = os.path.join(tmpdir.name, 'tmp1')
-    dest = os.path.join(tmpdir.name, 'tmp2')
+    timeout = 0.5
+    short_lock = 0.2
+    long_lock = 1
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        cls.tmpdir.cleanup()
-
-    def setUp(self) -> None:
+    @contextmanager
+    def prepare_src_dest(self, src_lock_duration: float, dest_lock_duration: float
+                         ) -> Iterator[Tuple[str, str]]:
         # create two temporary files
-        for fname in (self.src, self.dest):
+        src = os.path.join(self.tmpdir.name, random_string())
+        dest = os.path.join(self.tmpdir.name, random_string())
+
+        for fname in (src, dest):
             with open(fname, 'w') as f:
                 f.write(fname)
 
-    def replace_ok(self) -> None:
-        util._replace(self.src, self.dest, timeout=0.25)
-        self.assertEqual(open(self.dest).read(), self.src, 'replace failed')
+        with lock_file(src, src_lock_duration):
+            with lock_file(dest, dest_lock_duration):
+                yield src, dest
+
+    def replace_ok(self, src_lock_duration: float, dest_lock_duration: float,
+                   timeout: float) -> None:
+        with self.prepare_src_dest(src_lock_duration, dest_lock_duration) as (src, dest):
+            util._replace(src, dest, timeout=timeout)
+            self.assertEqual(open(dest).read(), src, 'replace failed')
 
     def test_normal(self) -> None:
-        self.replace_ok()
+        self.replace_ok(0, 0, self.timeout)
 
     def test_problem_exists(self) -> None:
-        with lock_file(self.src, 0.1):
+        with self.prepare_src_dest(self.short_lock, 0) as (src, dest):
             with self.assertRaises(PermissionError):
-                os.replace(self.src, self.dest)
+                os.replace(src, dest)
 
-    def test_short_lock_src(self) -> None:
-        with lock_file(self.src, 0.1):
-            self.replace_ok()
+    def test_short_lock(self) -> None:
+        self.replace_ok(self.short_lock, 0, self.timeout)
+        self.replace_ok(0, self.short_lock, self.timeout)
 
-    def test_short_lock_dest(self) -> None:
-        with lock_file(self.dest, 0.1):
-            self.replace_ok()
-
-    def test_long_lock_src(self) -> None:
-        with lock_file(self.src, 0.4):
-            with self.assertRaises(PermissionError):
-                self.replace_ok()
-
-    def test_long_lock_dest(self) -> None:
-        with lock_file(self.dest, 0.4):
-            with self.assertRaises(PermissionError):
-                self.replace_ok()
+    def test_long_lock(self) -> None:
+        with self.assertRaises(PermissionError):
+            self.replace_ok(self.long_lock, 0, self.timeout)
+        with self.assertRaises(PermissionError):
+            self.replace_ok(0, self.long_lock, self.timeout)
 
 
 if __name__ == '__main__':
