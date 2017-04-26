@@ -1419,23 +1419,6 @@ class B(A):
 [out]
 tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
 
-[case testOverloadedOperatorMethodOverrideWithSwitchedItemOrder]
-from foo import *
-[file foo.pyi]
-from typing import overload, Any
-class A:
-    @overload
-    def __add__(self, x: 'B') -> 'B': pass
-    @overload
-    def __add__(self, x: 'A') -> 'A': pass
-class B(A):
-    @overload
-    def __add__(self, x: 'A') -> 'A': pass
-    @overload
-    def __add__(self, x: 'B') -> 'B': pass
-[out]
-tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
-
 [case testReverseOperatorMethodArgumentType]
 from typing import Any
 class A: pass
@@ -2491,6 +2474,33 @@ reveal_type(f(A()))  # E: Revealed type is 'foo.A'
 reveal_type(f(AChild()))  # E: Revealed type is 'foo.A'
 reveal_type(f(B()))  # E: Revealed type is 'foo.B'
 reveal_type(f(BChild()))  # E: Revealed type is 'foo.B'
+[builtins fixtures/classmethod.pyi]
+[out]
+
+[case testSubtypeWithMoreOverloadsThanSupertypeSucceeds]
+from foo import *
+[file foo.pyi]
+from typing import overload
+
+
+class X: pass
+class Y: pass
+class Z: pass
+
+
+class A:
+    @overload
+    def f(self, x: X) -> X: pass
+    @overload
+    def f(self, y: Y) -> Y: pass
+
+class B(A):
+    @overload
+    def f(self, x: X) -> X: pass
+    @overload
+    def f(self, y: Y) -> Y: pass
+    @overload
+    def f(self, z: Z) -> Z: pass
 [builtins fixtures/classmethod.pyi]
 [out]
 

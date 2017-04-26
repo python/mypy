@@ -249,13 +249,19 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
             return False
         elif isinstance(right, Overloaded):
-            # TODO: this may be too restrictive
-            if len(left.items()) != len(right.items()):
-                return False
-            for i in range(len(left.items())):
-                if not is_subtype(left.items()[i], right.items()[i], self.check_type_parameter,
+            # Ensure each overload in the left side is accounted for.
+            sub_overloads = left.items()[:]
+            while sub_overloads:
+                left_item = sub_overloads[-1]
+                for right_item in right.items():
+                    if is_subtype(left_item, right_item, self.check_type_parameter,
                                   ignore_pos_arg_names=self.ignore_pos_arg_names):
+                        sub_overloads.pop()
+                        break
+                else:
+                    # One of the overloads was not present in the right side.
                     return False
+
             return True
         elif isinstance(right, UnboundType):
             return True
