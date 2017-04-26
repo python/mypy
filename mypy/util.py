@@ -160,26 +160,17 @@ def _replace(src: PathType[AnyStr], dest: PathType[AnyStr], timeout: float = 1) 
     Increase wait time exponentially until total wait of timeout sec;
     on timeout, give up and reraise the last exception seen.
     """
-    # Find starting value for wait.
-    wait = timeout
-    total_wait = 0  # type: float
-    while True:
-        if wait < 0.001:
-            break
-        wait /= 2
+    wait = 0.001
     while True:
         try:
             os.replace(src, dest)
         except PermissionError:
-            # Can't compare for equality because float arithmetic;
-            # if we hit 0.9999 * timeout, it's time to stop.
-            # For timeout more than a few ms, we'll be very close to the desired timeout.
-            if total_wait > 0.99 * timeout:
+            # The actual total wait might be up to 2x larger than timeout parameter
+            if wait > timeout:
                 raise
         else:
             return
         time.sleep(wait)
-        total_wait += wait
         wait *= 2
 
 

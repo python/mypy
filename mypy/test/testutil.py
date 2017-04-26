@@ -24,12 +24,13 @@ def lock_file(filename: str, duration: float) -> Thread:
 
 
 @skipUnless(WIN32, "only relevant for Windows")
-class ReliableReplace(TestCase):
+class WindowsReplace(TestCase):
     tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-',
                                          dir=os.path.abspath('tmp-test-dirs'))
-    timeout = 1
-    short_lock = 0.25
-    long_lock = 2
+    # Choose timeout value that would ensure actual wait inside util.replace is close to timeout
+    timeout = 0.0009 * 2 ** 10
+    short_lock = timeout / 4
+    long_lock = timeout * 2
 
     threads = []  # type: List[Thread]
 
