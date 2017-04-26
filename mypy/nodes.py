@@ -1465,9 +1465,11 @@ class SuperExpr(Expression):
 
     name = ''
     info = None  # type: TypeInfo  # Type that contains this super expression
+    call = None  # type: CallExpr  # The expression super(...)
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, call: CallExpr) -> None:
         self.name = name
+        self.call = call
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_super_expr(self)

@@ -392,7 +392,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return RevealTypeExpr(self.expr(node.expr))
 
     def visit_super_expr(self, node: SuperExpr) -> SuperExpr:
-        new = SuperExpr(node.name)
+        new = SuperExpr(node.name, cast(CallExpr, self.expr(node.call)))
         new.info = node.info
         return new
 

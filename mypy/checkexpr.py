@@ -2066,8 +2066,62 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_super_expr(self, e: SuperExpr) -> Type:
         """Type check a super expression (non-lvalue)."""
+        self.check_super_arguments(e)
         t = self.analyze_super(e, False)
         return t
+
+    def check_super_arguments(self, e: SuperExpr) -> None:
+        """Check arguments in a super(...) call."""
+        if ARG_STAR in e.call.arg_kinds:
+            self.chk.fail('Varargs not supported with "super"', e)
+        elif e.call.args and set(e.call.arg_kinds) != {ARG_POS}:
+            self.chk.fail('"super" only accepts positional arguments', e)
+        elif len(e.call.args) == 1:
+            self.chk.fail('"super" with a single argument not supported', e)
+        elif len(e.call.args) > 2:
+            self.chk.fail('Too many arguments for "super"', e)
+        elif self.chk.options.python_version[0] == 2 and len(e.call.args) == 0:
+            self.chk.fail('Too few arguments for "super"', e)
+        elif len(e.call.args) == 2:
+            type_obj_type = self.accept(e.call.args[0])
+            instance_type = self.accept(e.call.args[1])
+            if isinstance(type_obj_type, FunctionLike) and type_obj_type.is_type_obj():
+                type_info = type_obj_type.type_object()
+            elif isinstance(type_obj_type, TypeType):
+                item = type_obj_type.item
+                if isinstance(item, AnyType):
+                    # Could be anything.
+                    return
+                if not isinstance(item, Instance):
+                    # A complicated type object type. Assume it's fine.
+                    # TODO: Do something more clever here.
+                    return
+                type_info = item.type
+            elif isinstance(type_obj_type, AnyType):
+                return
+            else:
+                self.chk.fail('First argument for "super" must be a type object', e)
+                return
+
+            if isinstance(instance_type, (Instance, TupleType, TypeVarType)):
+                if isinstance(instance_type, TypeVarType):
+                    # Needed for generic self.
+                    instance_type = instance_type.upper_bound
+                    if not isinstance(instance_type, (Instance, TupleType)):
+                        # Too tricky, give up.
+                        self.chk.fail('Unsupported argument 2 for "super"', e)
+                        return
+                if isinstance(instance_type, TupleType):
+                    # Needed for named tuples and classes derived from Tuple[...].
+                    instance_type = instance_type.fallback
+                if type_info not in instance_type.type.mro:
+                    self.chk.fail('Argument 2 for "super" not an instance of argument 1', e)
+            elif isinstance(instance_type, TypeType) or (isinstance(instance_type, FunctionLike)
+                                                         and instance_type.is_type_obj()):
+                # TODO: Check whether this is a valid type object here.
+                pass
+            elif not isinstance(instance_type, AnyType):
+                self.chk.fail('Unsupported argument 2 for "super"', e)
 
     def analyze_super(self, e: SuperExpr, is_lvalue: bool) -> Type:
         """Type check a super expression."""

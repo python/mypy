@@ -928,7 +928,7 @@ class ASTConverter(ast3.NodeTransformer):
         if (isinstance(n.value, ast3.Call) and
                 isinstance(n.value.func, ast3.Name) and
                 n.value.func.id == 'super'):
-            return SuperExpr(n.attr)
+            return SuperExpr(n.attr, self.visit(n.value))
 
         return MemberExpr(self.visit(n.value), n.attr)
 

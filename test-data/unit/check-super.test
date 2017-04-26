@@ -92,10 +92,6 @@ B(1)
 B(1, 'x')
 [builtins fixtures/__new__.pyi]
 
-[case testSuperOutsideMethodNoCrash]
-class C:
-    a = super().whatever  # E: super() outside of a method is not supported
-
 reveal_type(C.a)  # E: Revealed type is 'Any'
 [out]
 
@@ -115,3 +111,138 @@ class B(A):
     def foo(self):
         super(B, self).foo() # Not an error
 [out]
+
+[case testSuperWithAny]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self, x) -> None:
+        reveal_type(super(x, x).f) # E: Revealed type is 'def ()'
+        reveal_type(super(C, x).f) # E: Revealed type is 'def ()'
+
+[case testSuperInUnannotatedMethod]
+class C:
+    def h(self):
+        super(C, self).xyz
+
+[case testSuperWithTypeType]
+from typing import Type
+
+class A:
+    def f(self) -> None: pass
+
+class B(A):
+    @classmethod
+    def g(cls, x) -> None:
+        reveal_type(super(cls, x).f) # E: Revealed type is 'def ()'
+[builtins fixtures/classmethod.pyi]
+
+[case testSuperWithTypeTypeAsSecondArgument]
+class B:
+    def f(self) -> None: pass
+
+class C(B):
+    def __new__(cls) -> 'C':
+        super(C, cls).f
+        return C()
+
+[case testSuperWithGenericSelf]
+from typing import TypeVar
+
+T = TypeVar('T', bound='C')
+
+class B:
+    def f(self) -> None: pass
+
+class C(B):
+    def f(self) -> None: pass
+
+    def g(self: T) -> T:
+        reveal_type(super(C, self).f) # E: Revealed type is 'def ()'
+        return self
+
+[case testSuperWithTypeVarValues]
+from typing import TypeVar, Generic
+
+T = TypeVar('T', 'C', 'D')
+S = TypeVar('S', 'B', 'C')
+
+class B:
+    def f(self) -> None: pass
+
+class C(B):
+    def f(self) -> None: pass
+
+    def g(self, x: T, y: S) -> None:
+        super(C, x).f
+        super(C, y).f # E: Argument 2 for "super" not an instance of argument 1
+
+class D(C): pass
+
+
+-- Invalid uses of super()
+-- -----------------------
+
+
+[case testSuperOutsideMethodNoCrash]
+class C:
+    a = super().whatever  # E: super() outside of a method is not supported
+
+[case testSuperWithSingleArgument]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def __init__(self) -> None:
+        super(C).f() # E: "super" with a single argument not supported
+
+[case testSuperWithThreeArguments]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(C, self, 1).f() # E: Too many arguments for "super"
+
+[case testSuperWithNonPositionalArguments]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(C, x=self).f() # E: "super" only accepts positional arguments
+        super(**{}).f() # E: "super" only accepts positional arguments
+
+[case testSuperWithVarArgs]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(*(C, self)).f() # E: Varargs not supported with "super"
+
+[case testInvalidSuperArg]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(x, y).f # E: Name 'x' is not defined # E: Name 'y' is not defined
+
+[case testTypeErrorInSuperArg]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(1(), self).f # E: "int" not callable
+        super(C, ''()).f  # E: "str" not callable
+
+[case testFlippedSuperArgs]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(self, C).f # E: First argument for "super" must be a type object
+
+[case testInvalidSecondArgumentToSuper]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(C, 1).f # E: Argument 2 for "super" not an instance of argument 1
+        super(C, None).f # E: Unsupported argument 2 for "super"
