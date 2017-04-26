@@ -2066,6 +2066,8 @@ def foo(arg: Type[Any]):
 from typing import Type, Any
 def foo(arg: Type[Any]):
     reveal_type(arg.__str__)  # E: Revealed type is 'def () -> builtins.str'
+    reveal_type(arg.mro())  # E: Revealed type is 'builtins.list[builtins.type]'
+[builtins fixtures/type.pyi]
 [out]
 
 [case testTypeUsingTypeCTypeNoArg]
