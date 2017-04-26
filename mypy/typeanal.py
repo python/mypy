@@ -43,7 +43,7 @@ def analyze_type_alias(node: Expression,
                        lookup_fqn_func: Callable[[str], SymbolTableNode],
                        tvar_scope: TypeVarScope,
                        fail_func: Callable[[str, Context], None],
-                       allow_unnormalized: bool = False) -> Type:
+                       allow_unnormalized: bool = False) -> Optional[Type]:
     """Return type if node is valid as a type alias rvalue.
 
     Return None otherwise. 'node' must have been semantically analyzed.
@@ -139,8 +139,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
             if (fullname in nongen_builtins and t.args and
                     not sym.normalized and not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname), t)
-            if sym.kind == TVAR and self.tvar_scope.get_binding(sym) is not None:
-                tvar_def = self.tvar_scope.get_binding(sym)
+            tvar_def = self.tvar_scope.get_binding(sym)
+            if sym.kind == TVAR and tvar_def is not None:
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(
                         t.name), t)
@@ -196,6 +196,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                 return UninhabitedType(is_noreturn=True)
             elif sym.kind == TYPE_ALIAS:
                 override = sym.type_override
+                assert override is not None
                 an_args = self.anal_array(t.args)
                 all_vars = self.get_type_var_names(override)
                 exp_len = len(all_vars)
@@ -453,7 +454,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
             if not self.tvar_scope.allow_binding(tvar.fullname()):
                 self.fail("Type variable '{}' is bound by an outer class".format(name), defn)
             self.tvar_scope.bind(name, tvar)
-            defs.append(self.tvar_scope.get_binding(tvar.fullname()))
+            binding = self.tvar_scope.get_binding(tvar.fullname())
+            assert binding is not None
+            defs.append(binding)
 
         return defs
 
