@@ -1,4 +1,4 @@
-from typing import Iterator, Tuple
+from typing import Iterator, List, Tuple
 import time
 import os
 import sys
@@ -13,8 +13,7 @@ from mypy.build import random_string
 WIN32 = sys.platform.startswith("win")
 
 
-@contextmanager
-def lock_file(filename: str, duration: float) -> Iterator[Thread]:
+def lock_file(filename: str, duration: float) -> Thread:
     '''
     Opens filename (which must exist) for reading
     After duration sec, releases the handle
@@ -24,8 +23,7 @@ def lock_file(filename: str, duration: float) -> Iterator[Thread]:
             time.sleep(duration)
     t = Thread(target=_lock_file, daemon=True)
     t.start()
-    yield t
-    t.join()
+    return t
 
 
 @skipUnless(WIN32, "only relevant for Windows")
@@ -33,13 +31,19 @@ class ReliableReplace(TestCase):
     # will be cleaned up automatically when this class goes out of scope
     tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-',
                                          dir=os.path.abspath('tmp-test-dirs'))
-    timeout = 0.5
-    short_lock = 0.2
-    long_lock = 1
+    timeout = 1
+    short_lock = 0.25
+    long_lock = 2
 
-    @contextmanager
+    threads = []  # type: List[Thread]
+
+    @classmethod
+    def tearDownClass(cls):
+        for t in cls.threads:
+            t.join()
+
     def prepare_src_dest(self, src_lock_duration: float, dest_lock_duration: float
-                         ) -> Iterator[Tuple[str, str]]:
+                         ) -> Tuple[str, str]:
         # create two temporary files
         src = os.path.join(self.tmpdir.name, random_string())
         dest = os.path.join(self.tmpdir.name, random_string())
@@ -48,23 +52,23 @@ class ReliableReplace(TestCase):
             with open(fname, 'w') as f:
                 f.write(fname)
 
-        with lock_file(src, src_lock_duration):
-            with lock_file(dest, dest_lock_duration):
-                yield src, dest
+        self.threads.append(lock_file(src, src_lock_duration))
+        self.threads.append(lock_file(dest, dest_lock_duration))
+        return src, dest
 
     def replace_ok(self, src_lock_duration: float, dest_lock_duration: float,
                    timeout: float) -> None:
-        with self.prepare_src_dest(src_lock_duration, dest_lock_duration) as (src, dest):
-            util._replace(src, dest, timeout=timeout)
-            self.assertEqual(open(dest).read(), src, 'replace failed')
+        src, dest = self.prepare_src_dest(src_lock_duration, dest_lock_duration)
+        util._replace(src, dest, timeout=timeout)
+        self.assertEqual(open(dest).read(), src, 'replace failed')
 
     def test_normal(self) -> None:
         self.replace_ok(0, 0, self.timeout)
 
     def test_problem_exists(self) -> None:
-        with self.prepare_src_dest(self.short_lock, 0) as (src, dest):
-            with self.assertRaises(PermissionError):
-                os.replace(src, dest)
+        src, dest = self.prepare_src_dest(self.short_lock, 0)
+        with self.assertRaises(PermissionError):
+            os.replace(src, dest)
 
     def test_short_lock(self) -> None:
         self.replace_ok(self.short_lock, 0, self.timeout)
