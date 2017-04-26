@@ -38,7 +38,7 @@ class ReliableReplace(TestCase):
     threads = []  # type: List[Thread]
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         for t in cls.threads:
             t.join()
 
@@ -62,19 +62,17 @@ class ReliableReplace(TestCase):
         util._replace(src, dest, timeout=timeout)
         self.assertEqual(open(dest).read(), src, 'replace failed')
 
-    def test_normal(self) -> None:
+    def test_everything(self) -> None:
+        # normal use, no locks
         self.replace_ok(0, 0, self.timeout)
-
-    def test_problem_exists(self) -> None:
+        # make sure the problem is real
         src, dest = self.prepare_src_dest(self.short_lock, 0)
         with self.assertRaises(PermissionError):
             os.replace(src, dest)
-
-    def test_short_lock(self) -> None:
+        # short lock
         self.replace_ok(self.short_lock, 0, self.timeout)
         self.replace_ok(0, self.short_lock, self.timeout)
-
-    def test_long_lock(self) -> None:
+        # long lock
         with self.assertRaises(PermissionError):
             self.replace_ok(self.long_lock, 0, self.timeout)
         with self.assertRaises(PermissionError):
