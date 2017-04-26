@@ -14,10 +14,7 @@ WIN32 = sys.platform.startswith("win")
 
 
 def lock_file(filename: str, duration: float) -> Thread:
-    '''
-    Opens filename (which must exist) for reading
-    After duration sec, releases the handle
-    '''
+    """Open a file and keep it open in a background thread for duration sec."""
     def _lock_file() -> None:
         with open(filename):
             time.sleep(duration)
@@ -28,7 +25,6 @@ def lock_file(filename: str, duration: float) -> Thread:
 
 @skipUnless(WIN32, "only relevant for Windows")
 class ReliableReplace(TestCase):
-    # will be cleaned up automatically when this class goes out of scope
     tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-',
                                          dir=os.path.abspath('tmp-test-dirs'))
     timeout = 1
@@ -39,12 +35,15 @@ class ReliableReplace(TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
+        # Need to wait for threads to complete, otherwise we'll get PermissionError
+        # at the end (whether tmpdir goes out of scope or we explicitly call cleanup).
         for t in cls.threads:
             t.join()
+        cls.tmpdir.cleanup()
 
     def prepare_src_dest(self, src_lock_duration: float, dest_lock_duration: float
                          ) -> Tuple[str, str]:
-        # create two temporary files
+        # Create two temporary files with random names.
         src = os.path.join(self.tmpdir.name, random_string())
         dest = os.path.join(self.tmpdir.name, random_string())
 
@@ -63,16 +62,16 @@ class ReliableReplace(TestCase):
         self.assertEqual(open(dest).read(), src, 'replace failed')
 
     def test_everything(self) -> None:
-        # normal use, no locks
+        # No files locked.
         self.replace_ok(0, 0, self.timeout)
-        # make sure the problem is real
+        # Make sure we can reproduce the issue with our setup.
         src, dest = self.prepare_src_dest(self.short_lock, 0)
         with self.assertRaises(PermissionError):
             os.replace(src, dest)
-        # short lock
+        # Lock files for a time short enough that util.replace won't timeout.
         self.replace_ok(self.short_lock, 0, self.timeout)
         self.replace_ok(0, self.short_lock, self.timeout)
-        # long lock
+        # Lock files for a time long enough that util.replace times out.
         with self.assertRaises(PermissionError):
             self.replace_ok(self.long_lock, 0, self.timeout)
         with self.assertRaises(PermissionError):

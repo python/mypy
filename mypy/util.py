@@ -143,21 +143,24 @@ class IdMapper:
 
 
 if sys.version_info >= (3, 6):
-    PathType = Union[AnyStr, os.PathLike]
+    PathType = Union[AnyStr, 'os.PathLike[AnyStr]']
 else:
-    PathType = AnyStr
+    # Workaround to allow the use of generic in _replace
+    class _PathType(Generic[AnyStr]): ...
+    PathType = _PathType[AnyStr]
 
 
-def _replace(src: PathType, dest: PathType, timeout: float = 10) -> None:
-    '''
-    Replace src with dest using os.replace(src, dest)
-    Wait and retry if OSError exception is raised
-    Increase wait time exponentially until total wait of timeout sec
-    On timeout, give up and reraise the last exception seen
-    '''
+def _replace(src: PathType[AnyStr], dest: PathType[AnyStr], timeout: float = 1) -> None:
+    """Replace src with dest using os.replace(src, dest).
+
+    Wait and retry if OSError exception is raised.
+
+    Increase wait time exponentially until total wait of timeout sec;
+    on timeout, give up and reraise the last exception seen.
+    """
     n_iter = max(1, math.ceil(math.log2(timeout / 0.001)))
     for i in range(n_iter):
-        # last wait is ~ timeout/2, so that total wait ~ timeout
+        # Last wait is ~ timeout/2, so that total wait ~ timeout.
         wait = timeout / 2 ** (n_iter - i - 1)
         try:
             os.replace(src, dest)
