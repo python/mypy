@@ -1,6 +1,6 @@
 """Type checker test cases"""
 
-import os.path
+import os
 import re
 import shutil
 import sys
@@ -154,6 +154,8 @@ class TypeCheckSuite(DataSuite):
             options.strict_optional = True
         if incremental:
             options.incremental = True
+        else:
+            options.cache_dir = os.devnull  # Dont waste time writing cache
 
         sources = []
         for module_name, program_path, program_text in module_data:
