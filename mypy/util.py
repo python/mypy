@@ -6,9 +6,11 @@ import os
 import sys
 import math
 import time
+from itertools import count
 from xml.sax.saxutils import escape
 from typing import (
-    TypeVar, List, Tuple, Optional, Sequence, Dict, Callable, Iterable, Type, Union, AnyStr, cast
+    TypeVar, List, Tuple, Optional, Sequence, Dict, Callable, Iterable, Type, Union,
+    AnyStr, Generic
 )
 
 
@@ -158,18 +160,27 @@ def _replace(src: PathType[AnyStr], dest: PathType[AnyStr], timeout: float = 1) 
     Increase wait time exponentially until total wait of timeout sec;
     on timeout, give up and reraise the last exception seen.
     """
-    n_iter = max(1, math.ceil(math.log2(timeout / 0.001)))
-    for i in range(n_iter):
-        # Last wait is ~ timeout/2, so that total wait ~ timeout.
-        wait = timeout / 2 ** (n_iter - i - 1)
+    # Find starting value for wait.
+    wait = timeout
+    total_wait = 0  # type: float
+    while True:
+        if wait < 0.001:
+            break
+        wait /= 2
+    while True:
         try:
             os.replace(src, dest)
         except PermissionError:
-            if i == n_iter - 1:
+            # Can't compare for equality because float arithmetic;
+            # if we hit 0.9999 * timeout, it's time to stop.
+            # For timeout more than a few ms, we'll be very close to the desired timeout.
+            if total_wait > 0.99 * timeout:
                 raise
         else:
             return
         time.sleep(wait)
+        total_wait += wait
+        wait *= 2
 
 
 if sys.platform.startswith("win"):
