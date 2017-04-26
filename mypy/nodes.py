@@ -872,9 +872,9 @@ class OperatorAssignmentStmt(Statement):
 class WhileStmt(Statement):
     expr = None  # type: Expression
     body = None  # type: Block
-    else_body = None  # type: Block
+    else_body = None  # type: Optional[Block]
 
-    def __init__(self, expr: Expression, body: Block, else_body: Block) -> None:
+    def __init__(self, expr: Expression, body: Block, else_body: Optional[Block]) -> None:
         self.expr = expr
         self.body = body
         self.else_body = else_body
@@ -891,11 +891,11 @@ class ForStmt(Statement):
     # Expression to iterate
     expr = None  # type: Expression
     body = None  # type: Block
-    else_body = None  # type: Block
+    else_body = None  # type: Optional[Block]
     is_async = False  # True if `async for ...` (PEP 492, Python 3.5)
 
     def __init__(self, index: Lvalue, expr: Expression, body: Block,
-                 else_body: Block, index_type: 'mypy.types.Type' = None) -> None:
+                 else_body: Optional[Block], index_type: 'mypy.types.Type' = None) -> None:
         self.index = index
         self.index_type = index_type
         self.expr = expr
@@ -956,10 +956,10 @@ class PassStmt(Statement):
 class IfStmt(Statement):
     expr = None  # type: List[Expression]
     body = None  # type: List[Block]
-    else_body = None  # type: Block
+    else_body = None  # type: Optional[Block]
 
     def __init__(self, expr: List[Expression], body: List[Block],
-                 else_body: Block) -> None:
+                 else_body: Optional[Block]) -> None:
         self.expr = expr
         self.body = body
         self.else_body = else_body
@@ -969,10 +969,11 @@ class IfStmt(Statement):
 
 
 class RaiseStmt(Statement):
-    expr = None  # type: Expression
-    from_expr = None  # type: Expression
+    # Plain 'raise' is a valid statement.
+    expr = None  # type: Optional[Expression]
+    from_expr = None  # type: Optional[Expression]
 
-    def __init__(self, expr: Expression, from_expr: Expression = None) -> None:
+    def __init__(self, expr: Optional[Expression], from_expr: Optional[Expression]) -> None:
         self.expr = expr
         self.from_expr = from_expr
 
@@ -982,15 +983,17 @@ class RaiseStmt(Statement):
 
 class TryStmt(Statement):
     body = None  # type: Block                # Try body
-    types = None  # type: List[Expression]    # Except type expressions
-    vars = None  # type: List[NameExpr]     # Except variable names
+    # Plain 'except:' also possible
+    types = None  # type: List[Optional[Expression]]    # Except type expressions
+    vars = None  # type: List[Optional[NameExpr]]     # Except variable names
     handlers = None  # type: List[Block]      # Except bodies
-    else_body = None  # type: Block
-    finally_body = None  # type: Block
+    else_body = None  # type: Optional[Block]
+    finally_body = None  # type: Optional[Block]
 
-    def __init__(self, body: Block, vars: List['NameExpr'], types: List[Expression],
-                 handlers: List[Block], else_body: Block,
-                 finally_body: Block) -> None:
+    def __init__(self, body: Block, vars: List[Optional['NameExpr']],
+                 types: List[Optional[Expression]],
+                 handlers: List[Block], else_body: Optional[Block],
+                 finally_body: Optional[Block]) -> None:
         self.body = body
         self.vars = vars
         self.types = types
@@ -1004,13 +1007,13 @@ class TryStmt(Statement):
 
 class WithStmt(Statement):
     expr = None  # type: List[Expression]
-    target = None  # type: List[Lvalue]
+    target = None  # type: List[Optional[Lvalue]]
     # Type given by type comments for target, can be None
     target_type = None  # type: mypy.types.Type
     body = None  # type: Block
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
-    def __init__(self, expr: List[Expression], target: List[Lvalue],
+    def __init__(self, expr: List[Expression], target: List[Optional[Lvalue]],
                  body: Block, target_type: 'mypy.types.Type' = None) -> None:
         self.expr = expr
         self.target = target
@@ -1351,7 +1354,7 @@ class UnaryExpr(Expression):
     op = ''
     expr = None  # type: Expression
     # Inferred operator method type
-    method_type = None  # type: mypy.types.Type
+    method_type = None  # type: Optional[mypy.types.Type]
 
     def __init__(self, op: str, expr: Expression) -> None:
         self.op = op
@@ -1433,7 +1436,7 @@ class OpExpr(Expression):
     left = None  # type: Expression
     right = None  # type: Expression
     # Inferred type for the operator method type (when relevant).
-    method_type = None  # type: mypy.types.Type
+    method_type = None  # type: Optional[mypy.types.Type]
 
     def __init__(self, op: str, left: Expression, right: Expression) -> None:
         self.op = op
@@ -1452,7 +1455,7 @@ class ComparisonExpr(Expression):
     operators = None  # type: List[str]
     operands = None  # type: List[Expression]
     # Inferred type for the operator methods (when relevant; None for 'is').
-    method_types = None  # type: List[mypy.types.Type]
+    method_types = None  # type: List[Optional[mypy.types.Type]]
 
     def __init__(self, operators: List[str], operands: List[Expression]) -> None:
         self.operators = operators
