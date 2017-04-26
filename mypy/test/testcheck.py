@@ -1,6 +1,6 @@
 """Type checker test cases"""
 
-import os.path
+import os
 import re
 import shutil
 import sys
