@@ -2051,6 +2051,25 @@ class X: pass
 foo(X)
 [out]
 
+[case testTypeUsingTypeCTypeAnyMember]
+from typing import Type, Any
+def foo(arg: Type[Any]):
+    x = arg.member_name
+    arg.new_member_name = 42
+    # Member access is ok and types as Any
+    reveal_type(x)  # E: Revealed type is 'Any'
+    # But Type[Any] is distinct from Any
+    y: int = arg  # E: Incompatible types in assignment (expression has type Type[Any], variable has type "int")
+[out]
+
+[case testTypeUsingTypeCTypeAnyMemberFallback]
+from typing import Type, Any
+def foo(arg: Type[Any]):
+    reveal_type(arg.__str__)  # E: Revealed type is 'def () -> builtins.str'
+    reveal_type(arg.mro())  # E: Revealed type is 'builtins.list[builtins.type]'
+[builtins fixtures/type.pyi]
+[out]
+
 [case testTypeUsingTypeCTypeNoArg]
 from typing import Type
 def foo(arg: Type):
