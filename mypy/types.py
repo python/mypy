@@ -1186,7 +1186,7 @@ class TypeType(Type):
     @staticmethod
     def make(item: Type, *, line: int = -1, column: int = -1) -> Type:
         if isinstance(item, UnionType):
-            return UnionType([TypeType.make(union_item) for union_item in item.items],
+            return UnionType.make_union([TypeType.make(union_item) for union_item in item.items],
                              line=line, column=column)
         else:
             return TypeType.__new__(TypeType, item, line=line, column=column)
