@@ -87,6 +87,7 @@ MAGIC_METHODS_ALLOWING_KWARGS = {
     "__init__",
     "__init_subclass__",
     "__new__",
+    "__call__",
 }
 
 MAGIC_METHODS_POS_ARGS_ONLY = MAGIC_METHODS - MAGIC_METHODS_ALLOWING_KWARGS

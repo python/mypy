@@ -176,6 +176,13 @@ def analyze_member_access(name: str,
         item = None
         if isinstance(typ.item, Instance):
             item = typ.item
+        elif isinstance(typ.item, AnyType):
+            fallback = builtin_type('builtins.type')
+            ignore_messages = msg.copy()
+            ignore_messages.disable_errors()
+            return analyze_member_access(name, fallback, node, is_lvalue, is_super,
+                                     is_operator, builtin_type, not_ready_callback,
+                                     ignore_messages, original_type=original_type, chk=chk)
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound
