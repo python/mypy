@@ -55,6 +55,7 @@ files = [
     'check-semanal-error.test',
     'check-flags.test',
     'check-incremental.test',
+    'check-serialize.test',
     'check-bound.test',
     'check-optional.test',
     'check-fastparse.test',
@@ -90,7 +91,9 @@ class TypeCheckSuite(DataSuite):
         return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        incremental = 'incremental' in testcase.name.lower() or 'incremental' in testcase.file
+        incremental = ('incremental' in testcase.name.lower()
+                       or 'incremental' in testcase.file
+                       or 'serialize' in testcase.file)
         optional = 'optional' in testcase.file
         if incremental:
             # Incremental tests are run once with a cold cache, once with a warm cache.
