@@ -5,8 +5,8 @@ import os
 import os.path
 import sys
 
-if sys.version_info < (3, 2, 0):
-    sys.stderr.write("ERROR: You need Python 3.2 or later to use mypy.\n")
+if sys.version_info < (3, 3, 0):
+    sys.stderr.write("ERROR: You need Python 3.3 or later to use mypy.\n")
     exit(1)
 
 # This requires setuptools when building; setuptools is not needed
