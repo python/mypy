@@ -1536,3 +1536,56 @@ reveal_type(list(c for c in C))  # E: Revealed type is 'builtins.list[__main__.C
 reveal_type(list(C))  # E: Revealed type is 'builtins.list[__main__.C*]'
 [builtins fixtures/list.pyi]
 [out]
+
+[case testClassesGetattrWithProtocols]
+from typing import Protocol
+
+class P(Protocol):
+    attr: int
+
+class PP(Protocol):
+    @property
+    def attr(self) -> int:
+        pass
+
+class C:
+    def __getattr__(self, attr: str) -> int:
+        pass
+
+class D:
+    def __getattr__(self, attr: str) -> str:
+        pass
+
+def fun(x: P) -> None:
+    reveal_type(P.attr) # E: Revealed type is 'builtins.int'
+def fun_p(x: PP) -> None:
+    reveal_type(P.attr) # E: Revealed type is 'builtins.int'
+
+fun(C())  # E: Argument 1 to "fun" has incompatible type "C"; expected "P"\
+          # N: Protocol member __main__.P.attr: expected settable variable, got read-only attribute
+fun_p(D())  # E: Argument 1 to "fun_p" has incompatible type "D"; expected "PP"\
+            # N: Following members of __main__.D have conflicts:\
+            # N: attr: expected builtins.int, got builtins.str
+fun_p(C())  # OK
+[builtins fixtures/list.pyi]
+[out]
+
+[case testIpmlicitTypesInProtocols]
+from typing import Protocol
+
+class P(Protocol):
+    x = 1  # We could actually prohibit inferred types in protocol declarations
+
+class C:
+    x: int
+
+class D:
+    x: str
+
+x: P
+x = D() # E: Incompatible types in assignment (expression has type "D", variable has type "P")\
+        # N: Following members of __main__.D have conflicts:\
+        # N: x: expected builtins.int, got builtins.str
+x = C() # OK
+[builtins fixtures/list.pyi]
+[out]
