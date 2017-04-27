@@ -121,11 +121,22 @@ class SplitNamespace(argparse.Namespace):
 
 def parse_version(v: str) -> Tuple[int, int]:
     m = re.match(r'\A(\d)\.(\d+)\Z', v)
-    if m:
-        return int(m.group(1)), int(m.group(2))
-    else:
+    if not m:
         raise argparse.ArgumentTypeError(
             "Invalid python version '{}' (expected format: 'x.y')".format(v))
+    major, minor = int(m.group(1)), int(m.group(2))
+    if major == 2:
+        if minor != 7:
+            raise argparse.ArgumentTypeError(
+                "Python 2.{} is not supported (must be 2.7)".format(minor))
+    elif major == 3:
+        if minor <= 2:
+            raise argparse.ArgumentTypeError(
+                "Python 3.{} is not supported (must be 3.3 or higher)".format(minor))
+    else:
+        raise argparse.ArgumentTypeError(
+            "Python major version '{}' out of range (must be 2 or 3)".format(major))
+    return major, minor
 
 
 # Make the help output a little less jarring.
@@ -553,8 +564,7 @@ def get_init_file(dir: str) -> Optional[str]:
 # exists to specify types for values initialized to None or container
 # types.
 config_types = {
-    # TODO: Check validity of python version
-    'python_version': lambda s: tuple(map(int, s.split('.'))),
+    'python_version': parse_version,
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
     'custom_typeshed_dir': str,
@@ -663,7 +673,11 @@ def parse_section(prefix: str, template: Options,
             if ct is bool:
                 v = section.getboolean(key)  # type: ignore  # Until better stub
             elif callable(ct):
-                v = ct(section.get(key))
+                try:
+                    v = ct(section.get(key))
+                except argparse.ArgumentTypeError as err:
+                    print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
+                    continue
             else:
                 print("%s: Don't know what type %s should have" % (prefix, key), file=sys.stderr)
                 continue
