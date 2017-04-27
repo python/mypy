@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from typing import Tuple, List, TypeVar, Set, Dict, Iterator, Optional
 
 from mypy.options import Options
+from mypy.version import __version__ as mypy_version
 
 
 T = TypeVar('T')
@@ -536,6 +537,7 @@ def report_internal_error(err: Exception, file: str, line: int,
     # Print "INTERNAL ERROR" message.
     print('{}: error: INTERNAL ERROR --'.format(prefix),
           'please report a bug at https://github.com/python/mypy/issues',
+          'version: {}'.format(mypy_version),
           file=sys.stderr)
 
     # If requested, drop into pdb. This overrides show_tb.

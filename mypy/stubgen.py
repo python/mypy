@@ -311,11 +311,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
+        sep = None  # type: Optional[int]
         if not self._indent and self._state != EMPTY:
             sep = len(self._output)
             self.add('\n')
-        else:
-            sep = None
         self.add('%sclass %s' % (self._indent, o.name))
         self.record_name(o.name)
         base_types = self.get_base_types(o)
@@ -465,7 +464,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.add_import_line('import %s as %s\n' % (id, target_name))
                 self.record_name(target_name)
 
-    def get_init(self, lvalue: str, rvalue: Expression) -> str:
+    def get_init(self, lvalue: str, rvalue: Expression) -> Optional[str]:
         """Return initializer for a variable.
 
         Return None if we've generated one already or if the variable is internal.
@@ -511,7 +510,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def is_not_in_all(self, name: str) -> bool:
         if self.is_private_name(name):
             return False
-        return self.is_top_level() and bool(self._all_) and name not in self._all_
+        if self._all_:
+            return self.is_top_level() and name not in self._all_
+        return False
 
     def is_private_name(self, name: str) -> bool:
         return name.startswith('_') and (not name.endswith('__')
