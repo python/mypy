@@ -27,10 +27,10 @@ class ErrorInfo:
     module = None  # type: Optional[str]
 
     # The name of the type in which this error is located at.
-    type = ''     # Unqualified, may be None
+    type = ''  # type: Optional[str]   # Unqualified, may be None
 
     # The name of the function or member in which this error is located at.
-    function_or_member = ''     # Unqualified, may be None
+    function_or_member = ''  # type: Optional[str]   # Unqualified, may be None
 
     # The line number related to this error within file.
     line = 0     # -1 if unknown
@@ -57,8 +57,8 @@ class ErrorInfo:
                  import_ctx: List[Tuple[str, int]],
                  file: str,
                  module: Optional[str],
-                 typ: str,
-                 function_or_member: str,
+                 typ: Optional[str],
+                 function_or_member: Optional[str],
                  line: int,
                  column: int,
                  severity: str,
@@ -105,10 +105,10 @@ class Errors:
     file = None  # type: str
 
     # Stack of short names of currents types (or None).
-    type_name = None  # type: List[str]
+    type_name = None  # type: List[Optional[str]]
 
     # Stack of short names of current functions or members (or None).
-    function_or_member = None  # type: List[str]
+    function_or_member = None  # type: List[Optional[str]]
 
     # Ignore errors on these lines of each file.
     ignored_lines = None  # type: Dict[str, Set[int]]
@@ -188,7 +188,7 @@ class Errors:
             self.target = [module]
 
     def set_file_ignored_lines(self, file: str,
-                               ignored_lines: Set[int] = None,
+                               ignored_lines: Set[int],
                                ignore_all: bool = False) -> None:
         self.ignored_lines[file] = ignored_lines
         if ignore_all:
@@ -265,7 +265,7 @@ class Errors:
             only_once: if True, only report this exact message once per build
             origin_line: if non-None, override current context as origin
         """
-        type = self.type_name[-1]
+        type = self.type_name[-1]  # type: Optional[str]
         if len(self.function_or_member) > 2:
             type = None  # Omit type context if nested function
         if file is None:
@@ -362,7 +362,7 @@ class Errors:
                    for info in self.error_info
                    if info.target)
 
-    def render_messages(self, errors: List[ErrorInfo]) -> List[Tuple[str, int, int,
+    def render_messages(self, errors: List[ErrorInfo]) -> List[Tuple[Optional[str], int, int,
                                                                      str, str]]:
         """Translate the messages into a sequence of tuples.
 
@@ -371,12 +371,12 @@ class Errors:
         item may be None. If the line item is negative, the line
         number is not defined for the tuple.
         """
-        result = []  # type: List[Tuple[str, int, int, str, str]]
+        result = []  # type: List[Tuple[Optional[str], int, int, str, str]]
         # (path, line, column, severity, message)
 
         prev_import_context = []  # type: List[Tuple[str, int]]
-        prev_function_or_member = None  # type: str
-        prev_type = None  # type: str
+        prev_function_or_member = None  # type: Optional[str]
+        prev_type = None  # type: Optional[str]
 
         for e in errors:
             # Report module import context, if different from previous message.
@@ -460,10 +460,10 @@ class Errors:
             result.extend(a)
         return result
 
-    def remove_duplicates(self, errors: List[Tuple[str, int, int, str, str]]
-                          ) -> List[Tuple[str, int, int, str, str]]:
+    def remove_duplicates(self, errors: List[Tuple[Optional[str], int, int, str, str]]
+                          ) -> List[Tuple[Optional[str], int, int, str, str]]:
         """Remove duplicates from a sorted error list."""
-        res = []  # type: List[Tuple[str, int, int, str, str]]
+        res = []  # type: List[Tuple[Optional[str], int, int, str, str]]
         i = 0
         while i < len(errors):
             dup = False

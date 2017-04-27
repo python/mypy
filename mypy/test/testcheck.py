@@ -1,6 +1,6 @@
 """Type checker test cases"""
 
-import os.path
+import os
 import re
 import shutil
 import sys
@@ -10,7 +10,7 @@ import typed_ast
 from typing import Dict, List, Optional, Set, Tuple
 
 from mypy import build, defaults
-from mypy.main import parse_version, process_options
+from mypy.main import process_options
 from mypy.build import BuildSource, find_module_clear_caches
 from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir, test_data_prefix
@@ -155,6 +155,8 @@ class TypeCheckSuite(DataSuite):
             options.strict_optional = True
         if incremental:
             options.incremental = True
+        else:
+            options.cache_dir = os.devnull  # Dont waste time writing cache
 
         sources = []
         for module_name, program_path, program_text in module_data:
