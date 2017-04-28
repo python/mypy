@@ -4,9 +4,7 @@ import re
 import subprocess
 import os
 import sys
-import math
 import time
-from itertools import count
 from xml.sax.saxutils import escape
 from typing import (
     TypeVar, List, Tuple, Optional, Sequence, Dict, Callable, Iterable, Type, Union,
@@ -164,12 +162,11 @@ def _replace(src: PathType[AnyStr], dest: PathType[AnyStr], timeout: float = 1) 
     while True:
         try:
             os.replace(src, dest)
+            return
         except PermissionError:
             # The actual total wait might be up to 2x larger than timeout parameter
             if wait > timeout:
                 raise
-        else:
-            return
         time.sleep(wait)
         wait *= 2
 

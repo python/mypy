@@ -44,7 +44,11 @@ class WindowsReplace(TestCase):
 
     def prepare_src_dest(self, src_lock_duration: float, dest_lock_duration: float
                          ) -> Tuple[str, str]:
-        # Create two temporary files with random names.
+        '''Create two files in self.tmpdir random names (src, dest) and unique contents;
+        then spawn two threads that lock each of them for a specified duration.
+
+        Return a tuple (src, dest).
+        '''
         src = os.path.join(self.tmpdir.name, random_string())
         dest = os.path.join(self.tmpdir.name, random_string())
 
@@ -58,6 +62,12 @@ class WindowsReplace(TestCase):
 
     def replace_ok(self, src_lock_duration: float, dest_lock_duration: float,
                    timeout: float) -> None:
+        '''Check whether util._replace, called with a specified timeout,
+        worked successfully on two newly created files locked for specified
+        durations.
+
+        Return True if the replacement succeeded.
+        '''
         src, dest = self.prepare_src_dest(src_lock_duration, dest_lock_duration)
         util._replace(src, dest, timeout=timeout)
         self.assertEqual(open(dest).read(), src, 'replace failed')
