@@ -64,6 +64,8 @@ class NodeFixer(NodeVisitor[None]):
                 info._promote.accept(self.type_fixer)
             if info.tuple_type:
                 info.tuple_type.accept(self.type_fixer)
+            if info.typeddict_type:
+                info.typeddict_type.accept(self.type_fixer)
         finally:
             self.current_info = save_info
 
