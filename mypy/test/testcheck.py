@@ -100,8 +100,13 @@ class TypeCheckSuite(DataSuite):
             # Expect success on first run, errors from testcase.output (if any) on second run.
             # We briefly sleep to make sure file timestamps are distinct.
             self.clear_cache()
-            self.run_case_once(testcase, 1)
-            self.run_case_once(testcase, 2)
+            try:
+                self.run_case_once(testcase, 1)
+                self.run_case_once(testcase, 2)
+            finally:
+                # Some test cases may use strict optional mode. Reset the state to avoid
+                # undesirable interference.
+                experiments.STRICT_OPTIONAL = False
         elif optional:
             try:
                 experiments.STRICT_OPTIONAL = True
