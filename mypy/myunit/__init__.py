@@ -131,7 +131,10 @@ class TestCase:
         if self.suite:
             self.suite.tear_down()
         os.chdir(self.old_cwd)
-        self.tmpdir.cleanup()
+        try:
+            self.tmpdir.cleanup()
+        except OSError:
+            pass
         self.old_cwd = None
         self.tmpdir = None
 

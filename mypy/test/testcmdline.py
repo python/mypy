@@ -17,6 +17,7 @@ from mypy.test.data import fix_cobertura_filename
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.version import __version__, base_version
+from mypy.util import delete_file
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
@@ -58,7 +59,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     # Remove temp file.
-    os.remove(program_path)
+    delete_file(program_path)
     # Compare actual output to expected.
     if testcase.output_files:
         for path, expected_content in testcase.output_files:

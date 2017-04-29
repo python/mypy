@@ -11,16 +11,13 @@ import subprocess
 import textwrap
 import time
 
+from mypy.util import delete_folder
+
 
 def print_offset(text: str, indent_length: int = 4) -> None:
     print()
     print(textwrap.indent(text, ' ' * indent_length))
     print()
-
-
-def delete_folder(folder_path: str) -> None:
-    if os.path.exists(folder_path):
-        shutil.rmtree(folder_path)
 
 
 def execute(command: List[str]) -> None:
@@ -121,7 +118,7 @@ def main() -> None:
     deltas = []
     for filename in glob.iglob("mypy/**/*.py", recursive=True):
         print("{} {}".format(verb, filename))
-        
+
         setup, teardown = make_wrappers(filename)
         delta = test(
             setup,
