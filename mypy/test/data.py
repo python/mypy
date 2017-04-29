@@ -11,6 +11,7 @@ import pytest  # type: ignore  # no pytest in typeshed
 from typing import Callable, List, Tuple, Set, Optional, Iterator, Any
 
 from mypy.myunit import TestCase, SkipTestCaseException
+from mypy.test.config import test_temp_dir, test_data_prefix
 
 
 def parse_test_cases(
@@ -456,7 +457,7 @@ def pytest_pycollect_makeitem(collector: Any, name: str, obj: Any) -> Any:
 
 class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
     def collect(self) -> Iterator['MypyDataCase']:
-        for case in self.obj.cases():
+        for case in self.obj.cases(file_pattern=self.config.getoption('casefile')):
             yield MypyDataCase(case.name, self, case)
 
 
@@ -500,9 +501,20 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
 
 
 class DataSuite:
+    files = []  # type: List[str]
+
     @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        return []
+    def cases(cls, file_pattern: str = None) -> List[DataDrivenTestCase]:
+        c = []  # type: List[DataDrivenTestCase]
+        for f in cls.files:
+            if cls.is_file_allowed(f, file_pattern):
+                c += parse_test_cases(os.path.join(test_data_prefix, f),
+                                  None, test_temp_dir, True)
+        return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         raise NotImplementedError
+
+    @classmethod
+    def is_file_allowed(cls, casefile: str, file_pattern: str) -> bool:
+        return not file_pattern or re.search(file_pattern, casefile) is not None

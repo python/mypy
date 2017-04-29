@@ -23,11 +23,6 @@ from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type
 
 
-files = [
-    'merge.test'
-]
-
-
 # Which data structures to dump in a test case?
 SYMTABLE = 'SYMTABLE'
 TYPEINFO = ' TYPEINFO'
@@ -36,18 +31,14 @@ AST = 'AST'
 
 
 class ASTMergeSuite(DataSuite):
+    files = [
+        'merge.test'
+    ]
+
     def __init__(self, *, update_data: bool) -> None:
         self.str_conv = StrConv(show_ids=True)
         self.id_mapper = self.str_conv.id_mapper
         self.type_str_conv = TypeStrVisitor(self.id_mapper)
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         name = testcase.name
