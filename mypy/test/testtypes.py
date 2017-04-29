@@ -85,8 +85,8 @@ class TypesSuite(Suite):
                      variables=[TypeVarDef('X', -1, [], self.fx.o)])
         assert_equal(str(c), 'def [X] (X?, Y?) -> Y?')
 
-        v = [TypeVarDef('Y', -1, None, self.fx.o),
-             TypeVarDef('X', -2, None, self.fx.o)]
+        v = [TypeVarDef('Y', -1, [], self.fx.o),
+             TypeVarDef('X', -2, [], self.fx.o)]
         c2 = CallableType([], [], [], NoneTyp(), self.function, name=None, variables=v)
         assert_equal(str(c2), 'def [Y, X] ()')
 

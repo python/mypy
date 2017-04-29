@@ -557,7 +557,7 @@ class CallableType(FunctionLike):
         if variables is None:
             variables = []
         assert len(arg_types) == len(arg_kinds)
-        assert not any(tp is None for tp in arg_types)
+        assert not any(tp is None for tp in arg_types), "No annotation must be Any, not None"
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
         self.arg_names = arg_names
