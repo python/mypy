@@ -21,6 +21,9 @@ docs/build/
 # IDEs
 .idea
 *.swp
+/.project
+/.pydevproject
+/.settings/
 
 # Operating Systems
 .DS_store
