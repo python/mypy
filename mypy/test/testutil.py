@@ -1,4 +1,4 @@
-from typing import Iterator, List, Tuple
+from typing import Iterator, List, Tuple, IO
 import time
 import os
 import sys
@@ -13,16 +13,6 @@ from mypy.build import random_string
 WIN32 = sys.platform.startswith("win")
 
 
-def lock_file(filename: str, duration: float) -> Thread:
-    """Open a file and keep it open in a background thread for duration sec."""
-    def _lock_file() -> None:
-        with open(filename):
-            time.sleep(duration)
-    t = Thread(target=_lock_file, daemon=True)
-    t.start()
-    return t
-
-
 @skipUnless(WIN32, "only relevant for Windows")
 class WindowsReplace(TestCase):
     tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-',
@@ -33,6 +23,18 @@ class WindowsReplace(TestCase):
     long_lock = timeout * 2
 
     threads = []  # type: List[Thread]
+
+    @classmethod
+    def close_file_after(cls, file: IO, delay: float) -> Thread:
+        """Start a background thread to close file after delay sec."""
+        def _close_file_after() -> None:
+            time.sleep(delay)
+            file.close()
+
+        t = Thread(target=_close_file_after, daemon=True)
+        cls.threads.append(t)
+        t.start()
+        return t
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -52,12 +54,14 @@ class WindowsReplace(TestCase):
         src = os.path.join(self.tmpdir.name, random_string())
         dest = os.path.join(self.tmpdir.name, random_string())
 
-        for fname in (src, dest):
-            with open(fname, 'w') as f:
-                f.write(fname)
+        for fname, delay in zip((src, dest), (src_lock_duration, dest_lock_duration)):
+            f = open(fname, 'w')
+            f.write(fname)
+            if delay:
+                self.close_file_after(f, delay)
+            else:
+                f.close()
 
-        self.threads.append(lock_file(src, src_lock_duration))
-        self.threads.append(lock_file(dest, dest_lock_duration))
         return src, dest
 
     def replace_ok(self, src_lock_duration: float, dest_lock_duration: float,
