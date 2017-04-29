@@ -1,5 +1,4 @@
 from typing import Dict, Iterable, List, Optional, Set
-from abc import abstractmethod
 
 from mypy.visitor import NodeVisitor
 from mypy.types import SyntheticTypeVisitor
