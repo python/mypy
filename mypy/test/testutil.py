@@ -72,16 +72,22 @@ class WindowsReplace(TestCase):
         util._replace(src, dest, timeout=timeout)
         self.assertEqual(open(dest).read(), src, 'replace failed')
 
-    def test_everything(self) -> None:
+    def test_no_locks(self) -> None:
         # No files locked.
         self.replace_ok(0, 0, self.timeout)
+
+    def test_original_problem(self) -> None:
         # Make sure we can reproduce the issue with our setup.
         src, dest = self.prepare_src_dest(self.short_lock, 0)
         with self.assertRaises(PermissionError):
             os.replace(src, dest)
+
+    def test_short_locks(self) -> None:
         # Lock files for a time short enough that util.replace won't timeout.
         self.replace_ok(self.short_lock, 0, self.timeout)
         self.replace_ok(0, self.short_lock, self.timeout)
+
+    def test_long_locks(self) -> None:
         # Lock files for a time long enough that util.replace times out.
         with self.assertRaises(PermissionError):
             self.replace_ok(self.long_lock, 0, self.timeout)
