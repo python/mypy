@@ -12,7 +12,7 @@ from mypy.types import (
     get_typ_args, set_typ_args,
     StarType)
 from mypy.nodes import (
-    NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
+    NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, CallExpr,
     MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
     OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealTypeExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, LambdaExpr, SuperExpr, SliceExpr, Context, Expression,
@@ -23,6 +23,7 @@ from mypy.nodes import (
     TypeAliasExpr, BackquoteExpr, EnumCallExpr,
     ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE,
 )
+from mypy.typeinfo import TypeInfo
 from mypy import nodes
 import mypy.checker
 from mypy import types

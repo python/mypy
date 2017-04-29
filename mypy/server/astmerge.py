@@ -6,9 +6,10 @@ See the main entry point merge_asts for details.
 from typing import Dict, List, cast, TypeVar
 
 from mypy.nodes import (
-    Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
-    FuncDef, ClassDef, SymbolNode, Var, Statement, MDEF
+    Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr,
+    RefExpr, FuncDef, ClassDef, SymbolNode, Var, Statement, MDEF
 )
+from mypy.typeinfo import TypeInfo
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, TypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,

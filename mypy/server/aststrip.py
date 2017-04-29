@@ -5,8 +5,9 @@ from typing import Union, Iterator
 
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
-    TypeInfo, Var
+    Var
 )
+from mypy.typeinfo import TypeInfo
 from mypy.traverser import TraverserVisitor
 
 

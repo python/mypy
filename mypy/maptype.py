@@ -1,7 +1,7 @@
 from typing import Dict, List
 
 from mypy.expandtype import expand_type
-from mypy.nodes import TypeInfo
+from mypy.typeinfo import TypeInfo
 from mypy.types import Type, TypeVarId, Instance, AnyType
 
 

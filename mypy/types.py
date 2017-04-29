@@ -9,6 +9,7 @@ from typing import (
 )
 
 import mypy.nodes
+import mypy.typeinfo
 from mypy.nodes import (
     INVARIANT, SymbolNode,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
@@ -364,12 +365,12 @@ class Instance(Type):
     The list of type variables may be empty.
     """
 
-    type = None  # type: Optional[mypy.nodes.TypeInfo]
+    type = None  # type: Optional[mypy.typeinfo.TypeInfo]
     args = None  # type: List[Type]
     erased = False  # True if result of type variable substitution
     invalid = False  # True if recovered after incorrect number of type arguments error
 
-    def __init__(self, typ: Optional[mypy.nodes.TypeInfo], args: List[Type],
+    def __init__(self, typ: 'Optional[mypy.typeinfo.TypeInfo]', args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
         assert(typ is None or typ.fullname() not in ["builtins.Any", "typing.Any"])
         self.type = typ
@@ -477,7 +478,7 @@ class FunctionLike(Type):
         return self.is_type_obj()
 
     @abstractmethod
-    def type_object(self) -> mypy.nodes.TypeInfo: pass
+    def type_object(self) -> 'mypy.typeinfo.TypeInfo': pass
 
     @abstractmethod
     def items(self) -> List['CallableType']: pass
@@ -613,7 +614,7 @@ class CallableType(FunctionLike):
     def is_concrete_type_obj(self) -> bool:
         return self.is_type_obj() and self.is_classmethod_class
 
-    def type_object(self) -> mypy.nodes.TypeInfo:
+    def type_object(self) -> 'mypy.typeinfo.TypeInfo':
         assert self.is_type_obj()
         ret = self.ret_type
         if isinstance(ret, TupleType):
@@ -790,7 +791,7 @@ class Overloaded(FunctionLike):
         # sufficient to query only (any) one of them.
         return self._items[0].is_type_obj()
 
-    def type_object(self) -> mypy.nodes.TypeInfo:
+    def type_object(self) -> 'mypy.typeinfo.TypeInfo':
         # All the items must have the same type object, so it's sufficient to
         # query only (any) one of them.
         return self._items[0].type_object()
@@ -1094,7 +1095,7 @@ class PartialType(Type):
     inner_types = None  # type: List[Type]
 
     def __init__(self,
-                 type: Optional['mypy.nodes.TypeInfo'],
+                 type: Optional['mypy.typeinfo.TypeInfo'],
                  var: 'mypy.nodes.Var',
                  inner_types: List[Type]) -> None:
         self.type = type

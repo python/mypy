@@ -15,9 +15,10 @@ from mypy.types import (
 )
 from mypy.nodes import (
     TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
-    TypeInfo, Context, SymbolTableNode, Var, Expression,
-    IndexExpr, RefExpr, nongen_builtins, TypeVarExpr
+    Context, SymbolTableNode, Var, Expression,
+    IndexExpr, RefExpr, nongen_builtins, TypeVarExpr,
 )
+from mypy.typeinfo import TypeInfo
 from mypy.tvar_scope import TypeVarScope
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError

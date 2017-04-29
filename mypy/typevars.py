@@ -1,6 +1,6 @@
 from typing import Union, List
 
-from mypy.nodes import TypeInfo
+from mypy.typeinfo import TypeInfo
 
 from mypy.erasetype import erase_typevars
 from mypy.sametypes import is_same_type
