@@ -358,7 +358,7 @@ class DeletedType(Type):
         return DeletedType(data['source'])
 
 
-# Fake TypeInfo to be used as a placeholder during Instance de-derialization.
+# Fake TypeInfo to be used as a placeholder during Instance de-serialization.
 NOT_READY = mypy.nodes.FakeInfo(mypy.nodes.SymbolTable(),
                                 mypy.nodes.ClassDef('<NOT READY>', mypy.nodes.Block([])),
                                 '<NOT READY>')
