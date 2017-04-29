@@ -182,7 +182,7 @@ class SemanticAnalyzer(NodeVisitor):
     # Nested block depths of scopes
     block_depth = None  # type: List[int]
     # TypeInfo of directly enclosing class (or None)
-    type = None  # type: TypeInfo
+    type = None  # type: Optional[TypeInfo]
     # Stack of outer classes (the second tuple item contains tvars).
     type_stack = None  # type: List[TypeInfo]
     # Type variables that are bound by the directly enclosing class

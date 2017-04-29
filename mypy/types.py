@@ -358,18 +358,24 @@ class DeletedType(Type):
         return DeletedType(data['source'])
 
 
+# Fake TypeInfo to be used as a placeholder during Instance de-derialization.
+NOT_READY = mypy.nodes.FakeInfo(mypy.nodes.SymbolTable(),
+                                mypy.nodes.ClassDef('<NOT READY>', mypy.nodes.Block([])),
+                                '<NOT READY>')
+
+
 class Instance(Type):
     """An instance type of form C[T1, ..., Tn].
 
     The list of type variables may be empty.
     """
 
-    type = None  # type: Optional[mypy.nodes.TypeInfo]
+    type = None  # type: mypy.nodes.TypeInfo
     args = None  # type: List[Type]
     erased = False  # True if result of type variable substitution
     invalid = False  # True if recovered after incorrect number of type arguments error
 
-    def __init__(self, typ: Optional[mypy.nodes.TypeInfo], args: List[Type],
+    def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
         assert(typ is None or typ.fullname() not in ["builtins.Any", "typing.Any"])
         self.type = typ
@@ -396,7 +402,7 @@ class Instance(Type):
     @classmethod
     def deserialize(cls, data: Union[JsonDict, str]) -> 'Instance':
         if isinstance(data, str):
-            inst = Instance(None, [])
+            inst = Instance(NOT_READY, [])
             inst.type_ref = data
             return inst
         assert data['.class'] == 'Instance'
@@ -405,7 +411,7 @@ class Instance(Type):
             args_list = data['args']
             assert isinstance(args_list, list)
             args = [deserialize_type(arg) for arg in args_list]
-        inst = Instance(None, args)
+        inst = Instance(NOT_READY, args)
         inst.type_ref = data['type_ref']  # Will be fixed up by fixup.py later.
         return inst
 

@@ -2208,6 +2208,11 @@ class TypeInfo(SymbolNode):
         return ti
 
 
+class FakeInfo(TypeInfo):
+    def __getattr__(self, attr: str) -> None:
+        raise RuntimeError('De-serialization failure: TypeInfo not fixed')
+
+
 class SymbolTableNode:
     # Kind of node. Possible values:
     #  - LDEF: local definition (of any kind)
