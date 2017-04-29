@@ -542,7 +542,7 @@ class CallableType(FunctionLike):
                  arg_names: List[Optional[str]],
                  ret_type: Type,
                  fallback: Instance,
-                 name: Optional[str] = '',
+                 name: str = None,
                  definition: SymbolNode = None,
                  variables: List[TypeVarDef] = None,
                  line: int = -1,
