@@ -1745,10 +1745,10 @@ class SemanticAnalyzer(NodeVisitor):
         info.is_newtype = True
 
         # Add __init__ method
-        args = [Argument(Var('cls'), NoneTyp(), None, ARG_POS),
+        args = [Argument(Var('self'), NoneTyp(), None, ARG_POS),
                 self.make_argument('item', old_type)]
         signature = CallableType(
-            arg_types=[cast(Type, None), old_type],
+            arg_types=[Instance(info, []), old_type],
             arg_kinds=[arg.kind for arg in args],
             arg_names=['self', 'item'],
             ret_type=old_type,
