@@ -11,7 +11,7 @@ from mypy.nodes import (
 from mypy.types import (
     CallableType, EllipsisType, Instance, Overloaded, TupleType, TypedDictType,
     TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,
-    TypeType
+    TypeType, NOT_READY
 )
 from mypy.visitor import NodeVisitor
 
@@ -156,7 +156,7 @@ class TypeFixer(TypeVisitor[None]):
             # TODO: Is this needed or redundant?
             # Also fix up the bases, just in case.
             for base in inst.type.bases:
-                if base.type is None:
+                if base.type is NOT_READY:
                     base.accept(self)
         for a in inst.args:
             a.accept(self)
@@ -233,7 +233,7 @@ class TypeFixer(TypeVisitor[None]):
 
 
 def lookup_qualified(modules: Dict[str, MypyFile], name: str,
-                     quick_and_dirty: bool) -> SymbolNode:
+                     quick_and_dirty: bool) -> Optional[SymbolNode]:
     stnode = lookup_qualified_stnode(modules, name, quick_and_dirty)
     if stnode is None:
         return None

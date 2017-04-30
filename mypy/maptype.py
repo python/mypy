@@ -28,9 +28,7 @@ def map_instance_to_supertypes(instance: Instance,
     # FIX: Currently we should only have one supertype per interface, so no
     #      need to return an array
     result = []  # type: List[Instance]
-    typ = instance.type
-    assert typ is not None, 'Instance.type is not fixed after deserialization'
-    for path in class_derivation_paths(typ, supertype):
+    for path in class_derivation_paths(instance.type, supertype):
         types = [instance]
         for sup in path:
             a = []  # type: List[Instance]
@@ -60,7 +58,6 @@ def class_derivation_paths(typ: TypeInfo,
 
     for base in typ.bases:
         btype = base.type
-        assert btype is not None, 'Instance.type is not fixed after deserialization'
         if btype == supertype:
             result.append([btype])
         else:
@@ -75,7 +72,6 @@ def map_instance_to_direct_supertypes(instance: Instance,
                                       supertype: TypeInfo) -> List[Instance]:
     # FIX: There should only be one supertypes, always.
     typ = instance.type
-    assert typ is not None, 'Instance.type is not fixed after deserialization'
     result = []  # type: List[Instance]
 
     for b in typ.bases:
@@ -103,6 +99,4 @@ def instance_to_type_environment(instance: Instance) -> Dict[TypeVarId, Type]:
     arguments.  The type variables are mapped by their `id`.
 
     """
-    typ = instance.type
-    assert typ is not None, 'Instance.type is not fixed after deserialization'
-    return {binder.id: arg for binder, arg in zip(typ.defn.type_vars, instance.args)}
+    return {binder.id: arg for binder, arg in zip(instance.type.defn.type_vars, instance.args)}
