@@ -2215,6 +2215,12 @@ class FakeInfo(TypeInfo):
     # Instance.type is set to NOT_READY. In the second step (in fixup.py) it is replaced by
     # an actual TypeInfo. If you see the assertion error below, then most probably something
     # went wrong during the second step and an 'Instance' that raised this error was not fixed.
+    # Note:
+    # 'None' is not used as a dummy value for two reasons:
+    # 1. This will require around 80-100 asserts to make 'mypy --strict-optional mypy'
+    #    pass cleanly.
+    # 2. If NOT_READY value is accidentally used somewhere, it will be obvious where the value
+    #    is from, whereas a 'None' value could come from anywhere.
     def __getattr__(self, attr: str) -> None:
         raise AssertionError('De-serialization failure: TypeInfo not fixed')
 
