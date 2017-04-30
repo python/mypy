@@ -2209,8 +2209,14 @@ class TypeInfo(SymbolNode):
 
 
 class FakeInfo(TypeInfo):
+    # types.py defines a single instance of this class, called types.NOT_READY.
+    # This instance is used as a temporary placeholder in the process of de-serialization
+    # of 'Instance' types. The de-serialization happens in two steps: In the first step,
+    # Instance.type is set to NOT_READY. In the second step (in fixup.py) it is replaced by
+    # an actual TypeInfo. If you see the assertion error below, then most probably something
+    # went wrong during the second step and an 'Instance' that raised this error was not fixed.
     def __getattr__(self, attr: str) -> None:
-        raise RuntimeError('De-serialization failure: TypeInfo not fixed')
+        raise AssertionError('De-serialization failure: TypeInfo not fixed')
 
 
 class SymbolTableNode:
