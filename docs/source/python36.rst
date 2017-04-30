@@ -5,9 +5,8 @@ New features in Python 3.6
 
 Python 3.6 was `released
 <https://www.python.org/downloads/release/python-360/>`_ in
-December 2016.  As of mypy 0.500 most language features new in Python
-3.6 are supported, with the exception of asynchronous generators and
-comprehensions.
+December 2016.  As of mypy 0.510 all language features new in Python
+3.6 are supported.
 
 Syntax for variable annotations (`PEP 526 <https://www.python.org/dev/peps/pep-0526>`_)
 ---------------------------------------------------------------------------------------
@@ -50,22 +49,20 @@ Mypy fully supports this syntax:
    hexes: List[int] = []
    hexes.append(0x_FF_FF_FF_FF)
 
-Asynchronous generators (`PEP 525 <https://www.python.org/dev/peps/pep-0525>`_)
--------------------------------------------------------------------------------
+Asynchronous generators (`PEP 525 <https://www.python.org/dev/peps/pep-0525>`_) and comprehensions (`PEP 530 <https://www.python.org/dev/peps/pep-0530>`_)
+----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Python 3.6 feature: coroutines defined with ``async def`` (PEP 492)
-can now also be generators, i.e. contain ``yield`` expressions.
+Python 3.6 allows coroutines defined with ``async def`` (PEP 492) to be
+generators, i.e. contain ``yield`` expressions, and introduces a syntax for
+asynchronous comprehensions. Mypy fully supports these features, for example:
 
-Mypy does not yet support this.
+.. code-block:: python
 
-Asynchronous comprehensions (`PEP 530 <https://www.python.org/dev/peps/pep-0530>`_)
------------------------------------------------------------------------------------
+   from typing import AsyncIterator
 
-Python 3.6 feature: coroutines defined with ``async def`` (PEP 492)
-can now also contain list, set and dict comprehensions that use
-``async for`` syntax.
-
-Mypy does not yet support this.
+   async def gen() -> AsyncIterator[bytes]:
+       lst = [b async for b in gen()]  # Inferred type is "List[bytes]"
+       yield 'no way'  # Error: Incompatible types (got "str", expected "bytes")
 
 New named tuple syntax
 ----------------------

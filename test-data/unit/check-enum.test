@@ -1,0 +1,397 @@
+-- This test file checks Enum
+
+[case testEnumBasics]
+from enum import Enum
+class Medal(Enum):
+    gold = 1
+    silver = 2
+    bronze = 3
+m = Medal.gold
+m = 1
+[out]
+main:7: error: Incompatible types in assignment (expression has type "int", variable has type "Medal")
+
+[case testEnumNameAndValue]
+from enum import Enum
+class Truth(Enum):
+    true = True
+    false = False
+x = ''
+x = Truth.true.name
+reveal_type(Truth.true.name)
+reveal_type(Truth.false.value)
+[builtins fixtures/bool.pyi]
+[out]
+main:7: error: Revealed type is 'builtins.str'
+main:8: error: Revealed type is 'Any'
+
+[case testEnumUnique]
+import enum
+@enum.unique
+class E(enum.Enum):
+    x = 1
+    y = 1  # NOTE: This duplicate value is not detected by mypy at the moment
+x = 1
+x = E.x
+[out]
+main:7: error: Incompatible types in assignment (expression has type "E", variable has type "int")
+
+[case testIntEnum_assignToIntVariable]
+from enum import IntEnum
+class N(IntEnum):
+    x = 1
+    y = 1
+n = 1
+n = N.x  # Subclass of int, so it's okay
+s = ''
+s = N.y
+[out]
+main:8: error: Incompatible types in assignment (expression has type "N", variable has type "str")
+
+[case testIntEnum_functionTakingIntEnum]
+from enum import IntEnum
+class SomeIntEnum(IntEnum):
+    x = 1
+def takes_some_int_enum(n: SomeIntEnum):
+    pass
+takes_some_int_enum(SomeIntEnum.x)
+takes_some_int_enum(1)  # Error
+takes_some_int_enum(SomeIntEnum(1))  # How to deal with the above
+[out]
+main:7: error: Argument 1 to "takes_some_int_enum" has incompatible type "int"; expected "SomeIntEnum"
+
+[case testIntEnum_functionTakingInt]
+from enum import IntEnum
+class SomeIntEnum(IntEnum):
+    x = 1
+def takes_int(i: int):
+    pass
+takes_int(SomeIntEnum.x)
+takes_int(2)
+
+[case testIntEnum_functionReturningIntEnum]
+from enum import IntEnum
+class SomeIntEnum(IntEnum):
+    x = 1
+def returns_some_int_enum() -> SomeIntEnum:
+    return SomeIntEnum.x
+an_int = 1
+an_int = returns_some_int_enum()
+
+an_enum = SomeIntEnum.x
+an_enum = returns_some_int_enum()
+[out]
+
+[case testEnumMethods]
+from enum import Enum
+
+class Color(Enum):
+    red = 1
+    green = 2
+
+    def m(self, x: int): pass
+    @staticmethod
+    def m2(x: int): pass
+
+Color.red.m('')
+Color.m2('')
+[builtins fixtures/staticmethod.pyi]
+[out]
+main:11: error: Argument 1 to "m" of "Color" has incompatible type "str"; expected "int"
+main:12: error: Argument 1 to "m2" of "Color" has incompatible type "str"; expected "int"
+
+[case testIntEnum_ExtendedIntEnum_functionTakingExtendedIntEnum]
+from enum import IntEnum
+class ExtendedIntEnum(IntEnum):
+    pass
+class SomeExtIntEnum(ExtendedIntEnum):
+    x = 1
+
+def takes_int(i: int):
+    pass
+takes_int(SomeExtIntEnum.x)
+
+def takes_some_ext_int_enum(s: SomeExtIntEnum):
+    pass
+takes_some_ext_int_enum(SomeExtIntEnum.x)
+
+[case testNamedTupleEnum]
+from typing import NamedTuple
+from enum import Enum
+
+N = NamedTuple('N', [('bar', int)])
+
+class E(N, Enum):
+    X = N(1)
+
+def f(x: E) -> None: pass
+
+f(E.X)
+
+[case testEnumCall]
+from enum import IntEnum
+class E(IntEnum):
+    a = 1
+x = None  # type: int
+reveal_type(E(x))
+[out]
+main:5: error: Revealed type is '__main__.E'
+
+[case testEnumIndex]
+from enum import IntEnum
+class E(IntEnum):
+    a = 1
+s = None  # type: str
+reveal_type(E[s])
+[out]
+main:5: error: Revealed type is '__main__.E'
+
+[case testEnumIndexError]
+from enum import IntEnum
+class E(IntEnum):
+    a = 1
+E[1]  # E: Enum index should be a string (actual index type "int")
+x = E[1]  # E: Enum index should be a string (actual index type "int")
+
+[case testEnumIndexIsNotAnAlias]
+from enum import Enum
+
+class E(Enum):
+    a = 1
+    b = 2
+reveal_type(E['a'])  # E: Revealed type is '__main__.E'
+E['a']
+x = E['a']
+reveal_type(x)  # E: Revealed type is '__main__.E'
+
+def get_member(name: str) -> E:
+    val = E[name]
+    return val
+
+reveal_type(get_member('a'))  # E: Revealed type is '__main__.E'
+
+[case testGenericEnum]
+from enum import Enum
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class F(Generic[T], Enum):  # E: Enum class cannot be generic
+    x: T
+    y: T
+
+reveal_type(F[int].x)  # E: Revealed type is '__main__.F[builtins.int*]'
+
+[case testEnumFlag]
+from enum import Flag
+class C(Flag):
+    a = 1
+    b = 2
+x = C.a
+x = 1
+x = x | C.b
+[out]
+main:6: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+
+[case testEnumIntFlag]
+from enum import IntFlag
+class C(IntFlag):
+    a = 1
+    b = 2
+x = C.a
+x = 1
+x = x | C.b
+[out]
+main:6: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+
+[case testAnonymousEnum]
+from enum import Enum
+class A:
+    def f(self) -> None:
+        class E(Enum):
+            a = 1
+        self.x = E.a
+a = A()
+reveal_type(a.x)
+[out]
+main:8: error: Revealed type is '__main__.E@4'
+
+[case testEnumInClassBody]
+from enum import Enum
+class A:
+    class E(Enum):
+        a = 1
+class B:
+    class E(Enum):
+        a = 1
+x = A.E.a
+y = B.E.a
+x = y
+[out]
+main:10: error: Incompatible types in assignment (expression has type "__main__.B.E", variable has type "__main__.A.E")
+
+[case testFunctionalEnumString]
+from enum import Enum, IntEnum
+E = Enum('E', 'foo bar')
+I = IntEnum('I', ' bar, baz ')
+reveal_type(E.foo)
+reveal_type(E.bar.value)
+reveal_type(I.bar)
+reveal_type(I.baz.value)
+[out]
+main:4: error: Revealed type is '__main__.E'
+main:5: error: Revealed type is 'Any'
+main:6: error: Revealed type is '__main__.I'
+main:7: error: Revealed type is 'builtins.int'
+
+[case testFunctionalEnumListOfStrings]
+from enum import Enum, IntEnum
+E = Enum('E', ('foo', 'bar'))
+F = IntEnum('F', ['bar', 'baz'])
+reveal_type(E.foo)
+reveal_type(F.baz)
+[out]
+main:4: error: Revealed type is '__main__.E'
+main:5: error: Revealed type is '__main__.F'
+
+[case testFunctionalEnumListOfPairs]
+from enum import Enum, IntEnum
+E = Enum('E', [('foo', 1), ['bar', 2]])
+F = IntEnum('F', (['bar', 1], ('baz', 2)))
+reveal_type(E.foo)
+reveal_type(F.baz)
+reveal_type(E.foo.value)
+reveal_type(F.bar.name)
+[out]
+main:4: error: Revealed type is '__main__.E'
+main:5: error: Revealed type is '__main__.F'
+main:6: error: Revealed type is 'Any'
+main:7: error: Revealed type is 'builtins.str'
+
+[case testFunctionalEnumDict]
+from enum import Enum, IntEnum
+E = Enum('E', {'foo': 1, 'bar': 2})
+F = IntEnum('F', {'bar': 1, 'baz': 2})
+reveal_type(E.foo)
+reveal_type(F.baz)
+reveal_type(E.foo.value)
+reveal_type(F.bar.name)
+[out]
+main:4: error: Revealed type is '__main__.E'
+main:5: error: Revealed type is '__main__.F'
+main:6: error: Revealed type is 'Any'
+main:7: error: Revealed type is 'builtins.str'
+
+[case testFunctionalEnumErrors]
+from enum import Enum, IntEnum
+A = Enum('A')
+B = Enum('B', 42)
+C = Enum('C', 'a b', 'x')
+D = Enum('D', foo)
+bar = 'x y z'
+E = Enum('E', bar)
+I = IntEnum('I')
+J = IntEnum('I', 42)
+K = IntEnum('I', 'p q', 'z')
+L = Enum('L', ' ')
+M = Enum('M', ())
+N = IntEnum('M', [])
+P = Enum('P', [42])
+Q = Enum('Q', [('a', 42, 0)])
+R = IntEnum('R', [[0, 42]])
+S = Enum('S', {1: 1})
+T = Enum('T', keyword='a b')
+U = Enum('U', *['a'])
+V = Enum('U', **{'a': 1})
+W = Enum('W', 'a b')
+W.c
+[out]
+main:2: error: Too few arguments for Enum()
+main:3: error: Enum() expects a string, tuple, list or dict literal as the second argument
+main:4: error: Too many arguments for Enum()
+main:5: error: Enum() expects a string, tuple, list or dict literal as the second argument
+main:5: error: Name 'foo' is not defined
+main:7: error: Enum() expects a string, tuple, list or dict literal as the second argument
+main:8: error: Too few arguments for IntEnum()
+main:9: error: IntEnum() expects a string, tuple, list or dict literal as the second argument
+main:10: error: Too many arguments for IntEnum()
+main:11: error: Enum() needs at least one item
+main:12: error: Enum() needs at least one item
+main:13: error: IntEnum() needs at least one item
+main:14: error: Enum() with tuple or list expects strings or (name, value) pairs
+main:15: error: Enum() with tuple or list expects strings or (name, value) pairs
+main:16: error: IntEnum() with tuple or list expects strings or (name, value) pairs
+main:17: error: Enum() with dict literal requires string literals
+main:18: error: Unexpected arguments to Enum()
+main:19: error: Unexpected arguments to Enum()
+main:20: error: Unexpected arguments to Enum()
+main:22: error: "W" has no attribute "c"
+
+[case testFunctionalEnumFlag]
+from enum import Flag, IntFlag
+A = Flag('A', 'x y')
+B = IntFlag('B', 'a b')
+reveal_type(A.x)
+reveal_type(B.a)
+[out]
+main:4: error: Revealed type is '__main__.A'
+main:5: error: Revealed type is '__main__.B'
+
+[case testAnonymousFunctionalEnum]
+from enum import Enum
+class A:
+    def f(self) -> None:
+        E = Enum('E', 'a b')
+        self.x = E.a
+a = A()
+reveal_type(a.x)
+[out]
+main:7: error: Revealed type is '__main__.A.E@4'
+
+[case testFunctionalEnumInClassBody]
+from enum import Enum
+class A:
+    E = Enum('E', 'a b')
+class B:
+    E = Enum('E', 'a b')
+x = A.E.a
+y = B.E.a
+x = y
+[out]
+main:8: error: Incompatible types in assignment (expression has type "__main__.B.E", variable has type "__main__.A.E")
+
+[case testFunctionalEnum_python2]
+from enum import Enum
+Eu = Enum(u'Eu', u'a b')
+Eb = Enum(b'Eb', b'a b')
+Gu = Enum(u'Gu', {u'a': 1})
+Gb = Enum(b'Gb', {b'a': 1})
+Hu = Enum(u'Hu', [u'a'])
+Hb = Enum(b'Hb', [b'a'])
+Eu.a
+Eb.a
+Gu.a
+Gb.a
+Hu.a
+Hb.a
+[out]
+
+[case testEnumIncremental]
+import m
+reveal_type(m.E.a)
+reveal_type(m.F.b)
+[file m.py]
+from enum import Enum
+class E(Enum):
+    a = 1
+    b = 2
+F = Enum('F', 'a b')
+[rechecked]
+[stale]
+[out1]
+main:2: error: Revealed type is 'm.E'
+main:3: error: Revealed type is 'm.F'
+[out2]
+main:2: error: Revealed type is 'm.E'
+main:3: error: Revealed type is 'm.F'
+

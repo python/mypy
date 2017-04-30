@@ -3,7 +3,7 @@
 Subclass TransformVisitor to perform non-trivial transformations.
 """
 
-from typing import List, Dict, cast
+from typing import List, Dict, cast, Optional, Iterable
 
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
@@ -19,7 +19,8 @@ from mypy.nodes import (
     ComparisonExpr, TempNode, StarExpr, Statement, Expression,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, OverloadPart
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
+    OverloadPart, EnumCallExpr,
 )
 from mypy.types import Type, FunctionLike
 from mypy.traverser import TraverserVisitor
@@ -75,7 +76,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return ImportAll(node.id, node.relative)
 
     def copy_argument(self, argument: Argument) -> Argument:
-        init_stmt = None  # type: AssignmentStmt
+        init_stmt = None  # type: Optional[AssignmentStmt]
 
         if argument.initialization_statement:
             init_lvalue = cast(
@@ -359,7 +360,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return YieldFromExpr(self.expr(node.expr))
 
     def visit_yield_expr(self, node: YieldExpr) -> YieldExpr:
-        return YieldExpr(self.expr(node.expr))
+        return YieldExpr(self.optional_expr(node.expr))
 
     def visit_await_expr(self, node: AwaitExpr) -> AwaitExpr:
         return AwaitExpr(self.expr(node.expr))
@@ -486,6 +487,9 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> NamedTupleExpr:
         return NamedTupleExpr(node.info)
 
+    def visit_enum_call_expr(self, node: EnumCallExpr) -> EnumCallExpr:
+        return EnumCallExpr(node.info, node.items, node.values)
+
     def visit_typeddict_expr(self, node: TypedDictExpr) -> Node:
         return TypedDictExpr(node.info)
 
@@ -522,7 +526,7 @@ class TransformVisitor(NodeVisitor[Node]):
     #
     # All the node helpers also propagate line numbers.
 
-    def optional_expr(self, expr: Expression) -> Expression:
+    def optional_expr(self, expr: Optional[Expression]) -> Optional[Expression]:
         if expr:
             return self.expr(expr)
         else:
@@ -533,7 +537,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new.line = block.line
         return new
 
-    def optional_block(self, block: Block) -> Block:
+    def optional_block(self, block: Optional[Block]) -> Optional[Block]:
         if block:
             return self.block(block)
         else:
@@ -545,7 +549,8 @@ class TransformVisitor(NodeVisitor[Node]):
     def expressions(self, expressions: List[Expression]) -> List[Expression]:
         return [self.expr(expr) for expr in expressions]
 
-    def optional_expressions(self, expressions: List[Expression]) -> List[Expression]:
+    def optional_expressions(self, expressions: Iterable[Optional[Expression]]
+                             ) -> List[Optional[Expression]]:
         return [self.optional_expr(expr) for expr in expressions]
 
     def blocks(self, blocks: List[Block]) -> List[Block]:
@@ -554,8 +559,8 @@ class TransformVisitor(NodeVisitor[Node]):
     def names(self, names: List[NameExpr]) -> List[NameExpr]:
         return [self.duplicate_name(name) for name in names]
 
-    def optional_names(self, names: List[NameExpr]) -> List[NameExpr]:
-        result = []  # type: List[NameExpr]
+    def optional_names(self, names: Iterable[Optional[NameExpr]]) -> List[Optional[NameExpr]]:
+        result = []  # type: List[Optional[NameExpr]]
         for name in names:
             if name:
                 result.append(self.duplicate_name(name))
@@ -567,7 +572,7 @@ class TransformVisitor(NodeVisitor[Node]):
         # Override this method to transform types.
         return type
 
-    def optional_type(self, type: Type) -> Type:
+    def optional_type(self, type: Optional[Type]) -> Optional[Type]:
         if type:
             return self.type(type)
         else:

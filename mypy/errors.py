@@ -4,9 +4,10 @@ import traceback
 from collections import OrderedDict, defaultdict
 from contextlib import contextmanager
 
-from typing import Tuple, List, TypeVar, Set, Dict, Iterator
+from typing import Tuple, List, TypeVar, Set, Dict, Iterator, Optional
 
 from mypy.options import Options
+from mypy.version import __version__ as mypy_version
 
 
 T = TypeVar('T')
@@ -22,11 +23,14 @@ class ErrorInfo:
     # The source file that was the source of this error.
     file = ''
 
+    # The fully-qualified id of the source module for this error.
+    module = None  # type: Optional[str]
+
     # The name of the type in which this error is located at.
-    type = ''     # Unqualified, may be None
+    type = ''  # type: Optional[str]   # Unqualified, may be None
 
     # The name of the function or member in which this error is located at.
-    function_or_member = ''     # Unqualified, may be None
+    function_or_member = ''  # type: Optional[str]   # Unqualified, may be None
 
     # The line number related to this error within file.
     line = 0     # -1 if unknown
@@ -46,12 +50,26 @@ class ErrorInfo:
     # Only report this particular messages once per program.
     only_once = False
 
-    def __init__(self, import_ctx: List[Tuple[str, int]], file: str, typ: str,
-                 function_or_member: str, line: int, column: int, severity: str,
-                 message: str, blocker: bool, only_once: bool,
-                 origin: Tuple[str, int] = None) -> None:
+    # Fine-grained incremental target where this was reported
+    target = None  # type: Optional[str]
+
+    def __init__(self,
+                 import_ctx: List[Tuple[str, int]],
+                 file: str,
+                 module: Optional[str],
+                 typ: Optional[str],
+                 function_or_member: Optional[str],
+                 line: int,
+                 column: int,
+                 severity: str,
+                 message: str,
+                 blocker: bool,
+                 only_once: bool,
+                 origin: Tuple[str, int] = None,
+                 target: str = None) -> None:
         self.import_ctx = import_ctx
         self.file = file
+        self.module = module
         self.type = typ
         self.function_or_member = function_or_member
         self.line = line
@@ -61,6 +79,7 @@ class ErrorInfo:
         self.blocker = blocker
         self.only_once = only_once
         self.origin = origin or (file, line)
+        self.target = target
 
 
 class Errors:
@@ -86,10 +105,10 @@ class Errors:
     file = None  # type: str
 
     # Stack of short names of currents types (or None).
-    type_name = None  # type: List[str]
+    type_name = None  # type: List[Optional[str]]
 
     # Stack of short names of current functions or members (or None).
-    function_or_member = None  # type: List[str]
+    function_or_member = None  # type: List[Optional[str]]
 
     # Ignore errors on these lines of each file.
     ignored_lines = None  # type: Dict[str, Set[int]]
@@ -106,11 +125,21 @@ class Errors:
     # Set to True to show "In function "foo":" messages.
     show_error_context = False  # type: bool
 
-    # Set to True to show column numbers in error messages
+    # Set to True to show column numbers in error messages.
     show_column_numbers = False  # type: bool
+
+    # Stack of active fine-grained incremental checking targets within
+    # a module. The first item is always the current module id.
+    # (See mypy.server.update for more about targets.)
+    target = None  # type: List[str]
 
     def __init__(self, show_error_context: bool = False,
                  show_column_numbers: bool = False) -> None:
+        self.show_error_context = show_error_context
+        self.show_column_numbers = show_column_numbers
+        self.initialize()
+
+    def initialize(self) -> None:
         self.error_info = []
         self.import_ctx = []
         self.error_files = set()
@@ -120,8 +149,10 @@ class Errors:
         self.used_ignored_lines = defaultdict(set)
         self.ignored_files = set()
         self.only_once_messages = set()
-        self.show_error_context = show_error_context
-        self.show_column_numbers = show_column_numbers
+        self.target = []
+
+    def reset(self) -> None:
+        self.initialize()
 
     def copy(self) -> 'Errors':
         new = Errors(self.show_error_context, self.show_column_numbers)
@@ -129,6 +160,7 @@ class Errors:
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
         new.function_or_member = self.function_or_member[:]
+        new.target = self.target[:]
         return new
 
     def set_ignore_prefix(self, prefix: str) -> None:
@@ -143,8 +175,8 @@ class Errors:
         file = os.path.normpath(file)
         return remove_path_prefix(file, self.ignore_prefix)
 
-    def set_file(self, file: str, ignored_lines: Set[int] = None) -> None:
-        """Set the path of the current file."""
+    def set_file(self, file: str, module: Optional[str], ignored_lines: Set[int] = None) -> None:
+        """Set the path and module id of the current file."""
         # The path will be simplified later, in render_messages. That way
         #  * 'file' is always a key that uniquely identifies a source file
         #    that mypy read (simplified paths might not be unique); and
@@ -152,9 +184,11 @@ class Errors:
         #    reporting errors for files other than the one currently being
         #    processed.
         self.file = file
+        if module:
+            self.target = [module]
 
     def set_file_ignored_lines(self, file: str,
-                               ignored_lines: Set[int] = None,
+                               ignored_lines: Set[int],
                                ignore_all: bool = False) -> None:
         self.ignored_lines[file] = ignored_lines
         if ignore_all:
@@ -162,10 +196,12 @@ class Errors:
 
     def push_function(self, name: str) -> None:
         """Set the current function or member short name (it can be None)."""
+        self.push_target_component(name)
         self.function_or_member.append(name)
 
     def pop_function(self) -> None:
         self.function_or_member.pop()
+        self.pop_target_component()
 
     @contextmanager
     def enter_function(self, name: str) -> Iterator[None]:
@@ -175,10 +211,30 @@ class Errors:
 
     def push_type(self, name: str) -> None:
         """Set the short name of the current type (it can be None)."""
+        self.push_target_component(name)
         self.type_name.append(name)
 
     def pop_type(self) -> None:
         self.type_name.pop()
+        self.pop_target_component()
+
+    def push_target_component(self, name: str) -> None:
+        if self.target and not self.function_or_member[-1]:
+            self.target.append('{}.{}'.format(self.target[-1], name))
+
+    def pop_target_component(self) -> None:
+        if self.target and not self.function_or_member[-1]:
+            self.target.pop()
+
+    def current_target(self) -> Optional[str]:
+        if self.target:
+            return self.target[-1]
+        return None
+
+    def current_module(self) -> Optional[str]:
+        if self.target:
+            return self.target[0]
+        return None
 
     @contextmanager
     def enter_type(self, name: str) -> Iterator[None]:
@@ -209,15 +265,16 @@ class Errors:
             only_once: if True, only report this exact message once per build
             origin_line: if non-None, override current context as origin
         """
-        type = self.type_name[-1]
+        type = self.type_name[-1]  # type: Optional[str]
         if len(self.function_or_member) > 2:
             type = None  # Omit type context if nested function
         if file is None:
             file = self.file
-        info = ErrorInfo(self.import_context(), file, type,
+        info = ErrorInfo(self.import_context(), file, self.current_module(), type,
                          self.function_or_member[-1], line, column, severity, message,
                          blocker, only_once,
-                         origin=(self.file, origin_line) if origin_line else None)
+                         origin=(self.file, origin_line) if origin_line else None,
+                         target=self.current_target())
         self.add_error_info(info)
 
     def add_error_info(self, info: ErrorInfo) -> None:
@@ -241,9 +298,9 @@ class Errors:
             if not self.is_typeshed_file(file):
                 for line in ignored_lines - self.used_ignored_lines[file]:
                     # Don't use report since add_error_info will ignore the error!
-                    info = ErrorInfo(self.import_context(), file, None, None,
-                                    line, -1, 'note', "unused 'type: ignore' comment",
-                                    False, False)
+                    info = ErrorInfo(self.import_context(), file, self.current_module(), None,
+                                     None, line, -1, 'note', "unused 'type: ignore' comment",
+                                     False, False)
                     self.error_info.append(info)
 
     def is_typeshed_file(self, file: str) -> bool:
@@ -297,7 +354,15 @@ class Errors:
             a.append(s)
         return a
 
-    def render_messages(self, errors: List[ErrorInfo]) -> List[Tuple[str, int, int,
+    def targets(self) -> Set[str]:
+        """Return a set of all targets that contain errors."""
+        # TODO: Make sure that either target is always defined or that not being defined
+        #       is okay for fine-grained incremental checking.
+        return set(info.target
+                   for info in self.error_info
+                   if info.target)
+
+    def render_messages(self, errors: List[ErrorInfo]) -> List[Tuple[Optional[str], int, int,
                                                                      str, str]]:
         """Translate the messages into a sequence of tuples.
 
@@ -306,12 +371,12 @@ class Errors:
         item may be None. If the line item is negative, the line
         number is not defined for the tuple.
         """
-        result = []  # type: List[Tuple[str, int, int, str, str]]
+        result = []  # type: List[Tuple[Optional[str], int, int, str, str]]
         # (path, line, column, severity, message)
 
         prev_import_context = []  # type: List[Tuple[str, int]]
-        prev_function_or_member = None  # type: str
-        prev_type = None  # type: str
+        prev_function_or_member = None  # type: Optional[str]
+        prev_type = None  # type: Optional[str]
 
         for e in errors:
             # Report module import context, if different from previous message.
@@ -395,10 +460,10 @@ class Errors:
             result.extend(a)
         return result
 
-    def remove_duplicates(self, errors: List[Tuple[str, int, int, str, str]]
-                          ) -> List[Tuple[str, int, int, str, str]]:
+    def remove_duplicates(self, errors: List[Tuple[Optional[str], int, int, str, str]]
+                          ) -> List[Tuple[Optional[str], int, int, str, str]]:
         """Remove duplicates from a sorted error list."""
-        res = []  # type: List[Tuple[str, int, int, str, str]]
+        res = []  # type: List[Tuple[Optional[str], int, int, str, str]]
         i = 0
         while i < len(errors):
             dup = False
@@ -472,6 +537,7 @@ def report_internal_error(err: Exception, file: str, line: int,
     # Print "INTERNAL ERROR" message.
     print('{}: error: INTERNAL ERROR --'.format(prefix),
           'please report a bug at https://github.com/python/mypy/issues',
+          'version: {}'.format(mypy_version),
           file=sys.stderr)
 
     # If requested, drop into pdb. This overrides show_tb.

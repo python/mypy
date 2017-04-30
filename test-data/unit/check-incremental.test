@@ -300,7 +300,7 @@ const = 3
 [stale mod3]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "module" has no attribute "mod4"
+tmp/mod1.py:3: error: "ModuleType" has no attribute "mod4"
 
 [case testIncrementalLongBrokenCascade]
 import mod1
@@ -335,7 +335,7 @@ const = 3
 [stale mod6]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "module" has no attribute "mod7"
+tmp/mod1.py:3: error: "ModuleType" has no attribute "mod7"
 
 [case testIncrementalNestedBrokenCascade]
 import mod1
@@ -361,7 +361,7 @@ const = 3
 [stale mod2.mod3]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "module" has no attribute "mod4"
+tmp/mod1.py:3: error: "ModuleType" has no attribute "mod4"
 
 [case testIncrementalNestedBrokenCascadeWithType1]
 import mod1, mod2.mod3.mod5
@@ -1906,6 +1906,23 @@ import a
 a.A().x = 0
 [out2]
 tmp/b.py:2: error: Cannot assign to class variable "x" via instance
+
+[case testSerializeTypedDict]
+import b
+reveal_type(b.x)
+y: b.A
+reveal_type(y)
+[file b.py]
+from mypy_extensions import TypedDict
+A = TypedDict('A', {'x': int, 'y': str})
+x: A
+[builtins fixtures/dict.pyi]
+[out1]
+main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+[out2]
+main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
 
 [case testQuickAndDirty1]
 # flags: --quick-and-dirty

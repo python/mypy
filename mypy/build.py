@@ -65,8 +65,9 @@ class BuildResult:
       errors:  List of error messages.
     """
 
-    def __init__(self, manager: 'BuildManager') -> None:
+    def __init__(self, manager: 'BuildManager', graph: Graph) -> None:
         self.manager = manager
+        self.graph = graph
         self.files = manager.modules
         self.types = manager.all_types
         self.errors = manager.errors.messages()
@@ -184,8 +185,8 @@ def build(sources: List[BuildSource],
                            )
 
     try:
-        dispatch(sources, manager)
-        return BuildResult(manager)
+        graph = dispatch(sources, manager)
+        return BuildResult(manager, graph)
     finally:
         manager.log("Build finished in %.3f seconds with %d modules, %d types, and %d errors" %
                     (time.time() - manager.start_time,
@@ -474,7 +475,7 @@ class BuildManager:
         return tree
 
     def module_not_found(self, path: str, line: int, id: str) -> None:
-        self.errors.set_file(path)
+        self.errors.set_file(path, id)
         stub_msg = "(Stub files are from https://github.com/python/typeshed)"
         if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
                 (self.options.python_version[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
@@ -859,8 +860,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Make sure directory for cache files exists
     parent = os.path.dirname(data_json)
-    if not os.path.isdir(parent):
-        os.makedirs(parent)
+    os.makedirs(parent, exist_ok=True)
     assert os.path.dirname(meta_json) == parent
 
     # Construct temp file names
@@ -876,6 +876,20 @@ def write_cache(id: str, path: str, tree: MypyFile,
         data_str = json.dumps(data, sort_keys=True)
     interface_hash = compute_hash(data_str)
 
+    # Obtain and set up metadata
+    try:
+        st = manager.get_stat(path)
+    except OSError as err:
+        manager.log("Cannot get stat for {}: {}".format(path, err))
+        # Remove apparently-invalid cache files.
+        for filename in [data_json, meta_json]:
+            try:
+                os.remove(filename)
+            except OSError:
+                pass
+        # Still return the interface hash we computed.
+        return interface_hash
+
     # Write data cache file, if applicable
     if old_interface_hash == interface_hash:
         # If the interface is unchanged, the cached data is guaranteed
@@ -890,8 +904,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
         os.replace(data_json_tmp, data_json)
         manager.trace("Interface for {} has changed".format(id))
 
-    # Obtain and set up metadata
-    st = manager.get_stat(path)  # TODO: Handle errors
     mtime = st.st_mtime
     size = st.st_size
     options = manager.options.clone_for_module(id)
@@ -1230,7 +1242,7 @@ class State:
         # so we'd need to cache the decision.
         manager = self.manager
         manager.errors.set_import_context([])
-        manager.errors.set_file(ancestor_for.xpath)
+        manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
         manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
                               severity='note', only_once=True)
         manager.errors.report(-1, -1,
@@ -1242,7 +1254,7 @@ class State:
         manager = self.manager
         save_import_context = manager.errors.import_context()
         manager.errors.set_import_context(self.caller_state.import_context)
-        manager.errors.set_file(self.caller_state.xpath)
+        manager.errors.set_file(self.caller_state.xpath, self.caller_state.id)
         line = self.caller_line
         manager.errors.report(line, 0,
                               "Import of '%s' ignored" % (id,),
@@ -1429,7 +1441,7 @@ class State:
                 continue
             if id == '':
                 # Must be from a relative import.
-                manager.errors.set_file(self.xpath)
+                manager.errors.set_file(self.xpath, self.id)
                 manager.errors.report(line, 0,
                                       "No parent module -- cannot perform relative import",
                                       blocker=True)
@@ -1523,42 +1535,43 @@ class State:
         return valid_refs
 
     def write_cache(self) -> None:
-        ok = self.path and self.options.incremental
-        if ok:
-            if self.manager.options.quick_and_dirty:
-                is_errors = self.manager.errors.is_errors_for_file(self.path)
-            else:
-                is_errors = self.manager.errors.is_errors()
-            ok = not is_errors
-        if ok:
-            dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
-            new_interface_hash = write_cache(
-                self.id, self.path, self.tree,
-                list(self.dependencies), list(self.suppressed), list(self.child_modules),
-                dep_prios, self.interface_hash,
-                self.manager)
-            if new_interface_hash == self.interface_hash:
-                self.manager.log("Cached module {} has same interface".format(self.id))
-            else:
-                self.manager.log("Cached module {} has changed interface".format(self.id))
-                self.mark_interface_stale()
-                self.interface_hash = new_interface_hash
+        if not self.path or self.options.cache_dir == os.devnull:
+            return
+        if self.manager.options.quick_and_dirty:
+            is_errors = self.manager.errors.is_errors_for_file(self.path)
+        else:
+            is_errors = self.manager.errors.is_errors()
+        if is_errors:
+            return
+        dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
+        new_interface_hash = write_cache(
+            self.id, self.path, self.tree,
+            list(self.dependencies), list(self.suppressed), list(self.child_modules),
+            dep_prios, self.interface_hash,
+            self.manager)
+        if new_interface_hash == self.interface_hash:
+            self.manager.log("Cached module {} has same interface".format(self.id))
+        else:
+            self.manager.log("Cached module {} has changed interface".format(self.id))
+            self.mark_interface_stale()
+            self.interface_hash = new_interface_hash
 
 
-def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
+def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     manager.log("Mypy version %s" % __version__)
     graph = load_graph(sources, manager)
     if not graph:
         print("Nothing to do?!")
-        return
+        return graph
     manager.log("Loaded graph with %d nodes" % len(graph))
     if manager.options.dump_graph:
         dump_graph(graph)
-        return
+        return graph
     process_graph(graph, manager)
     if manager.options.warn_unused_ignores:
         # TODO: This could also be a per-module option.
         manager.errors.generate_unused_ignore_notes()
+    return graph
 
 
 class NodeInfo:
@@ -1633,7 +1646,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
         except ModuleNotFound:
             continue
         if st.id in graph:
-            manager.errors.set_file(st.xpath)
+            manager.errors.set_file(st.xpath, st.id)
             manager.errors.report(-1, -1, "Duplicate module named '%s'" % st.id)
             manager.errors.raise_error()
         graph[st.id] = st

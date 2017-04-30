@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
-    Type, AnyType, TypeVisitor, UnboundType, ErrorType, NoneTyp, TypeVarType,
+    Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType,
     Instance, CallableType, TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType,
     DeletedType, UninhabitedType, TypeType
 )
@@ -25,21 +25,26 @@ def meet_types(s: Type, t: Type) -> Type:
     return t.accept(TypeMeetVisitor(s))
 
 
-def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
-    if s == t:
-        return s
-    if isinstance(s, UnionType):
-        return UnionType.make_simplified_union([meet_types(x, t) for x in s.items])
-    elif not is_overlapping_types(s, t, use_promotions=True):
+def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
+    """Return the declared type narrowed down to another type."""
+    if declared == narrowed:
+        return declared
+    if isinstance(declared, UnionType):
+        return UnionType.make_simplified_union([narrow_declared_type(x, narrowed)
+                                                for x in declared.items])
+    elif not is_overlapping_types(declared, narrowed, use_promotions=True):
         if experiments.STRICT_OPTIONAL:
             return UninhabitedType()
         else:
             return NoneTyp()
-    else:
-        if default_right:
-            return t
-        else:
-            return s
+    elif isinstance(narrowed, UnionType):
+        return UnionType.make_simplified_union([narrow_declared_type(declared, x)
+                                                for x in narrowed.items])
+    elif isinstance(narrowed, AnyType):
+        return narrowed
+    elif isinstance(declared, (Instance, TupleType)):
+        return meet_types(declared, narrowed)
+    return narrowed
 
 
 def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool:
@@ -124,9 +129,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         self.s = s
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        if isinstance(self.s, ErrorType):
-            return ErrorType()
-        elif isinstance(self.s, NoneTyp):
+        if isinstance(self.s, NoneTyp):
             if experiments.STRICT_OPTIONAL:
                 return AnyType()
             else:
@@ -135,12 +138,6 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return self.s
         else:
             return AnyType()
-
-    def visit_error_type(self, t: ErrorType) -> Type:
-        return t
-
-    def visit_type_list(self, t: TypeList) -> Type:
-        assert False, 'Not supported'
 
     def visit_any(self, t: AnyType) -> Type:
         return self.s
@@ -164,30 +161,21 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             else:
                 return UninhabitedType()
         else:
-            if not isinstance(self.s, ErrorType):
-                return t
-            else:
-                return ErrorType()
+            return t
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
-        if not isinstance(self.s, ErrorType):
-            return t
-        else:
-            return ErrorType()
+        return t
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
-        if not isinstance(self.s, ErrorType):
-            if isinstance(self.s, NoneTyp):
-                if experiments.STRICT_OPTIONAL:
-                    return t
-                else:
-                    return self.s
-            elif isinstance(self.s, UninhabitedType):
-                return self.s
-            else:
+        if isinstance(self.s, NoneTyp):
+            if experiments.STRICT_OPTIONAL:
                 return t
+            else:
+                return self.s
+        elif isinstance(self.s, UninhabitedType):
+            return self.s
         else:
-            return ErrorType()
+            return t
 
     def visit_erased_type(self, t: ErasedType) -> Type:
         return self.s
@@ -234,7 +222,13 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
-            return combine_similar_callables(t, self.s)
+            if is_equivalent(t, self.s):
+                return combine_similar_callables(t, self.s)
+            result = meet_similar_callables(t, self.s)
+            if isinstance(result.ret_type, UninhabitedType):
+                # Return a plain None or <uninhabited> instead of a weird function.
+                return self.default(self.s)
+            return result
         else:
             return self.default(self.s)
 
@@ -249,6 +243,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         elif (isinstance(self.s, Instance) and
               self.s.type.fullname() == 'builtins.tuple' and self.s.args):
             return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
+        elif (isinstance(self.s, Instance) and t.fallback.type == self.s.type):
+            # Uh oh, a broken named tuple type (https://github.com/python/mypy/issues/3016).
+            # Do something reasonable until that bug is fixed.
+            return t
         else:
             return self.default(self.s)
 
@@ -288,10 +286,26 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def default(self, typ: Type) -> Type:
         if isinstance(typ, UnboundType):
             return AnyType()
-        elif isinstance(typ, ErrorType):
-            return ErrorType()
         else:
             if experiments.STRICT_OPTIONAL:
                 return UninhabitedType()
             else:
                 return NoneTyp()
+
+
+def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
+    from mypy.join import join_types
+    arg_types = []  # type: List[Type]
+    for i in range(len(t.arg_types)):
+        arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
+    # TODO in combine_similar_callables also applies here (names and kinds)
+    # The fallback type can be either 'function' or 'type'. The result should have 'function' as
+    # fallback only if both operands have it as 'function'.
+    if t.fallback.type.fullname() != 'builtins.function':
+        fallback = t.fallback
+    else:
+        fallback = s.fallback
+    return t.copy_modified(arg_types=arg_types,
+                           ret_type=meet_types(t.ret_type, s.ret_type),
+                           fallback=fallback,
+                           name=None)
