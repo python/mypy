@@ -897,12 +897,17 @@ def write_cache(id: str, path: str, tree: MypyFile,
         data_mtime = os.path.getmtime(data_json)
         manager.trace("Interface for {} is unchanged".format(id))
     else:
-        with open(data_json_tmp, 'w') as f:
-            f.write(data_str)
-            f.write('\n')
-        data_mtime = os.path.getmtime(data_json_tmp)
-        os.replace(data_json_tmp, data_json)
         manager.trace("Interface for {} has changed".format(id))
+        try:
+            with open(data_json_tmp, 'w') as f:
+                f.write(data_str)
+                f.write('\n')
+            os.replace(data_json_tmp, data_json)
+            data_mtime = os.path.getmtime(data_json)
+        except os.error as err:
+            # Most likely the error is the replace() call
+            # (see https://github.com/python/mypy/issues/3215).
+            manager.log("Error writing data JSON file {}".format(data_json_tmp))
 
     mtime = st.st_mtime
     size = st.st_size
@@ -922,12 +927,17 @@ def write_cache(id: str, path: str, tree: MypyFile,
             }
 
     # Write meta cache file
-    with open(meta_json_tmp, 'w') as f:
-        if manager.options.debug_cache:
-            json.dump(meta, f, indent=2, sort_keys=True)
-        else:
-            json.dump(meta, f)
-    os.replace(meta_json_tmp, meta_json)
+    try:
+        with open(meta_json_tmp, 'w') as f:
+            if manager.options.debug_cache:
+                json.dump(meta, f, indent=2, sort_keys=True)
+            else:
+                json.dump(meta, f)
+        os.replace(meta_json_tmp, meta_json)
+    except os.error as err:
+        # Most likely the error is the replace() call
+        # (see https://github.com/python/mypy/issues/3215).
+        manager.log("Error writing meta JSON file {}".format(meta_json_tmp))
 
     return interface_hash
 
