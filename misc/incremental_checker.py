@@ -44,7 +44,7 @@ import sys
 import textwrap
 import time
 
-from mypy.util import delete_folder
+from util import delete_folder
 
 
 CACHE_PATH = ".incremental_checker_cache.json"

@@ -11,7 +11,7 @@ import subprocess
 import textwrap
 import time
 
-from mypy.util import delete_folder
+from util import delete_folder
 
 
 def print_offset(text: str, indent_length: int = 4) -> None:

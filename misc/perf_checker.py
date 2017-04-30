@@ -9,7 +9,7 @@ import subprocess
 import textwrap
 import time
 
-from mypy.util import delete_folder
+from util import delete_folder
 
 
 class Command:
