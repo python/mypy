@@ -39,12 +39,11 @@ import base64
 import json
 import os
 import random
+import shutil
 import subprocess
 import sys
 import textwrap
 import time
-
-from util import delete_folder
 
 
 CACHE_PATH = ".incremental_checker_cache.json"
@@ -58,6 +57,11 @@ def print_offset(text: str, indent_length: int = 4) -> None:
     print()
     print(textwrap.indent(text, ' ' * indent_length))
     print()
+
+
+def delete_folder(folder_path: str) -> None:
+    if os.path.exists(folder_path):
+        shutil.rmtree(folder_path)
 
 
 def execute(command: List[str], fail_on_error: bool = True) -> Tuple[str, str, int]:
