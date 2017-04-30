@@ -882,6 +882,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     except OSError as err:
         manager.log("Cannot get stat for {}: {}".format(path, err))
         # Remove apparently-invalid cache files.
+        # (This is purely an optimization.)
         for filename in [data_json, meta_json]:
             try:
                 os.remove(filename)
@@ -908,6 +909,15 @@ def write_cache(id: str, path: str, tree: MypyFile,
             # Most likely the error is the replace() call
             # (see https://github.com/python/mypy/issues/3215).
             manager.log("Error writing data JSON file {}".format(data_json_tmp))
+            # Let's continue without writing the meta file.  Analysis:
+            # If the replace failed, we've changed nothing except left
+            # behind an extraneous temporary file; if the replace
+            # worked but the getmtime() call failed, the meta file
+            # will be considered invalid on the next run because the
+            # data_mtime field won't match the data file's mtime.
+            # Both have the effect of slowing down the next run a
+            # little bit due to an out-of-date cache file.
+            return interface_hash
 
     mtime = st.st_mtime
     size = st.st_size
@@ -937,6 +947,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     except os.error as err:
         # Most likely the error is the replace() call
         # (see https://github.com/python/mypy/issues/3215).
+        # The next run will simply find the cache entry out of date.
         manager.log("Error writing meta JSON file {}".format(meta_json_tmp))
 
     return interface_hash
