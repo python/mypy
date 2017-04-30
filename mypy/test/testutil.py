@@ -74,14 +74,16 @@ class WindowsReplace(TestCase):
         """
         src, dest = self.prepare_src_dest(src_lock_duration, dest_lock_duration)
         util._replace(src, dest, timeout=timeout)
-        self.assertEqual(open(dest).read(), src, 'replace failed')
+        # Note that dest handle may still be open but reading from it is ok.
+        with open(dest) as f:
+            self.assertEqual(f.read(), src, 'replace failed')
 
     def test_no_locks(self) -> None:
         # No files locked.
         self.replace_ok(0, 0, self.timeout)
 
     def test_original_problem(self) -> None:
-        # Make sure we can reproduce the issue with our setup.
+        # Make sure we can reproduce https://github.com/python/mypy/issues/3215 with our setup.
         src, dest = self.prepare_src_dest(self.short_lock, 0)
         with self.assertRaises(PermissionError):
             os.replace(src, dest)
