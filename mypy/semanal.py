@@ -311,7 +311,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.globals = file_node.names
         if active_type:
-            self.enter_class(active_type.defn)
+            self.enter_class(active_type.defn.info)
             # TODO: Bind class type vars
 
         yield
@@ -635,18 +635,16 @@ class SemanticAnalyzer(NodeVisitor):
                 return
             named_tuple_info = self.analyze_namedtuple_classdef(defn)
             if named_tuple_info is not None:
-                # Temporarily clear the names dict so we don't get errors about duplicate names that
-                # were already set in build_namedtuple_typeinfo.
+                # Temporarily clear the names dict so we don't get errors about duplicate names
+                # that were already set in build_namedtuple_typeinfo.
                 nt_names = named_tuple_info.names
                 named_tuple_info.names = SymbolTable()
 
-                self.bind_class_type_vars(named_tuple_info)
                 self.enter_class(named_tuple_info)
 
-                defn.defs.accept(self)
+                yield True
 
                 self.leave_class()
-                self.unbind_class_type_vars()
 
                 # make sure we didn't use illegal names, then reset the names in the typeinfo
                 for prohibited in NAMEDTUPLE_PROHIBITED_NAMES:
@@ -669,7 +667,7 @@ class SemanticAnalyzer(NodeVisitor):
                 for decorator in defn.decorators:
                     self.analyze_class_decorator(defn, decorator)
 
-                self.enter_class(defn)
+                self.enter_class(defn.info)
                 yield True
 
                 self.calculate_abstract_status(defn.info)
