@@ -2446,7 +2446,6 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail('"decorated_type" takes exactly one argument', d)
                 else:
                     dec.var.type = self.expr_to_analyzed_type(d.args[0])
-                    print("Set type", dec.var.type)
             elif (refers_to_fullname(d, 'typing.decorated_type') or
                   refers_to_fullname(d, 'mypy_extensions.decorated_type')):
                 self.fail('"decorated_type" must have a type as an argument', d)
@@ -3659,7 +3658,6 @@ class ThirdPass(TraverserVisitor):
                 orig_sig = function_type(dec.func, self.builtin_type('function'))
                 sig.name = orig_sig.items()[0].name
                 dec.var.type = sig
-        print("Decorated var type of", dec.var.name(), "is now", dec.var.type)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.analyze(s.type)
