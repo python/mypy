@@ -1536,10 +1536,12 @@ class LambdaExpr(FuncItem, Expression):
     def name(self) -> str:
         return '<lambda>'
 
-    def expr(self) -> Optional[Expression]:
+    def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""
         ret = cast(ReturnStmt, self.body.body[-1])
-        return ret.expr
+        expr = ret.expr
+        assert expr is not None  # lambda can't have empty body
+        return expr
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_lambda_expr(self)
