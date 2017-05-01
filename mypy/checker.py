@@ -2220,7 +2220,7 @@ class TypeChecker(NodeVisitor[None]):
             # We have a declared type, check it.
             self.check_subtype(sig, e.var.type, e,
                                subtype_label="inferred decorated type",
-                               supertype_label="decalred decorated type")
+                               supertype_label="declared decorated type")
         else:
             e.var.type = sig
         e.var.type = set_callable_name(e.var.type, e.func)

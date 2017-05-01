@@ -776,7 +776,7 @@ T = TypeVar('T')
 
 def dec(f: T) -> T: pass
 
-@decorated_type(Callable[[int], str])  # E: Incompatible types (inferred decorated type Callable[[str], str], decalred decorated type Callable[[int], str])
+@decorated_type(Callable[[int], str])  # E: Incompatible types (inferred decorated type Callable[[str], str], declared decorated type Callable[[int], str])
 @dec
 def f(x: str) -> str: pass
 
