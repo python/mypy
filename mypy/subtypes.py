@@ -323,9 +323,11 @@ def is_callable_subtype(left: CallableType, right: CallableType,
 
     if left.variables:
         # Apply generic type variables away in left via type inference.
-        left = unify_generic_callable(left, right, ignore_return=ignore_return)
-        if left is None:
+        unified = unify_generic_callable(left, right, ignore_return=ignore_return)
+        if unified is None:
             return False
+        else:
+            left = unified
 
     # Check return types.
     if not ignore_return and not is_compat(left.ret_type, right.ret_type):
@@ -493,7 +495,7 @@ def are_args_compatible(
 
 
 def unify_generic_callable(type: CallableType, target: CallableType,
-                           ignore_return: bool) -> CallableType:
+                           ignore_return: bool) -> Optional[CallableType]:
     """Try to unify a generic callable type with another callable type.
 
     Return unified CallableType if successful; otherwise, return None.
