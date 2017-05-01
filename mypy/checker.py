@@ -2208,7 +2208,7 @@ class TypeChecker(NodeVisitor[None]):
         sig = self.function_type(e.func)  # type: Type
         # Process decorators from the inside out.
         for d in reversed(e.decorators):
-            if isinstance(d, NameExpr) and d.fullname == 'typing.overload':
+            if refers_to_fullname(d, 'typing.overload'):
                 self.fail('Single overload definition, multiple required', e)
                 continue
             dec = self.expr_checker.accept(d)
