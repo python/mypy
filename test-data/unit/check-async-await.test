@@ -95,7 +95,7 @@ async def f() -> int:
     x = await g()
     return x
 [out]
-main:6: error: Incompatible types in await (actual type Iterator[Any], expected type "Awaitable")
+main:6: error: Incompatible types in await (actual type "Iterator", expected type "Awaitable")
 
 [case testAwaitArgumentError]
 

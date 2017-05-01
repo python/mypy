@@ -399,7 +399,7 @@ f.write('x')
 f.write(b'x')
 f.foobar()
 [out]
-_program.py:4: error: IO[Any] has no attribute "foobar"
+_program.py:4: error: "IO" has no attribute "foobar"
 
 [case testGenericPatterns]
 from typing import Pattern
