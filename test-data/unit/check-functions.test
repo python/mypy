@@ -1446,6 +1446,19 @@ def a(f: F):
     f("foo") # E: Argument 1 has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
+[case testCallableParsingInInheritence]
+
+from collections import namedtuple
+class C(namedtuple('t', 'x')):
+    pass
+
+[case testCallableParsingSameName]
+from typing import Callable
+
+def Arg(x, y): pass
+
+F = Callable[[Arg(int, 'x')], int]  # E: Invalid argument constructor "__main__.Arg"
+
 [case testCallableParsingFromExpr]
 from typing import Callable, List
 from mypy_extensions import Arg, VarArg, KwArg
@@ -1466,7 +1479,7 @@ L = Callable[[Arg(name='x', type=int)], int] # ok
 # I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
 # M = Callable[[Arg(gnome='x', type=int)], int]   E: Invalid type alias   E: Unexpected keyword argument "gnome" for "Arg"
 N = Callable[[Arg(name=None, type=int)], int] # ok
-O = Callable[[List[Arg(int)]], int]  # E: Invalid type
+O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: Type expected within [...] # E: The type List[T] is not generic and not indexable
 P = Callable[[mypy_extensions.VarArg(int)], int] # ok
 Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "type"
 R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "name"
@@ -1549,7 +1562,7 @@ def g(f: Callable[[VarArg(), VarArg()], int]): pass # E: Var args may not appear
 def h(f: Callable[[KwArg(), KwArg()], int]): pass # E: You may only have one **kwargs argument
 def i(f: Callable[[DefaultArg(), int], int]): pass # E: Required positional args may not appear after default, named or var args
 def j(f: Callable[[NamedArg(Any, 'x'), DefaultArg(int, 'y')], int]): pass # E: Positional default args may not appear after named or var args
-
+def k(f: Callable[[KwArg(), NamedArg(Any, 'x')], int]): pass # E: A **kwargs argument must be the last argument
 [builtins fixtures/dict.pyi]
 
 [case testCallableDuplicateNames]
@@ -1583,6 +1596,32 @@ def a(f: Callable[[DefaultNamedArg(int, 'x')], int]):
     f()
     f(y=3) # E: Unexpected keyword argument "y"
     f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testCallableWithKwargs]
+from typing import Callable
+from mypy_extensions import KwArg
+
+def a(f: Callable[[KwArg(int)], int]):
+    f(x=4)
+    f(2) # E: Too many arguments
+    f()
+    f(y=3)
+    f(x=4, y=3, z=10)
+    f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+
+[case testCallableWithVarArg]
+from typing import Callable
+from mypy_extensions import VarArg
+
+def a(f: Callable[[VarArg(int)], int]):
+    f(x=4)  # E: Unexpected keyword argument "x"
+    f(2)
+    f()
+    f(3, 4, 5)
+    f("a")  # E: Argument 1 has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testCallableArgKindSubtyping]

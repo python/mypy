@@ -26,12 +26,14 @@ def _extract_argument_name(expr: Expression) -> Optional[str]:
         raise TypeTranslationError()
 
 
-def expr_to_unanalyzed_type(expr: Expression) -> Type:
+def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = None) -> Type:
     """Translate an expression to the corresponding type.
 
     The result is not semantically analyzed. It can be UnboundType or TypeList.
     Raise TypeTranslationError if the expression cannot represent a type.
     """
+    # The `parent` paremeter is used in recursive calls to provide context for
+    # understanding whether an CallableArgument is ok.
     if isinstance(expr, NameExpr):
         name = expr.name
         return UnboundType(name, line=expr.line, column=expr.column)
@@ -42,7 +44,7 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
         else:
             raise TypeTranslationError()
     elif isinstance(expr, IndexExpr):
-        base = expr_to_unanalyzed_type(expr.base)
+        base = expr_to_unanalyzed_type(expr.base, expr)
         if isinstance(base, UnboundType):
             if base.args:
                 raise TypeTranslationError()
@@ -50,14 +52,13 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
                 args = expr.index.items
             else:
                 args = [expr.index]
-            base.args = [expr_to_unanalyzed_type(arg) for arg in args]
+            base.args = [expr_to_unanalyzed_type(arg, expr) for arg in args]
             if not base.args:
                 base.empty_tuple_index = True
             return base
         else:
             raise TypeTranslationError()
-    elif isinstance(expr, CallExpr):
-
+    elif isinstance(expr, CallExpr) and isinstance(_parent, ListExpr):
         c = expr.callee
         names = []
         # Go through the dotted member expr chain to get the full arg
@@ -89,19 +90,19 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
                     if typ is not default_type:
                         # Two types
                         raise TypeTranslationError()
-                    typ = expr_to_unanalyzed_type(arg)
+                    typ = expr_to_unanalyzed_type(arg, expr)
                     continue
                 else:
                     raise TypeTranslationError()
             elif i == 0:
-                typ = expr_to_unanalyzed_type(arg)
+                typ = expr_to_unanalyzed_type(arg, expr)
             elif i == 1:
                 name = _extract_argument_name(arg)
             else:
                 raise TypeTranslationError()
         return CallableArgument(typ, name, arg_const, expr.line, expr.column)
     elif isinstance(expr, ListExpr):
-        return TypeList([expr_to_unanalyzed_type(t) for t in expr.items],
+        return TypeList([expr_to_unanalyzed_type(t, expr) for t in expr.items],
                         line=expr.line, column=expr.column)
     elif isinstance(expr, (StrExpr, BytesExpr, UnicodeExpr)):
         # Parse string literal type.

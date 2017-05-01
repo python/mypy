@@ -2470,6 +2470,9 @@ def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T
             is_var_arg = True
         elif kind == ARG_NAMED or kind == ARG_NAMED_OPT:
             seen_named = True
+            if is_kw_arg:
+                fail("A **kwargs argument must be the last argument", node)
+                break
         elif kind == ARG_STAR2:
             if is_kw_arg:
                 fail("You may only have one **kwargs argument", node)
