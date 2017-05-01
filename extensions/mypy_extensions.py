@@ -95,3 +95,8 @@ TypedDict.__doc__ = \
 
 # Return type that indicates a function does not return
 class NoReturn: pass
+
+def decorated_type(t):
+    """Declared the decorated type of a decorated item"""
+    # Return the identity function -- calling this should be a noop
+    return lambda __x: __x

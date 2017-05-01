@@ -733,6 +733,25 @@ a = None # type: A
 a.f()
 a.f(None) # E: Too many arguments for "f" of "A"
 
+[case testUntypedDecoratorWithDeclaredType]
+
+from typing import Callable
+from mypy_extensions import decorated_type
+
+def dec(f): pass
+
+@decorated_type(Callable[[int], str])
+@dec
+def f(): pass
+
+f("a")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+x: str = f(1)
+y: int = f(1)  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+reveal_type(f)  # E: Revealed type is 'def (builtins.int) -> builtins.str'
+
+[builtins fixtures/dict.pyi]
+
 [case testNestedDecorators]
 from typing import Any, Callable
 def dec1(f: Callable[[Any], None]) -> Callable[[], None]: pass

@@ -2216,8 +2216,14 @@ class TypeChecker(NodeVisitor[None]):
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e)
         sig = cast(FunctionLike, sig)
-        sig = set_callable_name(sig, e.func)
-        e.var.type = sig
+        if e.var.type is not None:
+            # We have a declared type, check it.
+            self.check_subtype(sig, e.var.type, e,
+                               subtype_label="inferred decorated type",
+                               supertype_label="decalred decorated type")
+        else:
+            e.var.type = sig
+        e.var.type = set_callable_name(e.var.type, e.func)
         e.var.is_ready = True
         if e.func.is_property:
             self.check_incompatible_property_override(e)

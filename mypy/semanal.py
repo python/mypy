@@ -2436,6 +2436,17 @@ class SemanticAnalyzer(NodeVisitor):
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType()
                 no_type_check = True
+            elif isinstance(d, CallExpr) and (
+                    refers_to_fullname(d.callee, 'typing.decorated_type')
+                    or refers_to_fullname(d.callee, 'mypy_extensions.decorated_type')):
+                removed.append(i)
+                if i != 0:
+                    self.fail('"decorated_type" must be the topmost decorator')
+                elif len(d.args) != 1:
+                    self.fail('"decorated_type" takes exactly one argument')
+                else:
+                    dec.var.type = self.expr_to_analyzed_type(d.args[0])
+                    print("Set type", dec.var.type)
         for i in reversed(removed):
             del dec.decorators[i]
         if not dec.is_overload or dec.var.is_property:
@@ -3600,6 +3611,9 @@ class ThirdPass(TraverserVisitor):
         engine just for decorators.
         """
         super().visit_decorator(dec)
+        if dec.var.type is not None:
+            # We already have a declared type for this decorated thing.
+            return
         if dec.var.is_property:
             # Decorators are expected to have a callable type (it's a little odd).
             if dec.func.type is None:
