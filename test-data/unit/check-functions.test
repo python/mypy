@@ -752,6 +752,75 @@ reveal_type(f)  # E: Revealed type is 'def (builtins.int) -> builtins.str'
 
 [builtins fixtures/dict.pyi]
 
+[case testDecoratorWithDeclaredTypeBare]
+
+from typing import Callable
+from mypy_extensions import decorated_type
+
+@decorated_type(Callable[[int], str])
+def f(x): pass
+
+f("a")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+x: str = f(1)
+y: int = f(1)  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+reveal_type(f)  # E: Revealed type is 'def (builtins.int) -> builtins.str'
+
+[builtins fixtures/dict.pyi]
+
+[case testDecoratorWithDeclaredTypeIncompatible]
+
+from typing import Callable, TypeVar
+from mypy_extensions import decorated_type
+
+T = TypeVar('T')
+
+def dec(f: T) -> T: pass
+
+@decorated_type(Callable[[int], str])  # E: Incompatible types (inferred decorated type Callable[[str], str], decalred decorated type Callable[[int], str])
+@dec
+def f(x: str) -> str: pass
+
+[builtins fixtures/dict.pyi]
+
+[case testDecoratorWithDeclaredTypeNotTop]
+
+from typing import Callable
+from mypy_extensions import decorated_type
+
+def dec(f): pass
+
+@dec
+@decorated_type(Callable[[int], str])  # E: "decorated_type" must be the topmost decorator
+def f(): pass
+
+[builtins fixtures/dict.pyi]
+
+[case testDecoratorWithDeclaredTypeNoArgs]
+
+from typing import Callable
+from mypy_extensions import decorated_type
+
+def dec(f): pass
+
+@decorated_type()  # E: "decorated_type" takes exactly one argument
+@dec
+def f(): pass
+
+[builtins fixtures/dict.pyi]
+
+[case testDecoratorWithDeclaredTypeNoCall]
+
+from typing import Callable
+from mypy_extensions import decorated_type
+
+def dec(f): pass
+
+@decorated_type  # E: "decorated_type" must have a type as an argument
+@dec
+def f(): pass
+
+[builtins fixtures/dict.pyi]
+
 [case testNestedDecorators]
 from typing import Any, Callable
 def dec1(f: Callable[[Any], None]) -> Callable[[], None]: pass
