@@ -117,15 +117,6 @@ obsolete_name_mapping = {
     'typing.typevar': 'typing.TypeVar',
 }
 
-# Rename objects placed in _importlib_modulespec due to circular imports
-module_rename_map = {
-    '_importlib_modulespec.ModuleType': 'types.ModuleType',
-    '_importlib_modulespec.ModuleSpec': 'importlib.machinery.ModuleSpec',
-    '_importlib_modulespec.Loader': 'importlib.abc.Loader'
-}
-
-rev_module_rename_map = {v: k for (k, v) in module_rename_map.items()}
-
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,
 # int is considered a subtype of float, even though there is no
@@ -191,7 +182,7 @@ class SemanticAnalyzer(NodeVisitor):
     # Nested block depths of scopes
     block_depth = None  # type: List[int]
     # TypeInfo of directly enclosing class (or None)
-    type = None  # type: TypeInfo
+    type = None  # type: Optional[TypeInfo]
     # Stack of outer classes (the second tuple item contains tvars).
     type_stack = None  # type: List[TypeInfo]
     # Type variables that are bound by the directly enclosing class
@@ -1754,10 +1745,10 @@ class SemanticAnalyzer(NodeVisitor):
         info.is_newtype = True
 
         # Add __init__ method
-        args = [Argument(Var('cls'), NoneTyp(), None, ARG_POS),
+        args = [Argument(Var('self'), NoneTyp(), None, ARG_POS),
                 self.make_argument('item', old_type)]
         signature = CallableType(
-            arg_types=[cast(Type, None), old_type],
+            arg_types=[Instance(info, []), old_type],
             arg_kinds=[arg.kind for arg in args],
             arg_names=['self', 'item'],
             ret_type=old_type,
@@ -3334,8 +3325,6 @@ class FirstPass(NodeVisitor):
 
         for d in defs:
             d.accept(self)
-            if isinstance(d, ClassDef):
-                d.info._fullname = module_rename_map.get(d.info._fullname, d.info._fullname)
 
         # Add implicit definition of literals/keywords to builtins, as we
         # cannot define a variable with them explicitly.

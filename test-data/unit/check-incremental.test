@@ -1926,6 +1926,23 @@ a.A().x = 0
 [out2]
 tmp/b.py:2: error: Cannot assign to class variable "x" via instance
 
+[case testSerializeTypedDict]
+import b
+reveal_type(b.x)
+y: b.A
+reveal_type(y)
+[file b.py]
+from mypy_extensions import TypedDict
+A = TypedDict('A', {'x': int, 'y': str})
+x: A
+[builtins fixtures/dict.pyi]
+[out1]
+main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+[out2]
+main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+
 [case testQuickAndDirty1]
 # flags: --quick-and-dirty
 import b, c

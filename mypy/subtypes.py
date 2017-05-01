@@ -136,11 +136,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and right.fallback.type.is_enum:
             return is_subtype(left, right.fallback)
         if isinstance(right, Instance):
-            for base in left.type.mro:
-                if base._promote and is_subtype(
-                        base._promote, self.right, self.check_type_parameter,
-                        ignore_pos_arg_names=self.ignore_pos_arg_names):
-                    return True
+            # NOTO: left.type.mro may be None in quick mode if there
+            # was an error somewhere.
+            if left.type.mro is not None:
+                for base in left.type.mro:
+                    if base._promote and is_subtype(
+                            base._promote, self.right, self.check_type_parameter,
+                            ignore_pos_arg_names=self.ignore_pos_arg_names):
+                        return True
             rname = right.type.fullname()
             if not left.type.has_base(rname) and rname != 'builtins.object':
                 return False
@@ -321,9 +324,11 @@ def is_callable_subtype(left: CallableType, right: CallableType,
 
     if left.variables:
         # Apply generic type variables away in left via type inference.
-        left = unify_generic_callable(left, right, ignore_return=ignore_return)
-        if left is None:
+        unified = unify_generic_callable(left, right, ignore_return=ignore_return)
+        if unified is None:
             return False
+        else:
+            left = unified
 
     # Check return types.
     if not ignore_return and not is_compat(left.ret_type, right.ret_type):
@@ -491,7 +496,7 @@ def are_args_compatible(
 
 
 def unify_generic_callable(type: CallableType, target: CallableType,
-                           ignore_return: bool) -> CallableType:
+                           ignore_return: bool) -> Optional[CallableType]:
     """Try to unify a generic callable type with another callable type.
 
     Return unified CallableType if successful; otherwise, return None.
