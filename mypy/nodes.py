@@ -2033,7 +2033,7 @@ class TypeInfo(SymbolNode):
                 return n
         return None
 
-    def __getitem__(self, name: str) -> Optional['SymbolTableNode']:
+    def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
         if n:
             return n

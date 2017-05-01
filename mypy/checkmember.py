@@ -381,7 +381,7 @@ def analyze_class_attribute_access(itype: Instance,
                                    builtin_type: Callable[[str], Instance],
                                    not_ready_callback: Callable[[str, Context], None],
                                    msg: MessageBuilder,
-                                   original_type: Type) -> Type:
+                                   original_type: Type) -> Optional[Type]:
     """original_type is the type of E in the expression E.var"""
     node = itype.type.get(name)
     if not node:
@@ -403,7 +403,9 @@ def analyze_class_attribute_access(itype: Instance,
     t = node.type
     if t:
         if isinstance(t, PartialType):
-            return handle_partial_attribute_type(t, is_lvalue, msg, node.node)
+            symnode = node.node
+            assert symnode is not None
+            return handle_partial_attribute_type(t, is_lvalue, msg, symnode)
         if not is_method and (isinstance(t, TypeVarType) or get_type_vars(t)):
             msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, context)
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
@@ -518,7 +520,7 @@ def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,
 
     if init_or_new.info.fullname() == 'builtins.dict':
         # Special signature!
-        special_sig = 'dict'
+        special_sig = 'dict'  # type: Optional[str]
     else:
         special_sig = None
 
@@ -630,6 +632,7 @@ def bind_self(method: F, original_type: Type = None) -> F:
                                        self_param_type, original_type)[0]
 
         def expand(target: Type) -> Type:
+            assert typearg is not None
             return expand_type(target, {func.variables[0].id: typearg})
 
         arg_types = [expand(x) for x in func.arg_types[1:]]
