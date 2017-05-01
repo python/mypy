@@ -520,7 +520,7 @@ def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,
     special_sig = None  # type: Optional[str]
     if init_or_new.info.fullname() == 'builtins.dict':
         # Special signature!
-        special_sig = 'dict'  # type: Optional[str]
+        special_sig = 'dict'
 
     if isinstance(signature, CallableType):
         return class_callable(signature, info, fallback, special_sig)
