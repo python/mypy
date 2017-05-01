@@ -106,6 +106,10 @@ finer control over which unit tests are run and how, you can run `py.test` or
     $ PYTHONPATH=$PWD scripts/myunit -m mypy.test.testlex -v '*backslash*'
     $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
 
+To limit the run of data file-based tests to specific data files, use `--casefile`:
+
+    # ./runtests.py pytest -v -a -v -a --casefile -a check-uni.* -a -k -a testcheck
+
 You can also run the type checker for manual testing without
 installing anything by setting up the Python module search path
 suitably (the lib-typing/3.2 path entry is not needed for Python 3.5
