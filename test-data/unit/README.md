@@ -101,14 +101,17 @@ finer control over which unit tests are run and how, you can run `py.test` or
 `scripts/myunit` directly, or pass inferior arguments via `-a`:
 
     $ py.test mypy/test/testcheck.py -v -k MethodCall
-    $ ./runtests.py -v 'pytest mypy/test/testcheck' -a -v -a -k -a MethodCall
+    $ ./runtests.py -v pytest -a -v -a -k -a testcheck -a -k -a MethodCall
 
     $ PYTHONPATH=$PWD scripts/myunit -m mypy.test.testlex -v '*backslash*'
     $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
 
+Option `-a` is passed to all inferior tests (pytest or myunit); to pass an
+option just to pytest, use `-p`.
+
 To limit the run of data file-based tests to specific data files, use `--casefile`:
 
-    # ./runtests.py pytest -v -a -v -a --casefile -a check-uni.* -a -k -a testcheck
+    # ./runtests.py pytest -v -p -v -p --casefile -p check-uni.* -p -k -p testcheck
 
 You can also run the type checker for manual testing without
 installing anything by setting up the Python module search path
