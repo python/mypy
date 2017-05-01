@@ -176,6 +176,13 @@ def analyze_member_access(name: str,
         item = None
         if isinstance(typ.item, Instance):
             item = typ.item
+        elif isinstance(typ.item, AnyType):
+            fallback = builtin_type('builtins.type')
+            ignore_messages = msg.copy()
+            ignore_messages.disable_errors()
+            return analyze_member_access(name, fallback, node, is_lvalue, is_super,
+                                     is_operator, builtin_type, not_ready_callback,
+                                     ignore_messages, original_type=original_type, chk=chk)
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound
@@ -415,7 +422,7 @@ def analyze_class_attribute_access(itype: Instance,
 
     if isinstance(node.node, MypyFile):
         # Reference to a module object.
-        return builtin_type('builtins.module')
+        return builtin_type('types.ModuleType')
 
     if is_decorated:
         # TODO: Return type of decorated function. This is quick hack to work around #998.
@@ -444,7 +451,7 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
     info = itype.type  # type: TypeInfo
     if isinstance(t, CallableType):
         # TODO: Should we propagate type variable values?
-        tvars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
+        tvars = [TypeVarDef(n, i + 1, [], builtin_type('builtins.object'), tv.variance)
                  for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         if is_classmethod:
             t = bind_self(t, original_type)
@@ -632,11 +639,14 @@ def bind_self(method: F, original_type: Type = None) -> F:
         arg_types = func.arg_types[1:]
         ret_type = func.ret_type
         variables = func.variables
+    if isinstance(original_type, CallableType) and original_type.is_type_obj():
+        original_type = TypeType(original_type.ret_type)
     res = func.copy_modified(arg_types=arg_types,
                              arg_kinds=func.arg_kinds[1:],
                              arg_names=func.arg_names[1:],
                              variables=variables,
-                             ret_type=ret_type)
+                             ret_type=ret_type,
+                             bound_args=[original_type])
     return cast(F, res)
 
 

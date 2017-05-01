@@ -9,7 +9,7 @@ from typing import (
 
 import mypy.strconv
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
-from mypy.util import short_type, IdMapper
+from mypy.util import short_type
 
 
 class Context:
@@ -39,12 +39,12 @@ LDEF = 0  # type: int
 GDEF = 1  # type: int
 MDEF = 2  # type: int
 MODULE_REF = 3  # type: int
-# Type variable declared using TypeVar(...) has kind UNBOUND_TVAR. It's not
-# valid as a type. A type variable is valid as a type (kind BOUND_TVAR) within
+# Type variable declared using TypeVar(...) has kind TVAR. It's not
+# valid as a type unless bound in a TypeVarScope.  That happens within:
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
-UNBOUND_TVAR = 4  # type: int
-BOUND_TVAR = 5  # type: int
+TVAR = 4  # type: int
+
 TYPE_ALIAS = 6  # type: int
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
@@ -65,8 +65,7 @@ node_kinds = {
     GDEF: 'Gdef',
     MDEF: 'Mdef',
     MODULE_REF: 'ModuleRef',
-    UNBOUND_TVAR: 'UnboundTvar',
-    BOUND_TVAR: 'Tvar',
+    TVAR: 'Tvar',
     TYPE_ALIAS: 'TypeAlias',
     UNBOUND_IMPORTED: 'UnboundImported',
 }
@@ -612,7 +611,6 @@ class Decorator(SymbolNode, Statement):
     func = None  # type: FuncDef                # Decorated function
     decorators = None  # type: List[Expression] # Decorators, at least one  # XXX Not true
     var = None  # type: Var                     # Represents the decorated function obj
-    type = None  # type: mypy.types.Type
     is_overload = False
 
     def __init__(self, func: FuncDef, decorators: List[Expression],
@@ -874,9 +872,9 @@ class OperatorAssignmentStmt(Statement):
 class WhileStmt(Statement):
     expr = None  # type: Expression
     body = None  # type: Block
-    else_body = None  # type: Block
+    else_body = None  # type: Optional[Block]
 
-    def __init__(self, expr: Expression, body: Block, else_body: Block) -> None:
+    def __init__(self, expr: Expression, body: Block, else_body: Optional[Block]) -> None:
         self.expr = expr
         self.body = body
         self.else_body = else_body
@@ -893,11 +891,11 @@ class ForStmt(Statement):
     # Expression to iterate
     expr = None  # type: Expression
     body = None  # type: Block
-    else_body = None  # type: Block
+    else_body = None  # type: Optional[Block]
     is_async = False  # True if `async for ...` (PEP 492, Python 3.5)
 
     def __init__(self, index: Lvalue, expr: Expression, body: Block,
-                 else_body: Block, index_type: 'mypy.types.Type' = None) -> None:
+                 else_body: Optional[Block], index_type: 'mypy.types.Type' = None) -> None:
         self.index = index
         self.index_type = index_type
         self.expr = expr
@@ -958,10 +956,10 @@ class PassStmt(Statement):
 class IfStmt(Statement):
     expr = None  # type: List[Expression]
     body = None  # type: List[Block]
-    else_body = None  # type: Block
+    else_body = None  # type: Optional[Block]
 
     def __init__(self, expr: List[Expression], body: List[Block],
-                 else_body: Block) -> None:
+                 else_body: Optional[Block]) -> None:
         self.expr = expr
         self.body = body
         self.else_body = else_body
@@ -971,10 +969,11 @@ class IfStmt(Statement):
 
 
 class RaiseStmt(Statement):
-    expr = None  # type: Expression
-    from_expr = None  # type: Expression
+    # Plain 'raise' is a valid statement.
+    expr = None  # type: Optional[Expression]
+    from_expr = None  # type: Optional[Expression]
 
-    def __init__(self, expr: Expression, from_expr: Expression = None) -> None:
+    def __init__(self, expr: Optional[Expression], from_expr: Optional[Expression]) -> None:
         self.expr = expr
         self.from_expr = from_expr
 
@@ -984,15 +983,17 @@ class RaiseStmt(Statement):
 
 class TryStmt(Statement):
     body = None  # type: Block                # Try body
-    types = None  # type: List[Expression]    # Except type expressions
-    vars = None  # type: List[NameExpr]     # Except variable names
+    # Plain 'except:' also possible
+    types = None  # type: List[Optional[Expression]]    # Except type expressions
+    vars = None  # type: List[Optional[NameExpr]]     # Except variable names
     handlers = None  # type: List[Block]      # Except bodies
-    else_body = None  # type: Block
-    finally_body = None  # type: Block
+    else_body = None  # type: Optional[Block]
+    finally_body = None  # type: Optional[Block]
 
-    def __init__(self, body: Block, vars: List['NameExpr'], types: List[Expression],
-                 handlers: List[Block], else_body: Block,
-                 finally_body: Block) -> None:
+    def __init__(self, body: Block, vars: List[Optional['NameExpr']],
+                 types: List[Optional[Expression]],
+                 handlers: List[Block], else_body: Optional[Block],
+                 finally_body: Optional[Block]) -> None:
         self.body = body
         self.vars = vars
         self.types = types
@@ -1006,13 +1007,13 @@ class TryStmt(Statement):
 
 class WithStmt(Statement):
     expr = None  # type: List[Expression]
-    target = None  # type: List[Lvalue]
+    target = None  # type: List[Optional[Lvalue]]
     # Type given by type comments for target, can be None
     target_type = None  # type: mypy.types.Type
     body = None  # type: Block
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
-    def __init__(self, expr: List[Expression], target: List[Lvalue],
+    def __init__(self, expr: List[Expression], target: List[Optional[Lvalue]],
                  body: Block, target_type: 'mypy.types.Type' = None) -> None:
         self.expr = expr
         self.target = target
@@ -1353,7 +1354,7 @@ class UnaryExpr(Expression):
     op = ''
     expr = None  # type: Expression
     # Inferred operator method type
-    method_type = None  # type: mypy.types.Type
+    method_type = None  # type: Optional[mypy.types.Type]
 
     def __init__(self, op: str, expr: Expression) -> None:
         self.op = op
@@ -1435,7 +1436,7 @@ class OpExpr(Expression):
     left = None  # type: Expression
     right = None  # type: Expression
     # Inferred type for the operator method type (when relevant).
-    method_type = None  # type: mypy.types.Type
+    method_type = None  # type: Optional[mypy.types.Type]
 
     def __init__(self, op: str, left: Expression, right: Expression) -> None:
         self.op = op
@@ -1454,7 +1455,7 @@ class ComparisonExpr(Expression):
     operators = None  # type: List[str]
     operands = None  # type: List[Expression]
     # Inferred type for the operator methods (when relevant; None for 'is').
-    method_types = None  # type: List[mypy.types.Type]
+    method_types = None  # type: List[Optional[mypy.types.Type]]
 
     def __init__(self, operators: List[str], operands: List[Expression]) -> None:
         self.operators = operators
@@ -1988,9 +1989,6 @@ class TypeInfo(SymbolNode):
     # Is this a newtype type?
     is_newtype = False
 
-    # Alternative to fullname() for 'anonymous' classes.
-    alt_fullname = None  # type: Optional[str]
-
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype'
@@ -2171,8 +2169,7 @@ class TypeInfo(SymbolNode):
         data = {'.class': 'TypeInfo',
                 'module_name': self.module_name,
                 'fullname': self.fullname(),
-                'alt_fullname': self.alt_fullname,
-                'names': self.names.serialize(self.alt_fullname or self.fullname()),
+                'names': self.names.serialize(self.fullname()),
                 'defn': self.defn.serialize(),
                 'abstract_attributes': self.abstract_attributes,
                 'type_vars': self.type_vars,
@@ -2194,7 +2191,6 @@ class TypeInfo(SymbolNode):
         module_name = data['module_name']
         ti = TypeInfo(names, defn, module_name)
         ti._fullname = data['fullname']
-        ti.alt_fullname = data['alt_fullname']
         # TODO: Is there a reason to reconstruct ti.subtypes?
         ti.abstract_attributes = data['abstract_attributes']
         ti.type_vars = data['type_vars']
@@ -2212,13 +2208,29 @@ class TypeInfo(SymbolNode):
         return ti
 
 
+class FakeInfo(TypeInfo):
+    # types.py defines a single instance of this class, called types.NOT_READY.
+    # This instance is used as a temporary placeholder in the process of de-serialization
+    # of 'Instance' types. The de-serialization happens in two steps: In the first step,
+    # Instance.type is set to NOT_READY. In the second step (in fixup.py) it is replaced by
+    # an actual TypeInfo. If you see the assertion error below, then most probably something
+    # went wrong during the second step and an 'Instance' that raised this error was not fixed.
+    # Note:
+    # 'None' is not used as a dummy value for two reasons:
+    # 1. This will require around 80-100 asserts to make 'mypy --strict-optional mypy'
+    #    pass cleanly.
+    # 2. If NOT_READY value is accidentally used somewhere, it will be obvious where the value
+    #    is from, whereas a 'None' value could come from anywhere.
+    def __getattr__(self, attr: str) -> None:
+        raise AssertionError('De-serialization failure: TypeInfo not fixed')
+
+
 class SymbolTableNode:
     # Kind of node. Possible values:
     #  - LDEF: local definition (of any kind)
     #  - GDEF: global (module-level) definition
     #  - MDEF: class member definition
-    #  - UNBOUND_TVAR: TypeVar(...) definition, not bound
-    #  - TVAR: type variable in a bound scope (generic function / generic clas)
+    #  - TVAR: TypeVar(...) definition
     #  - MODULE_REF: reference to a module
     #  - TYPE_ALIAS: type alias
     #  - UNBOUND_IMPORTED: temporary kind for imported names
@@ -2226,8 +2238,6 @@ class SymbolTableNode:
     # AST node of definition (FuncDef/Var/TypeInfo/Decorator/TypeVarExpr,
     # or None for a bound type variable).
     node = None  # type: Optional[SymbolNode]
-    # Type variable definition (for bound type variables only)
-    tvar_def = None  # type: Optional[mypy.types.TypeVarDef]
     # Module id (e.g. "foo.bar") or None
     mod_id = ''
     # If this not None, override the type of the 'node' attribute.
@@ -2243,13 +2253,11 @@ class SymbolTableNode:
 
     def __init__(self, kind: int, node: Optional[SymbolNode], mod_id: str = None,
                  typ: 'mypy.types.Type' = None,
-                 tvar_def: 'mypy.types.TypeVarDef' = None,
                  module_public: bool = True, normalized: bool = False) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
         self.mod_id = mod_id
-        self.tvar_def = tvar_def
         self.module_public = module_public
         self.normalized = normalized
 
@@ -2293,8 +2301,6 @@ class SymbolTableNode:
         data = {'.class': 'SymbolTableNode',
                 'kind': node_kinds[self.kind],
                 }  # type: JsonDict
-        if self.tvar_def:
-            data['tvar_def'] = self.tvar_def.serialize()
         if not self.module_public:
             data['module_public'] = False
         if self.kind == MODULE_REF:
@@ -2303,14 +2309,7 @@ class SymbolTableNode:
         else:
             if self.node is not None:
                 if prefix is not None:
-                    # Check whether this is an alias for another object.
-                    # If the object's canonical full name differs from
-                    # the full name computed from prefix and name,
-                    # it's an alias, and we serialize it as a cross ref.
-                    if isinstance(self.node, TypeInfo):
-                        fullname = self.node.alt_fullname or self.node.fullname()
-                    else:
-                        fullname = self.node.fullname()
+                    fullname = self.node.fullname()
                     if (fullname is not None and '.' in fullname and
                             fullname != prefix + '.' + name):
                         data['cross_ref'] = fullname
@@ -2336,8 +2335,6 @@ class SymbolTableNode:
             if 'type_override' in data:
                 typ = mypy.types.deserialize_type(data['type_override'])
             stnode = SymbolTableNode(kind, node, typ=typ)
-        if 'tvar_def' in data:
-            stnode.tvar_def = mypy.types.TypeVarDef.deserialize(data['tvar_def'])
         if 'module_public' in data:
             stnode.module_public = data['module_public']
         return stnode

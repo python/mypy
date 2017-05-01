@@ -122,6 +122,12 @@ When you're puzzled or when things are complicated
    # dynamic to write a type for.
    x = mystery_function()  # type: Any
 
+   # This is how to deal with varargs.
+   # This makes each positional arg and each keyword arg a 'str'.
+   def call(self, *args: str, **kwargs: str) -> str:
+            request = make_request(*args, **kwargs)
+            return self.do_api_query(request)
+
    # Use `ignore` to suppress type-checking on a given line, when your
    # code confuses mypy or runs into an outright bug in mypy.
    # Good practice is to comment every `ignore` with a bug link

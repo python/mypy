@@ -16,6 +16,7 @@ class tuple(Sequence[Tco], Generic[Tco]):
 class function: pass
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
+def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass
 
 @builtinclass
 class int:

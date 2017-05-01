@@ -488,7 +488,10 @@ class MessageBuilder:
         target = ''
         if callee.name:
             name = callee.name
-            base = extract_type(name)
+            if callee.bound_args and callee.bound_args[0] is not None:
+                base = self.format(callee.bound_args[0])
+            else:
+                base = extract_type(name)
 
             for op, method in op_methods.items():
                 for variant in method, '__r' + method[2:]:
@@ -880,6 +883,9 @@ class MessageBuilder:
                                       ) -> None:
         self.fail('\'{}\' is not a valid item name; expected one of {}'.format(
             item_name, format_item_name_list(typ.items.keys())), context)
+
+    def type_arguments_not_allowed(self, context: Context) -> None:
+        self.fail('Parameterized generics cannot be used with class or instance checks', context)
 
 
 def capitalize(s: str) -> str:

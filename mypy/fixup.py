@@ -11,7 +11,7 @@ from mypy.nodes import (
 from mypy.types import (
     CallableType, EllipsisType, Instance, Overloaded, TupleType, TypedDictType,
     TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,
-    TypeType
+    TypeType, NOT_READY
 )
 from mypy.visitor import NodeVisitor
 
@@ -64,6 +64,8 @@ class NodeFixer(NodeVisitor[None]):
                 info._promote.accept(self.type_fixer)
             if info.tuple_type:
                 info.tuple_type.accept(self.type_fixer)
+            if info.typeddict_type:
+                info.typeddict_type.accept(self.type_fixer)
         finally:
             self.current_info = save_info
 
@@ -154,7 +156,7 @@ class TypeFixer(TypeVisitor[None]):
             # TODO: Is this needed or redundant?
             # Also fix up the bases, just in case.
             for base in inst.type.bases:
-                if base.type is None:
+                if base.type is NOT_READY:
                     base.accept(self)
         for a in inst.args:
             a.accept(self)
@@ -176,9 +178,6 @@ class TypeFixer(TypeVisitor[None]):
                 for val in v.values:
                     val.accept(self)
             v.upper_bound.accept(self)
-
-    def visit_ellipsis_type(self, e: EllipsisType) -> None:
-        pass  # Nothing to descend into.
 
     def visit_overloaded(self, t: Overloaded) -> None:
         for ct in t.items():
@@ -210,10 +209,6 @@ class TypeFixer(TypeVisitor[None]):
         if tdt.fallback is not None:
             tdt.fallback.accept(self)
 
-    def visit_type_list(self, tl: TypeList) -> None:
-        for t in tl.items:
-            t.accept(self)
-
     def visit_type_var(self, tvt: TypeVarType) -> None:
         if tvt.values:
             for vt in tvt.values:
@@ -238,7 +233,7 @@ class TypeFixer(TypeVisitor[None]):
 
 
 def lookup_qualified(modules: Dict[str, MypyFile], name: str,
-                     quick_and_dirty: bool) -> SymbolNode:
+                     quick_and_dirty: bool) -> Optional[SymbolNode]:
     stnode = lookup_qualified_stnode(modules, name, quick_and_dirty)
     if stnode is None:
         return None
