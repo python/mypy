@@ -25,7 +25,7 @@ class Constraint:
     It can be either T <: type or T :> type (T is a type variable).
     """
 
-    type_var = None  # type: TypeVarId # Type variable id
+    type_var = None  # type: TypeVarId
     op = 0           # SUBTYPE_OF or SUPERTYPE_OF
     target = None    # type: Type
 

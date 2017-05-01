@@ -50,9 +50,9 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
         # Parse string literal type.
         try:
             result = parse_type_comment(expr.value, expr.line, None)
+            assert result is not None
         except SyntaxError:
             raise TypeTranslationError()
-        assert result is not None
         return result
     elif isinstance(expr, EllipsisExpr):
         return EllipsisType(expr.line)

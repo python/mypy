@@ -517,12 +517,10 @@ def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,
     # We need to first map B's __init__ to the type (List[T]) -> None.
     signature = cast(FunctionLike,
                      map_type_from_supertype(signature, info, init_or_new.info))
-
+    special_sig = None  # type: Optional[str]
     if init_or_new.info.fullname() == 'builtins.dict':
         # Special signature!
         special_sig = 'dict'  # type: Optional[str]
-    else:
-        special_sig = None
 
     if isinstance(signature, CallableType):
         return class_callable(signature, info, fallback, special_sig)
