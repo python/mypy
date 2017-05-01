@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List, Optional
+from typing import List, Optional, cast, Tuple
 
 from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
@@ -255,10 +255,11 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             for (_, l, r) in self.s.zip(t):
                 if not is_equivalent(l, r):
                     return self.default(self.s)
-            items = OrderedDict([
-                (item_name, s_item_type if s_item_type is not None else t_item_type)
-                for (item_name, s_item_type, t_item_type) in self.s.zipall(t)
-            ])
+            item_list = cast(List[Tuple[str, Type]],
+                # at least one of s_item_type and t_item_type is not None
+                [(item_name, s_item_type if s_item_type is not None else t_item_type)
+                for (item_name, s_item_type, t_item_type) in self.s.zipall(t)])
+            items = OrderedDict(item_list)
             mapping_value_type = join_type_list(list(items.values()))
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
             return TypedDictType(items, fallback)
