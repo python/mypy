@@ -3617,6 +3617,10 @@ class ThirdPass(TraverserVisitor):
         if dec.var.type is not None:
             # We already have a declared type for this decorated thing.
             return
+        if dec.func.is_awaitable_coroutine:
+            # The type here will be fixed up by checker.py, but we can't infer
+            # anything here.
+            return
         if dec.var.is_property:
             # Decorators are expected to have a callable type (it's a little odd).
             if dec.func.type is None:
@@ -3655,6 +3659,7 @@ class ThirdPass(TraverserVisitor):
                 orig_sig = function_type(dec.func, self.builtin_type('function'))
                 sig.name = orig_sig.items()[0].name
                 dec.var.type = sig
+        print("Decorated var type of", dec.var.name(), "is now", dec.var.type)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.analyze(s.type)
