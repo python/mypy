@@ -256,7 +256,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 if not is_equivalent(l, r):
                     return self.default(self.s)
             items = OrderedDict([
-                (item_name, s_item_type or t_item_type)
+                (item_name, s_item_type if s_item_type is not None else t_item_type)
                 for (item_name, s_item_type, t_item_type) in self.s.zipall(t)
             ])
             mapping_value_type = join_type_list(list(items.values()))

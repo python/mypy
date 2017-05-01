@@ -950,7 +950,7 @@ class TypedDictType(Type):
                 yield (item_name, left_item_type, right_item_type)
 
     def zipall(self, right: 'TypedDictType') \
-            -> Iterable[Tuple[str, Optional[Type], Optional[Type]]]:
+            -> Iterable[Tuple[str, Optional[Type], Type]]:
         left = self
         for (item_name, left_item_type) in left.items.items():
             right_item_type = right.items.get(item_name)
