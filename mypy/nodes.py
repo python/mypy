@@ -2226,6 +2226,7 @@ class FakeInfo(TypeInfo):
     #    is from, whereas a 'None' value could come from anywhere.
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         pass
+
     def __getattribute__(self, attr: str) -> None:
         raise AssertionError('De-serialization failure: TypeInfo not fixed')
 
