@@ -1737,7 +1737,7 @@ def flatten_nested_unions(types: Iterable[Type]) -> List[Type]:
     flat_items = []  # type: List[Type]
     for tp in types:
         if isinstance(tp, UnionType):
-            flat_items.extend(flatten_types(tp.items))
+            flat_items.extend(flatten_nested_unions(tp.items))
         else:
             flat_items.append(tp)
     return flat_items
