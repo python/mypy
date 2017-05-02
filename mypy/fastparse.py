@@ -97,7 +97,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     return tree
 
 
-def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -> Optional[Type]:
+def parse_type_comment(type_comment: str, line: int, errors: Errors) -> Optional[Type]:
     try:
         typ = ast3.parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:

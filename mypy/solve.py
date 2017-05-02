@@ -1,6 +1,6 @@
 """Type inference constraint solving"""
 
-from typing import List, Dict, Optional
+from typing import List, Dict
 from collections import defaultdict
 
 from mypy.types import Type, NoneTyp, AnyType, UninhabitedType, TypeVarId
@@ -13,7 +13,7 @@ from mypy import experiments
 
 
 def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
-                      strict: bool =True) -> List[Optional[Type]]:
+                      strict: bool =True) -> List[Type]:
     """Solve type constraints.
 
     Return the best type(s) for type variables; each type can be None if the value of the variable
@@ -28,13 +28,12 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
     for con in constraints:
         cmap[con.type_var].append(con)
 
-    res = []  # type: List[Optional[Type]]
+    res = []  # type: List[Type]
 
     # Solve each type variable separately.
     for tvar in vars:
-        bottom = None  # type: Optional[Type]
-        top = None  # type: Optional[Type]
-        candidate = None  # type: Optional[Type]
+        bottom = None  # type: Type
+        top = None  # type: Type
 
         # Process each constraint separately, and calculate the lower and upper
         # bounds based on constraints. Note that we assume that the constraint
