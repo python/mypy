@@ -40,4 +40,5 @@ class function: pass
 class float: pass
 class bool: pass
 
+class ellipsis: pass
 class BaseException: pass

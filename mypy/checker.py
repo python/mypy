@@ -181,6 +181,8 @@ class TypeChecker(NodeVisitor[None]):
 
         all_ = self.globals.get('__all__')
         if all_ is not None and all_.type is not None:
+            all_node = all_.node
+            assert all_node is not None
             seq_str = self.named_generic_type('typing.Sequence',
                                               [self.named_type('builtins.str')])
             if self.options.python_version[0] < 3:
@@ -189,7 +191,7 @@ class TypeChecker(NodeVisitor[None]):
             if not is_subtype(all_.type, seq_str):
                 str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
-                          all_.node)
+                          all_node)
 
     def check_second_pass(self, todo: List[DeferredNode] = None) -> bool:
         """Run second or following pass of type checking.
@@ -347,12 +349,13 @@ class TypeChecker(NodeVisitor[None]):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
                 impl_type_subst = impl_type
                 if impl_type.variables:
-                    impl_type_subst = unify_generic_callable(impl_type, sig1, ignore_return=False)
-                    if impl_type_subst is None:
+                    unified = unify_generic_callable(impl_type, sig1, ignore_return=False)
+                    if unified is None:
                         self.fail("Type variable mismatch between " +
                                   "overload signature {} and implementation".format(i + 1),
                                   defn.impl)
                         return
+                    impl_type_subst = unified
                 if not is_subtype(sig1.ret_type, impl_type_subst.ret_type):
                     self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
@@ -594,7 +597,7 @@ class TypeChecker(NodeVisitor[None]):
                             not isinstance(typ.ret_type, NoneTyp) and
                             not self.dynamic_funcs[-1]):
                         self.fail(messages.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
-                                  item.type)
+                                  item)
 
                     show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
                     if self.options.disallow_untyped_defs and show_untyped:
@@ -1260,7 +1263,7 @@ class TypeChecker(NodeVisitor[None]):
                 self.infer_variable_type(inferred, lvalue, self.expr_checker.accept(rvalue),
                                          rvalue)
 
-    def check_compatibility_all_supers(self, lvalue: NameExpr, lvalue_type: Type,
+    def check_compatibility_all_supers(self, lvalue: NameExpr, lvalue_type: Optional[Type],
                                        rvalue: Expression) -> bool:
         lvalue_node = lvalue.node
 
@@ -1303,8 +1306,9 @@ class TypeChecker(NodeVisitor[None]):
                     break
         return False
 
-    def check_compatibility_super(self, lvalue: NameExpr, lvalue_type: Type, rvalue: Expression,
-                                  base: TypeInfo, base_type: Type, base_node: Node) -> bool:
+    def check_compatibility_super(self, lvalue: NameExpr, lvalue_type: Optional[Type],
+                                  rvalue: Expression, base: TypeInfo, base_type: Type,
+                                  base_node: Node) -> bool:
         lvalue_node = lvalue.node
         assert isinstance(lvalue_node, Var)
 
@@ -1577,10 +1581,12 @@ class TypeChecker(NodeVisitor[None]):
         else:
             self.msg.type_not_iterable(rvalue_type, context)
 
-    def check_lvalue(self, lvalue: Lvalue) -> Tuple[Type, IndexExpr, Var]:
-        lvalue_type = None  # type: Type
-        index_lvalue = None  # type: IndexExpr
-        inferred = None  # type: Var
+    def check_lvalue(self, lvalue: Lvalue) -> Tuple[Optional[Type],
+                                                    Optional[IndexExpr],
+                                                    Optional[Var]]:
+        lvalue_type = None  # type: Optional[Type]
+        index_lvalue = None  # type: Optional[IndexExpr]
+        inferred = None  # type: Optional[Var]
 
         if self.is_definition(lvalue):
             if isinstance(lvalue, NameExpr):
@@ -2211,7 +2217,7 @@ class TypeChecker(NodeVisitor[None]):
         sig = self.function_type(e.func)  # type: Type
         # Process decorators from the inside out.
         for d in reversed(e.decorators):
-            if isinstance(d, NameExpr) and d.fullname == 'typing.overload':
+            if refers_to_fullname(d, 'typing.overload'):
                 self.fail('Single overload definition, multiple required', e)
                 continue
             dec = self.expr_checker.accept(d)
@@ -2790,8 +2796,8 @@ def find_isinstance_check(node: Expression,
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']
         if any(is_literal_none(n) for n in node.operands) and (is_not or node.operators == ['is']):
-            if_vars = {}  # type: Dict[Expression, Type]
-            else_vars = {}  # type: Dict[Expression, Type]
+            if_vars = {}  # type: TypeMap
+            else_vars = {}  # type: TypeMap
             for expr in node.operands:
                 if expr.literal == LITERAL_TYPE and not is_literal_none(expr) and expr in type_map:
                     # This should only be true at most once: there should be
@@ -2869,7 +2875,8 @@ def flatten_types(t: Type) -> List[Type]:
         return [t]
 
 
-def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> List[TypeRange]:
+def get_isinstance_type(expr: Expression,
+                        type_map: Dict[Expression, Type]) -> Optional[List[TypeRange]]:
     all_types = flatten_types(type_map[expr])
     types = []  # type: List[TypeRange]
     for typ in all_types:

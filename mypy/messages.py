@@ -93,7 +93,7 @@ ARG_CONSTRUCTOR_NAMES = {
     ARG_OPT: "DefaultArg",
     ARG_NAMED: "NamedArg",
     ARG_NAMED_OPT: "DefaultNamedArg",
-    ARG_STAR: "StarArg",
+    ARG_STAR: "VarArg",
     ARG_STAR2: "KwArg",
 }
 
@@ -214,15 +214,15 @@ class MessageBuilder:
                                     verbosity = max(verbosity - 1, 0))))
                     else:
                         constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
-                        if arg_kind in (ARG_STAR, ARG_STAR2):
+                        if arg_kind in (ARG_STAR, ARG_STAR2) or arg_name is None:
                             arg_strings.append("{}({})".format(
                                 constructor,
                                 strip_quotes(self.format(arg_type))))
                         else:
-                            arg_strings.append("{}('{}', {})".format(
+                            arg_strings.append("{}({}, {})".format(
                                 constructor,
-                                arg_name,
-                                strip_quotes(self.format(arg_type))))
+                                strip_quotes(self.format(arg_type)),
+                                repr(arg_name)))
 
                 return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
             else:

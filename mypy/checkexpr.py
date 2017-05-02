@@ -123,7 +123,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.narrow_type_from_binder(e, result)
 
     def analyze_ref_expr(self, e: RefExpr, lvalue: bool = False) -> Type:
-        result = None  # type: Type
+        result = None  # type: Optional[Type]
         node = e.node
         if isinstance(node, Var):
             # Variable reference.
@@ -157,6 +157,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
             result = AnyType()
+        assert result is not None
         return result
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
@@ -482,7 +483,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # i.e. its constructor (a poor approximation for reality,
             # but better than AnyType...), but replace the return type
             # with typevar.
-            callee = self.analyze_type_type_callee(item.upper_bound, context)
+            callee = self.analyze_type_type_callee(item.upper_bound,
+                                                   context)  # type: Optional[Type]
             if isinstance(callee, CallableType):
                 if callee.is_generic():
                     callee = None
