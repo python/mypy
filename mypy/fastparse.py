@@ -19,10 +19,12 @@ from mypy.nodes import (
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
+    check_arg_names,
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
+    CallableArgument,
 )
 from mypy import defaults
 from mypy import experiments
@@ -444,24 +446,12 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             new_args.append(make_argument(args.kwarg, None, ARG_STAR2))
             names.append(args.kwarg)
 
-        seen_names = set()  # type: Set[str]
-        for name in names:
-            if name.arg in seen_names:
-                self.fail("duplicate argument '{}' in function definition".format(name.arg),
-                          name.lineno, name.col_offset)
-                break
-            seen_names.add(name.arg)
+        def fail_arg(msg: str, arg: ast3.arg) -> None:
+            self.fail(msg, arg.lineno, arg.col_offset)
+
+        check_arg_names([name.arg for name in names], names, fail_arg)
 
         return new_args
-
-    def stringify_name(self, n: ast3.AST) -> str:
-        if isinstance(n, ast3.Name):
-            return n.id
-        elif isinstance(n, ast3.Attribute):
-            sv = self.stringify_name(n.value)
-            if sv is not None:
-                return "{}.{}".format(sv, n.attr)
-        return None  # Can't do it.
 
     # ClassDef(identifier name,
     #  expr* bases,
@@ -474,7 +464,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         metaclass_arg = find(lambda x: x.arg == 'metaclass', n.keywords)
         metaclass = None
         if metaclass_arg:
-            metaclass = self.stringify_name(metaclass_arg.value)
+            metaclass = stringify_name(metaclass_arg.value)
             if metaclass is None:
                 metaclass = '<error>'  # To be reported later
 
@@ -965,6 +955,21 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     def __init__(self, errors: Errors, line: int = -1) -> None:
         self.errors = errors
         self.line = line
+        self.node_stack = []  # type: List[ast3.AST]
+
+    def visit(self, node: ast3.AST) -> Type:
+        """Modified visit -- keep track of the stack of nodes"""
+        self.node_stack.append(node)
+        try:
+            return super().visit(node)
+        finally:
+            self.node_stack.pop()
+
+    def parent(self) -> ast3.AST:
+        """Return the AST node above the one we are processing"""
+        if len(self.node_stack) < 2:
+            return None
+        return self.node_stack[-2]
 
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg)
@@ -984,6 +989,55 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     def translate_expr_list(self, l: Sequence[ast3.AST]) -> List[Type]:
         return [self.visit(e) for e in l]
+
+    def visit_Call(self, e: ast3.Call) -> Type:
+        # Parse the arg constructor
+        if not isinstance(self.parent(), ast3.List):
+            return self.generic_visit(e)
+        f = e.func
+        constructor = stringify_name(f)
+        if not constructor:
+            self.fail("Expected arg constructor name", e.lineno, e.col_offset)
+        name = None  # type: Optional[str]
+        default_type = AnyType(implicit=True)
+        typ = default_type  # type: Type
+        for i, arg in enumerate(e.args):
+            if i == 0:
+                typ = self.visit(arg)
+            elif i == 1:
+                name = self._extract_argument_name(arg)
+            else:
+                self.fail("Too many arguments for argument constructor",
+                          f.lineno, f.col_offset)
+        for k in e.keywords:
+            value = k.value
+            if k.arg == "name":
+                if name is not None:
+                    self.fail('"{}" gets multiple values for keyword argument "name"'.format(
+                        constructor), f.lineno, f.col_offset)
+                name = self._extract_argument_name(value)
+            elif k.arg == "type":
+                if typ is not default_type:
+                    self.fail('"{}" gets multiple values for keyword argument "type"'.format(
+                        constructor), f.lineno, f.col_offset)
+                typ = self.visit(value)
+            else:
+                self.fail(
+                    'Unexpected argument "{}" for argument constructor'.format(k.arg),
+                    value.lineno, value.col_offset)
+        return CallableArgument(typ, name, constructor, e.lineno, e.col_offset)
+
+    def translate_argument_list(self, l: Sequence[ast3.AST]) -> TypeList:
+        return TypeList([self.visit(e) for e in l], line=self.line)
+
+    def _extract_argument_name(self, n: ast3.expr) -> str:
+        if isinstance(n, ast3.Str):
+            return n.s.strip()
+        elif isinstance(n, ast3.NameConstant) and str(n.value) == 'None':
+            return None
+        self.fail('Expected string literal for argument name, got {}'.format(
+            type(n).__name__), self.line, 0)
+        return None
 
     def visit_Name(self, n: ast3.Name) -> Type:
         return UnboundType(n.id, line=self.line)
@@ -1036,4 +1090,14 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> Type:
-        return TypeList(self.translate_expr_list(n.elts), line=self.line)
+        return self.translate_argument_list(n.elts)
+
+
+def stringify_name(n: ast3.AST) -> Optional[str]:
+    if isinstance(n, ast3.Name):
+        return n.id
+    elif isinstance(n, ast3.Attribute):
+        sv = stringify_name(n.value)
+        if sv is not None:
+            return "{}.{}".format(sv, n.attr)
+    return None  # Can't do it.

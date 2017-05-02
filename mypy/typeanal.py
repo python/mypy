@@ -11,12 +11,14 @@ from mypy.types import (
     AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
     SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    get_type_vars, TypeQuery, union_items,
+    CallableArgument, get_type_vars, TypeQuery, union_items
 )
+
 from mypy.nodes import (
     TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
     TypeInfo, Context, SymbolTableNode, Var, Expression,
-    IndexExpr, RefExpr, nongen_builtins, TypeVarExpr
+    IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds,
+    ARG_POS, ARG_NAMED, ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.sametypes import is_same_type
@@ -35,6 +37,15 @@ type_constructors = {
     'typing.Tuple',
     'typing.Type',
     'typing.Union',
+}
+
+ARG_KINDS_BY_CONSTRUCTOR = {
+    'mypy_extensions.Arg': ARG_POS,
+    'mypy_extensions.DefaultArg': ARG_OPT,
+    'mypy_extensions.NamedArg': ARG_NAMED,
+    'mypy_extensions.DefaultNamedArg': ARG_NAMED_OPT,
+    'mypy_extensions.VarArg': ARG_STAR,
+    'mypy_extensions.KwArg': ARG_STAR2,
 }
 
 
@@ -311,6 +322,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
         self.fail('Invalid type', t)
         return AnyType()
 
+    def visit_callable_argument(self, t: CallableArgument) -> Type:
+        self.fail('Invalid type', t)
+        return AnyType()
+
     def visit_instance(self, t: Instance) -> Type:
         return t
 
@@ -385,10 +400,40 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
             ret_type = t.args[1]
             if isinstance(t.args[0], TypeList):
                 # Callable[[ARG, ...], RET] (ordinary callable type)
-                args = t.args[0].items
+                args = []   # type: List[Type]
+                names = []  # type: List[str]
+                kinds = []  # type: List[int]
+                for arg in t.args[0].items:
+                    if isinstance(arg, CallableArgument):
+                        args.append(arg.typ)
+                        names.append(arg.name)
+                        if arg.constructor is None:
+                            return AnyType()
+                        found = self.lookup(arg.constructor, arg)
+                        if found is None:
+                            # Looking it up already put an error message in
+                            return AnyType()
+                        elif found.fullname not in ARG_KINDS_BY_CONSTRUCTOR:
+                            self.fail('Invalid argument constructor "{}"'.format(
+                                found.fullname), arg)
+                            return AnyType()
+                        else:
+                            kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
+                            kinds.append(kind)
+                            if arg.name is not None and kind in {ARG_STAR, ARG_STAR2}:
+                                self.fail("{} arguments should not have names".format(
+                                    arg.constructor), arg)
+                                return AnyType()
+                    else:
+                        args.append(arg)
+                        names.append(None)
+                        kinds.append(ARG_POS)
+
+                check_arg_names(names, [t] * len(args), self.fail, "Callable")
+                check_arg_kinds(kinds, [t] * len(args), self.fail)
                 ret = CallableType(args,
-                                   [nodes.ARG_POS] * len(args),
-                                   [None] * len(args),
+                                   kinds,
+                                   names,
                                    ret_type=ret_type,
                                    fallback=fallback)
             elif isinstance(t.args[0], EllipsisType):

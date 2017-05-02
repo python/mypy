@@ -3,7 +3,8 @@ from typing import List, Optional, Dict, Callable, cast
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
-    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
+    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType,
+    is_named_instance
 )
 import mypy.applytype
 import mypy.constraints
