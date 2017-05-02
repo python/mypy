@@ -839,6 +839,10 @@ def write_cache(id: str, path: str, tree: MypyFile,
                 old_interface_hash: str, manager: BuildManager) -> str:
     """Write cache files for a module.
 
+    Note that this mypy's behavior is still correct when any given
+    write_cache() call is replaced with a no-op, so error handling
+    code that bails without writing anything is okay.
+
     Args:
       id: module ID
       path: module path
