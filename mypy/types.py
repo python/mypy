@@ -987,7 +987,7 @@ class UnionType(Type):
     items = None  # type: List[Type]
 
     def __init__(self, items: List[Type], line: int = -1, column: int = -1) -> None:
-        self.items = items
+        self.items = flatten_types(items)
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
         super().__init__(line, column)
@@ -1730,6 +1730,17 @@ def get_type_vars(typ: Type) -> List[TypeVarType]:
             tvars.append(var)
             included.add(var.id)
     return tvars
+
+
+def flatten_types(types: Iterable[Type]) -> List[Type]:
+    """Flatten nested unions in a type list."""
+    flat_items = []  # type: List[Type]
+    for tp in types:
+        if isinstance(tp, UnionType):
+            flat_items.extend(flatten_types(tp.items))
+        else:
+            flat_items.append(tp)
+    return flat_items
 
 
 def union_items(typ: Type) -> List[Type]:
