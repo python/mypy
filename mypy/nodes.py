@@ -2272,7 +2272,7 @@ class SymbolTableNode:
             return None
 
     @property
-    def type(self) -> Optional['mypy.types.Type']:
+    def type(self) -> 'Optional[mypy.types.Type]':
         # IDEA: Get rid of the Any type.
         node = self.node  # type: Any
         if self.type_override is not None:
