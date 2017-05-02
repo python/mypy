@@ -2224,7 +2224,9 @@ class FakeInfo(TypeInfo):
     #    pass cleanly.
     # 2. If NOT_READY value is accidentally used somewhere, it will be obvious where the value
     #    is from, whereas a 'None' value could come from anywhere.
-    def __getattr__(self, attr: str) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+    def __getattribute__(self, attr: str) -> None:
         raise AssertionError('De-serialization failure: TypeInfo not fixed')
 
 
