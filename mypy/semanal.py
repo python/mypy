@@ -1063,15 +1063,23 @@ class SemanticAnalyzer(NodeVisitor):
 
     def named_type(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, None)
-        assert isinstance(sym.node, TypeInfo)
-        return Instance(sym.node, args or [])
+        node = sym.node
+        assert isinstance(node, TypeInfo)
+        if args:
+            # TODO: assert len(args) == len(node.defn.type_vars)
+            return Instance(node, args)
+        return Instance(node, [AnyType()] * len(node.defn.type_vars))
 
     def named_type_or_none(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
         if not sym:
             return None
-        assert isinstance(sym.node, TypeInfo)
-        return Instance(sym.node, args or [])
+        node = sym.node
+        assert isinstance(node, TypeInfo)
+        if args:
+            # TODO: assert len(args) == len(node.defn.type_vars)
+            return Instance(node, args)
+        return Instance(node, [AnyType()] * len(node.defn.type_vars))
 
     def is_typeddict(self, expr: Expression) -> bool:
         return (isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and
@@ -2040,7 +2048,7 @@ class SemanticAnalyzer(NodeVisitor):
         # Actual signature should return OrderedDict[str, Union[types]]
         ordereddictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
                           or self.object_type())
-        fallback = self.named_type('__builtins__.tuple', types)
+        fallback = self.named_type('__builtins__.tuple', [join.join_type_list(types)])
         # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
         # but it can't be expressed. 'new' and 'len' should be callable types.
         iterable_type = self.named_type_or_none('typing.Iterable', [AnyType()])
@@ -3113,9 +3121,10 @@ class SemanticAnalyzer(NodeVisitor):
             return n
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
-        node = self.lookup_fully_qualified(fully_qualified_name)
-        assert isinstance(node.node, TypeInfo)
-        return Instance(node.node, [])
+        sym = self.lookup_fully_qualified(fully_qualified_name)
+        node = sym.node
+        assert isinstance(node, TypeInfo)
+        return Instance(node, [AnyType()] * len(node.defn.type_vars))
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.
@@ -3673,8 +3682,12 @@ class ThirdPass(TraverserVisitor):
     def builtin_type(self, name: str, args: List[Type] = None) -> Instance:
         names = self.modules['builtins']
         sym = names.names[name]
-        assert isinstance(sym.node, TypeInfo)
-        return Instance(sym.node, args or [])
+        node = sym.node
+        assert isinstance(node, TypeInfo)
+        if args:
+            # TODO: assert len(args) == len(node.defn.type_vars)
+            return Instance(node, args)
+        return Instance(node, [AnyType()] * len(node.defn.type_vars))
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
