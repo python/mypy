@@ -1,9 +1,10 @@
-from typing import List, Optional, Dict, Callable
+from typing import List, Optional, Dict, Callable, cast
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
-    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
+    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType,
+    is_named_instance
 )
 import mypy.applytype
 import mypy.constraints
@@ -514,8 +515,10 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     inferred_vars = mypy.solve.solve_constraints(type_var_ids, constraints)
     if None in inferred_vars:
         return None
+    non_none_inferred_vars = cast(List[Type], inferred_vars)
     msg = messages.temp_message_builder()
-    applied = mypy.applytype.apply_generic_arguments(type, inferred_vars, msg, context=target)
+    applied = mypy.applytype.apply_generic_arguments(type, non_none_inferred_vars, msg,
+                                                     context=target)
     if msg.is_errors():
         return None
     return applied

@@ -1,9 +1,22 @@
-from typing import Dict, Type, TypeVar, Callable, Any
+from typing import Dict, Type, TypeVar, Callable, Any, Optional
 
-T = TypeVar('T')
+_T = TypeVar('_T')
 
 
-def TypedDict(typename: str, fields: Dict[str, Type[T]]) -> Type[dict]: pass
+def Arg(type: _T = ..., name: Optional[str] = ...) -> _T: ...
+
+def DefaultArg(type: _T = ..., name: Optional[str] = ...) -> _T: ...
+
+def NamedArg(type: _T = ..., name: Optional[str] = ...) -> _T: ...
+
+def DefaultNamedArg(type: _T = ..., name: Optional[str] = ...) -> _T: ...
+
+def VarArg(type: _T = ...) -> _T: ...
+
+def KwArg(type: _T = ...) -> _T: ...
+
+
+def TypedDict(typename: str, fields: Dict[str, Type[_T]]) -> Type[dict]: ...
 
 class NoReturn: pass
 
