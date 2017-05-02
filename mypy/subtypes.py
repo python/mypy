@@ -720,4 +720,4 @@ def is_more_precise(t: Type, s: Type) -> bool:
             # Fall back to subclass check and ignore other properties of the callable.
             return is_proper_subtype(t.fallback, s)
         return is_proper_subtype(t, s)
-    return sametypes.is_same_type(t, s)
+    return is_proper_subtype(t, s)

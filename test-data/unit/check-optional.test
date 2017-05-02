@@ -596,3 +596,18 @@ x: Optional[Union[int, str]]
 reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.None]'
 y: Optional[Union[int, None]]
 reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+
+[case testOverloadWithNoneAndOptional]
+from typing import overload, Optional
+
+@overload
+def f(x: int) -> str: ...
+@overload
+def f(x: Optional[int]) -> Optional[str]: ...
+def f(x): return x
+
+reveal_type(f(1))
+reveal_type(f(None))
+[out]
+main:9: error: Revealed type is 'builtins.str'
+main:10: error: Revealed type is 'Union[builtins.str, builtins.None]'
