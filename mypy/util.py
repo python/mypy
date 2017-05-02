@@ -2,8 +2,14 @@
 
 import re
 import subprocess
+import os
+import sys
+import time
 from xml.sax.saxutils import escape
-from typing import TypeVar, List, Tuple, Optional, Sequence, Dict
+from typing import (
+    TypeVar, List, Tuple, Optional, Sequence, Dict, Callable, Iterable, Type, Union,
+    AnyStr, Generic
+)
 
 
 T = TypeVar('T')
@@ -134,3 +140,38 @@ class IdMapper:
             self.id_map[o] = self.next_id
             self.next_id += 1
         return self.id_map[o]
+
+
+if sys.version_info >= (3, 6):
+    PathType = Union[AnyStr, 'os.PathLike[AnyStr]']
+else:
+    # Workaround to allow the use of generic in _replace
+    class _PathType(Generic[AnyStr]): ...
+    PathType = _PathType[AnyStr]
+
+
+def _replace(src: PathType[AnyStr], dest: PathType[AnyStr], timeout: float = 1) -> None:
+    """Replace src with dest using os.replace(src, dest).
+
+    Wait and retry if OSError exception is raised.
+
+    Increase wait time exponentially until total wait of timeout sec;
+    on timeout, give up and reraise the last exception seen.
+    """
+    wait = 0.001
+    while True:
+        try:
+            os.replace(src, dest)
+            return
+        except PermissionError:
+            # The actual total wait might be up to 2x larger than timeout parameter
+            if wait > timeout:
+                raise
+        time.sleep(wait)
+        wait *= 2
+
+
+if sys.platform.startswith("win"):
+    replace = _replace
+else:
+    replace = os.replace

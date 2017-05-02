@@ -215,6 +215,7 @@ PYTEST_FILES = [os.path.join('mypy', 'test', '{}.py'.format(name)) for name in [
     'testdiff',
     'testfinegrained',
     'testmerge',
+    'testutil',
 ]]
 
 
