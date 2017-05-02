@@ -335,7 +335,7 @@ class C:
         pass
 
 z: P = C()
-[builtins fixtures/isinstancelist.pyi]
+[builtins fixtures/dict.pyi]
 [out]
 
 [case testProtocolsCannotInheritFromNormal]
