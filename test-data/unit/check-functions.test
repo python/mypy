@@ -2043,4 +2043,4 @@ bad = make_list()  # E: Need type annotation for variable
 [case testAnonymousArgumentError]
 def foo(__b: int, x: int, y: int) -> int: pass
 foo(x=2, y=2)  # E: Missing positional argument
-foo(y=2) # E: Missing positional arguments
+foo(y=2)  # E: Missing positional arguments
