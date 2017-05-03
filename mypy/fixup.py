@@ -93,6 +93,8 @@ class NodeFixer(NodeVisitor[None]):
                     else:
                         # We have a missing crossref in quick mode, need to put something
                         value.node = stale_info()
+                        if value.type_override is not None:
+                            value.type_override.accept(self.type_fixer)
             else:
                 if isinstance(value.node, TypeInfo):
                     # TypeInfo has no accept().  TODO: Add it?
