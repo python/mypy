@@ -2041,6 +2041,6 @@ bad = make_list()  # E: Need type annotation for variable
 [builtins fixtures/list.pyi]
 
 [case testAnonymousArgumentError]
-
-def foo(__b: int, x: int) -> int: pass
-foo(x=2)  # E: Missing positional argument
+def foo(__b: int, x: int, y: int) -> int: pass
+foo(x=2, y=2)  # E: Missing positional argument
+foo(y=2) # E: Missing positional arguments

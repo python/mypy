@@ -575,7 +575,7 @@ class MessageBuilder:
                 msg = 'Missing positional argument'
             else:
                 msg = 'Missing positional arguments'
-            if callee.name and [d for d in diff if d is not None]:
+            if callee.name and all(d is not None for d in diff):
                 msg += ' "{}" in call to {}'.format('", "'.join(diff), callee.name)
         else:
             msg = 'Too few arguments'
