@@ -301,7 +301,14 @@ Here are some more useful flags:
 - ``--incremental`` is an experimental option that enables incremental
   type checking. When enabled, mypy caches results from previous runs
   to speed up type checking. Incremental mode can help when most parts
-  of your program haven't changed since the previous mypy run.
+  of your program haven't changed since the previous mypy run.  A
+  companion flag is ``--cache-dir DIR``, which specifies where the
+  cache files are written.  By default this is ``.mypy_cache`` in the
+  current directory.  While the cache is only read in incremental
+  mode, it is written even in non-incremental mode, in order to "warm"
+  the cache.  To disable writing the cache, use
+  ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul`` (Windows).
+  Cache files belonging to a different mypy version are ignored.
 
 - ``--python-version X.Y`` will make mypy typecheck your code as if it were
   run under Python version X.Y. Without this option, mypy will default to using

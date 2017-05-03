@@ -97,7 +97,9 @@ The following global flags may only be set in the global section
   module cache.
 
 - ``cache_dir`` (string, default ``.mypy_cache``) stores module cache
-  info in the given folder in incremental mode.
+  info in the given folder in incremental mode.  The cache is only
+  read in incremental mode, but it is always written unless the value
+  is set to ``/dev/null`` (UNIX) or ``nul`` (Windows).
 
 - ``show_error_context`` (Boolean, default False) shows
   context notes before errors.
