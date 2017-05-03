@@ -169,7 +169,7 @@ class TypeFixer(TypeVisitor[None]):
                     base.accept(self)
         else:
             # Looks like a missing TypeInfo in quick mode, put something there
-            assert node is None and self.quick_and_dirty
+            assert self.quick_and_dirty, "Should never get here in normal mode"
             inst.type = stale_info()
         for a in inst.args:
             a.accept(self)
