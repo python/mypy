@@ -16,6 +16,7 @@ now have type annotations using either of the two forms:
 
 .. code-block:: python
 
+   from typing import Optionsl
    foo: Optional[int]
    bar: List[str] = []
 
@@ -25,6 +26,27 @@ Mypy fully supports this syntax, interpreting them as equivalent to
 
    foo = None  # type: Optional[int]
    bar = []  # type: List[str]
+
+An additional feature defined in PEP 526 is also supported: you can
+mark names intended to be used as class variables with ``ClassVar``.
+In a pinch you can also use ClassVar in ``# type`` comments.
+Example:
+
+.. code-block:: python
+
+   from typing import ClassVar
+
+   class C:
+       x: int  # instance variable
+       y: ClassVar[int]  # class variable
+       z = None  # type: ClassVar[int]
+
+       def foo(self) -> None:
+           self.x = 0  # OK
+           self.y = 0  # Error: Cannot assign to class variable "y" via instance
+
+   C.y = 0  # This is OK
+
 
 Literal string formatting (`PEP 498 <https://www.python.org/dev/peps/pep-0498>`_)
 ---------------------------------------------------------------------------------
