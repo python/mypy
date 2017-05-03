@@ -298,8 +298,10 @@ Here are some more useful flags:
   the base class even though that may not actually be the case.  This
   flag makes mypy raise an error instead.
 
-- ``--incremental`` is an experimental option that enables incremental
-  type checking. When enabled, mypy caches results from previous runs
+.. _incremental:
+
+- ``--incremental`` is an experimental option that enables a module
+  cache. When enabled, mypy caches results from previous runs
   to speed up type checking. Incremental mode can help when most parts
   of your program haven't changed since the previous mypy run.  A
   companion flag is ``--cache-dir DIR``, which specifies where the
@@ -309,6 +311,18 @@ Here are some more useful flags:
   the cache.  To disable writing the cache, use
   ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul`` (Windows).
   Cache files belonging to a different mypy version are ignored.
+
+.. _quick:
+
+- ``--quick-and-dirty`` is an experimental, unsafe variant of
+  :ref:`incremental mode <incremental>`.  Quick mode is faster than
+  regular incremental mode, because it only re-checks modules that
+  were modified since their cache file was last written (regular
+  incremental mode also re-checks all modules that depend on one or
+  more modules that were re-checked).  Quick mode is unsafe because it
+  may miss problems caused by a change in a dependency.  Quick mode
+  updates the cache, but regular incremental mode ignores cache files
+  written by quick mode.
 
 - ``--python-version X.Y`` will make mypy typecheck your code as if it were
   run under Python version X.Y. Without this option, mypy will default to using
