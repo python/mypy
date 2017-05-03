@@ -192,12 +192,12 @@ Extended Callable types
 ***********************
 
 As an experimental mypy extension, you can specify ``Callable`` types
-that support keyword arguments, optional arguments, and more.  The
-"argument" part of the ``Callable`` specification (the part specifying
-the types of the arguments) can be a list of "argument specifiers"
-instead of a list of types.  This allows one to more closely emulate
-the full range of possibilities given by the ``def`` statement in
-Python.
+that support keyword arguments, optional arguments, and more.  Where
+you specify the arguments of a Callable, you can choose to supply just
+the type of a nameless positional argument, or an "argument specifier"
+representing a more complicated form of argument.  This allows one to
+more closely emulate the full range of possibilities given by the
+``def`` statement in Python.
 
 As an example, here's a complicated function definition and the
 corresponding ``Callable``:
@@ -217,7 +217,7 @@ corresponding ``Callable``:
             **kwargs: int) -> int:
        ...
 
-   F = Callable[[Arg(int),  # No argument name given
+   F = Callable[[int,  # Or Arg(int)
                  Arg(int, 'b'),
                  DefaultArg(int, 'c'),
                  VarArg(int),
@@ -226,7 +226,7 @@ corresponding ``Callable``:
                  KwArg(int)],
                 int]
 
-    f: F = func
+   f: F = func
 
 Argument specifiers are special function calls that can specify the
 following aspects of an argument:
@@ -295,7 +295,7 @@ A ``Callable`` with unspecified argument types, such as
 
    MyOtherFunc = Callable[..., int]
 
-is equivalent to
+is (roughly) equivalent to
 
 .. code-block:: python
 
@@ -304,8 +304,8 @@ is equivalent to
 .. note::
 
    This feature is experimental.  Details of the implementation may
-   change and there may be unknown limitations. **IMPORTANT:** At
-   runtime, each of the functions above just returns its ``type``
+   change and there may be unknown limitations. **IMPORTANT:**
+   Each of the functions above currently just returns its ``type``
    argument, so the information contained in the argument specifiers
    is not available at runtime.  This limitation is necessary for
    backwards compatibility with the existing ``typing.py`` module as

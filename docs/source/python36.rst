@@ -16,7 +16,7 @@ now have type annotations using either of the two forms:
 
 .. code-block:: python
 
-   from typing import Optionsl
+   from typing import Optional
    foo: Optional[int]
    bar: List[str] = []
 
