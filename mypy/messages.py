@@ -249,6 +249,8 @@ class MessageBuilder:
         if isinstance(typ, Instance):
             itype = typ
             # Get the short name of the type.
+            if itype.type.fullname() == 'types.ModuleType':
+                return 'Module'
             if verbosity >= 2:
                 base_str = itype.type.fullname()
             else:
