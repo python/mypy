@@ -3654,6 +3654,8 @@ class ThirdPass(TraverserVisitor):
         self.analyze(s.type)
         if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
             self.analyze(s.rvalue.analyzed.type)
+        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NewTypeExpr):
+            self.analyze(s.rvalue.analyzed.old_type)
         super().visit_assignment_stmt(s)
 
     def visit_cast_expr(self, e: CastExpr) -> None:
@@ -3670,7 +3672,7 @@ class ThirdPass(TraverserVisitor):
 
     # Helpers
 
-    def analyze(self, type: Type) -> None:
+    def analyze(self, type: Optional[Type]) -> None:
         if type:
             analyzer = TypeAnalyserPass3(self.fail)
             type.accept(analyzer)
