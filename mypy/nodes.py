@@ -730,6 +730,7 @@ class ClassDef(Statement):
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = ''  # type: Optional[str]
     decorators = None  # type: List[Expression]
+    analyzed = None  # type: Optional[Expression]
     has_incompatible_baseclass = False
 
     def __init__(self,

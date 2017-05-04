@@ -634,10 +634,12 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def visit_tuple_type(self, t: TupleType) -> None:
         for item in t.items:
             item.accept(self)
+        t.fallback.accept(self)
 
     def visit_typeddict_type(self, t: TypedDictType) -> None:
         for item_type in t.items.values():
             item_type.accept(self)
+        t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> None:
         for item in t.items:

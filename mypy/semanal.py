@@ -815,8 +815,10 @@ class SemanticAnalyzer(NodeVisitor):
                     if node is not None:
                         node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
                         items, types, default_items = self.check_namedtuple_classdef(defn)
-                        node.node = self.build_namedtuple_typeinfo(
-                            defn.name, items, types, default_items)
+                        info = self.build_namedtuple_typeinfo(
+                               defn.name, items, types, default_items)
+                        node.node = info
+                        defn.analyzed = NamedTupleExpr(info)
                         return True
         return False
 
@@ -1103,7 +1105,9 @@ class SemanticAnalyzer(NodeVisitor):
                         defn.base_type_exprs[0].fullname == 'mypy_extensions.TypedDict'):
                     # Building a new TypedDict
                     fields, types = self.check_typeddict_classdef(defn)
-                    node.node = self.build_typeddict_typeinfo(defn.name, fields, types)
+                    info = self.build_typeddict_typeinfo(defn.name, fields, types)
+                    node.node = info
+                    defn.analyzed = TypedDictExpr(info)
                     return True
                 # Extending/merging existing TypedDicts
                 if any(not isinstance(expr, RefExpr) or
@@ -1130,7 +1134,9 @@ class SemanticAnalyzer(NodeVisitor):
                 fields, types = self.check_typeddict_classdef(defn, newfields)
                 newfields.extend(fields)
                 newtypes.extend(types)
-                node.node = self.build_typeddict_typeinfo(defn.name, newfields, newtypes)
+                info = self.build_typeddict_typeinfo(defn.name, newfields, newtypes)
+                node.node = info
+                defn.analyzed = TypedDictExpr(info)
                 return True
         return False
 
@@ -3598,6 +3604,11 @@ class ThirdPass(TraverserVisitor):
         if tdef.info.mro:
             tdef.info.mro = []  # Force recomputation
             calculate_class_mro(tdef, self.fail_blocker)
+        if tdef.analyzed:
+            if isinstance(tdef.analyzed, TypedDictExpr):
+                self.analyze(tdef.analyzed.info.typeddict_type)
+            if isinstance(tdef.analyzed, NamedTupleExpr):
+                self.analyze(tdef.analyzed.info.tuple_type)
         super().visit_class_def(tdef)
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -3654,8 +3665,13 @@ class ThirdPass(TraverserVisitor):
         self.analyze(s.type)
         if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
             self.analyze(s.rvalue.analyzed.type)
-        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NewTypeExpr):
-            self.analyze(s.rvalue.analyzed.old_type)
+        if isinstance(s.rvalue, CallExpr):
+            if isinstance(s.rvalue.analyzed, NewTypeExpr):
+                self.analyze(s.rvalue.analyzed.old_type)
+            if isinstance(s.rvalue.analyzed, TypedDictExpr):
+                self.analyze(s.rvalue.analyzed.info.typeddict_type)
+            if isinstance(s.rvalue.analyzed, NamedTupleExpr):
+                self.analyze(s.rvalue.analyzed.info.tuple_type)
         super().visit_assignment_stmt(s)
 
     def visit_cast_expr(self, e: CastExpr) -> None:
