@@ -639,6 +639,8 @@ class SemanticAnalyzer(NodeVisitor):
                 # that were already set in build_namedtuple_typeinfo.
                 nt_names = named_tuple_info.names
                 named_tuple_info.names = SymbolTable()
+                # This is needed for the cls argument to classmethods to get bound correctly.
+                named_tuple_info.names['__init__'] = nt_names['__init__']
 
                 self.enter_class(named_tuple_info)
 
@@ -649,6 +651,8 @@ class SemanticAnalyzer(NodeVisitor):
                 # make sure we didn't use illegal names, then reset the names in the typeinfo
                 for prohibited in NAMEDTUPLE_PROHIBITED_NAMES:
                     if prohibited in named_tuple_info.names:
+                        if nt_names.get(prohibited) is named_tuple_info.names[prohibited]:
+                            continue
                         self.fail('Cannot overwrite NamedTuple attribute "{}"'.format(prohibited),
                                   named_tuple_info.names[prohibited].node)
 
@@ -869,8 +873,8 @@ class SemanticAnalyzer(NodeVisitor):
                     (isinstance(stmt, ExpressionStmt) and
                         isinstance(stmt.expr, EllipsisExpr))):
                     continue
-                # Also allow methods.
-                if isinstance(stmt, FuncBase):
+                # Also allow methods, including decorated ones.
+                if isinstance(stmt, (Decorator, FuncBase)):
                     continue
                 # And docstrings.
                 if (isinstance(stmt, ExpressionStmt) and

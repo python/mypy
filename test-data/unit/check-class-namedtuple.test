@@ -626,3 +626,42 @@ class BadDoc(NamedTuple):
         return ''
 
 reveal_type(BadDoc(1).__doc__())  # E: Revealed type is 'builtins.str'
+
+[case testNewNamedTupleClassMethod]
+from typing import NamedTuple
+
+class HasClassMethod(NamedTuple):
+    x: str
+
+    @classmethod
+    def new(cls, f: str) -> 'HasClassMethod':
+        reveal_type(cls)  # E: Revealed type is 'def (x: builtins.str) -> Tuple[builtins.str, fallback=__main__.HasClassMethod]'
+        reveal_type(HasClassMethod)  # E: Revealed type is 'def (x: builtins.str) -> Tuple[builtins.str, fallback=__main__.HasClassMethod]'
+        return cls(x=f)
+
+[builtins fixtures/classmethod.pyi]
+
+[case testNewNamedTupleStaticMethod]
+from typing import NamedTuple
+
+class HasStaticMethod(NamedTuple):
+    x: str
+
+    @staticmethod
+    def new(f: str) -> 'HasStaticMethod':
+        return HasStaticMethod(x=f)
+
+[builtins fixtures/classmethod.pyi]
+
+[case testNewNamedTupleProperty]
+from typing import NamedTuple
+
+class HasStaticMethod(NamedTuple):
+    x: str
+
+    @property
+    def size(self) -> int:
+        reveal_type(self)  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.HasStaticMethod]'
+        return 4
+
+[builtins fixtures/property.pyi]
