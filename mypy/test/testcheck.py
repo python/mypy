@@ -24,70 +24,62 @@ from mypy.options import Options
 
 from mypy import experiments
 
-# List of files that contain test case descriptions.
-files = [
-    'check-basic.test',
-    'check-callable.test',
-    'check-classes.test',
-    'check-statements.test',
-    'check-generics.test',
-    'check-dynamic-typing.test',
-    'check-inference.test',
-    'check-inference-context.test',
-    'check-kwargs.test',
-    'check-overloading.test',
-    'check-type-checks.test',
-    'check-abstract.test',
-    'check-multiple-inheritance.test',
-    'check-super.test',
-    'check-modules.test',
-    'check-typevar-values.test',
-    'check-unsupported.test',
-    'check-unreachable-code.test',
-    'check-unions.test',
-    'check-isinstance.test',
-    'check-lists.test',
-    'check-namedtuple.test',
-    'check-typeddict.test',
-    'check-type-aliases.test',
-    'check-ignore.test',
-    'check-type-promotion.test',
-    'check-semanal-error.test',
-    'check-flags.test',
-    'check-incremental.test',
-    'check-bound.test',
-    'check-optional.test',
-    'check-fastparse.test',
-    'check-warnings.test',
-    'check-async-await.test',
-    'check-newtype.test',
-    'check-class-namedtuple.test',
-    'check-selftype.test',
-    'check-python2.test',
-    'check-columns.test',
-    'check-functions.test',
-    'check-tuples.test',
-    'check-expressions.test',
-    'check-generic-subtyping.test',
-    'check-varargs.test',
-    'check-newsyntax.test',
-    'check-underscores.test',
-    'check-classvar.test',
-    'check-enum.test',
-]
-
 
 class TypeCheckSuite(DataSuite):
+    # List of files that contain test case descriptions.
+    files = [
+        'check-basic.test',
+        'check-callable.test',
+        'check-classes.test',
+        'check-statements.test',
+        'check-generics.test',
+        'check-dynamic-typing.test',
+        'check-inference.test',
+        'check-inference-context.test',
+        'check-kwargs.test',
+        'check-overloading.test',
+        'check-type-checks.test',
+        'check-abstract.test',
+        'check-multiple-inheritance.test',
+        'check-super.test',
+        'check-modules.test',
+        'check-typevar-values.test',
+        'check-unsupported.test',
+        'check-unreachable-code.test',
+        'check-unions.test',
+        'check-isinstance.test',
+        'check-lists.test',
+        'check-namedtuple.test',
+        'check-typeddict.test',
+        'check-type-aliases.test',
+        'check-ignore.test',
+        'check-type-promotion.test',
+        'check-semanal-error.test',
+        'check-flags.test',
+        'check-incremental.test',
+        'check-bound.test',
+        'check-optional.test',
+        'check-fastparse.test',
+        'check-warnings.test',
+        'check-async-await.test',
+        'check-newtype.test',
+        'check-class-namedtuple.test',
+        'check-selftype.test',
+        'check-python2.test',
+        'check-columns.test',
+        'check-functions.test',
+        'check-tuples.test',
+        'check-expressions.test',
+        'check-generic-subtyping.test',
+        'check-varargs.test',
+        'check-newsyntax.test',
+        'check-underscores.test',
+        'check-classvar.test',
+        'check-enum.test',
+    ]
+
     def __init__(self, *, update_data: bool = False) -> None:
         self.update_data = update_data
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         incremental = 'incremental' in testcase.name.lower() or 'incremental' in testcase.file
