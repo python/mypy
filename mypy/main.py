@@ -236,6 +236,8 @@ def process_options(args: List[str],
     add_invertible_flag('--show-error-context', default=False,
                         dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
+    add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
+                        help="don't assume arguments with default values of None are Optional")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable module cache")
     parser.add_argument('--quick-and-dirty', action='store_true',
