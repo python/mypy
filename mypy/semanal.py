@@ -2048,9 +2048,12 @@ class SemanticAnalyzer(NodeVisitor):
         # Actual signature should return OrderedDict[str, Union[types]]
         ordereddictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
                           or self.object_type())
-        # 'builtins.tuple' has only one type parameter, the corresponding type argument
-        #  in the fallback instance is a join of all item types.
-        fallback = self.named_type('__builtins__.tuple', [join.join_type_list(types)])
+        # 'builtins.tuple' has only one type parameter.
+        #
+        # TODO: The corresponding type argument in the fallback instance should be a join of
+        #       all item types, but we can't do joins during this pass of semantic analysis
+        #       and we are using Any as a workaround.
+        fallback = self.named_type('__builtins__.tuple', [AnyType()])
         # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
         # but it can't be expressed. 'new' and 'len' should be callable types.
         iterable_type = self.named_type_or_none('typing.Iterable', [AnyType()])
