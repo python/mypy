@@ -814,8 +814,8 @@ class SemanticAnalyzer(NodeVisitor):
                     if node is not None:
                         node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
                         items, types, default_items = self.check_namedtuple_classdef(defn)
-                        info = self.build_namedtuple_typeinfo(
-                               defn.name, items, types, default_items)
+                        info = self.build_namedtuple_typeinfo(defn.name, items,
+                                                              types, default_items)
                         node.node = info
                         defn.analyzed = NamedTupleExpr(info)
                         return True
