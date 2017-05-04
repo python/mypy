@@ -90,7 +90,6 @@ from mypy.typeanal import (
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
-from mypy import join
 
 
 T = TypeVar('T')
@@ -2055,8 +2054,9 @@ class SemanticAnalyzer(NodeVisitor):
         ordereddictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
                           or self.object_type())
         # 'builtins.tuple' has only one type parameter, the corresponding type argument
-        #  in the fallback instance is a join of all item types.
-        fallback = self.named_type('__builtins__.tuple', [join.join_type_list(types)])
+        #  in the fallback instance should be a join of all item types. It will be calculated in
+        # third pass.
+        fallback = self.named_type('__builtins__.tuple', [AnyType()])
         # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
         # but it can't be expressed. 'new' and 'len' should be callable types.
         iterable_type = self.named_type_or_none('typing.Iterable', [AnyType()])
@@ -2245,9 +2245,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type]) -> TypeInfo:
-        mapping_value_type = join.join_type_list(types)
+        # The fallback second argument will be calculated in third pass
         fallback = (self.named_type_or_none('typing.Mapping',
-                                            [self.str_type(), mapping_value_type])
+                                            [self.str_type(), AnyType()])
                     or self.object_type())
 
         info = self.basic_new_typeinfo(name, fallback)
