@@ -329,7 +329,7 @@ class MessageBuilder:
             if typ.is_noreturn:
                 return 'NoReturn'
             else:
-                return '<uninhabited>'
+                return '<nothing>'
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(
                 strip_quotes(self.format_simple(typ.item, verbosity)))
