@@ -818,6 +818,12 @@ class SemanticAnalyzer(NodeVisitor):
                                                               types, default_items)
                         node.node = info
                         defn.analyzed = NamedTupleExpr(info)
+                        # We only really need the assignments in the body to be type checked later;
+                        # attempting to type check methods may lead to crashes because NamedTuples
+                        # do not have a fully functional TypeInfo.
+                        # TODO remove this hack and add full support for NamedTuple methods
+                        defn.defs.body = [stmt for stmt in defn.defs.body
+                                          if isinstance(stmt, AssignmentStmt)]
                         return True
         return False
 

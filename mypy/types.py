@@ -1418,7 +1418,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return "builtins.None"
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> str:
-        return "<uninhabited>"
+        return "<nothing>"
 
     def visit_erased_type(self, t: ErasedType) -> str:
         return "<Erased>"

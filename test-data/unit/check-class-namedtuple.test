@@ -482,3 +482,15 @@ Y(y=1, x='1').method()
 class CallsBaseInit(X):
     def __init__(self, x: str) -> None:
         super().__init__(x)
+
+[case testNewNamedTupleClassMethod]
+from typing import NamedTuple
+
+class HasClassMethod(NamedTuple):
+    x: str
+
+    @classmethod  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+    def new(cls, f: str) -> 'HasClassMethod':
+        pass
+
+[builtins fixtures/classmethod.pyi]
