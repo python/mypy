@@ -95,30 +95,22 @@ class TypeCheckSuite(DataSuite):
                        or 'incremental' in testcase.file
                        or 'serialize' in testcase.file)
         optional = 'optional' in testcase.file
-        if incremental:
-            # Incremental tests are run once with a cold cache, once with a warm cache.
-            # Expect success on first run, errors from testcase.output (if any) on second run.
-            # We briefly sleep to make sure file timestamps are distinct.
-            self.clear_cache()
-            try:
+        old_strict_optional = experiments.STRICT_OPTIONAL
+        try:
+            if incremental:
+                # Incremental tests are run once with a cold cache, once with a warm cache.
+                # Expect success on first run, errors from testcase.output (if any) on second run.
+                # We briefly sleep to make sure file timestamps are distinct.
+                self.clear_cache()
                 self.run_case_once(testcase, 1)
                 self.run_case_once(testcase, 2)
-            finally:
-                # Some test cases may use strict optional mode. Reset the state to avoid
-                # undesirable interference.
-                experiments.STRICT_OPTIONAL = False
-        elif optional:
-            try:
+            elif optional:
                 experiments.STRICT_OPTIONAL = True
                 self.run_case_once(testcase)
-            finally:
-                experiments.STRICT_OPTIONAL = False
-        else:
-            try:
-                old_strict_optional = experiments.STRICT_OPTIONAL
+            else:
                 self.run_case_once(testcase)
-            finally:
-                experiments.STRICT_OPTIONAL = old_strict_optional
+        finally:
+            experiments.STRICT_OPTIONAL = old_strict_optional
 
     def clear_cache(self) -> None:
         dn = defaults.CACHE_DIR
