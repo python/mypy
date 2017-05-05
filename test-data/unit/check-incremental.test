@@ -26,6 +26,8 @@
 -- all cases so we can avoid constantly having to annotate it. The list of
 -- rechecked/stale files can be in any arbitrary order, or can be left empty
 -- if no files should be rechecked/stale.
+--
+-- There are additional incremental mode test cases in check-serialize.test.
 
 [case testIncrementalEmpty]
 [rechecked]
@@ -1711,28 +1713,6 @@ main:1: error: Module 'ntcrash' has no attribute 'nope'
 [out2]
 main:1: error: Module 'ntcrash' has no attribute 'nope'
 
-[case testIncrementalNamedTupleInMethod4]
-from ntcrash import C
-reveal_type(C().a)
-reveal_type(C().b)
-reveal_type(C().c)
-[file ntcrash.py]
-from typing import NamedTuple
-class C:
-    def __init__(self) -> None:
-        A = NamedTuple('A', [('x', int)])
-        self.a = A(0)
-        self.b = A(0)  # type: A
-        self.c = A
-[out1]
-main:2: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:3: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:4: error: Revealed type is 'def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-[out2]
-main:2: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:3: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:4: error: Revealed type is 'def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-
 [case testIncrementalTypedDictInMethod]
 from tdcrash import nope
 [file tdcrash.py]
@@ -1774,29 +1754,6 @@ class C:
 main:1: error: Module 'tdcrash' has no attribute 'nope'
 [out2]
 main:1: error: Module 'tdcrash' has no attribute 'nope'
-
-[case testIncrementalTypedDictInMethod4]
-from ntcrash import C
-reveal_type(C().a)
-reveal_type(C().b)
-reveal_type(C().c)
-[file ntcrash.py]
-from mypy_extensions import TypedDict
-class C:
-    def __init__(self) -> None:
-        A = TypedDict('A', {'x': int})
-        self.a = A(x=0)
-        self.b = A(x=0)  # type: A
-        self.c = A
-[builtins fixtures/dict.pyi]
-[out1]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
-main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
-[out2]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
-main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
 
 [case testIncrementalInnerClassAttrInMethod]
 import crash
