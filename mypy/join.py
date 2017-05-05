@@ -1,7 +1,7 @@
 """Calculation of the least upper bound types (joins)."""
 
 from collections import OrderedDict
-from typing import cast, List
+from typing import cast, List, Optional
 
 from mypy.types import (
     Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType,
@@ -305,7 +305,7 @@ def join_instances_via_supertype(t: Instance, s: Instance) -> Type:
     # Compute the "best" supertype of t when joined with s.
     # The definition of "best" may evolve; for now it is the one with
     # the longest MRO.  Ties are broken by using the earlier base.
-    best = None  # type: Type
+    best = None  # type: Optional[Type]
     for base in t.type.bases:
         mapped = map_instance_to_supertype(t, base.type)
         res = join_instances(mapped, s)

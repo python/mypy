@@ -42,3 +42,5 @@ skip_commits:
     - .travis.yml
     - CREDITS
     - LICENSE
+
+skip_branch_with_pr: true

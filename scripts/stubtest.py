@@ -5,126 +5,201 @@ at runtime.
 """
 
 import importlib
-import json
-import subprocess
 import sys
-from typing import Dict, Any
-from collections import defaultdict
+from typing import Dict, Any, List
+from collections import defaultdict, namedtuple
 
 from mypy import build
 from mypy.build import default_data_dir, default_lib_path, find_modules_recursive
 from mypy.errors import CompileError
-from mypy.nodes import MypyFile, TypeInfo, FuncItem
+from mypy import nodes
 from mypy.options import Options
 
+import dumpmodule
 
-skipped = {
+if sys.version_info < (3, 4):
+    from singledispatch import singledispatch
+else:
+    from functools import singledispatch
+
+# TODO: email.contentmanager has a symbol table with a None node.
+#       This seems like it should not be.
+
+skip = {
     '_importlib_modulespec',
     '_subprocess',
     'distutils.command.bdist_msi',
     'distutils.command.bdist_packager',
     'msvcrt',
     'wsgiref.types',
+    'mypy_extensions',
+    'unittest.mock',  # mock.call infinite loops on inspect.getsourcelines
+                      # https://bugs.python.org/issue25532
+                      # TODO: can we filter only call?
 }
 
+messages = {
+    'not_in_runtime': ('{error.stub_type} "{error.name}" defined at line '
+                       ' {error.line} in stub but is not defined at runtime'),
+    'not_in_stub': ('{error.module_type} "{error.name}" defined at line'
+                    ' {error.line} at runtime but is not defined in stub'),
+    'no_stubs': 'could not find typeshed {error.name}',
+    'inconsistent': ('"{error.name}" is {error.stub_type} in stub but'
+                     ' {error.module_type} at runtime'),
+}
 
-class Errors:
-    def __init__(self, id):
-        self.id = id
-        self.num_errors = 0
-
-    def fail(self, msg):
-        print('{}: {}'.format(self.id, msg))
-        self.num_errors += 1
-
-
-def test_stub(id: str) -> None:
-    result = build_stubs(id)
-    verify_stubs(result.files, prefix=id)
-
-
-def verify_stubs(files: Dict[str, MypyFile], prefix: str) -> None:
-    for id, node in files.items():
-        if not (id == prefix or id.startswith(prefix + '.')):
-            # Not one of the target modules
-            continue
-        if id in skipped:
-            # There's some issue with processing this module; skip for now
-            continue
-        dumped = dump_module(id)
-        verify_stub(id, node.names, dumped)
+Error = namedtuple('Error', (
+    'module',
+    'name',
+    'error_type',
+    'line',
+    'stub_type',
+    'module_type'))
 
 
-# symbols is typeshed, dumped is runtime
-def verify_stub(id, symbols, dumped):
-    errors = Errors(id)
-    symbols = defaultdict(lambda: None, symbols)
-    dumped = defaultdict(lambda: None, dumped)
-
-    all_symbols = {
-        name: (symbols[name], dumped[name])
-        for name in (set(symbols) | set(dumped))
-        if not name.startswith('_')  # private attributes
-        and (symbols[name] is None or symbols[name].module_public)
+def test_stub(name: str):
+    stubs = {
+        mod: stub for mod, stub in build_stubs(name).items()
+        if (mod == name or mod.startswith(name + '.')) and mod not in skip
     }
 
-    for name, (typeshed, runtime) in all_symbols.items():
-        if runtime is None:
-            errors.fail('"{}" defined in stub but not at runtime'.format(name))
-        elif typeshed is None:
-            errors.fail('"{}" defined at runtime but not in stub'.format(name))
-        else:
-            verify_node(name, typeshed, runtime, errors)
+    for mod, stub in stubs.items():
+        instance = dump_module(mod)
+
+        for identifiers, *error in verify(stub, instance):
+            yield Error(mod, '.'.join(identifiers), *error)
 
 
-def verify_node(name, node, dump, errors):
-    if isinstance(node.node, TypeInfo):
-        if not isinstance(dump, dict) or dump['type'] != 'class':
-            errors.fail('"{}" is a class in stub but not at runtime'.format(name))
-            return
-        all_attrs = {x[0] for x in dump['attributes']}
-        for attr, attr_node in node.node.names.items():
-            if isinstance(attr_node.node, FuncItem) and attr not in all_attrs:
-                errors.fail(
-                    ('"{}.{}" defined as a method in stub but not defined '
-                     'at runtime in class object').format(
-                        name, attr))
-    # TODO other kinds of nodes
+@singledispatch
+def verify(node, module_node):
+    raise TypeError('unknown mypy node ' + str(node))
 
 
-def dump_module(id: str) -> Dict[str, Any]:
-    try:
-        o = subprocess.check_output(
-            ['python', 'scripts/dumpmodule.py', id])
-    except subprocess.CalledProcessError:
-        print('Failure to dump module contents of "{}"'.format(id))
-        sys.exit(1)
-    return json.loads(o.decode('ascii'))
+
+@verify.register(nodes.MypyFile)
+def verify_mypyfile(stub, instance):
+    if instance is None:
+        yield [], 'not_in_runtime', stub.line, type(stub), None
+    elif instance['type'] != 'file':
+        yield [], 'inconsistent', stub.line, type(stub), instance['type']
+    else:
+        stub_children = defaultdict(lambda: None, stub.names)
+        instance_children = defaultdict(lambda: None, instance['names'])
+
+        # TODO: I would rather not filter public children here.
+        #       For example, what if the checkersurfaces an inconsistency
+        #       in the typing of a private child
+        public_nodes = {
+            name: (stub_children[name], instance_children[name])
+            for name in set(stub_children) | set(instance_children)
+            if not name.startswith('_')
+            and (stub_children[name] is None or stub_children[name].module_public)
+        }
+
+        for node, (stub_child, instance_child) in public_nodes.items():
+            stub_child = getattr(stub_child, 'node', None)
+            for identifiers, *error in verify(stub_child, instance_child):
+                yield ([node] + identifiers, *error)
+
+@verify.register(nodes.TypeInfo)
+def verify_typeinfo(stub, instance):
+    if not instance:
+        yield [], 'not_in_runtime', stub.line, type(stub), None
+    elif instance['type'] != 'class':
+        yield [], 'inconsistent', stub.line, type(stub), instance['type']
+    else:
+        for attr, attr_node in stub.names.items():
+            subdump = instance['attributes'].get(attr, None)
+            for identifiers, *error in verify(attr_node.node, subdump):
+                yield ([attr] + identifiers, *error)
 
 
-def build_stubs(id):
+@verify.register(nodes.FuncItem)
+def verify_funcitem(stub, instance):
+    if not instance:
+        yield [], 'not_in_runtime', stub.line, type(stub), None
+    elif 'type' not in instance or instance['type'] not in ('function', 'callable'):
+        yield [], 'inconsistent', stub.line, type(stub), instance['type']
+    # TODO check arguments and return value
+
+
+@verify.register(type(None))
+def verify_none(stub, instance):
+    if instance is None:
+        yield [], 'not_in_stub', None, None, None
+    else:
+        yield [], 'not_in_stub', instance['line'], None, instance['type']
+
+
+@verify.register(nodes.Var)
+def verify_var(node, module_node):
+    if False:
+        yield None
+    # Need to check if types are inconsistent.
+    #if 'type' not in dump or dump['type'] != node.node.type:
+    #    import ipdb; ipdb.set_trace()
+    #    yield name, 'inconsistent', node.node.line, shed_type, module_type
+
+
+@verify.register(nodes.OverloadedFuncDef)
+def verify_overloadedfuncdef(node, module_node):
+    # Should check types of the union of the overloaded types.
+    if False:
+        yield None
+
+
+@verify.register(nodes.TypeVarExpr)
+def verify_typevarexpr(node, module_node):
+    if False:
+        yield None
+
+
+@verify.register(nodes.Decorator)
+def verify_decorator(node, module_noode):
+    if False:
+        yield None
+
+
+def dump_module(name: str) -> Dict[str, Any]:
+    mod = importlib.import_module(name)
+    return {'type': 'file', 'names': dumpmodule.module_to_json(mod)}
+
+
+def build_stubs(mod):
     data_dir = default_data_dir(None)
     options = Options()
     options.python_version = (3, 6)
     lib_path = default_lib_path(data_dir,
                                 options.python_version,
                                 custom_typeshed_dir=None)
-    sources = find_modules_recursive(id, lib_path)
-    if not sources:
-        sys.exit('Error: Cannot find module {}'.format(repr(id)))
-    msg = []
+    sources = find_modules_recursive(mod, lib_path)
     try:
         res = build.build(sources=sources,
                           options=options)
-        msg = res.errors
-    except CompileError as e:
-        msg = e.messages
-    if msg:
-        for m in msg:
-            print(m)
+        messages = res.errors
+    except CompileError as error:
+        messages = error.messages
+
+    if messages:
+        for msg in messages:
+            print(msg)
         sys.exit(1)
-    return res
+    return res.files
+
+
+def main(args):
+    if len(args) == 1:
+        print('must provide at least one module to test')
+        sys.exit(1)
+    else:
+        modules = args[1:]
+
+    for module in modules:
+        for error in test_stub(module):
+            yield error
 
 
 if __name__ == '__main__':
-    test_stub(sys.argv[1])
+
+    for err in main(sys.argv):
+        print(messages[err.error_type].format(error=err))
