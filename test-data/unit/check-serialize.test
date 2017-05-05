@@ -124,6 +124,21 @@ def f(x: int,
 [builtins fixtures/dict.pyi]
 [out2]
 
+[case testSerializePositionalOnlyArgument]
+import a
+[file a.py]
+import b
+[file a.py.next]
+import b
+b.f(1)
+b.f('')
+b.f(__x=1)
+[file b.py]
+def f(__x: int) -> None: pass
+[out2]
+tmp/a.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+tmp/a.py:4: error: Unexpected keyword argument "__x" for "f"
+
 [case testSerializeArgumentKindsErrors]
 import a
 [file a.py]
