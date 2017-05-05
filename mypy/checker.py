@@ -2379,7 +2379,9 @@ class TypeChecker(NodeVisitor[None]):
         """
         # Assume that the name refers to a type.
         sym = self.lookup_qualified(name)
-        return Instance(cast(TypeInfo, sym.node), [])
+        node = sym.node
+        assert isinstance(node, TypeInfo)
+        return Instance(node, [AnyType()] * len(node.defn.type_vars))
 
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
         """Return an instance with the given name and type arguments.
@@ -2387,12 +2389,16 @@ class TypeChecker(NodeVisitor[None]):
         Assume that the number of arguments is correct.  Assume that
         the name refers to a compatible generic type.
         """
-        return Instance(self.lookup_typeinfo(name), args)
+        info = self.lookup_typeinfo(name)
+        # TODO: assert len(args) == len(info.defn.type_vars)
+        return Instance(info, args)
 
     def lookup_typeinfo(self, fullname: str) -> TypeInfo:
         # Assume that the name refers to a class.
         sym = self.lookup_qualified(fullname)
-        return cast(TypeInfo, sym.node)
+        node = sym.node
+        assert isinstance(node, TypeInfo)
+        return node
 
     def type_type(self) -> Instance:
         """Return instance type 'type'."""

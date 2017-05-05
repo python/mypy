@@ -452,3 +452,13 @@ def f(x: a.X) -> None:
 [out]
 tmp/b.py:6: error: Revealed type is 'a.X'
 tmp/b.py:8: error: Revealed type is 'Tuple[Any, fallback=a.X]'
+
+[case testForwardReferenceInNamedTuple]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    b: 'B'
+    x: int
+
+class B:
+    pass

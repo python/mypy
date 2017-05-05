@@ -851,6 +851,12 @@ class SemanticAnalyzer(NodeVisitor):
                         items, types, default_items = self.check_namedtuple_classdef(defn)
                         node.node = self.build_namedtuple_typeinfo(
                             defn.name, items, types, default_items)
+                        # We only really need the assignments in the body to be type checked later;
+                        # attempting to type check methods may lead to crashes because NamedTuples
+                        # do not have a fully functional TypeInfo.
+                        # TODO remove this hack and add full support for NamedTuple methods
+                        defn.defs.body = [stmt for stmt in defn.defs.body
+                                          if isinstance(stmt, AssignmentStmt)]
                         return True
         return False
 
@@ -1097,15 +1103,23 @@ class SemanticAnalyzer(NodeVisitor):
 
     def named_type(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, None)
-        assert isinstance(sym.node, TypeInfo)
-        return Instance(sym.node, args or [])
+        node = sym.node
+        assert isinstance(node, TypeInfo)
+        if args:
+            # TODO: assert len(args) == len(node.defn.type_vars)
+            return Instance(node, args)
+        return Instance(node, [AnyType()] * len(node.defn.type_vars))
 
     def named_type_or_none(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
         if not sym:
             return None
-        assert isinstance(sym.node, TypeInfo)
-        return Instance(sym.node, args or [])
+        node = sym.node
+        assert isinstance(node, TypeInfo)
+        if args:
+            # TODO: assert len(args) == len(node.defn.type_vars)
+            return Instance(node, args)
+        return Instance(node, [AnyType()] * len(node.defn.type_vars))
 
     def is_typeddict(self, expr: Expression) -> bool:
         return (isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and
@@ -2085,7 +2099,12 @@ class SemanticAnalyzer(NodeVisitor):
         # Actual signature should return OrderedDict[str, Union[types]]
         ordereddictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
                           or self.object_type())
-        fallback = self.named_type('__builtins__.tuple', types)
+        # 'builtins.tuple' has only one type parameter.
+        #
+        # TODO: The corresponding type argument in the fallback instance should be a join of
+        #       all item types, but we can't do joins during this pass of semantic analysis
+        #       and we are using Any as a workaround.
+        fallback = self.named_type('__builtins__.tuple', [AnyType()])
         # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
         # but it can't be expressed. 'new' and 'len' should be callable types.
         iterable_type = self.named_type_or_none('typing.Iterable', [AnyType()])
@@ -3158,9 +3177,10 @@ class SemanticAnalyzer(NodeVisitor):
             return n
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
-        node = self.lookup_fully_qualified(fully_qualified_name)
-        assert isinstance(node.node, TypeInfo)
-        return Instance(node.node, [])
+        sym = self.lookup_fully_qualified(fully_qualified_name)
+        node = sym.node
+        assert isinstance(node, TypeInfo)
+        return Instance(node, [AnyType()] * len(node.defn.type_vars))
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.
@@ -3729,8 +3749,12 @@ class ThirdPass(TraverserVisitor):
     def builtin_type(self, name: str, args: List[Type] = None) -> Instance:
         names = self.modules['builtins']
         sym = names.names[name]
-        assert isinstance(sym.node, TypeInfo)
-        return Instance(sym.node, args or [])
+        node = sym.node
+        assert isinstance(node, TypeInfo)
+        if args:
+            # TODO: assert len(args) == len(node.defn.type_vars)
+            return Instance(node, args)
+        return Instance(node, [AnyType()] * len(node.defn.type_vars))
 
 
 def add_protocol_members(typ: TypeInfo) -> None:
