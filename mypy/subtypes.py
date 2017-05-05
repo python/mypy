@@ -1,9 +1,10 @@
-from typing import List, Optional, Dict, Callable
+from typing import List, Optional, Dict, Callable, cast
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
-    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
+    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType,
+    is_named_instance
 )
 import mypy.applytype
 import mypy.constraints
@@ -323,9 +324,11 @@ def is_callable_subtype(left: CallableType, right: CallableType,
 
     if left.variables:
         # Apply generic type variables away in left via type inference.
-        left = unify_generic_callable(left, right, ignore_return=ignore_return)
-        if left is None:
+        unified = unify_generic_callable(left, right, ignore_return=ignore_return)
+        if unified is None:
             return False
+        else:
+            left = unified
 
     # Check return types.
     if not ignore_return and not is_compat(left.ret_type, right.ret_type):
@@ -493,7 +496,7 @@ def are_args_compatible(
 
 
 def unify_generic_callable(type: CallableType, target: CallableType,
-                           ignore_return: bool) -> CallableType:
+                           ignore_return: bool) -> Optional[CallableType]:
     """Try to unify a generic callable type with another callable type.
 
     Return unified CallableType if successful; otherwise, return None.
@@ -512,8 +515,10 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     inferred_vars = mypy.solve.solve_constraints(type_var_ids, constraints)
     if None in inferred_vars:
         return None
+    non_none_inferred_vars = cast(List[Type], inferred_vars)
     msg = messages.temp_message_builder()
-    applied = mypy.applytype.apply_generic_arguments(type, inferred_vars, msg, context=target)
+    applied = mypy.applytype.apply_generic_arguments(type, non_none_inferred_vars, msg,
+                                                     context=target)
     if msg.is_errors():
         return None
     return applied

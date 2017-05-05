@@ -93,7 +93,7 @@ ARG_CONSTRUCTOR_NAMES = {
     ARG_OPT: "DefaultArg",
     ARG_NAMED: "NamedArg",
     ARG_NAMED_OPT: "DefaultNamedArg",
-    ARG_STAR: "StarArg",
+    ARG_STAR: "VarArg",
     ARG_STAR2: "KwArg",
 }
 
@@ -214,15 +214,15 @@ class MessageBuilder:
                                     verbosity = max(verbosity - 1, 0))))
                     else:
                         constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
-                        if arg_kind in (ARG_STAR, ARG_STAR2):
+                        if arg_kind in (ARG_STAR, ARG_STAR2) or arg_name is None:
                             arg_strings.append("{}({})".format(
                                 constructor,
                                 strip_quotes(self.format(arg_type))))
                         else:
-                            arg_strings.append("{}('{}', {})".format(
+                            arg_strings.append("{}({}, {})".format(
                                 constructor,
-                                arg_name,
-                                strip_quotes(self.format(arg_type))))
+                                strip_quotes(self.format(arg_type)),
+                                repr(arg_name)))
 
                 return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
             else:
@@ -249,6 +249,10 @@ class MessageBuilder:
         if isinstance(typ, Instance):
             itype = typ
             # Get the short name of the type.
+            if itype.type.fullname() in ('types.ModuleType',
+                                         '_importlib_modulespec.ModuleType'):
+                # Make some common error messages simpler and tidier.
+                return 'Module'
             if verbosity >= 2:
                 base_str = itype.type.fullname()
             else:
@@ -329,7 +333,7 @@ class MessageBuilder:
             if typ.is_noreturn:
                 return 'NoReturn'
             else:
-                return '<uninhabited>'
+                return '<nothing>'
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(
                 strip_quotes(self.format_simple(typ.item, verbosity)))
@@ -575,7 +579,7 @@ class MessageBuilder:
                 msg = 'Missing positional argument'
             else:
                 msg = 'Missing positional arguments'
-            if callee.name and diff:
+            if callee.name and diff and all(d is not None for d in diff):
                 msg += ' "{}" in call to {}'.format('", "'.join(diff), callee.name)
         else:
             msg = 'Too few arguments'

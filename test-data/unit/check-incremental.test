@@ -114,6 +114,25 @@ def func1() -> A: pass
 [out2]
 tmp/mod1.py:1: error: Name 'A' is not defined
 
+[case testIncrementalCallable]
+import mod1
+
+[file mod1.py]
+from typing import Callable
+from mypy_extensions import Arg
+def func1() -> Callable[[Arg(int, 'x')], int]: pass
+
+[file mod1.py.next]
+from typing import Callable
+from mypy_extensions import Arg
+def func1() -> Callable[[Arg(int, 'x')], int]: ...
+
+
+[rechecked mod1]
+[stale]
+
+[builtins fixtures/dict.pyi]
+
 [case testIncrementalSameNameChange]
 import mod1
 
@@ -300,7 +319,7 @@ const = 3
 [stale mod3]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "ModuleType" has no attribute "mod4"
+tmp/mod1.py:3: error: Module has no attribute "mod4"
 
 [case testIncrementalLongBrokenCascade]
 import mod1
@@ -335,7 +354,7 @@ const = 3
 [stale mod6]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "ModuleType" has no attribute "mod7"
+tmp/mod1.py:3: error: Module has no attribute "mod7"
 
 [case testIncrementalNestedBrokenCascade]
 import mod1
@@ -361,7 +380,7 @@ const = 3
 [stale mod2.mod3]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "ModuleType" has no attribute "mod4"
+tmp/mod1.py:3: error: Module has no attribute "mod4"
 
 [case testIncrementalNestedBrokenCascadeWithType1]
 import mod1, mod2.mod3.mod5
