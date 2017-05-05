@@ -1485,7 +1485,7 @@ y = C()
 [file a.py]
 from typing import Protocol, TypeVar
 
-T = TypeVar('T')
+T = TypeVar('T', covariant=True)
 class P(Protocol[T]):
     def meth(self) -> T:
         pass

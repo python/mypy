@@ -265,8 +265,8 @@ class C(MyHashable):
 [case testBasicSemanalErrorsInProtocols]
 from typing import Protocol, Generic, TypeVar, Iterable
 
-T = TypeVar('T')
-S = TypeVar('S')
+T = TypeVar('T', covariant=True)
+S = TypeVar('S', covariant=True)
 
 class P1(Protocol[T, T]): # E: Duplicate type variables in Generic[...] or Protocol[...]
     def meth(self) -> T:
@@ -362,10 +362,11 @@ from typing import TypeVar, Protocol
 
 T = TypeVar('T')
 
-class Pco(Protocol[T]):
+# In case of these errors we proceed with inferred variance.
+class Pco(Protocol[T]): # E: Invariant type variable 'T' used in protocol where covariant one is expected
     def meth(self) -> T:
         pass
-class Pcontra(Protocol[T]):
+class Pcontra(Protocol[T]): # E: Invariant type variable 'T' used in protocol where contravariant one is expected
     def meth(self, x: T) -> None:
         pass
 class Pinv(Protocol[T]):
@@ -401,7 +402,7 @@ x3 = y3 # E: Incompatible types in assignment (expression has type Pinv[A], vari
 [case testGenericProtocolsInference1]
 from typing import Protocol, Sequence, TypeVar
 
-T = TypeVar('T')
+T = TypeVar('T', covariant=True)
 
 class Closeable(Protocol[T]):
     def close(self) -> T:
@@ -448,8 +449,9 @@ reveal_type(fun3(C())) # E: Revealed type is 'builtins.int*'
 
 [case testProtocolGenericInferenceCovariant]
 from typing import Generic, TypeVar, Protocol
-T = TypeVar('T')
-S = TypeVar('S')
+T = TypeVar('T', covariant=True)
+S = TypeVar('S', covariant=True)
+U = TypeVar('U')
 
 class P(Protocol[T, S]):
     def x(self) -> T: pass
@@ -459,7 +461,7 @@ class C:
     def x(self) -> int: pass
     def y(self) -> int: pass
 
-def fun4(x: T, y: P[T, T]) -> T:
+def fun4(x: U, y: P[U, U]) -> U:
     pass
 reveal_type(fun4('a', C())) # E: Revealed type is 'builtins.object*'
 [out]
@@ -534,8 +536,8 @@ var: P[Union[int, P], Union[P, str]] = C() # E: Incompatible types in assignment
 [case testGenericSubProtocolsExtensionCovariant]
 from typing import TypeVar, Protocol, Union
 
-T = TypeVar('T')
-S = TypeVar('S')
+T = TypeVar('T', covariant=True)
+S = TypeVar('S', covariant=True)
 
 class P1(Protocol[T]):
     def attr1(self) -> T: pass
@@ -1286,7 +1288,7 @@ else:
 [case testBasicTupleStructuralSubtyping]
 from typing import Tuple, TypeVar, Protocol
 
-T = TypeVar('T')
+T = TypeVar('T', covariant=True)
 
 class MyProto(Protocol[T]):
     def __len__(self) -> T:
@@ -1304,8 +1306,8 @@ f(t)  # OK
 [case testBasicNamedTupleStructuralSubtyping]
 from typing import NamedTuple, TypeVar, Protocol
 
-T = TypeVar('T')
-S = TypeVar('S')
+T = TypeVar('T', covariant=True)
+S = TypeVar('S', covariant=True)
 
 class P(Protocol[T, S]):
     @property

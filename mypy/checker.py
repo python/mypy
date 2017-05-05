@@ -27,7 +27,7 @@ from mypy.nodes import (
     RefExpr, YieldExpr, BackquoteExpr, Import, ImportFrom, ImportAll, ImportBase,
     AwaitExpr, PromoteExpr, Node, EnumCallExpr,
     ARG_POS, MDEF,
-    CONTRAVARIANT, COVARIANT)
+    CONTRAVARIANT, COVARIANT, INVARIANT)
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
@@ -1073,6 +1073,8 @@ class TypeChecker(NodeVisitor[None]):
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
         typ = defn.info
+        if typ.is_protocol and typ.defn.type_vars:
+            self.check_protocol_variance(defn)
         with self.errors.enter_type(defn.name), self.enter_partial_types():
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
@@ -1083,6 +1085,27 @@ class TypeChecker(NodeVisitor[None]):
             if not defn.has_incompatible_baseclass:
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
+
+    def check_protocol_variance(self, defn: ClassDef) -> None:
+        info = defn.info
+        object_type = Instance(info.mro[-1], [])
+        tvars = info.defn.type_vars
+        for i, tvar in enumerate(tvars):
+            up_args = [object_type if i == j else AnyType() for j, _ in enumerate(tvars)]
+            down_args = [UninhabitedType() if i == j else AnyType() for j, _ in enumerate(tvars)]
+            up, down = Instance(info, up_args), Instance(info, down_args)
+            is_co = is_subtype(down, up)
+            is_contra = is_subtype(up, down)
+            if is_co:
+                expected = 'covariant'
+            elif is_contra:
+                expected = 'contravariant'
+            else:
+                expected = 'invariant'
+            # TODO: add more variance checks (actual covariant and actual invariant)
+            if tvar.variance == INVARIANT and expected != 'invariant':
+                self.fail("Invariant type variable '{}' used in protocol where"
+                          " {} one is expected".format(tvar.name, expected), defn)
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Check for multiple inheritance related errors."""

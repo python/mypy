@@ -28,12 +28,16 @@ Set = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
 U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
 
+# Note: definitions below are different from typeshed, variances are declared
+# to silence the protocol variance checks. Maybe it is better to use type: ignore?
+
 @runtime
-class Container(Protocol[T]):
+class Container(Protocol[T_contra]):
     @abstractmethod
     # Use int because bool isn't in the default test builtins
     def __contains__(self, arg: T) -> int: pass
@@ -102,17 +106,17 @@ class AsyncIterator(AsyncIterable[T], Protocol):
     def __anext__(self) -> Awaitable[T]: pass
 
 @runtime
-class Sequence(Iterable[T], Protocol):
+class Sequence(Iterable[T_co], Protocol):
     @abstractmethod
-    def __getitem__(self, n: Any) -> T: pass
+    def __getitem__(self, n: Any) -> T_co: pass
 
 @runtime
-class Mapping(Protocol[T, U]):
-    def __getitem__(self, key: T) -> U: pass
+class Mapping(Protocol[T_contra, T_co]):
+    def __getitem__(self, key: T_contra) -> T_co: pass
 
 @runtime
-class MutableMapping(Mapping[T, U], Protocol):
-    def __setitem__(self, k: T, v: U) -> None: pass
+class MutableMapping(Mapping[T_contra, U], Protocol):
+    def __setitem__(self, k: T_contra, v: U) -> None: pass
 
 class SupportsInt(Protocol):
     def __int__(self) -> int: pass
