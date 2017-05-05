@@ -1900,6 +1900,49 @@ main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fall
 main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
 main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
 
+[case testSerializeMetaclass]
+import b
+reveal_type(b.A.f())
+m: b.M = b.A
+reveal_type(b.a.f())
+[file b.py]
+from typing import Type
+
+class M(type):
+    def f(cls) -> int: return 0
+class A(metaclass=M): pass
+a: Type[A]
+[out]
+main:2: error: Revealed type is 'builtins.int'
+main:4: error: Revealed type is 'builtins.int'
+[out2]
+main:2: error: Revealed type is 'builtins.int'
+main:4: error: Revealed type is 'builtins.int'
+
+[case testSerializeMetaclassInImportCycle1]
+import b
+import c
+reveal_type(b.A.f())
+m: c.M = b.A
+reveal_type(b.a.f())
+[file b.py]
+from typing import Type
+from c import M
+class A(metaclass=M): pass
+a: Type[A]
+[file c.py]
+class M(type):
+    def f(cls) -> int: return 0
+[out]
+main:3: error: Revealed type is 'builtins.int'
+main:5: error: Revealed type is 'builtins.int'
+[out2]
+main:3: error: Revealed type is 'builtins.int'
+main:5: error: Revealed type is 'builtins.int'
+
+-- TODO: Add another test for metaclass in import cycle (reversed from the above test).
+--       This currently doesn't work.
+
 [case testQuickAndDirty1]
 # flags: --quick-and-dirty
 import b, c
