@@ -533,8 +533,8 @@ a, aa = G().f(*[a])  # Fail
 aa, a = G().f(*[a])  # Fail
 ab, aa = G().f(*[a]) # Fail
 
-ao, ao = G().f(*[a]) # E: Incompatible types in assignment (expression has type List[<uninhabited>], variable has type List[object])
-aa, aa = G().f(*[a]) # E: Incompatible types in assignment (expression has type List[<uninhabited>], variable has type List[A])
+ao, ao = G().f(*[a]) # E: Incompatible types in assignment (expression has type List[<nothing>], variable has type List[object])
+aa, aa = G().f(*[a]) # E: Incompatible types in assignment (expression has type List[<nothing>], variable has type List[A])
 
 class G(Generic[T]):
     def f(self, *a: S) -> Tuple[List[S], List[T]]:
@@ -545,9 +545,9 @@ class B: pass
 [builtins fixtures/list.pyi]
 [out]
 main:9: error: Incompatible types in assignment (expression has type List[A], variable has type "A")
-main:9: error: Incompatible types in assignment (expression has type List[<uninhabited>], variable has type List[A])
-main:10: error: Incompatible types in assignment (expression has type List[<uninhabited>], variable has type "A")
-main:11: error: Incompatible types in assignment (expression has type List[<uninhabited>], variable has type List[A])
+main:9: error: Incompatible types in assignment (expression has type List[<nothing>], variable has type List[A])
+main:10: error: Incompatible types in assignment (expression has type List[<nothing>], variable has type "A")
+main:11: error: Incompatible types in assignment (expression has type List[<nothing>], variable has type List[A])
 main:11: error: Argument 1 to "f" of "G" has incompatible type *List[A]; expected "B"
 
 

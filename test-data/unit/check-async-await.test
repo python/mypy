@@ -84,7 +84,7 @@ async def f() -> int:
     x = await g()
     return x
 [out]
-main:7: error: Incompatible types in await (actual type Generator[int, None, str], expected type "Awaitable")
+main:7: error: Incompatible types in await (actual type Generator[int, None, str], expected type Awaitable[Any])
 
 [case testAwaitIteratorError]
 
@@ -95,7 +95,7 @@ async def f() -> int:
     x = await g()
     return x
 [out]
-main:6: error: Incompatible types in await (actual type Iterator[Any], expected type "Awaitable")
+main:6: error: Incompatible types in await (actual type Iterator[Any], expected type Awaitable[Any])
 
 [case testAwaitArgumentError]
 
@@ -106,7 +106,7 @@ async def f() -> int:
     return x
 [builtins fixtures/async_await.pyi]
 [out]
-main:5: error: Incompatible types in await (actual type "int", expected type "Awaitable")
+main:5: error: Incompatible types in await (actual type "int", expected type Awaitable[Any])
 
 [case testAwaitResultError]
 
@@ -271,7 +271,7 @@ class C:
     def __aenter__(self) -> int: pass
     async def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
-    async with C() as x:  # E: Incompatible types in "async with" for __aenter__ (actual type "int", expected type "Awaitable")
+    async with C() as x:  # E: Incompatible types in "async with" for __aenter__ (actual type "int", expected type Awaitable[Any])
         pass
 [builtins fixtures/async_await.pyi]
 [out]
@@ -293,7 +293,7 @@ class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> int: pass
 async def f() -> None:
-    async with C() as x: # E: Incompatible types in "async with" for __aexit__ (actual type "int", expected type "Awaitable")
+    async with C() as x: # E: Incompatible types in "async with" for __aexit__ (actual type "int", expected type Awaitable[Any])
         pass
 [builtins fixtures/async_await.pyi]
 [out]
@@ -615,11 +615,11 @@ def plain_host_generator() -> Generator[str, None, None]:
 
 async def plain_host_coroutine() -> None:
     x = 0
-    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type "Awaitable")
+    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type Awaitable[Any])
     x = await plain_coroutine()
     x = await decorated_generator()
     x = await decorated_coroutine()
-    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type "Awaitable")
+    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type Awaitable[Any])
     x = await other_coroutine()
 
 @coroutine
@@ -636,11 +636,11 @@ def decorated_host_generator() -> Generator[str, None, None]:
 @coroutine
 async def decorated_host_coroutine() -> None:
     x = 0
-    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type "Awaitable")
+    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type Awaitable[Any])
     x = await plain_coroutine()
     x = await decorated_generator()
     x = await decorated_coroutine()
-    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type "Awaitable")
+    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type Awaitable[Any])
     x = await other_coroutine()
 
 [builtins fixtures/async_await.pyi]

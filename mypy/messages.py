@@ -249,6 +249,10 @@ class MessageBuilder:
         if isinstance(typ, Instance):
             itype = typ
             # Get the short name of the type.
+            if itype.type.fullname() in ('types.ModuleType',
+                                         '_importlib_modulespec.ModuleType'):
+                # Make some common error messages simpler and tidier.
+                return 'Module'
             if verbosity >= 2:
                 base_str = itype.type.fullname()
             else:
@@ -329,7 +333,7 @@ class MessageBuilder:
             if typ.is_noreturn:
                 return 'NoReturn'
             else:
-                return '<uninhabited>'
+                return '<nothing>'
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(
                 strip_quotes(self.format_simple(typ.item, verbosity)))
@@ -575,7 +579,7 @@ class MessageBuilder:
                 msg = 'Missing positional argument'
             else:
                 msg = 'Missing positional arguments'
-            if callee.name and diff:
+            if callee.name and diff and all(d is not None for d in diff):
                 msg += ' "{}" in call to {}'.format('", "'.join(diff), callee.name)
         else:
             msg = 'Too few arguments'

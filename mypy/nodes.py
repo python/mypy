@@ -2180,6 +2180,8 @@ class TypeInfo(SymbolNode):
                 '_promote': None if self._promote is None else self._promote.serialize(),
                 'declared_metaclass': (None if self.declared_metaclass is None
                                        else self.declared_metaclass.serialize()),
+                'metaclass_type':
+                    None if self.metaclass_type is None else self.metaclass_type.serialize(),
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
                 'typeddict_type':
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
@@ -2202,7 +2204,9 @@ class TypeInfo(SymbolNode):
                        else mypy.types.deserialize_type(data['_promote']))
         ti.declared_metaclass = (None if data['declared_metaclass'] is None
                                  else mypy.types.Instance.deserialize(data['declared_metaclass']))
-        # NOTE: ti.metaclass_type and ti.mro will be set in the fixup phase.
+        ti.metaclass_type = (None if data['metaclass_type'] is None
+                             else mypy.types.Instance.deserialize(data['metaclass_type']))
+        # NOTE: ti.mro will be set in the fixup phase.
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None
