@@ -511,6 +511,10 @@ class SemanticAnalyzer(NodeVisitor):
             defn.type = Overloaded(types)
             defn.type.line = defn.line
 
+        if not defn.items:
+            return # It was not any kind of overload def after all. We've
+                   # visited the redfinitions already.
+
         if self.is_class_scope():
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn,
                                                            typ=defn.type)
