@@ -75,6 +75,11 @@ First install any additional dependencies needed for testing:
 
     $ python3 -m pip install -U -r test-requirements.txt
 
+You must also have a Python 2.7 binary installed that can import the `typing`
+module:
+
+    $ python2 -m pip install -U typing
+
 To run all tests, run the script `runtests.py` in the mypy repository:
 
     $ ./runtests.py
