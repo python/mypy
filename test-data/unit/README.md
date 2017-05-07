@@ -107,12 +107,13 @@ finer control over which unit tests are run and how, you can run `py.test` or
     $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
 
 You can also run the type checker for manual testing without
-installing anything by setting up the Python module search path
-suitably (the lib-typing/3.2 path entry is not needed for Python 3.5
-or when you have manually installed the `typing` module):
+installing it by setting up the Python module search path suitably:
 
-    $ export PYTHONPATH=$PWD:$PWD/lib-typing/3.2
+    $ export PYTHONPATH=$PWD
     $ python<version> -m mypy PROGRAM.py
+
+You will have to manually install the `typing` module if you're running Python
+3.4 or earlier.
 
 You can add the entry scripts to PATH for a single python3 version:
 
