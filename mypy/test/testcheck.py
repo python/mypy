@@ -205,9 +205,6 @@ class TypeCheckSuite(DataSuite):
                 self.verify_cache(module_data, a, res.manager)
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
-                print('>', suffix,
-                      testcase.expected_rechecked_modules,
-                      testcase.expected_stale_modules)
                 self.check_module_equivalence(
                     'rechecked' + suffix,
                     testcase.expected_rechecked_modules.get(incremental_step - 1),
