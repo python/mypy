@@ -1947,6 +1947,63 @@ main:5: error: Revealed type is 'builtins.int'
 -- TODO: Add another test for metaclass in import cycle (reversed from the above test).
 --       This currently doesn't work.
 
+[case testThreePassesBasic]
+import m
+[file m.py]
+def foo():
+    pass
+[file m.py.2]
+def foo() -> None:
+    pass
+[file m.py.3]
+def foo():
+    pass
+[rechecked m]
+[stale m]
+[rechecked2 m]
+[stale2 m]
+[out3]
+
+[case testThreePassesErrorInThirdPass]
+import m
+[file m.py]
+def foo():
+    pass
+[file m.py.2]
+def foo() -> None:
+    pass
+[file m.py.3]
+def foo() -> int:
+    return ''
+[rechecked m]
+[stale m]
+[rechecked2 m]
+[stale2]
+[out3]
+tmp/m.py:2: error: Incompatible return value type (got "str", expected "int")
+
+[case testThreePassesThirdPassFixesError]
+import n
+[file n.py]
+import m
+x = m.foo(1)
+[file m.py]
+def foo(x):
+    pass
+[file m.py.2]
+def foo() -> str:
+    pass
+[file m.py.3]
+def foo(x) -> int:
+    pass
+[rechecked m, n]
+[stale m]
+[rechecked2 m, n]
+[stale2 m, n]
+[out2]
+tmp/n.py:2: error: Too many arguments for "foo"
+[out3]
+
 [case testQuickAndDirty1]
 # flags: --quick-and-dirty
 import b, c
