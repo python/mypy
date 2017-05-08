@@ -102,8 +102,17 @@ class TypeCheckSuite(DataSuite):
                 # Expect success on first run, errors from testcase.output (if any) on second run.
                 # We briefly sleep to make sure file timestamps are distinct.
                 self.clear_cache()
-                self.run_case_once(testcase, 1)
-                self.run_case_once(testcase, 2)
+                num_steps = max([2] + list(testcase.output2.keys()))
+                # Check that there are no file changes beyond the last run (they would be ignored).
+                for dn, dirs, files in os.walk(os.curdir):
+                    for file in files:
+                        m = re.search(r'\.([2-9])$', file)
+                        if m and int(m.group(1)) > num_steps:
+                            raise ValueError(
+                                'Output file {} exists though test case only has {} runs'.format(
+                                    file, num_steps))
+                for step in range(1, num_steps + 1):
+                    self.run_case_once(testcase, step)
             elif optional:
                 experiments.STRICT_OPTIONAL = True
                 self.run_case_once(testcase)
@@ -118,26 +127,26 @@ class TypeCheckSuite(DataSuite):
         if os.path.exists(dn):
             shutil.rmtree(dn)
 
-    def run_case_once(self, testcase: DataDrivenTestCase, incremental: int = 0) -> None:
+    def run_case_once(self, testcase: DataDrivenTestCase, incremental_step: int = 0) -> None:
         find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
-        module_data = self.parse_module(original_program_text, incremental)
+        module_data = self.parse_module(original_program_text, incremental_step)
 
-        if incremental:
-            if incremental == 1:
+        if incremental_step:
+            if incremental_step == 1:
                 # In run 1, copy program text to program file.
                 for module_name, program_path, program_text in module_data:
                     if module_name == '__main__':
                         with open(program_path, 'w') as f:
                             f.write(program_text)
                         break
-            elif incremental == 2:
-                # In run 2, copy *.next files to * files.
+            elif incremental_step > 1:
+                # In runs 2+, copy *.[num] files to * files.
                 for dn, dirs, files in os.walk(os.curdir):
                     for file in files:
-                        if file.endswith('.next'):
+                        if file.endswith('.' + str(incremental_step)):
                             full = os.path.join(dn, file)
-                            target = full[:-5]
+                            target = full[:-2]
                             shutil.copy(full, target)
 
                             # In some systems, mtime has a resolution of 1 second which can cause
@@ -147,12 +156,12 @@ class TypeCheckSuite(DataSuite):
                             os.utime(target, times=(new_time, new_time))
 
         # Parse options after moving files (in case mypy.ini is being moved).
-        options = self.parse_options(original_program_text, testcase, incremental)
+        options = self.parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
         if 'optional' in testcase.file:
             options.strict_optional = True
-        if incremental:
+        if incremental_step:
             options.incremental = True
         else:
             options.cache_dir = os.devnull  # Dont waste time writing cache
@@ -161,7 +170,7 @@ class TypeCheckSuite(DataSuite):
         for module_name, program_path, program_text in module_data:
             # Always set to none so we're forced to reread the module in incremental mode
             sources.append(BuildSource(program_path, module_name,
-                                       None if incremental else program_text))
+                                       None if incremental_step else program_text))
         res = None
         try:
             res = build.build(sources=sources,
@@ -173,15 +182,17 @@ class TypeCheckSuite(DataSuite):
         a = normalize_error_messages(a)
 
         # Make sure error messages match
-        if incremental == 0:
+        if incremental_step == 0:
+            # Not incremental
             msg = 'Invalid type checker output ({}, line {})'
             output = testcase.output
-        elif incremental == 1:
+        elif incremental_step == 1:
             msg = 'Invalid type checker output in incremental, run 1 ({}, line {})'
             output = testcase.output
-        elif incremental == 2:
-            msg = 'Invalid type checker output in incremental, run 2 ({}, line {})'
-            output = testcase.output2
+        elif incremental_step > 1:
+            msg = ('Invalid type checker output in incremental, run {}'.format(incremental_step) +
+                   ' ({}, line {})')
+            output = testcase.output2.get(incremental_step, [])
         else:
             raise AssertionError()
 
@@ -189,17 +200,21 @@ class TypeCheckSuite(DataSuite):
             update_testcase_output(testcase, a)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
-        if incremental and res:
+        if incremental_step and res:
             if options.follow_imports == 'normal' and testcase.output is None:
                 self.verify_cache(module_data, a, res.manager)
-            if incremental == 2:
+            if incremental_step > 1:
+                suffix = '' if incremental_step == 2 else str(incremental_step - 1)
+                print('>', suffix,
+                      testcase.expected_rechecked_modules,
+                      testcase.expected_stale_modules)
                 self.check_module_equivalence(
-                    'rechecked',
-                    testcase.expected_rechecked_modules,
+                    'rechecked' + suffix,
+                    testcase.expected_rechecked_modules.get(incremental_step - 1),
                     res.manager.rechecked_modules)
                 self.check_module_equivalence(
-                    'stale',
-                    testcase.expected_stale_modules,
+                    'stale' + suffix,
+                    testcase.expected_stale_modules.get(incremental_step - 1),
                     res.manager.stale_modules)
 
     def check_module_equivalence(self, name: str,
@@ -268,7 +283,9 @@ class TypeCheckSuite(DataSuite):
                 missing[id] = path
         return set(missing.values())
 
-    def parse_module(self, program_text: str, incremental: int = 0) -> List[Tuple[str, str, str]]:
+    def parse_module(self,
+                     program_text: str,
+                     incremental_step: int = 0) -> List[Tuple[str, str, str]]:
         """Return the module and program names for a test case.
 
         Normally, the unit tests will parse the default ('__main__')
@@ -281,8 +298,9 @@ class TypeCheckSuite(DataSuite):
         Return a list of tuples (module name, file name, program text).
         """
         m = re.search('# cmd: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
-        m2 = re.search('# cmd2: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
-        if m2 is not None and incremental == 2:
+        m2 = re.search('# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step),
+                       program_text, flags=re.MULTILINE)
+        if m2 is not None and incremental_step > 1:
             # Optionally return a different command if in the second
             # stage of incremental mode, otherwise default to reusing
             # the original cmd.
@@ -304,11 +322,12 @@ class TypeCheckSuite(DataSuite):
             return [('__main__', 'main', program_text)]
 
     def parse_options(self, program_text: str, testcase: DataDrivenTestCase,
-                      incremental: int) -> Options:
+                      incremental_step: int) -> Options:
         options = Options()
         flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
-        if incremental == 2:
-            flags2 = re.search('# flags2: (.*)$', program_text, flags=re.MULTILINE)
+        if incremental_step > 1:
+            flags2 = re.search('# flags{}: (.*)$'.format(incremental_step), program_text,
+                               flags=re.MULTILINE)
             if flags2:
                 flags = flags2
 

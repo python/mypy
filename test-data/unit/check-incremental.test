@@ -1,21 +1,25 @@
 -- Checks for incremental mode (see testcheck.py).
 -- Each test is run twice, once with a cold cache, once with a warm cache.
--- Before the tests are run the second time, any *.py.next files are copied to *.py.
+-- Before the tests are run the second time, any *.py.2 files are copied to *.py
+-- (and *.py.3 files for the third step, and so on).
 --
 -- Errors expected in the first run should be in the `[out1]` section, and
--- errors expected in the second run should be in the `[out2]` section. If a
--- section is omitted, it is expected there are no errors on that run.
--- (Note that [out] is equivalent to [out1].)
+-- errors expected in the second run should be in the `[out2]` section, and so on.
+-- If a section is omitted, it is expected there are no errors on that run.
+-- The number of runs is determined by the highest N in all [outN] sections, but
+-- there are always at least two runs. (Note that [out] is equivalent to [out1].)
 --
 -- The list of modules to be checked can be specified using
 -- # cmd: mypy -m mod1 mod2 mod3
 -- To check a different list on the second run, use
 -- # cmd2: mypy -m mod1 mod3
+-- (and cmd3 for the third run, and so on).
 --
 -- Extra command line flags may be specified using
 -- # flags: --some-flag
 -- If the second run requires different flags, those can be specified using
 -- # flags2: --another-flag
+-- (and flags3 for the third run, and so on).
 --
 -- Any files that we expect to be rechecked should be annotated in the [rechecked]
 -- annotation, and any files expect to be stale (aka have a modified interface)
@@ -38,7 +42,7 @@ import m
 [file m.py]
 def foo():
     pass
-[file m.py.next]
+[file m.py.2]
 def foo() -> None:
     pass
 [rechecked m]
@@ -49,7 +53,7 @@ import m
 [file m.py]
 def foo() -> None:
     pass
-[file m.py.next]
+[file m.py.2]
 def foo() -> None:
     bar()
 [rechecked m]
@@ -91,7 +95,7 @@ def func2() -> None: mod3.func3()
 [file mod3.py]
 def func3() -> None: pass
 
-[file mod3.py.next]
+[file mod3.py.2]
 def func3() -> None: 3 + 2
 
 [rechecked mod3]
@@ -108,7 +112,7 @@ def func1() -> A: pass
 [file mod2.py]
 class A: pass
 
-[file mod1.py.next]
+[file mod1.py.2]
 def func1() -> A: pass
 
 [rechecked mod1]
@@ -124,7 +128,7 @@ from typing import Callable
 from mypy_extensions import Arg
 def func1() -> Callable[[Arg(int, 'x')], int]: pass
 
-[file mod1.py.next]
+[file mod1.py.2]
 from typing import Callable
 from mypy_extensions import Arg
 def func1() -> Callable[[Arg(int, 'x')], int]: ...
@@ -145,7 +149,7 @@ def func1() -> A: pass
 [file mod2.py]
 class A: pass
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Parent: pass
 class A(Parent): pass
 
@@ -167,7 +171,7 @@ def func2() -> None: mod3.func3()
 [file mod3.py]
 def func3() -> None: pass
 
-[file mod3.py.next]
+[file mod3.py.2]
 def func3() -> int: return 2
 
 [rechecked mod2, mod3]
@@ -187,7 +191,7 @@ def foo() -> int:
         return 42
     return inner()
 
-[file mod2.py.next]
+[file mod2.py.2]
 def foo() -> int:
     def inner2() -> str:
         return "foo"
@@ -215,7 +219,7 @@ def bar() -> int:
 def foo() -> int:
     return bar()
 
-[file mod2.py.next]
+[file mod2.py.2]
 def foo() -> int:
     return baz()
 
@@ -238,7 +242,7 @@ class Foo:
     def bar(self, a: str) -> str:
         return "a"
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Foo:
     def bar(self, a: float) -> str:
         return "a"
@@ -259,7 +263,7 @@ class Good:
 class Bad: pass
 class Child(Good): pass
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Good:
     def good_method(self) -> int: return 1
 class Bad: pass
@@ -289,7 +293,7 @@ B = C
 [file mod4.py]
 C = 3
 
-[file mod4.py.next]
+[file mod4.py.2]
 C = "A"
 
 [rechecked mod1, mod2, mod3, mod4]
@@ -314,7 +318,7 @@ import mod4
 [file mod4.py]
 const = 3
 
-[file mod3.py.next]
+[file mod3.py.2]
 # Import to mod4 is gone!
 
 [rechecked mod1, mod2, mod3]
@@ -349,7 +353,7 @@ import mod7
 [file mod7.py]
 const = 3
 
-[file mod6.py.next]
+[file mod6.py.2]
 # Import to mod7 is gone!
 
 [rechecked mod1, mod5, mod6]
@@ -372,7 +376,7 @@ import mod2.mod3 as mod3
 [file mod2/mod3/__init__.py]
 import mod2.mod3.mod4 as mod4
 
-[file mod2/mod3/__init__.py.next]
+[file mod2/mod3/__init__.py.2]
 # Import is gone!
 
 [file mod2/mod3/mod4.py]
@@ -401,7 +405,7 @@ from mod2.mod3 import CustomType
 [file mod2/mod3/__init__.py]
 from mod2.mod3.mod4 import CustomType
 
-[file mod2/mod3/__init__.py.next]
+[file mod2/mod3/__init__.py.2]
 # Import a different class that also happens to be called 'CustomType'
 from mod2.mod3.mod5 import CustomType
 def produce() -> CustomType:
@@ -439,7 +443,7 @@ from mod2.mod3.mod4 import CustomType
 def produce() -> CustomType:
     return CustomType()
 
-[file mod2/mod3/__init__.py.next]
+[file mod2/mod3/__init__.py.2]
 # Import a different class that also happens to be called 'CustomType'
 from mod2.mod3.mod5 import CustomType
 def produce() -> CustomType:
@@ -477,7 +481,7 @@ import mod4
 [file mod4.py]
 const = 3
 
-[file mod4.py.next]
+[file mod4.py.2]
 const = "foo"
 
 [rechecked mod1, mod3, mod4]
@@ -498,7 +502,7 @@ def func1() -> int:
 def func2() -> int:
     return 1
 
-[file mod2.py.next]
+[file mod2.py.2]
 def func2() -> str:
     return "foo"
 
@@ -524,7 +528,7 @@ def func1() -> int:
 def func2() -> int:
     return 1
 
-[file mod2.py.next]
+[file mod2.py.2]
 def func2() -> str:
     return "foo"
 
@@ -551,7 +555,7 @@ def func1() -> int:
 def func2() -> int:
     return 1
 
-[file mod2.py.next]
+[file mod2.py.2]
 def func2() -> str:
     return "foo"
 
@@ -571,7 +575,7 @@ my_dict = {
     'b': [4, 5, 6]
 }
 
-[file mod1_private.py.next]
+[file mod1_private.py.2]
 my_dict = {
     'a': [1, 2, 3],
     'b': [4, 5, 'a']
@@ -592,7 +596,7 @@ def foobar() -> int: return 1
 def baz() -> int: return 2
 const = 1 + foobar()
 
-[file mod1_private.py.next]
+[file mod1_private.py.2]
 def foobar() -> int: return 1
 def baz() -> int: return 2
 const = 1 + baz()
@@ -611,7 +615,7 @@ def foobar() -> int: return 1
 def baz() -> int: return 2
 const = 1 + foobar()  # type: int
 
-[file mod1_private.py.next]
+[file mod1_private.py.2]
 def foobar() -> int: return 1
 def baz() -> int: return 2
 const = 1 + baz()  # type: int
@@ -631,7 +635,7 @@ accepts_int(mod1_private.some_func(12))
 def some_func(a: int) -> int:
     return 1
 
-[file mod1_private.py.next]
+[file mod1_private.py.2]
 def some_func(a: int) -> str:
     return "a"
 
@@ -661,7 +665,7 @@ def stringify(f: Callable[[int], int]) -> Callable[[int], str]:
 def some_func(a: int) -> int:
     return a + 2
 
-[file mod1_private.py.next]
+[file mod1_private.py.2]
 from typing import Callable
 def multiply(f: Callable[[int], int]) -> Callable[[int], int]:
     return lambda a: f(a) * 10
@@ -689,7 +693,7 @@ mod2.Foo.A
 class Foo:
     A = 3
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Foo:
     A = "hello"
 
@@ -709,7 +713,7 @@ class Foo:
     def __init__(self) -> None:
         self.A = 3
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Foo:
     def __init__(self) -> None:
         self.A = "hello"
@@ -731,7 +735,7 @@ class Foo:
     def __init__(self) -> None:
         self.A = 3
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Foo:
     def __init__(self) -> None:
         self.A = "hello"
@@ -753,7 +757,7 @@ class Foo:
     def __init__(self) -> None:
         self.A = 3
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Foo:
     def __init__(self) -> None:
         self.A = "hello"
@@ -776,7 +780,7 @@ class Foo:
     class Bar:
         attr = 3
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Foo:
     class Bar:
         attr = "foo"
@@ -794,7 +798,7 @@ def func() -> None: pass
 [file mod2.py]
 def func() -> None: pass
 
-[file mod1.py.next]
+[file mod1.py.2]
 def func() -> int: return 1
 
 [rechecked mod1]
@@ -933,10 +937,10 @@ from parent import a
 
 [file parent/a.py]
 
-[file parent/a.py.next]
+[file parent/a.py.2]
 from parent import b
 
-[file parent/b.py.next]
+[file parent/b.py.2]
 
 [stale parent, parent.a, parent.b]
 
@@ -949,7 +953,7 @@ from parent import a, b
 
 [file parent/b.py]
 
-[file parent/a.py.next]
+[file parent/a.py.2]
 from parent import b
 
 [stale parent.a]
@@ -998,7 +1002,7 @@ import b
 from typing import Any
 import a.b
 
-[file b.py.next]
+[file b.py.2]
 from typing import Any
 
 a = 3  # type: Any
@@ -1028,7 +1032,7 @@ def bar(a: str) -> None: pass
 
 foo(3)
 
-[file m.py.next]
+[file m.py.2]
 def foo(a: int) -> None: pass
 def bar(a: str) -> None: pass
 
@@ -1094,7 +1098,7 @@ c.C().foo()
 class B:
     def foo(self) -> None: pass
 
-[file b.py.next]
+[file b.py.2]
 
 [file c/__init__.py]
 class C: pass
@@ -1120,7 +1124,7 @@ class C:
 [file n.py]
 class A:
   def bar(self): pass
-[file n.py.next]
+[file n.py.2]
 class A:
   pass
 [rechecked m, n]
@@ -1138,7 +1142,7 @@ class C:
 [file n.py]
 class A:
   pass
-[file n.py.next]
+[file n.py.2]
 class A:
   def bar(self): pass
 [rechecked m, n]
@@ -1155,7 +1159,7 @@ accept_int(n.foo)
 [file n.py]
 foo = "hello"
 reveal_type(foo)
-[file n.py.next]
+[file n.py.2]
 foo = 3.14
 reveal_type(foo)
 [rechecked m, n]
@@ -1182,7 +1186,7 @@ import bad
 from good import foo
 foo(3)
 
-[file client.py.next]
+[file client.py.2]
 import good
 import bad
 from bad import foo
@@ -1208,7 +1212,7 @@ from m3 import A
 from m4 import B
 A = B
 
-[file m3.py.next]
+[file m3.py.2]
 from m5 import C
 A = C
 
@@ -1232,7 +1236,7 @@ tmp/m1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; exp
 [file main.py]
 from evil import Hello
 
-[file main.py.next]
+[file main.py.2]
 from evil import Hello
 reveal_type(Hello())
 
@@ -1258,7 +1262,7 @@ accept_int(bar)
 [file foo.py]
 bar = 3
 
-[file foo.py.next]
+[file foo.py.2]
 # Empty!
 
 [rechecked main]
@@ -1307,7 +1311,7 @@ class B:
         val = "str"   # deliberately triggering error
         return C()
 
-[file mod3.py.next]
+[file mod3.py.2]
 from mod4 import C
 class B:
     def makeC(self) -> C: return C()
@@ -1350,7 +1354,7 @@ class B:
 class C:
     def foo(self) -> int: return 1
 
-[file mod4.py.next]
+[file mod4.py.2]
 class C:
     def foo(self) -> str: return 'a'
 
@@ -1385,7 +1389,7 @@ class B:
         val = "str"   # deliberately triggering error
         return C()
 
-[file mod3.py.next]
+[file mod3.py.2]
 from mod4 import C
 class B:
     def makeC(self) -> C: return C()
@@ -1394,7 +1398,7 @@ class B:
 class C:
     def foo(self) -> int: return 1
 
-[file mod4.py.next]
+[file mod4.py.2]
 class C:
     def foo(self) -> str: return 'a'
 
@@ -1415,7 +1419,7 @@ tmp/mod1.py:3: error: Revealed type is 'builtins.str'
 from foo import MyClass
 m = MyClass()
 
-[file main.py.next]
+[file main.py.2]
 from foo import MyClass
 m = MyClass()
 reveal_type(m.val)
@@ -1440,7 +1444,7 @@ tmp/main.py:3: error: Revealed type is 'Any'
 from foo import MyClass
 m = MyClass()
 
-[file main.py.next]
+[file main.py.2]
 from foo import MyClass
 m = MyClass()
 reveal_type(m.val)
@@ -1491,7 +1495,7 @@ MyTuple = NamedTuple('MyTuple', [
     ('c', str)
 ])
 
-[file bar.py.next]
+[file bar.py.2]
 from typing import NamedTuple
 MyTuple = NamedTuple('MyTuple', [
     ('b', int),  # a and b are swapped
@@ -1524,7 +1528,7 @@ class Outer:
         ('c', str)
     ])
 
-[file bar.py.next]
+[file bar.py.2]
 from typing import NamedTuple
 class Outer:
     MyTuple = NamedTuple('MyTuple', [
@@ -1553,7 +1557,7 @@ class B: pass
 [file a/c.py]
 class C: pass
 
-[file a/c.py.next]
+[file a/c.py.2]
 class C: pass
 pass
 
@@ -1580,7 +1584,7 @@ class Outer:
     class Inner:
         pass
 
-[file top.py.next]
+[file top.py.2]
 from funcs import callee
 from classes import Outer
 def caller(a: Outer.Inner) -> int:
@@ -1601,7 +1605,7 @@ from . import m
 R = m.R
 a = None  # type: R
 
-[file r/s.py.next]
+[file r/s.py.2]
 from . import m
 R = m.R
 a = None  # type: R
@@ -1626,7 +1630,7 @@ main:8: error: Definition of "attr" in base class "X" is incompatible with defin
 import a
 [file a.py]
 x = 0
-[file a.py.next]
+[file a.py.2]
 x = 0
 x + ''
 
@@ -1636,7 +1640,7 @@ import a
 reveal_type(a.x)
 [file a.py]
 /
-[file a.py.next]
+[file a.py.2]
 //
 [out]
 main:3: error: Revealed type is 'Any'
@@ -1648,7 +1652,7 @@ main:3: error: Revealed type is 'Any'
 import a
 [file a.py]
 /
-[file a.py.next]
+[file a.py.2]
 //
 [out1]
 main:2: note: Import of 'a' ignored
@@ -1666,7 +1670,7 @@ x = 0
 [file mypy.ini]
 [[mypy]
 follow_imports = normal
-[file mypy.ini.next]
+[file mypy.ini.2]
 [[mypy]
 follow_imports = skip
 [out1]
@@ -1863,7 +1867,7 @@ m.A().x = 0
 from typing import ClassVar
 class A:
     x = None  # type: ClassVar[int]
-[file m.py.next]
+[file m.py.2]
 class A:
     x = None  # type: int
 [out1]
@@ -1877,7 +1881,7 @@ class A:
     x = None  # type: ClassVar[int]
 [file b.py]
 import a
-[file b.py.next]
+[file b.py.2]
 import a
 a.A().x = 0
 [out2]
@@ -1954,7 +1958,7 @@ import c
 [file c.py]
 import a
 import b
-[file a.py.next]
+[file a.py.2]
 def a(x): pass
 [rechecked a]
 [stale a]
@@ -1970,7 +1974,7 @@ import c
 [file c.py]
 import a
 import b
-[file b.py.next]
+[file b.py.2]
 import a
 import c
 x = 0
@@ -1996,7 +2000,7 @@ import b
 def foo() -> int: return ''
 [file b.py]
 import a
-[file a.py.next]
+[file a.py.2]
 def foo() -> int: return 0
 [out1]
 tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
@@ -2011,7 +2015,7 @@ import a, b
 import b
 [file b.py]
 import a
-[file a.py.next]
+[file a.py.2]
 import b
 def foo() -> int: return ''
 [out1]
@@ -2028,7 +2032,7 @@ import b
 def foo() -> int: return ''
 [file b.py]
 import a
-[file a.py.next]
+[file a.py.2]
 import b
 def foo() -> int: return 0.5
 [out1]
@@ -2047,7 +2051,7 @@ import b
 import a
 class C: pass
 def f() -> int: pass
-[file a.py.next]
+[file a.py.2]
 import b
 reveal_type(b.C)
 reveal_type(b.f)
@@ -2067,7 +2071,7 @@ class C: pass
 def f() -> int: pass
 [file b.py]
 import a
-[file b.py.next]
+[file b.py.2]
 import a
 reveal_type(a.C)
 reveal_type(a.f)
@@ -2088,7 +2092,7 @@ class B: pass
 class C(B, B): pass  # blocker
 [file b.py]
 import a
-[file a.py.next]
+[file a.py.2]
 import b
 class B: pass
 class C(B): pass
@@ -2107,7 +2111,7 @@ class B: pass
 class C(B): pass
 [file b.py]
 import a
-[file a.py.next]
+[file a.py.2]
 import b
 class B: pass
 class C(B, B): pass  # blocker
@@ -2129,10 +2133,10 @@ from a import f
 from b import f
 [file d.py]
 from c import f
-[file a.py.next]
+[file a.py.2]
 import d
 def g(): pass  # renamed f to g
-[file c.py.next]
+[file c.py.2]
 from a import g
 
 [case testQuickAndDirty12]
@@ -2149,11 +2153,11 @@ from b import C
 [file d.py]
 from c import C
 C().f()
-[file a.py.next]
+[file a.py.2]
 import d
 class C:
     def g(self): pass  # renamed f to g
-[file c.py.next]
+[file c.py.2]
 from a import C
 [out1]
 [out2]
@@ -2171,7 +2175,7 @@ x = a.C.x  # type: int
 [file c.py]
 import b
 x = b.x
-[file a.py.next]
+[file a.py.2]
 import c
 class C:
     pass  # Removed x
@@ -2189,7 +2193,7 @@ def f(x: b.S) -> b.S: return x
 [file b.py]
 import a
 S = str
-[file a.py.next]
+[file a.py.2]
 import b
 def f(x: b.S) -> int: return 0
 
@@ -2203,7 +2207,7 @@ def f(x: b.P) -> b.P: return x
 from typing import NamedTuple
 import a
 P = NamedTuple('P', (('x', int),))
-[file a.py.next]
+[file a.py.2]
 import b
 def f(x: b.P) -> int: return 0
 
@@ -2217,6 +2221,6 @@ def f(x: b.T) -> b.T: return x
 from typing import TypeVar
 import a
 T = TypeVar('T')
-[file a.py.next]
+[file a.py.2]
 import b
 def f(x: b.T) -> int: return 0
