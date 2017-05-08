@@ -154,6 +154,8 @@ class TypeCheckSuite(DataSuite):
                             # change. We manually set the mtime to circumvent this.
                             new_time = os.stat(target).st_mtime + 1
                             os.utime(target, times=(new_time, new_time))
+                for path in testcase.deleted_paths.get(incremental_step, set()):
+                    os.remove(path)
 
         # Parse options after moving files (in case mypy.ini is being moved).
         options = self.parse_options(original_program_text, testcase, incremental_step)
