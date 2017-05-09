@@ -288,7 +288,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # treat builtins.object the same as Any.
                 return True
             item = left.item
-            return isinstance(item, Instance) and is_subtype(item, right.type.metaclass_type)
+            return isinstance(item, Instance) and is_subtype(item.type.metaclass_type, right)
         return False
 
 

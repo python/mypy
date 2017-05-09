@@ -3137,3 +3137,12 @@ class M(type):
 class A(metaclass=M): pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
 
+[case testMetaclassSubtype]
+from typing import Type
+
+class M(type): pass
+class A(metaclass=M): pass
+
+a: Type[A] = A
+m: M = a
+m2: M = A
