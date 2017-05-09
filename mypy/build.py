@@ -864,7 +864,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Make sure directory for cache files exists
     parent = os.path.dirname(data_json)
-    os.makedirs(parent, exist_ok=True)
     assert os.path.dirname(meta_json) == parent
 
     # Construct temp file names
@@ -882,6 +881,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Obtain and set up metadata
     try:
+        os.makedirs(parent, exist_ok=True)
         st = manager.get_stat(path)
     except OSError as err:
         manager.log("Cannot get stat for {}: {}".format(path, err))
