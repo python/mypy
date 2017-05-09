@@ -90,6 +90,7 @@ from mypy.typeanal import (
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
+from mypy import join
 
 
 T = TypeVar('T')
