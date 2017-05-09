@@ -1741,11 +1741,7 @@ def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -
     if isinstance(tp, Instance):
         return Instance(tp.type, new_args, line, column)
     if isinstance(tp, TupleType):
-        res = tp.copy_modified(items=new_args)
-        if tp.fallback.type.fullname().endswith('.tuple'):
-            # TODO: more precise expansion for fallback?
-            res.fallback = Instance(tp.fallback.type, [AnyType()])
-        return res
+        return tp.copy_modified(items=new_args)
     if isinstance(tp, UnionType):
         return UnionType(new_args, line, column)
     if isinstance(tp, CallableType):

@@ -26,7 +26,6 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.subtypes import is_subtype
 from mypy import nodes
 from mypy import experiments
-from mypy import join
 
 
 T = TypeVar('T')
@@ -635,18 +634,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def visit_tuple_type(self, t: TupleType) -> None:
         for item in t.items:
             item.accept(self)
-        if t.fallback.type.fullname().endswith('.tuple'):
-            t.fallback.args[0] = join.join_type_list(t.items)
-        else:
-            t.fallback.accept(self)
 
     def visit_typeddict_type(self, t: TypedDictType) -> None:
         for item_type in t.items.values():
             item_type.accept(self)
-        if t.fallback.type.fullname().endswith('.Mapping'):
-            t.fallback.args[1] = join.join_type_list(list(t.items.values()))
-        else:
-            t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> None:
         for item in t.items:

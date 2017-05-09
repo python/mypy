@@ -3192,7 +3192,9 @@ NT([])
 [builtins fixtures/dict.pyi]
 [out]
 
-[case testCrashForwardSyntheticClassSyntax]
+-- The two tests below will not crash after
+-- https://github.com/python/mypy/issues/3319 is fixed
+[case testCrashForwardSyntheticClassSyntax-skip]
 from typing import NamedTuple
 from mypy_extensions import TypedDict
 
@@ -3214,7 +3216,7 @@ reveal_type(y['b']) # E: Revealed type is '__main__.B'
 [builtins fixtures/dict.pyi]
 [out]
 
-[case testCrashForwardSyntheticFunctionSyntax]
+[case testCrashForwardSyntheticFunctionSyntax-skip]
 from typing import NamedTuple
 from mypy_extensions import TypedDict
 

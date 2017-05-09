@@ -2061,9 +2061,9 @@ class SemanticAnalyzer(NodeVisitor):
                           or self.object_type())
         # 'builtins.tuple' has only one type parameter.
         #
-        # The corresponding type argument in the fallback instance should be a join of
-        # all item types, but we can't do joins during this pass of semantic analysis
-        # and we are using Any as a workaround. It will be replaced by a proper type in third pass
+        # TODO: The corresponding type argument in the fallback instance should be a join of
+        #       all item types, but we can't do joins during this pass of semantic analysis
+        #       and we are using Any as a workaround.
         fallback = self.named_type('__builtins__.tuple', [AnyType()])
         # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
         # but it can't be expressed. 'new' and 'len' should be callable types.
@@ -2253,9 +2253,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type]) -> TypeInfo:
-        # The fallback second argument will be calculated in third pass
+        mapping_value_type = join.join_type_list(types)
         fallback = (self.named_type_or_none('typing.Mapping',
-                                            [self.str_type(), AnyType()])
+                                            [self.str_type(), mapping_value_type])
                     or self.object_type())
 
         info = self.basic_new_typeinfo(name, fallback)

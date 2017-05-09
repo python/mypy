@@ -153,7 +153,7 @@ class TypeFixer(TypeVisitor[None]):
         node = lookup_qualified(self.modules, type_ref, self.quick_and_dirty)
         if isinstance(node, TypeInfo):
             inst.type = node
-            # TODO: Is this needed or redundant? I think yes, for NewType
+            # TODO: Is this needed or redundant?
             # Also fix up the bases, just in case.
             for base in inst.type.bases:
                 if base.type is NOT_READY:
