@@ -16,7 +16,7 @@ This script will download and test the offical mypy repo by default. Running:
 is equivalent to running
 
     python3 misc/incremental_checker.py last 30 \\
-            --repo_url https://github.com/python/mypy.git \\
+            --repo-url https://github.com/python/mypy.git \\
             --file-path mypy
 
 You can chose to run this script against a specific commit id or against the
@@ -29,9 +29,13 @@ To run this script against the last 30 commits:
 To run this script starting from the commit id 2a432b:
 
     python3 misc/incremental_checker.py commit 2a432b
+
+You can also choose to run against a random path through the commits:
+
+    python3 misc/incremental_checker.py --random 10 last 30
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TypeVar
 
 from argparse import (ArgumentParser, RawDescriptionHelpFormatter,
                       ArgumentDefaultsHelpFormatter, Namespace)
@@ -60,16 +64,20 @@ def print_offset(text: str, indent_length: int = 4) -> None:
 
 
 def delete_folder(folder_path: str) -> None:
-    if os.path.exists(folder_path):
+    if os.path.islink(folder_path):
+        os.remove(folder_path)
+    elif os.path.exists(folder_path):
         shutil.rmtree(folder_path)
 
 
-def execute(command: List[str], fail_on_error: bool = True) -> Tuple[str, str, int]:
+def execute(command: List[str], fail_on_error: bool = True,
+            cwd: str = None) -> Tuple[str, str, int]:
     proc = subprocess.Popen(
         ' '.join(command),
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
-        shell=True)
+        shell=True,
+        cwd=cwd)
     stdout_bytes, stderr_bytes = proc.communicate()  # type: Tuple[bytes, bytes]
     stdout, stderr = stdout_bytes.decode('utf-8'), stderr_bytes.decode('utf-8')
     if fail_on_error and proc.returncode != 0:
@@ -90,9 +98,16 @@ def ensure_environment_is_ready(mypy_path: str, temp_repo_path: str, mypy_cache_
     delete_folder(mypy_cache_path)
 
 
-def initialize_repo(repo_url: str, temp_repo_path: str, branch: str) -> None:
-    print("Cloning repo {0} to {1}".format(repo_url, temp_repo_path))
-    execute(["git", "clone", repo_url, temp_repo_path])
+def initialize_repo(repo_url: Optional[str], repo_dir: Optional[str], temp_repo_path: str,
+                    branch: str) -> None:
+    if repo_dir is None:
+        assert repo_url is not None
+        print("Cloning repo {0} to {1}".format(repo_url, temp_repo_path))
+        execute(["git", "clone", repo_url, temp_repo_path])
+    else:
+        assert repo_url is None
+        print("Linking repo {0} to {1}".format(repo_dir, temp_repo_path))
+        execute(["ln", "-s", repo_dir, temp_repo_path])
     if branch is not None:
         print("Checking out branch {}".format(branch))
         execute(["git", "-C", temp_repo_path, "checkout", branch])
@@ -122,28 +137,38 @@ def run_mypy(target_file_path: Optional[str],
              mypy_cache_path: str,
              mypy_script: Optional[str],
              incremental: bool = True,
-             verbose: bool = False) -> Tuple[float, str]:
+             quick: bool = False,
+             verbose: bool = False,
+             cwd: Optional[str] = None) -> Tuple[float, str]:
     """Runs mypy against `target_file_path` and returns what mypy prints to stdout as a string.
 
     If `incremental` is set to True, this function will use store and retrieve all caching data
     inside `mypy_cache_path`. If `verbose` is set to True, this function will pass the "-v -v"
     flags to mypy to make it output debugging information.
+
+    If `quick` is set to True, use the quick mode. It implies `incremental`.
     """
     if mypy_script is None:
         command = ["python3", "-m", "mypy"]
     else:
         command = [mypy_script]
     command.extend(["--cache-dir", mypy_cache_path])
+    command.append('--show-traceback')
     if incremental:
         command.append("--incremental")
+    if quick:
+        command.append("--quick")
     if verbose:
         command.extend(["-v", "-v"])
     if target_file_path is not None:
         command.append(target_file_path)
     start = time.time()
-    output, stderr, _ = execute(command, False)
+    output, stderr, _ = execute(command, False, cwd=cwd)
     if stderr != "":
-        output = stderr
+        if output:
+            output = stderr + '\n' + output
+        else:
+            output = stderr
     runtime = time.time() - start
     return runtime, output
 
@@ -162,6 +187,7 @@ def save_cache(cache: JsonDict, incremental_cache_path: str = CACHE_PATH) -> Non
 
 
 def set_expected(commits: List[Tuple[str, str]],
+                 all_commit_ids: List[str],
                  cache: JsonDict,
                  temp_repo_path: str,
                  target_file_path: Optional[str],
@@ -175,13 +201,16 @@ def set_expected(commits: List[Tuple[str, str]],
     If `cache` already contains results for a particular commit, this function will
     skip evaluating that commit and move on to the next."""
     for commit_id, message in commits:
+        index = all_commit_ids.index(commit_id)
         if commit_id in cache:
-            print('Skipping commit (already cached): {0}: "{1}"'.format(commit_id, message))
+            print('Skipping commit (already cached): {} (#{}): "{}"'.format(
+                commit_id, index, message))
         else:
-            print('Caching expected output for commit {0}: "{1}"'.format(commit_id, message))
+            print('Caching expected output for commit {} (#{}): "{}"'.format(
+                commit_id, index, message))
             execute(["git", "-C", temp_repo_path, "checkout", commit_id])
             runtime, output = run_mypy(target_file_path, mypy_cache_path, mypy_script,
-                                       incremental=False)
+                                       incremental=False, cwd=temp_repo_path)
             cache[commit_id] = {'runtime': runtime, 'output': output}
             if output == "":
                 print("    Clean output ({:.3f} sec)".format(runtime))
@@ -192,11 +221,13 @@ def set_expected(commits: List[Tuple[str, str]],
 
 
 def test_incremental(commits: List[Tuple[str, str]],
+                     all_commit_ids: List[str],
                      cache: JsonDict,
                      temp_repo_path: str,
                      target_file_path: Optional[str],
                      mypy_cache_path: str,
-                     mypy_script: Optional[str]) -> None:
+                     mypy_script: Optional[str],
+                     quick: bool) -> None:
     """Runs incremental mode on all `commits` to verify the output matches the expected output.
 
     This function runs mypy on the `target_file_path` inside the `temp_repo_path`. The
@@ -205,20 +236,30 @@ def test_incremental(commits: List[Tuple[str, str]],
     print("Note: first commit is evaluated twice to warm up cache")
     commits = [commits[0]] + commits
     for commit_id, message in commits:
-        print('Now testing commit {0}: "{1}"'.format(commit_id, message))
+        index = all_commit_ids.index(commit_id)
+        print('Now testing commit {} (#{}): "{}"'.format(commit_id, index, message))
         execute(["git", "-C", temp_repo_path, "checkout", commit_id])
         runtime, output = run_mypy(target_file_path, mypy_cache_path, mypy_script,
-                                   incremental=True)
+                                   incremental=True, quick=quick, cwd=temp_repo_path)
         expected_runtime = cache[commit_id]['runtime']  # type: float
         expected_output = cache[commit_id]['output']  # type: str
-        if output != expected_output:
+        if quick:
+            # Quick mode can generate different output from normal mode, so only
+            # look for crashes.
+            fail = 'Traceback (most recent call last)' in output or 'INTERNAL ERROR' in output
+        else:
+            fail = output != expected_output
+        if fail:
             print("    Output does not match expected result!")
             print("    Expected output ({:.3f} sec):".format(expected_runtime))
+            expected_output = expected_output.strip()
+            if not expected_output:
+                expected_output = '<empty>'
             print_offset(expected_output, 8)
             print("    Actual output: ({:.3f} sec):".format(runtime))
-            print_offset(output, 8)
+            print_offset(output.strip(), 8)
         else:
-            print("    Output matches expected result!")
+            print("    OK")
             print("    Incremental: {:.3f} sec".format(runtime))
             print("    Original:    {:.3f} sec".format(expected_runtime))
 
@@ -228,17 +269,45 @@ def cleanup(temp_repo_path: str, mypy_cache_path: str) -> None:
     delete_folder(mypy_cache_path)
 
 
-def test_repo(target_repo_url: str, temp_repo_path: str,
-              target_file_path: Optional[str],
+T = TypeVar('T')
+
+
+def biased_sample(items: List[T], sample_size: int) -> List[T]:
+    """Return a biased random sample of commits.
+
+    Bias towards returning items close to each other in the sequence,
+    but also jump across the whole commit range.
+    """
+    result = []
+    n = len(items)
+    index = random.randrange(n)
+    near_range = 5
+    for _ in range(sample_size):
+        result.append(items[index])
+        # Bias towards short jumps since they are more likely to not invalidate
+        # large parts of the program.
+        step_type = random.choice(['near'] * 2 + ['far'] * 1)
+        if step_type == 'near':
+            start = max(0, index - near_range)
+            stop = min(n, index + near_range + 1)
+            index = random.choice([i for i in range(start, stop) if i != index])
+        else:
+            index = random.randrange(n)
+    return result
+
+
+def test_repo(target_repo_url: Optional[str], target_repo_dir: Optional[str],
+              temp_repo_path: str, target_file_path: Optional[str],
               mypy_path: str, incremental_cache_path: str, mypy_cache_path: str,
               range_type: str, range_start: str, branch: str,
-              params: Optional[Namespace] = None) -> None:
+              quick: bool, params: Optional[Namespace] = None) -> None:
     """Tests incremental mode against the repo specified in `target_repo_url`.
 
     This algorithm runs in five main stages:
 
     1.  Clones `target_repo_url` into the `temp_repo_path` folder locally,
-        checking out the specified `branch` if applicable.
+        checking out the specified `branch` if applicable (or links
+        `target_repo_dir` to `temp_repo_path`).
     2.  Examines the repo's history to get the list of all commits to
         to test incremental mode on.
     3.  Runs mypy WITHOUT incremental mode against the `target_file_path` (which is
@@ -253,9 +322,10 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
         results found in stage 3.
     5.  Delete all unnecessary temp files.
     """
+    assert target_repo_url or target_repo_dir
     # Stage 1: Clone repo and get ready to being testing
     ensure_environment_is_ready(mypy_path, temp_repo_path, mypy_cache_path)
-    initialize_repo(target_repo_url, temp_repo_path, branch)
+    initialize_repo(target_repo_url, target_repo_dir, temp_repo_path, branch)
 
     # Stage 2: Get all commits we want to test
     if range_type == "last":
@@ -265,50 +335,58 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
     else:
         raise RuntimeError("Invalid option: {}".format(range_type))
     commits = get_commits_starting_at(temp_repo_path, start_commit)
-    if params is not None and params.sample:
+    all_commit_ids = [commit_id for commit_id, _ in commits]
+    if params is not None and params.random:
         seed = params.seed or base64.urlsafe_b64encode(os.urandom(15)).decode('ascii')
         random.seed(seed)
-        commits = random.sample(commits, params.sample)
+        commits = biased_sample(commits, params.random)
         print("Sampled down to %d commits using random seed %s" % (len(commits), seed))
 
     # Stage 3: Find and cache expected results for each commit (without incremental mode)
     cache = load_cache(incremental_cache_path)
-    set_expected(commits, cache, temp_repo_path, target_file_path, mypy_cache_path,
-                 mypy_script=params.mypy_script)
+    mypy_script = os.path.join(target_repo_dir, params.mypy_script) if params else None
+    set_expected(commits, all_commit_ids, cache, temp_repo_path, target_file_path, mypy_cache_path,
+                 mypy_script=mypy_script)
     save_cache(cache, incremental_cache_path)
 
-    # Stage 4: Rewind and re-run mypy (with incremental mode enabled)
-    test_incremental(commits, cache, temp_repo_path, target_file_path, mypy_cache_path,
-                     mypy_script=params.mypy_script)
+    # Stage 4: Rewind and re-run mypy (with incremental or quick mode enabled)
+    test_incremental(commits, all_commit_ids, cache, temp_repo_path, target_file_path,
+                     mypy_cache_path, mypy_script=mypy_script, quick=quick)
 
     # Stage 5: Remove temp files
     cleanup(temp_repo_path, mypy_cache_path)
 
 
 def main() -> None:
-    help_factory = (lambda prog: RawDescriptionHelpFormatter(prog=prog, max_help_position=32))
     parser = ArgumentParser(
         prog='incremental_checker',
         description=__doc__,
-        formatter_class=help_factory)
+        formatter_class=RawDescriptionHelpFormatter)
 
     parser.add_argument("range_type", metavar="START_TYPE", choices=["last", "commit"],
                         help="must be one of 'last' or 'commit'")
     parser.add_argument("range_start", metavar="COMMIT_ID_OR_NUMBER",
                         help="the commit id to start from, or the number of "
                         "commits to move back (see above)")
-    parser.add_argument("-r", "--repo_url", default=MYPY_REPO_URL, metavar="URL",
+    parser.add_argument("-r", "--repo-url", metavar="URL",
                         help="the repo to clone and run tests on")
-    parser.add_argument("-f", "--file-path", default=MYPY_TARGET_FILE, metavar="FILE",
+    parser.add_argument("-d", "--repo-dir", metavar="DIR",
+                        help=("the repository directory to run tests on; alternative to --repo-url"
+                              " (local changes will be lost!)"))
+    parser.add_argument("-f", "--file-path", metavar="FILE",
                         help="the name of the file or directory to typecheck")
     parser.add_argument("--cache-path", default=CACHE_PATH, metavar="DIR",
                         help="sets a custom location to store cache data")
     parser.add_argument("--branch", default=None, metavar="NAME",
                         help="check out and test a custom branch"
                         "uses the default if not specified")
-    parser.add_argument("--sample", type=int, help="use a random sample of size SAMPLE")
+    parser.add_argument("--random", type=int, help="use a random commit path of size SAMPLE")
     parser.add_argument("--seed", type=str, help="random seed")
-    parser.add_argument("--mypy-script", type=str, help="alternate mypy script to run")
+    parser.add_argument("--mypy-script", type=str, metavar="PATH",
+                        help=("use alternate mypy run script (if not absolute, "
+                              "relative to repository root)"))
+    parser.add_argument("--quick", action='store_true',
+                        help="use quick mode (can't verify output -- only look for crashes)")
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -327,12 +405,25 @@ def main() -> None:
     # The folder the cloned repo will reside in.
     temp_repo_path = os.path.abspath(os.path.join(mypy_path, "tmp_repo"))
 
+    if not params.repo_dir:
+        if params.repo_url:
+            repo_url = params.repo_url
+        else:
+            repo_url = MYPY_REPO_URL
+        repo_dir = None
+    elif not params.repo_url:
+        repo_url = None
+        repo_dir = os.path.abspath(params.repo_dir)
+    else:
+        sys.exit('Error: Specify only one of -r/--repo-url or -d/--repo-dir')
+
     # The particular file or package to typecheck inside the repo.
+    target_file_path = None
     if params.file_path:
         target_file_path = os.path.abspath(os.path.join(temp_repo_path, params.file_path))
-    else:
-        # Allow `-f ''` to clear target_file_path.
-        target_file_path = None
+    elif not params.repo_dir and not params.repo_url:
+        # Automatically infer target file if defaulting to the mypy repo.
+        target_file_path = MYPY_TARGET_FILE
 
     # The path to where the incremental checker cache data is stored.
     incremental_cache_path = os.path.abspath(params.cache_path)
@@ -346,10 +437,10 @@ def main() -> None:
     print("Using cache data located at {0}".format(incremental_cache_path))
     print()
 
-    test_repo(params.repo_url, temp_repo_path, target_file_path,
+    test_repo(params.repo_url, params.repo_dir, temp_repo_path, target_file_path,
               mypy_path, incremental_cache_path, mypy_cache_path,
               params.range_type, params.range_start, params.branch,
-              params)
+              params.quick, params)
 
 
 if __name__ == '__main__':
