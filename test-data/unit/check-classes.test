@@ -3066,12 +3066,13 @@ class M(type):
 class A(metaclass=M): pass
 
 reveal_type(A[M])  # E: Revealed type is 'builtins.int'
+reveal_type(A[M])  # E: Revealed type is 'builtins.int'
 
-[case testMetaclassSelftype]
+[case testMetaclassSelfType]
 from typing import TypeVar, Type
 
 class M(type): pass
-T = TypeVar('T', bound='A')
+T = TypeVar('T')
 
 class M1(M):
     def foo(cls: Type[T]) -> T: ...
@@ -3137,12 +3138,51 @@ class M(type):
 class A(metaclass=M): pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
 
-[case testMetaclassSubtype]
-from typing import Type
+[case testMetaclassStrictSupertypeOfTypeWithClassmethods]
+from typing import Type, TypeVar
+TA = TypeVar('TA', bound='A')
+TTA = TypeVar('TTA', bound='Type[A]')
+TM = TypeVar('TM', bound='M')
 
-class M(type): pass
-class A(metaclass=M): pass
+class M(type):
+    def g1(cls: 'Type[A]') -> None: pass #  E: The erased type of self 'Type[__main__.A]' is not a supertype of its class '__main__.M'
+    def g2(cls: Type[TA]) -> None: pass #  E: The erased type of self 'Type[__main__.A]' is not a supertype of its class '__main__.M'
+    def g3(cls: TTA) -> None: pass #  E: The erased type of self 'Type[__main__.A]' is not a supertype of its class '__main__.M'
+    def g4(cls: TM) -> None: pass
+m: M
 
-a: Type[A] = A
-m: M = a
-m2: M = A
+class A(metaclass=M):
+    def foo(self): pass
+
+# 3 examples of unsoundness - instantiation, classmethod, staticmethod and ClassVar:
+
+ta: Type[A] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[A])
+a: A = ta()
+x: M = ta
+
+def r(ta: Type[TA], tta: TTA) -> None:
+    x: M = ta
+    y: M = tta
+
+class Class(metaclass=M):
+    @classmethod
+    def f1(cls: M): pass
+cl: Type[Class] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[Class])
+cl.f1()
+x1: M = cl
+
+class Static(metaclass=M):
+    @staticmethod
+    def f(): pass
+s: Type[Static] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[Static])
+s.f()
+x2: M = s
+
+from typing import ClassVar
+class Cvar(metaclass=M):
+    x = 1  # type: ClassVar[int]
+cv: Type[Cvar] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[Cvar])
+cv.x
+x3: M = cv
+
+[builtins fixtures/classmethod.pyi]
