@@ -6,7 +6,7 @@ It contains class TypeInfos and Type objects.
 from typing import List
 
 from mypy.types import (
-    Type, TypeVarType, AnyType, ErrorType, NoneTyp,
+    Type, TypeVarType, AnyType, NoneTyp,
     Instance, CallableType, TypeVarDef, TypeType, UninhabitedType
 )
 from mypy.nodes import (
@@ -41,7 +41,6 @@ class TypeFixture:
 
         # Simple types
         self.anyt = AnyType()
-        self.err = ErrorType()
         self.nonet = NoneTyp()
         self.uninhabited = UninhabitedType()
 
@@ -217,7 +216,7 @@ class TypeFixture:
                     variance = variances[id - 1]
                 else:
                     variance = COVARIANT
-                v.append(TypeVarDef(n, id, None, self.o, variance=variance))
+                v.append(TypeVarDef(n, id, [], self.o, variance=variance))
             class_def.type_vars = v
 
         info = TypeInfo(SymbolTable(), class_def, module_name)

@@ -681,10 +681,10 @@ g('a')() # E: List[str] not callable
 # The next line is a case where there are multiple ways to satisfy a constraint
 # involving a Union. Either T = List[str] or T = str would turn out to be valid,
 # but mypy doesn't know how to branch on these two options (and potentially have
-# to backtrack later) and defaults to T = <uninhabited>. The result is an
+# to backtrack later) and defaults to T = <nothing>. The result is an
 # awkward error message. Either a better error message, or simply accepting the
 # call, would be preferable here.
-g(['a']) # E: Argument 1 to "g" has incompatible type List[str]; expected List[<uninhabited>]
+g(['a']) # E: Argument 1 to "g" has incompatible type List[str]; expected List[<nothing>]
 
 h(g(['a']))
 
@@ -696,6 +696,53 @@ i(b, a, b)
 i(a, b, b) # E: Argument 1 to "i" has incompatible type List[int]; expected List[str]
 [builtins fixtures/list.pyi]
 
+[case testCallableListJoinInference]
+from typing import Any, Callable
+
+def fun() -> None:
+    callbacks = [
+        callback1,
+        callback2,
+    ]
+
+    for c in callbacks:
+        call(c, 1234) # this must not fail
+
+def callback1(i: int) -> int:
+    return i
+def callback2(i: int) -> str:
+    return 'hello'
+def call(c: Callable[[int], Any], i: int) -> None:
+    c(i)
+[builtins fixtures/list.pyi]
+[out]
+
+[case testCallableMeetAndJoin]
+# flags: --python-version 3.6
+from typing import Callable, Any, TypeVar
+
+class A: ...
+class B(A): ...
+
+def f(c: Callable[[B], int]) -> None: ...
+
+c: Callable[[A], int]
+d: Callable[[B], int]
+
+lst = [c, d]
+reveal_type(lst) # E: Revealed type is 'builtins.list[def (__main__.B) -> builtins.int]'
+
+T = TypeVar('T')
+def meet_test(x: Callable[[T], int], y: Callable[[T], int]) -> T: ...
+
+CA = Callable[[A], A]
+CB = Callable[[B], B]
+
+ca: Callable[[CA], int]
+cb: Callable[[CB], int]
+reveal_type(meet_test(ca, cb)) # E: Revealed type is 'def (__main__.A) -> __main__.B'
+[builtins fixtures/list.pyi]
+[out]
 
 [case testUnionInferenceWithTypeVarValues]
 from typing import TypeVar, Union
@@ -731,7 +778,7 @@ from typing import TypeVar, Union, List
 T = TypeVar('T')
 def f() -> List[T]: pass
 d1 = f() # type: Union[List[int], str]
-d2 = f() # type: Union[int, str] # E: Incompatible types in assignment (expression has type List[<uninhabited>], variable has type "Union[int, str]")
+d2 = f() # type: Union[int, str] # E: Incompatible types in assignment (expression has type List[<nothing>], variable has type "Union[int, str]")
 def g(x: T) -> List[T]: pass
 d3 = g(1) # type: Union[List[int], List[str]]
 [builtins fixtures/list.pyi]
@@ -1072,7 +1119,7 @@ from typing import Callable
 def f(a: Callable[..., None] = lambda *a, **k: None):
     pass
 
-def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible types in assignment (expression has type Callable[[StarArg(Any), KwArg(Any)], int], variable has type Callable[..., None])
+def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible types in assignment (expression has type Callable[[VarArg(Any), KwArg(Any)], int], variable has type Callable[..., None])
     pass
 [builtins fixtures/dict.pyi]
 
@@ -1082,6 +1129,20 @@ from typing import Callable
 def f(a: Callable[[int, int, int], int] = lambda *a, **k: 1):
     pass
 [builtins fixtures/dict.pyi]
+
+[case testLambdaDeferredSpecialCase]
+from typing import Callable
+
+class A:
+    def f(self) -> None:
+        h(lambda: self.x)
+
+    def g(self) -> None:
+        self.x = 1
+
+def h(x: Callable[[], int]) -> None:
+    pass
+
 
 -- Boolean operators
 -- -----------------

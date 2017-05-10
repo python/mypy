@@ -23,10 +23,11 @@ class list(Iterable[T], Generic[T]):
     def append(self, x: T) -> None: pass
     def extend(self, x: Iterable[T]) -> None: pass
 
-class tuple: pass
+class tuple(Generic[T]): pass
 class function: pass
 class int: pass
+class float: pass
 class str: pass
-class bool: pass
+class bool(int): pass
 
 property = object() # Dummy definition.

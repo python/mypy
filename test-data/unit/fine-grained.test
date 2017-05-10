@@ -1,0 +1,872 @@
+-- Test cases for fine-grained incremental checking
+--
+-- Test cases may define multiple versions of a file
+-- (e.g. m.py, m.py.2). There is always an initial batch
+-- pass that processes all files present initially, followed
+-- by one or more fine-grained incremental passes that use
+-- alternative versions of files, if available. If a file
+-- just has a single .py version, it is used for all passes.
+
+-- TODO: what if version for some passes but not all
+
+-- Output is laid out like this:
+--
+--   [out]
+--   <optional output from batch pass>
+--   ==
+--   <optional output from first incremental pass>
+
+[case testReprocessFunction]
+import m
+def g() -> int:
+    return m.f()
+[file m.py]
+def f() -> int:
+    pass
+[file m.py.2]
+def f() -> str:
+    pass
+[out]
+==
+main:3: error: Incompatible return value type (got "str", expected "int")
+
+[case testReprocessTopLevel]
+import m
+m.f(1)
+def g() -> None: pass
+[file m.py]
+def f(x: int) -> None: pass
+[file m.py.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testReprocessMethod]
+import m
+class B:
+    def f(self, a: m.A) -> None:
+        a.g() # E
+[file m.py]
+class A:
+    def g(self) -> None: pass
+[file m.py.2]
+class A:
+    def g(self, a: A) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "g" of "A"
+
+[case testFunctionMissingModuleAttribute]
+import m
+def h() -> None:
+    m.f(1)
+[file m.py]
+def f(x: int) -> None: pass
+[file m.py.2]
+def g(x: str) -> None: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+==
+main:3: error: Module has no attribute "f"
+
+[case testTopLevelMissingModuleAttribute]
+import m
+m.f(1)
+def g() -> None: pass
+[file m.py]
+def f(x: int) -> None: pass
+[file m.py.2]
+def g(x: int) -> None: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+==
+main:2: error: Module has no attribute "f"
+
+[case testClassChangedIntoFunction]
+import m
+def f(a: m.A) -> None:
+    pass
+[file m.py]
+class A: pass
+[file m.py.2]
+def A() -> None: pass
+[out]
+==
+main:2: error: Invalid type "m.A"
+
+[case testClassChangedIntoFunction2]
+import m
+class B:
+    def f(self, a: m.A) -> None: pass
+[file m.py]
+class A: pass
+[file m.py.2]
+def A() -> None: pass
+[out]
+==
+main:3: error: Invalid type "m.A"
+
+[case testAttributeTypeChanged]
+import m
+def f(a: m.A) -> int:
+    return a.x
+[file m.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[file m.py.2]
+class A:
+    def f(self) -> None:
+        self.x = 'x'
+[out]
+==
+main:3: error: Incompatible return value type (got "str", expected "int")
+
+[case testAttributeRemoved]
+import m
+def f(a: m.A) -> int:
+    return a.x
+[file m.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[file m.py.2]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+main:3: error: "A" has no attribute "x"
+
+[case testVariableTypeBecomesInvalid]
+import m
+def f() -> None:
+    a = None # type: m.A
+[file m.py]
+class A: pass
+[file m.py.2]
+[out]
+==
+main:3: error: Name 'm.A' is not defined
+
+[case testTwoIncrementalSteps]
+import m
+import n
+[file m.py]
+def f() -> None: pass
+[file n.py]
+import m
+def g() -> None:
+    m.f() # E
+[file m.py.2]
+import n
+def f(x: int) -> None:
+    n.g() # E
+[file n.py.3]
+import m
+def g(a: str) -> None:
+    m.f('') # E
+[out]
+==
+n.py:3: error: Too few arguments for "f"
+==
+n.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+m.py:3: error: Too few arguments for "g"
+
+[case testTwoRounds]
+import m
+def h(a: m.A) -> int:
+    return a.x
+[file m.py]
+import n
+class A:
+    def g(self, b: n.B) -> None:
+        self.x = b.f()
+[file n.py]
+class B:
+    def f(self) -> int: pass
+[file n.py.2]
+class B:
+    def f(self) -> str: pass
+[out]
+==
+main:3: error: Incompatible return value type (got "str", expected "int")
+
+[case testFixTypeError]
+import m
+def f(a: m.A) -> None:
+    a.f(a)
+[file m.py]
+class A:
+    def f(self, a: 'A') -> None: pass
+[file m.py.2]
+class A:
+    def f(self) -> None: pass
+[file m.py.3]
+class A:
+    def f(self, a: 'A') -> None: pass
+[out]
+==
+main:3: error: Too many arguments for "f" of "A"
+==
+
+[case testFixTypeError2]
+import m
+def f(a: m.A) -> None:
+    a.f()
+[file m.py]
+class A:
+    def f(self) -> None: pass
+[file m.py.2]
+class A:
+    def g(self) -> None: pass
+[file m.py.3]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+main:3: error: "A" has no attribute "f"
+==
+
+[case testFixSemanticAnalysisError]
+import m
+def f() -> None:
+    m.A()
+[file m.py]
+class A: pass
+[file m.py.2]
+class B: pass
+[file m.py.3]
+class A: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+==
+main:3: error: Module has no attribute "A"
+==
+
+[case testContinueToReportTypeCheckError]
+import m
+def f(a: m.A) -> None:
+    a.f()
+def g(a: m.A) -> None:
+    a.g()
+[file m.py]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file m.py.2]
+class A: pass
+[file m.py.3]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+main:3: error: "A" has no attribute "f"
+main:5: error: "A" has no attribute "g"
+==
+main:5: error: "A" has no attribute "g"
+
+[case testContinueToReportSemanticAnalysisError]
+import m
+def f() -> None:
+    m.A()
+def g() -> None:
+    m.B()
+[file m.py]
+class A: pass
+class B: pass
+[file m.py.2]
+[file m.py.3]
+class A: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+==
+main:3: error: Module has no attribute "A"
+main:5: error: Module has no attribute "B"
+==
+main:5: error: Module has no attribute "B"
+
+[case testContinueToReportErrorAtTopLevel]
+import n
+import m
+m.A().f()
+[file n.py]
+import m
+m.A().g()
+[file m.py]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file m.py.2]
+class A: pass
+[file m.py.3]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+main:3: error: "A" has no attribute "f"
+n.py:2: error: "A" has no attribute "g"
+==
+n.py:2: error: "A" has no attribute "g"
+
+[case testContinueToReportErrorInMethod]
+import m
+class C:
+    def f(self, a: m.A) -> None:
+        a.f()
+    def g(self, a: m.A) -> None:
+        a.g()
+[file m.py]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file m.py.2]
+class A: pass
+[file m.py.3]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+main:4: error: "A" has no attribute "f"
+main:6: error: "A" has no attribute "g"
+==
+main:6: error: "A" has no attribute "g"
+
+[case testInitialBatchGeneratedError]
+import m
+def g() -> None:
+    m.f()
+def h() -> None:
+    m.g()
+[file m.py]
+def f(x: object) -> None: pass
+[file m.py.2]
+def f() -> None: pass
+[file m.py.3]
+def f() -> None: pass
+def g() -> None: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+main:3: error: Too few arguments for "f"
+main:5: error: Module has no attribute "g"
+==
+main:5: error: Module has no attribute "g"
+==
+
+[case testKeepReportingErrorIfNoChanges]
+import m
+def h() -> None:
+    m.g()
+[file m.py]
+[file m.py.2]
+[builtins fixtures/fine_grained.pyi]
+[out]
+main:3: error: Module has no attribute "g"
+==
+main:3: error: Module has no attribute "g"
+
+[case testFixErrorAndReintroduce]
+import m
+def h() -> None:
+    m.g()
+[file m.py]
+[file m.py.2]
+def g() -> None: pass
+[file m.py.3]
+[builtins fixtures/fine_grained.pyi]
+[out]
+main:3: error: Module has no attribute "g"
+==
+==
+main:3: error: Module has no attribute "g"
+
+[case testAddBaseClassMethodCausingInvalidOverride]
+import m
+class B(m.A):
+    def f(self) -> str: pass
+[file m.py]
+class A: pass
+[file m.py.2]
+class A:
+    def f(self) -> int: pass
+[out]
+==
+main:3: error: Return type of "f" incompatible with supertype "A"
+
+[case testModifyBaseClassMethodCausingInvalidOverride]
+import m
+class B(m.A):
+    def f(self) -> str: pass
+[file m.py]
+class A:
+    def f(self) -> str: pass
+[file m.py.2]
+class A:
+    def f(self) -> int: pass
+[out]
+==
+main:3: error: Return type of "f" incompatible with supertype "A"
+
+[case testAddBaseClassAttributeCausingErrorInSubclass]
+import m
+class B(m.A):
+    def a(self) -> None:
+        x = 1
+        x = self.x
+
+    def f(self) -> None:
+        self.x = 1
+
+    def z(self) -> None:
+        x = 1
+        x = self.x
+[file m.py]
+class A: pass
+[file m.py.2]
+class A:
+    def g(self) -> None:
+        self.x = 'a'
+[out]
+==
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:8: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:12: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testChangeBaseClassAttributeType]
+import m
+class B(m.A):
+    def f(sel) -> None:
+        sel.x = 1
+[file m.py]
+class A:
+    def g(self) -> None:
+        self.x = 1
+[file m.py.2]
+class A:
+    def g(self) -> None:
+        self.x = 'a'
+[out]
+==
+main:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testRemoveAttributeInBaseClass]
+import m
+class B(m.A):
+    def f(self) -> None:
+        a = 1
+        a = self.x
+[file m.py]
+class A:
+    def g(self) -> None:
+        self.x = 1
+[file m.py.2]
+class A: pass
+[out]
+==
+main:5: error: "B" has no attribute "x"
+
+[case testTestSignatureOfInheritedMethod]
+import m
+class B(m.A):
+    def f(self) -> None:
+        self.g()
+[file m.py]
+class A:
+    def g(self) -> None: pass
+[file m.py.2]
+class A:
+    def g(self, a: 'A') -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "g" of "A"
+
+[case testRemoveBaseClass]
+import m
+class A(m.B):
+    def f(self) -> None:
+        self.g()
+        self.x
+        self.y = 1
+[file m.py]
+class C:
+    def g(self) -> None:
+        self.x = 1
+class B(C): pass
+[file m.py.2]
+class C: pass
+class B: pass
+[out]
+==
+main:4: error: "A" has no attribute "g"
+main:5: error: "A" has no attribute "x"
+
+[case testRemoveBaseClass2]
+import m
+class A(m.B):
+    def f(self) -> None:
+        self.g()
+        self.x
+        self.y = 1
+[file m.py]
+class C:
+    def g(self) -> None:
+        self.x = 1
+class B(C): pass
+[file m.py.2]
+class C:
+    def g(self) -> None:
+        self.x = 1
+class B: pass
+[out]
+==
+main:4: error: "A" has no attribute "g"
+main:5: error: "A" has no attribute "x"
+
+[case testChangeInPackage]
+import m.n
+def f() -> None:
+    m.n.g()
+[file m/__init__.py]
+[file m/n.py]
+def g() -> None: pass
+[file m/n.py.2]
+def g(x: int) -> None: pass
+[out]
+==
+main:3: error: Too few arguments for "g"
+
+[case testTriggerTargetInPackage]
+import m.n
+[file m/__init__.py]
+[file m/n.py]
+import a
+def f() -> None:
+    a.g()
+[file a.py]
+def g() -> None: pass
+[file a.py.2]
+def g(x: int) -> None: pass
+[out]
+==
+m/n.py:3: error: Too few arguments for "g"
+
+[case testChangeInPackage__init__]
+import m
+import m.n
+def f() -> None:
+    m.g()
+[file m/__init__.py]
+def g() -> None: pass
+[file m/__init__.py.2]
+def g(x: int) -> None: pass
+[file m/n.py]
+[out]
+==
+main:4: error: Too few arguments for "g"
+
+[case testTriggerTargetInPackage__init__]
+import m
+import m.n
+[file m/__init__.py]
+import a
+def f() -> None:
+    a.g()
+[file a.py]
+def g() -> None: pass
+[file a.py.2]
+def g(x: int) -> None: pass
+[file m/n.py]
+[out]
+==
+m/__init__.py:3: error: Too few arguments for "g"
+
+[case testModuleAttributeTypeChanges]
+import m
+def f() -> None:
+    x = 1
+    x = m.x
+[file m.py]
+x = 1
+[file m.py.2]
+x = ''
+[out]
+==
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testTwoStepsDueToModuleAttribute]
+import m
+x = m.f()
+
+def g() -> None:
+    y = 1
+    y = x # E
+[file m.py]
+def f() -> int: pass
+[file m.py.2]
+def f() -> str: pass
+[out]
+==
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testTwoStepsDueToMultipleNamespaces]
+import m
+
+x = m.f()
+
+def g() -> None:
+    xx = 1
+    xx = x
+
+class A:
+    def a(self) -> None:
+        self.y = m.f()
+    def b(self) -> None:
+        yy = 1
+        yy = self.y
+
+class B:
+    def c(self) -> None:
+        self.z = m.f()
+    def b(self) -> None:
+        zz = 1
+        zz = self.z
+[file m.py]
+def f() -> int: pass
+[file m.py.2]
+def f() -> str: pass
+[out]
+==
+main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:14: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:21: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testConstructorSignatureChanged]
+import m
+
+def f() -> None:
+    m.A()
+[file m.py]
+class A:
+    def __init__(self) -> None: pass
+[file m.py.2]
+class A:
+    def __init__(self, x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "A"
+
+[case testConstructorAdded]
+import m
+
+def f() -> None:
+    m.A()
+[file m.py]
+class A: pass
+[file m.py.2]
+class A:
+    def __init__(self, x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "A"
+
+[case testConstructorDeleted]
+import m
+
+def f() -> None:
+    m.A(1)
+[file m.py]
+class A:
+    def __init__(self, x: int) -> None: pass
+[file m.py.2]
+class A: pass
+[out]
+==
+main:4: error: Too many arguments for "A"
+
+[case testBaseClassConstructorChanged]
+import m
+
+def f() -> None:
+    m.B()
+[file m.py]
+class A:
+    def __init__(self) -> None: pass
+class B(A): pass
+[file m.py.2]
+class A:
+    def __init__(self, x: int) -> None: pass
+class B(A): pass
+[out]
+==
+main:4: error: Too few arguments for "B"
+
+[case testImportFrom]
+from m import f
+
+def g() -> None:
+    f()
+[file m.py]
+def f() -> None: pass
+[file m.py.2]
+def f(x: int) -> None: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+==
+main:4: error: Too few arguments for "f"
+
+[case testImportFrom2]
+from m import f
+f()
+[file m.py]
+def f() -> None: pass
+[file m.py.2]
+def f(x: int) -> None: pass
+[out]
+==
+main:2: error: Too few arguments for "f"
+
+[case testImportFromTargetsClass]
+from m import C
+
+def f(c: C) -> None:
+    c.g()
+[file m.py]
+class C:
+    def g(self) -> None: pass
+[file m.py.2]
+class C:
+    def g(self, x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "g" of "C"
+
+[case testImportFromTargetsVariable]
+from m import x
+
+def f() -> None:
+    y = 1
+    y = x
+[file m.py]
+x = 1
+[file m.py.2]
+x = ''
+[out]
+==
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testImportFromSubmoduleOfPackage]
+from m import n
+
+def f() -> None:
+    n.g()
+[file m/__init__.py]
+[file m/n.py]
+def g() -> None: pass
+[file m/n.py.2]
+def g(x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "g"
+
+[case testImportedFunctionGetsImported]
+from m import f
+
+def g() -> None:
+    f()
+[file m.py]
+from n import f
+[file n.py]
+def f() -> None: pass
+[file n.py.2]
+def f(x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "f"
+
+[case testNestedClassMethodSignatureChanges]
+from m import A
+
+def f(x: A.B) -> None:
+    x.g()
+[file m.py]
+class A:
+    class B:
+        def g(self) -> None: pass
+[file m.py.2]
+class A:
+    class B:
+        def g(self, x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "g" of "B"
+
+[case testNestedClassAttributeTypeChanges]
+from m import A
+
+def f(x: A.B) -> None:
+    z = 1
+    z = x.y
+[file m.py]
+class A:
+    class B:
+        def g(self) -> None:
+            self.y = 1
+[file m.py.2]
+class A:
+    class B:
+        def g(self) -> None:
+            self.y = ''
+[out]
+==
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testReprocessMethodInNestedClass]
+from m import f
+
+class A:
+    class B:
+        def g(self) -> None:
+            x = 1
+            x = f()
+[file m.py]
+def f() -> int: pass
+[file m.py.2]
+def f() -> str: pass
+[out]
+==
+main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testBaseClassDeleted]
+import m
+
+class A(m.C):
+    def f(self) -> None:
+        self.g()  # No error here because m.C becomes an Any base class
+    def g(self) -> None:
+        self.x
+[file m.py]
+class C:
+    def g(self) -> None: pass
+[file m.py.2]
+[out]
+main:7: error: "A" has no attribute "x"
+==
+main:3: error: Name 'm.C' is not defined
+
+[case testBaseClassOfNestedClassDeleted]
+import m
+
+class A:
+    class B(m.C):
+        def f(self) -> None:
+            self.g()  # No error here because m.C becomes an Any base class
+        def g(self) -> None:
+            self.x
+[file m.py]
+class C:
+    def g(self) -> None: pass
+[file m.py.2]
+[out]
+main:8: error: "B" has no attribute "x"
+==
+main:4: error: Name 'm.C' is not defined

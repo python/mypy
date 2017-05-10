@@ -93,7 +93,7 @@ ARG_CONSTRUCTOR_NAMES = {
     ARG_OPT: "DefaultArg",
     ARG_NAMED: "NamedArg",
     ARG_NAMED_OPT: "DefaultNamedArg",
-    ARG_STAR: "StarArg",
+    ARG_STAR: "VarArg",
     ARG_STAR2: "KwArg",
 }
 
@@ -214,15 +214,15 @@ class MessageBuilder:
                                     verbosity = max(verbosity - 1, 0))))
                     else:
                         constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
-                        if arg_kind in (ARG_STAR, ARG_STAR2):
+                        if arg_kind in (ARG_STAR, ARG_STAR2) or arg_name is None:
                             arg_strings.append("{}({})".format(
                                 constructor,
                                 strip_quotes(self.format(arg_type))))
                         else:
-                            arg_strings.append("{}('{}', {})".format(
+                            arg_strings.append("{}({}, {})".format(
                                 constructor,
-                                arg_name,
-                                strip_quotes(self.format(arg_type))))
+                                strip_quotes(self.format(arg_type)),
+                                repr(arg_name)))
 
                 return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
             else:
@@ -249,6 +249,10 @@ class MessageBuilder:
         if isinstance(typ, Instance):
             itype = typ
             # Get the short name of the type.
+            if itype.type.fullname() in ('types.ModuleType',
+                                         '_importlib_modulespec.ModuleType'):
+                # Make some common error messages simpler and tidier.
+                return 'Module'
             if verbosity >= 2:
                 base_str = itype.type.fullname()
             else:
@@ -329,7 +333,7 @@ class MessageBuilder:
             if typ.is_noreturn:
                 return 'NoReturn'
             else:
-                return '<uninhabited>'
+                return '<nothing>'
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(
                 strip_quotes(self.format_simple(typ.item, verbosity)))
@@ -485,7 +489,10 @@ class MessageBuilder:
         target = ''
         if callee.name:
             name = callee.name
-            base = extract_type(name)
+            if callee.bound_args and callee.bound_args[0] is not None:
+                base = self.format(callee.bound_args[0])
+            else:
+                base = extract_type(name)
 
             for op, method in op_methods.items():
                 for variant in method, '__r' + method[2:]:
@@ -522,7 +529,13 @@ class MessageBuilder:
             name = callee.name[1:-1]
             n -= 1
             msg = '{} item {} has incompatible type {}'.format(
-                name[0].upper() + name[1:], n, self.format_simple(arg_type))
+                name.title(), n, self.format_simple(arg_type))
+        elif callee.name == '<dict>':
+            name = callee.name[1:-1]
+            n -= 1
+            key_type, value_type = cast(TupleType, arg_type).items
+            msg = '{} entry {} has incompatible type {}: {}'.format(
+                name.title(), n, self.format_simple(key_type), self.format_simple(value_type))
         elif callee.name == '<list-comprehension>':
             msg = 'List comprehension has incompatible type List[{}]'.format(
                 strip_quotes(self.format(arg_type)))
@@ -566,7 +579,7 @@ class MessageBuilder:
                 msg = 'Missing positional argument'
             else:
                 msg = 'Missing positional arguments'
-            if callee.name and diff:
+            if callee.name and diff and all(d is not None for d in diff):
                 msg += ' "{}" in call to {}'.format('", "'.join(diff), callee.name)
         else:
             msg = 'Too few arguments'
@@ -871,6 +884,9 @@ class MessageBuilder:
                                       ) -> None:
         self.fail('\'{}\' is not a valid item name; expected one of {}'.format(
             item_name, format_item_name_list(typ.items.keys())), context)
+
+    def type_arguments_not_allowed(self, context: Context) -> None:
+        self.fail('Parameterized generics cannot be used with class or instance checks', context)
 
 
 def capitalize(s: str) -> str:

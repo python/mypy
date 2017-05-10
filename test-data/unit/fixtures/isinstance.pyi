@@ -13,6 +13,7 @@ class tuple(Generic[T]): pass
 class function: pass
 
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
+def issubclass(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 
 class int:
     def __add__(self, other: 'int') -> 'int': pass

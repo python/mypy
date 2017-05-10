@@ -33,7 +33,7 @@ from mypy.nodes import (
     UnaryExpr, LambdaExpr, ComparisonExpr, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     Expression, Statement, BackquoteExpr, PrintStmt, ExecStmt,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart,
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart, check_arg_names,
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType
@@ -87,7 +87,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     if errors is None:
         errors = Errors()
         raise_on_error = True
-    errors.set_file('<input>' if fnam is None else fnam)
+    errors.set_file('<input>' if fnam is None else fnam, None)
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
         assert pyversion[0] < 3 and not is_stub_file
@@ -439,12 +439,10 @@ class ASTConverter(ast27.NodeTransformer):
             new_args.append(Argument(Var(n.kwarg), typ, None, ARG_STAR2))
             names.append(n.kwarg)
 
-        seen_names = set()  # type: Set[str]
-        for name in names:
-            if name in seen_names:
-                self.fail("duplicate argument '{}' in function definition".format(name), line, 0)
-                break
-            seen_names.add(name)
+        # We don't have any context object to give, but we have closed around the line num
+        def fail_arg(msg: str, arg: None) -> None:
+            self.fail(msg, line, 0)
+        check_arg_names(names, [None] * len(names), fail_arg)
 
         return new_args, decompose_stmts
 
