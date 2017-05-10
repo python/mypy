@@ -453,6 +453,21 @@ reveal_type(l) \
     # E: Revealed type is 'builtins.list[Union[builtins.bool, builtins.int, builtins.float, builtins.str]]'
 [builtins fixtures/list.pyi]
 
+[case testNestedUnionsProcessedCorrectly]
+from typing import Union
+
+class A: pass
+class B: pass
+class C: pass
+
+def foo(bar: Union[Union[A, B], C]) -> None:
+    if isinstance(bar, A):
+        reveal_type(bar)  # E: Revealed type is '__main__.A'
+    else:
+        reveal_type(bar)  # E: Revealed type is 'Union[__main__.B, __main__.C]'
+[builtins fixtures/isinstance.pyi]
+[out]
+
 [case testAssignAnyToUnion]
 from typing import Union, Any
 x: Union[int, str]

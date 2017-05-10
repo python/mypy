@@ -1,14 +1,6 @@
 environment:
   matrix:
 
-    - PYTHON: "C:\\Python35"
-      PYTHON_VERSION: "3.5.1"
-      PYTHON_ARCH: "32"
-
-    - PYTHON: "C:\\Python35-x64"
-      PYTHON_VERSION: "3.5.1"
-      PYTHON_ARCH: "64"
-
     - PYTHON: "C:\\Python36"
       PYTHON_VERSION: "3.6.x"
       PYTHON_ARCH: "32"
@@ -50,3 +42,5 @@ skip_commits:
     - .travis.yml
     - CREDITS
     - LICENSE
+
+skip_branch_with_pr: true

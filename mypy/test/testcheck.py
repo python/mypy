@@ -1,6 +1,6 @@
 """Type checker test cases"""
 
-import os.path
+import os
 import re
 import shutil
 import sys
@@ -10,7 +10,7 @@ import typed_ast
 from typing import Dict, List, Optional, Set, Tuple
 
 from mypy import build, defaults
-from mypy.main import parse_version, process_options
+from mypy.main import process_options
 from mypy.build import BuildSource, find_module_clear_caches
 from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir, test_data_prefix
@@ -55,6 +55,7 @@ files = [
     'check-semanal-error.test',
     'check-flags.test',
     'check-incremental.test',
+    'check-serialize.test',
     'check-bound.test',
     'check-optional.test',
     'check-fastparse.test',
@@ -90,27 +91,26 @@ class TypeCheckSuite(DataSuite):
         return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        incremental = 'incremental' in testcase.name.lower() or 'incremental' in testcase.file
+        incremental = ('incremental' in testcase.name.lower()
+                       or 'incremental' in testcase.file
+                       or 'serialize' in testcase.file)
         optional = 'optional' in testcase.file
-        if incremental:
-            # Incremental tests are run once with a cold cache, once with a warm cache.
-            # Expect success on first run, errors from testcase.output (if any) on second run.
-            # We briefly sleep to make sure file timestamps are distinct.
-            self.clear_cache()
-            self.run_case_once(testcase, 1)
-            self.run_case_once(testcase, 2)
-        elif optional:
-            try:
+        old_strict_optional = experiments.STRICT_OPTIONAL
+        try:
+            if incremental:
+                # Incremental tests are run once with a cold cache, once with a warm cache.
+                # Expect success on first run, errors from testcase.output (if any) on second run.
+                # We briefly sleep to make sure file timestamps are distinct.
+                self.clear_cache()
+                self.run_case_once(testcase, 1)
+                self.run_case_once(testcase, 2)
+            elif optional:
                 experiments.STRICT_OPTIONAL = True
                 self.run_case_once(testcase)
-            finally:
-                experiments.STRICT_OPTIONAL = False
-        else:
-            try:
-                old_strict_optional = experiments.STRICT_OPTIONAL
+            else:
                 self.run_case_once(testcase)
-            finally:
-                experiments.STRICT_OPTIONAL = old_strict_optional
+        finally:
+            experiments.STRICT_OPTIONAL = old_strict_optional
 
     def clear_cache(self) -> None:
         dn = defaults.CACHE_DIR
@@ -154,6 +154,8 @@ class TypeCheckSuite(DataSuite):
             options.strict_optional = True
         if incremental:
             options.incremental = True
+        else:
+            options.cache_dir = os.devnull  # Dont waste time writing cache
 
         sources = []
         for module_name, program_path, program_text in module_data:

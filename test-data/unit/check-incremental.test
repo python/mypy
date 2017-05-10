@@ -26,6 +26,8 @@
 -- all cases so we can avoid constantly having to annotate it. The list of
 -- rechecked/stale files can be in any arbitrary order, or can be left empty
 -- if no files should be rechecked/stale.
+--
+-- There are additional incremental mode test cases in check-serialize.test.
 
 [case testIncrementalEmpty]
 [rechecked]
@@ -113,6 +115,25 @@ def func1() -> A: pass
 [stale]
 [out2]
 tmp/mod1.py:1: error: Name 'A' is not defined
+
+[case testIncrementalCallable]
+import mod1
+
+[file mod1.py]
+from typing import Callable
+from mypy_extensions import Arg
+def func1() -> Callable[[Arg(int, 'x')], int]: pass
+
+[file mod1.py.next]
+from typing import Callable
+from mypy_extensions import Arg
+def func1() -> Callable[[Arg(int, 'x')], int]: ...
+
+
+[rechecked mod1]
+[stale]
+
+[builtins fixtures/dict.pyi]
 
 [case testIncrementalSameNameChange]
 import mod1
@@ -300,7 +321,7 @@ const = 3
 [stale mod3]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "ModuleType" has no attribute "mod4"
+tmp/mod1.py:3: error: Module has no attribute "mod4"
 
 [case testIncrementalLongBrokenCascade]
 import mod1
@@ -335,7 +356,7 @@ const = 3
 [stale mod6]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "ModuleType" has no attribute "mod7"
+tmp/mod1.py:3: error: Module has no attribute "mod7"
 
 [case testIncrementalNestedBrokenCascade]
 import mod1
@@ -361,7 +382,7 @@ const = 3
 [stale mod2.mod3]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "ModuleType" has no attribute "mod4"
+tmp/mod1.py:3: error: Module has no attribute "mod4"
 
 [case testIncrementalNestedBrokenCascadeWithType1]
 import mod1, mod2.mod3.mod5
@@ -1692,28 +1713,6 @@ main:1: error: Module 'ntcrash' has no attribute 'nope'
 [out2]
 main:1: error: Module 'ntcrash' has no attribute 'nope'
 
-[case testIncrementalNamedTupleInMethod4]
-from ntcrash import C
-reveal_type(C().a)
-reveal_type(C().b)
-reveal_type(C().c)
-[file ntcrash.py]
-from typing import NamedTuple
-class C:
-    def __init__(self) -> None:
-        A = NamedTuple('A', [('x', int)])
-        self.a = A(0)
-        self.b = A(0)  # type: A
-        self.c = A
-[out1]
-main:2: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:3: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:4: error: Revealed type is 'def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-[out2]
-main:2: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:3: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:4: error: Revealed type is 'def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-
 [case testIncrementalTypedDictInMethod]
 from tdcrash import nope
 [file tdcrash.py]
@@ -1755,29 +1754,6 @@ class C:
 main:1: error: Module 'tdcrash' has no attribute 'nope'
 [out2]
 main:1: error: Module 'tdcrash' has no attribute 'nope'
-
-[case testIncrementalTypedDictInMethod4]
-from ntcrash import C
-reveal_type(C().a)
-reveal_type(C().b)
-reveal_type(C().c)
-[file ntcrash.py]
-from mypy_extensions import TypedDict
-class C:
-    def __init__(self) -> None:
-        A = TypedDict('A', {'x': int})
-        self.a = A(x=0)
-        self.b = A(x=0)  # type: A
-        self.c = A
-[builtins fixtures/dict.pyi]
-[out1]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
-main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
-[out2]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
-main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
 
 [case testIncrementalInnerClassAttrInMethod]
 import crash
@@ -1906,6 +1882,66 @@ import a
 a.A().x = 0
 [out2]
 tmp/b.py:2: error: Cannot assign to class variable "x" via instance
+
+[case testSerializeTypedDict]
+import b
+reveal_type(b.x)
+y: b.A
+reveal_type(y)
+[file b.py]
+from mypy_extensions import TypedDict
+A = TypedDict('A', {'x': int, 'y': str})
+x: A
+[builtins fixtures/dict.pyi]
+[out1]
+main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+[out2]
+main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+
+[case testSerializeMetaclass]
+import b
+reveal_type(b.A.f())
+m: b.M = b.A
+reveal_type(b.a.f())
+[file b.py]
+from typing import Type
+
+class M(type):
+    def f(cls) -> int: return 0
+class A(metaclass=M): pass
+a: Type[A]
+[out]
+main:2: error: Revealed type is 'builtins.int'
+main:4: error: Revealed type is 'builtins.int'
+[out2]
+main:2: error: Revealed type is 'builtins.int'
+main:4: error: Revealed type is 'builtins.int'
+
+[case testSerializeMetaclassInImportCycle1]
+import b
+import c
+reveal_type(b.A.f())
+m: c.M = b.A
+reveal_type(b.a.f())
+[file b.py]
+from typing import Type
+from c import M
+class A(metaclass=M): pass
+a: Type[A]
+[file c.py]
+class M(type):
+    def f(cls) -> int: return 0
+[out]
+main:3: error: Revealed type is 'builtins.int'
+main:5: error: Revealed type is 'builtins.int'
+[out2]
+main:3: error: Revealed type is 'builtins.int'
+main:5: error: Revealed type is 'builtins.int'
+
+-- TODO: Add another test for metaclass in import cycle (reversed from the above test).
+--       This currently doesn't work.
 
 [case testQuickAndDirty1]
 # flags: --quick-and-dirty

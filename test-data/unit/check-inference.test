@@ -681,10 +681,10 @@ g('a')() # E: List[str] not callable
 # The next line is a case where there are multiple ways to satisfy a constraint
 # involving a Union. Either T = List[str] or T = str would turn out to be valid,
 # but mypy doesn't know how to branch on these two options (and potentially have
-# to backtrack later) and defaults to T = <uninhabited>. The result is an
+# to backtrack later) and defaults to T = <nothing>. The result is an
 # awkward error message. Either a better error message, or simply accepting the
 # call, would be preferable here.
-g(['a']) # E: Argument 1 to "g" has incompatible type List[str]; expected List[<uninhabited>]
+g(['a']) # E: Argument 1 to "g" has incompatible type List[str]; expected List[<nothing>]
 
 h(g(['a']))
 
@@ -778,7 +778,7 @@ from typing import TypeVar, Union, List
 T = TypeVar('T')
 def f() -> List[T]: pass
 d1 = f() # type: Union[List[int], str]
-d2 = f() # type: Union[int, str] # E: Incompatible types in assignment (expression has type List[<uninhabited>], variable has type "Union[int, str]")
+d2 = f() # type: Union[int, str] # E: Incompatible types in assignment (expression has type List[<nothing>], variable has type "Union[int, str]")
 def g(x: T) -> List[T]: pass
 d3 = g(1) # type: Union[List[int], List[str]]
 [builtins fixtures/list.pyi]
@@ -1119,7 +1119,7 @@ from typing import Callable
 def f(a: Callable[..., None] = lambda *a, **k: None):
     pass
 
-def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible types in assignment (expression has type Callable[[StarArg(Any), KwArg(Any)], int], variable has type Callable[..., None])
+def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible types in assignment (expression has type Callable[[VarArg(Any), KwArg(Any)], int], variable has type Callable[..., None])
     pass
 [builtins fixtures/dict.pyi]
 
