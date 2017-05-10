@@ -1,6 +1,8 @@
-#!/usr/bin/env python3
-"""Mypy type checker command line tool."""
+#!/usr/bin/env bash
+parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 
-from mypy.main import main
-
-main(__file__)
+if [ -f "$parent_path/python" ]; then
+    "$parent_path/python" -m mypy "$@"
+else
+    "$parent_path/../python" -m mypy "$@"
+fi
