@@ -6,7 +6,7 @@ from mypy.nodes import (
     MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
     TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
     TypeVarExpr, ClassDef, Block,
-    LDEF, MDEF, GDEF
+    LDEF, MDEF, GDEF, TYPE_ALIAS
 )
 from mypy.types import (
     CallableType, EllipsisType, Instance, Overloaded, TupleType, TypedDictType,
@@ -93,8 +93,8 @@ class NodeFixer(NodeVisitor[None]):
                     else:
                         # We have a missing crossref in quick mode, need to put something
                         value.node = stale_info()
-                        if value.type_override is not None:
-                            value.type_override.accept(self.type_fixer)
+                        if value.kind == TYPE_ALIAS:
+                            value.type_override = Instance(stale_info(), [])
             else:
                 if isinstance(value.node, TypeInfo):
                     # TypeInfo has no accept().  TODO: Add it?
