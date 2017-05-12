@@ -842,7 +842,8 @@ import typing
 class C:
   @classmethod
   def foo(cls) -> None:
-      cls().bar()
+      c = None  # type: C
+      c.bar()
   @abstractmethod
   def bar(self) -> None:
       pass

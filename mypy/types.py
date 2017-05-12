@@ -599,6 +599,7 @@ class CallableType(FunctionLike):
         self.implicit = implicit
         self.is_classmethod_class = is_classmethod_class
         self.special_sig = special_sig
+        self.is_classmethod_class = is_classmethod_class
         self.from_type_type = from_type_type
         self.bound_args = bound_args or []
         super().__init__(line, column)
