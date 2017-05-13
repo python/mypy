@@ -3066,7 +3066,6 @@ class M(type):
 class A(metaclass=M): pass
 
 reveal_type(A[M])  # E: Revealed type is 'builtins.int'
-reveal_type(A[M])  # E: Revealed type is 'builtins.int'
 
 [case testMetaclassSelfType]
 from typing import TypeVar, Type
@@ -3154,11 +3153,25 @@ m: M
 class A(metaclass=M):
     def foo(self): pass
 
-# 3 examples of unsoundness - instantiation, classmethod, staticmethod and ClassVar:
+A.g1()
+A.g2()
+A.g3()
+A.g4()
+
+# 4 examples of unsoundness - instantiation, classmethod, staticmethod and ClassVar:
 
 ta: Type[A] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[A])
+ta.g1()
+ta.g2()
+ta.g4()
+ta.g2()
+
 a: A = ta()
 x: M = ta
+x.g1()
+x.g2()
+x.g3()
+x.g4()
 
 def r(ta: Type[TA], tta: TTA) -> None:
     x: M = ta
@@ -3166,16 +3179,19 @@ def r(ta: Type[TA], tta: TTA) -> None:
 
 class Class(metaclass=M):
     @classmethod
-    def f1(cls: M): pass
+    def f1(cls: Type[Class]) -> None: pass
+    @classmethod
+    def f2(cls: M) -> None: pass
 cl: Type[Class] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[Class])
-cl.f1()
+reveal_type(cl.f1)  # E: Revealed type is 'def ()'
+reveal_type(cl.f2)  # E: Revealed type is 'def ()'
 x1: M = cl
 
 class Static(metaclass=M):
     @staticmethod
-    def f(): pass
+    def f() -> None: pass
 s: Type[Static] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[Static])
-s.f()
+reveal_type(s.f)  # E: Revealed type is 'def ()'
 x2: M = s
 
 from typing import ClassVar

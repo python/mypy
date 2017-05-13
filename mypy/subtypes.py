@@ -150,17 +150,20 @@ class SubtypeVisitor(TypeVisitor[bool]):
                        for lefta, righta, tvar in
                        zip(t.args, right.args, right.type.defn.type_vars))
         if isinstance(right, TypeType):
+            item = right.item
+            if isinstance(item, TupleType):
+                item = item.fallback
             if is_named_instance(left, 'builtins.type'):
                 return is_subtype(TypeType(AnyType()), right)
             if left.type.is_metaclass():
-                if isinstance(right.item, AnyType):
+                if isinstance(item, AnyType):
                     return True
-                if isinstance(right.item, Instance):
+                if isinstance(item, Instance):
                     # Special-case enum since we don't have better way of expressing it
                     if (is_named_instance(left, 'enum.EnumMeta')
-                            and is_named_instance(right.item, 'enum.Enum')):
+                            and is_named_instance(item, 'enum.Enum')):
                         return True
-                    return is_named_instance(right.item, 'builtins.object')
+                    return is_named_instance(item, 'builtins.object')
         return False
 
     def visit_type_var(self, left: TypeVarType) -> bool:
@@ -257,6 +260,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TypeType):
             # All the items must have the same type object status, so
             # it's sufficient to query only (any) one of them.
+            # This is unsound, we don't check all the __init__ signatures.
             return left.is_type_obj() and is_subtype(left.items()[0], right)
         else:
             return False
