@@ -1712,3 +1712,16 @@ if isinstance(x, (set, (list, T))):
     reveal_type(x)  # E: Revealed type is 'Union[builtins.set[Any], builtins.list[Any], builtins.int, builtins.str]'
 
 [builtins fixtures/isinstancelist.pyi]
+
+
+[case testIsinstanceNarrowAny]
+from typing import Any
+
+def narrow_any_to_str_then_reassign_to_int() -> None:
+    v = 1 # type: Any
+
+    if isinstance(v, str):
+        v = 2
+        v + 3
+
+[builtins fixtures/isinstance.pyi]
