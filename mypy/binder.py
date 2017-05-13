@@ -221,14 +221,14 @@ class ConditionalTypeBinder:
             # times?
             return
 
-
         if (isinstance(self.most_recent_enclosing_type(expr, type), AnyType)
                 and not restrict_any):
             # If x is Any and y is int, after x = y we do not infer that x is int.
             # This could be changed.
-            # However, we may have narrowed it down from Any in a recent frame,
-            # so un-narrow it back to Any at this point.
             if not isinstance(type, AnyType):
+                # We narrowed type from Any in a recent frame (probably an
+                # isinstance check), but now it is reassigned, so broaden back
+                # to Any (which is the most recent enclosing type)
                 self.put(expr, self.most_recent_enclosing_type(expr, type))
         elif (isinstance(type, AnyType)
               and not (isinstance(declared_type, UnionType)
