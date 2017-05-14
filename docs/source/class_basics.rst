@@ -263,8 +263,9 @@ Generic protocols
 *****************
 
 Generic protocols are also supported, generic protocols mostly follow
-the normal rules for generic classes, the main difference is that declaring
-variance is not necessary for protocols, mypy can infer it. Examples:
+the normal rules for generic classes, the main difference is that mypy checks
+that declared variance of type variables is compatible with
+the class definition. Examples:
 
 .. code-block:: python
 
@@ -290,7 +291,20 @@ variance is not necessary for protocols, mypy can infer it. Examples:
 
    x: Box[float]
    y: Box[int]
-   x = y  # This is also OK due to inferred covariance of the protocol 'Box'.
+   x = y  # Error, since the protocol 'Box' is invariant.
+
+   class AnotherBox(Protocol[T]):  # Error, covariant type variable expected
+       def content(self) -> T:
+           ...
+
+   T_co = TypeVar('T_co', covariant=True)
+   class AnotherBox(Protocol[T_co]):  # OK
+       def content(self) -> T_co:
+           ...
+
+   ax: AnotherBox[float]
+   ay: AnotherBox[int]
+   ax = ay  # OK for covariant protocols
 
 See :ref:`generic-classes` for more details on generic classes and variance.
 
@@ -320,11 +334,11 @@ such as trees and linked lists:
    T = TypeVar('T')
    class Linked(Protocol[T]):
        val: T
-       next: 'Linked[T]'
+       def next(self) -> 'Linked[T]': ...
 
    class L:
        val: int
-       next: 'L'
+       def next(self) -> 'L': ...
 
    def last(seq: Linked[T]) -> T:
        ...
