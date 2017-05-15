@@ -16,7 +16,7 @@ from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test import config
 from mypy.parse import parse
 from mypy.errors import CompileError
-from mypy.stubgen import generate_stub, generate_stub_for_module
+from mypy.stubgen import generate_stub, generate_stub_for_module, parse_options, Options
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
@@ -104,11 +104,20 @@ class StubgenPythonSuite(Suite):
         return c
 
 
+def parse_args(line: str) -> Options:
+    if line.startswith('# opts:'):
+        opts = line[7:].strip().split()
+    else:
+        opts = []
+    return parse_options(opts + ['dummy.py'])
+
+
 def test_stubgen(testcase: DataDrivenTestCase) -> None:
     if 'stubgen-test-path' not in sys.path:
         sys.path.insert(0, 'stubgen-test-path')
     os.mkdir('stubgen-test-path')
     source = '\n'.join(testcase.input)
+    options = parse_args(testcase.input[0] if testcase.input else '')
     handle = tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py', dir='stubgen-test-path',
                                          delete=False)
     assert os.path.isabs(handle.name)
@@ -125,9 +134,11 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
         reset_importlib_caches()
         try:
             if testcase.name.endswith('_import'):
-                generate_stub_for_module(name, out_dir, quiet=True)
+                generate_stub_for_module(name, out_dir, quiet=True,
+                                         no_import=options.no_import,
+                                         include_private=options.include_private)
             else:
-                generate_stub(path, out_dir)
+                generate_stub(path, out_dir, include_private=options.include_private)
             a = load_output(out_dir)
         except CompileError as e:
             a = e.messages
