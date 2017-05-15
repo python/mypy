@@ -3137,3 +3137,23 @@ class M(type):
 class A(metaclass=M): pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
 
+[case testSixWithMetaclass]
+import six
+class M(type):
+    x = 5
+class A(six.with_metaclass(M)): pass
+reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+
+[case testSixWithMetaclass_python2]
+import six
+class M(type):
+    x = 5
+class A(six.with_metaclass(M)): pass
+reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+
+[case testFromSixWithMetaclass]
+from six import with_metaclass
+class M(type):
+    x = 5
+class A(with_metaclass(M)): pass
+reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
