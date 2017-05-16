@@ -514,7 +514,7 @@ b = A.x # type: B # E: Incompatible types in assignment (expression has type "A"
 [case testAccessingUndefinedAttributeViaClass]
 import typing
 class A: pass
-A.x # E: "A" has no attribute "x"
+A.x # E: Type[A] has no attribute "x"
 
 [case testAccessingUndefinedAttributeViaClassWithOverloadedInit]
 from foo import *
@@ -525,7 +525,7 @@ class A:
     def __init__(self): pass
     @overload
     def __init__(self, x): pass
-A.x # E: "A" has no attribute "x"
+A.x # E: Type[A] has no attribute "x"
 
 [case testAccessMethodOfClassWithOverloadedInit]
 from foo import *
@@ -812,7 +812,7 @@ class C:
     cls(1)      # E: Too many arguments for "C"
     cls.bar()
     cls.bar(1)  # E: Too many arguments for "bar" of "C"
-    cls.bozo()  # E: "C" has no attribute "bozo"
+    cls.bozo()  # E: Type[C] has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -823,7 +823,7 @@ class C:
   def foo(cls) -> None: pass
 C.foo()
 C.foo(1)  # E: Too many arguments for "foo" of "C"
-C.bozo()  # E: "C" has no attribute "bozo"
+C.bozo()  # E: Type[C] has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 
 [case testClassMethodCalledOnInstance]
@@ -833,7 +833,7 @@ class C:
   def foo(cls) -> None: pass
 C().foo()
 C().foo(1)  # E: Too many arguments for "foo" of "C"
-C.bozo()    # E: "C" has no attribute "bozo"
+C.bozo()    # E: Type[C] has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 
 [case testClassMethodMayCallAbstractMethod]
@@ -1722,7 +1722,7 @@ class C:
 def f(x: type) -> None: pass
 def g(x: int) -> None: pass
 f(C)
-g(C) # E: Argument 1 to "g" has incompatible type "C"; expected "int"
+g(C) # E: Argument 1 to "g" has incompatible type Type[C]; expected "int"
 [builtins fixtures/__new__.pyi]
 
 [case testClassWith__new__AndCompatibilityWithType2]
@@ -1733,7 +1733,7 @@ class C:
 def f(x: type) -> None: pass
 def g(x: int) -> None: pass
 f(C)
-g(C) # E: Argument 1 to "g" has incompatible type "C"; expected "int"
+g(C) # E: Argument 1 to "g" has incompatible type Type[C]; expected "int"
 [builtins fixtures/__new__.pyi]
 
 [case testGenericClassWith__new__]
@@ -1813,7 +1813,7 @@ class B:
 [case testClassVsInstanceDisambiguation]
 class A: pass
 def f(x: A) -> None: pass
-f(A) # E: Argument 1 to "f" has incompatible type "A" (type object); expected "A"
+f(A) # E: Argument 1 to "f" has incompatible type Type[A]; expected "A"
 [out]
 
 -- TODO
@@ -2621,7 +2621,7 @@ int.__eq__(3, 4)
 [builtins fixtures/args.pyi]
 [out]
 main:33: error: Too few arguments for "__eq__" of "int"
-main:33: error: Unsupported operand types for == ("int" and "int")
+main:33: error: Unsupported operand types for == ("int" and Type[int])
 
 [case testMroSetAfterError]
 class C(str, str):
@@ -2986,7 +2986,7 @@ class M:
 
 class A(metaclass=M): pass  # E: Metaclasses not inheriting from 'type' are not supported
 
-A.x  # E: "A" has no attribute "x"
+A.x  # E: Type[A] has no attribute "x"
 
 [case testMetaclassTypeReveal]
 from typing import Type
@@ -3085,7 +3085,7 @@ from missing import M
 class A(metaclass=M):
     y = 0
 reveal_type(A.y) # E: Revealed type is 'builtins.int'
-A.x # E: "A" has no attribute "x"
+A.x # E: Type[A] has no attribute "x"
 
 [case testAnyMetaclass]
 from typing import Any
@@ -3093,7 +3093,7 @@ M = None  # type: Any
 class A(metaclass=M):
     y = 0
 reveal_type(A.y) # E: Revealed type is 'builtins.int'
-A.x # E: "A" has no attribute "x"
+A.x # E: Type[A] has no attribute "x"
 
 [case testInvalidVariableAsMetaclass]
 from typing import Any
@@ -3104,7 +3104,7 @@ class A(metaclass=M): # E: Invalid metaclass 'M'
 class B(metaclass=MM): # E: Invalid metaclass 'MM'
     y = 0
 reveal_type(A.y) # E: Revealed type is 'builtins.int'
-A.x # E: "A" has no attribute "x"
+A.x # E: Type[A] has no attribute "x"
 
 [case testAnyAsBaseOfMetaclass]
 from typing import Any, Type

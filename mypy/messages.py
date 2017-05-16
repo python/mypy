@@ -190,13 +190,7 @@ class MessageBuilder:
             if func.is_type_obj():
                 # The type of a type object type can be derived from the
                 # return type (this always works).
-                itype = cast(Instance, func.items()[0].ret_type)
-                result = self.format(itype)
-                if verbosity >= 1:
-                    # In some contexts we want to be explicit about the distinction
-                    # between type X and the type of type object X.
-                    result += ' (type object)'
-                return result
+                return self.format(TypeType(func.items()[0].ret_type), verbosity)
             elif isinstance(func, CallableType):
                 return_type = strip_quotes(self.format(func.ret_type))
                 if func.is_ellipsis_args:

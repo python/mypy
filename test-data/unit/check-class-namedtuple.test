@@ -221,7 +221,7 @@ class MyNamedTuple(NamedTuple):
     a: int
     b: str
 
-MyNamedTuple.x # E: "MyNamedTuple" has no attribute "x"
+MyNamedTuple.x # E: Type[MyNamedTuple] has no attribute "x"
 
 [case testNewNamedTupleEmptyItems]
 # flags: --python-version 3.6
