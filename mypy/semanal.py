@@ -939,7 +939,7 @@ class SemanticAnalyzer(NodeVisitor):
         base_types = []  # type: List[Instance]
         info = defn.info
 
-        base_type_exprs = self.get_base_type_exprs(defn)
+        base_type_exprs = self.check_with_metaclass(defn)
         for base_expr in base_type_exprs:
             try:
                 base = self.expr_to_analyzed_type(base_expr)
@@ -991,9 +991,9 @@ class SemanticAnalyzer(NodeVisitor):
         if defn.info.is_enum and defn.type_vars:
             self.fail("Enum class cannot be generic", defn)
 
-    def get_base_type_exprs(self, defn: ClassDef) -> List[Expression]:
-        # Special-case six.with_metaclass(M, B1, B2, ...)
-        # TODO: factor out in helper method
+    def check_with_metaclass(self, defn: ClassDef) -> List[Expression]:
+        # Special-case six.with_metaclass(M, B1, B2, ...).
+        # May update defn.metaclass.
         base_type_exprs = defn.base_type_exprs
         if defn.metaclass is None and len(base_type_exprs) == 1:
             base_expr = base_type_exprs[0]
