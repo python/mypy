@@ -617,7 +617,7 @@ def walk_packages(packages: List[str]) -> Iterator[str]:
 
 
 def main() -> None:
-    options = parse_options()
+    options = parse_options(sys.argv[1:])
     if not os.path.isdir('out'):
         raise SystemExit('Directory "out" does not exist')
     if options.recursive and options.no_import:
@@ -652,9 +652,7 @@ def main() -> None:
                 print("Stub generation failed for", module, file=sys.stderr)
 
 
-def parse_options(args: Optional[List[str]] = None) -> Options:
-    if args is None:
-        args = sys.argv[1:]
+def parse_options(args: List[str]) -> Options:
     pyversion = defaults.PYTHON3_VERSION
     no_import = False
     recursive = False
