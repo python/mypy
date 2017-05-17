@@ -758,8 +758,12 @@ class SemanticAnalyzer(NodeVisitor):
         Now we will remove Generic[T] from bases of Foo and infer that the
         type variable 'T' is a type argument of Foo.
 
+        We also process six.with_metaclass() here.
+
         Note that this is performed *before* semantic analysis.
         """
+        # First process six.with_metaclass if present and well-formed
+        defn.base_type_exprs, defn.metaclass = self.check_with_metaclass(defn)
         removed = []  # type: List[int]
         declared_tvars = []  # type: TypeVarList
         for i, base_expr in enumerate(defn.base_type_exprs):
@@ -938,6 +942,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         base_types = []  # type: List[Instance]
         info = defn.info
+
         for base_expr in defn.base_type_exprs:
             try:
                 base = self.expr_to_analyzed_type(base_expr)
@@ -988,6 +993,27 @@ class SemanticAnalyzer(NodeVisitor):
             info.mro.append(self.object_type().type)
         if defn.info.is_enum and defn.type_vars:
             self.fail("Enum class cannot be generic", defn)
+
+    def check_with_metaclass(self, defn: ClassDef) -> Tuple[List[Expression], Optional[str]]:
+        # Special-case six.with_metaclass(M, B1, B2, ...).
+        base_type_exprs, metaclass = defn.base_type_exprs, defn.metaclass
+        if metaclass is None and len(base_type_exprs) == 1:
+            base_expr = base_type_exprs[0]
+            if isinstance(base_expr, CallExpr) and isinstance(base_expr.callee, RefExpr):
+                base_expr.callee.accept(self)
+                if (base_expr.callee.fullname == 'six.with_metaclass'
+                        and len(base_expr.args) >= 1
+                        and all(kind == ARG_POS for kind in base_expr.arg_kinds)):
+                    metaclass_expr = base_expr.args[0]
+                    if isinstance(metaclass_expr, NameExpr):
+                        metaclass = metaclass_expr.name
+                    elif isinstance(metaclass_expr, MemberExpr):
+                        metaclass = get_member_expr_fullname(metaclass_expr)
+                    else:
+                        self.fail("Dynamic metaclass not supported for '%s'" % defn.name,
+                                  metaclass_expr)
+                    return (base_expr.args[1:], metaclass)
+        return (base_type_exprs, metaclass)
 
     def expr_to_analyzed_type(self, expr: Expression) -> Type:
         if isinstance(expr, CallExpr):
