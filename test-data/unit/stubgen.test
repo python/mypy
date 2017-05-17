@@ -125,24 +125,51 @@ class A: ...
 [out]
 class A: ...
 
-[case testPrivateFunction]
+[case testSkipPrivateFunction]
 def _f(): ...
 def g(): ...
 [out]
 def g(): ...
 
-[case testPrivateMethod]
+[case testIncludePrivateFunction]
+# flags:  --include-private
+def _f(): ...
+def g(): ...
+[out]
+def _f(): ...
+def g(): ...
+
+[case testSkipPrivateMethod]
 class A:
     def _f(self): ...
 [out]
 class A: ...
 
-[case testPrivateVar]
+[case testIncludePrivateMethod]
+# flags:  --include-private
+class A:
+    def _f(self): ...
+[out]
+class A:
+    def _f(self): ...
+
+[case testSkipPrivateVar]
 _x = 1
 class A:
     _y = 1
 [out]
 class A: ...
+
+[case testIncludePrivateVar]
+# flags:  --include-private
+_x = 1
+class A:
+    _y = 1
+[out]
+_x = ...  # type: int
+
+class A:
+    _y = ...  # type: int
 
 [case testSpecialInternalVar]
 __all__ = []
@@ -309,7 +336,7 @@ class A:
     x = ...  # type: int
     def f(self): ...
 
-[case testMultiplePrivateDefs]
+[case testSkipMultiplePrivateDefs]
 class A: ...
 _x = 1
 _y = 1
@@ -317,6 +344,22 @@ _z = 1
 class C: ...
 [out]
 class A: ...
+class C: ...
+
+[case testIncludeMultiplePrivateDefs]
+# flags:  --include-private
+class A: ...
+_x = 1
+_y = 1
+_z = 1
+class C: ...
+[out]
+class A: ...
+
+_x = ...  # type: int
+_y = ...  # type: int
+_z = ...  # type: int
+
 class C: ...
 
 [case testIncludeFromImportIfInAll_import]
@@ -396,6 +439,16 @@ class A:
 [out]
 class A: ...
 
+[case testIncludePrivateProperty]
+# flags:  --include-private
+class A:
+    @property
+    def _foo(self): ...
+[out]
+class A:
+    @property
+    def _foo(self): ...
+
 [case testSkipPrivateStaticAndClassMethod]
 class A:
     @staticmethod
@@ -404,6 +457,20 @@ class A:
     def _bar(cls): ...
 [out]
 class A: ...
+
+[case testIncludePrivateStaticAndClassMethod]
+# flags:  --include-private
+class A:
+    @staticmethod
+    def _foo(): ...
+    @classmethod
+    def _bar(cls): ...
+[out]
+class A:
+    @staticmethod
+    def _foo(): ...
+    @classmethod
+    def _bar(cls): ...
 
 [case testNamedtuple]
 import collections, x
