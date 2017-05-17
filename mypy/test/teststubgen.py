@@ -6,6 +6,7 @@ import shutil
 import sys
 import tempfile
 import time
+import re
 from types import ModuleType
 
 from typing import List, Tuple
@@ -104,12 +105,13 @@ class StubgenPythonSuite(Suite):
         return c
 
 
-def parse_args(line: str) -> Options:
-    if line.startswith('# opts:'):
-        opts = line[7:].strip().split()
+def parse_flags(program_text: str) -> Options:
+    flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
+    if flags:
+        flag_list = flags.group(1).split()
     else:
-        opts = []
-    return parse_options(opts + ['dummy.py'])
+        flag_list = []
+    return parse_options(flag_list + ['dummy.py'])
 
 
 def test_stubgen(testcase: DataDrivenTestCase) -> None:
@@ -117,7 +119,7 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
         sys.path.insert(0, 'stubgen-test-path')
     os.mkdir('stubgen-test-path')
     source = '\n'.join(testcase.input)
-    options = parse_args(testcase.input[0] if testcase.input else '')
+    options = parse_flags(source)
     handle = tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py', dir='stubgen-test-path',
                                          delete=False)
     assert os.path.isabs(handle.name)

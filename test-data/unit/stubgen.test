@@ -132,7 +132,7 @@ def g(): ...
 def g(): ...
 
 [case testIncludePrivateFunction]
-# opts: --include-private
+# flags:  --include-private
 def _f(): ...
 def g(): ...
 [out]
@@ -146,7 +146,7 @@ class A:
 class A: ...
 
 [case testIncludePrivateMethod]
-# opts: --include-private
+# flags:  --include-private
 class A:
     def _f(self): ...
 [out]
@@ -161,7 +161,7 @@ class A:
 class A: ...
 
 [case testIncludePrivateVar]
-# opts: --include-private
+# flags:  --include-private
 _x = 1
 class A:
     _y = 1
@@ -347,7 +347,7 @@ class A: ...
 class C: ...
 
 [case testIncludeMultiplePrivateDefs]
-# opts: --include-private
+# flags:  --include-private
 class A: ...
 _x = 1
 _y = 1
@@ -440,7 +440,7 @@ class A:
 class A: ...
 
 [case testIncludePrivateProperty]
-# opts: --include-private
+# flags:  --include-private
 class A:
     @property
     def _foo(self): ...
@@ -459,7 +459,7 @@ class A:
 class A: ...
 
 [case testIncludePrivateStaticAndClassMethod]
-# opts: --include-private
+# flags:  --include-private
 class A:
     @staticmethod
     def _foo(): ...
