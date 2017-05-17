@@ -349,12 +349,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Return the inferred return type.
         """
-        formal_arg_types = [None] * num_formals  # type: List[Optional[Type]]
+        formal_arg_types = [[] for _ in range(num_formals)]  # type: List[List[Type]]
+        formal_arg_exprs = [[] for _ in range(num_formals)]  # type: List[List[Expression]]
         for formal, actuals in enumerate(formal_to_actual):
             for actual in actuals:
-                formal_arg_types[formal] = arg_types[actual]
+                formal_arg_types[formal].append(arg_types[actual])
+                formal_arg_exprs[formal].append(args[actual])
         return self.function_plugins[fullname](
-            formal_arg_types, inferred_ret_type, args, self.chk.named_generic_type)
+            formal_arg_types, formal_arg_exprs, inferred_ret_type, self.chk.named_generic_type)
 
     def check_call_expr_with_callee_type(self, callee_type: Type,
                                          e: CallExpr, callable_name: Optional[str]) -> Type:
