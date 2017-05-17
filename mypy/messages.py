@@ -948,8 +948,8 @@ def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> Myp
         return None
     fullname = typ.definition.fullname()
     if fullname is not None and '.' in fullname:
-        for i in range(1, fullname.count('.') + 1):
-            module_name = fullname.rsplit('.', i)[0]
+        for i in range(fullname.count('.')):
+            module_name = fullname.rsplit('.', i + 1)[0]
             try:
                 return modules[module_name]
             except KeyError:
