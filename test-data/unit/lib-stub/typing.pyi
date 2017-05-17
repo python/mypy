@@ -3,6 +3,8 @@
 
 from abc import abstractmethod
 
+class GenericMeta(type): pass
+
 cast = 0
 overload = 0
 Any = 0

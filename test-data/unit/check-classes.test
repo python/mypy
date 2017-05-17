@@ -3194,6 +3194,23 @@ C2().foo()
 C2().bar()
 C2().baz()  # E: "C2" has no attribute "baz"
 
+[case testSixWithMetaclassGenerics]
+from typing import Generic, GenericMeta, TypeVar
+import six
+class DestroyableMeta(type):
+    pass
+class Destroyable(six.with_metaclass(DestroyableMeta)):
+    pass
+T_co = TypeVar('T_co', bound='Destroyable', covariant=True)
+class ArcMeta(GenericMeta, DestroyableMeta):
+    pass
+class Arc(six.with_metaclass(ArcMeta, Generic[T_co], Destroyable)):
+    pass
+class MyDestr(Destroyable):
+    pass
+reveal_type(Arc[MyDestr]())  # E: Revealed type is '__main__.Arc[__main__.MyDestr*]'
+[builtins fixtures/bool.pyi]
+
 [case testSixWithMetaclassErrors]
 import six
 class M(type): pass
