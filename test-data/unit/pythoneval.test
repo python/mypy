@@ -414,6 +414,19 @@ _program.py:2: error: Revealed type is 'typing.IO[builtins.str]'
 _program.py:3: error: Revealed type is 'typing.IO[builtins.bytes]'
 _program.py:5: error: Revealed type is 'typing.IO[Any]'
 
+[case testOpenReturnTypeInferenceSpecialCases]
+reveal_type(open())
+reveal_type(open(mode='rb', file='x'))
+reveal_type(open(file='x', mode='rb'))
+mode = 'rb'
+reveal_type(open(mode=mode, file='r'))
+[out]
+_testOpenReturnTypeInferenceSpecialCases.py:1: error: Revealed type is 'typing.IO[builtins.str]'
+_testOpenReturnTypeInferenceSpecialCases.py:1: error: Too few arguments for "open"
+_testOpenReturnTypeInferenceSpecialCases.py:2: error: Revealed type is 'typing.IO[builtins.bytes]'
+_testOpenReturnTypeInferenceSpecialCases.py:3: error: Revealed type is 'typing.IO[builtins.bytes]'
+_testOpenReturnTypeInferenceSpecialCases.py:5: error: Revealed type is 'typing.IO[Any]'
+
 [case testGenericPatterns]
 from typing import Pattern
 import re
