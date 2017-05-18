@@ -447,7 +447,7 @@ from foo import *
 from typing import overload
 t, a = None, None # type: (type, A)
 
-a = A # E: Incompatible types in assignment (expression has type "A" (type object), variable has type "A")
+a = A # E: Incompatible types in assignment (expression has type Type[A], variable has type "A")
 t = A
 
 class A:
