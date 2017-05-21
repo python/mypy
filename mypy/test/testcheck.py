@@ -10,7 +10,6 @@ import typed_ast
 from typing import Dict, List, Optional, Set, Tuple
 
 from mypy import build, defaults
-from mypy.main import process_options
 from mypy.build import BuildSource, find_module_clear_caches
 from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir, test_data_prefix
@@ -20,7 +19,7 @@ from mypy.test.helpers import (
     testcase_pyversion, update_testcase_output,
 )
 from mypy.errors import CompileError
-from mypy.options import Options
+from mypy.options import Options, process_options
 
 from mypy import experiments
 

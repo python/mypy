@@ -6,9 +6,12 @@ from contextlib import contextmanager
 
 from typing import Tuple, List, TypeVar, Set, Dict, Iterator, Optional
 
-from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 
+# Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
+MYPY = False
+if MYPY:
+    from mypy.options import Options
 
 T = TypeVar('T')
 
@@ -515,7 +518,7 @@ def remove_path_prefix(path: str, prefix: str) -> str:
 
 
 def report_internal_error(err: Exception, file: str, line: int,
-                          errors: Errors, options: Options) -> None:
+                          errors: Errors, options: 'Options') -> None:
     """Report internal error and exit.
 
     This optionally starts pdb or shows a traceback.

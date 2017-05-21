@@ -55,10 +55,13 @@ from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
-from mypy.options import Options
 
 from mypy import experiments
 
+# Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
+MYPY = False
+if MYPY:
+    from mypy.options import Options
 
 T = TypeVar('T')
 
@@ -121,13 +124,13 @@ class TypeChecker(NodeVisitor[None]):
     is_typeshed_stub = False
     # Should strict Optional-related errors be suppressed in this file?
     suppress_none_errors = False  # TODO: Get it from options instead
-    options = None  # type: Options
+    options = None  # type: 'Options'
 
     # The set of all dependencies (suppressed or not) that this module accesses, either
     # directly or indirectly.
     module_refs = None  # type: Set[str]
 
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options,
+    def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: 'Options',
                  tree: MypyFile, path: str) -> None:
         """Construct a type checker.
 

@@ -8,7 +8,7 @@ object it creates.
 import typing
 from mypy.myunit import Suite, assert_equal
 from mypy.options import Options, BuildType
-from mypy.main import process_options
+from mypy.options import process_options
 
 
 class ArgSuite(Suite):

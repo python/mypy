@@ -26,6 +26,7 @@ from typing import (AbstractSet, Dict, Iterable, Iterator, List,
 MYPY = False
 if MYPY:
     from typing import Deque
+    from mypy.options import Options
 
 from mypy.nodes import (MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
@@ -37,12 +38,10 @@ from mypy import moduleinfo
 from mypy import util
 from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
 from mypy.nodes import Expression
-from mypy.options import Options
 from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-
 
 # We need to know the location of this file to load data, but
 # until Python 3.4, __file__ is relative.
@@ -109,7 +108,7 @@ class BuildSourceSet:
 
 
 def build(sources: List[BuildSource],
-          options: Options,
+          options: 'Options',
           alt_lib_path: str = None,
           bin_dir: str = None) -> BuildResult:
     """Analyze a program.
@@ -362,7 +361,7 @@ class BuildManager:
                  ignore_prefix: str,
                  source_set: BuildSourceSet,
                  reports: Reports,
-                 options: Options,
+                 options: 'Options',
                  version_id: str) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
@@ -494,7 +493,7 @@ class BuildManager:
     def report_file(self,
                     file: MypyFile,
                     type_map: Dict[Expression, Type],
-                    options: Options) -> None:
+                    options: 'Options') -> None:
         if self.source_set.is_source(file):
             self.reports.file(file, type_map, options)
 
@@ -791,7 +790,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
 
     # Ignore cache if (relevant) options aren't the same.
     cached_options = m.options
-    current_options = manager.options.clone_for_module(id).select_options_affecting_cache()
+    current_options = manager.options.clone_for_module(id, path).select_options_affecting_cache()
     if manager.options.quick_and_dirty:
         # In quick_and_dirty mode allow non-quick_and_dirty cache files.
         cached_options['quick_and_dirty'] = True
@@ -925,7 +924,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     mtime = st.st_mtime
     size = st.st_size
-    options = manager.options.clone_for_module(id)
+    options = manager.options.clone_for_module(id, path)
     meta = {'id': id,
             'path': path,
             'mtime': mtime,
@@ -1148,7 +1147,7 @@ class State:
     interface_hash = ""  # type: str
 
     # Options, specialized for this file
-    options = None  # type: Options
+    options = None  # type: 'Options'
 
     # Whether to ignore all errors
     ignore_all = False
@@ -1175,7 +1174,7 @@ class State:
         else:
             self.import_context = []
         self.id = id or '__main__'
-        self.options = manager.options.clone_for_module(self.id)
+        self.options = manager.options.clone_for_module(self.id, path)
         if not path and source is None:
             file_id = id
             if id == 'builtins' and self.options.python_version[0] == 2:
