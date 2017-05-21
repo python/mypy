@@ -293,6 +293,7 @@ def run_single_test(name: str, test: Any) -> Tuple[bool, bool]:
         test.run()
     except BaseException as e:
         if isinstance(e, KeyboardInterrupt):
+            test.tear_down()
             raise
         exc_type, exc_value, exc_traceback = sys.exc_info()
     test.tear_down()  # FIX: check exceptions
