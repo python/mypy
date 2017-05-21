@@ -156,6 +156,8 @@ class Options:
                             flag = flag.strip()
                             if flag in self.PER_MODULE_OPTIONS:
                                 updates[flag] = True
+                            else:
+                                print("Warning: {!r} in {} is not a valid per-module option".format(flag, path))
 
         if not updates:
             return self
