@@ -1189,6 +1189,8 @@ class State:
                 # which simplifies code.
                 file_id = '__builtin__'
             path = find_module(file_id, manager.lib_path)
+            if not path:
+                path = self.find_module_from_parent(file_id, manager.lib_path)
             if path:
                 # For non-stubs, look at options.follow_imports:
                 # - normal (default) -> fully analyze
@@ -1259,6 +1261,24 @@ class State:
             self.parse_file()
             self.suppressed = []
             self.child_modules = set()
+
+    def find_module_from_parent(self, id: str, lib_path: Iterable[str]) -> str:
+        if '.' not in id:
+            return None
+        parent_id, name = id.rsplit('.', 1)
+        parent_path = find_module(parent_id, lib_path)
+        if not parent_path:
+            return None
+        # Import the parent package and see whether the module we're looking for is
+        # available under this package due to an import in the package's __init__.
+        parent = State(id=parent_id, path=parent_path, source=None, manager=self.manager)
+        for import_node in parent.tree.imports:
+            for module_id, alias in getattr(import_node, 'ids', []):
+                if alias == name:
+                    path = find_module(module_id, lib_path)
+                    if path:
+                        return path
+        return None
 
     def skipping_ancestor(self, id: str, path: str, ancestor_for: 'State') -> None:
         # TODO: Read the path (the __init__.py file) and return
