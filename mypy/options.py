@@ -1,5 +1,6 @@
 import fnmatch
 import pprint
+import re
 import sys
 
 from typing import Any, Mapping, Optional, Tuple, List, Pattern, Dict
@@ -138,11 +139,24 @@ class Options:
     def __repr__(self) -> str:
         return 'Options({})'.format(pprint.pformat(self.__dict__))
 
-    def clone_for_module(self, module: str) -> 'Options':
+    def clone_for_module(self, module: str, path: Optional[str]) -> 'Options':
         updates = {}
         for pattern in self.per_module_options:
             if self.module_matches_pattern(module, pattern):
                 updates.update(self.per_module_options[pattern])
+
+        if path:
+            with open(path) as file_contents:
+                for line in file_contents:
+                    if not re.match('\s*#', line):
+                        break
+                    match = re.match('\s*#\s*mypy-options:(.*)', line)
+                    if match is not None:
+                        for flag in match.group(1).split(','):
+                            flag = flag.strip()
+                            if flag in self.PER_MODULE_OPTIONS:
+                                updates[flag] = True
+
         if not updates:
             return self
         new_options = Options()
