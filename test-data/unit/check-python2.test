@@ -291,7 +291,7 @@ class A(object):
     __metaclass__ = M
     y = 0
 reveal_type(A.y) # E: Revealed type is 'builtins.int'
-A.x # E: "A" has no attribute "x"
+A.x # E: Type[A] has no attribute "x"
 
 [case testAnyAsBaseOfMetaclass]
 from typing import Any, Type

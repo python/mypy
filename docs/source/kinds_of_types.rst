@@ -188,6 +188,8 @@ using bidirectional type inference:
 If you want to give the argument or return value types explicitly, use
 an ordinary, perhaps nested function definition.
 
+.. _extended_callable:
+
 Extended Callable types
 ***********************
 

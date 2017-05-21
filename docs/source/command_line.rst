@@ -313,7 +313,7 @@ Here are some more useful flags:
   ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul`` (Windows).
   Cache files belonging to a different mypy version are ignored.
 
-.. _quick:
+.. _quick-mode:
 
 - ``--quick-and-dirty`` is an experimental, unsafe variant of
   :ref:`incremental mode <incremental>`.  Quick mode is faster than
