@@ -8,6 +8,7 @@ import difflib
 
 from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 
+from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
@@ -190,13 +191,7 @@ class MessageBuilder:
             if func.is_type_obj():
                 # The type of a type object type can be derived from the
                 # return type (this always works).
-                itype = cast(Instance, func.items()[0].ret_type)
-                result = self.format(itype)
-                if verbosity >= 1:
-                    # In some contexts we want to be explicit about the distinction
-                    # between type X and the type of type object X.
-                    result += ' (type object)'
-                return result
+                return self.format(TypeType(erase_type(func.items()[0].ret_type)), verbosity)
             elif isinstance(func, CallableType):
                 return_type = strip_quotes(self.format(func.ret_type))
                 if func.is_ellipsis_args:
@@ -612,13 +607,10 @@ class MessageBuilder:
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
-        if callee.definition:
-            fullname = callee.definition.fullname()
-            if fullname is not None and '.' in fullname:
-                module_name = fullname.rsplit('.', 1)[0]
-                path = self.modules[module_name].path
-                self.note('{} defined here'.format(callee.name), callee.definition,
-                          file=path, origin=context)
+        module = find_defining_module(self.modules, callee)
+        if module:
+            self.note('{} defined here'.format(callee.name), callee.definition,
+                      file=module.path, origin=context)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
                                  context: Context) -> None:
@@ -944,6 +936,21 @@ def callable_name(type: CallableType) -> str:
         return type.name
     else:
         return 'function'
+
+
+def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> MypyFile:
+    if not typ.definition:
+        return None
+    fullname = typ.definition.fullname()
+    if fullname is not None and '.' in fullname:
+        for i in range(fullname.count('.')):
+            module_name = fullname.rsplit('.', i + 1)[0]
+            try:
+                return modules[module_name]
+            except KeyError:
+                pass
+        assert False, "Couldn't determine module from CallableType"
+    return None
 
 
 def temp_message_builder() -> MessageBuilder:

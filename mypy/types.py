@@ -401,7 +401,7 @@ class Instance(Type):
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
-        assert(typ is None or typ.fullname() not in ["builtins.Any", "typing.Any"])
+        assert(typ is NOT_READY or typ.fullname() not in ["builtins.Any", "typing.Any"])
         self.type = typ
         self.args = args
         self.erased = erased
@@ -1796,8 +1796,10 @@ def union_items(typ: Type) -> List[Type]:
         return [typ]
 
 
+names = globals().copy()
+names.pop('NOT_READY', None)
 deserialize_map = {
     key: obj.deserialize  # type: ignore
-    for key, obj in globals().items()
+    for key, obj in names.items()
     if isinstance(obj, type) and issubclass(obj, Type) and obj is not Type
 }
