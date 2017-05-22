@@ -427,7 +427,7 @@ class MessageBuilder:
                                                                 member), context)
             else:
                 self.fail('Element {} of {} has no attribute "{}"'.format(
-                    typ, original_type, member), context)
+                    self.format(typ), self.format(original_type), member), context)
         return AnyType()
 
     def unsupported_operand_types(self, op: str, left_type: Any,
