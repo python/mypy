@@ -70,3 +70,14 @@ reveal_type(b)  # E: Revealed type is 'builtins.list[builtins.int*]'
 c = [*a, 0]
 reveal_type(c)  # E: Revealed type is 'builtins.list[builtins.int*]'
 [builtins fixtures/list.pyi]
+
+[case testListInvarianceNote]
+from typing import List, Union
+def f(numbers: List[Union[int, float]]) -> None: pass
+a = [1, 2]
+f(a)
+[out]
+main:4: error: Argument 1 to "f" has incompatible type List[int]; expected List[Union[int, float]]
+main:4: note: "List" is invariant --- see http://mypy.readthedocs.io/en/stable/common_issues.html#invariance-vs-covariance
+main:4: note: Consider using "Sequence" instead, which is covariant
+[builtins fixtures/list.pyi]

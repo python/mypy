@@ -592,3 +592,15 @@ class C:
     def foo(self) -> None: pass
 C().foo()
 C().foo(1)  # The decorator's return type says this should be okay
+
+
+[case testInvariantDictNote]
+from typing import Dict, Sequence
+def f(a: Dict[str, Sequence[int]]) -> None: pass
+a = {'a': [1, 2]}
+f(a)
+[out]
+main:4: error: Argument 1 to "f" has incompatible type Dict[str, List[int]]; expected Dict[str, Sequence[int]]
+main:4: note: "Dict" is invariant --- see http://mypy.readthedocs.io/en/stable/common_issues.html#invariance-vs-covariance
+main:4: note: Consider using "Mapping" instead, which is covariant
+[builtins fixtures/dict.pyi]
