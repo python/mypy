@@ -670,45 +670,45 @@ def f(x: str) -> None: pass
 [case testTypeCheckNamedModule]
 # cmd: mypy -m m.a
 [file m/__init__.py]
-None + 1
+object() + 1
 [file m/a.py]
 [out]
-tmp/m/__init__.py:1: error: Unsupported left operand type for + (None)
+tmp/m/__init__.py:1: error: Unsupported left operand type for + ("object")
 
 [case testTypeCheckNamedModule2]
 # cmd: mypy -m m.a
 [file m/__init__.py]
 [file m/a.py]
-None + 1
+object() + 1
 [out]
-tmp/m/a.py:1: error: Unsupported left operand type for + (None)
+tmp/m/a.py:1: error: Unsupported left operand type for + ("object")
 
 [case testTypeCheckNamedModule3]
 # cmd: mypy -m m
 [file m/__init__.py]
-None + 1
+object() + 1
 [file m/a.py]
 [out]
-tmp/m/__init__.py:1: error: Unsupported left operand type for + (None)
+tmp/m/__init__.py:1: error: Unsupported left operand type for + ("object")
 
 [case testTypeCheckNamedModule4]
 # cmd: mypy -m m
 [file m/__init__.py]
 [file m/a.py]
-None + 1  # Not analyzed.
+object() + 1  # Not analyzed.
 [out]
 
 [case testTypeCheckNamedModule5]
 # cmd: mypy -m m
-None + ''  # Not analyzed.
+object() + 1  # Not analyzed.
 [file m.py]
-None + 1
+object() + 1
 [out]
-tmp/m.py:1: error: Unsupported left operand type for + (None)
+tmp/m.py:1: error: Unsupported left operand type for + ("object")
 
 [case testTypeCheckNamedModuleWithImportCycle]
 # cmd: mypy -m m.a
-None + 1  # Does not generate error, as this file won't be analyzed.
+object() + 1  # Does not generate error, as this file won't be analyzed.
 [file m/__init__.py]
 import m.a
 [file m/a.py]

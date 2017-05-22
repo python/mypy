@@ -2,16 +2,51 @@ import sys
 import re
 import os
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Iterable
+from itertools import groupby
 
 from mypy import defaults
 from mypy.myunit import AssertionFailure
 from mypy.test.data import DataDrivenTestCase
+from mypy.defaults import allow_fixtures
 
 
 # AssertStringArraysEqual displays special line alignment helper messages if
 # the first different line has at least this many characters,
 MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
+# Maximum lines of actual error output to print (to prevent hitting log size limit)
+MAX_ACTUAL_LINES = 25
+
+
+# should match 'tmp/foo.pyi', 'main.py', etc.
+MODULE_NAME_PATTERN = r'[\w/.]'
+# we really want to be precise because accidentally matching the pattern
+# may cause failed tests to look like they pass
+# should match 'tmp/foo.pyi:15:30', 'tmp/foo.pyi:15', 'main.py:1:2', etc.
+ERROR_PATTERN = re.compile(r'^{}+:(\d+):(\d+:)? error: '.format(MODULE_NAME_PATTERN))
+
+
+class ErrorStr(str):
+    '''
+    Same as str, but compares equal iff it starts with the same file and line no prefix
+    '''
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, str):
+            return False
+        m_self = re.search(ERROR_PATTERN, self)
+        m_other = re.search(ERROR_PATTERN, other)
+        if not m_self or not m_other:  # we can't parse it, just use normal str comparison
+            return super().__eq__(other)
+        else:  # parsed successfully, compare line no (ignore filename and column no)
+            return m_self.group(1) == m_other.group(1)
+
+
+def skip_same_line_errors(iterable: Iterable) -> List:
+    '''
+    Converts all strings into ErrorStr objects, skips consecutive
+    duplicates, and returns the list (preserving original order)
+    '''
+    return [k for k, g in groupby(map(ErrorStr, iterable))]
 
 
 def assert_string_arrays_equal(expected: List[str], actual: List[str],
@@ -22,6 +57,10 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
     """
 
     actual = clean_up(actual)
+
+    if not allow_fixtures():
+        actual = skip_same_line_errors(actual)
+        expected = skip_same_line_errors(expected)
 
     if actual != expected:
         num_skip_start = num_skipped_prefix_lines(expected, actual)
@@ -60,6 +99,9 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
             sys.stderr.write('  ...\n')
 
         for j in range(num_skip_start, len(actual) - num_skip_end):
+            if j - num_skip_start > MAX_ACTUAL_LINES:
+                sys.stderr.write('... (additional lines suppressed)')
+                break
             if j >= len(expected) or expected[j] != actual[j]:
                 sys.stderr.write('  {:<45} (diff)'.format(actual[j]))
             else:

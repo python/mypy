@@ -30,6 +30,7 @@ from mypy.waiter import Waiter, LazySubprocess
 from mypy import util
 from mypy.test.config import test_data_prefix
 from mypy.test.testpythoneval import python_eval_files, python_34_eval_files
+from mypy.defaults import allow_fixtures
 
 import itertools
 import os
@@ -208,14 +209,18 @@ def add_imports(driver: Driver) -> None:
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
 
 
-PYTEST_FILES = [os.path.join('mypy', 'test', '{}.py'.format(name)) for name in [
+PYTESTS = [
     'testcheck',
     'testextensions',
     'testdeps',
     'testdiff',
-    'testfinegrained',
     'testmerge',
-]]
+]
+
+if allow_fixtures():
+    PYTESTS += ['testfinegrained']
+
+PYTEST_FILES = [os.path.join('mypy', 'test', '{}.py'.format(name)) for name in PYTESTS]
 
 
 def add_pytest(driver: Driver) -> None:
