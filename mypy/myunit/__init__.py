@@ -295,7 +295,8 @@ def run_single_test(name: str, test: Any) -> Tuple[bool, bool]:
         if isinstance(e, KeyboardInterrupt):
             raise
         exc_type, exc_value, exc_traceback = sys.exc_info()
-    test.tear_down()  # FIX: check exceptions
+    finally:
+        test.tear_down()
     times.append((time.time() - time0, name))
 
     if exc_traceback:
