@@ -202,7 +202,7 @@ def analyze_member_access(name: str,
 
     if chk and chk.should_suppress_optional_error([typ]):
         return AnyType()
-    return msg.has_no_attr(original_type, name, node)
+    return msg.has_no_attr(original_type, typ, name, node)
 
 
 def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
@@ -256,7 +256,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
     else:
         if chk and chk.should_suppress_optional_error([itype]):
             return AnyType()
-        return msg.has_no_attr(original_type, name, node)
+        return msg.has_no_attr(original_type, itype, name, node)
 
 
 def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Context,

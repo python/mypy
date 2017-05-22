@@ -60,8 +60,8 @@ z = None # type: str
 y = w.y
 z = w.y       # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 w.y = 'a'     # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-y = x.y       # E: Some element of union has no attribute "y"
-zz = x.y      # E: Some element of union has no attribute "y"
+y = x.y       # E: Element __main__.C of Union[__main__.A, __main__.C] has no attribute "y"
+zz = x.y      # E: Element __main__.C of Union[__main__.A, __main__.C] has no attribute "y"
 z = zz        # E: Incompatible types in assignment (expression has type "Union[int, Any]", variable has type "str")
 
 [builtins fixtures/isinstance.pyi]
@@ -296,7 +296,8 @@ def foo(a: Union[A, B, C]):
     if isinstance(a, (B, C)):
         reveal_type(a) # E: Revealed type is 'Union[Tuple[builtins.int, fallback=__main__.B], Tuple[builtins.int, fallback=__main__.C]]'
         a.x
-        a.y # E: Some element of union has no attribute "y"
+        a.y # E: Element __main__.B of Union[Tuple[builtins.int, fallback=__main__.B], Tuple[builtins.int, fallback=__main__.C]] has no attribute "y" \
+            # E: Element __main__.C of Union[Tuple[builtins.int, fallback=__main__.B], Tuple[builtins.int, fallback=__main__.C]] has no attribute "y"
         b = a # type: Union[B, C]
 [builtins fixtures/isinstance.pyi]
 

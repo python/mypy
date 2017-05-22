@@ -534,7 +534,7 @@ x = None # type: ONode[int]
 x = f(1)
 x = f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
-x.x = 1 # E: Some element of union has no attribute "x"
+x.x = 1 # E: Element builtins.object of Union[__main__.Node[builtins.int], builtins.None] has no attribute "x"
 if x is not None:
     x.x = 1 # OK here
 
@@ -572,7 +572,7 @@ A = None  # type: Any
 class C(A):
     pass
 x = None  # type: Optional[C]
-x.foo()  # E: Some element of union has no attribute "foo"
+x.foo()  # E: Element builtins.object of Union[__main__.C, builtins.None] has no attribute "foo"
 
 [case testIsinstanceAndOptionalAndAnyBase]
 from typing import Any, Optional
