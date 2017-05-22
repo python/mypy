@@ -55,17 +55,19 @@ even though the code works when run manually, you should make sure you have
 all the stubs you need for your test case, including built-in classes such as
 `list` or `dict`, as these are not included by default.
 
-    - The builtins used by default in unit tests live in
-    `test-data/unit/lib-stub`.
+Where the stubs for builtins come from for a given test:
 
-    - Individual test cases can override the stubs by using `[builtins
-    fixtures/foo.pyi]`; this targets files in `test-data/unit/fixtures`; feel
-    free to modify existing files there or create new ones as you deem fit.
+- The builtins used by default in unit tests live in
+  `test-data/unit/lib-stub`.
 
-    - You are also free to add additional stubs to this directory, but
-    generally don't update files in `lib-stub` without first discussing the
-    addition with other mypy developers, as additions could slow down the test
-    suite.
+- Individual test cases can override the stubs by using `[builtins fixtures/foo.pyi]`;
+  this targets files in `test-data/unit/fixtures`. Feel free to modify existing files
+  there or create new ones as you deem fit.
+
+- Feel free to add additional stubs to that `fixtures` directory, but
+  generally don't expand files in `lib-stub` without first discussing the
+  addition with other mypy developers, as additions could slow down the test
+  suite.
 
 
 Running tests and linting
