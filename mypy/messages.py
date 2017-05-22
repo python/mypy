@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Optional
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -677,10 +677,13 @@ class MessageBuilder:
 
     def signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str,
-            context: Context) -> None:
+            context: Context, original: Optional[FunctionLike] = None, override: Optional[FunctionLike] = None) -> None:
         target = self.override_target(name, name_in_super, supertype)
-        self.fail('Signature of "{}" incompatible with {}'.format(
-            name, target), context)
+        self.fail('Signature of "{}" incompatible with {}'.format(name, target), context)
+        if original is not None:
+            self.note('Signature of "{}" in superclass: "{}"'.format(name, original.pretty_str()), context)
+        if override is not None:
+            self.note('Signature of "{}" in subclass: "{}"'.format(name, override.pretty_str()), context)
 
     def argument_incompatible_with_supertype(
             self, arg_num: int, name: str, name_in_supertype: str,
