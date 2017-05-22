@@ -425,8 +425,8 @@ class MessageBuilder:
                     self.fail('{} has no attribute "{}"'.format(self.format(typ),
                                                                 member), context)
             else:
-                self.fail('Some element of union has no attribute "{}"'.format(
-                    member), context)
+                self.fail('Some element of {} has no attribute "{}"'.format(
+                    typ, member), context)
         return AnyType()
 
     def unsupported_operand_types(self, op: str, left_type: Any,
