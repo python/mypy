@@ -425,7 +425,7 @@ class MessageBuilder:
                 if not failed:
                     self.fail('{} has no attribute "{}"'.format(self.format(original_type),
                                                                 member), context)
-            else:
+            elif isinstance(original_type, UnionType):
                 # The checker passes "object" in lieu of "None" for attribute
                 # checks, so we manually convert it back.
                 typ_format = self.format(typ)
