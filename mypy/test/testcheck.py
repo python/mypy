@@ -292,16 +292,19 @@ class TypeCheckSuite(DataSuite):
 
           # cmd: mypy -m foo.bar foo.baz
 
+        You can also use `# cmdN:` to have a different cmd for incremental
+        step N (2, 3, ...).
+
         Return a list of tuples (module name, file name, program text).
         """
         m = re.search('# cmd: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
-        m2 = re.search('# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step),
-                       program_text, flags=re.MULTILINE)
-        if m2 is not None and incremental_step > 1:
-            # Optionally return a different command if in the second
-            # stage of incremental mode, otherwise default to reusing
-            # the original cmd.
-            m = m2
+        regex = '# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step)
+        alt_m = re.search(regex, program_text, flags=re.MULTILINE)
+        if alt_m is not None and incremental_step > 1:
+            # Optionally return a different command if in a later step
+            # of incremental mode, otherwise default to reusing the
+            # original cmd.
+            m = alt_m
 
         if m:
             # The test case wants to use a non-default main

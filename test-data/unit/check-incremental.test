@@ -1,7 +1,7 @@
 -- Checks for incremental mode (see testcheck.py).
 -- Each test is run twice, once with a cold cache, once with a warm cache.
--- Before the tests are run the second time, any *.py.2 files are copied to *.py
--- (and *.py.3 files for the third step, and so on).
+-- Before the tests are run again, in step N any *.py.N files are copied to
+-- *.py.
 --
 -- Errors expected in the first run should be in the `[out1]` section, and
 -- errors expected in the second run should be in the `[out2]` section, and so on.
