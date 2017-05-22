@@ -1940,11 +1940,13 @@ class TypeChecker(NodeVisitor[None]):
         lvalue_type = self.expr_checker.accept(s.lvalue)
         inplace, method = infer_operator_assignment_method(lvalue_type, s.op)
         if inplace:
+            # There is __ifoo__, treat as x = x.__ifoo__(y)
             rvalue_type, method_type = self.expr_checker.check_op(
                 method, lvalue_type, s.rvalue, s)
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
         else:
+            # There is no __ifoo__, treat as x = x <foo> y
             expr = OpExpr(s.op, s.lvalue, s.rvalue)
             expr.set_line(s)
             self.check_assignment(lvalue=s.lvalue, rvalue=expr,
