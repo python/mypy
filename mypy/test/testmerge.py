@@ -21,6 +21,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type
+from mypy.defaults import allow_fixtures
 
 
 files = [
@@ -96,6 +97,12 @@ class ASTMergeSuite(DataSuite):
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
 
+    def skip_module(self, mod: str) -> bool:
+        if allow_fixtures():
+            return mod == 'builtins'
+        else:
+            return mod not in ('__main__', 'target')
+
     def build(self, source: str) -> Tuple[List[str], BuildManager, Dict[str, State]]:
         options = Options()
         options.use_builtins_fixtures = True
@@ -133,8 +140,8 @@ class ASTMergeSuite(DataSuite):
     def dump_asts(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
         for m in sorted(modules):
-            if m == 'builtins':
-                # We don't support incremental checking of changes to builtins.
+            if self.skip_module(m):
+                # We don't support incremental checking of changes to builtins or stdlib.
                 continue
             s = modules[m].accept(self.str_conv)
             a.extend(s.splitlines())
@@ -143,8 +150,8 @@ class ASTMergeSuite(DataSuite):
     def dump_symbol_tables(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
         for id in sorted(modules):
-            if id == 'builtins':
-                # We don't support incremental checking of changes to builtins.
+            if self.skip_module(id):
+                # We don't support incremental checking of changes to builtins or stdlib.
                 continue
             a.extend(self.dump_symbol_table(id, modules[id].names))
         return a
@@ -169,7 +176,7 @@ class ASTMergeSuite(DataSuite):
     def dump_typeinfos(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
         for id in sorted(modules):
-            if id == 'builtins':
+            if self.skip_module(id):
                 continue
             a.extend(self.dump_typeinfos_recursive(modules[id].names))
         return a
@@ -192,7 +199,7 @@ class ASTMergeSuite(DataSuite):
         # To make the results repeatable, we try to generate unique and
         # deterministic sort keys.
         for module_id in sorted(graph):
-            if module_id == 'builtins':
+            if self.skip_module(module_id):
                 continue
             type_map = graph[module_id].type_checker.type_map
             if type_map:
