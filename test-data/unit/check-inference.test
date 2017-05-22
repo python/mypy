@@ -1886,4 +1886,4 @@ class C(Sequence[T], Generic[T]): pass
 C[0] = 0
 [out]
 main:4: error: Type expected within [...]
-main:4: error: Unsupported target for indexed assignment
+main:4: error: Unsupported target of type "type" for indexed assignment
