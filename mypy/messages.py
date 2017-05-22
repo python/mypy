@@ -10,6 +10,7 @@ Historically we tried to avoid all message string literals in the type
 checker but we are moving away from this convention.
 """
 
+from collections import OrderedDict
 import re
 import difflib
 
@@ -26,9 +27,8 @@ from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr
+    CallExpr, Expression
 )
-
 
 # Constants that represent simple type checker error message, i.e. messages
 # that do not have any parameters.
@@ -969,6 +969,16 @@ class MessageBuilder:
 
     def reveal_type(self, typ: Type, context: Context) -> None:
         self.fail('Revealed type is \'{}\''.format(typ), context)
+
+    def reveal_locals(self, type_map: Dict[str, Optional[Type]], context: Context) -> None:
+        # To ensure that the output is predictable on Python < 3.6,
+        # use an ordered dictionary sorted by variable name
+        sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
+        # Format the OrderedDict to look like a regular dict
+        s = "{{{}}}".format(
+            ', '.join("'{}': {}".format(k, v) for k, v in sorted_locals.items())
+        )
+        self.fail('Revealed local types are \'{}\''.format(s), context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)

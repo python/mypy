@@ -4309,3 +4309,9 @@ class C:
     __slots__ = ('x',)
 class D(B, C):
     __slots__ = ('aa', 'bb', 'cc')
+
+[case testRevealLocalsOnClassVars]
+class C1(object):
+    t = 'a'
+    y = 3.0
+    reveal_locals()  # E: Revealed local types are '{'t': builtins.str, 'y': builtins.float}'

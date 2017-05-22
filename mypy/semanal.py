@@ -46,7 +46,7 @@ from mypy.nodes import (
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
-    SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
+    SliceExpr, CastExpr, RevealExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, ListComprehension, GeneratorExpr,
     LambdaExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
@@ -56,7 +56,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, ImportedName,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
-    collections_type_aliases, get_member_expr_fullname,
+    collections_type_aliases, get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
 )
 from mypy.literals import literal
 from mypy.tvar_scope import TypeVarScope
@@ -2574,7 +2574,38 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         elif refers_to_fullname(expr.callee, 'builtins.reveal_type'):
             if not self.check_fixed_args(expr, 1, 'reveal_type'):
                 return
-            expr.analyzed = RevealTypeExpr(expr.args[0])
+            expr.analyzed = RevealExpr(kind=REVEAL_TYPE, expr=expr.args[0])
+            expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
+            expr.analyzed.accept(self)
+        elif refers_to_fullname(expr.callee, 'builtins.reveal_locals'):
+            # Store the local variable names into the RevealExpr for use in the
+            # type checking pass
+            local_nodes = []  # type: List[Var]
+            if self.is_module_scope():
+                # try to determine just the variable declarations in module scope
+                # self.globals.values() contains SymbolTableNode's
+                # Each SymbolTableNode has an attribute node that is nodes.Var
+                # look for variable nodes that marked as is_inferred
+                # Each symboltable node has a Var node as .node
+                local_nodes = cast(
+                    List[Var],
+                    [
+                        n.node for name, n in self.globals.items()
+                        if getattr(n.node, 'is_inferred', False)
+                    ]
+                )
+            elif self.is_class_scope():
+                # type = None  # type: Optional[TypeInfo]
+                if self.type is not None:
+                    local_nodes = cast(List[Var], [st.node for st in self.type.names.values()])
+            elif self.is_func_scope():
+                # locals = None  # type: List[Optional[SymbolTable]]
+                if self.locals is not None:
+                    symbol_table = self.locals[-1]
+                    if symbol_table is not None:
+                        local_nodes = cast(List[Var], [st.node for st in symbol_table.values()])
+            expr.analyzed = RevealExpr(kind=REVEAL_LOCALS, local_nodes=local_nodes)
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
@@ -2826,8 +2857,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         expr.expr.accept(self)
         expr.type = self.anal_type(expr.type)
 
-    def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> None:
-        expr.expr.accept(self)
+    def visit_reveal_expr(self, expr: RevealExpr) -> None:
+        if expr.kind == REVEAL_TYPE:
+            if expr.expr is not None:
+                expr.expr.accept(self)
+        else:
+            # Reveal locals doesn't have an inner expression, there's no
+            # need to traverse inside it
+            pass
 
     def visit_type_application(self, expr: TypeApplication) -> None:
         expr.expr.accept(self)

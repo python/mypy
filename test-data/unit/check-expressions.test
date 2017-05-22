@@ -1708,6 +1708,12 @@ d() # E: "D[str, int]" not callable
 [case testRevealType]
 reveal_type(1) # E: Revealed type is 'builtins.int'
 
+[case testRevealLocals]
+x = 1
+y = 2
+z = x + y
+reveal_locals() # E: Revealed local types are '{'x': builtins.int, 'y': builtins.int, 'z': builtins.int}'
+
 [case testUndefinedRevealType]
 reveal_type(x)
 [out]

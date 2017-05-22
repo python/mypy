@@ -5,12 +5,12 @@ from mypy.nodes import (
     Block, MypyFile, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
     ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
-    TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealTypeExpr,
+    TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr,
+    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, REVEAL_TYPE
 )
 
 
@@ -181,8 +181,15 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_cast_expr(self, o: CastExpr) -> None:
         o.expr.accept(self)
 
-    def visit_reveal_type_expr(self, o: RevealTypeExpr) -> None:
-        o.expr.accept(self)
+    def visit_reveal_expr(self, o: RevealExpr) -> None:
+        if o.kind == REVEAL_TYPE:
+            from mypy.nodes import Expression
+            from typing import cast
+            expr = cast(Expression, o.expr)
+            expr.accept(self)
+        else:
+            # RevealLocalsExpr doesn't have an inner expression
+            pass
 
     def visit_unary_expr(self, o: UnaryExpr) -> None:
         o.expr.accept(self)
