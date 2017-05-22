@@ -714,7 +714,7 @@ A()
 class A: pass
 class A: pass
 [out]
-main:4: error: Name 'A' already defined
+main:4: error: Name 'A' already defined on line 3
 
 [case testDocstringInClass]
 import typing
