@@ -520,7 +520,7 @@ class MessageBuilder:
             target = 'to {} '.format(name)
 
         msg = ''
-        hints = []
+        notes = []  # type: List[str]
         if callee.name == '<list>':
             name = callee.name[1:-1]
             n -= 1
@@ -559,11 +559,11 @@ class MessageBuilder:
                 arg_type_str = '**' + arg_type_str
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 n, target, arg_type_str, expected_type_str)
-            hints = invariance_hints(hints, arg_type, expected_type)
+            notes = invariance_notes(notes, arg_type_str, expected_type_str)
         self.fail(msg, context)
-        if hints:
-            for hint in hints:
-                self.note(hint, context)
+        if notes:
+            for note_msg in notes:
+                self.note(note_msg, context)
 
     def invalid_index_type(self, index_type: Type, expected_type: Type, base_str: str,
                            context: Context) -> None:
@@ -984,14 +984,22 @@ def pretty_or(args: List[str]) -> str:
     return ", ".join(quoted[:-1]) + ", or " + quoted[-1]
 
 
-def invariance_hints(hints: List[str], arg_type, expected_type) -> List[str]:
-    '''Explain that the type is invariant and give hints for how to solve the issue.'''
-    if expected_type.type.name() == 'list' and arg_type.type.name() == 'list':
-        hints.append('"List" is invariant --- see https://www.python.org/dev/peps/pep-0484/#covariance-and-contravariance')
-        hints.append('Consider using "Sequence" instead, which is covariant')
-    elif (expected_type.type.name() == 'dict' and arg_type.type.name() == 'dict' and
-          expected_type.args[0].type == arg_type.args[0].type and
-          expected_type.args[1].type != arg_type.args[1].type):
-        hints.append('The second type parameter of "Dict" is invariant --- see <documentation?>')
-        hints.append('Consider using "Mapping" instead, which has covariant type parameters')
-    return hints
+def invariance_notes(notes: List[str], arg_type: str, expected_type: str) -> List[str]:
+    '''Explain that the type is invariant and give notes for how to solve the issue.'''
+    if expected_type.startswith('List') and arg_type.startswith('List'):
+        notes = append_invariance_message(notes, 'List', 'Sequence')
+    elif (expected_type.startswith('Dict') and arg_type.startswith('Dict') and
+          expected_type.split(',')[0] == arg_type.split(',')[0] and
+          expected_type.split(',')[1:] != arg_type.split(',')[1:]):
+        notes = append_invariance_message(notes, 'Dict', 'Mapping')
+    return notes
+
+
+def append_invariance_message(notes: List[str],
+                              invariant_type: str,
+                              suggested_alternative: str) -> List[str]:
+    notes.append(
+        '"' + invariant_type + '" is invariant --- see ' +
+        'http://mypy.readthedocs.io/en/stable/common_issues.html#invariance-vs-covariance')
+    notes.append('Consider using "' + suggested_alternative + '" instead, which is covariant')
+    return notes
