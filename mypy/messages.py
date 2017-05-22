@@ -426,8 +426,14 @@ class MessageBuilder:
                     self.fail('{} has no attribute "{}"'.format(self.format(original_type),
                                                                 member), context)
             else:
+                # The checker passes "object" in lieu of "None" for attribute
+                # checks, so we manually convert it back.
+                typ_format = self.format(typ)
+                if typ_format == '"object"' and \
+                        any(type(item) == NoneTyp for item in original_type.items):
+                    typ_format = '"None"'
                 self.fail('Element {} of {} has no attribute "{}"'.format(
-                    self.format(typ), self.format(original_type), member), context)
+                    typ_format, self.format(original_type), member), context)
         return AnyType()
 
     def unsupported_operand_types(self, op: str, left_type: Any,
