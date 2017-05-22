@@ -2044,3 +2044,26 @@ bad = make_list()  # E: Need type annotation for variable
 def foo(__b: int, x: int, y: int) -> int: pass
 foo(x=2, y=2)  # E: Missing positional argument
 foo(y=2)  # E: Missing positional arguments
+
+[case testReturnTypeLineNumberWithDecorator]
+def dec(f): pass
+
+@dec
+def test(a: str) -> (str,): # E: Invalid tuple literal type
+    return None
+
+[case testReturnTypeLineNumberNewLine]
+def fn(a: str
+       ) -> badtype: # E: Name 'badtype' is not defined
+    pass
+
+[case testArgumentTypeLineNumberWithDecorator]
+def dec(f): pass
+
+@dec
+def some_method(self: badtype): pass # E: Name 'badtype' is not defined
+
+[case TestArgumentTypeLineNumberNewline]
+def fn(
+        a: badtype) -> None: # E: Name 'badtype' is not defined
+    pass
