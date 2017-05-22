@@ -19,6 +19,7 @@ class Options:
     PER_MODULE_OPTIONS = {
         "ignore_missing_imports",
         "follow_imports",
+        "disallow_implicit_any_types",
         "disallow_untyped_calls",
         "disallow_untyped_defs",
         "check_untyped_defs",
@@ -44,6 +45,7 @@ class Options:
         self.report_dirs = {}  # type: Dict[str, str]
         self.ignore_missing_imports = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
+        self.disallow_implicit_any_types = False
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False
@@ -158,3 +160,6 @@ class Options:
 
     def select_options_affecting_cache(self) -> Mapping[str, bool]:
         return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}
+
+    def silent_mode(self) -> bool:
+        return self.ignore_missing_imports or self.follow_imports == 'skip'

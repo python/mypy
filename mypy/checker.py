@@ -29,6 +29,7 @@ from mypy.nodes import (
     ARG_POS, MDEF,
     CONTRAVARIANT, COVARIANT)
 from mypy import nodes
+from mypy.typeanal import has_any_from_silent_import
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, strip_type, TypeType,
@@ -611,6 +612,18 @@ class TypeChecker(NodeVisitor[None]):
                                 self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                             if any(is_implicit_any(t) for t in fdef.type.arg_types):
                                 self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
+                    if self.options.disallow_implicit_any_types:
+                        if fdef.type and isinstance(fdef.type, CallableType):
+                            if has_any_from_silent_import(fdef.type.ret_type):
+                                self.fail("Return type is implicitly converted to "
+                                          "'{}' due to import from "
+                                          "unanalyzed module".format(fdef.type.ret_type), fdef)
+                            for idx, arg_type in enumerate(fdef.type.arg_types):
+                                if has_any_from_silent_import(arg_type):
+                                    self.fail("Argument {} to '{}' is implicitly converted to "
+                                              "'{}' due to import from unanalyzed "
+                                              "module".format(idx + 1, fdef.name(), arg_type),
+                                              fdef)
 
                 if name in nodes.reverse_op_method_set:
                     self.check_reverse_op_method(item, typ, name)
@@ -1706,6 +1719,10 @@ class TypeChecker(NodeVisitor[None]):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if isinstance(lvalue_type, DeletedType):
                 self.msg.deleted_as_lvalue(lvalue_type, context)
+            elif (self.options.disallow_implicit_any_types
+                  and has_any_from_silent_import(lvalue_type)):
+                self.msg.fail("Type of {} is implicitly converted to '{}' due to import from "
+                              "unanalyzed module".format(lvalue_name, lvalue_type), context)
             else:
                 self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                    '{} has type'.format(rvalue_name),

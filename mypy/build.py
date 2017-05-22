@@ -1387,9 +1387,7 @@ class State:
         """
         # TODO: See if it's possible to move this check directly into parse_file in some way.
         # TODO: Find a way to write a test case for this fix.
-        silent_mode = (self.options.ignore_missing_imports or
-                       self.options.follow_imports == 'skip')
-        if not silent_mode:
+        if not self.options.silent_mode():
             return
 
         new_suppressed = []

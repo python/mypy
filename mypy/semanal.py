@@ -85,7 +85,7 @@ from mypy.types import (
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVariableQuery, TypeVarList, remove_dups,
+    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_silent_import
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -964,7 +964,9 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail("Cannot subclass NewType", defn)
                 base_types.append(base)
             elif isinstance(base, AnyType):
-                if self.options.disallow_subclassing_any:
+                # if --disallow-implicit-any-types is set, the issue is reported later
+                if (self.options.disallow_subclassing_any and
+                        not self.options.disallow_implicit_any_types):
                     if isinstance(base_expr, (NameExpr, MemberExpr)):
                         msg = "Class cannot subclass '{}' (has type 'Any')".format(base_expr.name)
                     else:
@@ -974,6 +976,15 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 self.fail('Invalid base class', base_expr)
                 info.fallback_to_any = True
+            if (self.options.disallow_implicit_any_types and
+                    has_any_from_silent_import(base)):
+                if isinstance(base_expr, (NameExpr, MemberExpr)):
+                    msg = ("Subclassing type '{}' that is implicitly converted to '{}' due to "
+                           "import from unanalyzed module".format(base_expr.name, base))
+                else:
+                    msg = ("Subclassing a type that is implicitly converted to '{}' "
+                           "due to import from unanalyzed module".format(base))
+                self.fail(msg, base_expr)
 
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
@@ -1428,7 +1439,12 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             var._fullname = self.qualified_name(name)
         var.is_ready = True
-        var.type = AnyType()
+        any_type = AnyType()
+        if self.options.silent_mode():
+            # if silent mode is not enabled, no need to report implicit conversion to Any,
+            # let mypy report an import error.
+            any_type.is_from_silent_import = is_import
+        var.type = any_type
         var.is_suppressed_import = is_import
         self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
 

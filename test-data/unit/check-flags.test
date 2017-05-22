@@ -376,3 +376,52 @@ if y:  # E: Condition must be a boolean
 if z:  # E: Condition must be a boolean
   pass
 [builtins fixtures/bool.pyi]
+
+[case testDisallowImplicitTypesIgnoreMissingTypes]
+# flags: --ignore-missing-imports --disallow-implicit-any-types
+from missing import MyType
+
+def f(x: MyType) -> None:  # E: Argument 1 to 'f' is implicitly converted to 'Any' due to import from unanalyzed module
+  pass
+
+[case testDisallowImplicitTypes]
+# flags: --disallow-implicit-any-types
+from missing import MyType
+
+def f(x: MyType) -> None:
+  pass
+[out]
+main:2: error: Cannot find module named 'missing'
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testDisallowImplicitAnyVariableDefinition]
+# flags: --ignore-missing-imports --disallow-implicit-any-types
+from missing import Unchecked
+
+t: Unchecked = 12  # E: Type of variable is implicitly converted to 'Any' due to import from unanalyzed module
+
+[case testDisallowImplicitAnyGeneric]
+# flags: --ignore-missing-imports --disallow-implicit-any-types
+from missing import Unchecked
+from typing import List
+
+def foo(l: List[Unchecked]) -> List[Unchecked]:
+  t = []  # type: List[Unchecked]
+  return l
+[builtins fixtures/list.pyi]
+[out]
+main:5: error: Return type is implicitly converted to 'builtins.list[Any]' due to import from unanalyzed module
+main:5: error: Argument 1 to 'foo' is implicitly converted to 'builtins.list[Any]' due to import from unanalyzed module
+main:6: error: Type of variable is implicitly converted to 'builtins.list[Any]' due to import from unanalyzed module
+
+[case testDisallowImplicitAnyInherit]
+# flags: --ignore-missing-imports --disallow-implicit-any-types
+from missing import Unchecked
+from typing import List
+
+class C(Unchecked): # E: Subclassing type 'Unchecked' that is implicitly converted to 'Any' due to import from unanalyzed module
+  pass
+
+class A(List[Unchecked]): # E: Subclassing a type that is implicitly converted to 'builtins.list[Any]' due to import from unanalyzed module
+  pass
+[builtins fixtures/list.pyi]

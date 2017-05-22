@@ -222,6 +222,9 @@ def process_options(args: List[str],
                         help="silently ignore imports of missing modules")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
+    parser.add_argument('--disallow-implicit-any-types', action='store_true',
+                        help="disallow implicit conversion of types from unanalyzed modules"
+                             " into Any")
     add_invertible_flag('--disallow-untyped-calls', default=False, strict_flag=True,
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")

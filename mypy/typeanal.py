@@ -232,7 +232,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                     # context. This is slightly problematic as it allows using the type 'Any'
                     # as a base class -- however, this will fail soon at runtime so the problem
                     # is pretty minor.
-                    return AnyType()
+                    any_type = AnyType()
+                    any_type.is_from_silent_import = sym.node.type.is_from_silent_import
+                    return any_type
                 # Allow unbound type variables when defining an alias
                 if not (self.aliasing and sym.kind == TVAR and
                         self.tvar_scope.get_binding(sym) is None):
@@ -729,6 +731,23 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
             return super().visit_callable_type(t)
         else:
             return []
+
+
+def has_any_from_silent_import(t: Type) -> bool:
+    """Return true if this type was converted to Any because of a silenced import.
+
+    If type t is was co or is has type arguments that contain such Any type
+    this function will return true.
+    """
+    return t.accept(HasAnyFromSilentImportQuery())
+
+
+class HasAnyFromSilentImportQuery(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_any(self, t: AnyType) -> bool:
+        return t.is_from_silent_import
 
 
 def make_optional_type(t: Type) -> Type:

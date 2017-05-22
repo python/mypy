@@ -272,6 +272,9 @@ class TypeList(Type):
 class AnyType(Type):
     """The type 'Any'."""
 
+    # Does this come from a silent import? Used for --disallow-implicit-any-types flag
+    is_from_silent_import = False
+
     def __init__(self, implicit: bool = False, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.implicit = implicit
