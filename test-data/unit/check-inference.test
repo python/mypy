@@ -692,7 +692,7 @@ a = [1]
 b = ['b']
 i(a, a, b)
 i(b, a, b)
-i(a, b, b) # error: Argument 1 to "i" has incompatible type List[int]; expected List[str]
+i(a, b, b)
 [out]
 main:5: error: "str" not callable
 main:6: error: "object" not callable
