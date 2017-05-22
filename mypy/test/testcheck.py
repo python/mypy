@@ -184,14 +184,14 @@ class TypeCheckSuite(DataSuite):
         # Make sure error messages match
         if incremental_step == 0:
             # Not incremental
-            msg = 'Invalid type checker output ({}, line {})'
+            msg = 'Unexpected type checker output ({}, line {})'
             output = testcase.output
         elif incremental_step == 1:
-            msg = 'Invalid type checker output in incremental, run 1 ({}, line {})'
+            msg = 'Unexpected type checker output in incremental, run 1 ({}, line {})'
             output = testcase.output
         elif incremental_step > 1:
-            msg = ('Invalid type checker output in incremental, run {}'.format(incremental_step) +
-                   ' ({}, line {})')
+            msg = ('Unexpected type checker output in incremental, run {}'.format(
+                incremental_step) + ' ({}, line {})')
             output = testcase.output2.get(incremental_step, [])
         else:
             raise AssertionError()
@@ -217,10 +217,16 @@ class TypeCheckSuite(DataSuite):
     def check_module_equivalence(self, name: str,
                                  expected: Optional[Set[str]], actual: Set[str]) -> None:
         if expected is not None:
+            expected_normalized = list(sorted(expected))
+            actual_normalized = list(sorted(actual.difference({"__main__"})))
             assert_string_arrays_equal(
-                list(sorted(expected)),
-                list(sorted(actual.difference({"__main__"}))),
-                'Set of {} modules does not match expected set'.format(name))
+                expected_normalized,
+                actual_normalized,
+                ('Actual modules ({}) do not match expected modules ({}) '
+                 'for "[{} ...]"').format(
+                    ', '.join(actual_normalized),
+                    ', '.join(expected_normalized),
+                    name))
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager) -> None:
