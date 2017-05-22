@@ -217,8 +217,8 @@ class TypeCheckSuite(DataSuite):
     def check_module_equivalence(self, name: str,
                                  expected: Optional[Set[str]], actual: Set[str]) -> None:
         if expected is not None:
-            expected_normalized = list(sorted(expected))
-            actual_normalized = list(sorted(actual.difference({"__main__"})))
+            expected_normalized = sorted(expected)
+            actual_normalized = sorted(actual.difference({"__main__"}))
             assert_string_arrays_equal(
                 expected_normalized,
                 actual_normalized,
