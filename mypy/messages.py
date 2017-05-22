@@ -607,13 +607,10 @@ class MessageBuilder:
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
-        if callee.definition:
-            fullname = callee.definition.fullname()
-            if fullname is not None and '.' in fullname:
-                module_name = fullname.rsplit('.', 1)[0]
-                path = self.modules[module_name].path
-                self.note('{} defined here'.format(callee.name), callee.definition,
-                          file=path, origin=context)
+        module = find_defining_module(self.modules, callee)
+        if module:
+            self.note('{} defined here'.format(callee.name), callee.definition,
+                      file=module.path, origin=context)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
                                  context: Context) -> None:
@@ -939,6 +936,21 @@ def callable_name(type: CallableType) -> str:
         return type.name
     else:
         return 'function'
+
+
+def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> MypyFile:
+    if not typ.definition:
+        return None
+    fullname = typ.definition.fullname()
+    if fullname is not None and '.' in fullname:
+        for i in range(fullname.count('.')):
+            module_name = fullname.rsplit('.', i + 1)[0]
+            try:
+                return modules[module_name]
+            except KeyError:
+                pass
+        assert False, "Couldn't determine module from CallableType"
+    return None
 
 
 def temp_message_builder() -> MessageBuilder:

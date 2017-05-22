@@ -328,6 +328,8 @@ class SemanticAnalyzer(NodeVisitor):
             self.function_stack.append(defn)
             # First phase of analysis for function.
             self.errors.push_function(defn.name())
+            if not defn._fullname:
+                defn._fullname = self.qualified_name(defn.name())
             if defn.type:
                 assert isinstance(defn.type, CallableType)
                 self.update_function_type_variables(defn.type, defn)
