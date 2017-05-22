@@ -106,7 +106,7 @@ Mypy can be integrated into popular IDEs:
 * Emacs: Using [Flycheck](https://github.com/flycheck/) and [Flycheck-mypy](https://github.com/lbolla/emacs-flycheck-mypy/issues)
 * Sublime Text: [Sublime​Linter-contrib-mypy]
 * Atom: [linter-mypy](https://atom.io/packages/linter-mypy)
-* PyCharm: No, Pycharm has its own implemenation of PEP484 [PyCharm-PEP484] 
+* PyCharm: No, Pycharm has its own implementation of PEP484 [PyCharm-PEP484] 
 
 [Sublime​Linter-contrib-mypy]: (https://packagecontrol.io/packages/SublimeLinter-contrib-mypy)
 [PyCharm-PEP484]: (https://www.jetbrains.com/help/pycharm/2017.1/type-hinting-in-pycharm.html))
