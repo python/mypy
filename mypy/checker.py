@@ -44,7 +44,7 @@ from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
     restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_subtype,
     unify_generic_callable, get_missing_members, get_conflict_types, get_all_flags,
-    IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC
+    IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC, find_member
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars
@@ -2345,17 +2345,25 @@ class TypeChecker(NodeVisitor[None]):
                 msg += ' (' + ', '.join(extra_info) + ')'
             self.fail(msg, context)
             if (isinstance(supertype, Instance) and supertype.type.is_protocol and
-                    isinstance(subtype, Instance)):
+                    isinstance(subtype, (Instance, TupleType))):
                 self.report_protocol_problems(subtype, supertype, context)
+            if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
+                call = find_member('__call__', subtype, subtype)
+                if call:
+                    self.note("{}.__call__ has type {}".format(subtype, call), context)
             return False
 
-    def report_protocol_problems(self, subtype: Instance, supertype: Instance,
+    def report_protocol_problems(self, subtype: Union[Instance, TupleType], supertype: Instance,
                                  context: Context) -> None:
         """Report possible protocol conflicts between 'subtype' and 'supertype'.
         This includes missing members, incompatible types, and incompatible
         attribute flags, such as settable vs read-only or class variable vs
         instance variable.
         """
+        if isinstance(subtype, TupleType):
+            if not isinstance(subtype.fallback, Instance):
+                return
+            subtype = subtype.fallback
         missing = get_missing_members(subtype, supertype)
         if missing:
             self.note("'{}' missing following '{}' protocol members:"

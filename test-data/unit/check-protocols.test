@@ -1335,9 +1335,13 @@ def fun3(x: P[T, T]) -> T:
     return x.x
 
 fun(z)
-fun2(z) # E: Argument 1 to "fun2" has incompatible type "N"; expected P[int, int]
+fun2(z) # E: Argument 1 to "fun2" has incompatible type "N"; expected P[int, int]\
+        # N: Following members of __main__.N have conflicts:\
+        # N: y: expected builtins.int*, got builtins.str
 
-fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected P[int, str]
+fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected P[int, str]\
+           # N: '__main__.N2' missing following '__main__.P' protocol members:\
+           # N: y
 
 reveal_type(fun3(z)) # E: Revealed type is 'builtins.object*'
 
@@ -1363,6 +1367,10 @@ def apply_gen(f: Callable[[T], T]) -> T:
     pass
 
 reveal_type(apply_gen(Add5())) # E: Revealed type is 'builtins.int*'
+def apply_str(f: Callable[[str], int], x: str) -> int:
+    return f(x)
+apply_str(Add5(), 'a') # E: Argument 1 to "apply_str" has incompatible type "Add5"; expected Callable[[str], int]\
+                       # N: __main__.Add5.__call__ has type def (x: builtins.int) -> builtins.int
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
