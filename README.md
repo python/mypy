@@ -179,10 +179,6 @@ the above as root. For example, in Ubuntu:
 Now you can use the `mypy` program just as above.  In case of trouble
 see "Troubleshooting" above.
 
-The mypy wiki contains some useful information for contributors:
-
-  https://github.com/python/mypy/wiki/Developer-Guides
-
 
 Working with the git version of mypy
 ------------------------------------
