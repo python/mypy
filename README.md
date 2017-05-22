@@ -157,6 +157,15 @@ If you want to contribute, first clone the mypy git repository:
 
     $ git clone --recurse-submodules https://github.com/python/mypy.git
 
+If you've already cloned the repo without `--recurse-submodules`,
+you need to pull in the typeshed repo as follows:
+
+    $ git submodule init
+    $ git submodule update
+
+Either way you should now have a subdirectory `typeshed` containing a
+clone of the typeshed repo (`https://github.com/python/typeshed`).
+
 From the mypy directory, use pip to install mypy:
 
     $ cd mypy
