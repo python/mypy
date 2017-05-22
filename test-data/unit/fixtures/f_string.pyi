@@ -1,11 +1,10 @@
 # Builtins stub used for format-string-related test cases.
 # We need str and list, and str needs join and format methods.
 
-from typing import TypeVar, Generic, builtinclass, Iterable, Iterator, List, overload
+from typing import TypeVar, Generic, Iterable, Iterator, List, overload
 
 T = TypeVar('T')
 
-@builtinclass
 class object:
     def __init__(self): pass
 
@@ -31,6 +30,7 @@ class tuple(Generic[T]): pass
 class function: pass
 class int:
     def __add__(self, i: int) -> int: pass
+
 class float: pass
 class bool(int): pass
 
