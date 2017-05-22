@@ -440,3 +440,23 @@ Here's the above example modified to use ``MYPY``:
 
    def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
        return [arg]
+
+.. _variable-types:
+
+Variable definition type syntax
+-------------------------------
+
+If running a Python older than 3.6, the following type declaration will fail:
+
+.. code-block:: python
+
+   x: List[str] = [] # SyntaxError: invalid syntax
+
+
+You can instead use this format in older Pythons (including 2):
+
+.. code-block:: python
+
+   x = [] # type: List[str]
+
+
