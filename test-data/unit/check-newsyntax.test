@@ -147,8 +147,7 @@ f'result: {value:{width}.{precision}}'
 [case testNewSyntaxFStringSingleField]
 # flags: --python-version 3.6
 v = 1
-f'{v}' + ''
-f'{1}' + ''
-f' {v}' + ''
+reveal_type(f'{v}') # E: Revealed type is 'builtins.str'
+reveal_type(f'{1}') # E: Revealed type is 'builtins.str'
 [builtins fixtures/f_string.pyi]
 
