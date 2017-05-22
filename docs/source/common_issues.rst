@@ -123,19 +123,17 @@ Types of empty collections
 --------------------------
 
 You often need to specify the type when you assign an empty list or
-dict to a new variable.
+dict to a new variable:
 
 .. code-block:: python
 
    a = []  # error: Need type annotation for variable
 
-
-Without the annotation mypy can't always figure out the precise type of ``a``.
+Without an annotation mypy can't always figure out the precise type of ``a``.
 
 .. code-block:: python
 
    a: List[int] = []
-
 
 You can use a simple empty list literal in a dynamically typed function (as the
 type of ``a`` would be implicitly ``Any`` and need not be inferred), if type
