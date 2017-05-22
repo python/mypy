@@ -97,6 +97,23 @@ programs, even if they have type errors:
 [statically typed parts]: http://mypy.readthedocs.io/en/latest/basics.html#function-signatures
 
 
+IDE & Linter Integrations
+-------------------------
+
+Mypy can be integrated into popular IDEs:
+
+* Vim: [vim-mypy](https://github.com/Integralist/vim-mypy)
+* Emacs: using [Flycheck](https://github.com/flycheck/) and [Flycheck-mypy](https://github.com/lbolla/emacs-flycheck-mypy/issues)
+* Sublime Text: [SublimeLinter-contrib-mypy]
+* Atom: [linter-mypy](https://atom.io/packages/linter-mypy)
+* PyCharm: PyCharm integrates [its own implementation of PEP 484](https://www.jetbrains.com/help/pycharm/2017.1/type-hinting-in-pycharm.html).
+
+Mypy can also be integrated into [Flake8] using [flake8-mypy].
+
+[Flake8]: http://flake8.pycqa.org/
+[flake8-mypy]: https://github.com/ambv/flake8-mypy
+
+
 Web site and documentation
 --------------------------
 
