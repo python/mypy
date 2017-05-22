@@ -78,21 +78,22 @@ def parse_test_cases(
                         fnam = '__builtin__.pyi'
                     with open(mpath) as f:
                         files.append((join(base_path, fnam), f.read()))
-                elif re.match(r'stale[2-9]?$', p[i].id):
+                elif re.match(r'stale[0-9]*$', p[i].id):
                     if p[i].id == 'stale':
                         passnum = 1
                     else:
-                        passnum = int(p[i].id[-1])
+                        passnum = int(p[i].id[len('stale'):])
+                        assert passnum > 0
                     arg = p[i].arg
                     if arg is None:
                         stale_modules[passnum] = set()
                     else:
                         stale_modules[passnum] = {item.strip() for item in arg.split(',')}
-                elif re.match(r'rechecked[2-9]?$', p[i].id):
+                elif re.match(r'rechecked[0-9]*$', p[i].id):
                     if p[i].id == 'rechecked':
                         passnum = 1
                     else:
-                        passnum = int(p[i].id[-1])
+                        passnum = int(p[i].id[len('rechecked'):])
                     arg = p[i].arg
                     if arg is None:
                         rechecked_modules[passnum] = set()
@@ -103,8 +104,9 @@ def parse_test_cases(
                     if native_sep and os.path.sep == '\\':
                         tcout = [fix_win_path(line) for line in tcout]
                     ok = True
-                elif re.match(r'out[2-9]$', p[i].id):
-                    passnum = int(p[i].id[3])
+                elif re.match(r'out[0-9]*$', p[i].id):
+                    passnum = int(p[i].id[3:])
+                    assert passnum > 1
                     output = p[i].data
                     if native_sep and os.path.sep == '\\':
                         output = [fix_win_path(line) for line in output]
