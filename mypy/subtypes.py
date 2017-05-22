@@ -44,7 +44,8 @@ def check_type_parameter(lefta: Type, righta: Type, variance: int) -> bool:
 
 def is_subtype(left: Type, right: Type,
                type_parameter_checker: TypeParameterChecker = check_type_parameter,
-               *, ignore_pos_arg_names: bool = False) -> bool:
+               *, ignore_pos_arg_names: bool = False,
+               ignore_declared_variance: bool = False) -> bool:
     """Is 'left' subtype of 'right'?
 
     Also consider Any to be a subtype of any type, and vice versa. This
@@ -83,7 +84,8 @@ def is_subtype(left: Type, right: Type,
     elif is_named_instance(right, 'builtins.type'):
             return is_subtype(left, TypeType(AnyType()))
     return left.accept(SubtypeVisitor(right, type_parameter_checker,
-                                      ignore_pos_arg_names=ignore_pos_arg_names))
+                                      ignore_pos_arg_names=ignore_pos_arg_names,
+                                      ignore_declared_variance=ignore_declared_variance))
 
 
 def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
@@ -107,10 +109,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def __init__(self, right: Type,
                  type_parameter_checker: TypeParameterChecker,
-                 *, ignore_pos_arg_names: bool = False) -> None:
+                 *, ignore_pos_arg_names: bool = False,
+                 ignore_declared_variance: bool = False) -> None:
         self.right = right
         self.check_type_parameter = type_parameter_checker
         self.ignore_pos_arg_names = ignore_pos_arg_names
+        self.ignore_declared_variance = ignore_declared_variance
 
     # visit_x(left) means: is left (which is an instance of X) a subtype of
     # right?
@@ -158,7 +162,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             rname = right.type.fullname()
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
-            if left.type.has_base(rname) or rname == 'builtins.object':
+            if ((left.type.has_base(rname) or rname == 'builtins.object') and
+                    not self.ignore_declared_variance):
                 # Map left type to corresponding right instances.
                 t = map_instance_to_supertype(left, right.type)
                 nominal = all(self.check_type_parameter(lefta, righta, tvar.variance)

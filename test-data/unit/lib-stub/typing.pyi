@@ -42,7 +42,7 @@ S = TypeVar('S')
 class Container(Protocol[T_contra]):
     @abstractmethod
     # Use int because bool isn't in the default test builtins
-    def __contains__(self, arg: T) -> int: pass
+    def __contains__(self, arg: T_contra) -> int: pass
 
 @runtime
 class Sized(Protocol):

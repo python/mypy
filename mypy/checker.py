@@ -1094,18 +1094,24 @@ class TypeChecker(NodeVisitor[None]):
             up_args = [object_type if i == j else AnyType() for j, _ in enumerate(tvars)]
             down_args = [UninhabitedType() if i == j else AnyType() for j, _ in enumerate(tvars)]
             up, down = Instance(info, up_args), Instance(info, down_args)
-            is_co = is_subtype(down, up)
-            is_contra = is_subtype(up, down)
+            # TODO: add advanced variance checks for recursive protocols
+            is_co = is_subtype(down, up, ignore_declared_variance=True)
+            is_contra = is_subtype(up, down, ignore_declared_variance=True)
             if is_co:
                 expected = 'covariant'
             elif is_contra:
                 expected = 'contravariant'
             else:
                 expected = 'invariant'
-            # TODO: add more variance checks (actual covariant and actual invariant)
-            if tvar.variance == INVARIANT and expected != 'invariant':
-                self.fail("Invariant type variable '{}' used in protocol where"
-                          " {} one is expected".format(tvar.name, expected), defn)
+            if tvar.variance == COVARIANT:
+                actual = 'Covariant'
+            elif tvar.variance == CONTRAVARIANT:
+                actual = 'Contravariant'
+            else:
+                actual = 'Invariant'
+            if expected != actual.lower():
+                self.fail("{} type variable '{}' used in protocol where"
+                          " {} one is expected".format(actual, tvar.name, expected), defn)
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Check for multiple inheritance related errors."""
