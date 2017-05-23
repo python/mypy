@@ -154,7 +154,7 @@ class A(metaclass=ABCMeta):
   @abstractmethod
   def g(self): pass
 class B(A): pass
-B()# E: Cannot instantiate abstract class 'B' with abstract attributes 'f' and 'g'
+B() # E: Cannot instantiate abstract class 'B' with abstract attributes 'f' and 'g'
 [out]
 
 [case testInstantiationAbstractsInTypeForFunctions]
