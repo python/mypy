@@ -249,11 +249,15 @@ class B(A):
     def g(self, x: A) -> A: pass # Fail
 [out]
 main:6: error: Signature of "f" incompatible with supertype "A"
-main:6: note: Signature of "f" in superclass: "def f(self, x: __main__.A) -> None"
-main:6: note: Signature of "f" in subclass:   "def f(self, x: __main__.A, y: __main__.A) -> None"
+main:6: note:     Method "f" of "A":
+main:6: note:       def f(self, x: __main__.A) -> None
+main:6: note:     Method "f" of "B":
+main:6: note:       def f(self, x: __main__.A, y: __main__.A) -> None
 main:7: error: Signature of "g" incompatible with supertype "A"
-main:7: note: Signature of "g" in superclass: "def g(self, x: __main__.A, y: __main__.B) -> __main__.A"
-main:7: note: Signature of "g" in subclass:   "def g(self, x: __main__.A) -> __main__.A"
+main:7: note:     Method "g" of "A":
+main:7: note:       def g(self, x: __main__.A, y: __main__.B) -> __main__.A
+main:7: note:     Method "g" of "B":
+main:7: note:       def g(self, x: __main__.A) -> __main__.A
 
 [case testMethodOverridingAcrossDeepInheritanceHierarchy1]
 import typing
@@ -870,8 +874,11 @@ class C(A):
     def f() -> None: pass
 [out]
 main:8: error: Signature of "f" incompatible with supertype "A"
-main:8: note: Signature of "f" in superclass: "def f(cls) -> None"
-main:8: note: Signature of "f" in subclass:   "def f(self) -> None"
+main:8: note:     Method "f" of "A":
+main:8: note:       def f(cls) -> None
+main:8: note:     Method "f" of "B":
+main:8: note:       def f(self) -> None
+
 [builtins fixtures/classmethod.pyi]
 
 -- Properties
@@ -1357,8 +1364,13 @@ class B(A):
     def __add__(self, x: str) -> str: pass
 [out]
 tmp/foo.pyi:5: error: Signature of "__add__" incompatible with supertype "A"
-tmp/foo.pyi:5: note: Signature of "__add__" in superclass: "def __add__(self, builtins.int) -> builtins.int"
-tmp/foo.pyi:5: note: Signature of "__add__" in subclass:   "Overload(def __add__(self, builtins.int) -> builtins.int, def __add__(self, builtins.str) -> builtins.str)"
+tmp/foo.pyi:5: note:     Method "__add__" of "A":
+tmp/foo.pyi:5: note:       def __add__(self, builtins.int) -> builtins.int
+tmp/foo.pyi:5: note:     Method "__add__" of "B":
+tmp/foo.pyi:5: note:       @overload
+tmp/foo.pyi:5: note:       def __add__(self, builtins.int) -> builtins.int
+tmp/foo.pyi:5: note:       @overload
+tmp/foo.pyi:5: note:       def __add__(self, builtins.str) -> builtins.str
 
 [case testOperatorMethodOverrideWideningArgumentType]
 import typing
@@ -1429,8 +1441,18 @@ class B(A):
     def __add__(self, x: type) -> A: pass
 [out]
 tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
-tmp/foo.pyi:8: note: Signature of "__add__" in superclass: "Overload(def __add__(self, builtins.int) -> foo.A, def __add__(self, builtins.str) -> foo.A)"
-tmp/foo.pyi:8: note: Signature of "__add__" in subclass:   "Overload(def __add__(self, builtins.int) -> foo.A, def __add__(self, builtins.str) -> foo.A, def __add__(self, builtins.type) -> foo.A)"
+tmp/foo.pyi:8: note:     Method "__add__" of "A":
+tmp/foo.pyi:8: note:       @overload
+tmp/foo.pyi:8: note:       def __add__(self, builtins.int) -> foo.A
+tmp/foo.pyi:8: note:       @overload
+tmp/foo.pyi:8: note:       def __add__(self, builtins.str) -> foo.A
+tmp/foo.pyi:8: note:     Method "__add__" of "B":
+tmp/foo.pyi:8: note:       @overload
+tmp/foo.pyi:8: note:       def __add__(self, builtins.int) -> foo.A
+tmp/foo.pyi:8: note:       @overload
+tmp/foo.pyi:8: note:       def __add__(self, builtins.str) -> foo.A
+tmp/foo.pyi:8: note:       @overload
+tmp/foo.pyi:8: note:       def __add__(self, builtins.type) -> foo.A
 
 [case testOverloadedOperatorMethodOverrideWithSwitchedItemOrder]
 from foo import *
@@ -1448,8 +1470,48 @@ class B(A):
     def __add__(self, x: 'B') -> 'B': pass
 [out]
 tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
-tmp/foo.pyi:8: note: Signature of "__add__" in superclass: "Overload(def __add__(self, foo.B) -> foo.B, def __add__(self, foo.A) -> foo.A)"
-tmp/foo.pyi:8: note: Signature of "__add__" in subclass:   "Overload(def __add__(self, foo.A) -> foo.A, def __add__(self, foo.B) -> foo.B)"
+tmp/foo.pyi:8: note:     Method "__add__" of "A":
+tmp/foo.pyi:8: note:       @overload
+tmp/foo.pyi:8: note:       def __add__(self, foo.B) -> foo.B
+tmp/foo.pyi:8: note:       @overload
+tmp/foo.pyi:8: note:       def __add__(self, foo.A) -> foo.A
+tmp/foo.pyi:8: note:     Method "__add__" of "B":
+tmp/foo.pyi:8: note:       @overload
+tmp/foo.pyi:8: note:       def __add__(self, foo.A) -> foo.A
+tmp/foo.pyi:8: note:       @overload
+tmp/foo.pyi:8: note:       def __add__(self, foo.B) -> foo.B
+
+[case testOverloadedOperatorsMultilineOutput]
+from foo import *
+[file foo.pyi]
+from typing import overload, Any
+class A:
+    @overload
+    def __add__(self, x: int) -> 'B': pass
+class B(A):
+    @overload
+    def __add__(self, x: str) -> 'A': pass
+    @overload
+    def __add__(self, x: int) -> 'A': pass
+    @overload
+    def __add__(self, x: str) -> 'A': pass
+    @overload
+    def __add__(self, x: int) -> 'A': pass
+    @overload
+    def __add__(self, x: str) -> 'A': pass
+[out]
+tmp/foo.pyi:3: error: Single overload definition, multiple required
+tmp/foo.pyi:6: error: Signature of "__add__" incompatible with supertype "A"
+tmp/foo.pyi:6: note:     Method "__add__" of "A":
+tmp/foo.pyi:6: note:       def __add__(self, builtins.int) -> foo.B
+tmp/foo.pyi:6: note:     Method "__add__" of "B":
+tmp/foo.pyi:6: note:       @overload
+tmp/foo.pyi:6: note:       def __add__(self, builtins.str) -> foo.A
+tmp/foo.pyi:6: note:       @overload
+tmp/foo.pyi:6: note:       def __add__(self, builtins.int) -> foo.A
+tmp/foo.pyi:6: note:       @overload
+tmp/foo.pyi:6: note:       def __add__(self, builtins.str) -> foo.A
+tmp/foo.pyi:6: note:       <additional 2 overloads omitted>
 
 [case testReverseOperatorMethodArgumentType]
 from typing import Any
@@ -2928,8 +2990,11 @@ class B(A):
     def c() -> None: pass
 [out]
 main:11: error: Signature of "a" incompatible with supertype "A"
-main:11: note: Signature of "a" in superclass: "def a() -> None"
-main:11: note: Signature of "a" in subclass:   "def a(self) -> None"
+main:11: note:     Method "a" of "A":
+main:11: note:       def a() -> None
+main:11: note:     Method "a" of "B":
+main:11: note:       def a(self) -> None
+
 [builtins fixtures/classmethod.pyi]
 
 [case testTempNode]

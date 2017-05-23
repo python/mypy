@@ -306,7 +306,7 @@ class Errors:
                     # Don't use report since add_error_info will ignore the error!
                     info = ErrorInfo(self.import_context(), file, self.current_module(), None,
                                      None, line, -1, 'note', "unused 'type: ignore' comment",
-                                     False, False)
+                                     False, False, False)
                     self.error_info.append(info)
 
     def is_typeshed_file(self, file: str) -> bool:
@@ -403,7 +403,7 @@ class Errors:
                     # Remove prefix to ignore from path (if present) to
                     # simplify path.
                     path = remove_path_prefix(path, self.ignore_prefix)
-                    result.append((None, -1, -1, 'note', fmt.format(path, line)))
+                    result.append((None, -1, -1, 'note', fmt.format(path, line), e.allow_dups))
                     i -= 1
 
             file = self.simplify_path(e.file)
@@ -415,25 +415,25 @@ class Errors:
                     e.type != prev_type):
                 if e.function_or_member is None:
                     if e.type is None:
-                        result.append((file, -1, -1, 'note', 'At top level:'))
+                        result.append((file, -1, -1, 'note', 'At top level:', e.allow_dups))
                     else:
                         result.append((file, -1, -1, 'note', 'In class "{}":'.format(
-                            e.type)))
+                            e.type), e.allow_dups))
                 else:
                     if e.type is None:
                         result.append((file, -1, -1, 'note',
                                        'In function "{}":'.format(
-                                           e.function_or_member)))
+                                           e.function_or_member), e.allow_dups))
                     else:
                         result.append((file, -1, -1, 'note',
                                        'In member "{}" of class "{}":'.format(
-                                           e.function_or_member, e.type)))
+                                           e.function_or_member, e.type), e.allow_dups))
             elif e.type != prev_type:
                 if e.type is None:
-                    result.append((file, -1, -1, 'note', 'At top level:'))
+                    result.append((file, -1, -1, 'note', 'At top level:', e.allow_dups))
                 else:
                     result.append((file, -1, -1, 'note',
-                                   'In class "{}":'.format(e.type)))
+                                   'In class "{}":'.format(e.type), e.allow_dups))
 
             result.append((file, e.line, e.column, e.severity, e.message, e.allow_dups))
 
