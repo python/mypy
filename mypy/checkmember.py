@@ -409,7 +409,8 @@ def analyze_class_attribute_access(itype: Instance,
         if not is_method and (isinstance(t, TypeVarType) or get_type_vars(t)):
             msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, context)
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
-        return add_class_tvars(t, itype, is_classmethod, builtin_type, original_type)
+        res = add_class_tvars(t, itype, is_classmethod, builtin_type, original_type)
+        return expand_type_by_instance(res, itype)
     elif isinstance(node.node, Var):
         not_ready_callback(name, context)
         return AnyType()
