@@ -2322,6 +2322,9 @@ class TypeChecker(NodeVisitor[None]):
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
             self.fail(msg, context)
+            note_msg = make_inferred_type_mismatch_note(msg, context, subtype, supertype, supertype_str)
+            if note_msg:
+                self.note(note_msg, context)
             return False
 
     def contains_none(self, t: Type) -> bool:
@@ -3115,3 +3118,19 @@ class Scope:
 @contextmanager
 def nothing() -> Iterator[None]:
     yield
+
+
+def make_inferred_type_mismatch_note(msg: str, context: Context, subtype: Type, 
+                                     supertype: Type, supertype_str: str) -> str:
+    '''The user does not expect an error if the inferred container type is the same as the return
+    type of a function and the argument type(s) are a subtype of the argument type(s) of the
+    return type.
+    '''
+    if (msg.startswith(messages.INCOMPATIBLE_RETURN_VALUE_TYPE) and
+      subtype.type.fullname() == supertype.type.fullname() and
+      subtype.args and supertype.args and context.expr.node.is_inferred):
+        for subtype_arg, supertype_arg in zip(subtype.args, supertype.args):
+            if not is_subtype(subtype_arg, supertype_arg):
+                return ''
+        return 'Perhaps a type annotation is missing here? Suggestion: ' + supertype_str
+    return ''
