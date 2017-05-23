@@ -103,7 +103,7 @@ The following global flags may only be set in the global section
   (Windows).
 
 - ``quick_and_dirty`` (Boolean, default False) enables :ref:`quick
-  mode <quick>`.
+  mode <quick-mode>`.
 
 - ``show_error_context`` (Boolean, default False) shows
   context notes before errors.

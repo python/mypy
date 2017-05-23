@@ -1,0 +1,1217 @@
+-- Serialization test cases (incremental type checking)
+--
+-- These test that modules deserialized from cache files behave
+-- identically to modules that have undergone full type checking.
+--
+-- These tests are written using the same syntax as test cases in
+-- check-incremental.test.  Look at the comment at that the top of
+-- that file for the details of how these tests work.
+--
+-- There is probably some overlap with check-incremental.test, but it
+-- is perhaps not worth trying to simplify these, since a few redundant
+-- test cases are cheap but accidentally losing test coverage is bad.
+--
+-- These are intended to be straightforward, and do not test import
+-- cycles and other tricky business.  Add test cases for complex things
+-- to check-incremental.test.
+
+--
+-- Basic things
+--
+
+[case testSerializeModuleAttribute]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+y = b.x  # type: int
+[file b.py]
+x = ''
+-- We only do the following two sections once here to avoid repetition.
+-- Most other test cases are similar.
+[rechecked a]
+[stale]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+--
+-- Functions
+--
+
+[case testSerializeAnnotatedFunction]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+b.f(1)
+x = b.f('')  # type: str
+[file b.py]
+def f(x: str) -> int: pass
+[out2]
+tmp/a.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+tmp/a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testSerializeUnannotatedFunction]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+b.f(x=1)
+b.f()
+[file b.py]
+def f(x): pass
+[out2]
+tmp/a.py:3: error: Too few arguments for "f"
+
+[case testSerializeGenericFunction]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import f
+reveal_type(f(1))
+reveal_type(f(x=''))
+[file b.py]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def f(x: T) -> T: return x
+[out2]
+tmp/a.py:2: error: Revealed type is 'builtins.int*'
+tmp/a.py:3: error: Revealed type is 'builtins.str*'
+
+[case testSerializeFunctionReturningGenericFunction]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+reveal_type(b.f)
+reveal_type(b.f()(''))
+[file b.py]
+from typing import TypeVar, Callable
+
+T = TypeVar('T')
+
+def f() -> Callable[[T], T]: pass
+[out2]
+tmp/a.py:2: error: Revealed type is 'def () -> def [T] (T`-1) -> T`-1'
+tmp/a.py:3: error: Revealed type is 'builtins.str*'
+
+[case testSerializeArgumentKinds]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import f
+f(1, z=1)
+f(1, '', z=1)
+f(1, y='', z=1)
+f(1, '', 2, 3, z=1)
+f(1, '', zz=1, z=1)
+f(1, '', foo='', z=1)
+[file b.py]
+def f(x: int,
+      y: str = '',
+      *args: int,
+      z: int,
+      zz: int = 1,
+      **kw: str) -> None: pass
+[builtins fixtures/dict.pyi]
+[out2]
+
+[case testSerializePositionalOnlyArgument]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+b.f(1)
+b.f('')
+b.f(__x=1)
+[file b.py]
+def f(__x: int) -> None: pass
+[out2]
+tmp/a.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+tmp/a.py:4: error: Unexpected keyword argument "__x" for "f"
+
+[case testSerializeArgumentKindsErrors]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import f
+f('', z=1)           # Line 2
+f(1, 2, z=1)         # 3
+f(1, y=1, z=1)       # 4
+f(1, '', 2, '', z=1) # 5
+f(1, '', z='')       # 6
+f(1, '', zz='', z=1) # 7
+f(1, '', z=1, foo=1) # 8
+[file b.py]
+def f(x: int,
+      y: str = '',
+      *args: int,
+      z: int,
+      zz: int = 1,
+      **kw: str) -> None: pass
+[builtins fixtures/dict.pyi]
+[out2]
+tmp/a.py:2: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+tmp/a.py:3: error: Argument 2 to "f" has incompatible type "int"; expected "str"
+tmp/a.py:4: error: Argument 2 to "f" has incompatible type "int"; expected "str"
+tmp/a.py:5: error: Argument 4 to "f" has incompatible type "str"; expected "int"
+tmp/a.py:6: error: Argument 3 to "f" has incompatible type "str"; expected "int"
+tmp/a.py:7: error: Argument 3 to "f" has incompatible type "str"; expected "int"
+tmp/a.py:8: error: Argument 4 to "f" has incompatible type "int"; expected "str"
+
+[case testSerializeOverloadedFunction]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+reveal_type(b.f(1))
+reveal_type(b.f(''))
+[file b.pyi]
+from typing import overload
+@overload
+def f(x: int) -> int: pass
+@overload
+def f(x: str) -> str: pass
+[out2]
+tmp/a.py:2: error: Revealed type is 'builtins.int'
+tmp/a.py:3: error: Revealed type is 'builtins.str'
+
+[case testSerializeDecoratedFunction]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+reveal_type(b.f(''))
+b.f(x=1)
+[file b.py]
+from typing import Callable
+def dec(f: Callable[[int], int]) -> Callable[[str], str]: pass
+@dec
+def f(x: int) -> int: pass
+[out2]
+tmp/a.py:2: error: Revealed type is 'builtins.str'
+tmp/a.py:3: error: Unexpected keyword argument "x" for "f"
+
+--
+-- Classes
+--
+
+[case testSerializeClassAttribute]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+b.A().x = ''
+[file b.py]
+class A:
+    x = 1
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testSerializeMethod]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+b.A().f('')
+[file b.py]
+class A:
+    def f(self, x: int) -> None: pass
+[out2]
+tmp/a.py:2: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+
+[case testSerialize__init__]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+A('')
+class B(A):
+    def f(self) -> None:
+        super().__init__('')
+[file b.py]
+class A:
+    def __init__(self, x: int) -> None: pass
+[out2]
+tmp/a.py:2: error: Argument 1 to "A" has incompatible type "str"; expected "int"
+tmp/a.py:5: error: Argument 1 to "__init__" of "A" has incompatible type "str"; expected "int"
+
+[case testSerializeOverloaded__init__]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+A(object()) # E
+A(x='')
+A(0)
+class B(A):
+    def f(self) -> None:
+        super().__init__(object()) # E
+        super().__init__('')
+        super().__init__(0)
+[file b.pyi]
+from typing import overload
+class A:
+    @overload
+    def __init__(self, x: int) -> None: pass
+    @overload
+    def __init__(self, x: str) -> None: pass
+[out2]
+tmp/a.py:2: error: No overload variant of "A" matches argument types [builtins.object]
+tmp/a.py:7: error: No overload variant of "__init__" of "A" matches argument types [builtins.object]
+
+[case testSerialize__new__]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+A('')
+[file b.py]
+class A:
+    def __new__(cls, x: int) -> 'A': pass
+[out2]
+tmp/a.py:2: error: Argument 1 to "A" has incompatible type "str"; expected "int"
+
+[case testSerializeClassVar]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+A.x = ''
+A().x = 1
+[file b.py]
+from typing import ClassVar
+class A:
+    x: ClassVar[int]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/a.py:3: error: Cannot assign to class variable "x" via instance
+
+[case testSerializeGenericClass]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+a1: A[int, str] = A(1)
+a2: A[int, str] = A('')
+reveal_type(a1.y)
+reveal_type(a1.f())
+[file b.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T, S]):
+    x: T
+    y: S
+    def __init__(self, x: T) -> None:
+        self.x = x
+    def f(self) -> T:
+        return self.x
+[out2]
+tmp/a.py:3: error: Argument 1 to "A" has incompatible type "str"; expected "int"
+tmp/a.py:4: error: Revealed type is 'builtins.str*'
+tmp/a.py:5: error: Revealed type is 'builtins.int*'
+
+[case testSerializeAbstractClass]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+A()
+class B(A):
+    def f(self) -> None: pass
+    x: int
+B()
+a: A
+a.f()
+a.x = 1
+[file b.py]
+from abc import ABCMeta, abstractmethod, abstractproperty
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+    @abstractproperty
+    def x(self) -> int: return 0
+[out2]
+tmp/a.py:2: error: Cannot instantiate abstract class 'A' with abstract attributes 'f' and 'x'
+tmp/a.py:9: error: Property "x" defined in "A" is read-only
+
+[case testSerializeStaticMethod]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+A.f(1)
+A.f()
+A().f()
+[file b.py]
+class A:
+    @staticmethod
+    def f() -> None: pass
+[builtins fixtures/staticmethod.pyi]
+[out2]
+tmp/a.py:2: error: Too many arguments for "f" of "A"
+
+[case testSerializeClassMethod]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+A.f(1)
+A.f()
+A().f()
+[file b.py]
+class A:
+    @classmethod
+    def f(cls) -> None: pass
+[builtins fixtures/classmethod.pyi]
+[out2]
+tmp/a.py:2: error: Too many arguments for "f" of "A"
+
+[case testSerializeReadOnlyProperty]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+reveal_type(A().x)
+A().x = 0
+[file b.py]
+class A:
+    @property
+    def x(self) -> int: return 0
+[builtins fixtures/property.pyi]
+[out2]
+tmp/a.py:2: error: Revealed type is 'builtins.int'
+tmp/a.py:3: error: Property "x" defined in "A" is read-only
+
+[case testSerializeReadWriteProperty]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+reveal_type(A().x)
+A().x = ''
+A().x = 0
+[file b.py]
+class A:
+    @property
+    def x(self) -> int: return 0
+    @x.setter
+    def x(self, v: int) -> None: pass
+[builtins fixtures/property.pyi]
+[out2]
+tmp/a.py:2: error: Revealed type is 'builtins.int'
+tmp/a.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testSerializeSelfType]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+reveal_type(A().f())
+class B(A): pass
+reveal_type(B().f())
+[file b.py]
+from typing import TypeVar
+T = TypeVar('T', bound='A')
+class A:
+    def f(self: T) -> T: return self
+[out2]
+tmp/a.py:2: error: Revealed type is 'b.A*'
+tmp/a.py:4: error: Revealed type is 'a.B*'
+
+[case testSerializeInheritance]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A, B, C
+C().f(1) # E
+C().g(1) # E
+reveal_type(C().h())
+a: A = C()
+b: B = C()
+i: int = C() # E
+[file b.py]
+class A:
+    def f(self) -> int: pass
+class B:
+    def g(self) -> str: pass
+    def h(self) -> object: pass
+class C(A, B):
+    def h(self) -> int: pass
+[out2]
+tmp/a.py:2: error: Too many arguments for "f" of "A"
+tmp/a.py:3: error: Too many arguments for "g" of "B"
+tmp/a.py:4: error: Revealed type is 'builtins.int'
+tmp/a.py:7: error: Incompatible types in assignment (expression has type "C", variable has type "int")
+
+[case testSerializeGenericInheritance]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import B
+b: B[int]
+reveal_type(b.f())
+[file b.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    def f(self) -> T: pass
+class B(A[A[T]]):
+    pass
+[out2]
+tmp/a.py:3: error: Revealed type is 'b.A*[builtins.int*]'
+
+[case testSerializeFixedLengthTupleBaseClass]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+a: A
+a.f(1)
+reveal_type((a[0], a[1]))
+[file b.py]
+from typing import Tuple
+class A(Tuple[int, str]):
+    def f(self) -> None: pass
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:3: error: Too many arguments for "f" of "A"
+tmp/a.py:4: error: Revealed type is 'Tuple[builtins.int, builtins.str]'
+
+[case testSerializeVariableLengthTupleBaseClass]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+a: A
+a.f(1)
+reveal_type((a[0], a[1]))
+[file b.py]
+from typing import Tuple
+class A(Tuple[int, ...]):
+    def f(self) -> None: pass
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:3: error: Too many arguments for "f" of "A"
+tmp/a.py:4: error: Revealed type is 'Tuple[builtins.int*, builtins.int*]'
+
+[case testSerializePlainTupleBaseClass]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+a: A
+a.f(1)
+reveal_type((a[0], a[1]))
+[file b.py]
+from typing import Tuple
+class A(tuple):
+    def f(self) -> None: pass
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:3: error: Too many arguments for "f" of "A"
+tmp/a.py:4: error: Revealed type is 'Tuple[Any, Any]'
+
+[case testSerializeNamedTupleBaseClass]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+a: A
+a.f(1)
+reveal_type((a[0], a[1]))
+reveal_type((a.x, a.y))
+[file b.py]
+from typing import NamedTuple
+class A(NamedTuple('N', [('x', int), ('y', str)])):
+    def f(self) -> None: pass
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:3: error: Too many arguments for "f" of "A"
+tmp/a.py:4: error: Revealed type is 'Tuple[builtins.int, builtins.str]'
+tmp/a.py:5: error: Revealed type is 'Tuple[builtins.int, builtins.str]'
+
+[case testSerializeAnyBaseClass]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import B
+B().f(1)
+reveal_type(B().xyz)
+[file b.py]
+from typing import Any
+A: Any
+class B(A):
+    def f(self) -> None: pass
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:2: error: Too many arguments for "f" of "B"
+tmp/a.py:3: error: Revealed type is 'Any'
+
+[case testSerializeIndirectAnyBaseClass]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import C
+C().f(1)
+C().g(1)
+reveal_type(C().xyz)
+[file b.py]
+from typing import Any
+A: Any
+class B(A):
+    def f(self) -> None: pass
+class C(B):
+    def g(self) -> None: pass
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:2: error: Too many arguments for "f" of "B"
+tmp/a.py:3: error: Too many arguments for "g" of "C"
+tmp/a.py:4: error: Revealed type is 'Any'
+
+[case testSerializeNestedClass]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+b.A.B().f(1)
+b.A.B.C().g(1)
+b.b.f(1)
+b.c.g(1)
+[file b.py]
+class A:
+    class B:
+        def f(self) -> None: pass
+        class C:
+            def g(self) -> None: pass
+b: A.B
+c: A.B.C
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:2: error: Too many arguments for "f" of "B"
+tmp/a.py:3: error: Too many arguments for "g" of "C"
+tmp/a.py:4: error: Too many arguments for "f" of "B"
+tmp/a.py:5: error: Too many arguments for "g" of "C"
+
+[case testSerializeCallableVsTypeObjectDistinction]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+t: type
+t = b.A
+t = b.f # E
+[file b.py]
+class A: pass
+def f() -> None: pass
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:4: error: Incompatible types in assignment (expression has type Callable[[], None], variable has type "type")
+
+[case testSerializeOverloadedVsTypeObjectDistinction]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+t: type
+t = b.A
+t = b.f # E
+[file b.pyi]
+from typing import overload
+class A:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, x: int) -> None: pass
+@overload
+def f() -> None: pass
+@overload
+def f(x: int) -> None: pass
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:4: error: Incompatible types in assignment (expression has type overloaded function, variable has type "type")
+
+[case testSerializeNamedTupleInMethod4]
+from ntcrash import C
+reveal_type(C().a)
+reveal_type(C().b)
+reveal_type(C().c)
+[file ntcrash.py]
+from typing import NamedTuple
+class C:
+    def __init__(self) -> None:
+        A = NamedTuple('A', [('x', int)])
+        self.a = A(0)
+        self.b = A(0)  # type: A
+        self.c = A
+[out1]
+main:2: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
+main:3: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
+main:4: error: Revealed type is 'def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]'
+[out2]
+main:2: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
+main:3: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
+main:4: error: Revealed type is 'def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]'
+
+--
+-- Strict optional
+--
+
+[case testSerializeOptionalType]
+# flags: --strict-optional
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+reveal_type(b.x)
+b.f(b.x)
+[file b.py]
+from typing import Optional
+x: Optional[int]
+def f(x: int) -> None: pass
+[out2]
+tmp/a.py:2: error: Revealed type is 'Union[builtins.int, builtins.None]'
+tmp/a.py:3: error: Argument 1 to "f" has incompatible type "Optional[int]"; expected "int"
+
+--
+-- # type: ignore
+--
+
+[case testSerializeIgnoredUndefinedType]
+import b
+reveal_type(b.x)
+[file b.py]
+x: NonExistent  # type: ignore
+[out1]
+main:2: error: Revealed type is 'Any'
+[out2]
+main:2: error: Revealed type is 'Any'
+
+[case testSerializeIgnoredInvalidType]
+import b
+reveal_type(b.x)
+[file b.py]
+A = 0
+x: A  # type: ignore
+[out1]
+main:2: error: Revealed type is 'A?'
+[out2]
+main:2: error: Revealed type is 'A?'
+
+[case testSerializeIgnoredMissingBaseClass]
+import b
+reveal_type(b.B())
+reveal_type(b.B().x)
+[file b.py]
+class B(A): pass  # type: ignore
+[out1]
+main:2: error: Revealed type is 'b.B'
+main:3: error: Revealed type is 'Any'
+[out2]
+main:2: error: Revealed type is 'b.B'
+main:3: error: Revealed type is 'Any'
+
+[case testSerializeIgnoredInvalidBaseClass]
+import b
+reveal_type(b.B())
+reveal_type(b.B().x)
+[file b.py]
+A = 0
+class B(A): pass  # type: ignore
+[out1]
+main:2: error: Revealed type is 'b.B'
+main:3: error: Revealed type is 'Any'
+[out2]
+main:2: error: Revealed type is 'b.B'
+main:3: error: Revealed type is 'Any'
+
+[case testSerializeIgnoredImport]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+reveal_type(b.m)
+reveal_type(b.x)
+[file b.py]
+import m  # type: ignore
+from m import x  # type: ignore
+[out2]
+tmp/a.py:2: error: Revealed type is 'Any'
+tmp/a.py:3: error: Revealed type is 'Any'
+
+--
+-- TypeVar
+--
+
+[case testSerializeSimpleTypeVar]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+def f(x: b.T) -> b.T: return x
+reveal_type(f)
+[file b.py]
+from typing import TypeVar
+T = TypeVar('T')
+[out2]
+tmp/a.py:3: error: Revealed type is 'def [b.T] (x: b.T`-1) -> b.T`-1'
+
+[case testSerializeBoundedTypeVar]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+def f(x: b.T) -> b.T: return x
+reveal_type(f)
+reveal_type(b.g)
+[file b.py]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+def g(x: T) -> T: return x
+[out2]
+tmp/a.py:3: error: Revealed type is 'def [b.T <: builtins.int] (x: b.T`-1) -> b.T`-1'
+tmp/a.py:4: error: Revealed type is 'def [T <: builtins.int] (x: T`-1) -> T`-1'
+
+[case testSerializeTypeVarWithValues]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+def f(x: b.T) -> b.T: return x
+reveal_type(f)
+reveal_type(b.g)
+[file b.py]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+def g(x: T) -> T: return x
+[out2]
+tmp/a.py:3: error: Revealed type is 'def [b.T in (builtins.int, builtins.str)] (x: b.T`-1) -> b.T`-1'
+tmp/a.py:4: error: Revealed type is 'def [T in (builtins.int, builtins.str)] (x: T`-1) -> T`-1'
+
+[case testSerializeTypeVarInClassBody]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import A
+def f(x: A.T) -> A.T: return x
+reveal_type(f)
+[file b.py]
+from typing import TypeVar
+class A:
+    T = TypeVar('T', int, str)
+[out2]
+tmp/a.py:3: error: Revealed type is 'def [A.T in (builtins.int, builtins.str)] (x: A.T`-1) -> A.T`-1'
+
+--
+-- NewType
+--
+
+[case testSerializeNewType]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+y: b.N
+y = 1
+i = y
+b.x = 1
+b.x = y
+y = b.N(1)
+y = b.N('')
+[file b.py]
+from typing import NewType
+N = NewType('N', int)
+x: N
+[out2]
+tmp/a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "N")
+tmp/a.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "N")
+tmp/a.py:8: error: Argument 1 to "N" has incompatible type "str"; expected "int"
+
+--
+-- Named tuples
+--
+
+[case testSerializeNamedTuple]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+from typing import Tuple
+y: b.N
+t: Tuple[int]
+y = t
+b.x = t
+t = y
+b.x = t
+reveal_type(b.N(x=1))
+reveal_type(y[0])
+b.N(x='')
+[file b.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+x: N
+[out2]
+tmp/a.py:5: error: Incompatible types in assignment (expression has type "Tuple[int]", variable has type "N")
+tmp/a.py:6: error: Incompatible types in assignment (expression has type "Tuple[int]", variable has type "N")
+tmp/a.py:9: error: Revealed type is 'Tuple[builtins.int, fallback=b.N]'
+tmp/a.py:10: error: Revealed type is 'builtins.int'
+tmp/a.py:11: error: Argument 1 to "N" has incompatible type "str"; expected "int"
+
+--
+-- Types and type aliases
+--
+
+[case testSerializeTypeAliases]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+d: b.D
+a: b.A
+u: b.U
+l: b.L
+t: b.T
+c: b.C
+ty: b.Ty
+reveal_type(d)
+reveal_type(a)
+reveal_type(u)
+reveal_type(l)
+reveal_type(t)
+reveal_type(c)
+reveal_type(ty)
+c2: b.C2
+reveal_type(c2)
+ty2: b.Ty2
+reveal_type(ty2)
+[file b.py]
+from typing import Any, Union, List, Tuple, Callable, Type
+class DD: pass
+D = DD
+A = Any
+U = Union[int, str]
+L = List[int]
+T = Tuple[int, str]
+C = Callable[[int], str]
+C2 = Callable[..., str]
+Ty = Type[int]
+Ty2 = type
+[builtins fixtures/list.pyi]
+[out2]
+tmp/a.py:9: error: Revealed type is 'b.DD'
+tmp/a.py:10: error: Revealed type is 'Any'
+tmp/a.py:11: error: Revealed type is 'Union[builtins.int, builtins.str]'
+tmp/a.py:12: error: Revealed type is 'builtins.list[builtins.int]'
+tmp/a.py:13: error: Revealed type is 'Tuple[builtins.int, builtins.str]'
+tmp/a.py:14: error: Revealed type is 'def (builtins.int) -> builtins.str'
+tmp/a.py:15: error: Revealed type is 'Type[builtins.int]'
+tmp/a.py:17: error: Revealed type is 'def (*Any, **Any) -> builtins.str'
+tmp/a.py:19: error: Revealed type is 'builtins.type'
+
+[case testSerializeGenericTypeAlias]
+import b
+from b import X  # Work around https://github.com/python/mypy/issues/2887
+t: b.Y[int]
+reveal_type(t)
+[file b.py]
+from typing import TypeVar, Tuple
+X = TypeVar('X')
+Y = Tuple[X, str]
+[builtins fixtures/tuple.pyi]
+[out1]
+main:4: error: Revealed type is 'Tuple[builtins.int, builtins.str]'
+[out2]
+main:4: error: Revealed type is 'Tuple[builtins.int, builtins.str]'
+
+[case testSerializeTuple]
+# Don't repreat types tested by testSerializeTypeAliases here.
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+reveal_type(b.x)
+reveal_type(b.y)
+[file b.py]
+from typing import Tuple
+x: Tuple[int, ...]
+y: tuple
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:2: error: Revealed type is 'builtins.tuple[builtins.int]'
+tmp/a.py:3: error: Revealed type is 'builtins.tuple[Any]'
+
+[case testSerializeNone]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+reveal_type(b.x)
+[file b.py]
+x: None
+[out2]
+tmp/a.py:2: error: Revealed type is 'builtins.None'
+
+--
+-- TypedDict
+--
+
+[case testSerializeTypedDictInMethod]
+from ntcrash import C
+reveal_type(C().a)
+reveal_type(C().b)
+reveal_type(C().c)
+[file ntcrash.py]
+from mypy_extensions import TypedDict
+class C:
+    def __init__(self) -> None:
+        A = TypedDict('A', {'x': int})
+        self.a = A(x=0)
+        self.b = A(x=0)  # type: A
+        self.c = A
+[builtins fixtures/dict.pyi]
+[out1]
+main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
+main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
+main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
+[out2]
+main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
+main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
+main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
+
+--
+-- Modules
+--
+
+[case testSerializeImport]
+import b
+b.c.f()
+b.c.g()
+[file b.py]
+import c
+[file c.py]
+def f() -> None: pass
+def g(x: int) -> None: pass
+[out1]
+main:3: error: Too few arguments for "g"
+[out2]
+main:3: error: Too few arguments for "g"
+
+[case testSerializeImportAs]
+import b
+b.d.f()
+b.d.g()
+[file b.py]
+import c as d
+[file c.py]
+def f() -> None: pass
+def g(x: int) -> None: pass
+[out1]
+main:3: error: Too few arguments for "g"
+[out2]
+main:3: error: Too few arguments for "g"
+
+[case testSerializeFromImportedClass]
+import b
+b.A(1)
+reveal_type(b.A())
+[file b.py]
+from c import A
+[file c.py]
+class A: pass
+[out1]
+main:2: error: Too many arguments for "A"
+main:3: error: Revealed type is 'c.A'
+[out2]
+main:2: error: Too many arguments for "A"
+main:3: error: Revealed type is 'c.A'
+
+[case testSerializeFromImportedClassAs]
+import b
+b.B(1)
+reveal_type(b.B())
+[file b.py]
+from c import A as B
+[file c.py]
+class A: pass
+[out1]
+main:2: error: Too many arguments for "A"
+main:3: error: Revealed type is 'c.A'
+[out2]
+main:2: error: Too many arguments for "A"
+main:3: error: Revealed type is 'c.A'
+
+[case testSerializeFromImportedModule]
+import b
+b.d.f()
+b.d.g()
+[file b.py]
+from c import d
+[file c/__init__.py]
+[file c/d.py]
+def f() -> None: pass
+def g(x: int) -> None: pass
+[out1]
+main:3: error: Too few arguments for "g"
+[out2]
+main:3: error: Too few arguments for "g"
+
+[case testSerializeQualifiedImport-skip]
+# This fails currently: https://github.com/python/mypy/issues/3274
+import b
+b.c.d.f()
+b.c.d.g()
+[file b.py]
+import c.d
+[file c/__init__.py]
+[file c/d.py]
+def f() -> None: pass
+def g(x: int) -> None: pass
+[out1]
+main:3: error: Too few arguments for "g"
+[out2]
+main:3: error: Too few arguments for "g"
+
+[case testSerializeQualifiedImportAs]
+import b
+b.e.f()
+b.e.g()
+[file b.py]
+import c.d as e
+[file c/__init__.py]
+[file c/d.py]
+def f() -> None: pass
+def g(x: int) -> None: pass
+[out1]
+main:3: error: Too few arguments for "g"
+[out2]
+main:3: error: Too few arguments for "g"
+
+[case testSerialize__init__ModuleImport]
+import b
+b.c.f()
+b.c.g()
+a: b.c.d.A
+reveal_type(a)
+[file b.py]
+import c
+[file c/__init__.py]
+import d
+def f() -> None: pass
+def g(x: int) -> None: pass
+[file d.py]
+class A: pass
+[out1]
+main:3: error: Too few arguments for "g"
+main:5: error: Revealed type is 'd.A'
+[out2]
+main:3: error: Too few arguments for "g"
+main:5: error: Revealed type is 'd.A'
+
+[case testSerializeImportInClassBody]
+import b
+b.A.c.f()
+b.A.c.g()
+[file b.py]
+class A:
+    import c
+[file c.py]
+def f() -> None: pass
+def g(x: int) -> None: pass
+[out1]
+main:3: error: Too few arguments for "g"
+[out2]
+main:3: error: Too few arguments for "g"
+
+[case testSerializeImportedTypeAlias]
+import b
+x: b.B
+reveal_type(x)
+[file b.py]
+from c import B
+[file c.py]
+from typing import Any
+class A: pass
+B = A
+[out1]
+main:3: error: Revealed type is 'c.A'
+[out2]
+main:3: error: Revealed type is 'c.A'
+
+[case testSerializeStarImport]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+b.f(1)
+x: b.A
+reveal_type(x)
+[file b.py]
+from c import *
+[file c.py]
+def f() -> None: pass
+class A: pass
+[out2]
+tmp/a.py:2: error: Too many arguments for "f"
+tmp/a.py:4: error: Revealed type is 'c.A'
+
+[case testSerializeRelativeImport]
+import b.c
+b.c.f(1)
+[file b/__init__.py]
+[file b/c.py]
+from .d import f
+[file b/d.py]
+def f() -> None: pass
+[out1]
+main:2: error: Too many arguments for "f"
+[out2]
+main:2: error: Too many arguments for "f"

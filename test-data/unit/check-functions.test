@@ -254,7 +254,7 @@ class A: pass
 t = None # type: type
 a = None # type: A
 
-a = A # E: Incompatible types in assignment (expression has type "A" (type object), variable has type "A")
+a = A # E: Incompatible types in assignment (expression has type Type[A], variable has type "A")
 t = f # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type "type")
 t = A
 
@@ -1212,7 +1212,7 @@ from typing import Any
 x = None # type: Any
 if x:
     def f(): pass
-def f(): pass # E: Name 'f' already defined
+def f(): pass # E: Name 'f' already defined on line 4
 
 [case testIncompatibleConditionalFunctionDefinition]
 from typing import Any
@@ -1479,7 +1479,7 @@ L = Callable[[Arg(name='x', type=int)], int] # ok
 # I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
 # M = Callable[[Arg(gnome='x', type=int)], int]   E: Invalid type alias   E: Unexpected keyword argument "gnome" for "Arg"
 N = Callable[[Arg(name=None, type=int)], int] # ok
-O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: Type expected within [...] # E: The type List[T] is not generic and not indexable
+O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: Type expected within [...] # E: The type Type[List[Any]] is not generic and not indexable
 P = Callable[[mypy_extensions.VarArg(int)], int] # ok
 Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "type"
 R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "name"
@@ -1835,7 +1835,7 @@ f = g # E: Incompatible types in assignment (expression has type Callable[[Any, 
 
 [case testRedefineFunction2]
 def f() -> None: pass
-def f() -> None: pass # E: Name 'f' already defined
+def f() -> None: pass # E: Name 'f' already defined on line 1
 
 
 -- Special cases
@@ -1932,7 +1932,7 @@ main:3: note: "f" defined here
 
 [case testMagicMethodPositionalOnlyArg]
 class A(object):
-    def __eq__(self, other) -> bool: return True # We are all equal.
+    def __eq__(self, other) -> bool: return True # We are all equal.  # N: "__eq__" of "A" defined here
 
 a = A()
 a.__eq__(a)
@@ -1944,7 +1944,7 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 
 
 class A(object):
-    def __eq__(self, other) -> bool: return True # We are all equal.
+    def __eq__(self, other) -> bool: return True # We are all equal.  # N: "__eq__" of "A" defined here
 
 a = A()
 a.__eq__(a)
@@ -2044,3 +2044,26 @@ bad = make_list()  # E: Need type annotation for variable
 def foo(__b: int, x: int, y: int) -> int: pass
 foo(x=2, y=2)  # E: Missing positional argument
 foo(y=2)  # E: Missing positional arguments
+
+[case testReturnTypeLineNumberWithDecorator]
+def dec(f): pass
+
+@dec
+def test(a: str) -> (str,): # E: Invalid tuple literal type
+    return None
+
+[case testReturnTypeLineNumberNewLine]
+def fn(a: str
+       ) -> badtype: # E: Name 'badtype' is not defined
+    pass
+
+[case testArgumentTypeLineNumberWithDecorator]
+def dec(f): pass
+
+@dec
+def some_method(self: badtype): pass # E: Name 'badtype' is not defined
+
+[case TestArgumentTypeLineNumberNewline]
+def fn(
+        a: badtype) -> None: # E: Name 'badtype' is not defined
+    pass

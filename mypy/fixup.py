@@ -5,8 +5,8 @@ from typing import Any, Dict, Optional
 from mypy.nodes import (
     MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
     TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
-    TypeVarExpr, ClassDef,
-    LDEF, MDEF, GDEF
+    TypeVarExpr, ClassDef, Block,
+    LDEF, MDEF, GDEF, TYPE_ALIAS
 )
 from mypy.types import (
     CallableType, EllipsisType, Instance, Overloaded, TupleType, TypedDictType,
@@ -66,6 +66,10 @@ class NodeFixer(NodeVisitor[None]):
                 info.tuple_type.accept(self.type_fixer)
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
+            if info.declared_metaclass:
+                info.declared_metaclass.accept(self.type_fixer)
+            if info.metaclass_type:
+                info.metaclass_type.accept(self.type_fixer)
         finally:
             self.current_info = save_info
 
@@ -86,6 +90,11 @@ class NodeFixer(NodeVisitor[None]):
                         value.type_override = stnode.type_override
                     elif not self.quick_and_dirty:
                         assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
+                    else:
+                        # We have a missing crossref in quick mode, need to put something
+                        value.node = stale_info()
+                        if value.kind == TYPE_ALIAS:
+                            value.type_override = Instance(stale_info(), [])
             else:
                 if isinstance(value.node, TypeInfo):
                     # TypeInfo has no accept().  TODO: Add it?
@@ -158,6 +167,10 @@ class TypeFixer(TypeVisitor[None]):
             for base in inst.type.bases:
                 if base.type is NOT_READY:
                     base.accept(self)
+        else:
+            # Looks like a missing TypeInfo in quick mode, put something there
+            assert self.quick_and_dirty, "Should never get here in normal mode"
+            inst.type = stale_info()
         for a in inst.args:
             a.accept(self)
 
@@ -263,12 +276,23 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
             return None
         key = rest.pop()
         if key not in names:
+            if not quick_and_dirty:
+                assert key in names, "Cannot find %s for %s" % (key, name)
             return None
-        elif not quick_and_dirty:
-            assert key in names, "Cannot find %s for %s" % (key, name)
         stnode = names[key]
         if not rest:
             return stnode
         node = stnode.node
         assert isinstance(node, TypeInfo)
         names = node.names
+
+
+def stale_info() -> TypeInfo:
+    suggestion = "<stale cache: consider running mypy without --quick>"
+    dummy_def = ClassDef(suggestion, Block([]))
+    dummy_def.fullname = suggestion
+
+    info = TypeInfo(SymbolTable(), dummy_def, "<stale>")
+    info.mro = [info]
+    info.bases = []
+    return info

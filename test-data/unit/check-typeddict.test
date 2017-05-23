@@ -639,7 +639,7 @@ class C:
         A = TypedDict('A', {'x': int})
     def g(self):
         A = TypedDict('A', {'y': int})
-C.A  # E: "C" has no attribute "A"
+C.A  # E: Type[C] has no attribute "A"
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictInFunction]

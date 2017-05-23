@@ -1939,14 +1939,18 @@ class TypeChecker(NodeVisitor[None]):
         """Type check an operator assignment statement, e.g. x += 1."""
         lvalue_type = self.expr_checker.accept(s.lvalue)
         inplace, method = infer_operator_assignment_method(lvalue_type, s.op)
-        rvalue_type, method_type = self.expr_checker.check_op(
-            method, lvalue_type, s.rvalue, s)
-
-        if isinstance(s.lvalue, IndexExpr) and not inplace:
-            self.check_indexed_assignment(s.lvalue, s.rvalue, s.rvalue)
-        else:
+        if inplace:
+            # There is __ifoo__, treat as x = x.__ifoo__(y)
+            rvalue_type, method_type = self.expr_checker.check_op(
+                method, lvalue_type, s.rvalue, s)
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
+        else:
+            # There is no __ifoo__, treat as x = x <foo> y
+            expr = OpExpr(s.op, s.lvalue, s.rvalue)
+            expr.set_line(s)
+            self.check_assignment(lvalue=s.lvalue, rvalue=expr,
+                                  infer_lvalue_type=True, new_syntax=False)
 
     def visit_assert_stmt(self, s: AssertStmt) -> None:
         self.expr_checker.accept(s.expr)

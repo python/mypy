@@ -320,7 +320,7 @@ f(y=0) # E: Unexpected keyword argument "y" for "f"
 [case testKeywordArgumentAndCommentSignature2]
 import typing
 class A:
-    def f(self, x): # type: (int) -> str
+    def f(self, x): # type: (int) -> str  # N: "f" of "A" defined here
         pass
 A().f(x='') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 A().f(x=0)
@@ -359,3 +359,18 @@ f(**c) # E: Keywords must be strings
 def f(**k): pass
 f(*(1, 2))  # E: Too many arguments for "f"
 [builtins fixtures/dict.pyi]
+
+[case testUnexpectedMethodKwargInNestedClass]
+class A:
+    class B:
+        def __init__(self) -> None:  # N: "B" defined here
+            pass
+A.B(x=1)  # E: Unexpected keyword argument "x" for "B"
+
+[case testUnexpectedMethodKwargFromOtherModule]
+import m
+m.A(x=1)  # E: Unexpected keyword argument "x" for "A"
+[file m.py]
+class A:
+    def __init__(self) -> None:  # N: "A" defined here
+        pass

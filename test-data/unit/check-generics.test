@@ -309,7 +309,6 @@ class C:
     def __add__(self, o: 'C') -> 'C': pass
 [out]
 main:7: error: Unsupported operand types for + ("C" and "B")
-main:7: error: Incompatible types in assignment (expression has type "B", target has type "C")
 main:8: error: Invalid index type "C" for A[C]; expected type "B"
 
 [case testOperatorAssignmentWithIndexLvalue2]
@@ -449,7 +448,7 @@ A[int, str, int]() # E: Type application has too many types (2 expected)
 a = None # type: A
 class A: pass
 a[A]()  # E: Value of type "A" is not indexable
-A[A]()  # E: The type "A" is not generic and not indexable
+A[A]()  # E: The type Type[A] is not generic and not indexable
 [out]
 
 [case testTypeApplicationArgTypes]
@@ -505,7 +504,7 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
-type[int] # this was crashing, see #2302 (comment)  # E: The type "type" is not generic and not indexable
+type[int] # this was crashing, see #2302 (comment)  # E: The type Type[type] is not generic and not indexable
 [out]
 
 
@@ -779,7 +778,7 @@ if not isinstance(s, str):
 
 z = None # type: TNode # Same as TNode[Any]
 z.x
-z.foo() # E: Some element of union has no attribute "foo"
+z.foo() # E: Item Node[int] of "Union[Any, Node[int]]" has no attribute "foo"
 
 [builtins fixtures/isinstance.pyi]
 
@@ -1505,7 +1504,7 @@ T = TypeVar('T')
 class C(Generic[T]):
     def __init__(self) -> None: pass
 x = C # type: Callable[[], C[int]]
-y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type C[T], variable has type Callable[[], int])
+y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type Type[C[Any]], variable has type Callable[[], int])
 
 
 -- Special cases

@@ -447,7 +447,7 @@ from foo import *
 from typing import overload
 t, a = None, None # type: (type, A)
 
-a = A # E: Incompatible types in assignment (expression has type "A" (type object), variable has type "A")
+a = A # E: Incompatible types in assignment (expression has type Type[A], variable has type "A")
 t = A
 
 class A:
@@ -1106,7 +1106,7 @@ def f(a: int) -> None: pass
 def f(a: str) -> None: pass
 [out]
 tmp/foo.pyi:2: error: Single overload definition, multiple required
-tmp/foo.pyi:5: error: Name 'f' already defined
+tmp/foo.pyi:5: error: Name 'f' already defined on line 2
 
 [case testOverloadTuple]
 from foo import *
@@ -1136,3 +1136,24 @@ def f(a: Callable[[], int]) -> None: pass
 @overload
 def f(a: str) -> None: pass
 f(0)  # E: No overload variant of "f" matches argument types [builtins.int]
+
+[case testCustomRedefinitionDecorator]
+from typing import Any, Callable, Type
+
+class Chain(object):
+    def chain(self, function: Callable[[Any], int]) -> 'Chain':
+        return self
+
+class Test(object):
+    do_chain = Chain()
+
+    @do_chain.chain
+    def do_chain(self) -> int:
+        return 2
+
+    @do_chain.chain  # E: Name 'do_chain' already defined
+    def do_chain(self) -> int:
+        return 3
+
+t = Test()
+reveal_type(t.do_chain)  # E: Revealed type is '__main__.Chain'

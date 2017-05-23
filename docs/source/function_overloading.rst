@@ -1,3 +1,5 @@
+.. _function-overloading:
+
 Function Overloading
 ====================
 
@@ -20,7 +22,7 @@ You might be tempted to annotate it like so:
                 ...  # Return a sequence of Ts here
             else:
                 raise TypeError(...)
-    
+
 But this is too loose, as it implies that when you pass in an ``int``
 you might sometimes get out a single item and sometimes a sequence.
 The return type depends on the parameter type in a way that can't be

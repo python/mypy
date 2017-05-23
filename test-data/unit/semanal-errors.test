@@ -87,8 +87,8 @@ from typing import overload
 class A: pass
 @overload
 def f(): pass
-@overload # E: "A" expects no type arguments, but 1 given
-def f(x: A[int]) -> None: pass
+@overload
+def f(x: A[int]) -> None: pass # E: "A" expects no type arguments, but 1 given
 def f(*args): pass
 [out]
 
@@ -165,7 +165,7 @@ import typing
 class A: pass
 class A: pass
 [out]
-main:3: error: Name 'A' already defined
+main:3: error: Name 'A' already defined on line 2
 
 [case testMultipleMixedDefinitions]
 import typing
@@ -173,8 +173,8 @@ x = 1
 def x(): pass
 class x: pass
 [out]
-main:3: error: Name 'x' already defined
-main:4: error: Name 'x' already defined
+main:3: error: Name 'x' already defined on line 2
+main:4: error: Name 'x' already defined on line 2
 
 [case testNameNotImported]
 import typing
@@ -1037,13 +1037,13 @@ t = 1 # E: Invalid assignment target
 [case testRedefineTypevar2]
 from typing import TypeVar
 t = TypeVar('t')
-def t(): pass # E: Name 't' already defined
+def t(): pass # E: Name 't' already defined on line 2
 [out]
 
 [case testRedefineTypevar3]
 from typing import TypeVar
 t = TypeVar('t')
-class t: pass # E: Name 't' already defined
+class t: pass # E: Name 't' already defined on line 2
 [out]
 
 [case testRedefineTypevar4]

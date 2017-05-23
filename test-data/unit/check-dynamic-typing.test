@@ -485,7 +485,7 @@ class A:
   def __init__(self, a, b): pass
 [out]
 main:6: error: Too few arguments for "A"
-main:7: error: Incompatible types in assignment (expression has type "A", variable has type Callable[[A], A])
+main:7: error: Incompatible types in assignment (expression has type Type[A], variable has type Callable[[A], A])
 
 [case testUsingImplicitTypeObjectWithIs]
 
