@@ -207,7 +207,7 @@ def f(a):
 def g(a: int) -> int:
     return f(a)
 [file y.py]
-# [[mypy]
+# [mypy]
 # disallow_untyped_defs = False
 def f(a):
     pass
@@ -215,7 +215,7 @@ def g(a: int) -> int:
     return f(a)
 [file z.py]
 #
-# [[mypy]
+# [mypy]
 # disallow_untyped_calls = True
 #
 
