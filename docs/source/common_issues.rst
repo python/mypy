@@ -133,7 +133,7 @@ Without an annotation mypy can't always figure out the precise type of ``a``.
 
 .. code-block:: python
 
-   a: List[int] = []
+   a = [] # type: List[int]
 
 You can use a simple empty list literal in a dynamically typed function (as the
 type of ``a`` would be implicitly ``Any`` and need not be inferred), if type
@@ -210,7 +210,7 @@ Possible strategies in such situations are:
 
   .. code-block:: python
 
-     new_lst: List[A] = [B(), B()]
+     new_lst = [B(), B()] # type: List[A]
      lst = new_lst  # OK
 
 * Make a copy of the right hand side:
@@ -252,10 +252,10 @@ You can give an explicit type for the variable in cases such the above example:
 
 .. code-block:: python
 
-   shape: Shape = Circle()  # The variable s can be any Shape,
-                            # not just Circle
+   shape = Circle() # type: Shape  # The variable s can be any Shape,
+                                   # not just Circle
    ...
-   shape = Triangle()       # OK
+   shape = Triangle()  # OK
 
 Complex type tests
 ------------------
@@ -293,7 +293,7 @@ style anyway).  We can write the above code without a cast by using
 
    def f(o: object) -> None:
        if isinstance(o, int):  # Mypy understands isinstance checks
-           g(o + 1)        # Okay; type of o is inferred as int here
+           g(o + 1)            # Okay; type of o is inferred as int here
            ...
 
 Type inference in mypy is designed to work well in common cases, to be
@@ -438,23 +438,3 @@ Here's the above example modified to use ``MYPY``:
 
    def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
        return [arg]
-
-.. _variable-types:
-
-Variable definition type syntax
--------------------------------
-
-If running a Python older than 3.6, the following type declaration will fail:
-
-.. code-block:: python
-
-   x: List[str] = [] # SyntaxError: invalid syntax
-
-
-You can instead use this format in older Pythons (including 2):
-
-.. code-block:: python
-
-   x = [] # type: List[str]
-
-

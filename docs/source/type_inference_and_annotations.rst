@@ -66,6 +66,8 @@ special type comment after an assignment statement:
 .. code-block:: python
 
    x = 1  # type: Union[int, str]
+   # or, as of Python 3.6:
+   x: Union[int, str] = 1
 
 Without the type comment, the type of ``x`` would be just ``int``. We
 use an annotation to give it a more general type ``Union[int, str]``.
