@@ -432,7 +432,7 @@ class MessageBuilder:
                 if typ_format == '"object"' and \
                         any(type(item) == NoneTyp for item in original_type.items):
                     typ_format = '"None"'
-                self.fail('Element {} of {} has no attribute "{}"'.format(
+                self.fail('Item {} of {} has no attribute "{}"'.format(
                     typ_format, self.format(original_type), member), context)
         return AnyType()
 
