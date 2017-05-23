@@ -1,4 +1,3 @@
-.. _invariance-vs-covariance:
 
 Invariance vs covariance
 ========================
