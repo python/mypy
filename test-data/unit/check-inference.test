@@ -669,14 +669,14 @@ from typing import TypeVar, Union, List
 T = TypeVar('T')
 U = TypeVar('U')
 def f(x: Union[T, int], y: T) -> T: pass
-f(1, 'a')()
-f('a', 1)()
-f('a', 'a')()
-f(1, 1)()
+f(1, 'a')() # E: "str" not callable
+f('a', 1)() # E: "object" not callable
+f('a', 'a')() # E: "str" not callable
+f(1, 1)() # E: "int" not callable
 
 def g(x: Union[T, List[T]]) -> List[T]: pass
 def h(x: List[str]) -> None: pass
-g('a')()
+g('a')() # E: List[str] not callable
 
 # The next line is a case where there are multiple ways to satisfy a constraint
 # involving a Union. Either T = List[str] or T = str would turn out to be valid,
@@ -684,7 +684,8 @@ g('a')()
 # to backtrack later) and defaults to T = <nothing>. The result is an
 # awkward error message. Either a better error message, or simply accepting the
 # call, would be preferable here.
-g(['a'])
+g(['a']) # E: Argument 1 to "g" has incompatible type List[str]; expected List[<nothing>] # N: "List" is invariant --- see http://mypy.readthedocs.io/en/stable/common_issues.html#invariance-vs-covariance # N: Consider using "Sequence" instead, which is covariant
+
 h(g(['a']))
 
 def i(x: Union[List[T], List[U]], y: List[T], z: List[U]) -> None: pass
@@ -692,19 +693,7 @@ a = [1]
 b = ['b']
 i(a, a, b)
 i(b, a, b)
-i(a, b, b)
-[out]
-main:5: error: "str" not callable
-main:6: error: "object" not callable
-main:7: error: "str" not callable
-main:8: error: "int" not callable
-main:12: error: List[str] not callable
-main:20: error: Argument 1 to "g" has incompatible type List[str]; expected List[<nothing>]
-main:20: note: "List" is invariant --- see http://mypy.readthedocs.io/en/stable/common_issues.html#invariance-vs-covariance
-main:20: note: Consider using "Sequence" instead, which is covariant
-main:28: error: Argument 1 to "i" has incompatible type List[int]; expected List[str]
-main:28: note: "List" is invariant --- see http://mypy.readthedocs.io/en/stable/common_issues.html#invariance-vs-covariance
-main:28: note: Consider using "Sequence" instead, which is covariant
+i(a, b, b) # E: Argument 1 to "i" has incompatible type List[int]; expected List[str] # N: "List" is invariant --- see http://mypy.readthedocs.io/en/stable/common_issues.html#invariance-vs-covariance # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 
 [case testCallableListJoinInference]
