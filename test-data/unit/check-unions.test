@@ -303,8 +303,8 @@ def foo(a: Union[A, B, C]):
     if isinstance(a, (B, C)):
         reveal_type(a) # E: Revealed type is 'Union[Tuple[builtins.int, fallback=__main__.B], Tuple[builtins.int, fallback=__main__.C]]'
         a.x
-        a.y # E: Element "B" of "Union[B, C]" has no attribute "y" \
-            # E: Element "C" of "Union[B, C]" has no attribute "y"
+        a.y # E: Item "B" of "Union[B, C]" has no attribute "y" \
+            # E: Item "C" of "Union[B, C]" has no attribute "y"
         b = a # type: Union[B, C]
 [builtins fixtures/isinstance.pyi]
 

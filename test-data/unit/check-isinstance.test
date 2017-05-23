@@ -548,7 +548,7 @@ v = A() # type: Union[A, B, C]
 
 if isinstance(v, (B, C)):
     v.method2(123)
-    v.method3('xyz') # E: Element "B" of "Union[B, C]" has no attribute "method3"
+    v.method3('xyz') # E: Item "B" of "Union[B, C]" has no attribute "method3"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceNeverWidens]
@@ -945,7 +945,7 @@ def bar() -> None:
           if isinstance(x, int):
              x + 1
           else:
-             x.a     # E: Element "str" of "Union[str, A]" has no attribute "a"
+             x.a     # E: Item "str" of "Union[str, A]" has no attribute "a"
           x = 'a'
 
 [builtins fixtures/isinstancelist.pyi]
