@@ -1565,8 +1565,8 @@ class PrettyTypeStrVisitor(TypeStrVisitor):
     def visit_overloaded(self, t: Overloaded) -> str:
         a = []
         for i in t.items():
-            a.append(i.accept(self))
-        return '\n@overload\n'.join(a)
+            a.append('@overload\n' + i.accept(self))
+        return '\n'.join(a)
 
     def visit_callable_type(self, t: CallableType) -> str:
         s = ''
