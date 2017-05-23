@@ -778,7 +778,7 @@ if not isinstance(s, str):
 
 z = None # type: TNode # Same as TNode[Any]
 z.x
-z.foo() # E: Some element of union has no attribute "foo"
+z.foo() # E: Item Node[int] of "Union[Any, Node[int]]" has no attribute "foo"
 
 [builtins fixtures/isinstance.pyi]
 
