@@ -241,6 +241,9 @@ class MessageBuilder:
           None -> None
           callable type -> "" (empty string)
         """
+        ret = self._format_simple(typ, verbosity)
+        if ret == "Module":
+          return ret
         return '"{}"'.format(self._format_simple(typ, verbosity))
 
     def _format_simple(self, typ: Type, verbosity: int = 0) -> str:
