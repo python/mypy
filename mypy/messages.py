@@ -369,7 +369,7 @@ class MessageBuilder:
         different, e.g., in a union, original_type will be the union and typ
         will be the specific item in the union that does not have the member
         attribute.
- 
+
         If member corresponds to an operator, use the corresponding operator
         name in the messages. Return type Any.
         """
