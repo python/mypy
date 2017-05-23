@@ -1586,8 +1586,10 @@ class PrettyTypeStrVisitor(TypeStrVisitor):
 
         if t.definition is not None and t.definition.name() is not None:
             # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
-            if t.arg_names != t.definition.arg_names and len(t.definition.arg_names) > 0:
-                special_arg = t.definition.arg_names[0]
+            definition_args = getattr(t.definition, 'arg_names')
+            if definition_args and t.arg_names != definition_args \
+                    and len(definition_args) > 0:
+                special_arg = definition_args[0]
                 if s != '':
                     s = ', ' + s
                 s = special_arg + s
@@ -1601,6 +1603,7 @@ class PrettyTypeStrVisitor(TypeStrVisitor):
             s = '{} {}'.format(t.variables, s)
 
         return 'def {}'.format(s)
+
 
 class TypeQuery(SyntheticTypeVisitor[T]):
     """Visitor for performing queries of types.
