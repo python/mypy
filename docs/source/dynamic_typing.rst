@@ -17,7 +17,8 @@ dynamically typed by defining it explicitly with the type ``Any``:
 
    s = 1                 # Statically typed (type int)
    d = 1  # type: Any    # Dynamically typed (type Any)
-   s = 'x'               # Type check error
+   s = 'x'               # error: Incompatible types in assignment
+                         # (expression has type "str", variable has type "int")
    d = 'x'               # OK
 
 Operations on Any values
@@ -74,11 +75,13 @@ operations:
 .. code-block:: python
 
     def f(o: object) -> None:
-        o.foo()       # Error!
-        o + 2         # Error!
-        open(o)       # Error!
-        n = 1  # type: int
-        n = o         # Error!
+        o.foo()  # error: "object" has no attribute "foo"
+        o + 2    # error: Unsupported operand types for + ("object" and "int")
+        open(o)  # error: Argument 1 to "open" has incompatible type "object";
+                 # expected "Union[str, bytes, int, _PathLike[Any]]"
+        n = 1    # type: int
+        n = o    # error: Incompatible types in assignment
+                 # (expression has type "object", variable has type "int")
 
 You can use ``cast()`` (see chapter :ref:`casts`) or ``isinstance`` to
 go from a general type such as ``object`` to a more specific

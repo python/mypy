@@ -22,7 +22,7 @@ compatible with all superclasses. All values are compatible with the
 
    a = B() # type: A  # OK (explicit type for a; override type inference)
    print(a.f())       # 3
-   a.g()              # Type check error: A has no method g
+   a.g()              # error: "A" has no attribute "g"
 
 The Any type
 ************
@@ -81,7 +81,7 @@ the error:
        print('Waiting...')
        time.sleep(t)
 
-   if wait(2) > 1:   # Error: can't compare None and int
+   if wait(2) > 1:  # error: "wait" does not return a value
        ...
 
 The ``Any`` type is discussed in more detail in section :ref:`dynamic_typing`.
@@ -104,8 +104,9 @@ The type ``Tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, .
 .. code-block:: python
 
    def f(t: Tuple[int, str]) -> None:
-       t = 1, 'foo'    # OK
-       t = 'foo', 1    # Type check error
+       t = 1, 'foo'  # OK
+       t = 'foo', 1  # error: Incompatible types in assignment
+                     # (expression has type "Tuple[str, int]", variable has type "Tuple[int, str]")
 
 A tuple type of this kind has exactly a specific number of items (2 in
 the above example). Tuples can also be used as immutable,
@@ -119,9 +120,10 @@ purpose. Example:
         for n in t:
             print(n, n ** 2)
 
-    print_squared(())           # OK
-    print_squared((1, 3, 5))    # OK
-    print_squared([1, 2])       # Error: only a tuple is valid
+    print_squared(())         # OK
+    print_squared((1, 3, 5))  # OK
+    print_squared([1, 2])     # error: Argument 1 to "print_squared" has incompatible type List[int];
+                              # expected Tuple[int, ...]
 
 .. note::
 
@@ -173,9 +175,11 @@ Any)`` function signature. Example:
     def arbitrary_call(f: Callable[..., int]) -> int:
         return f('x') + f(y=2)  # OK
 
-    arbitrary_call(ord)   # No static error, but fails at runtime
-    arbitrary_call(open)  # Error: does not return an int
-    arbitrary_call(1)     # Error: 'int' is not callable
+    arbitrary_call(ord)  # No static error, but fails at runtime
+    arbitrary_call(chr)  # error: Argument 1 to "arbitrary_call" has incompatible type
+                         # Callable[[int], str]; expected Callable[..., int]
+    arbitrary_call(1)    # error: Argument 1 to "arbitrary_call" has incompatible type "int";
+                         # expected Callable[..., int]
 
 Lambdas are also supported. The lambda argument and return value types
 cannot be given explicitly; they are always inferred based on context
@@ -228,7 +232,7 @@ corresponding ``Callable``:
                  KwArg(int)],
                 int]
 
-   f: F = func
+   f = func # type: F
 
 Argument specifiers are special function calls that can specify the
 following aspects of an argument:
@@ -333,7 +337,7 @@ narrow down the type to a specific type:
    from typing import Union
 
    def f(x: Union[int, str]) -> None:
-       x + 1     # Error: str + int is not valid
+       x + 1  # error: Unsupported operand types for + ("Union[int, str]" and "int")
        if isinstance(x, int):
            # Here type of x is int.
            x + 1      # OK
@@ -343,7 +347,7 @@ narrow down the type to a specific type:
 
    f(1)    # OK
    f('x')  # OK
-   f(1.1)  # Error
+   f(1.1)  # error: Argument 1 to "f" has incompatible type "float"; expected "Union[int, str]"
 
 .. _optional:
 
@@ -352,9 +356,8 @@ The type of None and optional types
 
 Mypy treats the type of ``None`` as special. ``None`` is a valid value
 for every type, which resembles ``null`` in Java. Unlike Java, mypy
-doesn't treat primitives types
-specially: ``None`` is also valid for primitive types such as ``int``
-and ``float``.
+doesn't treat primitives types specially: ``None`` is also valid for primitive
+types such as ``int`` and ``float``.
 
 .. note::
 
@@ -426,9 +429,9 @@ idiomatic.
 
     ``None`` is also used as the return type for functions that don't
     return a value, i.e. that implicitly return ``None``. Mypy doesn't
-    use ``NoneType`` for this, since it would
-    look awkward, even though that is the real name of the type of ``None``
-    (try ``type(None)`` in the interactive interpreter to see for yourself).
+    use ``NoneType`` for this, since it would look awkward, even though that is
+    the real name of the type of ``None`` (try ``type(None)`` in the interactive
+    interpreter to see for yourself).
 
 .. _strict_optional:
 
@@ -438,9 +441,9 @@ Experimental strict optional type and None checking
 Currently, ``None`` is a valid value for each type, similar to
 ``null`` or ``NULL`` in many languages. However, you can use the
 experimental ``--strict-optional`` command line option to tell mypy
-that types should not include ``None``
-by default. The ``Optional`` type modifier is then used to define
-a type variant that includes ``None``, such as ``Optional[int]``:
+that types should not include ``None`` by default. The ``Optional`` type
+modifier is then used to define a type variant that includes ``None``, such as
+``Optional[int]``:
 
 .. code-block:: python
 
@@ -451,7 +454,7 @@ a type variant that includes ``None``, such as ``Optional[int]``:
 
    def g() -> int:
        ...
-       return None  # Error: None not compatible with int
+       return None  # error: Incompatible return value type (got None, expected "int")
 
 Also, most operations will not be allowed on unguarded ``None``
 or ``Optional`` values:
@@ -459,7 +462,7 @@ or ``Optional`` values:
 .. code-block:: python
 
    def f(x: Optional[int]) -> int:
-       return x + 1  # Error: Cannot add None and int
+       return x + 1  # error: Unsupported operand types for + ("Optional[int]" and "int")
 
 Instead, an explicit ``None`` check is required. Mypy has
 powerful type inference that lets you use regular Python
@@ -528,11 +531,11 @@ Class name forward references
 *****************************
 
 Python does not allow references to a class object before the class is
-defined. Thus this code does not work as expected:
+defined. Thus this code does not work as expected when executed:
 
 .. code-block:: python
 
-   def f(x: A) -> None:  # Error: Name A not defined
+   def f(x: A) -> None:  # NameError: name 'A' not defined
        ....
 
    class A:
@@ -624,9 +627,9 @@ variables replaced with ``Any``. Examples (following `PEP 484
     def dilate(v: Vec[T], scale: T) -> Vec[T]:
         return ((x * scale, y * scale) for x, y in v)
 
-    v1: Vec[int] = []      # Same as Iterable[Tuple[int, int]]
-    v2: Vec = []           # Same as Iterable[Tuple[Any, Any]]
-    v3: Vec[int, int] = [] # Error: Invalid alias, too many type arguments!
+    v1 = [] # type: Vec[int]      # Same as Iterable[Tuple[int, int]]
+    v2 = [] # type: Vec           # Same as Iterable[Tuple[Any, Any]]
+    v3 = [] # type: Vec[int, int] # error: Bad number of arguments for type alias, expected: 1, given: 2
 
 Type aliases can be imported from modules like any names. Aliases can target another
 aliases (although building complex chains of aliases is not recommended, this
@@ -709,12 +712,12 @@ implicitly casting from ``UserId`` where ``int`` is expected. Examples:
     def name_by_id(user_id: UserId) -> str:
         ...
 
-    UserId('user')          # Fails type check
+    UserId('user')         # error: Argument 1 to "UserId" has incompatible type "str"; expected "int"
 
-    name_by_id(42)          # Fails type check
-    name_by_id(UserId(42))  # OK
+    name_by_id(42)         # error: Argument 1 to "name_by_id" has incompatible type "int"; expected "UserId"
+    name_by_id(UserId(42)) # OK
 
-    num = UserId(5) + 1     # type: int
+    num = UserId(5) + 1    # type: int
 
 ``NewType`` accepts exactly two arguments. The first argument must be a string literal
 containing the name of the new type and must equal the name of the variable to which the new
@@ -739,7 +742,9 @@ Example:
     packet = PacketId(100, 100)
     tcp_packet = TcpPacketId(packet)  # OK
 
-    tcp_packet = TcpPacketId(127, 0)  # Fails in type checker and at runtime
+    tcp_packet = TcpPacketId(127, 0)  # error: Too many arguments for "TcpPacketId"
+                                      # error: Argument 1 to "TcpPacketId" has incompatible type "int";
+                                      # expected "PacketId"
 
 Both ``isinstance`` and ``issubclass``, as well as subclassing will fail for
 ``NewType('Derived', Base)`` since function objects don't support these operations.
@@ -774,7 +779,8 @@ Both ``isinstance`` and ``issubclass``, as well as subclassing will fail for
         def name_by_id(user_id: UserId) -> str:
             ...
 
-        name_by_id(3)  # int is not the same as UserId
+        name_by_id(3)  # error: Argument 1 to "name_by_id" has incompatible type "int";
+                       # expected "UserId"
 
 .. _named-tuples:
 
@@ -787,9 +793,11 @@ missing attribute:
 
 .. code-block:: python
 
+    from collections import namedtuple
+
     Point = namedtuple('Point', ['x', 'y'])
     p = Point(x=1, y=2)
-    print(p.z)  # Error: Point has no attribute 'z'
+    print(p.z)  # error: "Point" has no attribute "z"
 
 If you use ``namedtuple`` to define your named tuple, all the items
 are assumed to have ``Any`` types. That is, mypy doesn't know anything
@@ -802,10 +810,10 @@ item types:
 
     Point = NamedTuple('Point', [('x', int),
                                  ('y', int)])
-    p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
+    p = Point(x=1, y='x')  # error: Argument 2 to "Point" has incompatible type "str"; expected "int"
 
-Python 3.6 will have an alternative, class-based syntax for named tuples with types.
-Mypy supports it already:
+Python 3.6 has an alternative, class-based syntax for named tuples with types,
+which Mypy supports:
 
 .. code-block:: python
 
@@ -815,7 +823,7 @@ Mypy supports it already:
         x: int
         y: int
 
-    p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
+    p = Point(x=1, y='x')  # error: Argument 2 to "Point" has incompatible type "str"; expected "int"
 
 .. _type-of-class:
 
@@ -839,14 +847,17 @@ For example, assume the following classes:
 
    class User:
        # Defines fields like name, email
+       ...
 
    class BasicUser(User):
        def upgrade(self):
            """Upgrade to Pro"""
+           ...
 
    class ProUser(User):
        def pay(self):
            """Pay bill"""
+           ...
 
 Note that ``ProUser`` doesn't inherit from ``BasicUser``.
 
@@ -867,6 +878,7 @@ could do would be:
 
    def new_user(user_class: type) -> User:
        # Same  implementation as before
+       ...
 
 This seems reasonable, except that in the following example, mypy
 doesn't see that the ``buyer`` variable has type ``ProUser``:
@@ -874,7 +886,7 @@ doesn't see that the ``buyer`` variable has type ``ProUser``:
 .. code-block:: python
 
    buyer = new_user(ProUser)
-   buyer.pay()  # Rejected, not a method on User
+   buyer.pay()  # error: "User" has no attribute "pay"
 
 However, using ``Type[]`` and a type variable with an upper bound (see
 :ref:`type-variable-upper-bound`) we can do better:
@@ -885,6 +897,7 @@ However, using ``Type[]`` and a type variable with an upper bound (see
 
    def new_user(user_class: Type[U]) -> U:
        # Same  implementation as before
+       ...
 
 Now mypy will infer the correct type of the result when we call
 ``new_user()`` with a specific subclass of ``User``:
@@ -939,7 +952,7 @@ so use ``typing.AnyStr``:
 
    concat('a', 'b')     # Okay
    concat(b'a', b'b')   # Okay
-   concat('a', b'b')    # Error: cannot mix bytes and unicode
+   concat('a', b'b')    # error: Type argument 1 of "concat" has incompatible value "object"
 
 For more details, see :ref:`type-variable-value-restriction`.
 

@@ -34,6 +34,6 @@ any operations on the result. For example:
     from typing import cast, Any
 
     x = 1
-    x + 'x'   # Type check error
+    x + 'x'   # error: Unsupported operand types for + ("int" and "str")
     y = cast(Any, x)
     y + 'x'   # Type check OK (runtime error)

@@ -37,7 +37,7 @@ context results in a type check error:
    def p() -> None:
        print('hello')
 
-   a = p()   # Type check error: p has None return value
+   a = p()  # error: "p" does not return a value
 
 Arguments with default values can be annotated as follows:
 
@@ -63,7 +63,8 @@ more stable.
        1 + 'x'  # No static type error (dynamically typed)
 
    def g() -> None:
-       1 + 'x'  # Type check error (statically typed)
+       1 + 'x'  # Statically typed, resulting in
+                # error: Unsupported operand types for + ("int" and "str")
 
 .. note::
 

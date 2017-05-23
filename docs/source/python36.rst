@@ -45,7 +45,7 @@ Example:
 
        def foo(self) -> None:
            self.x = 0  # OK
-           self.y = 0  # Error: Cannot assign to class variable "y" via instance
+           self.y = 0  # error: Cannot assign to class variable "y" via instance
 
    C.y = 0  # This is OK
 
@@ -88,7 +88,7 @@ asynchronous comprehensions. Mypy fully supports these features, for example:
 
    async def gen() -> AsyncIterator[bytes]:
        lst = [b async for b in gen()]  # Inferred type is "List[bytes]"
-       yield 'no way'  # Error: Incompatible types (got "str", expected "bytes")
+       yield 'no way'  # error: Incompatible types in yield (actual type "str", expected type "bytes")
 
 New named tuple syntax
 ----------------------
