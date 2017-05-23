@@ -154,28 +154,29 @@ class MessageBuilder:
         return self.errors.is_errors()
 
     def report(self, msg: str, context: Context, severity: str,
-               file: str = None, origin: Context = None) -> None:
+               file: str = None, origin: Context = None, strip: bool = True) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
-                               msg.strip(), severity=severity, file=file,
+                               msg.strip() if strip else msg,
+                               severity=severity, file=file,
                                origin_line=origin.get_line() if origin else None)
 
     def fail(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+             origin: Context = None, strip: bool = True) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', file=file, origin=origin)
+        self.report(msg, context, 'error', file=file, origin=origin, strip=strip)
 
     def note(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+             origin: Context = None, strip: bool = True) -> None:
         """Report a note (unless disabled)."""
-        self.report(msg, context, 'note', file=file, origin=origin)
+        self.report(msg, context, 'note', file=file, origin=origin, strip=strip)
 
     def warn(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+             origin: Context = None, strip: bool = True) -> None:
         """Report a warning message (unless disabled)."""
-        self.report(msg, context, 'warning', file=file, origin=origin)
+        self.report(msg, context, 'warning', file=file, origin=origin, strip=strip)
 
     def format(self, typ: Type, verbosity: int = 0) -> str:
         """Convert a type to a relatively short string that is suitable for error messages.
@@ -682,13 +683,15 @@ class MessageBuilder:
         target = self.override_target(name, name_in_super, supertype)
         self.fail('Signature of "{}" incompatible with {}'.format(name, target), context)
         if original is not None:
-            self.note('Signature of "{}" in superclass: "{}"'.format(name,
-                                                                     original.pretty_str()),
-                      context)
+            pretty_str = original.pretty_str().split('\n')
+            self.note('Signature of "{}" in superclass:'.format(name), context)
+            for line in pretty_str:
+                self.note('    {}'.format(line), context, strip=False)
         if override is not None:
-            self.note('Signature of "{}" in subclass:   "{}"'.format(name,
-                                                                     override.pretty_str()),
-                      context)
+            pretty_str = override.pretty_str().split('\n')
+            self.note('Signature of "{}" in subclass:'.format(name), context)
+            for line in pretty_str:
+                self.note('    {}'.format(line), context, strip=False)
 
     def argument_incompatible_with_supertype(
             self, arg_num: int, name: str, name_in_supertype: str,

@@ -1562,6 +1562,12 @@ class PrettyTypeStrVisitor(TypeStrVisitor):
         # Note: This isn't discernable from the None value (for readiblity)
         return "None"
 
+    def visit_overloaded(self, t: Overloaded) -> str:
+        a = []
+        for i in t.items():
+            a.append(i.accept(self))
+        return '\n@overload\n'.join(a)
+
     def visit_callable_type(self, t: CallableType) -> str:
         s = ''
         bare_asterisk = False
