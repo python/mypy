@@ -2313,16 +2313,18 @@ class TypeChecker(NodeVisitor[None]):
             if self.should_suppress_optional_error([subtype]):
                 return False
             extra_info = []  # type: List[str]
+            note_msg = ''
             if subtype_label is not None or supertype_label is not None:
                 subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
                 if subtype_label is not None:
                     extra_info.append(subtype_label + ' ' + subtype_str)
                 if supertype_label is not None:
                     extra_info.append(supertype_label + ' ' + supertype_str)
+                note_msg = make_inferred_type_mismatch_note(msg, context, subtype,
+                                                            supertype, supertype_str)
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
             self.fail(msg, context)
-            note_msg = make_inferred_type_mismatch_note(msg, context, subtype, supertype, supertype_str)
             if note_msg:
                 self.note(note_msg, context)
             return False
@@ -3120,15 +3122,19 @@ def nothing() -> Iterator[None]:
     yield
 
 
-def make_inferred_type_mismatch_note(msg: str, context: Context, subtype: Type, 
+def make_inferred_type_mismatch_note(msg: str, context: Context, subtype: Type,
                                      supertype: Type, supertype_str: str) -> str:
     '''The user does not expect an error if the inferred container type is the same as the return
     type of a function and the argument type(s) are a subtype of the argument type(s) of the
-    return type.
+    return type. This note suggests that they add a type annotation with the return type instead
+    of relying on the inferred type.
     '''
     if (msg.startswith(messages.INCOMPATIBLE_RETURN_VALUE_TYPE) and
+      isinstance(subtype, Instance) and isinstance(supertype, Instance) and
       subtype.type.fullname() == supertype.type.fullname() and
-      subtype.args and supertype.args and context.expr.node.is_inferred):
+      subtype.args and supertype.args and
+      isinstance(context, ReturnStmt) and isinstance(context.expr, NameExpr) and
+      isinstance(context.expr.node, Var) and context.expr.node.is_inferred):
         for subtype_arg, supertype_arg in zip(subtype.args, supertype.args):
             if not is_subtype(subtype_arg, supertype_arg):
                 return ''
