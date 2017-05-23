@@ -95,8 +95,7 @@ classifiers = [
 package_dir = {'mypy': 'mypy'}
 
 scripts = ['scripts/mypy', 'scripts/stubgen']
-if os.name == 'nt':
-    scripts.append('scripts/mypy.bat')
+
 
 # These requirements are used when installing by other means than bdist_wheel.
 # E.g. "pip3 install ." or
@@ -119,6 +118,9 @@ setup(name='mypy',
       package_dir=package_dir,
       py_modules=[],
       packages=['mypy'],
+      entry_points={
+            'console_scripts': [
+                'mypy = mypy:main',]},
       scripts=scripts,
       data_files=data_files,
       classifiers=classifiers,
