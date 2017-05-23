@@ -979,14 +979,11 @@ class SemanticAnalyzer(NodeVisitor):
                 info.fallback_to_any = True
             if (self.options.disallow_implicit_any_types and
                     has_any_from_silent_import(base)):
-                base_name = self.msg.format(base)
                 if isinstance(base_expr, (NameExpr, MemberExpr)):
-                    msg = ("Subclassing type {} that is implicitly converted to {} due to "
-                           "import from unanalyzed module".format(base_expr.name, base_name))
+                    prefix = "Base type {}".format(base_expr.name)
                 else:
-                    msg = ("Subclassing a type that is implicitly converted to {} "
-                           "due to import from unanalyzed module".format(base_name))
-                self.fail(msg, base_expr)
+                    prefix = "Base type"
+                self.msg.implicit_any_from_silent_import(prefix, base, base_expr)
 
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
@@ -1892,6 +1889,16 @@ class SemanticAnalyzer(NodeVisitor):
         if res is None:
             return
         variance, upper_bound = res
+
+        if self.options.disallow_implicit_any_types:
+            for idx, constraint in enumerate(values):
+                if has_any_from_silent_import(constraint):
+                    prefix = "Constraint {}".format(idx + 1)
+                    self.msg.implicit_any_from_silent_import(prefix, constraint, s)
+
+            if has_any_from_silent_import(upper_bound):
+                prefix = "Upper bound of type variable"
+                self.msg.implicit_any_from_silent_import(prefix, upper_bound, s)
 
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)

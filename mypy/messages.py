@@ -855,6 +855,10 @@ class MessageBuilder:
     def redundant_cast(self, typ: Type, context: Context) -> None:
         self.note('Redundant cast to {}'.format(self.format(typ)), context)
 
+    def implicit_any_from_silent_import(self, prefix: str, typ: Type, ctx: Context) -> None:
+        self.fail("{} is implicitly converted to {} due to import from unanalyzed module".format(
+            prefix, self.format(typ)), ctx)
+
     def typeddict_instantiated_with_unexpected_items(self,
                                                      expected_item_names: List[str],
                                                      actual_item_names: List[str],
