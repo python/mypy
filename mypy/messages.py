@@ -364,12 +364,12 @@ class MessageBuilder:
     def has_no_attr(self, original_type: Type, typ: Type, member: str, context: Context) -> Type:
         """Report a missing or non-accessible member.
 
-        original_type is the top-level type on which the error occureed. 
+        original_type is the top-level type on which the error occurred.
         typ is the actual type that is missing the member. These can be
         different, e.g., in a union, original_type will be the union and typ
         will be the specific item in the union that does not have the member
         attribute.
-        
+ 
         If member corresponds to an operator, use the corresponding operator
         name in the messages. Return type Any.
         """
