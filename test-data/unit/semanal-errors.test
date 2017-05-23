@@ -1332,13 +1332,11 @@ main:3: error: Name 'a' already defined
 main:4: error: Name 'a' already defined
 
 [case testUnknownContextDuplicateDef]
-try:
-    from m import A
-except ImportError:
-    class A:
-        pass
+from m import A
+class A:
+    pass
 [file m.py]
 class A:
     pass
 [out]
-main:4: error: Name 'A' already defined (line unavailable; possibly an import)
+main:2: error: Name 'A' already defined (line unavailable; possibly an import)
