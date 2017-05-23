@@ -75,7 +75,7 @@ from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
-from mypy.messages import CANNOT_ASSIGN_TO_TYPE
+from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
@@ -236,6 +236,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.lib_path = lib_path
         self.errors = errors
         self.modules = modules
+        self.msg = MessageBuilder(errors, modules)
         self.missing_modules = missing_modules
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
@@ -978,12 +979,13 @@ class SemanticAnalyzer(NodeVisitor):
                 info.fallback_to_any = True
             if (self.options.disallow_implicit_any_types and
                     has_any_from_silent_import(base)):
+                base_name = self.msg.format(base)
                 if isinstance(base_expr, (NameExpr, MemberExpr)):
-                    msg = ("Subclassing type '{}' that is implicitly converted to '{}' due to "
-                           "import from unanalyzed module".format(base_expr.name, base))
+                    msg = ("Subclassing type {} that is implicitly converted to {} due to "
+                           "import from unanalyzed module".format(base_expr.name, base_name))
                 else:
-                    msg = ("Subclassing a type that is implicitly converted to '{}' "
-                           "due to import from unanalyzed module".format(base))
+                    msg = ("Subclassing a type that is implicitly converted to {} "
+                           "due to import from unanalyzed module".format(base_name))
                 self.fail(msg, base_expr)
 
         # Add 'object' as implicit base if there is no other base class.

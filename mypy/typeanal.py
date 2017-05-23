@@ -736,7 +736,7 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
 def has_any_from_silent_import(t: Type) -> bool:
     """Return true if this type was converted to Any because of a silenced import.
 
-    If type t is was co or is has type arguments that contain such Any type
+    If type t is such Any type or has type arguments that contain such Any type
     this function will return true.
     """
     return t.accept(HasAnyFromSilentImportQuery())
