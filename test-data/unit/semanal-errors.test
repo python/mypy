@@ -1331,7 +1331,7 @@ a = ('spam', 'spam', 'eggs', 'spam')  # type: Tuple[str]
 main:3: error: Name 'a' already defined
 main:4: error: Name 'a' already defined
 
-[case testUnknownContextDuplicateDef]
+[case testDuplicateDefFromImport]
 from m import A
 class A:
     pass
@@ -1339,4 +1339,59 @@ class A:
 class A:
     pass
 [out]
-main:2: error: Name 'A' already defined (line unavailable; possibly an import)
+main:2: error: Name 'A' already defined (possibly by an import)
+
+[case testDuplicateDefDec]
+from typing import Any
+def dec(x: Any) -> Any:
+    return x
+@dec
+def f() -> None:
+    pass
+@dec
+def f() -> None:
+    pass
+[out]
+main:7: error: Name 'f' already defined
+
+[case testDuplicateDefOverload]
+from typing import overload
+if 1:
+    @overload
+    def f(x: int) -> None:
+        pass
+    @overload
+    def f(x: str) -> None:
+        pass
+    def f(x: Any) -> None:
+        pass
+else:
+    def f(x: str) -> None:
+        pass
+[out]
+main:12: error: Name 'f' already defined on line 3
+
+
+[case testDuplicateDefNT]
+from typing import NamedTuple
+N = NamedTuple('N', [('a', int),
+                     ('b', str)])
+
+class N:
+    pass
+[out]
+main:5: error: Name 'N' already defined on line 2
+
+
+[case testDuplicateDefTypedDict]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+
+class Point:
+    pass
+[builtins fixtures/dict.pyi]
+
+[out]
+main:4: error: Name 'Point' already defined on line 2
+
+

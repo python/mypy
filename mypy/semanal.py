@@ -3330,7 +3330,7 @@ class SemanticAnalyzer(NodeVisitor):
             if original_ctx.node and original_ctx.node.get_line() != -1:
                 extra_msg = ' on line {}'.format(original_ctx.node.get_line())
             else:
-                extra_msg = ' (line unavailable; possibly an import)'
+                extra_msg = ' (possibly by an import)'
         else:
             extra_msg = ''
         self.fail("Name '{}' already defined{}".format(name, extra_msg), ctx)
