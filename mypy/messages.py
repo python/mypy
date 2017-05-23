@@ -1000,6 +1000,6 @@ def append_invariance_message(notes: List[str],
                               suggested_alternative: str) -> List[str]:
     notes.append(
         '"' + invariant_type + '" is invariant --- see ' +
-        'http://mypy.readthedocs.io/en/stable/common_issues.html#invariance-vs-covariance')
+        'http://mypy.readthedocs.io/en/stable/variance.html')
     notes.append('Consider using "' + suggested_alternative + '" instead, which is covariant')
     return notes
