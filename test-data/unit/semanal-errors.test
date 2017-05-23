@@ -1330,3 +1330,15 @@ a = ('spam', 'spam', 'eggs', 'spam')  # type: Tuple[str]
 [out]
 main:3: error: Name 'a' already defined
 main:4: error: Name 'a' already defined
+
+[case testUnknownContextDuplicateDef]
+try:
+    from m import A
+except ImportError:
+    class A:
+        pass
+[file m.py]
+class A:
+    pass
+[out]
+main:4: error: Name 'A' already defined (line unavailable; possibly an import)
