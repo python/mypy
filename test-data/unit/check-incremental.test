@@ -325,7 +325,7 @@ const = 3
 [stale mod3]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "Module" has no attribute "mod4"
+tmp/mod1.py:3: error: Module has no attribute "mod4"
 
 [case testIncrementalLongBrokenCascade]
 import mod1
@@ -360,7 +360,7 @@ const = 3
 [stale mod6]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "Module" has no attribute "mod7"
+tmp/mod1.py:3: error: Module has no attribute "mod7"
 
 [case testIncrementalNestedBrokenCascade]
 import mod1
@@ -386,7 +386,7 @@ const = 3
 [stale mod2.mod3]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "Module" has no attribute "mod4"
+tmp/mod1.py:3: error: Module has no attribute "mod4"
 
 [case testIncrementalNestedBrokenCascadeWithType1]
 import mod1, mod2.mod3.mod5
