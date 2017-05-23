@@ -183,7 +183,7 @@ class MessageBuilder:
         Mostly behave like format_simple below, but never return an empty string.
         """
         s = self.format_simple(typ, verbosity)
-        if s != '':
+        if s != '' and s != '""':
             # If format_simple returns a non-trivial result, use that.
             return s
         elif isinstance(typ, FunctionLike):
@@ -241,6 +241,9 @@ class MessageBuilder:
           None -> None
           callable type -> "" (empty string)
         """
+        return '"{}"'.format(self._format_simple(typ, verbosity))
+
+    def _format_simple(self, typ: Type, verbosity: int = 0) -> str:
         if isinstance(typ, Instance):
             itype = typ
             # Get the short name of the type.
@@ -256,7 +259,7 @@ class MessageBuilder:
                 # No type arguments. Place the type name in quotes to avoid
                 # potential for confusion: otherwise, the type name could be
                 # interpreted as a normal word.
-                return '"{}"'.format(base_str)
+                return base_str
             elif itype.type.fullname() == 'builtins.tuple':
                 item_type_str = strip_quotes(self.format(itype.args[0]))
                 return 'Tuple[{}, ...]'.format(item_type_str)
@@ -280,15 +283,15 @@ class MessageBuilder:
                     return '{}[...]'.format(base_str)
         elif isinstance(typ, TypeVarType):
             # This is similar to non-generic instance types.
-            return '"{}"'.format(typ.name)
+            return typ.name
         elif isinstance(typ, TupleType):
             # Prefer the name of the fallback class (if not tuple), as it's more informative.
             if typ.fallback.type.fullname() != 'builtins.tuple':
-                return self.format_simple(typ.fallback)
+                return self._format_simple(typ.fallback)
             items = []
             for t in typ.items:
                 items.append(strip_quotes(self.format(t)))
-            s = '"Tuple[{}]"'.format(', '.join(items))
+            s = 'Tuple[{}]'.format(', '.join(items))
             if len(s) < 400:
                 return s
             else:
@@ -296,11 +299,11 @@ class MessageBuilder:
         elif isinstance(typ, TypedDictType):
             # If the TypedDictType is named, return the name
             if typ.fallback.type.fullname() != 'typing.Mapping':
-                return self.format_simple(typ.fallback)
+                return self._format_simple(typ.fallback)
             items = []
             for (item_name, item_type) in typ.items.items():
                 items.append('{}={}'.format(item_name, strip_quotes(self.format(item_type))))
-            s = '"TypedDict({})"'.format(', '.join(items))
+            s = 'TypedDict({})'.format(', '.join(items))
             return s
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
@@ -308,12 +311,12 @@ class MessageBuilder:
                                  sum(isinstance(t, NoneTyp) for t in typ.items) == 1)
             if print_as_optional:
                 rest = [t for t in typ.items if not isinstance(t, NoneTyp)]
-                return '"Optional[{}]"'.format(strip_quotes(self.format(rest[0])))
+                return 'Optional[{}]'.format(strip_quotes(self.format(rest[0])))
             else:
                 items = []
                 for t in typ.items:
                     items.append(strip_quotes(self.format(t)))
-                s = '"Union[{}]"'.format(', '.join(items))
+                s = 'Union[{}]'.format(', '.join(items))
                 if len(s) < 400:
                     return s
                 else:
@@ -321,7 +324,7 @@ class MessageBuilder:
         elif isinstance(typ, NoneTyp):
             return 'None'
         elif isinstance(typ, AnyType):
-            return '"Any"'
+            return 'Any'
         elif isinstance(typ, DeletedType):
             return '<deleted>'
         elif isinstance(typ, UninhabitedType):
@@ -331,7 +334,7 @@ class MessageBuilder:
                 return '<nothing>'
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(
-                strip_quotes(self.format_simple(typ.item, verbosity)))
+                strip_quotes(self._format_simple(typ.item, verbosity)))
         elif typ is None:
             raise RuntimeError('Type is None')
         else:

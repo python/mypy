@@ -377,7 +377,7 @@ import typing
 assert None + None # Fail
 assert None
 [out]
-main:2: error: Unsupported left operand type for + (None)
+main:2: error: Unsupported left operand type for + ("None")
 
 
 -- Exception handling
@@ -599,9 +599,9 @@ main:7: error: Incompatible redefinition (redefinition with type Callable[[], st
 [case testExceptWithoutType]
 import typing
 try:
-    -None # E: Unsupported operand type for unary - (None)
+    -None # E: Unsupported operand type for unary - ("None")
 except:
-    ~None # E: Unsupported operand type for ~ (None)
+    ~None # E: Unsupported operand type for ~ ("None")
 [builtins fixtures/exception.pyi]
 
 [case testRaiseWithoutArgument]
@@ -1189,7 +1189,7 @@ def g() -> Iterator[List[int]]:
     yield [2, 3, 4]
 def f() -> Iterator[List[int]]:
     yield from g()
-    yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type List[int])
+    yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type "List[int]")
 [builtins fixtures/for.pyi]
 [out]
 
@@ -1429,7 +1429,7 @@ y = 1
 from typing import List
 bs, cs = None, None # type: List[A], List[B]
 *bs, b = bs
-*bs, c = cs  # E: Incompatible types in assignment (expression has type List[B], variable has type List[A])
+*bs, c = cs  # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
 *ns, c = cs
 nc = cs
 

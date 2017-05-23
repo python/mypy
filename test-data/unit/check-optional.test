@@ -2,11 +2,11 @@
 
 [case testImplicitNoneType]
 x = None
-x()  # E: None not callable
+x()  # E: "None" not callable
 
 [case testExplicitNoneType]
 x = None  # type: None
-x()  # E: None not callable
+x()  # E: "None" not callable
 
 [case testNoneMemberOfOptional]
 from typing import Optional
@@ -19,12 +19,12 @@ x = 0  # type: Optional[int]
 [case testNoneNotMemberOfType]
 x = None  # type: int
 [out]
-main:1: error: Incompatible types in assignment (expression has type None, variable has type "int")
+main:1: error: Incompatible types in assignment (expression has type "None", variable has type "int")
 
 [case testTypeNotMemberOfNone]
 x = 0  # type: None
 [out]
-main:1: error: Incompatible types in assignment (expression has type "int", variable has type None)
+main:1: error: Incompatible types in assignment (expression has type "int", variable has type "None")
 
 [case testOptionalNotMemberOfType]
 from typing import Optional
@@ -182,13 +182,13 @@ reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 
 [case testInferOptionalListType]
 x = [None]
-x.append(1)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected None
+x.append(1)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "None"
 [builtins fixtures/list.pyi]
 
 [case testInferNonOptionalListType]
 x = []
 x.append(1)
-x()  # E: List[int] not callable
+x()  # E: "List[int]" not callable
 [builtins fixtures/list.pyi]
 
 [case testInferOptionalDictKeyValueTypes]
@@ -196,13 +196,13 @@ x = {None: None}
 x["bar"] = 1
 [builtins fixtures/dict.pyi]
 [out]
-main:2: error: Invalid index type "str" for Dict[None, None]; expected type None
-main:2: error: Incompatible types in assignment (expression has type "int", target has type None)
+main:2: error: Invalid index type "str" for "Dict[None, None]"; expected type "None"
+main:2: error: Incompatible types in assignment (expression has type "int", target has type "None")
 
 [case testInferNonOptionalDictType]
 x = {}
 x["bar"] = 1
-x()  # E: Dict[str, int] not callable
+x()  # E: "Dict[str, int]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testNoneClassVariable]
@@ -217,7 +217,7 @@ from typing import Optional
 class C:
     x = None  # type: int
     def __init__(self) -> None:
-        self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+        self.x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 [out]
 
 [case testMultipleAssignmentNoneClassVariableInInit]
@@ -225,8 +225,8 @@ from typing import Optional
 class C:
     x, y = None, None  # type: int, str
     def __init__(self) -> None:
-        self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
-        self.y = None  # E: Incompatible types in assignment (expression has type None, variable has type "str")
+        self.x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+        self.y = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str")
 [out]
 
 [case testOverloadWithNone]

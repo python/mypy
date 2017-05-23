@@ -29,7 +29,7 @@ from typing import Dict, Any
 d: Dict[int, str] = {}
 d[42] = 'ab'
 d[42] = 42  # E: Incompatible types in assignment (expression has type "int", target has type "str")
-d['ab'] = 'ab'  # E: Invalid index type "str" for Dict[int, str]; expected type "int"
+d['ab'] = 'ab'  # E: Invalid index type "str" for "Dict[int, str]"; expected type "int"
 [builtins fixtures/dict.pyi]
 [out]
 
@@ -61,29 +61,29 @@ TstInstance().a = 'ab'
 [case testNewSyntaxWithClassVars]
 # flags: --strict-optional --python-version 3.6
 class CCC:
-    a: str = None  # E: Incompatible types in assignment (expression has type None, variable has type "str")
+    a: str = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str")
 [out]
 
 [case testNewSyntaxWithStrictOptional]
 # flags: --strict-optional --python-version 3.6
 strict: int
-strict = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
-strict2: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+strict = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+strict2: int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 [out]
 
 [case testNewSyntaxWithStrictOptionalFunctions]
 # flags: --strict-optional --python-version 3.6
 def f() -> None:
     x: int
-    x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+    x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 [out]
 
 [case testNewSyntaxWithStrictOptionalClasses]
 # flags: --strict-optional --python-version 3.6
 class C:
     def meth(self) -> None:
-        x: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
-        self.x: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+        x: int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+        self.x: int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 [out]
 
 [case testNewSyntaxSpecialAssign]
