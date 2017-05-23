@@ -249,7 +249,11 @@ class B(A):
     def g(self, x: A) -> A: pass # Fail
 [out]
 main:6: error: Signature of "f" incompatible with supertype "A"
+main:6: note: Signature of "f" in superclass: "def f(self, x: __main__.A) -> None"
+main:6: note: Signature of "f" in subclass:   "def f(self, x: __main__.A, y: __main__.A) -> None"
 main:7: error: Signature of "g" incompatible with supertype "A"
+main:7: note: Signature of "g" in superclass: "def g(self, x: __main__.A, y: __main__.B) -> __main__.A"
+main:7: note: Signature of "g" in subclass:   "def g(self, x: __main__.A) -> __main__.A"
 
 [case testMethodOverridingAcrossDeepInheritanceHierarchy1]
 import typing
@@ -856,7 +860,7 @@ class A:
     def g(self) -> None: pass
 
 class B(A):
-    def f(self) -> None: pass  # E: Signature of "f" incompatible with supertype "A"
+    def f(self) -> None: pass
 
     @classmethod
     def g(cls) -> None: pass
@@ -864,6 +868,10 @@ class B(A):
 class C(A):
     @staticmethod
     def f() -> None: pass
+[out]
+main:8: error: Signature of "f" incompatible with supertype "A"
+main:8: note: Signature of "f" in superclass: "def f(cls) -> None"
+main:8: note: Signature of "f" in subclass:   "def f(self) -> None"
 [builtins fixtures/classmethod.pyi]
 
 -- Properties
@@ -1343,11 +1351,14 @@ from typing import overload
 class A:
     def __add__(self, x: int) -> int: pass
 class B(A):
-    @overload  # E: Signature of "__add__" incompatible with supertype "A"
+    @overload
     def __add__(self, x: int) -> int: pass
     @overload
     def __add__(self, x: str) -> str: pass
 [out]
+tmp/foo.pyi:5: error: Signature of "__add__" incompatible with supertype "A"
+tmp/foo.pyi:5: note: Signature of "__add__" in superclass: "def __add__(self, builtins.int) -> builtins.int"
+tmp/foo.pyi:5: note: Signature of "__add__" in subclass:   "Overload(def __add__(self, builtins.int) -> builtins.int, def __add__(self, builtins.str) -> builtins.str)"
 
 [case testOperatorMethodOverrideWideningArgumentType]
 import typing
@@ -1418,6 +1429,8 @@ class B(A):
     def __add__(self, x: type) -> A: pass
 [out]
 tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
+tmp/foo.pyi:8: note: Signature of "__add__" in superclass: "Overload(def __add__(self, builtins.int) -> foo.A, def __add__(self, builtins.str) -> foo.A)"
+tmp/foo.pyi:8: note: Signature of "__add__" in subclass:   "Overload(def __add__(self, builtins.int) -> foo.A, def __add__(self, builtins.str) -> foo.A, def __add__(self, builtins.type) -> foo.A)"
 
 [case testOverloadedOperatorMethodOverrideWithSwitchedItemOrder]
 from foo import *
@@ -1435,6 +1448,8 @@ class B(A):
     def __add__(self, x: 'B') -> 'B': pass
 [out]
 tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
+tmp/foo.pyi:8: note: Signature of "__add__" in superclass: "Overload(def __add__(self, foo.B) -> foo.B, def __add__(self, foo.A) -> foo.A)"
+tmp/foo.pyi:8: note: Signature of "__add__" in subclass:   "Overload(def __add__(self, foo.A) -> foo.A, def __add__(self, foo.B) -> foo.B)"
 
 [case testReverseOperatorMethodArgumentType]
 from typing import Any
@@ -2904,13 +2919,17 @@ class A:
     def c() -> None: pass
 
 class B(A):
-    def a(self) -> None: pass  # E: Signature of "a" incompatible with supertype "A"
+    def a(self) -> None: pass
 
     @classmethod
     def b(cls) -> None: pass
 
     @staticmethod
     def c() -> None: pass
+[out]
+main:11: error: Signature of "a" incompatible with supertype "A"
+main:11: note: Signature of "a" in superclass: "def a() -> None"
+main:11: note: Signature of "a" in subclass:   "def a(self) -> None"
 [builtins fixtures/classmethod.pyi]
 
 [case testTempNode]

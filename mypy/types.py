@@ -1383,7 +1383,7 @@ class TypeTranslator(TypeVisitor[Type]):
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
-    """Visitor for pretty-printing types into strings.
+    """Visitor for printing types into human-readable strings.
 
     This is mostly for debugging/testing.
 
@@ -1550,9 +1550,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
 
 class PrettyTypeStrVisitor(TypeStrVisitor):
-    """Overloaded Visitor for pretty-printing types into user-faceing strings.
+    """Overloaded Visitor for pretty-printing types into strings.
 
-    Attempts to (but usually doesnt) match original formatting
+    Does not preserve original formatting.
 
     Notes:
      - Represent unbound types as Foo? or Foo?[...].
@@ -1566,6 +1566,8 @@ class PrettyTypeStrVisitor(TypeStrVisitor):
         s = ''
         bare_asterisk = False
         for i in range(len(t.arg_types)):
+            if len(t.arg_types) > 5:
+                s += '\n'
             if s != '':
                 s += ', '
             if t.arg_kinds[i] in (ARG_NAMED, ARG_NAMED_OPT) and not bare_asterisk:

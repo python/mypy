@@ -683,7 +683,7 @@ class MessageBuilder:
         if original is not None:
             self.note('Signature of "{}" in superclass: "{}"'.format(name, original.pretty_str()), context)
         if override is not None:
-            self.note('Signature of "{}" in subclass: "{}"'.format(name, override.pretty_str()), context)
+            self.note('Signature of "{}" in subclass:   "{}"'.format(name, override.pretty_str()), context)
 
     def argument_incompatible_with_supertype(
             self, arg_num: int, name: str, name_in_supertype: str,

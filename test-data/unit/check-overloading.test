@@ -787,7 +787,11 @@ class D(A):
     def f(self, x: str) -> str: return ''
 [out]
 tmp/foo.pyi:12: error: Signature of "f" incompatible with supertype "A"
+tmp/foo.pyi:12: note: Signature of "f" in superclass: "Overload(def f(self, x: builtins.int) -> builtins.int, def f(self, x: builtins.str) -> builtins.str)"
+tmp/foo.pyi:12: note: Signature of "f" in subclass:   "Overload(def f(self, x: foo.IntSub) -> builtins.int, def f(self, x: builtins.str) -> builtins.str)"
 tmp/foo.pyi:17: error: Signature of "f" incompatible with supertype "A"
+tmp/foo.pyi:17: note: Signature of "f" in superclass: "Overload(def f(self, x: builtins.int) -> builtins.int, def f(self, x: builtins.str) -> builtins.str)"
+tmp/foo.pyi:17: note: Signature of "f" in subclass:   "Overload(def f(self, x: builtins.int) -> builtins.int, def f(self, x: foo.StrSub) -> builtins.str)"
 
 [case testOverloadingAndDucktypeCompatibility]
 from foo import *
