@@ -155,16 +155,16 @@ import m
 import typing
 
 class A: pass
-m()      # E: Module not callable
-a = m # type: A  # E: Incompatible types in assignment (expression has type Module, variable has type "A")
-m + None # E: Unsupported left operand type for + (Module)
+m()      # E: "Module" not callable
+a = m # type: A  # E: Incompatible types in assignment (expression has type "Module", variable has type "A")
+m + None # E: Unsupported left operand type for + ("Module")
 [file m.py]
 [builtins fixtures/module.pyi]
 
 [case testNameDefinedInDifferentModule]
 import m, n
 import typing
-m.x # E: Module has no attribute "x"
+m.x # E: "Module" has no attribute "x"
 [file m.py]
 y = object()
 [file n.py]
@@ -201,7 +201,7 @@ None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Unsupported left operand type for + (None)
+main:2: error: Unsupported left operand type for + ("None")
 
 [case testTypeCheckWithUnknownModule2]
 import m, nonexistent
@@ -213,7 +213,7 @@ x = 1
 [out]
 main:1: error: Cannot find module named 'nonexistent'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Unsupported left operand type for + (None)
+main:2: error: Unsupported left operand type for + ("None")
 main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testTypeCheckWithUnknownModule3]
@@ -226,7 +226,7 @@ x = 1
 [out]
 main:1: error: Cannot find module named 'nonexistent'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Unsupported left operand type for + (None)
+main:2: error: Unsupported left operand type for + ("None")
 main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testTypeCheckWithUnknownModule4]
@@ -236,7 +236,7 @@ None + ''
 main:1: error: Cannot find module named 'nonexistent'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'another'
-main:2: error: Unsupported left operand type for + (None)
+main:2: error: Unsupported left operand type for + ("None")
 
 [case testTypeCheckWithUnknownModule5]
 import nonexistent as x
@@ -244,7 +244,7 @@ None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Unsupported left operand type for + (None)
+main:2: error: Unsupported left operand type for + ("None")
 
 [case testTypeCheckWithUnknownModuleUsingFromImport]
 from nonexistent import x
@@ -252,7 +252,7 @@ None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Unsupported left operand type for + (None)
+main:2: error: Unsupported left operand type for + ("None")
 
 [case testTypeCheckWithUnknownModuleUsingImportStar]
 from nonexistent import *
@@ -260,7 +260,7 @@ None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Unsupported left operand type for + (None)
+main:2: error: Unsupported left operand type for + ("None")
 
 [case testAccessingUnknownModule]
 import xyz
@@ -330,7 +330,7 @@ import nonexistent
 [out]
 tmp/x.py:1: error: Cannot find module named 'nonexistent'
 tmp/x.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:3: error: Module has no attribute "z"
+main:3: error: "Module" has no attribute "z"
 
 [case testUnknownModuleImportedWithinFunction]
 def f():
@@ -411,14 +411,14 @@ import typing
 __all__ = [1, 2, 3]
 [builtins fixtures/module_all.pyi]
 [out]
-main:2: error: Type of __all__ must be Sequence[str], not List[int]
+main:2: error: Type of __all__ must be "Sequence[str]", not "List[int]"
 
 [case testAllMustBeSequenceStr_python2]
 import typing
 __all__ = [1, 2, 3]
 [builtins_py2 fixtures/module_all_python2.pyi]
 [out]
-main:2: error: Type of __all__ must be Sequence[unicode], not List[int]
+main:2: error: Type of __all__ must be "Sequence[unicode]", not "List[int]"
 
 [case testAllUnicodeSequenceOK_python2]
 import typing
@@ -648,7 +648,7 @@ def f(x: str) -> None: pass
 if object():
     import m
 else:
-    m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+    m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Module")
 [file m.py]
 [builtins fixtures/module.pyi]
 [out]
@@ -673,7 +673,7 @@ def f(x: str) -> None: pass
 None + 1
 [file m/a.py]
 [out]
-tmp/m/__init__.py:1: error: Unsupported left operand type for + (None)
+tmp/m/__init__.py:1: error: Unsupported left operand type for + ("None")
 
 [case testTypeCheckNamedModule2]
 # cmd: mypy -m m.a
@@ -681,7 +681,7 @@ tmp/m/__init__.py:1: error: Unsupported left operand type for + (None)
 [file m/a.py]
 None + 1
 [out]
-tmp/m/a.py:1: error: Unsupported left operand type for + (None)
+tmp/m/a.py:1: error: Unsupported left operand type for + ("None")
 
 [case testTypeCheckNamedModule3]
 # cmd: mypy -m m
@@ -689,7 +689,7 @@ tmp/m/a.py:1: error: Unsupported left operand type for + (None)
 None + 1
 [file m/a.py]
 [out]
-tmp/m/__init__.py:1: error: Unsupported left operand type for + (None)
+tmp/m/__init__.py:1: error: Unsupported left operand type for + ("None")
 
 [case testTypeCheckNamedModule4]
 # cmd: mypy -m m
@@ -704,7 +704,7 @@ None + ''  # Not analyzed.
 [file m.py]
 None + 1
 [out]
-tmp/m.py:1: error: Unsupported left operand type for + (None)
+tmp/m.py:1: error: Unsupported left operand type for + ("None")
 
 [case testTypeCheckNamedModuleWithImportCycle]
 # cmd: mypy -m m.a
@@ -752,7 +752,7 @@ value = 3.2
 [case testSubmoduleImportFromDoesNotAddParents]
 from a import b
 reveal_type(b.value)  # E: Revealed type is 'builtins.str'
-b.c.value  # E: Module has no attribute "c"
+b.c.value  # E: "Module" has no attribute "c"
 a.value  # E: Name 'a' is not defined
 
 [file a/__init__.py]
@@ -853,7 +853,7 @@ bar = parent.unrelated.ShouldNotLoad()
 [builtins fixtures/module.pyi]
 [out]
 tmp/parent/child.py:8: error: Revealed type is 'parent.common.SomeClass'
-tmp/parent/child.py:9: error: Module has no attribute "unrelated"
+tmp/parent/child.py:9: error: "Module" has no attribute "unrelated"
 
 [case testSubmoduleMixingImportFromAndImport2]
 import parent.child
@@ -915,7 +915,7 @@ class z: pass
 [out]
 main:2: error: Incompatible import of "x" (imported name has type "str", local name has type "int")
 main:2: error: Incompatible import of "y" (imported name has type Callable[[], str], local name has type Callable[[], int])
-main:2: error: Incompatible import of "z" (imported name has type Type[b.z], local name has type Type[a.z])
+main:2: error: Incompatible import of "z" (imported name has type "Type[b.z]", local name has type "Type[a.z]")
 
 -- Misc
 

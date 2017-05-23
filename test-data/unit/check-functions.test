@@ -254,7 +254,7 @@ class A: pass
 t = None # type: type
 a = None # type: A
 
-a = A # E: Incompatible types in assignment (expression has type Type[A], variable has type "A")
+a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
 t = f # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type "type")
 t = A
 
@@ -334,10 +334,10 @@ def f(x: C) -> C: pass
 from typing import Any, Callable, List
 def f(fields: List[Callable[[Any], Any]]): pass
 class C: pass
-f([C])  # E: List item 0 has incompatible type
+f([C])  # E: List item 0 has incompatible type ""
 class D:
     def __init__(self, a, b): pass
-f([D])  # E: List item 0 has incompatible type
+f([D])  # E: List item 0 has incompatible type ""
 [builtins fixtures/list.pyi]
 
 [case testSubtypingTypeTypeAsCallable]
@@ -352,7 +352,7 @@ from typing import Callable, Type
 class A: pass
 x = None  # type: Callable[..., A]
 y = None  # type: Type[A]
-y = x  # E: Incompatible types in assignment (expression has type Callable[..., A], variable has type Type[A])
+y = x  # E: Incompatible types in assignment (expression has type Callable[..., A], variable has type "Type[A]")
 
 -- Default argument values
 -- -----------------------
@@ -517,7 +517,7 @@ class A(Generic[t]):
     g = f
 a = None # type: A[B]
 a.g(B())
-a.g(a)   # E: Argument 1 has incompatible type A[B]; expected "B"
+a.g(a)   # E: Argument 1 has incompatible type "A[B]"; expected "B"
 
 [case testInvalidMethodAsDataAttributeInGenericClass]
 from typing import Any, TypeVar, Generic, Callable
@@ -1479,7 +1479,7 @@ L = Callable[[Arg(name='x', type=int)], int] # ok
 # I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
 # M = Callable[[Arg(gnome='x', type=int)], int]   E: Invalid type alias   E: Unexpected keyword argument "gnome" for "Arg"
 N = Callable[[Arg(name=None, type=int)], int] # ok
-O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: Type expected within [...] # E: The type Type[List[Any]] is not generic and not indexable
+O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: Type expected within [...] # E: The type "Type[List[Any]]" is not generic and not indexable
 P = Callable[[mypy_extensions.VarArg(int)], int] # ok
 Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "type"
 R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "name"
@@ -1735,7 +1735,7 @@ f(x=1, y="hello", z=[])
 from typing import Dict
 def f(x, **kwargs): # type: (...) -> None
     success_dict_type = kwargs # type: Dict[str, str]
-    failure_dict_type = kwargs # type: Dict[int, str] # E: Incompatible types in assignment (expression has type Dict[str, Any], variable has type Dict[int, str])
+    failure_dict_type = kwargs # type: Dict[int, str] # E: Incompatible types in assignment (expression has type "Dict[str, Any]", variable has type "Dict[int, str]")
 f(1, thing_in_kwargs=["hey"])
 [builtins fixtures/dict.pyi]
 [out]
@@ -1744,7 +1744,7 @@ f(1, thing_in_kwargs=["hey"])
 from typing import Tuple, Any
 def f(x, *args): # type: (...) -> None
     success_tuple_type = args # type: Tuple[Any, ...]
-    fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type Tuple[Any, ...], variable has type None)
+    fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type "Tuple[Any, ...]", variable has type "None")
 f(1, "hello")
 [builtins fixtures/tuple.pyi]
 [out]

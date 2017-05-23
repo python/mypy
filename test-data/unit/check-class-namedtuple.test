@@ -221,7 +221,7 @@ class MyNamedTuple(NamedTuple):
     a: int
     b: str
 
-MyNamedTuple.x # E: Type[MyNamedTuple] has no attribute "x"
+MyNamedTuple.x # E: "Type[MyNamedTuple]" has no attribute "x"
 
 [case testNewNamedTupleEmptyItems]
 # flags: --python-version 3.6
@@ -439,13 +439,13 @@ class HasNone(NamedTuple):
     y: Optional[int] = None
 
 reveal_type(HasNone(1))  # E: Revealed type is 'Tuple[builtins.int, Union[builtins.int, builtins.None], fallback=__main__.HasNone]'
-HasNone(None)  # E: Argument 1 to "HasNone" has incompatible type None; expected "int"
+HasNone(None)  # E: Argument 1 to "HasNone" has incompatible type "None"; expected "int"
 HasNone(1, y=None)
 HasNone(1, y=2)
 
 class CannotBeNone(NamedTuple):
     x: int
-    y: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+    y: int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 
 [builtins fixtures/list.pyi]
 

@@ -107,7 +107,7 @@ def f(x: object) -> None:
     if isinstance(x, C):
         x.f(1)
         x.f('')
-        x.g() # E: C[Any] has no attribute "g"
+        x.g() # E: "C[Any]" has no attribute "g"
     x.g() # E: "object" has no attribute "g"
 [builtins fixtures/isinstance.pyi]
 [out]
