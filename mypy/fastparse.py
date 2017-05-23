@@ -261,6 +261,10 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         """
         if id == self.options.custom_typing_module:
             return 'typing'
+        elif id == '__builtin__' and self.options.python_version[0] == 2:
+            # HACK: __builtin__ in Python 2 is aliases to builtins. However, the implementation
+            #   is named __builtin__.py (there is another layer of translation elsewhere).
+            return 'builtins'
         return id
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
