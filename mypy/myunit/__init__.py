@@ -120,8 +120,9 @@ class TestCase:
 
     def set_up(self) -> None:
         self.old_cwd = os.getcwd()
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-',
-                dir=os.path.abspath('tmp-test-dirs'))
+                dir=os.path.abspath(os.path.join(root_dir, 'tmp-test-dirs')))
         os.chdir(self.tmpdir.name)
         os.mkdir('tmp')
         if self.suite:
