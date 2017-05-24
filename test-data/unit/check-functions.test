@@ -2068,7 +2068,7 @@ def fn(
         a: badtype) -> None: # E: Name 'badtype' is not defined
     pass
 
-[case testInferredTypeMismatchReturnType]
+[case testInferredTypeSubTypeOfReturnType]
 from typing import Union, Dict, List
 def f() -> List[Union[str, int]]:
     x = ['a']
@@ -2090,17 +2090,21 @@ def i() -> List[Union[int, float]]:
     return x # E: Incompatible return value type (got List[int], expected List[Union[int, float]]) \
 # N: Perhaps you need a type annotation for "x"? Suggestion: List[Union[int, float]]
 
-def j() -> List[Union[int, float]]:
+[builtins fixtures/dict.pyi]
+
+[case testInferredTypeNotSubTypeOfReturnType]
+from typing import Union, List
+def f() -> List[Union[int, float]]:
     x = ['a']
     return x # E: Incompatible return value type (got List[str], expected List[Union[int, float]])
 
-def k() -> List[Union[str, int]]:
+def g() -> List[Union[str, int]]:
     x = ('a', 2)
     return x # E: Incompatible return value type (got "Tuple[str, int]", expected List[Union[str, int]])
 
-[builtins fixtures/dict.pyi]
+[builtins fixtures/list.pyi]
 
-[case testInferredTypeIsObjectNotMatchUnion]
+[case testInferredTypeIsObjectMismatch]
 from typing import Union, Dict, List
 def f() -> Dict[str, Union[str, int]]:
     x = {'a': 'a', 'b': 2}
