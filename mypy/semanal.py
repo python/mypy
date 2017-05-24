@@ -3691,10 +3691,10 @@ class ThirdPass(TraverserVisitor):
         if tdef.info.mro:
             tdef.info.mro = []  # Force recomputation
             calculate_class_mro(tdef, self.fail_blocker)
-        if tdef.analyzed:
+        if tdef.analyzed is not None:
             if isinstance(tdef.analyzed, TypedDictExpr):
                 self.analyze(tdef.analyzed.info.typeddict_type)
-            if isinstance(tdef.analyzed, NamedTupleExpr):
+            elif isinstance(tdef.analyzed, NamedTupleExpr):
                 self.analyze(tdef.analyzed.info.tuple_type)
         super().visit_class_def(tdef)
 

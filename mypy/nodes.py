@@ -754,7 +754,7 @@ class ClassDef(Statement):
         return self.info.is_generic()
 
     def serialize(self) -> JsonDict:
-        # Not serialized: defs, base_type_exprs, decorators
+        # Not serialized: defs, base_type_exprs, decorators, analyzed (for named tuples etc.)
         return {'.class': 'ClassDef',
                 'name': self.name,
                 'fullname': self.fullname,

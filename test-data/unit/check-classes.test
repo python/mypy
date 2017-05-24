@@ -3143,11 +3143,9 @@ reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
 [case testCrashInvalidArgsSyntheticClassSyntax]
 from typing import List, NamedTuple
 from mypy_extensions import TypedDict
-
-class NM(NamedTuple):
-    x: List[int, str] # E: "list" expects 1 type argument, but 2 given
-
 class TD(TypedDict):
+    x: List[int, str] # E: "list" expects 1 type argument, but 2 given
+class NM(NamedTuple):
     x: List[int, str] # E: "list" expects 1 type argument, but 2 given
 
 # These two should never crash, reveals are in the next test
@@ -3159,11 +3157,9 @@ NM(x=[])
 [case testCrashInvalidArgsSyntheticClassSyntaxReveals]
 from typing import List, NamedTuple
 from mypy_extensions import TypedDict
-
-class NM(NamedTuple):
-    x: List[int, str] # E: "list" expects 1 type argument, but 2 given
-
 class TD(TypedDict):
+    x: List[int, str] # E: "list" expects 1 type argument, but 2 given
+class NM(NamedTuple):
     x: List[int, str] # E: "list" expects 1 type argument, but 2 given
 
 x: TD
@@ -3173,16 +3169,16 @@ y1 = NM(x=[])
 reveal_type(x) # E: Revealed type is 'TypedDict(x=builtins.list[Any], _fallback=__main__.TD)'
 reveal_type(x1) # E: Revealed type is 'TypedDict(x=builtins.list[Any], _fallback=typing.Mapping[builtins.str, builtins.list[Any]])'
 reveal_type(y) # E: Revealed type is 'Tuple[builtins.list[Any], fallback=__main__.NM]'
+reveal_type(y1) # E: Revealed type is 'Tuple[builtins.list[Any], fallback=__main__.NM]'
 [builtins fixtures/dict.pyi]
 [out]
 
 [case testCrashInvalidArgsSyntheticFunctionSyntax]
 from typing import List, NewType, NamedTuple
 from mypy_extensions import TypedDict
-
-NT = NewType('NT', List[int, str]) # E: "list" expects 1 type argument, but 2 given
-NM = NamedTuple('NM', [('x', List[int, str])]) # E: "list" expects 1 type argument, but 2 given
 TD = TypedDict('TD', {'x': List[int, str]}) # E: "list" expects 1 type argument, but 2 given
+NM = NamedTuple('NM', [('x', List[int, str])]) # E: "list" expects 1 type argument, but 2 given
+NT = NewType('NT', List[int, str]) # E: "list" expects 1 type argument, but 2 given
 
 # These three should not crash
 TD({'x': []})
@@ -3196,18 +3192,14 @@ NT([])
 [case testCrashForwardSyntheticClassSyntax-skip]
 from typing import NamedTuple
 from mypy_extensions import TypedDict
-
 class A1(NamedTuple):
     b: 'B'
     x: int
-
 class A2(TypedDict):
     b: 'B'
     x: int
-
 class B:
     pass
-
 x: A1
 y: A2
 reveal_type(x.b) # E: Revealed type is '__main__.B'
@@ -3218,13 +3210,10 @@ reveal_type(y['b']) # E: Revealed type is '__main__.B'
 [case testCrashForwardSyntheticFunctionSyntax-skip]
 from typing import NamedTuple
 from mypy_extensions import TypedDict
-
 A1 = NamedTuple('A1', [('b', 'B'), ('x', int)])
 A2 = TypedDict('A2', {'b': 'B', 'x': int})
-
 class B:
     pass
-
 x: A1
 y: A2
 reveal_type(x.b) # E: Revealed type is '__main__.B'
