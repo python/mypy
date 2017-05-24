@@ -819,18 +819,11 @@ class MessageBuilder:
         self.fail('Type argument {} of {} has incompatible value {}'.format(
             index, callable_name(callee), self.format(type)), context)
 
-    def incompatible_anystr_arguments(self, callee: CallableType, type: Type,
-                                      context: Context) -> bool:
-        arg_types = tuple(type.name for type in callee.arg_types)
-        if (arg_types.count('AnyStr') > 1 and isinstance(type, Instance) and
-                type.type.fullname() == 'builtins.object'):
-            self.fail(
-                'Type arguments of {} have incompatible values with expected {}'.format(
-                    callable_name(callee), arg_types), context)
-            self.note('"AnyStr" arguments must be all "str" or all "byte"', context)
-            return True
-        else:
-            return False
+    def incompatible_anystr_arguments(self, callee: CallableType, arg_types: List[str],
+                                      context: Context) -> None:
+        self.fail('Type arguments of {} have incompatible values with expected {}'.format(
+            callable_name(callee), tuple(arg_types)), context)
+        self.note('"AnyStr" arguments must be all "str" or all "bytes"', context)
 
     def overloaded_signatures_overlap(self, index1: int, index2: int,
                                       context: Context) -> None:

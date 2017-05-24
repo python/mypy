@@ -3,7 +3,7 @@ from typing import List, Dict
 import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.expandtype import expand_type
-from mypy.types import Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType
+from mypy.types import Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType, Instance
 from mypy.messages import MessageBuilder
 from mypy.nodes import Context
 
@@ -38,7 +38,10 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
                     types[i] = value
                     break
             else:
-                if not msg.incompatible_anystr_arguments(callable, type, context):
+                arg_types = get_arg_types(callable)
+                if has_anystr_incompatible_args(arg_types, type):
+                    msg.incompatible_anystr_arguments(callable, arg_types, context)
+                else:
                     msg.incompatible_typevar_value(callable, i + 1, type, context)
         upper_bound = callable.variables[i].upper_bound
         if (type and not isinstance(type, PartialType) and
@@ -62,3 +65,23 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
     )
+
+
+def get_arg_types(callee: CallableType) -> List[str]:
+    arg_types = []  # type: List[str]
+    for arg_type in callee.arg_types:
+        if isinstance(arg_type, Instance):
+            arg_types.append(arg_type.type.name())
+        elif isinstance(arg_type, TypeVarType):
+            arg_types.append(arg_type.name)
+        else:
+            arg_types.append(str(arg_type))
+    return arg_types
+
+
+def has_anystr_incompatible_args(arg_types: List[str], type: Type) -> bool:
+    if (arg_types.count('AnyStr') > 1 and isinstance(type, Instance) and
+            type.type.name() == 'object'):
+        return True
+    else:
+        return False
