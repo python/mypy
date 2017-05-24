@@ -78,18 +78,6 @@ files = [
 ]
 
 
-# Used temporarily to demonstrate behavior of the new algorithm; removed in the later commit, and
-# will be eventually replaced by a proper test.
-def recursive_touch(root: str) -> None:
-    try:
-        import pathlib
-    except ImportError:
-        return
-    p = pathlib.Path(root)
-    for test_module in p.glob('**/*.py'):
-        test_module.touch()
-
-
 class TypeCheckSuite(DataSuite):
     def __init__(self, *, update_data: bool = False) -> None:
         self.update_data = update_data
@@ -183,8 +171,6 @@ class TypeCheckSuite(DataSuite):
             # Always set to none so we're forced to reread the module in incremental mode
             sources.append(BuildSource(program_path, module_name,
                                        None if incremental_step else program_text))
-        # Update mtime for all module files to test our behavior when relying on module hashes.
-        recursive_touch('.')
         res = None
         try:
             res = build.build(sources=sources,
