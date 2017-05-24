@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Sequence
 
 import mypy.subtypes
 from mypy.sametypes import is_same_type
@@ -38,9 +38,10 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
                     types[i] = value
                     break
             else:
-                arg_types_str = get_arg_types(callable)
-                if has_anystr_incompatible_args(arg_types_str, type):
-                    msg.incompatible_anystr_arguments(callable, arg_types_str, context)
+                arg_strings = tuple(msg.format(arg_type).replace('"', '')
+                                    for arg_type in callable.arg_types)
+                if has_anystr_incompatible_args(arg_strings, type):
+                    msg.incompatible_anystr_arguments(callable, arg_strings, context)
                 else:
                     msg.incompatible_typevar_value(callable, i + 1, type, context)
         upper_bound = callable.variables[i].upper_bound
@@ -67,26 +68,14 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
     )
 
 
-def get_arg_types(callee: CallableType) -> List[str]:
-    arg_types = []  # type: List[str]
-    for arg_type in callee.arg_types:
-        if isinstance(arg_type, Instance):
-            arg_types.append(arg_type.type.name())
-        elif isinstance(arg_type, TypeVarType):
-            arg_types.append(arg_type.name)
-        else:
-            arg_types.append(str(arg_type))
-    return arg_types
-
-
-def has_anystr_incompatible_args(arg_types: List[str], type: Type) -> bool:
+def has_anystr_incompatible_args(arg_strings: Sequence[str], type: Type) -> bool:
     """Determines if function has a problem with AnyStr arguments.
 
     If the function has more than one AnyStr argument and the solver returns the object type,
     then the function was passed both an "str" and "bytes" argument type.
     """
-    if (arg_types.count('AnyStr') > 1 and isinstance(type, Instance) and
-            type.type.name() == 'object'):
-        return True
-    else:
-        return False
+    if isinstance(type, Instance) and type.type.name() == 'object':
+        for string in arg_strings:
+            if 'AnyStr' in string:
+                return True
+    return False
