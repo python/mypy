@@ -488,3 +488,9 @@ def foo(f: Callable[[], Unchecked]) -> Tuple[Unchecked]:
 [out]
 main:5: error: Return type is implicitly converted to "Tuple[Any]" due to import from unanalyzed module
 main:5: error: Argument 1 to "foo" is implicitly converted to Callable[[], Any] due to import from unanalyzed module
+[case testDisallowImplicitAnySubclassingExplicitAny]
+# flags: --ignore-missing-imports --disallow-implicit-any-types --disallow-subclassing-any
+from typing import Any
+
+class C(Any): # E: Class cannot subclass 'Any' (has type 'Any')
+    pass

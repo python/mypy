@@ -966,8 +966,8 @@ class SemanticAnalyzer(NodeVisitor):
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 # if --disallow-implicit-any-types is set, the issue is reported later
-                if (self.options.disallow_subclassing_any and
-                        not self.options.disallow_implicit_any_types):
+                implicit = self.options.disallow_implicit_any_types and base.is_from_silent_import
+                if self.options.disallow_subclassing_any and not implicit:
                     if isinstance(base_expr, (NameExpr, MemberExpr)):
                         msg = "Class cannot subclass '{}' (has type 'Any')".format(base_expr.name)
                     else:
