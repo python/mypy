@@ -294,6 +294,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('path', str),
                         ('mtime', float),
                         ('size', int),
+                        ('hash', str),
                         ('dependencies', List[str]),  # names of imported modules
                         ('data_mtime', float),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
@@ -766,6 +767,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('path'),
         meta.get('mtime'),
         meta.get('size'),
+        meta.get('hash'),
         meta.get('dependencies', []),
         meta.get('data_mtime'),
         data_json,
@@ -809,8 +811,9 @@ def is_meta_fresh(meta: Optional[CacheMeta], id: str, path: str, manager: BuildM
     # TODO: Share stat() outcome with find_module()
     st = manager.get_stat(path)  # TODO: Errors
     if st.st_mtime != meta.mtime or st.st_size != meta.size:
-        manager.log('Metadata abandoned for {}: file {} is modified'.format(id, path))
-        return False
+        if compute_module_hash(path) != meta.hash:
+            manager.log('Metadata abandoned for {}: file {} is modified'.format(id, path))
+            return False
 
     # It's a match on (id, path, mtime, size).
     # Check data_json; assume if its mtime matches it's good.
@@ -831,6 +834,11 @@ def compute_hash(text: str) -> str:
     # can differ between runs due to hash randomization (enabled by default in Python 3.3).
     # See the note in https://docs.python.org/3/reference/datamodel.html#object.__hash__.
     return hashlib.md5(text.encode('utf-8')).hexdigest()
+
+
+def compute_module_hash(path: str) -> str:
+    with open(path, 'r') as f:
+        return compute_hash(f.read())
 
 
 def write_cache(id: str, path: str, tree: MypyFile,
@@ -925,11 +933,13 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     mtime = st.st_mtime
     size = st.st_size
+    mod_hash = compute_module_hash(path)
     options = manager.options.clone_for_module(id)
     meta = {'id': id,
             'path': path,
             'mtime': mtime,
             'size': size,
+            'hash': mod_hash,
             'data_mtime': data_mtime,
             'dependencies': dependencies,
             'suppressed': suppressed,
