@@ -1893,10 +1893,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType()
 
     def visit_slice_expr(self, e: SliceExpr) -> Type:
+        expected = UnionType.make_union([NoneTyp(), self.named_type('builtins.int')])
         for index in [e.begin_index, e.end_index, e.stride]:
             if index:
                 t = self.accept(index)
-                self.chk.check_subtype(t, self.named_type('builtins.int'),
+                self.chk.check_subtype(t, expected,
                                        index, messages.INVALID_SLICE_INDEX)
         return self.named_type('builtins.slice')
 

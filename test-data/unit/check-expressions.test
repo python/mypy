@@ -998,6 +998,7 @@ a[:o]  # E: Slice index must be an integer or None
 [builtins fixtures/slice.pyi]
 
 [case testNoneSliceBounds]
+# flags: --strict-optional
 from typing import Any
 a = None # type: Any
 a[None:1]
