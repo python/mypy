@@ -2133,12 +2133,30 @@ def f(x: AnyStr, y: AnyStr) -> None: pass
 def g(x: AnyStr, y: AnyStr, z: int) -> None: pass
 f('a', 'b')
 f(b'a', b'b')
-f('a', b'b') # E: Type arguments of "f" have incompatible values with expected ('AnyStr', 'AnyStr') \
+f('a', b'b') # E: Type arguments of "f('AnyStr', 'AnyStr')" have incompatible values \
 # N: "AnyStr" arguments must be all "str" or all "bytes"
 g('a', 'b', 1)
-g('a', b'b', 1) # E: Type arguments of "g" have incompatible values with expected ('AnyStr', 'AnyStr', 'int') \
+g('a', b'b', 1) # E: Type arguments of "g('AnyStr', 'AnyStr', 'int')" have incompatible values \
 # N: "AnyStr" arguments must be all "str" or all "bytes"
-g('a', b'b', 'c') # E: Type arguments of "g" have incompatible values with expected ('AnyStr', 'AnyStr', 'int') \
+g('a', b'b', 'c') # E: Type arguments of "g('AnyStr', 'AnyStr', 'int')" have incompatible values \
 # N: "AnyStr" arguments must be all "str" or all "bytes" \
 # E: Argument 3 to "g" has incompatible type "str"; expected "int"
+
+[case testUnionAnyStrIncompatibleArguments]
+from typing import TypeVar, Union
+AnyStr = TypeVar('AnyStr', bytes, str)
+def f(x: Union[AnyStr, int], y: AnyStr) -> None: pass
+f('a', 'b')
+f(1, 'b')
+f('a', b'b') # E: Type arguments of "f('Union[AnyStr, int]', 'AnyStr')" have incompatible values \
+# N: "AnyStr" arguments must be all "str" or all "bytes"
+
+[case testStarAnyStrIncompatibleArguments]
+from typing import TypeVar, Union
+AnyStr = TypeVar('AnyStr', bytes, str)
+def f(*x: AnyStr) -> None: pass
+f('a')
+f('a', 'b')
+f('a', b'b') # E: Type arguments of "f('AnyStr')" have incompatible values \
+# N: "AnyStr" arguments must be all "str" or all "bytes"
 
