@@ -38,8 +38,8 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
                     types[i] = value
                     break
             else:
-                msg.incompatible_typevar_value(callable, i + 1, type, context)
-
+                if not msg.incompatible_anystr_arguments(callable, type, context):
+                    msg.incompatible_typevar_value(callable, i + 1, type, context)
         upper_bound = callable.variables[i].upper_bound
         if (type and not isinstance(type, PartialType) and
                 not mypy.subtypes.is_subtype(type, upper_bound)):
