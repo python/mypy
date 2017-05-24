@@ -269,7 +269,7 @@ class Errors:
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
             origin_line: if non-None, override current context as origin
-            allow_dups: if True, do not remove duplicate copies of this message (ignored if only_once is True)
+            allow_dups: if True, don't remove duplicate copies of this (ignored if only_once)
         """
         type = self.type_name[-1]  # type: Optional[str]
         if len(self.function_or_member) > 2:

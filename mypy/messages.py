@@ -367,14 +367,15 @@ class MessageBuilder:
         if defn is not None:
             max_overload_lines = 6  # Print up to 3 overloads, then truncate
             pretty_str = defn.pretty_str().split('\n')
-            func_name = defn.name() if callable(defn.name) else defn.name
+            # func_name = defn.name() if callable(getattr(defn, 'name')) else getattr(defn, 'name')
+            func_name = defn.get_name()
             # TODO: Add filename and line number to method message
             self.note('    Method {}:'.format(func_name), context, strip=False)
             for line in pretty_str[:max_overload_lines]:
                 self.note('      {}'.format(line), context, strip=False, allow_dups=True)
             if len(pretty_str) > max_overload_lines:
                 # Each overload takes up 2 lines because of "@overload"
-                additional_overrides = int((len(pretty_str) - max_overload_lines)/2)
+                additional_overrides = int((len(pretty_str) - max_overload_lines) / 2)
                 self.note('      <additional {} overloads omitted>'.format(additional_overrides),
                           context, strip=False, allow_dups=True)
 
