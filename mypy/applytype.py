@@ -38,9 +38,9 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
                     types[i] = value
                     break
             else:
-                arg_types = get_arg_types(callable)
-                if has_anystr_incompatible_args(arg_types, type):
-                    msg.incompatible_anystr_arguments(callable, arg_types, context)
+                arg_types_str = get_arg_types(callable)
+                if has_anystr_incompatible_args(arg_types_str, type):
+                    msg.incompatible_anystr_arguments(callable, arg_types_str, context)
                 else:
                     msg.incompatible_typevar_value(callable, i + 1, type, context)
         upper_bound = callable.variables[i].upper_bound

@@ -1277,7 +1277,8 @@ re.subn(bpat, b'', b'')[0] + b''
 re.subn(bre, lambda m: b'', b'')[0] + b''
 re.subn(bpat, lambda m: b'', b'')[0] + b''
 [out]
-_program.py:7: error: Type argument 1 of "search" has incompatible value "object"
+_program.py:7: error: Type arguments of "search" have incompatible values with expected ('AnyStr', 'AnyStr', 'int')
+_program.py:7: note: "AnyStr" arguments must be all "str" or all "bytes"
 _program.py:9: error: Cannot infer type argument 1 of "search"
 
 [case testReModuleString]
@@ -1301,7 +1302,8 @@ re.subn(spat, '', '')[0] + ''
 re.subn(sre, lambda m: '', '')[0] + ''
 re.subn(spat, lambda m: '', '')[0] + ''
 [out]
-_program.py:7: error: Type argument 1 of "search" has incompatible value "object"
+_program.py:7: error: Type arguments of "search" have incompatible values with expected ('AnyStr', 'AnyStr', 'int')
+_program.py:7: note: "AnyStr" arguments must be all "str" or all "bytes"
 _program.py:9: error: Cannot infer type argument 1 of "search"
 
 [case testListSetitemTuple]
