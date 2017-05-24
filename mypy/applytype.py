@@ -80,6 +80,11 @@ def get_arg_types(callee: CallableType) -> List[str]:
 
 
 def has_anystr_incompatible_args(arg_types: List[str], type: Type) -> bool:
+    """Determines if function has a problem with AnyStr arguments.
+
+    If the function has more than one AnyStr argument and the solver returns the object type,
+    then the function was passed both an "str" and "bytes" argument type.
+    """
     if (arg_types.count('AnyStr') > 1 and isinstance(type, Instance) and
             type.type.name() == 'object'):
         return True
