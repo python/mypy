@@ -1515,6 +1515,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_namedtuple_definition(s)
         self.process_typeddict_definition(s)
         self.process_enum_call(s)
+        self.process_module_assignment(s)
 
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
@@ -2354,6 +2355,24 @@ class SemanticAnalyzer(NodeVisitor):
 
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail('ClassVar can only be used for assignments in class body', context)
+
+    def process_module_assignment(self, s: AssignmentStmt) -> None:
+        """Check if s assigns a module an alias name; if yes, update symbol table."""
+        # TODO support more complex forms of module alias assignment
+        # (e.g. `x, y = (mod1, mod2)`) and aliases not in global scope
+        if (
+                len(s.lvalues) != 1
+                or not isinstance(s.lvalues[0], NameExpr)
+                or not isinstance(s.rvalue, NameExpr)
+                or not self.is_module_scope()
+        ):
+            return
+        rnode = self.lookup(s.rvalue.name, s)
+        if rnode and rnode.kind == MODULE_REF:
+            lnode = self.lookup(s.lvalues[0].name, s)
+            if lnode:
+                lnode.kind = MODULE_REF
+                lnode.node = rnode.node
 
     def process_enum_call(self, s: AssignmentStmt) -> None:
         """Check if s defines an Enum; if yes, store the definition in symbol table."""

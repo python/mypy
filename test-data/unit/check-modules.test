@@ -1416,3 +1416,13 @@ reveal_type(f())  # E: Revealed type is 'types.ModuleType'
 reveal_type(types)  # E: Revealed type is 'types.ModuleType'
 
 [builtins fixtures/module.pyi]
+
+[case testModuleAssignment]
+import m
+m2 = m
+reveal_type(m2.a)  # E: Revealed type is 'builtins.str'
+
+[file m.py]
+a = 'foo'
+
+[builtins fixtures/module.pyi]
