@@ -3232,7 +3232,7 @@ reveal_type(y['b']) # E: Revealed type is '__main__.B'
 [builtins fixtures/dict.pyi]
 [out]
 
--- Dpecial support for six
+-- Special support for six
 -- -----------------------
 
 [case testSixWithMetaclass]
