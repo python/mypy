@@ -598,7 +598,9 @@ C().foo(1)  # The decorator's return type says this should be okay
 from typing import Dict, Sequence
 def f(a: Dict[str, Sequence[int]]) -> None: pass
 a = {'a': [1, 2]}
-f(a) # E: Argument 1 to "f" has incompatible type Dict[str, List[int]]; expected Dict[str, Sequence[int]] # N: "Dict" is invariant --- see http://mypy.readthedocs.io/en/stable/variance.html # N: Consider using "Mapping" instead, which is covariant
+f(a) # E: Argument 1 to "f" has incompatible type Dict[str, List[int]]; expected Dict[str, Sequence[int]] \
+# N: "Dict" is invariant --- see http://mypy.readthedocs.io/en/stable/variance.html \
+# N: Consider using "Mapping" instead, which is covariant
 [builtins fixtures/dict.pyi]
 
 
@@ -606,5 +608,7 @@ f(a) # E: Argument 1 to "f" has incompatible type Dict[str, List[int]]; expected
 from typing import List, Union
 def f(numbers: List[Union[int, float]]) -> None: pass
 a = [1, 2]
-f(a) # E: Argument 1 to "f" has incompatible type List[int]; expected List[Union[int, float]] # N: "List" is invariant --- see http://mypy.readthedocs.io/en/stable/variance.html # N: Consider using "Sequence" instead, which is covariant
+f(a) # E: Argument 1 to "f" has incompatible type List[int]; expected List[Union[int, float]] \
+# N: "List" is invariant --- see http://mypy.readthedocs.io/en/stable/variance.html \
+# N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
