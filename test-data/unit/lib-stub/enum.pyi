@@ -22,7 +22,12 @@ def unique(enumeration: _T) -> _T: pass
 
 class Flag(Enum):
     def __or__(self: _T, other: Union[int, _T]) -> _T: pass
+    def __and__(self: _T, other: Union[int, _T]) -> _T: pass
 
 
 class IntFlag(int, Flag):
     def __and__(self: _T, other: Union[int, _T]) -> _T: pass
+
+class auto(IntFlag):
+    value = ...
+    def __init__(self) -> None: pass

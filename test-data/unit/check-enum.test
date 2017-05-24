@@ -204,6 +204,17 @@ x = x | C.b
 [out]
 main:6: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
+[case testEnumFlagMultiples]
+from enum import Flag, auto
+class Color(Flag):
+    RED = auto()
+    BLUE = auto()
+    GREEN = auto()
+    WHITE = RED | BLUE | GREEN
+x = Color.RED & Color.BLUE
+x = Color.RED or Color.GREEN
+x = Color.RED & Color.WHITE
+
 [case testAnonymousEnum]
 from enum import Enum
 class A:
