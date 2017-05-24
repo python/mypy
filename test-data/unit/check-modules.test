@@ -1426,3 +1426,37 @@ reveal_type(m2.a)  # E: Revealed type is 'builtins.str'
 a = 'foo'
 
 [builtins fixtures/module.pyi]
+
+[case testChainedModuleAssignment]
+import m
+m3 = m2 = m
+reveal_type(m2.a)  # E: Revealed type is 'builtins.str'
+reveal_type(m3.a)  # E: Revealed type is 'builtins.str'
+
+[file m.py]
+a = 'foo'
+
+[builtins fixtures/module.pyi]
+
+[case testMultiModuleAssignment]
+import m, n
+m2, n2, (m3, n3) = m, n, [m, n]
+reveal_type(m2.a)  # E: Revealed type is 'builtins.str'
+reveal_type(n2.b)  # E: Revealed type is 'builtins.str'
+reveal_type(m3.a)  # E: Revealed type is 'builtins.str'
+reveal_type(n3.b)  # E: Revealed type is 'builtins.str'
+
+[file m.py]
+a = 'foo'
+
+[file n.py]
+b = 'bar'
+
+[builtins fixtures/module.pyi]
+
+[case testMultiAssignment]
+m2, n2 = 'foo', 'bar'
+reveal_type(m2)  # E: Revealed type is 'builtins.str'
+reveal_type(n2)  # E: Revealed type is 'builtins.str'
+
+[builtins fixtures/module.pyi]

@@ -2357,22 +2357,39 @@ class SemanticAnalyzer(NodeVisitor):
         self.fail('ClassVar can only be used for assignments in class body', context)
 
     def process_module_assignment(self, s: AssignmentStmt) -> None:
-        """Check if s assigns a module an alias name; if yes, update symbol table."""
-        # TODO support more complex forms of module alias assignment
-        # (e.g. `x, y = (mod1, mod2)`) and aliases not in global scope
-        if (
-                len(s.lvalues) != 1
-                or not isinstance(s.lvalues[0], NameExpr)
-                or not isinstance(s.rvalue, NameExpr)
-                or not self.is_module_scope()
-        ):
+        """Check if s assigns a module an alias name; if so, update symbol table."""
+        # TODO support module alias assignment not in global scope
+        if not self.is_module_scope():
             return
-        rnode = self.lookup(s.rvalue.name, s)
-        if rnode and rnode.kind == MODULE_REF:
-            lnode = self.lookup(s.lvalues[0].name, s)
-            if lnode:
-                lnode.kind = MODULE_REF
-                lnode.node = rnode.node
+        self._process_module_assignment(s.lvalues, s.rvalue, s)
+
+    def _process_module_assignment(
+            self,
+            lvals: List[Expression],
+            rval: Expression,
+            ctx: AssignmentStmt,
+    ) -> None:
+        """Propagate module references across assignments.
+
+        Recursively handles the simple form of iterable unpacking; doesn't
+        handle advanced unpacking with *rest, dictionary unpacking, etc.
+
+        """
+        if all(isinstance(v, (TupleExpr, ListExpr)) for v in lvals + [rval]):
+            litemlists = [v.items for v in cast(List[Union[TupleExpr, ListExpr]], lvals)]
+            ritems = cast(Union[TupleExpr, ListExpr], rval).items
+            for rv, *lvs in zip(ritems, *litemlists):
+                self._process_module_assignment(lvs, rv, ctx)
+        elif isinstance(rval, NameExpr):
+            rnode = self.lookup(rval.name, ctx)
+            if rnode and rnode.kind == MODULE_REF:
+                for lval in lvals:
+                    if not isinstance(lval, NameExpr):
+                        continue
+                    lnode = self.lookup(lval.name, ctx)
+                    if lnode:
+                        lnode.kind = MODULE_REF
+                        lnode.node = rnode.node
 
     def process_enum_call(self, s: AssignmentStmt) -> None:
         """Check if s defines an Enum; if yes, store the definition in symbol table."""
