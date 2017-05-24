@@ -17,3 +17,4 @@ class int:
 class str: pass
 class unicode: pass
 class bytes: pass
+class ellipsis: pass
