@@ -2125,3 +2125,20 @@ def i() -> List[Union[str, int]]:
     return x
 
 [builtins fixtures/dict.pyi]
+
+[case testAnyStrIncompatibleArguments]
+from typing import TypeVar
+AnyStr = TypeVar('AnyStr', bytes, str)
+def f(x: AnyStr, y: AnyStr) -> None: pass
+def g(x: AnyStr, y: AnyStr, z: int) -> None: pass
+f('a', 'b')
+f(b'a', b'b')
+f('a', b'b') # E: Type arguments of "f" have incompatible values with expected ('AnyStr', 'AnyStr') \
+# N: "AnyStr" arguments must be all "str" or all "bytes"
+g('a', 'b', 1)
+g('a', b'b', 1) # E: Type arguments of "g" have incompatible values with expected ('AnyStr', 'AnyStr', 'int') \
+# N: "AnyStr" arguments must be all "str" or all "bytes"
+g('a', b'b', 'c') # E: Type arguments of "g" have incompatible values with expected ('AnyStr', 'AnyStr', 'int') \
+# N: "AnyStr" arguments must be all "str" or all "bytes" \
+# E: Argument 3 to "g" has incompatible type "str"; expected "int"
+
