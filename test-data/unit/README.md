@@ -41,6 +41,7 @@ usually, "E: " is preferred because it makes it easier to associate the
 errors with the code generating them at a glance, and to change the code of
 the test without having to change line numbers in `[out]`
 - an empty `[out]` section has no effect
+- to run just this test, use `pytest -k testNewSyntaxBasics -n0`
 
 
 Fixtures
