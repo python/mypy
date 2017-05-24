@@ -14,22 +14,13 @@ from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 
 
-files = [
-    'diff.test'
-]
-
-
 class ASTDiffSuite(DataSuite):
+    case_files = [
+        'diff.test'
+    ]
+
     def __init__(self, *, update_data: bool) -> None:
         pass
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         first_src = '\n'.join(testcase.input)

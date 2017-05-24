@@ -6,6 +6,7 @@ import posixpath
 import re
 from os import remove, rmdir
 import shutil
+from mypy.test.config import test_data_prefix, test_temp_dir
 
 import pytest  # type: ignore  # no pytest in typeshed
 from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict
@@ -470,14 +471,29 @@ def pytest_pycollect_makeitem(collector: Any, name: str, obj: Any) -> Any:
     return MypyDataSuite(name, parent=collector)
 
 
+# An instance of this class is created for each subclass of DataSuite encountered by pytest;
+# pytest.Class machinery sets instance attribute obj: Type[DataSuite] to that subclass.
+# Beyond this, we should not rely on obj-related machinery, since it's undocumented and implicit.
 class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
+    # Will yield collectors that represent individual case files.
+    def collect(self) -> Iterator['MypyDataCaseFile']:
+        for case_file in self.obj.case_files:
+            yield MypyDataCaseFile(case_file, self)
+
+
+# An instance of this class is tied (via .name and .parent) to a specific case file.
+class MypyDataCaseFile(pytest.Collector):  # type: ignore  # inheriting from Any
     def collect(self) -> Iterator['MypyDataCase']:
-        for case in self.obj.cases():
+        for case in parse_test_cases(os.path.join(test_data_prefix, self.name),
+                                     None, test_temp_dir, True):
             yield MypyDataCase(case.name, self, case)
 
 
+# An instance of this class is tied (via .obj) to a specific case.
+# Note that despite the use of the obj attribute, the obj-related pytest machinery is not invoked.
+# TODO: rename obj into case.
 class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
-    def __init__(self, name: str, parent: MypyDataSuite, obj: DataDrivenTestCase) -> None:
+    def __init__(self, name: str, parent: MypyDataCaseFile, obj: DataDrivenTestCase) -> None:
         self.skip = False
         if name.endswith('-skip'):
             self.skip = True
@@ -490,7 +506,7 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
         if self.skip:
             pytest.skip()
         update_data = self.config.getoption('--update-data', False)
-        self.parent.obj(update_data=update_data).run_case(self.obj)
+        self.parent.parent.obj(update_data=update_data).run_case(self.obj)
 
     def setup(self) -> None:
         self.obj.set_up()
@@ -516,9 +532,7 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
 
 
 class DataSuite:
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        return []
+    case_files = []  # type: List[str]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         raise NotImplementedError

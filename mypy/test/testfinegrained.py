@@ -29,22 +29,13 @@ from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type
 
 
-files = [
-    'fine-grained.test'
-]
-
-
 class FineGrainedSuite(DataSuite):
+    case_files = [
+        'fine-grained.test'
+    ]
+
     def __init__(self, *, update_data: bool) -> None:
         pass
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         main_src = '\n'.join(testcase.input)
