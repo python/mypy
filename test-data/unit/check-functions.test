@@ -2072,11 +2072,13 @@ def fn(
 from typing import Union, Dict, List
 def f() -> List[Union[int, str]]:
     x = ['a']
-    return x # E: Incompatible return value type (got List[str], expected List[Union[int, str]]) # N: Perhaps a type annotation is missing here? Suggestion: List[Union[int, str]]
+    return x # E: Incompatible return value type (got List[str], expected List[Union[int, str]]) \
+# N: Perhaps a type annotation is missing here? Suggestion: List[Union[int, str]]
 
 def g() -> Dict[str, Union[int, str]]:
     x = {'a': 'a'}
-    return x # E: Incompatible return value type (got Dict[str, str], expected Dict[str, Union[int, str]]) # N: Perhaps a type annotation is missing here? Suggestion: Dict[str, Union[int, str]]
+    return x # E: Incompatible return value type (got Dict[str, str], expected Dict[str, Union[int, str]]) \
+# N: Perhaps a type annotation is missing here? Suggestion: Dict[str, Union[int, str]]
 
 def h() -> List[Union[int, float]]:
     x = ['a']
@@ -2084,6 +2086,7 @@ def h() -> List[Union[int, float]]:
 
 def i() -> List[Union[int, float]]:
     x = [1] # Type: List[int]
-    return x # E: Incompatible return value type (got List[int], expected List[Union[int, float]]) # N: Perhaps a type annotation is missing here? Suggestion: List[Union[int, float]]
+    return x # E: Incompatible return value type (got List[int], expected List[Union[int, float]]) \
+# N: Perhaps a type annotation is missing here? Suggestion: List[Union[int, float]]
 
 [builtins fixtures/dict.pyi]
