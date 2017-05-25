@@ -1453,10 +1453,3 @@ a = 'foo'
 b = 'bar'
 
 [builtins fixtures/module.pyi]
-
-[case testMultiAssignment]
-m2, n2 = 'foo', 'bar'
-reveal_type(m2)  # E: Revealed type is 'builtins.str'
-reveal_type(n2)  # E: Revealed type is 'builtins.str'
-
-[builtins fixtures/module.pyi]
