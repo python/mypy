@@ -214,7 +214,7 @@ name_by_id(UserId(42))
 id = UserId(5)
 num = id + 1
 
-[file m.py.next]
+[file m.py.2]
 from typing import NewType
 
 UserId = NewType('UserId', int)

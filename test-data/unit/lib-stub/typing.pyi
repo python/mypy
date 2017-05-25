@@ -14,7 +14,6 @@ TypeVar = 0
 Generic = 0
 Tuple = 0
 Callable = 0
-builtinclass = 0
 _promote = 0
 NamedTuple = 0
 Type = 0

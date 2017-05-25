@@ -87,8 +87,8 @@ from typing import overload
 class A: pass
 @overload
 def f(): pass
-@overload # E: "A" expects no type arguments, but 1 given
-def f(x: A[int]) -> None: pass
+@overload
+def f(x: A[int]) -> None: pass # E: "A" expects no type arguments, but 1 given
 def f(*args): pass
 [out]
 

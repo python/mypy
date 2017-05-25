@@ -44,6 +44,7 @@ from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
+from mypy.funcplugins import get_function_plugin_callbacks, PluginCallback
 
 from mypy import experiments
 
@@ -103,6 +104,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     type_context = None  # type: List[Optional[Type]]
 
     strfrm_checker = None  # type: StringFormatterChecker
+    function_plugins = None  # type: Dict[str, PluginCallback]
 
     def __init__(self,
                  chk: 'mypy.checker.TypeChecker',
@@ -112,6 +114,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.msg = msg
         self.type_context = [None]
         self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
+        self.function_plugins = get_function_plugin_callbacks(self.chk.options.python_version)
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
@@ -198,7 +201,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 isinstance(callee_type, CallableType)
                 and callee_type.implicit):
             return self.msg.untyped_function_call(callee_type, e)
-        ret_type = self.check_call_expr_with_callee_type(callee_type, e)
+        if not isinstance(e.callee, RefExpr):
+            fullname = None
+        else:
+            fullname = e.callee.fullname
+        ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname)
         if isinstance(e.callee, RefExpr) and e.callee.fullname in ('builtins.isinstance',
                                                                    'builtins.issubclass'):
             for expr in mypy.checker.flatten(e.args[1]):
@@ -339,21 +346,44 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                                        list(full_item_types))
                                 del partial_types[var]
 
+    def apply_function_plugin(self,
+                              arg_types: List[Type],
+                              inferred_ret_type: Type,
+                              arg_kinds: List[int],
+                              formal_to_actual: List[List[int]],
+                              args: List[Expression],
+                              num_formals: int,
+                              fullname: Optional[str]) -> Type:
+        """Use special case logic to infer the return type for of a particular named function.
+
+        Return the inferred return type.
+        """
+        formal_arg_types = [[] for _ in range(num_formals)]  # type: List[List[Type]]
+        formal_arg_exprs = [[] for _ in range(num_formals)]  # type: List[List[Expression]]
+        for formal, actuals in enumerate(formal_to_actual):
+            for actual in actuals:
+                formal_arg_types[formal].append(arg_types[actual])
+                formal_arg_exprs[formal].append(args[actual])
+        return self.function_plugins[fullname](
+            formal_arg_types, formal_arg_exprs, inferred_ret_type, self.chk.named_generic_type)
+
     def check_call_expr_with_callee_type(self, callee_type: Type,
-                                         e: CallExpr) -> Type:
+                                         e: CallExpr, callable_name: Optional[str]) -> Type:
         """Type check call expression.
 
         The given callee type overrides the type of the callee
         expression.
         """
         return self.check_call(callee_type, e.args, e.arg_kinds, e,
-                               e.arg_names, callable_node=e.callee)[0]
+                               e.arg_names, callable_node=e.callee,
+                               callable_name=callable_name)[0]
 
     def check_call(self, callee: Type, args: List[Expression],
                    arg_kinds: List[int], context: Context,
                    arg_names: List[str] = None,
                    callable_node: Expression = None,
-                   arg_messages: MessageBuilder = None) -> Tuple[Type, Type]:
+                   arg_messages: MessageBuilder = None,
+                   callable_name: Optional[str] = None) -> Tuple[Type, Type]:
         """Type check a call.
 
         Also infer type arguments if the callee is a generic function.
@@ -420,6 +450,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if callable_node:
                 # Store the inferred callable type.
                 self.chk.store_type(callable_node, callee)
+            if callable_name in self.function_plugins:
+                ret_type = self.apply_function_plugin(
+                    arg_types, callee.ret_type, arg_kinds, formal_to_actual,
+                    args, len(callee.arg_types), callable_name)
+                callee = callee.copy_modified(ret_type=ret_type)
             return callee.ret_type, callee
         elif isinstance(callee, Overloaded):
             # Type check arguments in empty context. They will be checked again
