@@ -287,8 +287,8 @@ class C:
     def __aenter__(self) -> int: pass
     async def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
-    async with C() as x:  # E: Incompatible types in "async with" for __aenter__ (actual type "int", expected type Awaitable[Any])\
-                          # N: 'builtins.int' missing following 'typing.Awaitable' protocol members:\
+    async with C() as x:  # E: Incompatible types in "async with" for __aenter__ (actual type "int", expected type Awaitable[Any]) \
+                          # N: 'builtins.int' missing following 'typing.Awaitable' protocol members: \
                           # N: __await__
         pass
 [builtins fixtures/async_await.pyi]
@@ -311,8 +311,8 @@ class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> int: pass
 async def f() -> None:
-    async with C() as x: # E: Incompatible types in "async with" for __aexit__ (actual type "int", expected type Awaitable[Any])\
-                         # N: 'builtins.int' missing following 'typing.Awaitable' protocol members:\
+    async with C() as x: # E: Incompatible types in "async with" for __aexit__ (actual type "int", expected type Awaitable[Any]) \
+                         # N: 'builtins.int' missing following 'typing.Awaitable' protocol members: \
                          # N: __await__
         pass
 [builtins fixtures/async_await.pyi]
@@ -637,14 +637,14 @@ def plain_host_generator() -> Generator[str, None, None]:
 
 async def plain_host_coroutine() -> None:
     x = 0
-    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type Awaitable[Any])\
-                                 # N: 'typing.Generator' missing following 'typing.Awaitable' protocol members:\
+    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type Awaitable[Any]) \
+                                 # N: 'typing.Generator' missing following 'typing.Awaitable' protocol members: \
                                  # N: __await__
     x = await plain_coroutine()
     x = await decorated_generator()
     x = await decorated_coroutine()
-    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type Awaitable[Any])\
-                                # N: '__main__.It' missing following 'typing.Awaitable' protocol members:\
+    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type Awaitable[Any]) \
+                                # N: '__main__.It' missing following 'typing.Awaitable' protocol members: \
                                 # N: __await__
     x = await other_coroutine()
 
@@ -662,14 +662,14 @@ def decorated_host_generator() -> Generator[str, None, None]:
 @coroutine
 async def decorated_host_coroutine() -> None:
     x = 0
-    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type Awaitable[Any])\
-                                 # N: 'typing.Generator' missing following 'typing.Awaitable' protocol members:\
+    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type Awaitable[Any]) \
+                                 # N: 'typing.Generator' missing following 'typing.Awaitable' protocol members: \
                                  # N: __await__
     x = await plain_coroutine()
     x = await decorated_generator()
     x = await decorated_coroutine()
-    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type Awaitable[Any])\
-                                # N: '__main__.It' missing following 'typing.Awaitable' protocol members:\
+    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type Awaitable[Any]) \
+                                # N: '__main__.It' missing following 'typing.Awaitable' protocol members: \
                                 # N: __await__
     x = await other_coroutine()
 
