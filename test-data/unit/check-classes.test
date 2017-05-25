@@ -1665,6 +1665,49 @@ class D:
 main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B"
 main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C"
 
+[case testSetAttr]
+from typing import Union
+class A:
+    def __setattr__(self, name: str, value: Any) -> None: ...
+
+a = A()
+a.test = 'hello'
+
+class B:
+   def __setattr__(self, name: str, value: Union[int, str]) -> None: ...
+
+b = B()
+b.both = 1
+b.work = '2'
+
+class C:
+    def __setattr__(self, name: str, value: str) -> None: ...
+
+c = C()
+c.fail = 4
+[out]
+main:19: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case test testAttributes]
+class A:
+    def __setattr__(self, name: str, value: Any) -> None: ...
+    def __getattr__(self, name: str) -> Any: ...
+a = A()
+a.test = 4
+t = a.test
+
+class B:
+    def __setattr__(self, name: str, value: int) -> None: ...
+    def __getattr__(self, name: str) -> str: ...
+integer = None  # type: int
+b = B()
+b.at = '3'
+integer = b.at
+[out]
+main:13: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:14: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+
 
 -- CallableType objects
 -- ----------------

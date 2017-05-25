@@ -142,6 +142,13 @@ When you're puzzled or when things are complicated
    reveal_type(c)  # -> error: Revealed type is 'builtins.list[builtins.str]'
    print(c)  # -> [4] the object is not cast
 
+   # if you want dynamic attributes on your class, have it override __setattr__ in a stub
+   # or in your source code.
+   class A:
+       # this will allow assignment to any A.x, if x is the same type as `value`
+       def __setattr__(self, name: str, value: int) -> None: ...
+   a.foo = bar() # works if bar returns int, fails otherwise
+
    # TODO: explain "Need type annotation for variable" when
    # initializing with None or an empty container
 
