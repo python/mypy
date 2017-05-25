@@ -89,9 +89,12 @@ from mypy.typeanal import (
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
-from mypy.options import Options
 from mypy import join
 
+# Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
+MYPY = False
+if MYPY:
+    from mypy.options import Options
 
 T = TypeVar('T')
 
@@ -197,7 +200,7 @@ class SemanticAnalyzer(NodeVisitor):
     # Type variables bound by the current scope, be it class or function
     tvar_scope = None  # type: TypeVarScope
     # Per-module options
-    options = None  # type: Options
+    options = None  # type: 'Options'
 
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
@@ -241,7 +244,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
 
-    def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
+    def visit_file(self, file_node: MypyFile, fnam: str, options: 'Options') -> None:
         self.options = options
         self.errors.set_file(fnam, file_node.fullname())
         self.cur_mod_node = file_node
@@ -301,7 +304,7 @@ class SemanticAnalyzer(NodeVisitor):
                         self.accept(d)
 
     @contextmanager
-    def file_context(self, file_node: MypyFile, fnam: str, options: Options,
+    def file_context(self, file_node: MypyFile, fnam: str, options: 'Options',
                      active_type: Optional[TypeInfo]) -> Iterator[None]:
         # TODO: Use this above in visit_file
         self.options = options
@@ -3375,7 +3378,7 @@ class FirstPass(NodeVisitor):
     def __init__(self, sem: SemanticAnalyzer) -> None:
         self.sem = sem
 
-    def visit_file(self, file: MypyFile, fnam: str, mod_id: str, options: Options) -> None:
+    def visit_file(self, file: MypyFile, fnam: str, mod_id: str, options: 'Options') -> None:
         """Perform the first analysis pass.
 
         Populate module global table.  Resolve the full names of
@@ -3639,7 +3642,7 @@ class ThirdPass(TraverserVisitor):
         self.modules = modules
         self.errors = errors
 
-    def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
+    def visit_file(self, file_node: MypyFile, fnam: str, options: 'Options') -> None:
         self.errors.set_file(fnam, file_node.fullname())
         self.options = options
         self.accept(file_node)

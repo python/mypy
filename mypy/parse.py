@@ -1,14 +1,18 @@
 from typing import List, Tuple, Set, cast, Union, Optional
 
 from mypy.errors import Errors
-from mypy.options import Options
 from mypy.nodes import MypyFile
+
+# Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
+MYPY = False
+if MYPY:
+    from mypy.options import Options
 
 
 def parse(source: Union[str, bytes],
           fnam: str,
           errors: Optional[Errors],
-          options: Options) -> MypyFile:
+          options: 'Options') -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError

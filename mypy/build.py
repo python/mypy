@@ -26,6 +26,7 @@ from typing import (AbstractSet, Dict, Iterable, Iterator, List,
 MYPY = False
 if MYPY:
     from typing import Deque
+    from mypy.options import Options
 
 from mypy.nodes import (MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
@@ -37,12 +38,10 @@ from mypy import moduleinfo
 from mypy import util
 from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
 from mypy.nodes import Expression
-from mypy.options import Options
 from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-
 
 # We need to know the location of this file to load data, but
 # until Python 3.4, __file__ is relative.
@@ -109,7 +108,7 @@ class BuildSourceSet:
 
 
 def build(sources: List[BuildSource],
-          options: Options,
+          options: 'Options',
           alt_lib_path: str = None,
           bin_dir: str = None) -> BuildResult:
     """Analyze a program.
@@ -362,7 +361,7 @@ class BuildManager:
                  ignore_prefix: str,
                  source_set: BuildSourceSet,
                  reports: Reports,
-                 options: Options,
+                 options: 'Options',
                  version_id: str) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
@@ -494,7 +493,7 @@ class BuildManager:
     def report_file(self,
                     file: MypyFile,
                     type_map: Dict[Expression, Type],
-                    options: Options) -> None:
+                    options: 'Options') -> None:
         if self.source_set.is_source(file):
             self.reports.file(file, type_map, options)
 
@@ -1148,7 +1147,7 @@ class State:
     interface_hash = ""  # type: str
 
     # Options, specialized for this file
-    options = None  # type: Options
+    options = None  # type: 'Options'
 
     # Whether to ignore all errors
     ignore_all = False
