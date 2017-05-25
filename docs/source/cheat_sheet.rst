@@ -156,7 +156,8 @@ When you're puzzled or when things are complicated
        def __setattr__(self, name, value):
            # type: (str, int) -> None
            ...
-   a.foo = bar() # works if bar() returns int, fails otherwise
+   a.foo = 42  # works
+   a.bar = 'Ex-parrot'  # fails type checking
 
    # TODO: explain "Need type annotation for variable" when
    # initializing with None or an empty container

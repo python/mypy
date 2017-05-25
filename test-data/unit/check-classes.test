@@ -1684,9 +1684,51 @@ class C:
     def __setattr__(self, name: str, value: str) -> None: ...
 
 c = C()
-c.fail = 4
-[out]
-main:19: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+c.fail = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+class D:
+    __setattr__ = 'hello'
+
+d = D()
+d.crash = 4  # E: "D" has no attribute "crash"
+
+class Ex:
+    def __setattr__(self, name: str, value: int) -> None:...
+    test = '42'  # type: str
+e = Ex()
+e.test = 'hello'
+e.t = 4
+
+class Super:
+    def __setattr__(self, name: str, value: int) -> None: ...
+
+class Sub(Super):
+    ...
+s = Sub()
+s.success = 4
+s.fail = 'fail'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+
+[case testSetAttrSignature]
+class Test:
+    def __setattr__() -> None: ...  # E: Method must have at least one argument # E: Invalid signature "def ()"
+t = Test()
+t.crash = 'test'  # E: "Test" has no attribute "crash"
+
+class A:
+    def __setattr__(self): ...  # E: Invalid signature "def (self: Any) -> Any"
+a = A()
+a.test = 4  # E: "A" has no attribute "test"
+
+class B:
+    def __setattr__(self, name, value: int): ...
+b = B()
+b.fail = 5
+
+class C:
+    def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "def (__main__.C, builtins.int, builtins.int)"
+c = C()
+c.check = 13
 
 [case test testAttributes]
 class A:
@@ -1701,11 +1743,8 @@ class B:
     def __getattr__(self, name: str) -> str: ...
 integer = None  # type: int
 b = B()
-b.at = '3'
-integer = b.at
-[out]
-main:13: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:14: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+b.at = '3'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+integer = b.at  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 
 
