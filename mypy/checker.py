@@ -2223,8 +2223,12 @@ class TypeChecker(NodeVisitor[None]):
                 continue
             dec = self.expr_checker.accept(d)
             temp = self.temp_node(sig)
+            fullname = None
+            if isinstance(d, RefExpr):
+                fullname = d.fullname
             sig, t2 = self.expr_checker.check_call(dec, [temp],
-                                                   [nodes.ARG_POS], e)
+                                                   [nodes.ARG_POS], e,
+                                                   callable_name=fullname)
         sig = cast(FunctionLike, sig)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
