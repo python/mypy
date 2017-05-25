@@ -1741,7 +1741,7 @@ t = a.test
 class B:
     def __setattr__(self, name: str, value: int) -> None: ...
     def __getattr__(self, name: str) -> str: ...
-integer = None  # type: int
+integer = 0
 b = B()
 b.at = '3'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 integer = b.at  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
