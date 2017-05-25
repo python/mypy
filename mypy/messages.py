@@ -88,6 +88,8 @@ MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
+IMPLICIT_CONVERT_TO_ANY_SILENT_IMPORT = 'A type on this line is implicitly converted to "Any" ' \
+                                        'due to import from unanalyzed module'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",

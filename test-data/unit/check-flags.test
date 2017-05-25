@@ -495,3 +495,14 @@ from typing import Any
 
 class C(Any): # E: Class cannot subclass 'Any' (has type 'Any')
     pass
+
+[case testDisallowImplicitAnyVarDeclaration]
+# flags: --ignore-missing-imports --disallow-implicit-any-types
+from missing import Unchecked
+
+foo: Unchecked = ""
+foo = ""
+x, y = 1, 2  # type: Unchecked, Unchecked
+[out]
+main:4: error: Type of variable is implicitly converted to "Any" due to import from unanalyzed module
+main:6: error: A type on this line is implicitly converted to "Any" due to import from unanalyzed module

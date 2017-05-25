@@ -1190,6 +1190,14 @@ class TypeChecker(NodeVisitor[None]):
         """
         self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
+        if (s.type is not None and
+                self.options.disallow_implicit_any_types and
+                has_any_from_silent_import(s.type)):
+            if isinstance(s.lvalues[-1], TupleExpr):  # is multiple
+                self.msg.fail(messages.IMPLICIT_CONVERT_TO_ANY_SILENT_IMPORT, s)
+            else:
+                self.msg.implicit_any_from_silent_import("Type of variable", s.type, s)
+
         if len(s.lvalues) > 1:
             # Chained assignment (e.g. x = y = ...).
             # Make sure that rvalue type will not be reinferred.
@@ -1717,10 +1725,6 @@ class TypeChecker(NodeVisitor[None]):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if isinstance(lvalue_type, DeletedType):
                 self.msg.deleted_as_lvalue(lvalue_type, context)
-            elif (self.options.disallow_implicit_any_types
-                  and has_any_from_silent_import(lvalue_type)):
-                prefix = "Type of {}".format(lvalue_name)
-                self.msg.implicit_any_from_silent_import(prefix, lvalue_type, context)
             else:
                 self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                    '{} has type'.format(rvalue_name),
