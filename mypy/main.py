@@ -457,9 +457,15 @@ def process_options(args: List[str],
         targets = []
         for f in special_opts.files:
             if f.endswith(PY_EXTENSIONS):
-                targets.append(BuildSource(f, crawl_up(f)[1], None))
+                try:
+                    targets.append(BuildSource(f, crawl_up(f)[1], None))
+                except ValueError as e:
+                    fail(str(e))
             elif os.path.isdir(f):
-                sub_targets = expand_dir(f)
+                try:
+                    sub_targets = expand_dir(f)
+                except ValueError as e:
+                    fail(str(e))
                 if not sub_targets:
                     fail("There are no .py[i] files in directory '{}'"
                          .format(f))
@@ -526,10 +532,14 @@ def crawl_up(arg: str) -> Tuple[str, str]:
         dir, base = os.path.split(dir)
         if not base:
             break
+        # Ensure that base is a valid python module name
+        if not base.isidentifier():
+            raise ValueError('{} is not a valid Python package name'.format(base))
         if mod == '__init__' or not mod:
             mod = base
         else:
             mod = base + '.' + mod
+
     return dir, mod
 
 
