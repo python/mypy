@@ -393,6 +393,7 @@ def f(x: MyType) -> None:
 [out]
 main:2: error: Cannot find module named 'missing'
 main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:4: error: Argument 1 to "f" is implicitly converted to "Any" due to import from unanalyzed module
 
 [case testDisallowImplicitAnyVariableDefinition]
 # flags: --ignore-missing-imports --disallow-implicit-any-types

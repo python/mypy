@@ -965,9 +965,7 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail("Cannot subclass NewType", defn)
                 base_types.append(base)
             elif isinstance(base, AnyType):
-                # if --disallow-implicit-any-types is set, the issue is reported later
-                implicit = self.options.disallow_implicit_any_types and base.is_from_silent_import
-                if self.options.disallow_subclassing_any and not implicit:
+                if self.options.disallow_subclassing_any:
                     if isinstance(base_expr, (NameExpr, MemberExpr)):
                         msg = "Class cannot subclass '{}' (has type 'Any')".format(base_expr.name)
                     else:
@@ -1438,12 +1436,7 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             var._fullname = self.qualified_name(name)
         var.is_ready = True
-        any_type = AnyType()
-        if self.options.silent_mode():
-            # if silent mode is not enabled, no need to report implicit conversion to Any,
-            # let mypy report an import error.
-            any_type.is_from_silent_import = is_import
-        var.type = any_type
+        var.type = AnyType(from_silent_import=is_import)
         var.is_suppressed_import = is_import
         self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
 
