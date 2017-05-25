@@ -44,6 +44,7 @@ from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
+from mypy.typeanal import make_optional_type
 
 from mypy import experiments
 
@@ -1893,7 +1894,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType()
 
     def visit_slice_expr(self, e: SliceExpr) -> Type:
-        expected = UnionType.make_union([NoneTyp(), self.named_type('builtins.int')])
+        expected = make_optional_type(self.named_type('builtins.int'))
         for index in [e.begin_index, e.end_index, e.stride]:
             if index:
                 t = self.accept(index)
