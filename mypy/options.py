@@ -160,6 +160,3 @@ class Options:
 
     def select_options_affecting_cache(self) -> Mapping[str, bool]:
         return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}
-
-    def silent_mode(self) -> bool:
-        return self.ignore_missing_imports or self.follow_imports == 'skip'

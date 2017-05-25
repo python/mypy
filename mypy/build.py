@@ -1387,7 +1387,9 @@ class State:
         """
         # TODO: See if it's possible to move this check directly into parse_file in some way.
         # TODO: Find a way to write a test case for this fix.
-        if not self.options.silent_mode():
+        silent_mode = (self.options.disallow_implicit_any_types or
+                       self.options.follow_imports == 'skip')
+        if not silent_mode:
             return
 
         new_suppressed = []
