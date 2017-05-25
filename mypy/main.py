@@ -24,6 +24,10 @@ from mypy.version import __version__
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
+class InvalidPackageName(Exception):
+    """Exception indicating that a package name was invalid."""
+
+
 def main(script_path: str, args: List[str] = None) -> None:
     """Main entry point to the type checker.
 
@@ -459,12 +463,12 @@ def process_options(args: List[str],
             if f.endswith(PY_EXTENSIONS):
                 try:
                     targets.append(BuildSource(f, crawl_up(f)[1], None))
-                except ValueError as e:
+                except InvalidPackageName as e:
                     fail(str(e))
             elif os.path.isdir(f):
                 try:
                     sub_targets = expand_dir(f)
-                except ValueError as e:
+                except InvalidPackageName as e:
                     fail(str(e))
                 if not sub_targets:
                     fail("There are no .py[i] files in directory '{}'"
@@ -534,7 +538,7 @@ def crawl_up(arg: str) -> Tuple[str, str]:
             break
         # Ensure that base is a valid python module name
         if not base.isidentifier():
-            raise ValueError('{} is not a valid Python package name'.format(base))
+            raise InvalidPackageName('{} is not a valid Python package name'.format(base))
         if mod == '__init__' or not mod:
             mod = base
         else:
