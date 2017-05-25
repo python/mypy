@@ -36,7 +36,7 @@ from mypy.types import (
     true_only, false_only, function_type, is_named_instance, union_items
 )
 from mypy.sametypes import is_same_type, is_same_types
-from mypy.messages import MessageBuilder
+from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
 from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
 from mypy import messages
@@ -2313,15 +2313,20 @@ class TypeChecker(NodeVisitor[None]):
             if self.should_suppress_optional_error([subtype]):
                 return False
             extra_info = []  # type: List[str]
+            note_msg = ''
             if subtype_label is not None or supertype_label is not None:
                 subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
                 if subtype_label is not None:
                     extra_info.append(subtype_label + ' ' + subtype_str)
                 if supertype_label is not None:
                     extra_info.append(supertype_label + ' ' + supertype_str)
+                note_msg = make_inferred_type_note(context, subtype,
+                                                   supertype, supertype_str)
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
             self.fail(msg, context)
+            if note_msg:
+                self.note(note_msg, context)
             return False
 
     def contains_none(self, t: Type) -> bool:
