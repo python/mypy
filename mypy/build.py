@@ -685,8 +685,12 @@ def verify_module(id: str, path: str) -> bool:
     return True
 
 
-def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
-    """Read the Python file with while obeying PEP-263 encoding detection"""
+def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> Tuple[str, str]:
+    """Read the Python file with while obeying PEP-263 encoding detection.
+
+    Returns:
+      A tuple: the source as a string, and the hash calculated from the binary representation.
+    """
     source_bytearray = bytearray()
     encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
 
@@ -711,7 +715,7 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
             source_bytearray.decode(encoding)
         except LookupError as lookuperr:
             raise DecodeError(str(lookuperr))
-        return source_bytearray.decode(encoding)
+        return source_bytearray.decode(encoding), hashlib.md5(source_bytearray).hexdigest()
 
 
 def get_cache_names(id: str, path: str, cache_dir: str,
@@ -811,7 +815,9 @@ def is_meta_fresh(meta: Optional[CacheMeta], id: str, path: str, manager: BuildM
     # TODO: Share stat() outcome with find_module()
     st = manager.get_stat(path)  # TODO: Errors
     if st.st_mtime != meta.mtime or st.st_size != meta.size:
-        if compute_module_hash(path) != meta.hash:
+        with open(path, 'rb') as f:
+            source_hash = hashlib.md5(f.read()).hexdigest()
+        if source_hash != meta.hash:
             manager.log('Metadata abandoned for {}: file {} is modified'.format(id, path))
             return False
 
@@ -836,15 +842,10 @@ def compute_hash(text: str) -> str:
     return hashlib.md5(text.encode('utf-8')).hexdigest()
 
 
-def compute_module_hash(path: str) -> str:
-    with open(path, 'r') as f:
-        return compute_hash(f.read())
-
-
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
-                old_interface_hash: str, manager: BuildManager) -> str:
+                old_interface_hash: str, source_hash: str, manager: BuildManager) -> str:
     """Write cache files for a module.
 
     Note that this mypy's behavior is still correct when any given
@@ -933,13 +934,13 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     mtime = st.st_mtime
     size = st.st_size
-    mod_hash = compute_module_hash(path)
     options = manager.options.clone_for_module(id)
+    assert source_hash is not None
     meta = {'id': id,
             'path': path,
             'mtime': mtime,
             'size': size,
-            'hash': mod_hash,
+            'hash': source_hash,
             'data_mtime': data_mtime,
             'dependencies': dependencies,
             'suppressed': suppressed,
@@ -1126,6 +1127,7 @@ class State:
     path = None  # type: Optional[str]  # Path to module source
     xpath = None  # type: str  # Path or '<string>'
     source = None  # type: Optional[str]  # Module source code
+    source_hash = None  # type: str  # Hash calculated based on the source code
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
@@ -1431,7 +1433,8 @@ class State:
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
-                    source = read_with_python_encoding(path, self.options.python_version)
+                    source, self.source_hash = read_with_python_encoding(path,
+                                                                      self.options.python_version)
                 except IOError as ioerr:
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
@@ -1582,7 +1585,7 @@ class State:
         new_interface_hash = write_cache(
             self.id, self.path, self.tree,
             list(self.dependencies), list(self.suppressed), list(self.child_modules),
-            dep_prios, self.interface_hash,
+            dep_prios, self.interface_hash, self.source_hash,
             self.manager)
         if new_interface_hash == self.interface_hash:
             self.manager.log("Cached module {} has same interface".format(self.id))
