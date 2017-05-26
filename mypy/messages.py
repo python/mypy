@@ -17,7 +17,8 @@ from mypy.types import (
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
+    ReturnStmt, NameExpr, Var
 )
 
 
@@ -361,72 +362,84 @@ class MessageBuilder:
     # get some information as arguments, and they build an error message based
     # on them.
 
-    def has_no_attr(self, typ: Type, member: str, context: Context) -> Type:
+    def has_no_attr(self, original_type: Type, typ: Type, member: str, context: Context) -> Type:
         """Report a missing or non-accessible member.
 
-        The type argument is the base type. If member corresponds to
-        an operator, use the corresponding operator name in the
-        messages. Return type Any.
+        original_type is the top-level type on which the error occurred.
+        typ is the actual type that is missing the member. These can be
+        different, e.g., in a union, original_type will be the union and typ
+        will be the specific item in the union that does not have the member
+        attribute.
+
+        If member corresponds to an operator, use the corresponding operator
+        name in the messages. Return type Any.
         """
-        if (isinstance(typ, Instance) and
-                typ.type.has_readable_member(member)):
+        if (isinstance(original_type, Instance) and
+                original_type.type.has_readable_member(member)):
             self.fail('Member "{}" is not assignable'.format(member), context)
         elif member == '__contains__':
             self.fail('Unsupported right operand type for in ({})'.format(
-                self.format(typ)), context)
+                self.format(original_type)), context)
         elif member in op_methods.values():
             # Access to a binary operator member (e.g. _add). This case does
             # not handle indexing operations.
             for op, method in op_methods.items():
                 if method == member:
-                    self.unsupported_left_operand(op, typ, context)
+                    self.unsupported_left_operand(op, original_type, context)
                     break
         elif member == '__neg__':
             self.fail('Unsupported operand type for unary - ({})'.format(
-                self.format(typ)), context)
+                self.format(original_type)), context)
         elif member == '__pos__':
             self.fail('Unsupported operand type for unary + ({})'.format(
-                self.format(typ)), context)
+                self.format(original_type)), context)
         elif member == '__invert__':
             self.fail('Unsupported operand type for ~ ({})'.format(
-                self.format(typ)), context)
+                self.format(original_type)), context)
         elif member == '__getitem__':
             # Indexed get.
             # TODO: Fix this consistently in self.format
-            if isinstance(typ, CallableType) and typ.is_type_obj():
+            if isinstance(original_type, CallableType) and original_type.is_type_obj():
                 self.fail('The type {} is not generic and not indexable'.format(
-                    self.format(typ)), context)
+                    self.format(original_type)), context)
             else:
                 self.fail('Value of type {} is not indexable'.format(
-                    self.format(typ)), context)
+                    self.format(original_type)), context)
         elif member == '__setitem__':
             # Indexed set.
             self.fail('Unsupported target for indexed assignment', context)
         elif member == '__call__':
-            if isinstance(typ, Instance) and (typ.type.fullname() == 'builtins.function'):
+            if isinstance(original_type, Instance) and \
+                    (original_type.type.fullname() == 'builtins.function'):
                 # "'function' not callable" is a confusing error message.
                 # Explain that the problem is that the type of the function is not known.
                 self.fail('Cannot call function of unknown type', context)
             else:
-                self.fail('{} not callable'.format(self.format(typ)), context)
+                self.fail('{} not callable'.format(self.format(original_type)), context)
         else:
             # The non-special case: a missing ordinary attribute.
             if not self.disable_type_names:
                 failed = False
-                if isinstance(typ, Instance) and typ.type.names:
-                    alternatives = set(typ.type.names.keys())
+                if isinstance(original_type, Instance) and original_type.type.names:
+                    alternatives = set(original_type.type.names.keys())
                     matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                     matches.extend(best_matches(member, alternatives)[:3])
                     if matches:
                         self.fail('{} has no attribute "{}"; maybe {}?'.format(
-                            self.format(typ), member, pretty_or(matches)), context)
+                            self.format(original_type), member, pretty_or(matches)), context)
                         failed = True
                 if not failed:
-                    self.fail('{} has no attribute "{}"'.format(self.format(typ),
+                    self.fail('{} has no attribute "{}"'.format(self.format(original_type),
                                                                 member), context)
-            else:
-                self.fail('Some element of union has no attribute "{}"'.format(
-                    member), context)
+            elif isinstance(original_type, UnionType):
+                # The checker passes "object" in lieu of "None" for attribute
+                # checks, so we manually convert it back.
+                typ_format = self.format(typ)
+                if typ_format == '"object"' and \
+                        any(type(item) == NoneTyp for item in original_type.items):
+                    typ_format = '"None"'
+                self.fail('Item {} of {} has no attribute "{}"'.format(
+                    typ_format, self.format(original_type), member), context)
         return AnyType()
 
     def unsupported_operand_types(self, op: str, left_type: Any,
@@ -1003,3 +1016,30 @@ def append_invariance_message(notes: List[str],
         'http://mypy.readthedocs.io/en/stable/variance.html')
     notes.append('Consider using "' + suggested_alternative + '" instead, which is covariant')
     return notes
+
+def make_inferred_type_note(context: Context, subtype: Type,
+                            supertype: Type, supertype_str: str) -> str:
+    """Explain that the user may have forgotten to type a variable.
+
+    The user does not expect an error if the inferred container type is the same as the return
+    type of a function and the argument type(s) are a subtype of the argument type(s) of the
+    return type. This note suggests that they add a type annotation with the return type instead
+    of relying on the inferred type.
+    """
+    from mypy.subtypes import is_subtype
+    if (isinstance(subtype, Instance) and
+            isinstance(supertype, Instance) and
+            subtype.type.fullname() == supertype.type.fullname() and
+            subtype.args and
+            supertype.args and
+            isinstance(context, ReturnStmt) and
+            isinstance(context.expr, NameExpr) and
+            isinstance(context.expr.node, Var) and
+            context.expr.node.is_inferred):
+        for subtype_arg, supertype_arg in zip(subtype.args, supertype.args):
+            if not is_subtype(subtype_arg, supertype_arg):
+                return ''
+        var_name = context.expr.name
+        return 'Perhaps you need a type annotation for "{}"? Suggestion: {}'.format(
+            var_name, supertype_str)
+    return ''

@@ -36,7 +36,7 @@ from mypy.types import (
     true_only, false_only, function_type, is_named_instance, union_items
 )
 from mypy.sametypes import is_same_type, is_same_types
-from mypy.messages import MessageBuilder
+from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
 from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
 from mypy import messages
@@ -1939,14 +1939,18 @@ class TypeChecker(NodeVisitor[None]):
         """Type check an operator assignment statement, e.g. x += 1."""
         lvalue_type = self.expr_checker.accept(s.lvalue)
         inplace, method = infer_operator_assignment_method(lvalue_type, s.op)
-        rvalue_type, method_type = self.expr_checker.check_op(
-            method, lvalue_type, s.rvalue, s)
-
-        if isinstance(s.lvalue, IndexExpr) and not inplace:
-            self.check_indexed_assignment(s.lvalue, s.rvalue, s.rvalue)
-        else:
+        if inplace:
+            # There is __ifoo__, treat as x = x.__ifoo__(y)
+            rvalue_type, method_type = self.expr_checker.check_op(
+                method, lvalue_type, s.rvalue, s)
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
+        else:
+            # There is no __ifoo__, treat as x = x <foo> y
+            expr = OpExpr(s.op, s.lvalue, s.rvalue)
+            expr.set_line(s)
+            self.check_assignment(lvalue=s.lvalue, rvalue=expr,
+                                  infer_lvalue_type=True, new_syntax=False)
 
     def visit_assert_stmt(self, s: AssertStmt) -> None:
         self.expr_checker.accept(s.expr)
@@ -2219,8 +2223,12 @@ class TypeChecker(NodeVisitor[None]):
                 continue
             dec = self.expr_checker.accept(d)
             temp = self.temp_node(sig)
+            fullname = None
+            if isinstance(d, RefExpr):
+                fullname = d.fullname
             sig, t2 = self.expr_checker.check_call(dec, [temp],
-                                                   [nodes.ARG_POS], e)
+                                                   [nodes.ARG_POS], e,
+                                                   callable_name=fullname)
         sig = cast(FunctionLike, sig)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
@@ -2309,15 +2317,20 @@ class TypeChecker(NodeVisitor[None]):
             if self.should_suppress_optional_error([subtype]):
                 return False
             extra_info = []  # type: List[str]
+            note_msg = ''
             if subtype_label is not None or supertype_label is not None:
                 subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
                 if subtype_label is not None:
                     extra_info.append(subtype_label + ' ' + subtype_str)
                 if supertype_label is not None:
                     extra_info.append(supertype_label + ' ' + supertype_str)
+                note_msg = make_inferred_type_note(context, subtype,
+                                                   supertype, supertype_str)
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
             self.fail(msg, context)
+            if note_msg:
+                self.note(note_msg, context)
             return False
 
     def contains_none(self, t: Type) -> bool:
