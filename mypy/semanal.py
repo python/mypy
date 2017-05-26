@@ -328,6 +328,8 @@ class SemanticAnalyzer(NodeVisitor):
             self.function_stack.append(defn)
             # First phase of analysis for function.
             self.errors.push_function(defn.name())
+            if not defn._fullname:
+                defn._fullname = self.qualified_name(defn.name())
             if defn.type:
                 assert isinstance(defn.type, CallableType)
                 self.update_function_type_variables(defn.type, defn)
@@ -860,6 +862,7 @@ class SemanticAnalyzer(NodeVisitor):
                             defn.name, items, types, default_items)
                         node.node = info
                         defn.info = info
+                        defn.analyzed = NamedTupleExpr(info)
                         return info
         return None
 
@@ -1176,7 +1179,9 @@ class SemanticAnalyzer(NodeVisitor):
                         defn.base_type_exprs[0].fullname == 'mypy_extensions.TypedDict'):
                     # Building a new TypedDict
                     fields, types = self.check_typeddict_classdef(defn)
-                    node.node = self.build_typeddict_typeinfo(defn.name, fields, types)
+                    info = self.build_typeddict_typeinfo(defn.name, fields, types)
+                    node.node = info
+                    defn.analyzed = TypedDictExpr(info)
                     return True
                 # Extending/merging existing TypedDicts
                 if any(not isinstance(expr, RefExpr) or
@@ -1203,7 +1208,9 @@ class SemanticAnalyzer(NodeVisitor):
                 fields, types = self.check_typeddict_classdef(defn, newfields)
                 newfields.extend(fields)
                 newtypes.extend(types)
-                node.node = self.build_typeddict_typeinfo(defn.name, newfields, newtypes)
+                info = self.build_typeddict_typeinfo(defn.name, newfields, newtypes)
+                node.node = info
+                defn.analyzed = TypedDictExpr(info)
                 return True
         return False
 
@@ -3679,6 +3686,11 @@ class ThirdPass(TraverserVisitor):
         if tdef.info.mro:
             tdef.info.mro = []  # Force recomputation
             calculate_class_mro(tdef, self.fail_blocker)
+        if tdef.analyzed is not None:
+            if isinstance(tdef.analyzed, TypedDictExpr):
+                self.analyze(tdef.analyzed.info.typeddict_type)
+            elif isinstance(tdef.analyzed, NamedTupleExpr):
+                self.analyze(tdef.analyzed.info.tuple_type)
         super().visit_class_def(tdef)
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -3735,6 +3747,13 @@ class ThirdPass(TraverserVisitor):
         self.analyze(s.type)
         if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
             self.analyze(s.rvalue.analyzed.type)
+        if isinstance(s.rvalue, CallExpr):
+            if isinstance(s.rvalue.analyzed, NewTypeExpr):
+                self.analyze(s.rvalue.analyzed.old_type)
+            if isinstance(s.rvalue.analyzed, TypedDictExpr):
+                self.analyze(s.rvalue.analyzed.info.typeddict_type)
+            if isinstance(s.rvalue.analyzed, NamedTupleExpr):
+                self.analyze(s.rvalue.analyzed.info.tuple_type)
         super().visit_assignment_stmt(s)
 
     def visit_cast_expr(self, e: CastExpr) -> None:
@@ -3751,7 +3770,7 @@ class ThirdPass(TraverserVisitor):
 
     # Helpers
 
-    def analyze(self, type: Type) -> None:
+    def analyze(self, type: Optional[Type]) -> None:
         if type:
             analyzer = TypeAnalyserPass3(self.fail)
             type.accept(analyzer)

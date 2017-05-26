@@ -339,7 +339,7 @@ class Waiter:
 
         if self.new_log:  # don't append empty log, it will corrupt the cache file
             # log only LOGSIZE most recent tests
-            test_log = (self.load_log_file() + [self.new_log])[:self.LOGSIZE]
+            test_log = (self.load_log_file() + [self.new_log])[-self.LOGSIZE:]
             try:
                 with open(self.FULL_LOG_FILENAME, 'w') as fp:
                     json.dump(test_log, fp, sort_keys=True, indent=4)

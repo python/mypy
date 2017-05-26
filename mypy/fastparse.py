@@ -343,7 +343,8 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                 return_type = AnyType()
         else:
             arg_types = [a.type_annotation for a in args]
-            return_type = TypeConverter(self.errors, line=n.lineno).visit(n.returns)
+            return_type = TypeConverter(self.errors, line=n.returns.lineno
+                                        if n.returns else n.lineno).visit(n.returns)
 
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)
@@ -410,7 +411,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                     self.fail(messages.DUPLICATE_TYPE_SIGNATURES, arg.lineno, arg.col_offset)
                 arg_type = None
                 if arg.annotation is not None:
-                    arg_type = TypeConverter(self.errors, line=line).visit(arg.annotation)
+                    arg_type = TypeConverter(self.errors, line=arg.lineno).visit(arg.annotation)
                 elif arg.type_comment is not None:
                     arg_type = parse_type_comment(arg.type_comment, arg.lineno, self.errors)
             return Argument(Var(arg.arg), arg_type, self.visit(default), kind)

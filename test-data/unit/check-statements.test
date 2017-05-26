@@ -226,7 +226,7 @@ class B:
 class C: pass
 [out]
 main:3: error: Unsupported operand types for + ("A" and "B")
-main:4: error: Result type of + incompatible in assignment
+main:4: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 main:5: error: Unsupported left operand type for + ("C")
 
 [case testMinusAssign]
@@ -246,7 +246,7 @@ class B:
 class C: pass
 [out]
 main:3: error: Unsupported operand types for - ("A" and "B")
-main:4: error: Result type of - incompatible in assignment
+main:4: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 main:5: error: Unsupported left operand type for - ("C")
 
 [case testMulAssign]
@@ -1514,3 +1514,46 @@ class A(): pass
 class B(): pass
 [out]
 main:8: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+[case testAugmentedAssignmentIntFloat]
+weight0 = 65.5
+reveal_type(weight0)  # E: Revealed type is 'builtins.float'
+weight0 = 65
+reveal_type(weight0)  # E: Revealed type is 'builtins.int'
+weight0 *= 'a'  # E: Incompatible types in assignment (expression has type "str", variable has type "float")
+weight0 *= 0.5
+reveal_type(weight0)  # E: Revealed type is 'builtins.float'
+weight0 *= object()  # E: Unsupported operand types for * ("float" and "object")
+reveal_type(weight0) # E: Revealed type is 'builtins.float'
+
+[builtins fixtures/float.pyi]
+
+[case testAugmentedAssignmentIntFloatMember]
+class A:
+    def __init__(self) -> None:
+        self.weight0 = 65.5
+        reveal_type(self.weight0)  # E: Revealed type is 'builtins.float'
+        self.weight0 = 65
+        reveal_type(self.weight0)  # E: Revealed type is 'builtins.int'
+        self.weight0 *= 'a'  # E: Incompatible types in assignment (expression has type "str", variable has type "float")
+        self.weight0 *= 0.5
+        reveal_type(self.weight0)  # E: Revealed type is 'builtins.float'
+        self.weight0 *= object()  # E: Unsupported operand types for * ("float" and "object")
+        reveal_type(self.weight0) # E: Revealed type is 'builtins.float'
+
+[builtins fixtures/float.pyi]
+
+[case testAugmentedAssignmentIntFloatDict]
+from typing import Dict
+d = {'weight0': 65.5}
+reveal_type(d['weight0'])  # E: Revealed type is 'builtins.float*'
+d['weight0'] = 65
+reveal_type(d['weight0'])  # E: Revealed type is 'builtins.float*'
+d['weight0'] *= 'a'  # E: Unsupported operand types for * ("float" and "str") # E: Incompatible types in assignment (expression has type "str", target has type "float")
+d['weight0'] *= 0.5
+reveal_type(d['weight0'])  # E: Revealed type is 'builtins.float*'
+d['weight0'] *= object()  # E: Unsupported operand types for * ("float" and "object")
+reveal_type(d['weight0']) # E: Revealed type is 'builtins.float*'
+
+[builtins fixtures/floatdict.pyi]
+
