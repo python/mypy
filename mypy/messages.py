@@ -359,7 +359,7 @@ class MessageBuilder:
                 return (str1, str2)
         return (str1, str2)
 
-    def note_signature(self, defn: Optional[FunctionLike], context: Context) -> None:
+    def note_signature(self, annotation: str, defn: Optional[FunctionLike], context: Context) -> None:
         """
         Given a FunctionLike object, pretty print its signature across multiple lines
         and truncate it if there are lots of overloads
@@ -367,12 +367,10 @@ class MessageBuilder:
         if defn is not None:
             max_overload_lines = 6  # Print up to 3 overloads, then truncate
             pretty_str = defn.pretty_str().split('\n')
-            # func_name = defn.name() if callable(getattr(defn, 'name')) else getattr(defn, 'name')
-            func_name = defn.get_name()
             # TODO: Add filename and line number to method message
-            self.note('    Method {}:'.format(func_name), context, strip=False)
+            self.note('     {}:'.format(annotation), context, strip=False)
             for line in pretty_str[:max_overload_lines]:
-                self.note('      {}'.format(line), context, strip=False, allow_dups=True)
+                self.note('         {}'.format(line), context, strip=False, allow_dups=True)
             if len(pretty_str) > max_overload_lines:
                 # Each overload takes up 2 lines because of "@overload"
                 additional_overrides = int((len(pretty_str) - max_overload_lines) / 2)
@@ -711,8 +709,8 @@ class MessageBuilder:
         self.fail('Signature of "{}" incompatible with {}'.format(name, target), context)
 
         # Print the original and overridden methods nicely
-        self.note_signature(original, context)
-        self.note_signature(override, context)
+        self.note_signature('Superclass', original, context)
+        self.note_signature('Subclass', override, context)
 
     def argument_incompatible_with_supertype(
             self, arg_num: int, name: str, name_in_supertype: str,
