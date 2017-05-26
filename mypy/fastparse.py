@@ -30,6 +30,7 @@ from mypy import defaults
 from mypy import experiments
 from mypy import messages
 from mypy.errors import Errors
+from mypy.options import Options
 
 try:
     from typed_ast import ast3
@@ -60,14 +61,12 @@ TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
 
 
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
-          pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-          custom_typing_module: str = None) -> MypyFile:
+          options: Options = Options()) -> MypyFile:
+
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
     on failure. Otherwise, use the errors object to report parse errors.
-
-    The pyversion (major, minor) argument determines the Python syntax variant.
     """
     raise_on_error = False
     if errors is None:
@@ -76,14 +75,16 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     errors.set_file('<input>' if fnam is None else fnam, None)
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
-        assert pyversion[0] >= 3 or is_stub_file
-        feature_version = pyversion[1] if not is_stub_file else defaults.PYTHON3_VERSION[1]
+        if is_stub_file:
+            feature_version = defaults.PYTHON3_VERSION[1]
+        else:
+            assert options.python_version[0] >= 3
+            feature_version = options.python_version[1]
         ast = ast3.parse(source, fnam, 'exec', feature_version=feature_version)
 
-        tree = ASTConverter(pyversion=pyversion,
+        tree = ASTConverter(options=options,
                             is_stub=is_stub_file,
                             errors=errors,
-                            custom_typing_module=custom_typing_module,
                             ).visit(ast)
         tree.path = fnam
         tree.is_stub = is_stub_file
@@ -138,17 +139,15 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
 
 class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     def __init__(self,
-                 pyversion: Tuple[int, int],
+                 options: Options,
                  is_stub: bool,
-                 errors: Errors,
-                 custom_typing_module: str = None) -> None:
+                 errors: Errors) -> None:
         self.class_nesting = 0
         self.imports = []  # type: List[ImportBase]
 
-        self.pyversion = pyversion
+        self.options = options
         self.is_stub = is_stub
         self.errors = errors
-        self.custom_typing_module = custom_typing_module
 
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg)
@@ -262,9 +261,9 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
         For example, translate '__builtin__' in Python 2 to 'builtins'.
         """
-        if id == self.custom_typing_module:
+        if id == self.options.custom_typing_module:
             return 'typing'
-        elif id == '__builtin__' and self.pyversion[0] == 2:
+        elif id == '__builtin__' and self.options.python_version[0] == 2:
             # HACK: __builtin__ in Python 2 is aliases to builtins. However, the implementation
             #   is named __builtin__.py (there is another layer of translation elsewhere).
             return 'builtins'
@@ -391,7 +390,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             return func_def
 
     def set_type_optional(self, type: Type, initializer: Expression) -> None:
-        if not experiments.STRICT_OPTIONAL:
+        if self.options.no_implicit_optional or not experiments.STRICT_OPTIONAL:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
         optional = isinstance(initializer, NameExpr) and initializer.name == 'None'
@@ -846,16 +845,13 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     # Str(string s)
     @with_line
     def visit_Str(self, n: ast3.Str) -> Union[UnicodeExpr, StrExpr]:
-        if self.pyversion[0] >= 3 or self.is_stub:
-            # Hack: assume all string literals in Python 2 stubs are normal
-            # strs (i.e. not unicode).  All stubs are parsed with the Python 3
-            # parser, which causes unprefixed string literals to be interpreted
-            # as unicode instead of bytes.  This hack is generally okay,
-            # because mypy considers str literals to be compatible with
-            # unicode.
-            return StrExpr(n.s)
-        else:
-            return UnicodeExpr(n.s)
+        # Hack: assume all string literals in Python 2 stubs are normal
+        # strs (i.e. not unicode).  All stubs are parsed with the Python 3
+        # parser, which causes unprefixed string literals to be interpreted
+        # as unicode instead of bytes.  This hack is generally okay,
+        # because mypy considers str literals to be compatible with
+        # unicode.
+        return StrExpr(n.s)
 
     # Only available with typed_ast >= 0.6.2
     if hasattr(ast3, 'JoinedStr'):
@@ -885,11 +881,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         # The following line is a bit hacky, but is the best way to maintain
         # compatibility with how mypy currently parses the contents of bytes literals.
         contents = str(n.s)[2:-1]
-
-        if self.pyversion[0] >= 3:
-            return BytesExpr(contents)
-        else:
-            return StrExpr(contents)
+        return BytesExpr(contents)
 
     # NameConstant(singleton value)
     def visit_NameConstant(self, n: ast3.NameConstant) -> NameExpr:
