@@ -331,10 +331,12 @@ class MemoryXmlReporter(AbstractReporter):
             for lineno, line_text in enumerate(input_file, 1):
                 status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
                 file_info.counts[status] += 1
+                if line_text.endswith('\n'):
+                    line_text = line_text[:-1]
                 etree.SubElement(root, 'line',
                                  number=str(lineno),
                                  precision=stats.precision_names[status],
-                                 content=line_text[:-1])
+                                 content=line_text)
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
