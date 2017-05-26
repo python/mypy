@@ -134,7 +134,6 @@ When you're puzzled or when things are complicated
             # type: (*str, **str) -> str
             request = make_request(*args, **kwargs)
             return self.do_api_query(request)
-
    
    # Use `ignore` to suppress type-checking on a given line, when your
    # code confuses mypy or runs into an outright bug in mypy.

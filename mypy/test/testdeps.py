@@ -1,6 +1,6 @@
 """Test cases for generating node-level dependencies (for fine-grained incremental checking)"""
 
-import os.path
+import os
 from typing import List, Tuple, Dict
 
 from mypy import build
@@ -54,6 +54,7 @@ class GetDependenciesSuite(DataSuite):
         options = Options()
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.cache_dir = os.devnull
         try:
             result = build.build(sources=[BuildSource('main', None, source)],
                                  options=options,

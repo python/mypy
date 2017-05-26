@@ -7,7 +7,7 @@ from mypy.nodes import MypyFile
 
 def parse(source: Union[str, bytes],
           fnam: str,
-          errors: Errors,
+          errors: Optional[Errors],
           options: Options) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 

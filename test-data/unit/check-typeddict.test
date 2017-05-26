@@ -25,7 +25,7 @@ reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int,
 from mypy_extensions import TypedDict
 EmptyDict = TypedDict('EmptyDict', {})
 p = EmptyDict()
-reveal_type(p)  # E: Revealed type is 'TypedDict(_fallback=typing.Mapping[builtins.str, <uninhabited>])'
+reveal_type(p)  # E: Revealed type is 'TypedDict(_fallback=typing.Mapping[builtins.str, <nothing>])'
 [builtins fixtures/dict.pyi]
 
 
@@ -112,7 +112,7 @@ class EmptyDict(TypedDict):
     pass
 
 p = EmptyDict()
-reveal_type(p)  # E: Revealed type is 'TypedDict(_fallback=typing.Mapping[builtins.str, <uninhabited>])'
+reveal_type(p)  # E: Revealed type is 'TypedDict(_fallback=typing.Mapping[builtins.str, <nothing>])'
 [builtins fixtures/dict.pyi]
 
 
@@ -393,7 +393,7 @@ d2 = Cell(value='pear tree')
 joined_dicts = [d1, d2]
 reveal_type(d1)             # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
 reveal_type(d2)             # E: Revealed type is 'TypedDict(value=builtins.object, _fallback=typing.Mapping[builtins.str, builtins.object])'
-reveal_type(joined_dicts)   # E: Revealed type is 'builtins.list[TypedDict(_fallback=typing.Mapping[builtins.str, <uninhabited>])]'
+reveal_type(joined_dicts)   # E: Revealed type is 'builtins.list[TypedDict(_fallback=typing.Mapping[builtins.str, <nothing>])]'
 [builtins fixtures/dict.pyi]
 
 [case testJoinOfTypedDictWithCompatibleMappingIsMapping]
@@ -468,7 +468,7 @@ YbZ = TypedDict('YbZ', {'y': object, 'z': int})
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: XYa, y: YbZ) -> None: pass
-reveal_type(f(g))  # E: Revealed type is '<uninhabited>'
+reveal_type(f(g))  # E: Revealed type is '<nothing>'
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictsWithNoCommonKeysHasAllKeysAndNewFallback]
@@ -492,7 +492,7 @@ M = Mapping[str, int]
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: X, y: M) -> None: pass
-reveal_type(f(g))  # E: Revealed type is '<uninhabited>'
+reveal_type(f(g))  # E: Revealed type is '<nothing>'
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictWithIncompatibleMappingIsUninhabited]
@@ -504,7 +504,7 @@ M = Mapping[str, str]
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: X, y: M) -> None: pass
-reveal_type(f(g))  # E: Revealed type is '<uninhabited>'
+reveal_type(f(g))  # E: Revealed type is '<nothing>'
 [builtins fixtures/dict.pyi]
 
 # TODO: It would be more accurate for the meet to be TypedDict instead.
@@ -517,7 +517,7 @@ I = Iterable[str]
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: X, y: I) -> None: pass
-reveal_type(f(g))  # E: Revealed type is '<uninhabited>'
+reveal_type(f(g))  # E: Revealed type is '<nothing>'
 [builtins fixtures/dict.pyi]
 
 
@@ -639,7 +639,7 @@ class C:
         A = TypedDict('A', {'x': int})
     def g(self):
         A = TypedDict('A', {'y': int})
-C.A  # E: "C" has no attribute "A"
+C.A  # E: Type[C] has no attribute "A"
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictInFunction]

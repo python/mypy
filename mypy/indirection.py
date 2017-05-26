@@ -2,7 +2,7 @@ from typing import Dict, Iterable, List, Optional, Set
 from abc import abstractmethod
 
 from mypy.visitor import NodeVisitor
-from mypy.types import TypeVisitor
+from mypy.types import SyntheticTypeVisitor
 from mypy.nodes import MODULE_REF
 import mypy.nodes as nodes
 import mypy.types as types
@@ -19,7 +19,7 @@ def extract_module_names(type_name: Optional[str]) -> List[str]:
         return []
 
 
-class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
+class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
     """Returns all module references within a particular type."""
 
     def __init__(self) -> None:
@@ -44,6 +44,9 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
 
     def visit_type_list(self, t: types.TypeList) -> Set[str]:
         return self._visit(*t.items)
+
+    def visit_callable_argument(self, t: types.CallableArgument) -> Set[str]:
+        return self._visit(t.typ)
 
     def visit_any(self, t: types.AnyType) -> Set[str]:
         return set()

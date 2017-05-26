@@ -1,10 +1,9 @@
 # Builtins stub used in list-related test cases.
 
-from typing import TypeVar, Generic, builtinclass, Iterable, Iterator, overload
+from typing import TypeVar, Generic, Iterable, Iterator, overload
 
 T = TypeVar('T')
 
-@builtinclass
 class object:
     def __init__(self): pass
 
@@ -23,7 +22,7 @@ class list(Iterable[T], Generic[T]):
     def append(self, x: T) -> None: pass
     def extend(self, x: Iterable[T]) -> None: pass
 
-class tuple: pass
+class tuple(Generic[T]): pass
 class function: pass
 class int: pass
 class float: pass
