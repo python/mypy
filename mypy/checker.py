@@ -1193,7 +1193,9 @@ class TypeChecker(NodeVisitor[None]):
         if (s.type is not None and
                 self.options.disallow_implicit_any_types and
                 has_any_from_silent_import(s.type)):
-            if isinstance(s.lvalues[-1], TupleExpr):  # is multiple
+            if isinstance(s.lvalues[-1], TupleExpr):
+                # This is a multiple assignment. Instead of figuring out which type is problematic,
+                # give a generic error message.
                 self.msg.fail(messages.IMPLICIT_CONVERT_TO_ANY_SILENT_IMPORT, s)
             else:
                 self.msg.implicit_any_from_silent_import("Type of variable", s.type, s)

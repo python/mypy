@@ -437,6 +437,7 @@ X = List[Unchecked]
 def f(x: X) -> None:  # E: Argument 1 to "f" is implicitly converted to List[Any] due to import from unanalyzed module
     pass
 [builtins fixtures/list.pyi]
+
 [case testDisallowImplicitAnyCast]
 # flags: --ignore-missing-imports --disallow-implicit-any-types
 from missing import Unchecked
@@ -478,6 +479,7 @@ from missing import Unchecked
 Baz = NewType('Baz', Unchecked)
 [out]
 main:5: error: Argument 2 to NewType(...) must be subclassable (got Any)
+
 [case testDisallowImplicitAnyCallableAndTuple]
 # flags: --ignore-missing-imports --disallow-implicit-any-types
 from typing import Callable, Tuple
@@ -489,6 +491,7 @@ def foo(f: Callable[[], Unchecked]) -> Tuple[Unchecked]:
 [out]
 main:5: error: Return type is implicitly converted to "Tuple[Any]" due to import from unanalyzed module
 main:5: error: Argument 1 to "foo" is implicitly converted to Callable[[], Any] due to import from unanalyzed module
+
 [case testDisallowImplicitAnySubclassingExplicitAny]
 # flags: --ignore-missing-imports --disallow-implicit-any-types --disallow-subclassing-any
 from typing import Any
