@@ -78,7 +78,7 @@ First install any additional dependencies needed for testing:
 
     $ python3 -m pip install -U -r test-requirements.txt
 
-To run all tests, run the script `runtests.py` in the mypy repository:
+To run all tests, run the script `runtests.py` from the root directory of the mypy repository:
 
     $ ./runtests.py
 
@@ -108,6 +108,8 @@ finer control over which unit tests are run and how, you can run `py.test` or
 
     $ PYTHONPATH=$PWD scripts/myunit -m mypy.test.testlex -v '*backslash*'
     $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
+
+Note that all tests must be run from the root directory of the mypy repository.
 
 You can also run the type checker for manual testing without
 installing anything by setting up the Python module search path
