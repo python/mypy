@@ -44,7 +44,7 @@ from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
-from mypy.funcplugins import get_function_plugin_callbacks, PluginCallback
+from mypy.plugin import Plugin
 from mypy.typeanal import make_optional_type
 
 from mypy import experiments
@@ -105,17 +105,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     type_context = None  # type: List[Optional[Type]]
 
     strfrm_checker = None  # type: StringFormatterChecker
-    function_plugins = None  # type: Dict[str, PluginCallback]
+    plugin = None  # type: Plugin
 
     def __init__(self,
                  chk: 'mypy.checker.TypeChecker',
-                 msg: MessageBuilder) -> None:
+                 msg: MessageBuilder,
+                 plugin: Plugin) -> None:
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
+        self.plugin = plugin
         self.type_context = [None]
         self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
-        self.function_plugins = get_function_plugin_callbacks(self.chk.options.python_version)
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
@@ -362,8 +363,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for actual in actuals:
                 formal_arg_types[formal].append(arg_types[actual])
                 formal_arg_exprs[formal].append(args[actual])
-        return self.function_plugins[fullname](
-            formal_arg_types, formal_arg_exprs, inferred_ret_type, self.chk.named_generic_type)
+        callback = self.plugin.get_function_hook(fullname)
+        assert callback is not None  # Assume that caller ensure this
+        return callback(formal_arg_types, formal_arg_exprs, inferred_ret_type,
+                        self.chk.named_generic_type)
 
     def check_call_expr_with_callee_type(self, callee_type: Type,
                                          e: CallExpr, callable_name: Optional[str]) -> Type:
@@ -443,7 +446,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if callable_node:
                 # Store the inferred callable type.
                 self.chk.store_type(callable_node, callee)
-            if callable_name in self.function_plugins:
+            if self.plugin.get_function_hook(callable_name):
                 ret_type = self.apply_function_plugin(
                     arg_types, callee.ret_type, arg_kinds, formal_to_actual,
                     args, len(callee.arg_types), callable_name)

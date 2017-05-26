@@ -42,6 +42,7 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
+from mypy.plugin import DefaultPlugin
 
 
 # We need to know the location of this file to load data, but
@@ -1505,8 +1506,9 @@ class State:
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
+            plugin = DefaultPlugin(self.options.python_version)
             self.type_checker = TypeChecker(manager.errors, manager.modules, self.options,
-                                            self.tree, self.xpath)
+                                            self.tree, self.xpath, plugin)
             self.type_checker.check_first_pass()
 
     def type_check_second_pass(self) -> bool:

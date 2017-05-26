@@ -1,40 +1,62 @@
-"""Plugins that implement special type checking rules for individual functions.
+"""Plugin architecture for custom type checking rules for specific functions, etc.
 
-The plugins infer better types for tricky functions such as "open".
+A plugin can, for example, infer better types for tricky functions such as "open".
 """
 
-from typing import Tuple, Dict, Callable, List
+from typing import Callable, List, Tuple, Optional
 
 from mypy.nodes import Expression, StrExpr
 from mypy.types import Type, Instance, CallableType
 
 
+# Create an Instance given full name of class and type arguments.
+NamedInstanceCallback = Callable[[str, List[Type]], Type]
+
 # A callback that infers the return type of a function with a special signature.
 #
 # A no-op callback would just return the inferred return type, but a useful callback
 # at least sometimes can infer a more precise type.
-PluginCallback = Callable[
+FunctionHook = Callable[
     [
         List[List[Type]],        # List of types caller provides for each formal argument
         List[List[Expression]],  # Actual argument expressions for each formal argument
         Type,                    # Return type for call inferred using the regular signature
-        Callable[[str, List[Type]], Type]  # Callable for constructing a named instance type
+        NamedInstanceCallback    # Callable for constructing a named instance type
     ],
     Type  # Return type inferred by the callback
 ]
 
 
-def get_function_plugin_callbacks(python_version: Tuple[int, int]) -> Dict[str, PluginCallback]:
-    """Return all available function plugins for a given Python version."""
-    if python_version[0] == 3:
-        return {
-            'builtins.open': open_callback,
-            'contextlib.contextmanager': contextmanager_callback,
-        }
-    else:
-        return {
-            'contextlib.contextmanager': contextmanager_callback,
-        }
+class Plugin:
+    """Base class of type checker plugins.
+
+    This defines a no-op plugin.  Subclasses can override some methods to
+    provide some actual functionality.
+
+    All get_ methods are treated as pure functions (you should assume that
+    results might be cached).
+    """
+
+    # TODO: Way of chaining multiple plugins
+
+    def __init__(self, python_version: Tuple[int, int]) -> None:
+        self.python_version = python_version
+
+    def get_function_hook(self, fullname: str) -> Optional[FunctionHook]:
+        return None
+
+    # TODO: method / metaclass / class decorator hooks
+
+
+class DefaultPlugin(Plugin):
+    """Type checker plugin that is enabled by default."""
+
+    def get_function_hook(self, fullname: str) -> Optional[FunctionHook]:
+        if fullname == 'contextlib.contextmanager':
+            return contextmanager_callback
+        elif fullname == 'builtins.open' and self.python_version[0] == 3:
+            return open_callback
+        return None
 
 
 def open_callback(
