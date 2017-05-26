@@ -1013,9 +1013,10 @@ def append_invariance_message(notes: List[str],
                               suggested_alternative: str) -> List[str]:
     notes.append(
         '"' + invariant_type + '" is invariant --- see ' +
-        'http://mypy.readthedocs.io/en/stable/variance.html')
+        'http://mypy.readthedocs.io/en/latest/common_issues.html#variance')
     notes.append('Consider using "' + suggested_alternative + '" instead, which is covariant')
     return notes
+
 
 def make_inferred_type_note(context: Context, subtype: Type,
                             supertype: Type, supertype_str: str) -> str:
