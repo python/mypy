@@ -111,7 +111,8 @@ class Driver:
         else:
             args = [sys.executable, '-m', 'pytest'] + pytest_args
 
-        self.waiter.add(LazySubprocess(full_name, args, env=self.env), sequential=True)
+        self.waiter.add(LazySubprocess(full_name, args, env=self.env, passthrough=True),
+                        sequential=True)
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
