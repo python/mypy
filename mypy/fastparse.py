@@ -858,8 +858,8 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         # JoinedStr(expr* values)
         @with_line
         def visit_JoinedStr(self, n: ast3.JoinedStr) -> Expression:
-            """Each of n.values is a str or FormattedValue; we just concatenate
-            them all using ''.join."""
+            # Each of n.values is a str or FormattedValue; we just concatenate
+            # them all using ''.join.
             empty_string = StrExpr('')
             empty_string.set_line(n.lineno, n.col_offset)
             strs_to_join = ListExpr(self.translate_expr_list(n.values))
@@ -874,9 +874,9 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         # FormattedValue(expr value)
         @with_line
         def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
-            """A FormattedValue is a component of a JoinedStr, or it can exist
-            on its own. We translate them to individual '{}'.format(value)
-            calls -- we don't bother with the conversion/format_spec fields."""
+            # A FormattedValue is a component of a JoinedStr, or it can exist
+            # on its own. We translate them to individual '{}'.format(value)
+            # calls -- we don't bother with the conversion/format_spec fields.
             exp = self.visit(n.value)
             exp.set_line(n.lineno, n.col_offset)
             format_string = StrExpr('{}')
