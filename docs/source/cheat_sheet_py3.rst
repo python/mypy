@@ -153,8 +153,6 @@ When you're puzzled or when things are complicated
        def __getattr__(self, name: str) -> int: ...
    a.foo = 42  # works
    a.bar = 'Ex-parrot'  # fails type checking
-   f = None  # type: int
-   b = None  # type: str
 
 
    # TODO: explain "Need type annotation for variable" when

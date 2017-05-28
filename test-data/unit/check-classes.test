@@ -1651,7 +1651,6 @@ b = a.bar
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
-
 [case testGetAttrSignature]
 class A:
     def __getattr__(self, x: str) -> A: pass
@@ -1708,7 +1707,6 @@ s = Sub()
 s.success = 4
 s.fail = 'fail'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-
 [case testSetAttrSignature]
 class Test:
     def __setattr__() -> None: ...  # E: Method must have at least one argument # E: Invalid signature "def ()"
@@ -1723,14 +1721,14 @@ a.test = 4  # E: "A" has no attribute "test"
 class B:
     def __setattr__(self, name, value: int): ...
 b = B()
-b.fail = 5
+b.integer = 5
 
 class C:
     def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "def (__main__.C, builtins.int, builtins.int)"
 c = C()
 c.check = 13
 
-[case test testAttributes]
+[case testGetAttrAndSetattr]
 class A:
     def __setattr__(self, name: str, value: Any) -> None: ...
     def __getattr__(self, name: str) -> Any: ...
@@ -1745,8 +1743,6 @@ integer = 0
 b = B()
 b.at = '3'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 integer = b.at  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-
-
 
 -- CallableType objects
 -- ----------------
