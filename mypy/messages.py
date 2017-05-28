@@ -17,7 +17,8 @@ from mypy.types import (
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
+    ReturnStmt, NameExpr, Var
 )
 
 
@@ -989,3 +990,31 @@ def pretty_or(args: List[str]) -> str:
     if len(quoted) == 2:
         return "{} or {}".format(quoted[0], quoted[1])
     return ", ".join(quoted[:-1]) + ", or " + quoted[-1]
+
+
+def make_inferred_type_note(context: Context, subtype: Type,
+                            supertype: Type, supertype_str: str) -> str:
+    """Explain that the user may have forgotten to type a variable.
+
+    The user does not expect an error if the inferred container type is the same as the return
+    type of a function and the argument type(s) are a subtype of the argument type(s) of the
+    return type. This note suggests that they add a type annotation with the return type instead
+    of relying on the inferred type.
+    """
+    from mypy.subtypes import is_subtype
+    if (isinstance(subtype, Instance) and
+            isinstance(supertype, Instance) and
+            subtype.type.fullname() == supertype.type.fullname() and
+            subtype.args and
+            supertype.args and
+            isinstance(context, ReturnStmt) and
+            isinstance(context.expr, NameExpr) and
+            isinstance(context.expr.node, Var) and
+            context.expr.node.is_inferred):
+        for subtype_arg, supertype_arg in zip(subtype.args, supertype.args):
+            if not is_subtype(subtype_arg, supertype_arg):
+                return ''
+        var_name = context.expr.name
+        return 'Perhaps you need a type annotation for "{}"? Suggestion: {}'.format(
+            var_name, supertype_str)
+    return ''

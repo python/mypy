@@ -25,16 +25,20 @@ class LazySubprocess:
     """Wrapper around a subprocess that runs a test task."""
 
     def __init__(self, name: str, args: List[str], *, cwd: str = None,
-                 env: Dict[str, str] = None) -> None:
+                 env: Dict[str, str] = None, passthrough: bool = False) -> None:
         self.name = name
         self.args = args
         self.cwd = cwd
         self.env = env
         self.start_time = None  # type: float
         self.end_time = None  # type: float
+        self.passthrough = passthrough
 
     def start(self) -> None:
-        self.outfile = tempfile.TemporaryFile()
+        if self.passthrough:
+            self.outfile = None
+        else:
+            self.outfile = tempfile.TemporaryFile()
         self.start_time = time.perf_counter()
         self.process = Popen(self.args, cwd=self.cwd, env=self.env,
                              stdout=self.outfile, stderr=STDOUT)
@@ -47,6 +51,8 @@ class LazySubprocess:
         return self.process.returncode
 
     def read_output(self) -> str:
+        if self.passthrough:
+            return ''
         file = self.outfile
         file.seek(0)
         # Assume it's ascii to avoid unicode headaches (and portability issues).
