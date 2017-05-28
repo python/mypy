@@ -155,6 +155,29 @@ y = Bar2(42)
 y = func3(x)
 [out]
 
+[case testNewTypeWithNewType]
+from typing import NewType
+A = NewType('A', int)
+B = NewType('B', A)
+C = A
+D = C
+E = NewType('E', D)
+
+a = A(1)
+b = B(a)
+e = E(a)
+
+def funca(a: A) -> None: ...
+def funcb(b: B) -> None: ...
+
+funca(a)
+funca(b)
+funca(e)
+funcb(a)  # E: Argument 1 to "funcb" has incompatible type "A"; expected "B"
+funcb(b)
+funcb(e)  # E: Argument 1 to "funcb" has incompatible type "E"; expected "B"
+
+[out]
 
 -- Make sure NewType works as expected in a variety of different scopes/across files
 
@@ -278,15 +301,6 @@ B = NewType('B', List[T])
 main:3: error: Argument 2 to NewType(...) must be subclassable (got T?)
 main:3: error: Invalid type "__main__.T"
 main:4: error: Invalid type "__main__.T"
-
-[case testNewTypeWithNewTypeFails]
-from typing import NewType
-A = NewType('A', int)
-B = NewType('B', A)  # E: Argument 2 to NewType(...) cannot be another NewType
-C = A
-D = C
-E = NewType('E', D)  # E: Argument 2 to NewType(...) cannot be another NewType
-[out]
 
 [case testNewTypeRedefiningVariablesFails]
 from typing import NewType

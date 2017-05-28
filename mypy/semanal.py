@@ -1822,10 +1822,6 @@ class SemanticAnalyzer(NodeVisitor):
             return None
         old_type = self.anal_type(unanalyzed_type)
 
-        if isinstance(old_type, Instance) and old_type.type.is_newtype:
-            self.fail("Argument 2 to NewType(...) cannot be another NewType", context)
-            has_failed = True
-
         return None if has_failed else old_type
 
     def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance) -> TypeInfo:
