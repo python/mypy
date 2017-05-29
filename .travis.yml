@@ -15,6 +15,7 @@ python:
 
 install:
   - pip install -r test-requirements.txt
+  - python2 -m pip install --user typing
   - python setup.py install
 
 script:
