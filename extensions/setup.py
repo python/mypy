@@ -4,7 +4,7 @@
 
 from distutils.core import setup
 
-version = '0.2.0'
+version = '0.3.0-dev'
 description = 'Experimental type system extensions for programs checked with the mypy typechecker.'
 long_description = '''
 Mypy Extensions
