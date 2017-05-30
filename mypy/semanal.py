@@ -2385,27 +2385,27 @@ class SemanticAnalyzer(NodeVisitor):
             # understand our all(isinstance(...)), so cast them as
             # Union[TupleExpr, ListExpr] so mypy knows it is safe to access
             # their .items attribute.
-            cast_lvals = cast(List[Union[TupleExpr, ListExpr]], lvals)
-            cast_rval = cast(Union[TupleExpr, ListExpr], rval)
+            seq_lvals = cast(List[Union[TupleExpr, ListExpr]], lvals)
+            seq_rval = cast(Union[TupleExpr, ListExpr], rval)
             # given an assignment like:
-            #     x, y = m, n = a, b
+            #     (x, y) = (m, n) = (a, b)
             # we now have:
-            #     rval = (a, b)
-            #     lvals = [(x, y), (m, n)]
+            #     seq_rval = (a, b)
+            #     seq_lvals = [(x, y), (m, n)]
             # We now zip this into:
-            #     matched_sets = [(a, x, m), (b, y, n)]
-            # where each "matched set" consists of one element of rval and the
-            # corresponding element of each lval. Effectively, we transform
-            #     x, y = m, n = a, b
-            # into separate assignments
+            #     elementwise_assignments = [(a, x, m), (b, y, n)]
+            # where each elementwise assignment consists of one element of rval and the
+            # corresponding element of each lval. We unpack
+            #     (x, y) = (m, n) = (a, b)
+            # into elementwise assignments
             #     x = m = a
             #     y = n = b
             # and then we recursively call this method for each of those assignments.
             # If the rval and all lvals are not all of the same length, zip will just ignore
             # extra elements, so no error will be raised here; mypy will later complain
             # about the length mismatch in type-checking.
-            matched_sets = zip(cast_rval.items, *[v.items for v in cast_lvals])
-            for rv, *lvs in matched_sets:
+            elementwise_assignments = zip(seq_rval.items, *[v.items for v in seq_lvals])
+            for rv, *lvs in elementwise_assignments:
                 self._process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, NameExpr):
             rnode = self.lookup(rval.name, ctx)
