@@ -37,13 +37,11 @@ class LazySubprocess:
         self.passthrough = passthrough
 
     def start(self) -> None:
-        if self.passthrough is None:
+        if self.passthrough is None or self.passthrough < 0:
             self.outfile = tempfile.TemporaryFile()
         else:
             if self.passthrough >= 0:
                 self.outfile = None
-            else:
-                self.outfile = DEVNULL
         self.start_time = time.perf_counter()
         self.process = Popen(self.args, cwd=self.cwd, env=self.env,
                              stdout=self.outfile, stderr=STDOUT)
@@ -56,7 +54,7 @@ class LazySubprocess:
         return self.process.returncode
 
     def read_output(self) -> str:
-        if self.passthrough is not None:
+        if self.passthrough is not None and self.passthrough >= 0:
             return ''
         file = self.outfile
         file.seek(0)

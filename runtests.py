@@ -422,6 +422,13 @@ def main() -> None:
         pyt_arglist.append('--lf')
     if ff:
         pyt_arglist.append('--ff')
+    if verbosity >= 1:
+        pyt_arglist.extend(['-v'] * verbosity)
+    elif verbosity < 0:
+        pyt_arglist.extend(['-q'] * (-verbosity))
+    if parallel_limit:
+        if '-n' not in pyt_arglist:
+            pyt_arglist.append('-n{}'.format(parallel_limit))
 
     driver = Driver(whitelist=whitelist, blacklist=blacklist, lf=lf, ff=ff,
                     arglist=arglist, pyt_arglist=pyt_arglist, verbosity=verbosity,
