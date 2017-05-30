@@ -399,7 +399,33 @@ f.write('x')
 f.write(b'x')
 f.foobar()
 [out]
-_program.py:4: error: IO[Any] has no attribute "foobar"
+_program.py:3: error: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
+_program.py:4: error: "TextIO" has no attribute "foobar"
+
+[case testOpenReturnTypeInference]
+reveal_type(open('x'))
+reveal_type(open('x', 'r'))
+reveal_type(open('x', 'rb'))
+mode = 'rb'
+reveal_type(open('x', mode))
+[out]
+_program.py:1: error: Revealed type is 'typing.TextIO'
+_program.py:2: error: Revealed type is 'typing.TextIO'
+_program.py:3: error: Revealed type is 'typing.BinaryIO'
+_program.py:5: error: Revealed type is 'typing.IO[Any]'
+
+[case testOpenReturnTypeInferenceSpecialCases]
+reveal_type(open())
+reveal_type(open(mode='rb', file='x'))
+reveal_type(open(file='x', mode='rb'))
+mode = 'rb'
+reveal_type(open(mode=mode, file='r'))
+[out]
+_testOpenReturnTypeInferenceSpecialCases.py:1: error: Revealed type is 'typing.TextIO'
+_testOpenReturnTypeInferenceSpecialCases.py:1: error: Too few arguments for "open"
+_testOpenReturnTypeInferenceSpecialCases.py:2: error: Revealed type is 'typing.BinaryIO'
+_testOpenReturnTypeInferenceSpecialCases.py:3: error: Revealed type is 'typing.BinaryIO'
+_testOpenReturnTypeInferenceSpecialCases.py:5: error: Revealed type is 'typing.IO[Any]'
 
 [case testGenericPatterns]
 from typing import Pattern
@@ -1286,3 +1312,27 @@ a[1] = 2, 'y'
 a[:] = [('z', 3)]
 [out]
 _program.py:4: error: Incompatible types in assignment (expression has type "Tuple[int, str]", target has type "Tuple[str, int]")
+
+[case testContextManager]
+import contextlib
+from contextlib import contextmanager
+from typing import Iterator
+
+@contextmanager
+def f(x: int) -> Iterator[str]:
+    yield 'foo'
+
+@contextlib.contextmanager
+def g(*x: str) -> Iterator[int]:
+    yield 1
+
+reveal_type(f)
+reveal_type(g)
+
+with f('') as s:
+    reveal_type(s)
+[out]
+_program.py:13: error: Revealed type is 'def (x: builtins.int) -> contextlib.GeneratorContextManager[builtins.str*]'
+_program.py:14: error: Revealed type is 'def (*x: builtins.str) -> contextlib.GeneratorContextManager[builtins.int*]'
+_program.py:16: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+_program.py:17: error: Revealed type is 'builtins.str*'

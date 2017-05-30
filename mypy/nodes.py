@@ -731,6 +731,7 @@ class ClassDef(Statement):
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = ''  # type: Optional[str]
     decorators = None  # type: List[Expression]
+    analyzed = None  # type: Optional[Expression]
     has_incompatible_baseclass = False
 
     def __init__(self,
@@ -753,7 +754,7 @@ class ClassDef(Statement):
         return self.info.is_generic()
 
     def serialize(self) -> JsonDict:
-        # Not serialized: defs, base_type_exprs, decorators
+        # Not serialized: defs, base_type_exprs, decorators, analyzed (for named tuples etc.)
         return {'.class': 'ClassDef',
                 'name': self.name,
                 'fullname': self.fullname,

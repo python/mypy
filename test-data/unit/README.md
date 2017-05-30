@@ -41,6 +41,7 @@ usually, "E: " is preferred because it makes it easier to associate the
 errors with the code generating them at a glance, and to change the code of
 the test without having to change line numbers in `[out]`
 - an empty `[out]` section has no effect
+- to run just this test, use `pytest -k testNewSyntaxBasics -n0`
 
 
 Fixtures
@@ -77,6 +78,11 @@ First install any additional dependencies needed for testing:
 
     $ python3 -m pip install -U -r test-requirements.txt
 
+You must also have a Python 2.7 binary installed that can import the `typing`
+module:
+
+    $ python2 -m pip install -U typing
+
 To run all tests, run the script `runtests.py` in the mypy repository:
 
     $ ./runtests.py
@@ -109,12 +115,13 @@ finer control over which unit tests are run and how, you can run `py.test` or
     $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
 
 You can also run the type checker for manual testing without
-installing anything by setting up the Python module search path
-suitably (the lib-typing/3.2 path entry is not needed for Python 3.5
-or when you have manually installed the `typing` module):
+installing it by setting up the Python module search path suitably:
 
-    $ export PYTHONPATH=$PWD:$PWD/lib-typing/3.2
+    $ export PYTHONPATH=$PWD
     $ python<version> -m mypy PROGRAM.py
+
+You will have to manually install the `typing` module if you're running Python
+3.4 or earlier.
 
 You can add the entry scripts to PATH for a single python3 version:
 

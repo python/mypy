@@ -36,7 +36,7 @@ from mypy.types import (
     true_only, false_only, function_type, is_named_instance, union_items
 )
 from mypy.sametypes import is_same_type, is_same_types
-from mypy.messages import MessageBuilder
+from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
 from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
 from mypy import messages
@@ -616,7 +616,8 @@ class TypeChecker(NodeVisitor[None]):
                     self.check_reverse_op_method(item, typ, name)
                 elif name in ('__getattr__', '__getattribute__'):
                     self.check_getattr_method(typ, defn)
-
+                elif name == '__setattr__':
+                    self.check_setattr_method(typ, defn)
                 # Refuse contravariant return type variable
                 if isinstance(typ.ret_type, TypeVarType):
                     if typ.ret_type.variance == CONTRAVARIANT:
@@ -912,6 +913,15 @@ class TypeChecker(NodeVisitor[None]):
                                    [nodes.ARG_POS, nodes.ARG_POS],
                                    [None, None],
                                    AnyType(),
+                                   self.named_type('builtins.function'))
+        if not is_subtype(typ, method_type):
+            self.msg.invalid_signature(typ, context)
+
+    def check_setattr_method(self, typ: CallableType, context: Context) -> None:
+        method_type = CallableType([AnyType(), self.named_type('builtins.str'), AnyType()],
+                                   [nodes.ARG_POS, nodes.ARG_POS, nodes.ARG_POS],
+                                   [None, None, None],
+                                   NoneTyp(),
                                    self.named_type('builtins.function'))
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature(typ, context)
@@ -1864,7 +1874,8 @@ class TypeChecker(NodeVisitor[None]):
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the
                     # function is not declared to return Any)
-                    if not isinstance(return_type, AnyType) and self.options.warn_return_any:
+                    if (not is_proper_subtype(AnyType(), return_type) and
+                            self.options.warn_return_any):
                         self.warn(messages.RETURN_ANY.format(return_type), s)
                     return
 
@@ -2223,8 +2234,12 @@ class TypeChecker(NodeVisitor[None]):
                 continue
             dec = self.expr_checker.accept(d)
             temp = self.temp_node(sig)
+            fullname = None
+            if isinstance(d, RefExpr):
+                fullname = d.fullname
             sig, t2 = self.expr_checker.check_call(dec, [temp],
-                                                   [nodes.ARG_POS], e)
+                                                   [nodes.ARG_POS], e,
+                                                   callable_name=fullname)
         sig = cast(FunctionLike, sig)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
@@ -2313,15 +2328,20 @@ class TypeChecker(NodeVisitor[None]):
             if self.should_suppress_optional_error([subtype]):
                 return False
             extra_info = []  # type: List[str]
+            note_msg = ''
             if subtype_label is not None or supertype_label is not None:
                 subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
                 if subtype_label is not None:
                     extra_info.append(subtype_label + ' ' + subtype_str)
                 if supertype_label is not None:
                     extra_info.append(supertype_label + ' ' + supertype_str)
+                note_msg = make_inferred_type_note(context, subtype,
+                                                   supertype, supertype_str)
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
             self.fail(msg, context)
+            if note_msg:
+                self.note(note_msg, context)
             return False
 
     def contains_none(self, t: Type) -> bool:

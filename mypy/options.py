@@ -29,6 +29,7 @@ class Options:
         "warn_return_any",
         "ignore_errors",
         "strict_boolean",
+        "no_implicit_optional",
     }
 
     OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional", "quick_and_dirty"}
@@ -91,6 +92,9 @@ class Options:
 
         # Alternate way to show/hide strict-None-checking related errors
         self.show_none_errors = True
+
+        # Don't assume arguments with default values of None are Optional
+        self.no_implicit_optional = False
 
         # Use script name instead of __main__
         self.scripts_are_modules = False

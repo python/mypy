@@ -610,6 +610,9 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                                   arg, info.name(), tvar.upper_bound), t)
         for arg in t.args:
             arg.accept(self)
+        if info.is_newtype:
+            for base in info.bases:
+                base.accept(self)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type],
                               valids: List[Type], arg_number: int, context: Context) -> None:
