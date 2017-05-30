@@ -84,7 +84,7 @@ main:6: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 import typing
 MYPY = 0
 if MYPY:
-    None + 1 # E: Unsupported left operand type for + (None)
+    None + 1 # E: Unsupported left operand type for + ("None")
 else:
     None + ''
 [builtins fixtures/bool.pyi]

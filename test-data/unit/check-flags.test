@@ -190,7 +190,7 @@ reveal_type(f() or no_return())  # E: Revealed type is 'builtins.int'
 # flags: --warn-no-return
 from mypy_extensions import NoReturn
 
-x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type NoReturn)
+x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type "NoReturn")
 [builtins fixtures/dict.pyi]
 
 [case testNoReturnImportFromTyping]
@@ -206,7 +206,7 @@ def no_return() -> NoReturn: pass
 def f() -> NoReturn:
   no_return()
 
-x: NoReturn = 0 # E: Incompatible types in assignment (expression has type "int", variable has type NoReturn)
+x: NoReturn = 0 # E: Incompatible types in assignment (expression has type "int", variable has type "NoReturn")
 [builtins fixtures/dict.pyi]
 
 [case testShowErrorContextFunction]

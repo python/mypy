@@ -84,7 +84,7 @@ async def f() -> int:
     x = await g()
     return x
 [out]
-main:7: error: Incompatible types in await (actual type Generator[int, None, str], expected type Awaitable[Any])
+main:7: error: Incompatible types in await (actual type "Generator[int, None, str]", expected type "Awaitable[Any]")
 
 [case testAwaitIteratorError]
 
@@ -95,7 +95,7 @@ async def f() -> int:
     x = await g()
     return x
 [out]
-main:6: error: Incompatible types in await (actual type Iterator[Any], expected type Awaitable[Any])
+main:6: error: Incompatible types in await (actual type "Iterator[Any]", expected type "Awaitable[Any]")
 
 [case testAwaitArgumentError]
 
@@ -106,7 +106,7 @@ async def f() -> int:
     return x
 [builtins fixtures/async_await.pyi]
 [out]
-main:5: error: Incompatible types in await (actual type "int", expected type Awaitable[Any])
+main:5: error: Incompatible types in await (actual type "int", expected type "Awaitable[Any]")
 
 [case testAwaitResultError]
 
@@ -150,7 +150,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [out]
 main:4: error: AsyncIterable expected
-main:4: error: List[int] has no attribute "__aiter__"
+main:4: error: "List[int]" has no attribute "__aiter__"
 
 [case testAsyncForTypeComments]
 
@@ -232,13 +232,13 @@ async def wrong_iterable(obj: Iterable[int]):
 
 [out]
 main:18: error: AsyncIterable expected
-main:18: error: Iterable[int] has no attribute "__aiter__"; maybe "__iter__"?
+main:18: error: "Iterable[int]" has no attribute "__aiter__"; maybe "__iter__"?
 main:19: error: Iterable expected
-main:19: error: asyncify[int] has no attribute "__iter__"; maybe "__aiter__"?
+main:19: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"?
 main:20: error: AsyncIterable expected
-main:20: error: Iterable[int] has no attribute "__aiter__"; maybe "__iter__"?
+main:20: error: "Iterable[int]" has no attribute "__aiter__"; maybe "__iter__"?
 main:21: error: Iterable expected
-main:21: error: asyncify[int] has no attribute "__iter__"; maybe "__aiter__"?
+main:21: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"?
 [builtins fixtures/async_await.pyi]
 
 [case testAsyncWith]
@@ -271,7 +271,7 @@ class C:
     def __aenter__(self) -> int: pass
     async def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
-    async with C() as x:  # E: Incompatible types in "async with" for __aenter__ (actual type "int", expected type Awaitable[Any])
+    async with C() as x:  # E: Incompatible types in "async with" for __aenter__ (actual type "int", expected type "Awaitable[Any]")
         pass
 [builtins fixtures/async_await.pyi]
 [out]
@@ -282,7 +282,7 @@ class C:
     def __aenter__(self) -> None: pass
     async def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
-    async with C() as x:  # E: None has no attribute "__await__"
+    async with C() as x:  # E: "None" has no attribute "__await__"
         pass
 [builtins fixtures/async_await.pyi]
 [out]
@@ -293,7 +293,7 @@ class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> int: pass
 async def f() -> None:
-    async with C() as x: # E: Incompatible types in "async with" for __aexit__ (actual type "int", expected type Awaitable[Any])
+    async with C() as x: # E: Incompatible types in "async with" for __aexit__ (actual type "int", expected type "Awaitable[Any]")
         pass
 [builtins fixtures/async_await.pyi]
 [out]
@@ -304,7 +304,7 @@ class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
-    async with C() as x: # E: None has no attribute "__await__"
+    async with C() as x: # E: "None" has no attribute "__await__"
         pass
 [builtins fixtures/async_await.pyi]
 [out]
@@ -362,7 +362,7 @@ def g() -> Generator[Any, None, str]:
     return x
 [builtins fixtures/async_await.pyi]
 [out]
-main:6: error: "yield from" can't be applied to Awaitable[str]
+main:6: error: "yield from" can't be applied to "Awaitable[str]"
 
 [case testAwaitableSubclass]
 
@@ -523,7 +523,7 @@ def h() -> None:
 
 [out]
 main:9: error: Iterable expected
-main:9: error: AsyncGenerator[int, None] has no attribute "__iter__"; maybe "__aiter__"?
+main:9: error: "AsyncGenerator[int, None]" has no attribute "__iter__"; maybe "__aiter__"?
 
 [case testAsyncGeneratorNoYieldFrom]
 # flags: --fast-parser --python-version 3.6
@@ -607,19 +607,19 @@ def plain_host_generator() -> Generator[str, None, None]:
     yield 'a'
     x = 0
     x = yield from plain_generator()
-    x = yield from plain_coroutine()  # E: "yield from" can't be applied to Awaitable[int]
+    x = yield from plain_coroutine()  # E: "yield from" can't be applied to "Awaitable[int]"
     x = yield from decorated_generator()
-    x = yield from decorated_coroutine()  # E: "yield from" can't be applied to AwaitableGenerator[Any, Any, int, Awaitable[int]]
+    x = yield from decorated_coroutine()  # E: "yield from" can't be applied to "AwaitableGenerator[Any, Any, int, Awaitable[int]]"
     x = yield from other_iterator()
     x = yield from other_coroutine()  # E: "yield from" can't be applied to "Aw"
 
 async def plain_host_coroutine() -> None:
     x = 0
-    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type Awaitable[Any])
+    x = await plain_generator()  # E: Incompatible types in await (actual type "Generator[str, None, int]", expected type "Awaitable[Any]")
     x = await plain_coroutine()
     x = await decorated_generator()
     x = await decorated_coroutine()
-    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type Awaitable[Any])
+    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type "Awaitable[Any]")
     x = await other_coroutine()
 
 @coroutine
@@ -636,11 +636,11 @@ def decorated_host_generator() -> Generator[str, None, None]:
 @coroutine
 async def decorated_host_coroutine() -> None:
     x = 0
-    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type Awaitable[Any])
+    x = await plain_generator()  # E: Incompatible types in await (actual type "Generator[str, None, int]", expected type "Awaitable[Any]")
     x = await plain_coroutine()
     x = await decorated_generator()
     x = await decorated_coroutine()
-    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type Awaitable[Any])
+    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type "Awaitable[Any]")
     x = await other_coroutine()
 
 [builtins fixtures/async_await.pyi]
