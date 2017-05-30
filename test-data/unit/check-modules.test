@@ -1421,6 +1421,8 @@ reveal_type(types)  # E: Revealed type is 'types.ModuleType'
 import m
 m2 = m
 reveal_type(m2.a)  # E: Revealed type is 'builtins.str'
+m2.b  # E: Module has no attribute "b"
+m2.c = 'bar'  # E: Module has no attribute "c"
 
 [file m.py]
 a = 'foo'
