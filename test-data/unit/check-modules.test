@@ -1430,8 +1430,12 @@ a = 'foo'
 [case testChainedModuleAssignment]
 import m
 m3 = m2 = m
+m4 = m3
+m5 = m4
 reveal_type(m2.a)  # E: Revealed type is 'builtins.str'
 reveal_type(m3.a)  # E: Revealed type is 'builtins.str'
+reveal_type(m4.a)  # E: Revealed type is 'builtins.str'
+reveal_type(m5.a)  # E: Revealed type is 'builtins.str'
 
 [file m.py]
 a = 'foo'
@@ -1445,6 +1449,8 @@ reveal_type(m2.a)  # E: Revealed type is 'builtins.str'
 reveal_type(n2.b)  # E: Revealed type is 'builtins.str'
 reveal_type(m3.a)  # E: Revealed type is 'builtins.str'
 reveal_type(n3.b)  # E: Revealed type is 'builtins.str'
+
+x, y = m  # E: 'types.ModuleType' object is not iterable
 
 [file m.py]
 a = 'foo'
