@@ -2945,9 +2945,9 @@ class SemanticAnalyzer(NodeVisitor):
                 type_info = base.node
             elif isinstance(base.node, Var) and self.type and self.function_stack:
                 # check for self.bar or cls.bar in method/classmethod
-                func = self.function_stack[-1].type
-                if isinstance(func, CallableType):
-                    formal_arg = func.argument_by_name(base.node.name())
+                func_def = self.function_stack[-1]
+                if not func_def.is_static and isinstance(func_def.type, CallableType):
+                    formal_arg = func_def.type.argument_by_name(base.node.name())
                     if formal_arg and formal_arg.pos == 0:
                         type_info = self.type
             if type_info:
