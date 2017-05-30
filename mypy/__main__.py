@@ -2,4 +2,10 @@
 
 from mypy.main import main
 
-main(None)
+
+def console_entry() -> None:
+    main(None)
+
+
+if __name__ == '__main__':
+    main(None)
