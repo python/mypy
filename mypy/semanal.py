@@ -2943,21 +2943,13 @@ class SemanticAnalyzer(NodeVisitor):
             if isinstance(base.node, TypeInfo):
                 # C.bar where C is a class
                 type_info = base.node
-            elif isinstance(base.node, Var) and self.function_stack:
+            elif isinstance(base.node, Var) and self.type and self.function_stack:
                 # check for self.bar or cls.bar in method/classmethod
                 func = self.function_stack[-1].type
                 if isinstance(func, CallableType):
                     formal_arg = func.argument_by_name(base.node.name())
                     if formal_arg and formal_arg.pos == 0:
-                        if (
-                                isinstance(formal_arg.typ, CallableType) and
-                                isinstance(formal_arg.typ.ret_type, Instance)
-                        ):
-                            # classmethod
-                            type_info = formal_arg.typ.ret_type.type
-                        elif isinstance(formal_arg.typ, Instance):
-                            # instance method
-                            type_info = formal_arg.typ.type
+                        type_info = self.type
             if type_info:
                 n = type_info.names.get(expr.name)
                 if n is not None and (n.kind == MODULE_REF or isinstance(n.node, TypeInfo)):

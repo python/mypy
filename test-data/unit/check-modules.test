@@ -1423,6 +1423,9 @@ class C:
     def foo(self) -> None:
         x = self.m.a
         reveal_type(x)  # E: Revealed type is 'builtins.str'
+        # ensure we distinguish self from other variables
+        y = 'hello'
+        z = y.m.a  # E: "str" has no attribute "m"
     @classmethod
     def cmethod(cls) -> None:
         y = cls.m.a
