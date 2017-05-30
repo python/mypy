@@ -1874,7 +1874,8 @@ class TypeChecker(NodeVisitor[None]):
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the
                     # function is not declared to return Any)
-                    if not isinstance(return_type, AnyType) and self.options.warn_return_any:
+                    if (not is_proper_subtype(AnyType(), return_type) and
+                            self.options.warn_return_any):
                         self.warn(messages.RETURN_ANY.format(return_type), s)
                     return
 
