@@ -858,22 +858,35 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         # JoinedStr(expr* values)
         @with_line
         def visit_JoinedStr(self, n: ast3.JoinedStr) -> Expression:
-            arg_count = len(n.values)
-            format_string = StrExpr('{}' * arg_count)
-            format_string.set_line(n.lineno, n.col_offset)
-            format_method = MemberExpr(format_string, 'format')
-            format_method.set_line(format_string)
-            format_args = self.translate_expr_list(n.values)
-            format_arg_kinds = [ARG_POS] * arg_count
-            result_expression = CallExpr(format_method,
-                                         format_args,
-                                         format_arg_kinds)
+            # Each of n.values is a str or FormattedValue; we just concatenate
+            # them all using ''.join.
+            empty_string = StrExpr('')
+            empty_string.set_line(n.lineno, n.col_offset)
+            strs_to_join = ListExpr(self.translate_expr_list(n.values))
+            strs_to_join.set_line(empty_string)
+            join_method = MemberExpr(empty_string, 'join')
+            join_method.set_line(empty_string)
+            result_expression = CallExpr(join_method,
+                                         [strs_to_join],
+                                         [ARG_POS])
             return result_expression
 
         # FormattedValue(expr value)
         @with_line
         def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
-            return self.visit(n.value)
+            # A FormattedValue is a component of a JoinedStr, or it can exist
+            # on its own. We translate them to individual '{}'.format(value)
+            # calls -- we don't bother with the conversion/format_spec fields.
+            exp = self.visit(n.value)
+            exp.set_line(n.lineno, n.col_offset)
+            format_string = StrExpr('{}')
+            format_string.set_line(n.lineno, n.col_offset)
+            format_method = MemberExpr(format_string, 'format')
+            format_method.set_line(format_string)
+            result_expression = CallExpr(format_method,
+                                         [exp],
+                                         [ARG_POS])
+            return result_expression
 
     # Bytes(bytes s)
     @with_line
