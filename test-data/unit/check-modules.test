@@ -1454,6 +1454,8 @@ reveal_type(n3.b)  # E: Revealed type is 'builtins.str'
 
 x, y = m  # E: 'types.ModuleType' object is not iterable
 
+x, y, z = m, n  # E: Need more than 2 values to unpack (3 expected)
+
 [file m.py]
 a = 'foo'
 

@@ -2375,11 +2375,37 @@ class SemanticAnalyzer(NodeVisitor):
         Recursively handles the simple form of iterable unpacking; doesn't
         handle advanced unpacking with *rest, dictionary unpacking, etc.
 
+        In an expression like x = y = z, z is the rval and lvals will be [x,
+        y].
+
         """
         if all(isinstance(v, (TupleExpr, ListExpr)) for v in lvals + [rval]):
-            litemlists = [v.items for v in cast(List[Union[TupleExpr, ListExpr]], lvals)]
-            ritems = cast(Union[TupleExpr, ListExpr], rval).items
-            for rv, *lvs in zip(ritems, *litemlists):
+            # rval and all lvals are either list or tuple, so we are dealing
+            # with unpacking assignment like `x, y = a, b`. Mypy didn't
+            # understand our all(isinstance(...)), so cast them as
+            # Union[TupleExpr, ListExpr] so mypy knows it is safe to access
+            # their .items attribute.
+            cast_lvals = cast(List[Union[TupleExpr, ListExpr]], lvals)
+            cast_rval = cast(Union[TupleExpr, ListExpr], rval)
+            # given an assignment like:
+            #     x, y = m, n = a, b
+            # we now have:
+            #     rval = (a, b)
+            #     lvals = [(x, y), (m, n)]
+            # We now zip this into:
+            #     matched_sets = [(a, x, m), (b, y, n)]
+            # where each "matched set" consists of one element of rval and the
+            # corresponding element of each lval. Effectively, we transform
+            #     x, y = m, n = a, b
+            # into separate assignments
+            #     x = m = a
+            #     y = n = b
+            # and then we recursively call this method for each of those assignments.
+            # If the rval and all lvals are not all of the same length, zip will just ignore
+            # extra elements, so no error will be raised here; mypy will later complain
+            # about the length mismatch in type-checking.
+            matched_sets = zip(cast_rval.items, *[v.items for v in cast_lvals])
+            for rv, *lvs in matched_sets:
                 self._process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, NameExpr):
             rnode = self.lookup(rval.name, ctx)
