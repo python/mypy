@@ -399,9 +399,8 @@ f.write('x')
 f.write(b'x')
 f.foobar()
 [out]
-<<<<<<< e134f8fd1fbb064cc8e3004d70db52940c03a613
 _program.py:3: error: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
-_program.py:4: error: IO[str] has no attribute "foobar"
+_program.py:4: error: "IO[str]" has no attribute "foobar"
 
 [case testOpenReturnTypeInference]
 reveal_type(open('x'))
@@ -427,9 +426,6 @@ _testOpenReturnTypeInferenceSpecialCases.py:1: error: Too few arguments for "ope
 _testOpenReturnTypeInferenceSpecialCases.py:2: error: Revealed type is 'typing.IO[builtins.bytes]'
 _testOpenReturnTypeInferenceSpecialCases.py:3: error: Revealed type is 'typing.IO[builtins.bytes]'
 _testOpenReturnTypeInferenceSpecialCases.py:5: error: Revealed type is 'typing.IO[Any]'
-=======
-_program.py:4: error: "IO[Any]" has no attribute "foobar"
->>>>>>> And even more tests that need to be updated
 
 [case testGenericPatterns]
 from typing import Pattern
