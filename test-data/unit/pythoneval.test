@@ -400,7 +400,7 @@ f.write(b'x')
 f.foobar()
 [out]
 _program.py:3: error: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
-_program.py:4: error: IO[str] has no attribute "foobar"
+_program.py:4: error: "TextIO" has no attribute "foobar"
 
 [case testOpenReturnTypeInference]
 reveal_type(open('x'))
@@ -409,9 +409,9 @@ reveal_type(open('x', 'rb'))
 mode = 'rb'
 reveal_type(open('x', mode))
 [out]
-_program.py:1: error: Revealed type is 'typing.IO[builtins.str]'
-_program.py:2: error: Revealed type is 'typing.IO[builtins.str]'
-_program.py:3: error: Revealed type is 'typing.IO[builtins.bytes]'
+_program.py:1: error: Revealed type is 'typing.TextIO'
+_program.py:2: error: Revealed type is 'typing.TextIO'
+_program.py:3: error: Revealed type is 'typing.BinaryIO'
 _program.py:5: error: Revealed type is 'typing.IO[Any]'
 
 [case testOpenReturnTypeInferenceSpecialCases]
@@ -421,10 +421,10 @@ reveal_type(open(file='x', mode='rb'))
 mode = 'rb'
 reveal_type(open(mode=mode, file='r'))
 [out]
-_testOpenReturnTypeInferenceSpecialCases.py:1: error: Revealed type is 'typing.IO[builtins.str]'
+_testOpenReturnTypeInferenceSpecialCases.py:1: error: Revealed type is 'typing.TextIO'
 _testOpenReturnTypeInferenceSpecialCases.py:1: error: Too few arguments for "open"
-_testOpenReturnTypeInferenceSpecialCases.py:2: error: Revealed type is 'typing.IO[builtins.bytes]'
-_testOpenReturnTypeInferenceSpecialCases.py:3: error: Revealed type is 'typing.IO[builtins.bytes]'
+_testOpenReturnTypeInferenceSpecialCases.py:2: error: Revealed type is 'typing.BinaryIO'
+_testOpenReturnTypeInferenceSpecialCases.py:3: error: Revealed type is 'typing.BinaryIO'
 _testOpenReturnTypeInferenceSpecialCases.py:5: error: Revealed type is 'typing.IO[Any]'
 
 [case testGenericPatterns]

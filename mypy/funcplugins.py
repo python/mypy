@@ -44,7 +44,7 @@ def open_callback(
         named_generic_type: Callable[[str, List[Type]], Type]) -> Type:
     """Infer a better return type for 'open'.
 
-    Infer IO[str] or IO[bytes] as the return value if the mode argument is not
+    Infer TextIO or BinaryIO as the return value if the mode argument is not
     given or is a literal.
     """
     mode = None
@@ -55,10 +55,9 @@ def open_callback(
     if mode is not None:
         assert isinstance(inferred_return_type, Instance)
         if 'b' in mode:
-            arg = named_generic_type('builtins.bytes', [])
+            return named_generic_type('typing.BinaryIO', [])
         else:
-            arg = named_generic_type('builtins.str', [])
-        return Instance(inferred_return_type.type, [arg])
+            return named_generic_type('typing.TextIO', [])
     return inferred_return_type
 
 
