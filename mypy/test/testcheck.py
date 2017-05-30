@@ -155,6 +155,7 @@ class TypeCheckSuite(DataSuite):
                             # change. We manually set the mtime to circumvent this.
                             new_time = os.stat(target).st_mtime + 1
                             os.utime(target, times=(new_time, new_time))
+                # Delete files scheduled to be deleted in [delete <path>.num] sections.
                 for path in testcase.deleted_paths.get(incremental_step, set()):
                     # Use retries to work around potential flakiness on Windows (AppVeyor).
                     retry_on_error(lambda: os.remove(path))

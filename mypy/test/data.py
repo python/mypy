@@ -108,7 +108,7 @@ def parse_test_cases(
                     assert m, 'Invalid delete section: {}'.format(arg)
                     num = int(m.group(2))
                     assert num >= 2, "Can't delete during step {}".format(num)
-                    full = os.path.join(base_path, m.group(1))
+                    full = join(base_path, m.group(1))
                     deleted_paths.setdefault(num, set()).add(full)
                 elif p[i].id == 'out' or p[i].id == 'out1':
                     tcout = p[i].data
