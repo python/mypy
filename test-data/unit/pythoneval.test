@@ -400,7 +400,7 @@ f.write(b'x')
 f.foobar()
 [out]
 _program.py:3: error: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
-_program.py:4: error: TextIO has no attribute "foobar"
+_program.py:4: error: "TextIO" has no attribute "foobar"
 
 [case testOpenReturnTypeInference]
 reveal_type(open('x'))
