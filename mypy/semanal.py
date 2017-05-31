@@ -2359,9 +2359,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     def process_module_assignment(self, s: AssignmentStmt) -> None:
         """Check if s assigns a module an alias name; if so, update symbol table."""
-        # TODO support module alias assignment not in global scope
-        if not self.is_module_scope():
-            return
         self._process_module_assignment(s.lvalues, s.rvalue, s)
 
     def _process_module_assignment(

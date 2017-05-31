@@ -23,7 +23,7 @@ def safe_rmdir(dirname: str) -> None:
 
 class GenericTest(unittest.TestCase):
     # The path module to be tested
-    pathmodule = genericpath # type: Any
+    pathmodule = genericpath
     common_attributes = ['commonprefix', 'getsize', 'getatime', 'getctime',
                          'getmtime', 'exists', 'isdir', 'isfile']
     attributes = []  # type: List[str]
@@ -143,7 +143,7 @@ class GenericTest(unittest.TestCase):
             f.close()
             self.assertIs(self.pathmodule.exists(support.TESTFN), True)
             if not self.pathmodule == genericpath:
-                self.assertIs(self.pathmodule.lexists(support.TESTFN),
+                self.assertIs(self.pathmodule.lexists(support.TESTFN),  # type: ignore
                               True)
         finally:
             if not f.closed:
