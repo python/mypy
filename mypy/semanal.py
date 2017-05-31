@@ -2927,21 +2927,34 @@ class SemanticAnalyzer(NodeVisitor):
                 if full_name in obsolete_name_mapping:
                     self.fail("Module%s has no attribute %r (it's now called %r)" % (
                         mod_name, expr.name, obsolete_name_mapping[full_name]), expr)
-        elif isinstance(base, RefExpr) and isinstance(base.node, TypeInfo):
-            n = base.node.names.get(expr.name)
-            if n is not None and (n.kind == MODULE_REF or isinstance(n.node, TypeInfo)):
-                # This branch handles the case C.bar where C is a class and
-                # bar is a type definition or a module resulting from
-                # `import bar` inside class C. Here base.node is a TypeInfo,
-                # and again we look up the name in its namespace.
-                # This is done only when bar is a module or a type; other
-                # things (e.g. methods) are handled by other code in checkmember.
-                n = self.normalize_type_alias(n, expr)
-                if not n:
-                    return
-                expr.kind = n.kind
-                expr.fullname = n.fullname
-                expr.node = n.node
+        elif isinstance(base, RefExpr):
+            # This branch handles the case C.bar (or cls.bar or self.bar inside
+            # a classmethod/method), where C is a class and bar is a type
+            # definition or a module resulting from `import bar` (or a module
+            # assignment) inside class C. We look up bar in the class' TypeInfo
+            # namespace.  This is done only when bar is a module or a type;
+            # other things (e.g. methods) are handled by other code in
+            # checkmember.
+            type_info = None
+            if isinstance(base.node, TypeInfo):
+                # C.bar where C is a class
+                type_info = base.node
+            elif isinstance(base.node, Var) and self.type and self.function_stack:
+                # check for self.bar or cls.bar in method/classmethod
+                func_def = self.function_stack[-1]
+                if not func_def.is_static and isinstance(func_def.type, CallableType):
+                    formal_arg = func_def.type.argument_by_name(base.node.name())
+                    if formal_arg and formal_arg.pos == 0:
+                        type_info = self.type
+            if type_info:
+                n = type_info.names.get(expr.name)
+                if n is not None and (n.kind == MODULE_REF or isinstance(n.node, TypeInfo)):
+                    n = self.normalize_type_alias(n, expr)
+                    if not n:
+                        return
+                    expr.kind = n.kind
+                    expr.fullname = n.fullname
+                    expr.node = n.node
 
     def visit_op_expr(self, expr: OpExpr) -> None:
         expr.left.accept(self)
