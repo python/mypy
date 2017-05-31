@@ -2387,12 +2387,12 @@ class SemanticAnalyzer(NodeVisitor):
             # given an assignment like:
             #     (x, y) = (m, n) = (a, b)
             # we now have:
-            #     seq_rval = (a, b)
             #     seq_lvals = [(x, y), (m, n)]
+            #     seq_rval = (a, b)
             # We now zip this into:
-            #     elementwise_assignments = [(a, x, m), (b, y, n)]
-            # where each elementwise assignment consists of one element of rval and the
-            # corresponding element of each lval. We unpack
+            #     elementwise_assignments = [(x, m, a), (y, n, b)]
+            # where each elementwise assignment includes one element of rval and the
+            # corresponding element of each lval. Basically we unpack
             #     (x, y) = (m, n) = (a, b)
             # into elementwise assignments
             #     x = m = a
@@ -2401,9 +2401,9 @@ class SemanticAnalyzer(NodeVisitor):
             # If the rval and all lvals are not all of the same length, zip will just ignore
             # extra elements, so no error will be raised here; mypy will later complain
             # about the length mismatch in type-checking.
-            elementwise_assignments = zip(seq_rval.items, *[v.items for v in seq_lvals])
-            for rv, *lvs in elementwise_assignments:
-                self._process_module_assignment(lvs, rv, ctx)
+            elementwise_assignments = zip(*[v.items for v in seq_lvals], seq_rval.items)
+            for *lvs, rv in elementwise_assignments:
+                self._process_module_assignment(list(lvs), rv, ctx)
         elif isinstance(rval, NameExpr):
             rnode = self.lookup(rval.name, ctx)
             if rnode and rnode.kind == MODULE_REF:
