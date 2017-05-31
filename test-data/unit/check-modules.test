@@ -1417,6 +1417,29 @@ reveal_type(types)  # E: Revealed type is 'types.ModuleType'
 
 [builtins fixtures/module.pyi]
 
+[case testClassImportAccessedInMethod]
+class C:
+    import m
+    def foo(self) -> None:
+        x = self.m.a
+        reveal_type(x)  # E: Revealed type is 'builtins.str'
+        # ensure we distinguish self from other variables
+        y = 'hello'
+        z = y.m.a  # E: "str" has no attribute "m"
+    @classmethod
+    def cmethod(cls) -> None:
+        y = cls.m.a
+        reveal_type(y)  # E: Revealed type is 'builtins.str'
+    @staticmethod
+    def smethod(foo: int) -> None:
+        # we aren't confused by first arg of a staticmethod
+        y = foo.m.a  # E: "int" has no attribute "m"
+
+[file m.py]
+a = 'foo'
+
+[builtins fixtures/module.pyi]
+
 [case testModuleAssignment]
 import m
 m2 = m
