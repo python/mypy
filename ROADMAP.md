@@ -92,3 +92,5 @@ more accurate.
   mode.
 
 - Start work on editor plugins and support for selected IDE features.
+
+- Turn on `--strict-optional` by default.
