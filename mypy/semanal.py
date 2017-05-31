@@ -2402,8 +2402,11 @@ class SemanticAnalyzer(NodeVisitor):
             # extra elements, so no error will be raised here; mypy will later complain
             # about the length mismatch in type-checking.
             elementwise_assignments = zip(*[v.items for v in seq_lvals], seq_rval.items)
-            for *lvs, rv in elementwise_assignments:
-                self._process_module_assignment(list(lvs), rv, ctx)
+            for vals in elementwise_assignments:
+                # once Py35 is minimum supported, could use `*lvs, rv =` unpacking above
+                rv = vals[-1]
+                lvs = list(vals[:-1])
+                self._process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, NameExpr):
             rnode = self.lookup(rval.name, ctx)
             if rnode and rnode.kind == MODULE_REF:
