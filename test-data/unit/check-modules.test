@@ -1452,6 +1452,36 @@ a = 'foo'
 
 [builtins fixtures/module.pyi]
 
+[case testClassModuleAssignment]
+import m
+
+class C:
+    x = m
+    def foo(self) -> None:
+        reveal_type(self.x.a)  # E: Revealed type is 'builtins.str'
+
+[file m.py]
+a = 'foo'
+
+[builtins fixtures/module.pyi]
+
+[case testLocalModuleAssignment]
+import m
+
+def foo() -> None:
+    x = m
+    reveal_type(x.a)  # E: Revealed type is 'builtins.str'
+
+class C:
+    def foo(self) -> None:
+        x = m
+        reveal_type(x.a)  # E: Revealed type is 'builtins.str'
+
+[file m.py]
+a = 'foo'
+
+[builtins fixtures/module.pyi]
+
 [case testChainedModuleAssignment]
 import m
 m3 = m2 = m
