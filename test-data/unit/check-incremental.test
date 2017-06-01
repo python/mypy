@@ -2615,7 +2615,7 @@ b.f()
 [file b.py]
 def f() -> None: pass
 [delete b.py.2]
-[file c.py]
+[file c.py.2]
 def f() -> None: pass
 [file a.py.2]
 import c
@@ -2630,6 +2630,12 @@ tmp/a.py:2: error: Too many arguments for "f"
 [out3]
 tmp/a.py:2: error: Too many arguments for "f"
 [out4]
+[rechecked a, c]
+[stale c]
+[rechecked2 a, c]
+[stale2]
+[rechecked3 a, c]
+[stale3 a, c]
 
 [case testQuickAndDirtyMultiplePasses]
 # flags: --quick-and-dirty
