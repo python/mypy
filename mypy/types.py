@@ -1185,31 +1185,23 @@ class TypeType(Type):
 
     # This class must be created using make method which may return either TypeType or UnionType.
     # This is to ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]].
-    def __init__(self, item: Type, *, line: int = -1, column: int = -1) -> None:
-        raise NotImplementedError
-
-    def _init(self, item: Type, *, line: int = -1, column: int = -1) -> None:
+    def __init__(self, item: Union[Instance, AnyType, TypeVarType, TupleType, NoneTyp,
+                                   CallableType], *, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         if isinstance(item, CallableType) and item.is_type_obj():
             self.item = item.fallback
         else:
             self.item = item
 
-    def __new__(cls, *args, **kwargs):  # type: ignore
-        instance = object.__new__(cls)
-        instance._init(*args, **kwargs)
-        return instance
-
-    def __copy__(self) -> 'Type':
-        return TypeType.make(self.item)
-
     @staticmethod
     def make(item: Type, *, line: int = -1, column: int = -1) -> Type:
         if isinstance(item, UnionType):
             return UnionType.make_union([TypeType.make(union_item) for union_item in item.items],
                              line=line, column=column)
+        elif isinstance(item, (Instance, AnyType, TypeVarType, TupleType, NoneTyp, CallableType)):
+            return TypeType(item, line=line, column=column)
         else:
-            return TypeType.__new__(TypeType, item, line=line, column=column)
+            raise RuntimeError('Unexpected item type', type(item))
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)
