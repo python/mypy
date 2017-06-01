@@ -144,6 +144,58 @@ class LineCountReporter(AbstractReporter):
 register_reporter('linecount', LineCountReporter)
 
 
+class AnyExpressionsReporter(AbstractReporter):
+    def __init__(self, reports: Reports, output_dir: str) -> None:
+        super().__init__(reports, output_dir)
+        self.counts = {}  # type: Dict[str, Tuple[int, int]]
+        stats.ensure_dir_exists(output_dir)
+
+    def on_file(self,
+                tree: MypyFile,
+                type_map: Dict[Expression, Type],
+                options: Options) -> None:
+        visitor = stats.StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
+        tree.accept(visitor)
+        num_total = visitor.num_imprecise + visitor.num_precise + visitor.num_any
+        if num_total > 0:
+            self.counts[tree.fullname()] = (visitor.num_any, num_total)
+
+    def on_finish(self) -> None:
+        total_any = sum(num_any for num_any, _ in self.counts.values())
+        total_expr = sum(total for _, total in self.counts.values())
+        total_coverage = (float(total_expr - total_any) / float(total_expr)) * 100
+
+        any_column_name = "Anys"
+        total_column_name = "Exprs"
+        file_column_name = "Name"
+        # find the longest filename all files
+        name_width = max([len(file) for file in self.counts] + [len(file_column_name)])
+        # totals are the largest numbers in their column - no need to look at others
+        any_width = max(len(str(total_any)) + 3, len(any_column_name))
+        exprs_width = max(len(str(total_expr)) + 3, len(total_column_name))
+        header = '{:{name_width}} {:>{any_width}} {:>{total_width}} {:>11}'.format(
+            file_column_name, any_column_name, total_column_name, "Coverage",
+            name_width=name_width, any_width=any_width, total_width=exprs_width)
+
+        with open(os.path.join(self.output_dir, 'any-exprs.txt'), 'w') as f:
+            f.write(header + '\n')
+            separator = '-' * len(header) + '\n'
+            f.write(separator)
+            for file in sorted(self.counts):
+                (num_any, num_total) = self.counts[file]
+                coverage = (float(num_total - num_any) / float(num_total)) * 100
+                f.write('{:{name_width}} {:{any_width}} {:{total_width}} {:>10.2f}%\n'.
+                        format(file, num_any, num_total, coverage, name_width=name_width,
+                               any_width=any_width, total_width=exprs_width))
+            f.write(separator)
+            f.write('{:{name_width}} {:{any_width}} {:{total_width}} {:>10.2f}%\n'.format('Total',
+                    total_any, total_expr, total_coverage, name_width=name_width,
+                    any_width=any_width, total_width=exprs_width))
+
+
+register_reporter('any-exprs', AnyExpressionsReporter)
+
+
 class LineCoverageVisitor(TraverserVisitor):
     def __init__(self, source: List[str]) -> None:
         self.source = source
