@@ -216,7 +216,7 @@ class TypeFixture:
                     variance = variances[id - 1]
                 else:
                     variance = COVARIANT
-                v.append(TypeVarDef(n, id, None, self.o, variance=variance))
+                v.append(TypeVarDef(n, id, [], self.o, variance=variance))
             class_def.type_vars = v
 
         info = TypeInfo(SymbolTable(), class_def, module_name)

@@ -270,7 +270,7 @@ MypyFile:1(
         PassStmt:2()))
     AssignmentStmt:3(
       NameExpr(g* [m])
-      NameExpr(f [m]))))
+      NameExpr(f [__main__.A.f]))))
 
 [case testIfStatementInClassBody]
 class A:

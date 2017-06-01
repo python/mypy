@@ -1,6 +1,6 @@
 """Test cases for AST merge (used for fine-grained incremental checking)"""
 
-import os.path
+import os
 import shutil
 from typing import List, Tuple, Dict
 
@@ -100,6 +100,7 @@ class ASTMergeSuite(DataSuite):
         options = Options()
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.cache_dir = os.devnull
         try:
             result = build.build(sources=[BuildSource('main', None, source)],
                                  options=options,

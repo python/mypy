@@ -24,13 +24,14 @@ class StrConv(NodeVisitor[str]):
 
     def __init__(self, show_ids: bool = False) -> None:
         self.show_ids = show_ids
+        self.id_mapper = None  # type: Optional[IdMapper]
         if show_ids:
             self.id_mapper = IdMapper()
-        else:
-            self.id_mapper = None
 
-    def get_id(self, o: object) -> int:
-        return self.id_mapper.id(o)
+    def get_id(self, o: object) -> Optional[int]:
+        if self.id_mapper:
+            return self.id_mapper.id(o)
+        return None
 
     def format_id(self, o: object) -> str:
         if self.id_mapper:
@@ -47,6 +48,7 @@ class StrConv(NodeVisitor[str]):
         """
         tag = short_type(obj) + ':' + str(obj.get_line())
         if self.show_ids:
+            assert self.id_mapper is not None
             tag += '<{}>'.format(self.get_id(obj))
         return dump_tagged(nodes, tag, self)
 
@@ -503,8 +505,11 @@ class StrConv(NodeVisitor[str]):
     def visit_backquote_expr(self, o: 'mypy.nodes.BackquoteExpr') -> str:
         return self.dump([o.expr], o)
 
+    def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> str:
+        return self.dump([o.type], o)
 
-def dump_tagged(nodes: Sequence[object], tag: str, str_conv: 'StrConv') -> str:
+
+def dump_tagged(nodes: Sequence[object], tag: Optional[str], str_conv: 'StrConv') -> str:
     """Convert an array into a pretty-printed multiline string representation.
 
     The format is

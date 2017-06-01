@@ -24,6 +24,10 @@ from mypy.version import __version__
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
+class InvalidPackageName(Exception):
+    """Exception indicating that a package name was invalid."""
+
+
 def main(script_path: str, args: List[str] = None) -> None:
     """Main entry point to the type checker.
 
@@ -121,11 +125,22 @@ class SplitNamespace(argparse.Namespace):
 
 def parse_version(v: str) -> Tuple[int, int]:
     m = re.match(r'\A(\d)\.(\d+)\Z', v)
-    if m:
-        return int(m.group(1)), int(m.group(2))
-    else:
+    if not m:
         raise argparse.ArgumentTypeError(
             "Invalid python version '{}' (expected format: 'x.y')".format(v))
+    major, minor = int(m.group(1)), int(m.group(2))
+    if major == 2:
+        if minor != 7:
+            raise argparse.ArgumentTypeError(
+                "Python 2.{} is not supported (must be 2.7)".format(minor))
+    elif major == 3:
+        if minor <= 2:
+            raise argparse.ArgumentTypeError(
+                "Python 3.{} is not supported (must be 3.3 or higher)".format(minor))
+    else:
+        raise argparse.ArgumentTypeError(
+            "Python major version '{}' out of range (must be 2 or 3)".format(major))
+    return major, minor
 
 
 # Make the help output a little less jarring.
@@ -236,6 +251,8 @@ def process_options(args: List[str],
     add_invertible_flag('--show-error-context', default=False,
                         dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
+    add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
+                        help="don't assume arguments with default values of None are Optional")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable module cache")
     parser.add_argument('--quick-and-dirty', action='store_true',
@@ -272,8 +289,6 @@ def process_options(args: List[str],
     parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
                         dest='special-opts:find_occurrences',
                         help="print out all usages of a class member (experimental)")
-    add_invertible_flag('--strict-boolean', default=False, strict_flag=True,
-                        help='enable strict boolean checks in conditions')
     strict_help = "Strict mode. Enables the following flags: {}".format(
         ", ".join(strict_flag_names))
     parser.add_argument('--strict', action='store_true', dest='special-opts:strict',
@@ -292,6 +307,8 @@ def process_options(args: List[str],
     # --dump-graph will dump the contents of the graph of SCCs and exit.
     parser.add_argument('--dump-graph', action='store_true', help=argparse.SUPPRESS)
     # deprecated options
+    add_invertible_flag('--strict-boolean', default=False,
+                        help=argparse.SUPPRESS)
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
                         dest='special-opts:dirty_stubs',
                         help=argparse.SUPPRESS)
@@ -364,6 +381,9 @@ def process_options(args: List[str],
                      )
 
     # Process deprecated options
+    if options.strict_boolean:
+        print("Warning: --strict-boolean is deprecated; "
+              "see https://github.com/python/mypy/issues/3195", file=sys.stderr)
     if special_opts.almost_silent:
         print("Warning: --almost-silent has been replaced by "
               "--follow-imports=errors", file=sys.stderr)
@@ -443,9 +463,15 @@ def process_options(args: List[str],
         targets = []
         for f in special_opts.files:
             if f.endswith(PY_EXTENSIONS):
-                targets.append(BuildSource(f, crawl_up(f)[1], None))
+                try:
+                    targets.append(BuildSource(f, crawl_up(f)[1], None))
+                except InvalidPackageName as e:
+                    fail(str(e))
             elif os.path.isdir(f):
-                sub_targets = expand_dir(f)
+                try:
+                    sub_targets = expand_dir(f)
+                except InvalidPackageName as e:
+                    fail(str(e))
                 if not sub_targets:
                     fail("There are no .py[i] files in directory '{}'"
                          .format(f))
@@ -512,10 +538,14 @@ def crawl_up(arg: str) -> Tuple[str, str]:
         dir, base = os.path.split(dir)
         if not base:
             break
+        # Ensure that base is a valid python module name
+        if not base.isidentifier():
+            raise InvalidPackageName('{} is not a valid Python package name'.format(base))
         if mod == '__init__' or not mod:
             mod = base
         else:
             mod = base + '.' + mod
+
     return dir, mod
 
 
@@ -550,8 +580,7 @@ def get_init_file(dir: str) -> Optional[str]:
 # exists to specify types for values initialized to None or container
 # types.
 config_types = {
-    # TODO: Check validity of python version
-    'python_version': lambda s: tuple(map(int, s.split('.'))),
+    'python_version': parse_version,
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
     'custom_typeshed_dir': str,
@@ -660,7 +689,11 @@ def parse_section(prefix: str, template: Options,
             if ct is bool:
                 v = section.getboolean(key)  # type: ignore  # Until better stub
             elif callable(ct):
-                v = ct(section.get(key))
+                try:
+                    v = ct(section.get(key))
+                except argparse.ArgumentTypeError as err:
+                    print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
+                    continue
             else:
                 print("%s: Don't know what type %s should have" % (prefix, key), file=sys.stderr)
                 continue

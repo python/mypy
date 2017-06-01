@@ -122,6 +122,12 @@ When you're puzzled or when things are complicated
    # dynamic to write a type for.
    x = mystery_function()  # type: Any
 
+   # This is how to deal with varargs.
+   # This makes each positional arg and each keyword arg a 'str'.
+   def call(self, *args: str, **kwargs: str) -> str:
+            request = make_request(*args, **kwargs)
+            return self.do_api_query(request)
+
    # Use `ignore` to suppress type-checking on a given line, when your
    # code confuses mypy or runs into an outright bug in mypy.
    # Good practice is to comment every `ignore` with a bug link
@@ -135,6 +141,19 @@ When you're puzzled or when things are complicated
    c = cast(List[str], a)  # passes fine (no runtime check)
    reveal_type(c)  # -> error: Revealed type is 'builtins.list[builtins.str]'
    print(c)  # -> [4] the object is not cast
+
+   # if you want dynamic attributes on your class, have it override __setattr__ or __getattr__
+   # in a stub or in your source code.
+   # __setattr__ allows for dynamic assignment to names
+   # __getattr__ allows for dynamic access to names
+   class A:
+       # this will allow assignment to any A.x, if x is the same type as `value`
+       def __setattr__(self, name: str, value: int) -> None: ...
+       # this will allow access to any A.x, if x is compatible with the return type
+       def __getattr__(self, name: str) -> int: ...
+   a.foo = 42  # works
+   a.bar = 'Ex-parrot'  # fails type checking
+
 
    # TODO: explain "Need type annotation for variable" when
    # initializing with None or an empty container

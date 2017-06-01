@@ -176,6 +176,13 @@ def analyze_member_access(name: str,
         item = None
         if isinstance(typ.item, Instance):
             item = typ.item
+        elif isinstance(typ.item, AnyType):
+            fallback = builtin_type('builtins.type')
+            ignore_messages = msg.copy()
+            ignore_messages.disable_errors()
+            return analyze_member_access(name, fallback, node, is_lvalue, is_super,
+                                     is_operator, builtin_type, not_ready_callback,
+                                     ignore_messages, original_type=original_type, chk=chk)
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound
@@ -195,7 +202,7 @@ def analyze_member_access(name: str,
 
     if chk and chk.should_suppress_optional_error([typ]):
         return AnyType()
-    return msg.has_no_attr(original_type, name, node)
+    return msg.has_no_attr(original_type, typ, name, node)
 
 
 def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
@@ -238,6 +245,15 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                     getattr_type = expand_type_by_instance(bound_method, typ)
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
+        else:
+            setattr_meth = info.get_method('__setattr__')
+            if setattr_meth and setattr_meth.info.fullname() != 'builtins.object':
+                setattr_func = function_type(setattr_meth, builtin_type('builtins.function'))
+                bound_type = bind_self(setattr_func, original_type)
+                typ = map_instance_to_supertype(itype, setattr_meth.info)
+                setattr_type = expand_type_by_instance(bound_type, typ)
+                if isinstance(setattr_type, CallableType) and len(setattr_type.arg_types) > 0:
+                    return setattr_type.arg_types[-1]
 
     if itype.type.fallback_to_any:
         return AnyType()
@@ -249,7 +265,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
     else:
         if chk and chk.should_suppress_optional_error([itype]):
             return AnyType()
-        return msg.has_no_attr(original_type, name, node)
+        return msg.has_no_attr(original_type, itype, name, node)
 
 
 def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Context,
@@ -374,7 +390,7 @@ def analyze_class_attribute_access(itype: Instance,
                                    builtin_type: Callable[[str], Instance],
                                    not_ready_callback: Callable[[str, Context], None],
                                    msg: MessageBuilder,
-                                   original_type: Type) -> Type:
+                                   original_type: Type) -> Optional[Type]:
     """original_type is the type of E in the expression E.var"""
     node = itype.type.get(name)
     if not node:
@@ -396,7 +412,9 @@ def analyze_class_attribute_access(itype: Instance,
     t = node.type
     if t:
         if isinstance(t, PartialType):
-            return handle_partial_attribute_type(t, is_lvalue, msg, node.node)
+            symnode = node.node
+            assert symnode is not None
+            return handle_partial_attribute_type(t, is_lvalue, msg, symnode)
         if not is_method and (isinstance(t, TypeVarType) or get_type_vars(t)):
             msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, context)
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
@@ -444,7 +462,7 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
     info = itype.type  # type: TypeInfo
     if isinstance(t, CallableType):
         # TODO: Should we propagate type variable values?
-        tvars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
+        tvars = [TypeVarDef(n, i + 1, [], builtin_type('builtins.object'), tv.variance)
                  for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         if is_classmethod:
             t = bind_self(t, original_type)
@@ -508,12 +526,10 @@ def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,
     # We need to first map B's __init__ to the type (List[T]) -> None.
     signature = cast(FunctionLike,
                      map_type_from_supertype(signature, info, init_or_new.info))
-
+    special_sig = None  # type: Optional[str]
     if init_or_new.info.fullname() == 'builtins.dict':
         # Special signature!
         special_sig = 'dict'
-    else:
-        special_sig = None
 
     if isinstance(signature, CallableType):
         return class_callable(signature, info, fallback, special_sig)
@@ -623,6 +639,7 @@ def bind_self(method: F, original_type: Type = None) -> F:
                                        self_param_type, original_type)[0]
 
         def expand(target: Type) -> Type:
+            assert typearg is not None
             return expand_type(target, {func.variables[0].id: typearg})
 
         arg_types = [expand(x) for x in func.arg_types[1:]]

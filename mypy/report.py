@@ -200,7 +200,7 @@ class LineCoverageVisitor(TraverserVisitor):
             if cur_indent is None:
                 # Consume the line, but don't mark it as belonging to the function yet.
                 cur_line += 1
-            elif cur_indent > start_indent:
+            elif start_indent is not None and cur_indent > start_indent:
                 # A non-blank line that belongs to the function.
                 cur_line += 1
                 end_line = cur_line
@@ -211,7 +211,7 @@ class LineCoverageVisitor(TraverserVisitor):
         is_typed = defn.type is not None
         for line in range(start_line, end_line):
             old_indent, _ = self.lines_covered[line]
-            assert start_indent > old_indent
+            assert start_indent is not None and start_indent > old_indent
             self.lines_covered[line] = (start_indent, is_typed)
 
         # Visit the body, in case there are nested functions
@@ -304,7 +304,7 @@ class MemoryXmlReporter(AbstractReporter):
         self.css_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.css')
         xsd_path = os.path.join(reports.data_dir, 'xml', 'mypy.xsd')
         self.schema = etree.XMLSchema(etree.parse(xsd_path))
-        self.last_xml = None  # type: etree._ElementTree
+        self.last_xml = None  # type: Optional[etree._ElementTree]
         self.files = []  # type: List[FileInfo]
 
     def on_file(self,
@@ -334,7 +334,7 @@ class MemoryXmlReporter(AbstractReporter):
                 etree.SubElement(root, 'line',
                                  number=str(lineno),
                                  precision=stats.precision_names[status],
-                                 content=line_text[:-1])
+                                 content=line_text.rstrip('\n'))
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
@@ -532,6 +532,7 @@ class XmlReporter(AbstractXmlReporter):
 
     def on_finish(self) -> None:
         last_xml = self.memory_xml.last_xml
+        assert last_xml is not None
         out_path = os.path.join(self.output_dir, 'index.xml')
         out_xslt = os.path.join(self.output_dir, 'mypy-html.xslt')
         out_css = os.path.join(self.output_dir, 'mypy-html.css')
@@ -575,6 +576,7 @@ class XsltHtmlReporter(AbstractXmlReporter):
 
     def on_finish(self) -> None:
         last_xml = self.memory_xml.last_xml
+        assert last_xml is not None
         out_path = os.path.join(self.output_dir, 'index.html')
         out_css = os.path.join(self.output_dir, 'mypy-html.css')
         transformed_html = bytes(self.xslt_html(last_xml, ext=self.param_html))
@@ -606,6 +608,7 @@ class XsltTxtReporter(AbstractXmlReporter):
 
     def on_finish(self) -> None:
         last_xml = self.memory_xml.last_xml
+        assert last_xml is not None
         out_path = os.path.join(self.output_dir, 'index.txt')
         stats.ensure_dir_exists(os.path.dirname(out_path))
         transformed_txt = bytes(self.xslt_txt(last_xml))

@@ -57,12 +57,13 @@ def class_derivation_paths(typ: TypeInfo,
     result = []  # type: List[List[TypeInfo]]
 
     for base in typ.bases:
-        if base.type == supertype:
-            result.append([base.type])
+        btype = base.type
+        if btype == supertype:
+            result.append([btype])
         else:
             # Try constructing a longer path via the base class.
-            for path in class_derivation_paths(base.type, supertype):
-                result.append([base.type] + path)
+            for path in class_derivation_paths(btype, supertype):
+                result.append([btype] + path)
 
     return result
 

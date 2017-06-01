@@ -188,6 +188,132 @@ using bidirectional type inference:
 If you want to give the argument or return value types explicitly, use
 an ordinary, perhaps nested function definition.
 
+.. _extended_callable:
+
+Extended Callable types
+***********************
+
+As an experimental mypy extension, you can specify ``Callable`` types
+that support keyword arguments, optional arguments, and more.  Where
+you specify the arguments of a Callable, you can choose to supply just
+the type of a nameless positional argument, or an "argument specifier"
+representing a more complicated form of argument.  This allows one to
+more closely emulate the full range of possibilities given by the
+``def`` statement in Python.
+
+As an example, here's a complicated function definition and the
+corresponding ``Callable``:
+
+.. code-block:: python
+
+   from typing import Callable
+   from mypy_extensions import (Arg, DefaultArg, NamedArg,
+                                DefaultNamedArg, VarArg, KwArg)
+
+   def func(__a: int,  # This convention is for nameless arguments
+            b: int,
+            c: int = 0,
+            *args: int,
+            d: int,
+            e: int = 0,
+            **kwargs: int) -> int:
+       ...
+
+   F = Callable[[int,  # Or Arg(int)
+                 Arg(int, 'b'),
+                 DefaultArg(int, 'c'),
+                 VarArg(int),
+                 NamedArg(int, 'd'),
+                 DefaultNamedArg(int, 'e'),
+                 KwArg(int)],
+                int]
+
+   f: F = func
+
+Argument specifiers are special function calls that can specify the
+following aspects of an argument:
+
+- its type (the only thing that the basic format supports)
+
+- its name (if it has one)
+
+- whether it may be omitted
+
+- whether it may or must be passed using a keyword
+
+- whether it is a ``*args`` argument (representing the remaining
+  positional arguments)
+
+- whether it is a ``**kwargs`` argument (representing the remaining
+  keyword arguments)
+
+The following functions are available in ``mypy_extensions`` for this
+purpose:
+
+.. code-block:: python
+
+   def Arg(type=Any, name=None):
+       # A normal, mandatory, positional argument.
+       # If the name is specified it may be passed as a keyword.
+
+   def DefaultArg(type=Any, name=None):
+       # An optional positional argument (i.e. with a default value).
+       # If the name is specified it may be passed as a keyword.
+
+   def NamedArg(type=Any, name=None):
+       # A mandatory keyword-only argument.
+
+   def DefaultNamedArg(type=Any, name=None):
+       # An optional keyword-only argument (i.e. with a default value).
+
+   def VarArg(type=Any):
+       # A *args-style variadic positional argument.
+       # A single VarArg() specifier represents all remaining
+       # positional arguments.
+
+   def KwArg(type=Any):
+       # A **kwargs-style variadic keyword argument.
+       # A single KwArg() specifier represents all remaining
+       # keyword arguments.
+
+In all cases, the ``type`` argument defaults to ``Any``, and if the
+``name`` argument is omitted the argument has no name (the name is
+required for ``NamedArg`` and ``DefaultNamedArg``).  A basic
+``Callable`` such as
+
+.. code-block:: python
+
+   MyFunc = Callable[[int, str, int], float]
+
+is equivalent to the following:
+
+.. code-block:: python
+
+   MyFunc = Callable[[Arg(int), Arg(str), Arg(int)], float]
+
+A ``Callable`` with unspecified argument types, such as
+
+.. code-block:: python
+
+   MyOtherFunc = Callable[..., int]
+
+is (roughly) equivalent to
+
+.. code-block:: python
+
+   MyOtherFunc = Callable[[VarArg(), KwArg()], int]
+
+.. note::
+
+   This feature is experimental.  Details of the implementation may
+   change and there may be unknown limitations. **IMPORTANT:**
+   Each of the functions above currently just returns its ``type``
+   argument, so the information contained in the argument specifiers
+   is not available at runtime.  This limitation is necessary for
+   backwards compatibility with the existing ``typing.py`` module as
+   present in the Python 3.5+ standard library and distributed via
+   PyPI.
+
 .. _union-types:
 
 Union types

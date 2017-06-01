@@ -839,6 +839,10 @@ def write_cache(id: str, path: str, tree: MypyFile,
                 old_interface_hash: str, manager: BuildManager) -> str:
     """Write cache files for a module.
 
+    Note that this mypy's behavior is still correct when any given
+    write_cache() call is replaced with a no-op, so error handling
+    code that bails without writing anything is okay.
+
     Args:
       id: module ID
       path: module path
@@ -860,7 +864,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Make sure directory for cache files exists
     parent = os.path.dirname(data_json)
-    os.makedirs(parent, exist_ok=True)
     assert os.path.dirname(meta_json) == parent
 
     # Construct temp file names
@@ -878,10 +881,12 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Obtain and set up metadata
     try:
+        os.makedirs(parent, exist_ok=True)
         st = manager.get_stat(path)
     except OSError as err:
         manager.log("Cannot get stat for {}: {}".format(path, err))
         # Remove apparently-invalid cache files.
+        # (This is purely an optimization.)
         for filename in [data_json, meta_json]:
             try:
                 os.remove(filename)
@@ -897,12 +902,26 @@ def write_cache(id: str, path: str, tree: MypyFile,
         data_mtime = os.path.getmtime(data_json)
         manager.trace("Interface for {} is unchanged".format(id))
     else:
-        with open(data_json_tmp, 'w') as f:
-            f.write(data_str)
-            f.write('\n')
-        data_mtime = os.path.getmtime(data_json_tmp)
-        os.replace(data_json_tmp, data_json)
         manager.trace("Interface for {} has changed".format(id))
+        try:
+            with open(data_json_tmp, 'w') as f:
+                f.write(data_str)
+                f.write('\n')
+            os.replace(data_json_tmp, data_json)
+            data_mtime = os.path.getmtime(data_json)
+        except os.error as err:
+            # Most likely the error is the replace() call
+            # (see https://github.com/python/mypy/issues/3215).
+            manager.log("Error writing data JSON file {}".format(data_json_tmp))
+            # Let's continue without writing the meta file.  Analysis:
+            # If the replace failed, we've changed nothing except left
+            # behind an extraneous temporary file; if the replace
+            # worked but the getmtime() call failed, the meta file
+            # will be considered invalid on the next run because the
+            # data_mtime field won't match the data file's mtime.
+            # Both have the effect of slowing down the next run a
+            # little bit due to an out-of-date cache file.
+            return interface_hash
 
     mtime = st.st_mtime
     size = st.st_size
@@ -922,12 +941,18 @@ def write_cache(id: str, path: str, tree: MypyFile,
             }
 
     # Write meta cache file
-    with open(meta_json_tmp, 'w') as f:
-        if manager.options.debug_cache:
-            json.dump(meta, f, indent=2, sort_keys=True)
-        else:
-            json.dump(meta, f)
-    os.replace(meta_json_tmp, meta_json)
+    try:
+        with open(meta_json_tmp, 'w') as f:
+            if manager.options.debug_cache:
+                json.dump(meta, f, indent=2, sort_keys=True)
+            else:
+                json.dump(meta, f)
+        os.replace(meta_json_tmp, meta_json)
+    except os.error as err:
+        # Most likely the error is the replace() call
+        # (see https://github.com/python/mypy/issues/3215).
+        # The next run will simply find the cache entry out of date.
+        manager.log("Error writing meta JSON file {}".format(meta_json_tmp))
 
     return interface_hash
 

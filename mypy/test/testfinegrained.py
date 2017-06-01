@@ -7,7 +7,7 @@ See the comment at the top of test-data/unit/fine-grained.test for more
 information.
 """
 
-import os.path
+import os
 import re
 import shutil
 from typing import List, Tuple, Dict
@@ -83,6 +83,7 @@ class FineGrainedSuite(DataSuite):
         options = Options()
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.cache_dir = os.devnull
         try:
             result = build.build(sources=[BuildSource('main', None, source)],
                                  options=options,
