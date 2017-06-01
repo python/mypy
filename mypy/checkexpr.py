@@ -1086,6 +1086,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if not descriptor_type.type.has_readable_member('__get__'):
             return descriptor_type
 
+        # accessing MethodType().__func__ gives FunctionType, despite the fact
+        # that FunctionType is usually a descriptor returning MethodType
+        if (
+            isinstance(instance_type, Instance) and
+            instance_type.type.fullname() == 'types.MethodType' and
+            isinstance(context, MemberExpr) and
+            context.name == '__func__'
+        ):
+            return descriptor_type
+
         dunder_get = descriptor_type.type.get_method('__get__')
 
         if dunder_get is None:

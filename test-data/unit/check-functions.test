@@ -2123,3 +2123,24 @@ def i() -> List[Union[str, int]]:
     return x
 
 [builtins fixtures/dict.pyi]
+
+[case testMethodTypeFuncAttribute]
+from types import MethodType
+
+class C:
+    def foo(self): ...
+
+method = C().foo
+if isinstance(method, MethodType):
+    reveal_type(method)  # E: Revealed type is 'types.MethodType'
+    mfunc = method.__func__
+    reveal_type(mfunc)  # E: Revealed type is 'types.FunctionType'
+
+[file types.pyi]
+class FunctionType:
+    def __get__(self, obj, type) -> 'MethodType': ...
+
+class MethodType:
+    __func__ = ...  # type: FunctionType
+
+[builtins fixtures/isinstance.pyi]
