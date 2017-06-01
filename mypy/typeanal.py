@@ -185,11 +185,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                 return self.analyze_callable_type(t)
             elif fullname == 'typing.Type':
                 if len(t.args) == 0:
-                    return TypeType.make(AnyType(), line=t.line)
+                    return TypeType(AnyType(), line=t.line)
                 if len(t.args) != 1:
                     self.fail('Type[...] must have exactly one type argument', t)
                 item = self.anal_type(t.args[0])
-                return TypeType.make(item, line=t.line)
+                return TypeType.make_normalized(item, line=t.line)
             elif fullname == 'typing.ClassVar':
                 if self.nesting_level > 0:
                     self.fail('Invalid type: ClassVar nested inside other type', t)
@@ -384,7 +384,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
         return AnyType()
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType.make(self.anal_type(t.item), line=t.line)
+        return TypeType.make_normalized(self.anal_type(t.item), line=t.line)
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.builtin_type('builtins.function')

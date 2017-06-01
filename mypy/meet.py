@@ -278,7 +278,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         if isinstance(self.s, TypeType):
             typ = self.meet(t.item, self.s.item)
             if not isinstance(typ, NoneTyp):
-                typ = TypeType.make(typ, line=t.line)
+                typ = TypeType.make_normalized(typ, line=t.line)
             return typ
         elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
             return t

@@ -154,7 +154,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if isinstance(item, TupleType):
                 item = item.fallback
             if is_named_instance(left, 'builtins.type'):
-                return is_subtype(TypeType.make(AnyType()), right)
+                return is_subtype(TypeType(AnyType()), right)
             if left.type.is_metaclass():
                 if isinstance(item, AnyType):
                     return True

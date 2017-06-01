@@ -1183,10 +1183,11 @@ class TypeType(Type):
     # a generic class instance, a union, Any, a type variable...
     item = None  # type: Type
 
-    # This class must be created using make method which may return either TypeType or UnionType.
-    # This is to ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]].
     def __init__(self, item: Union[Instance, AnyType, TypeVarType, TupleType, NoneTyp,
                                    CallableType], *, line: int = -1, column: int = -1) -> None:
+        """To ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]], item of
+        type UnionType must be handled through make_normalized static method.
+        """
         super().__init__(line, column)
         if isinstance(item, CallableType) and item.is_type_obj():
             self.item = item.fallback
@@ -1194,14 +1195,14 @@ class TypeType(Type):
             self.item = item
 
     @staticmethod
-    def make(item: Type, *, line: int = -1, column: int = -1) -> Type:
+    def make_normalized(item: Type, *, line: int = -1, column: int = -1) -> Type:
         if isinstance(item, UnionType):
-            return UnionType.make_union([TypeType.make(union_item) for union_item in item.items],
-                             line=line, column=column)
-        elif isinstance(item, (Instance, AnyType, TypeVarType, TupleType, NoneTyp, CallableType)):
-            return TypeType(item, line=line, column=column)
-        else:
-            raise RuntimeError('Unexpected item type', type(item))
+            return UnionType.make_union(
+                [TypeType.make_normalized(union_item) for union_item in item.items],
+                line=line, column=column
+            )
+        assert isinstance(item, (Instance, AnyType, TypeVarType, TupleType, NoneTyp, CallableType))
+        return TypeType(item, line=line, column=column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)
@@ -1212,7 +1213,7 @@ class TypeType(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> Type:
         assert data['.class'] == 'TypeType'
-        return TypeType.make(deserialize_type(data['item']))
+        return TypeType.make_normalized(deserialize_type(data['item']))
 
 
 #
@@ -1389,7 +1390,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return Overloaded(items=items)
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType.make(t.item.accept(self), line=t.line, column=t.column)
+        return TypeType.make_normalized(t.item.accept(self), line=t.line, column=t.column)
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):

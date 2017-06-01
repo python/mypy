@@ -580,7 +580,7 @@ class JoinSuite(Suite):
         self.assert_join(self.fx.type_b, self.fx.type_any, self.fx.type_any)
         self.assert_join(self.fx.type_b, self.fx.type_type, self.fx.type_type)
         self.assert_join(self.fx.type_b, self.fx.type_c, self.fx.type_a)
-        self.assert_join(self.fx.type_c, self.fx.type_d, TypeType.make(self.fx.o))
+        self.assert_join(self.fx.type_c, self.fx.type_d, TypeType.make_normalized(self.fx.o))
         self.assert_join(self.fx.type_type, self.fx.type_any, self.fx.type_type)
         self.assert_join(self.fx.type_b, self.fx.anyt, self.fx.anyt)
 

@@ -432,7 +432,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if (callee.is_type_obj() and (len(arg_types) == 1)
                     and is_equivalent(callee.ret_type, self.named_type('builtins.type'))):
-                callee = callee.copy_modified(ret_type=TypeType.make(arg_types[0]))
+                callee = callee.copy_modified(ret_type=TypeType.make_normalized(arg_types[0]))
 
             if callable_node:
                 # Store the inferred callable type.
@@ -1108,7 +1108,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             owner_type = instance_type
 
         _, inferred_dunder_get_type = self.check_call(
-            dunder_get_type, [TempNode(instance_type), TempNode(TypeType.make(owner_type))],
+            dunder_get_type,
+            [TempNode(instance_type), TempNode(TypeType.make_normalized(owner_type))],
             [nodes.ARG_POS, nodes.ARG_POS], context)
 
         if isinstance(inferred_dunder_get_type, AnyType):
