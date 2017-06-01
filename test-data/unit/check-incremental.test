@@ -2084,7 +2084,7 @@ import a
 [rechecked a, b, builtins]
 [stale a, b, builtins]
 
-[case testQuickAndDirtyIntroduceErrorToExistingFunction]
+[case testQuickAndDirtyFixErrorInExistingFunction]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2116,7 +2116,7 @@ tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
 [rechecked a]
 [stale]
 
-[case testQuickAndDirtyExistingError]
+[case testQuickAndDirtyPersistingError]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2394,10 +2394,8 @@ def f() -> b.C[int]: pass
 [file b.py]
 from typing import TypeVar, Generic
 import a
-
 T = TypeVar('T')
 class C(Generic[T]): pass
-
 [file b.py.2]
 import a
 class C: pass
@@ -2421,10 +2419,8 @@ class C: pass
 [file b.py.2]
 from typing import TypeVar, Generic
 import a
-
 T = TypeVar('T')
 class C(Generic[T]): pass
-
 reveal_type(a.f)
 c: C[int]
 d = a.f()
