@@ -61,9 +61,12 @@ Where the stubs for builtins come from for a given test:
 - The builtins used by default in unit tests live in
   `test-data/unit/lib-stub`.
 
-- Individual test cases can override the stubs by using `[builtins fixtures/foo.pyi]`;
-  this targets files in `test-data/unit/fixtures`. Feel free to modify existing files
-  there or create new ones as you deem fit.
+- Individual test cases can override the builtins stubs by using
+  `[builtins fixtures/foo.pyi]`; this targets files in `test-data/unit/fixtures`.
+  Feel free to modify existing files there or create new ones as you deem fit.
+
+- Test cases can also use `[typing fixtures/typing-full.pyi]` to use a more
+  complete stub for `typing` that contains the async types, among other things.
 
 - Feel free to add additional stubs to that `fixtures` directory, but
   generally don't expand files in `lib-stub` without first discussing the
