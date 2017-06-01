@@ -1201,8 +1201,7 @@ class TypeType(Type):
                 [TypeType.make_normalized(union_item) for union_item in item.items],
                 line=line, column=column
             )
-        assert isinstance(item, (Instance, AnyType, TypeVarType, TupleType, NoneTyp, CallableType))
-        return TypeType(item, line=line, column=column)
+        return TypeType(item, line=line, column=column)  # type: ignore
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)
