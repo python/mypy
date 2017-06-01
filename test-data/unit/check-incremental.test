@@ -2651,3 +2651,30 @@ b.f()
 [out2]
 [out3]
 tmp/a.py:3: error: Too few arguments for "f"
+
+[case testQuickAndDirtySerializeStaleType]
+# flags: --quick-and-dirty
+import a, c
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file c.py]
+[file b.py.2]
+import a
+x = a.f()
+[file c.py.3]
+import b
+reveal_type(b.x)
+def g(x: object) -> None: pass
+g(b.x)
+b.x.y
+[rechecked b]
+[stale b]
+[rechecked2 c]
+[stale2]
+[out3]
+tmp/c.py:2: error: Revealed type is '<stale cache: consider running mypy without --quick>'
+tmp/c.py:5: error: "<stale cache: consider running mypy without --quick>" has no attribute "y"
