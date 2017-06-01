@@ -2174,6 +2174,62 @@ tmp/b.py:3: error: Revealed type is 'def () -> builtins.int'
 [rechecked b]
 [stale]
 
+[case testQuickAndDirtyIntroduceReferencesWithinCycleNoError]
+# flags: --quick-and-dirty
+import a, b, c
+[file a.py]
+import b
+[file b.py]
+import a
+class C: pass
+def f() -> int: pass
+[file c.py]
+[file a.py.2]
+import b
+def g() -> b.C: pass
+h = b.f
+[file c.py.3]
+import a
+reveal_type(a.g)
+reveal_type(a.h)
+[out1]
+[out2]
+[out3]
+tmp/c.py:2: error: Revealed type is 'def () -> b.C'
+tmp/c.py:3: error: Revealed type is 'def () -> builtins.int'
+[rechecked a]
+[stale a]
+[rechecked2 c]
+[stale2]
+
+[case testQuickAndDirtyIntroduceReferencesWithinCycleNoError2]
+# flags: --quick-and-dirty
+import a, b, c
+[file a.py]
+import b
+class C: pass
+def f() -> int: pass
+[file b.py]
+import a
+[file c.py]
+[file b.py.2]
+import a
+def g() -> a.C: pass
+h = a.f
+[file c.py.3]
+import b
+reveal_type(b.g)
+reveal_type(b.h)
+[out1]
+[out2]
+[out3]
+tmp/c.py:2: error: Revealed type is 'def () -> a.C'
+tmp/c.py:3: error: Revealed type is 'def () -> builtins.int'
+[rechecked b]
+[stale b]
+[rechecked2 c]
+[stale2]
+
 -- (The behavior for blockers is actually no different than in regular incremental mode)
 [case testQuickAndDirtyBlockerOnFirstRound]
 # flags: --quick-and-dirty
