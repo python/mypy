@@ -1555,7 +1555,7 @@ reveal_type(list(B()))  # E: Revealed type is 'builtins.list[__main__.B*]'
 
 [case testIterableProtocolOnMetaclass]
 from typing import TypeVar, Iterator, Type
-T = TypeVar('T', bound='E')
+T = TypeVar('T')
 
 class EMeta(type):
     def __iter__(self: Type[T]) -> Iterator[T]: pass
