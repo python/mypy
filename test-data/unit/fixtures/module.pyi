@@ -17,3 +17,5 @@ class tuple: pass
 class dict(Generic[T, S]): pass
 class ellipsis: pass
 
+classmethod = object()
+staticmethod = object()

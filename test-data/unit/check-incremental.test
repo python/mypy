@@ -3,6 +3,9 @@
 -- Before the tests are run again, in step N any *.py.N files are copied to
 -- *.py.
 --
+-- You can add an empty section like `[delete mod.py.2]` to delete `mod.py`
+-- before the second run.
+--
 -- Errors expected in the first run should be in the `[out1]` section, and
 -- errors expected in the second run should be in the `[out2]` section, and so on.
 -- If a section is omitted, it is expected there are no errors on that run.
@@ -1966,6 +1969,34 @@ main:5: error: Revealed type is 'builtins.int'
 
 -- TODO: Add another test for metaclass in import cycle (reversed from the above test).
 --       This currently doesn't work.
+
+[case testDeleteFile]
+import n
+[file n.py]
+import m
+[file m.py]
+x = 1
+[delete m.py.2]
+[rechecked n]
+[stale]
+[out2]
+tmp/n.py:1: error: Cannot find module named 'm'
+tmp/n.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testDeleteFileWithinCycle]
+import a
+[file a.py]
+import b
+[file b.py]
+import c
+[file c.py]
+import a
+[file a.py.2]
+import c
+[delete b.py.2]
+[rechecked a, c]
+[stale a]
+[out2]
 
 [case testThreePassesBasic]
 import m

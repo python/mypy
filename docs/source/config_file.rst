@@ -178,6 +178,8 @@ overridden by the pattern sections matching the module name.
 - ``strict_boolean`` (Boolean, default False) makes using non-boolean
   expressions in conditions an error.
 
+- ``no_implicit_optional`` (Boolean, default false) changes the treatment of
+  arguments with a default value of None by not implicitly making their type Optional
 
 Example
 *******

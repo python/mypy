@@ -45,6 +45,7 @@ from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
 from mypy.funcplugins import get_function_plugin_callbacks, PluginCallback
+from mypy.typeanal import make_optional_type
 
 from mypy import experiments
 
@@ -1953,10 +1954,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType()
 
     def visit_slice_expr(self, e: SliceExpr) -> Type:
+        expected = make_optional_type(self.named_type('builtins.int'))
         for index in [e.begin_index, e.end_index, e.stride]:
             if index:
                 t = self.accept(index)
-                self.chk.check_subtype(t, self.named_type('builtins.int'),
+                self.chk.check_subtype(t, expected,
                                        index, messages.INVALID_SLICE_INDEX)
         return self.named_type('builtins.slice')
 
