@@ -154,7 +154,8 @@ class AnyExpressionsReporter(AbstractReporter):
                 tree: MypyFile,
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
-        visitor = stats.StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
+        visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
+                                          typemap=type_map, all_nodes=True)
         tree.accept(visitor)
         num_total = visitor.num_imprecise + visitor.num_precise + visitor.num_any
         if num_total > 0:
@@ -372,7 +373,8 @@ class MemoryXmlReporter(AbstractReporter):
         if 'stubs' in path.split('/'):
             return
 
-        visitor = stats.StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
+        visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
+                                          typemap=type_map, all_nodes=True)
         tree.accept(visitor)
 
         root = etree.Element('mypy-report-file', name=path, module=tree._fullname)
@@ -477,7 +479,8 @@ class CoberturaXmlReporter(AbstractReporter):
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         path = os.path.relpath(tree.path)
-        visitor = stats.StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
+        visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
+                                          typemap=type_map, all_nodes=True)
         tree.accept(visitor)
 
         class_name = os.path.basename(path)
