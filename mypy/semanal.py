@@ -163,6 +163,21 @@ NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs
                                '_make', '_replace', '_asdict', '_source',
                                '__annotations__')
 
+# Map from the full name of a missing definition to the test fixture (under
+# test-data/unit/fixtures/) that provides the definition. This is used for
+# generating better error messages when running mypy tests only.
+SUGGESTED_TEST_FIXTURES = {
+    'typing.List': 'list.pyi',
+    'typing.Dict': 'dict.pyi',
+    'typing.Set': 'set.pyi',
+    'builtins.bool': 'bool.pyi',
+    'builtins.Exception': 'exception.pyi',
+    'builtins.BaseException': 'exception.pyi',
+    'builtins.isinstance': 'isinstancelist.pyi',
+    'builtins.property': 'property.pyi',
+    'builtins.classmethod': 'classmethod.pyi',
+}
+
 
 class SemanticAnalyzer(NodeVisitor):
     """Semantically analyze parsed mypy files.
@@ -1373,19 +1388,30 @@ class SemanticAnalyzer(NodeVisitor):
     def normalize_type_alias(self, node: SymbolTableNode,
                              ctx: Context) -> SymbolTableNode:
         normalized = False
-        if node.fullname in type_aliases:
+        fullname = node.fullname
+        if fullname in type_aliases:
             # Node refers to an aliased type such as typing.List; normalize.
-            node = self.lookup_qualified(type_aliases[node.fullname], ctx)
+            node = self.lookup_qualified(type_aliases[fullname], ctx)
+            if node is None:
+                self.add_fixture_note(fullname, ctx)
+                return None
             normalized = True
-        if node.fullname in collections_type_aliases:
+        if fullname in collections_type_aliases:
             # Similar, but for types from the collections module like typing.DefaultDict
             self.add_module_symbol('collections', '__mypy_collections__', False, ctx)
-            node = self.lookup_qualified(collections_type_aliases[node.fullname], ctx)
+            node = self.lookup_qualified(collections_type_aliases[fullname], ctx)
             normalized = True
         if normalized:
             node = SymbolTableNode(node.kind, node.node,
                                    node.mod_id, node.type_override, normalized=True)
         return node
+
+    def add_fixture_note(self, fullname: str, ctx: Context) -> None:
+        self.note('Maybe your test fixture does not define "{}"?'.format(fullname), ctx)
+        if fullname in SUGGESTED_TEST_FIXTURES:
+            self.note(
+                'Consider adding [builtins fixtures/{}] to your test description'.format(
+                    SUGGESTED_TEST_FIXTURES[fullname]), ctx)
 
     def correct_relative_import(self, node: Union[ImportFrom, ImportAll]) -> str:
         if node.relative == 0:
@@ -3337,6 +3363,12 @@ class SemanticAnalyzer(NodeVisitor):
         if extra:
             message += ' {}'.format(extra)
         self.fail(message, ctx)
+        if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
+            # The user probably has a missing definition in a test fixture. Let's verify.
+            fullname = 'builtins.{}'.format(name)
+            if self.lookup_fully_qualified_or_none(fullname) is None:
+                # Yes. Generate a helpful note.
+                self.add_fixture_note(fullname, ctx)
 
     def name_already_defined(self, name: str, ctx: Context) -> None:
         self.fail("Name '{}' already defined".format(name), ctx)
