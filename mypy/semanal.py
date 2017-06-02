@@ -564,9 +564,10 @@ class SemanticAnalyzer(NodeVisitor):
                         first_item.var.is_settable_property = True
                         # Get abstractness from the original definition.
                         item.func.is_abstract = first_item.func.is_abstract
-                item.func.accept(self)
             else:
                 self.fail("Decorated property not supported", item)
+            if isinstance(item, Decorator):
+                item.func.accept(self)
 
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
