@@ -2431,7 +2431,6 @@ class SemanticAnalyzer(NodeVisitor):
             for rv, *lvs in elementwise_assignments:
                 self.process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, NameExpr):
-            # import pdb; pdb.set_trace()
             rnode = self.lookup(rval.name, ctx)
             if rnode and rnode.kind == MODULE_REF:
                 for lval in lvals:
