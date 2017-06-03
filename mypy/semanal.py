@@ -1547,6 +1547,8 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_namedtuple_definition(s)
         self.process_typeddict_definition(s)
         self.process_enum_call(s)
+        if not s.type:
+            self.process_module_assignment(s.lvalues, s.rvalue, s)
 
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
@@ -2382,6 +2384,66 @@ class SemanticAnalyzer(NodeVisitor):
 
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail('ClassVar can only be used for assignments in class body', context)
+
+    def process_module_assignment(self, lvals: List[Expression], rval: Expression,
+                                  ctx: AssignmentStmt) -> None:
+        """Propagate module references across assignments.
+
+        Recursively handles the simple form of iterable unpacking; doesn't
+        handle advanced unpacking with *rest, dictionary unpacking, etc.
+
+        In an expression like x = y = z, z is the rval and lvals will be [x,
+        y].
+
+        """
+        if all(isinstance(v, (TupleExpr, ListExpr)) for v in lvals + [rval]):
+            # rval and all lvals are either list or tuple, so we are dealing
+            # with unpacking assignment like `x, y = a, b`. Mypy didn't
+            # understand our all(isinstance(...)), so cast them as
+            # Union[TupleExpr, ListExpr] so mypy knows it is safe to access
+            # their .items attribute.
+            seq_lvals = cast(List[Union[TupleExpr, ListExpr]], lvals)
+            seq_rval = cast(Union[TupleExpr, ListExpr], rval)
+            # given an assignment like:
+            #     (x, y) = (m, n) = (a, b)
+            # we now have:
+            #     seq_lvals = [(x, y), (m, n)]
+            #     seq_rval = (a, b)
+            # We now zip this into:
+            #     elementwise_assignments = [(a, x, m), (b, y, n)]
+            # where each elementwise assignment includes one element of rval and the
+            # corresponding element of each lval. Basically we unpack
+            #     (x, y) = (m, n) = (a, b)
+            # into elementwise assignments
+            #     x = m = a
+            #     y = n = b
+            # and then we recursively call this method for each of those assignments.
+            # If the rval and all lvals are not all of the same length, zip will just ignore
+            # extra elements, so no error will be raised here; mypy will later complain
+            # about the length mismatch in type-checking.
+            elementwise_assignments = zip(seq_rval.items, *[v.items for v in seq_lvals])
+            for rv, *lvs in elementwise_assignments:
+                self.process_module_assignment(lvs, rv, ctx)
+        elif isinstance(rval, NameExpr):
+            rnode = self.lookup(rval.name, ctx)
+            if rnode and rnode.kind == MODULE_REF:
+                for lval in lvals:
+                    if not isinstance(lval, NameExpr):
+                        continue
+                    # respect explicitly annotated type
+                    if (isinstance(lval.node, Var) and lval.node.type is not None):
+                        continue
+                    lnode = self.lookup(lval.name, ctx)
+                    if lnode:
+                        if lnode.kind == MODULE_REF and lnode.node is not rnode.node:
+                            self.fail(
+                                "Cannot assign multiple modules to name '{}' "
+                                "without explicit 'types.ModuleType' annotation".format(lval.name),
+                                ctx)
+                        # never create module alias except on initial var definition
+                        elif lval.is_def:
+                            lnode.kind = MODULE_REF
+                            lnode.node = rnode.node
 
     def process_enum_call(self, s: AssignmentStmt) -> None:
         """Check if s defines an Enum; if yes, store the definition in symbol table."""

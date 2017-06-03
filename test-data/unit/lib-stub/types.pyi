@@ -6,4 +6,5 @@ def coroutine(func: _T) -> _T: pass
 
 class bool: ...
 
-class ModuleType: ...
+class ModuleType:
+    __file__ = ... # type: str
