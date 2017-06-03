@@ -1518,3 +1518,20 @@ a = 'foo'
 b = 'bar'
 
 [builtins fixtures/module.pyi]
+
+[case testModuleAssignmentWithExplicitAnnotation]
+from typing import Any
+import types
+import m
+mod_mod: types.ModuleType = m
+mod_any: Any = m
+mod_int: int = m  # E: Incompatible types in assignment (expression has type Module, variable has type "int")
+
+reveal_type(mod_mod)  # E: Revealed type is 'types.ModuleType'
+mod_mod.a  # E: Module has no attribute "a"
+reveal_type(mod_any)  # E: Revealed type is 'Any'
+
+[file m.py]
+a = 'foo'
+
+[builtins fixtures/module.pyi]

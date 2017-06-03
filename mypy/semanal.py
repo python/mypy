@@ -2432,6 +2432,12 @@ class SemanticAnalyzer(NodeVisitor):
                 for lval in lvals:
                     if not isinstance(lval, NameExpr):
                         continue
+                    # respect explicitly annotated type
+                    if (
+                        isinstance(lval.node, Var) and
+                        lval.node.type is not None
+                    ):
+                        continue
                     lnode = self.lookup(lval.name, ctx)
                     if lnode:
                         lnode.kind = MODULE_REF
