@@ -1665,7 +1665,7 @@ main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B"
 main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C"
 
 [case testSetAttr]
-from typing import Union
+from typing import Union, Any
 class A:
     def __setattr__(self, name: str, value: Any) -> None: ...
 
@@ -1729,6 +1729,7 @@ c = C()
 c.check = 13
 
 [case testGetAttrAndSetattr]
+from typing import Any
 class A:
     def __setattr__(self, name: str, value: Any) -> None: ...
     def __getattr__(self, name: str) -> Any: ...
