@@ -1606,3 +1606,35 @@ a = 3
 a = 'bar'
 
 [builtins fixtures/module.pyi]
+
+[case testModuleAliasToOtherModule]
+import m, n
+m = n
+
+m.a  # E: Module has no attribute "a"
+
+[file m.py]
+a = 'foo'
+
+[file n.py]
+a = 3
+
+[builtins fixtures/module.pyi]
+
+[case testModuleAliasToOtherModuleInFunction]
+import n
+
+def foo() -> None:
+  import m
+  m = n
+  m.a  # E: Module has no attribute "a"
+
+m # E: Name 'm' is not defined
+
+[file m.py]
+a = 'foo'
+
+[file n.py]
+a = 3
+
+[builtins fixtures/module.pyi]

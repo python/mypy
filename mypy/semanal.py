@@ -2447,10 +2447,22 @@ class SemanticAnalyzer(NodeVisitor):
                         # if the same variable is aliased to multiple different
                         # modules, revert to inferring plain ModuleType var
                         if lnode.kind == MODULE_REF and lnode.node is not rnode.node:
-                            lnode.kind, lnode.node = self.module_alias_backtrack[lnode]
+                            if lnode in self.module_alias_backtrack:
+                                # lnode is a module reference created by previous assignment
+                                lnode.kind, lnode.node = self.module_alias_backtrack[lnode]
+                            else:
+                                # lnode is an imported module, convert to variable
+                                if self.is_func_scope():
+                                    lnode.kind = LDEF
+                                elif self.type:
+                                    lnode.kind = MDEF
+                                else:
+                                    lnode.kind = GDEF
+                                lnode.node = Var(lval.name)
+                                lnode.node.set_line(lval)
                             continue
-                        # we may have already back-tracked once, don't re-create module alias
-                        elif lnode not in self.module_alias_backtrack:
+                        # never create module alias except on initial var definition
+                        elif lval.is_def:
                             self.module_alias_backtrack[lnode] = (lnode.kind, lnode.node)
                             lnode.kind = MODULE_REF
                             lnode.node = rnode.node
