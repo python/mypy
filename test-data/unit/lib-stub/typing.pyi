@@ -54,7 +54,7 @@ class Generator(Iterator[T], Generic[T, U, V]):
     def send(self, value: U) -> T: pass
 
     @abstractmethod
-    def throw(self, typ: Any, val: Any=None, tb=None) -> None: pass
+    def throw(self, typ: Any, val: Any=None, tb: Any=None) -> None: pass
 
     @abstractmethod
     def close(self) -> None: pass
