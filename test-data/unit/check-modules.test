@@ -1575,7 +1575,7 @@ else:
 if bool():
     z = m
 else:
-    z = n  # E: Cannot assign multiple modules to name 'z' without explicit annotation to ModuleType
+    z = n  # E: Cannot assign multiple modules to name 'z' without explicit 'types.ModuleType' annotation
 
 [file m.py]
 a = 'foo'
@@ -1610,11 +1610,11 @@ a = 3
 import m, n, o
 
 x = m
-x = n  # E: Cannot assign multiple modules to name 'x' without explicit annotation to ModuleType
-x = o  # E: Cannot assign multiple modules to name 'x' without explicit annotation to ModuleType
+x = n  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
+x = o  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
 
 y = o
-y, z = m, n  # E: Cannot assign multiple modules to name 'y' without explicit annotation to ModuleType
+y, z = m, n  # E: Cannot assign multiple modules to name 'y' without explicit 'types.ModuleType' annotation
 
 xx = m
 xx = m
@@ -1633,7 +1633,7 @@ a = 'bar'
 
 [case testModuleAliasToOtherModule]
 import m, n
-m = n  # E: Cannot assign multiple modules to name 'm' without explicit annotation to ModuleType
+m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.ModuleType' annotation
 
 [file m.py]
 

@@ -2431,17 +2431,14 @@ class SemanticAnalyzer(NodeVisitor):
                     if not isinstance(lval, NameExpr):
                         continue
                     # respect explicitly annotated type
-                    if (
-                        isinstance(lval.node, Var) and
-                        lval.node.type is not None
-                    ):
+                    if (isinstance(lval.node, Var) and lval.node.type is not None):
                         continue
                     lnode = self.lookup(lval.name, ctx)
                     if lnode:
                         if lnode.kind == MODULE_REF and lnode.node is not rnode.node:
                             self.fail(
                                 "Cannot assign multiple modules to name '{}' "
-                                "without explicit annotation to ModuleType".format(lval.name),
+                                "without explicit 'types.ModuleType' annotation".format(lval.name),
                                 ctx)
                         # never create module alias except on initial var definition
                         elif lval.is_def:
