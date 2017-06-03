@@ -255,6 +255,12 @@ class SemanticAnalyzer(NodeVisitor):
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
+        # If we consider a var a module alias, then later hit an assignment to a
+        # different module, we need to backtrack to considering it a normal var
+        # of type ModuleType. Here we store the original (kind, symbolnode) for
+        # each SymbolTableNode that we convert to module alias, in case we need
+        # to backtrack that conversion.
+        self.module_alias_backtrack = {}  # type: Dict[SymbolTableNode, Tuple[int, SymbolNode]]
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
         self.options = options
@@ -1547,7 +1553,8 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_namedtuple_definition(s)
         self.process_typeddict_definition(s)
         self.process_enum_call(s)
-        self.process_module_assignment(s.lvalues, s.rvalue, s)
+        if not s.type:
+            self.process_module_assignment(s.lvalues, s.rvalue, s)
 
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
@@ -2384,12 +2391,8 @@ class SemanticAnalyzer(NodeVisitor):
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail('ClassVar can only be used for assignments in class body', context)
 
-    def process_module_assignment(
-            self,
-            lvals: List[Expression],
-            rval: Expression,
-            ctx: AssignmentStmt,
-    ) -> None:
+    def process_module_assignment(self, lvals: List[Expression], rval: Expression,
+                                  ctx: AssignmentStmt) -> None:
         """Propagate module references across assignments.
 
         Recursively handles the simple form of iterable unpacking; doesn't
@@ -2428,6 +2431,7 @@ class SemanticAnalyzer(NodeVisitor):
             for rv, *lvs in elementwise_assignments:
                 self.process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, NameExpr):
+            # import pdb; pdb.set_trace()
             rnode = self.lookup(rval.name, ctx)
             if rnode and rnode.kind == MODULE_REF:
                 for lval in lvals:
@@ -2441,8 +2445,16 @@ class SemanticAnalyzer(NodeVisitor):
                         continue
                     lnode = self.lookup(lval.name, ctx)
                     if lnode:
-                        lnode.kind = MODULE_REF
-                        lnode.node = rnode.node
+                        # if the same variable is aliased to multiple different
+                        # modules, revert to inferring plain ModuleType var
+                        if lnode.kind == MODULE_REF and lnode.node is not rnode.node:
+                            lnode.kind, lnode.node = self.module_alias_backtrack[lnode]
+                            continue
+                        # we may have already back-tracked once, don't re-create module alias
+                        elif lnode not in self.module_alias_backtrack:
+                            self.module_alias_backtrack[lnode] = (lnode.kind, lnode.node)
+                            lnode.kind = MODULE_REF
+                            lnode.node = rnode.node
 
     def process_enum_call(self, s: AssignmentStmt) -> None:
         """Check if s defines an Enum; if yes, store the definition in symbol table."""
