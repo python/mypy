@@ -1546,7 +1546,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_namedtuple_definition(s)
         self.process_typeddict_definition(s)
         self.process_enum_call(s)
-        self.process_module_assignment(s)
+        self.process_module_assignment(s.lvalues, s.rvalue, s)
 
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
@@ -2383,11 +2383,7 @@ class SemanticAnalyzer(NodeVisitor):
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail('ClassVar can only be used for assignments in class body', context)
 
-    def process_module_assignment(self, s: AssignmentStmt) -> None:
-        """Check if s assigns a module an alias name; if so, update symbol table."""
-        self._process_module_assignment(s.lvalues, s.rvalue, s)
-
-    def _process_module_assignment(
+    def process_module_assignment(
             self,
             lvals: List[Expression],
             rval: Expression,
@@ -2429,7 +2425,7 @@ class SemanticAnalyzer(NodeVisitor):
             # about the length mismatch in type-checking.
             elementwise_assignments = zip(seq_rval.items, *[v.items for v in seq_lvals])
             for rv, *lvs in elementwise_assignments:
-                self._process_module_assignment(lvs, rv, ctx)
+                self.process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, NameExpr):
             rnode = self.lookup(rval.name, ctx)
             if rnode and rnode.kind == MODULE_REF:
