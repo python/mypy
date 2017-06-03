@@ -1560,8 +1560,7 @@ a = 'foo'
 [builtins fixtures/module.pyi]
 
 [case testModuleAliasRepeated]
-import types
-import m, n, o
+import m, n
 
 if bool():
     x = m
@@ -1574,27 +1573,52 @@ else:
     y = m  # E: Incompatible types in assignment (expression has type Module, variable has type "int")
 
 if bool():
-    xx = m
+    z = m
 else:
-    xx = n
-xx.a  # E: Module has no attribute "a"
+    z = n  # E: Cannot assign multiple modules to name 'z' without explicit annotation to ModuleType
 
-yy = m
-yy = n
-yy = o
+[file m.py]
+a = 'foo'
 
-yy.a  # E: Module has no attribute "a"
-reveal_type(yy.__file__)  # E: Revealed type is 'builtins.str'
+[file n.py]
+a = 3
 
-zz = o
-zz, aa = m, n
+[builtins fixtures/module.pyi]
 
-zz.a  # E: Module has no attribute "a"
-reveal_type(aa.a)  # E: Revealed type is 'builtins.int'
+[case testModuleAliasRepeatedWithAnnotation]
+import types
+import m, n
 
-xxx = m
-xxx = m
-reveal_type(xxx.a)  # E: Revealed type is 'builtins.str'
+x: types.ModuleType
+if bool():
+    x = m
+else:
+    x = n
+
+x.a  # E: Module has no attribute "a"
+reveal_type(x.__file__)  # E: Revealed type is 'builtins.str'
+
+[file m.py]
+a = 'foo'
+
+[file n.py]
+a = 3
+
+[builtins fixtures/module.pyi]
+
+[case testModuleAliasRepeatedComplex]
+import m, n, o
+
+x = m
+x = n  # E: Cannot assign multiple modules to name 'x' without explicit annotation to ModuleType
+x = o  # E: Cannot assign multiple modules to name 'x' without explicit annotation to ModuleType
+
+y = o
+y, z = m, n  # E: Cannot assign multiple modules to name 'y' without explicit annotation to ModuleType
+
+xx = m
+xx = m
+reveal_type(xx.a)  # E: Revealed type is 'builtins.str'
 
 [file m.py]
 a = 'foo'
@@ -1609,32 +1633,10 @@ a = 'bar'
 
 [case testModuleAliasToOtherModule]
 import m, n
-m = n
-
-m.a  # E: Module has no attribute "a"
+m = n  # E: Cannot assign multiple modules to name 'm' without explicit annotation to ModuleType
 
 [file m.py]
-a = 'foo'
 
 [file n.py]
-a = 3
-
-[builtins fixtures/module.pyi]
-
-[case testModuleAliasToOtherModuleInFunction]
-import n
-
-def foo() -> None:
-  import m
-  m = n
-  m.a  # E: Module has no attribute "a"
-
-m # E: Name 'm' is not defined
-
-[file m.py]
-a = 'foo'
-
-[file n.py]
-a = 3
 
 [builtins fixtures/module.pyi]
