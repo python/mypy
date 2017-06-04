@@ -77,6 +77,8 @@ for y in x:
 main:2: error: "tuple" expects no type arguments, but 1 given
 main:3: error: Value of type "tuple" is not indexable
 main:4: error: Iterable expected
+main:4: note: 'builtins.tuple' missing following 'typing.Iterable' protocol members:
+main:4: note: __iter__
 main:4: error: "tuple" has no attribute "__iter__"
 
 [case testClassmethodMissingFromStubs]
