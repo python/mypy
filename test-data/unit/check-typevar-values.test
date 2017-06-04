@@ -7,8 +7,7 @@ T = TypeVar('T', int, str)
 def f(x: T) -> None: pass
 f(1)
 f('x')
-f(object()) # E: Type argument 1 of "f" has incompatible value\
-# N: "T" must be all one type: int or str
+f(object()) # E: Type argument 1 of "f" has incompatible value "object"
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionUsingContext]
 from typing import TypeVar, List
@@ -19,8 +18,7 @@ s = ['x']
 o = [object()]
 i = f(1)
 s = f('')
-o = f(1) # E: Type argument 1 of "f" has incompatible value\
-# N: "T" must be all one type: int or str
+o = f(1) # E: Type argument 1 of "f" has incompatible value "object"
 [builtins fixtures/list.pyi]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs]
@@ -241,8 +239,7 @@ class A(Generic[X]):
 A(1)
 A('x')
 A(cast(Any, object()))
-A(object()) # E: Type argument 1 of "A" has incompatible value\
-# N: "X" must be all one type: int or str
+A(object()) # E: Type argument 1 of "A" has incompatible value "object"
 
 [case testGenericTypeWithTypevarValuesAndTypevarArgument]
 from typing import TypeVar, Generic

@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Mapping
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -819,20 +819,13 @@ class MessageBuilder:
         self.fail('Type argument {} of {} has incompatible value {}'.format(
             index, callable_name(callee), self.format(type)), context)
 
-    def incompatible_constrained_arguments(self,
-                                           callee: CallableType,
-                                           index: int,
-                                           constraints: Mapping[str, Sequence[str]],
-                                           context: Context) -> None:
-        for key, values in constraints.items():
-            self.fail('Type argument {} of {} has incompatible value'.format(
-                index, callable_name(callee)), context)
-            if len(values) == 2:
-                constraint_str = '{} or {}'.format(values[0], values[1])
-            elif len(values) > 3:
-                constraint_str = ', '.join(values[:-1]) + ', or ' + values[-1]
-            self.note('"{}" must be all one type: {}'.format(
-                key, constraint_str), context)
+    def incompatible_anystr_arguments(self, callee: CallableType, arg_strings: Sequence[str],
+                                      context: Context) -> None:
+        if len(arg_strings) == 1:
+            arg_strings = str(arg_strings).replace(',)', ')')
+        call_with_types = '"{}{}"'.format(callable_name(callee).replace('"', ''), arg_strings)
+        self.fail('Type arguments of {} have incompatible values'.format(call_with_types), context)
+        self.note('"AnyStr" arguments must be all "str" or all "bytes"', context)
 
     def overloaded_signatures_overlap(self, index1: int, index2: int,
                                       context: Context) -> None:

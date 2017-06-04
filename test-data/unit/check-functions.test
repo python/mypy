@@ -2128,36 +2128,33 @@ def i() -> List[Union[str, int]]:
 
 [case testAnyStrIncompatibleArguments]
 from typing import TypeVar
-AnyStr = TypeVar('AnyStr', str, bytes)
+AnyStr = TypeVar('AnyStr', bytes, str)
 def f(x: AnyStr, y: AnyStr) -> None: pass
-def g(x: AnyStr, y: AnyStr, z: int) -> AnyStr: pass
+def g(x: AnyStr, y: AnyStr, z: int) -> None: pass
 f('a', 'b')
 f(b'a', b'b')
-f('a', b'b') # E: Type argument 1 of "f" has incompatible value \
-# N: "AnyStr" must be all one type: str or bytes
+f('a', b'b') # E: Type arguments of "f('AnyStr', 'AnyStr')" have incompatible values \
+# N: "AnyStr" arguments must be all "str" or all "bytes"
 g('a', 'b', 1)
-g(b'a', b'b', 1)
-g('a', b'b', 1) # E: Type argument 1 of "g" has incompatible value \
-# N: "AnyStr" must be all one type: str or bytes
-g('a', b'b', 'c') # E: Type argument 1 of "g" has incompatible value \
-# N: "AnyStr" must be all one type: str or bytes \
+g('a', b'b', 1) # E: Type arguments of "g('AnyStr', 'AnyStr', 'int')" have incompatible values \
+# N: "AnyStr" arguments must be all "str" or all "bytes"
+g('a', b'b', 'c') # E: Type arguments of "g('AnyStr', 'AnyStr', 'int')" have incompatible values \
+# N: "AnyStr" arguments must be all "str" or all "bytes" \
 # E: Argument 3 to "g" has incompatible type "str"; expected "int"
 
 [case testUnionAnyStrIncompatibleArguments]
 from typing import TypeVar, Union
-AnyStr = TypeVar('AnyStr', str, bytes)
+AnyStr = TypeVar('AnyStr', bytes, str)
 def f(x: Union[AnyStr, int], y: AnyStr) -> None: pass
 f('a', 'b')
 f(1, 'b')
-f('a', b'b') # E: Type argument 1 of "f" has incompatible value \
-# N: "AnyStr" must be all one type: str or bytes
+f('a', b'b') # E: Type arguments of "f('Union[AnyStr, int]', 'AnyStr')" have incompatible values \
+# N: "AnyStr" arguments must be all "str" or all "bytes"
 
 [case testStarAnyStrIncompatibleArguments]
 from typing import TypeVar, Union
-AnyStr = TypeVar('AnyStr', str, bytes)
+AnyStr = TypeVar('AnyStr', bytes, str)
 def f(*x: AnyStr) -> None: pass
-def g(x: int, *y: AnyStr) -> None: pass
-def h(*x: AnyStr, y: int) -> None: pass
 f('a')
 f('a', 'b')
 f('a', b'b') # E: Type argument 1 of "f" has incompatible value \

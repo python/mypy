@@ -1,12 +1,9 @@
-from typing import List, Dict, Sequence, Tuple
+from typing import List, Dict, Sequence
 
 import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.expandtype import expand_type
-from mypy.types import (
-    Type, TypeVarId, TypeVarType, TypeVisitor, CallableType, AnyType, PartialType, 
-    Instance, UnionType
-)
+from mypy.types import Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType, Instance
 from mypy.messages import MessageBuilder
 from mypy.nodes import Context
 
@@ -41,9 +38,10 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
                     types[i] = value
                     break
             else:
-                constraints = get_incompatible_arg_constraints(callable.arg_types, type, i + 1)
-                if constraints:
-                    msg.incompatible_constrained_arguments(callable, i + 1, constraints, context)
+                arg_strings = tuple(msg.format(arg_type).replace('"', '')
+                                    for arg_type in callable.arg_types)
+                if has_anystr_incompatible_args(arg_strings, type):
+                    msg.incompatible_anystr_arguments(callable, arg_strings, context)
                 else:
                     msg.incompatible_typevar_value(callable, i + 1, type, context)
         upper_bound = callable.variables[i].upper_bound
@@ -70,30 +68,14 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
     )
 
 
-def get_incompatible_arg_constraints(arg_types: Sequence[Type], type: Type,
-                                     index: int) -> Dict[str, Tuple[str]]:
-    """Gets incompatible function arguments with the constrained types.
+def has_anystr_incompatible_args(arg_strings: Sequence[str], type: Type) -> bool:
+    """Determines if function has a problem with AnyStr arguments.
 
-    An example of a constrained type is AnyStr which must be all str or all byte.
+    If the function has more than one AnyStr argument and the solver returns the object type,
+    then the function was passed both an "str" and "bytes" argument type.
     """
-    constraints = {}  # type: Dict[str, Tuple[str]]
     if isinstance(type, Instance) and type.type.name() == 'object':
-        if index == len(arg_types):
-            # Index is off by one for '*' arguments
-            constraints = add_arg_constraints(constraints, arg_types[index - 1])
-        else:
-            constraints = add_arg_constraints(constraints, arg_types[index])
-    return constraints
-
-
-def add_arg_constraints(constraints: Dict[str, Tuple[str]],
-                        arg_type: Type) -> Dict[str, Tuple[str]]:
-    if (isinstance(arg_type, TypeVarType) and
-            arg_type.values and
-            len(arg_type.values) > 1 and
-            arg_type.name not in constraints.keys()):
-        constraints[arg_type.name] = tuple(vals.type.name() for vals in arg_type.values)
-    elif isinstance(arg_type, UnionType):
-        for item in arg_type.items:
-            constraints = add_arg_constraints(constraints, item)
-    return constraints
+        for string in arg_strings:
+            if 'AnyStr' in string:
+                return True
+    return False
