@@ -9,7 +9,7 @@ import os
 from multiprocessing import cpu_count
 import pipes
 import re
-from subprocess import Popen, STDOUT
+from subprocess import Popen, STDOUT, DEVNULL
 import sys
 import tempfile
 import time
@@ -25,16 +25,22 @@ class LazySubprocess:
     """Wrapper around a subprocess that runs a test task."""
 
     def __init__(self, name: str, args: List[str], *, cwd: str = None,
-                 env: Dict[str, str] = None) -> None:
+                 env: Dict[str, str] = None, passthrough: Optional[int] = None) -> None:
         self.name = name
         self.args = args
         self.cwd = cwd
         self.env = env
         self.start_time = None  # type: float
         self.end_time = None  # type: float
+        # None means no passthrough
+        # otherwise, it represents verbosity level
+        self.passthrough = passthrough
 
     def start(self) -> None:
-        self.outfile = tempfile.TemporaryFile()
+        if self.passthrough is None or self.passthrough < 0:
+            self.outfile = tempfile.TemporaryFile()
+        else:
+            self.outfile = None
         self.start_time = time.perf_counter()
         self.process = Popen(self.args, cwd=self.cwd, env=self.env,
                              stdout=self.outfile, stderr=STDOUT)
@@ -47,6 +53,8 @@ class LazySubprocess:
         return self.process.returncode
 
     def read_output(self) -> str:
+        if not self.outfile:
+            return ''
         file = self.outfile
         file.seek(0)
         # Assume it's ascii to avoid unicode headaches (and portability issues).
@@ -339,7 +347,7 @@ class Waiter:
 
         if self.new_log:  # don't append empty log, it will corrupt the cache file
             # log only LOGSIZE most recent tests
-            test_log = (self.load_log_file() + [self.new_log])[:self.LOGSIZE]
+            test_log = (self.load_log_file() + [self.new_log])[-self.LOGSIZE:]
             try:
                 with open(self.FULL_LOG_FILENAME, 'w') as fp:
                     json.dump(test_log, fp, sort_keys=True, indent=4)

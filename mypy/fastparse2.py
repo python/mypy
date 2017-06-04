@@ -33,16 +33,16 @@ from mypy.nodes import (
     UnaryExpr, LambdaExpr, ComparisonExpr, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     Expression, Statement, BackquoteExpr, PrintStmt, ExecStmt,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart,
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart, check_arg_names,
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType
 )
-from mypy import defaults
 from mypy import experiments
 from mypy import messages
 from mypy.errors import Errors
 from mypy.fastparse import TypeConverter, parse_type_comment
+from mypy.options import Options
 
 try:
     from typed_ast import ast27
@@ -74,14 +74,11 @@ TYPE_COMMENT_AST_ERROR = 'invalid type comment'
 
 
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
-          pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-          custom_typing_module: str = None) -> MypyFile:
+          options: Options = Options()) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
     on failure. Otherwise, use the errors object to report parse errors.
-
-    The pyversion (major, minor) argument determines the Python syntax variant.
     """
     raise_on_error = False
     if errors is None:
@@ -90,12 +87,11 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     errors.set_file('<input>' if fnam is None else fnam, None)
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
-        assert pyversion[0] < 3 and not is_stub_file
+        assert options.python_version[0] < 3 and not is_stub_file
         ast = ast27.parse(source, fnam, 'exec')
-        tree = ASTConverter(pyversion=pyversion,
+        tree = ASTConverter(options=options,
                             is_stub=is_stub_file,
                             errors=errors,
-                            custom_typing_module=custom_typing_module,
                             ).visit(ast)
         assert isinstance(tree, MypyFile)
         tree.path = fnam
@@ -137,17 +133,15 @@ def is_no_type_check_decorator(expr: ast27.expr) -> bool:
 
 class ASTConverter(ast27.NodeTransformer):
     def __init__(self,
-                 pyversion: Tuple[int, int],
+                 options: Options,
                  is_stub: bool,
-                 errors: Errors,
-                 custom_typing_module: str = None) -> None:
+                 errors: Errors) -> None:
         self.class_nesting = 0
         self.imports = []  # type: List[ImportBase]
 
-        self.pyversion = pyversion
+        self.options = options
         self.is_stub = is_stub
         self.errors = errors
-        self.custom_typing_module = custom_typing_module
 
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg)
@@ -262,9 +256,9 @@ class ASTConverter(ast27.NodeTransformer):
 
         For example, translate '__builtin__' in Python 2 to 'builtins'.
         """
-        if id == self.custom_typing_module:
+        if id == self.options.custom_typing_module:
             return 'typing'
-        elif id == '__builtin__' and self.pyversion[0] == 2:
+        elif id == '__builtin__':
             # HACK: __builtin__ in Python 2 is aliases to builtins. However, the implementation
             #   is named __builtin__.py (there is another layer of translation elsewhere).
             return 'builtins'
@@ -370,7 +364,7 @@ class ASTConverter(ast27.NodeTransformer):
             return func_def
 
     def set_type_optional(self, type: Type, initializer: Expression) -> None:
-        if not experiments.STRICT_OPTIONAL:
+        if self.options.no_implicit_optional or not experiments.STRICT_OPTIONAL:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
         optional = isinstance(initializer, NameExpr) and initializer.name == 'None'
@@ -439,12 +433,10 @@ class ASTConverter(ast27.NodeTransformer):
             new_args.append(Argument(Var(n.kwarg), typ, None, ARG_STAR2))
             names.append(n.kwarg)
 
-        seen_names = set()  # type: Set[str]
-        for name in names:
-            if name in seen_names:
-                self.fail("duplicate argument '{}' in function definition".format(name), line, 0)
-                break
-            seen_names.add(name)
+        # We don't have any context object to give, but we have closed around the line num
+        def fail_arg(msg: str, arg: None) -> None:
+            self.fail(msg, line, 0)
+        check_arg_names(names, [None] * len(names), fail_arg)
 
         return new_args, decompose_stmts
 
@@ -872,16 +864,9 @@ class ASTConverter(ast27.NodeTransformer):
             # The following line is a bit hacky, but is the best way to maintain
             # compatibility with how mypy currently parses the contents of bytes literals.
             contents = str(n)[2:-1]
-
-            if self.pyversion[0] >= 3:
-                return BytesExpr(contents)
-            else:
-                return StrExpr(contents)
+            return StrExpr(contents)
         else:
-            if self.pyversion[0] >= 3 or self.is_stub:
-                return StrExpr(s.s)
-            else:
-                return UnicodeExpr(s.s)
+            return UnicodeExpr(s.s)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast27.Ellipsis) -> EllipsisExpr:

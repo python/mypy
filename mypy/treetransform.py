@@ -166,7 +166,7 @@ class TransformVisitor(NodeVisitor[Node]):
             newitem.line = olditem.line
         new = OverloadedFuncDef(items)
         new._fullname = node._fullname
-        new.type = self.type(node.type)
+        new.type = self.optional_type(node.type)
         new.info = node.info
         if node.impl:
             new.impl = cast(OverloadPart, node.impl.accept(self))

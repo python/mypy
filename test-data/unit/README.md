@@ -41,6 +41,7 @@ usually, "E: " is preferred because it makes it easier to associate the
 errors with the code generating them at a glance, and to change the code of
 the test without having to change line numbers in `[out]`
 - an empty `[out]` section has no effect
+- to run just this test, use `pytest -k testNewSyntaxBasics -n0`
 
 
 Fixtures
@@ -55,17 +56,22 @@ even though the code works when run manually, you should make sure you have
 all the stubs you need for your test case, including built-in classes such as
 `list` or `dict`, as these are not included by default.
 
-    - The builtins used by default in unit tests live in
-    `test-data/unit/lib-stub`.
+Where the stubs for builtins come from for a given test:
 
-    - Individual test cases can override the stubs by using `[builtins
-    fixtures/foo.pyi]`; this targets files in `test-data/unit/fixtures`; feel
-    free to modify existing files there or create new ones as you deem fit.
+- The builtins used by default in unit tests live in
+  `test-data/unit/lib-stub`.
 
-    - You are also free to add additional stubs to this directory, but
-    generally don't update files in `lib-stub` without first discussing the
-    addition with other mypy developers, as additions could slow down the test
-    suite.
+- Individual test cases can override the builtins stubs by using
+  `[builtins fixtures/foo.pyi]`; this targets files in `test-data/unit/fixtures`.
+  Feel free to modify existing files there or create new ones as you deem fit.
+
+- Test cases can also use `[typing fixtures/typing-full.pyi]` to use a more
+  complete stub for `typing` that contains the async types, among other things.
+
+- Feel free to add additional stubs to that `fixtures` directory, but
+  generally don't expand files in `lib-stub` without first discussing the
+  addition with other mypy developers, as additions could slow down the test
+  suite.
 
 
 Running tests and linting
@@ -74,6 +80,11 @@ Running tests and linting
 First install any additional dependencies needed for testing:
 
     $ python3 -m pip install -U -r test-requirements.txt
+
+You must also have a Python 2.7 binary installed that can import the `typing`
+module:
+
+    $ python2 -m pip install -U typing
 
 To run all tests, run the script `runtests.py` in the mypy repository:
 
@@ -107,12 +118,13 @@ finer control over which unit tests are run and how, you can run `py.test` or
     $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
 
 You can also run the type checker for manual testing without
-installing anything by setting up the Python module search path
-suitably (the lib-typing/3.2 path entry is not needed for Python 3.5
-or when you have manually installed the `typing` module):
+installing it by setting up the Python module search path suitably:
 
-    $ export PYTHONPATH=$PWD:$PWD/lib-typing/3.2
+    $ export PYTHONPATH=$PWD
     $ python<version> -m mypy PROGRAM.py
+
+You will have to manually install the `typing` module if you're running Python
+3.4 or earlier.
 
 You can add the entry scripts to PATH for a single python3 version:
 

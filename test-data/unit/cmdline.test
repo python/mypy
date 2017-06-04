@@ -75,6 +75,14 @@ undef
 dir/subpkg/a.py:1: error: Name 'undef' is not defined
 dir/a.py:1: error: Name 'undef' is not defined
 
+[case testCmdlineInvalidPackageName]
+# cmd: mypy dir/sub.pkg/a.py
+[file dir/sub.pkg/__init__.py]
+[file dir/sub.pkg/a.py]
+undef
+[out]
+sub.pkg is not a valid Python package name
+
 [case testBadFileEncoding]
 # cmd: mypy a.py
 [file a.py]
@@ -365,8 +373,8 @@ x += ''  # Error reported here
 a.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:3: error: Unsupported operand types for + ("int" and "str")
 main.py:6: error: Unsupported operand types for + ("int" and "str")
-main.py:7: error: "ModuleType" has no attribute "y"
-main.py:8: error: Unsupported operand types for + ("ModuleType" and "int")
+main.py:7: error: Module has no attribute "y"
+main.py:8: error: Unsupported operand types for + (Module and "int")
 
 [case testConfigFollowImportsSilent]
 # cmd: mypy main.py
@@ -386,8 +394,8 @@ x += ''  # No error reported
 [out]
 main.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:4: error: Unsupported operand types for + ("int" and "str")
-main.py:5: error: "ModuleType" has no attribute "y"
-main.py:6: error: Unsupported operand types for + ("ModuleType" and "int")
+main.py:5: error: Module has no attribute "y"
+main.py:6: error: Unsupported operand types for + (Module and "int")
 
 [case testConfigFollowImportsSkip]
 # cmd: mypy main.py

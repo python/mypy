@@ -1,10 +1,9 @@
-from typing import builtinclass, overload, Any, Generic, Sequence, Tuple, TypeVar
+from typing import overload, Any, Generic, Sequence, Tuple, TypeVar
 
 Tco = TypeVar('Tco', covariant=True)
 
 # This is an extension of transform builtins with additional operations.
 
-@builtinclass
 class object:
     def __init__(self) -> None: pass
     def __eq__(self, o: 'object') -> 'bool': pass

@@ -8,7 +8,7 @@ from os import remove, rmdir
 import shutil
 
 import pytest  # type: ignore  # no pytest in typeshed
-from typing import Callable, List, Tuple, Set, Optional, Iterator, Any
+from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict
 
 from mypy.myunit import TestCase, SkipTestCaseException
 
@@ -53,9 +53,10 @@ def parse_test_cases(
             files = []  # type: List[Tuple[str, str]] # path and contents
             output_files = []  # type: List[Tuple[str, str]] # path and contents for output files
             tcout = []  # type: List[str]  # Regular output errors
-            tcout2 = []  # type: List[str]  # Output errors for incremental, second run
-            stale_modules = None  # type: Optional[Set[str]]  # module names
-            rechecked_modules = None  # type: Optional[Set[str]]  # module names
+            tcout2 = {}  # type: Dict[int, List[str]]  # Output errors for incremental, runs 2+
+            deleted_paths = {}  # type: Dict[int, Set[str]]  # from run number of paths
+            stale_modules = {}  # type: Dict[int, Set[str]]  # from run number to module names
+            rechecked_modules = {}  # type: Dict[ int, Set[str]]  # from run number module names
             while i < len(p) and p[i].id != 'case':
                 if p[i].id == 'file' or p[i].id == 'outfile':
                     # Record an extra file needed for the test case.
@@ -67,7 +68,7 @@ def parse_test_cases(
                     elif p[i].id == 'outfile':
                         output_files.append(file_entry)
                 elif p[i].id in ('builtins', 'builtins_py2'):
-                    # Use a custom source file for the std module.
+                    # Use an alternative stub file for the builtins module.
                     arg = p[i].arg
                     assert arg is not None
                     mpath = join(os.path.dirname(path), arg)
@@ -78,27 +79,56 @@ def parse_test_cases(
                         fnam = '__builtin__.pyi'
                     with open(mpath) as f:
                         files.append((join(base_path, fnam), f.read()))
-                elif p[i].id == 'stale':
+                elif p[i].id == 'typing':
+                    # Use an alternative stub file for the typing module.
+                    arg = p[i].arg
+                    assert arg is not None
+                    src_path = join(os.path.dirname(path), arg)
+                    with open(src_path) as f:
+                        files.append((join(base_path, 'typing.pyi'), f.read()))
+                elif re.match(r'stale[0-9]*$', p[i].id):
+                    if p[i].id == 'stale':
+                        passnum = 1
+                    else:
+                        passnum = int(p[i].id[len('stale'):])
+                        assert passnum > 0
                     arg = p[i].arg
                     if arg is None:
-                        stale_modules = set()
+                        stale_modules[passnum] = set()
                     else:
-                        stale_modules = {item.strip() for item in arg.split(',')}
-                elif p[i].id == 'rechecked':
+                        stale_modules[passnum] = {item.strip() for item in arg.split(',')}
+                elif re.match(r'rechecked[0-9]*$', p[i].id):
+                    if p[i].id == 'rechecked':
+                        passnum = 1
+                    else:
+                        passnum = int(p[i].id[len('rechecked'):])
                     arg = p[i].arg
                     if arg is None:
-                        rechecked_modules = set()
+                        rechecked_modules[passnum] = set()
                     else:
-                        rechecked_modules = {item.strip() for item in arg.split(',')}
+                        rechecked_modules[passnum] = {item.strip() for item in arg.split(',')}
+                elif p[i].id == 'delete':
+                    # File to delete during a multi-step test case
+                    arg = p[i].arg
+                    assert arg is not None
+                    m = re.match(r'(.*)\.([0-9]+)$', arg)
+                    assert m, 'Invalid delete section: {}'.format(arg)
+                    num = int(m.group(2))
+                    assert num >= 2, "Can't delete during step {}".format(num)
+                    full = join(base_path, m.group(1))
+                    deleted_paths.setdefault(num, set()).add(full)
                 elif p[i].id == 'out' or p[i].id == 'out1':
                     tcout = p[i].data
                     if native_sep and os.path.sep == '\\':
                         tcout = [fix_win_path(line) for line in tcout]
                     ok = True
-                elif p[i].id == 'out2':
-                    tcout2 = p[i].data
+                elif re.match(r'out[0-9]*$', p[i].id):
+                    passnum = int(p[i].id[3:])
+                    assert passnum > 1
+                    output = p[i].data
                     if native_sep and os.path.sep == '\\':
-                        tcout2 = [fix_win_path(line) for line in tcout2]
+                        output = [fix_win_path(line) for line in output]
+                    tcout2[passnum] = output
                     ok = True
                 else:
                     raise ValueError(
@@ -106,15 +136,17 @@ def parse_test_cases(
                             p[i].id, path, p[i].line))
                 i += 1
 
-            if rechecked_modules is None:
-                # If the set of rechecked modules isn't specified, make it the same as the set of
-                # modules with a stale public interface.
-                rechecked_modules = stale_modules
-            if (stale_modules is not None
-                    and rechecked_modules is not None
-                    and not stale_modules.issubset(rechecked_modules)):
-                raise ValueError(
-                    'Stale modules must be a subset of rechecked modules ({})'.format(path))
+            for passnum in stale_modules.keys():
+                if passnum not in rechecked_modules:
+                    # If the set of rechecked modules isn't specified, make it the same as the set
+                    # of modules with a stale public interface.
+                    rechecked_modules[passnum] = stale_modules[passnum]
+                if (passnum in stale_modules
+                        and passnum in rechecked_modules
+                        and not stale_modules[passnum].issubset(rechecked_modules[passnum])):
+                    raise ValueError(
+                        ('Stale modules after pass {} must be a subset of rechecked '
+                         'modules ({}:{})').format(passnum, path, p[i0].line))
 
             if optional_out:
                 ok = True
@@ -128,7 +160,7 @@ def parse_test_cases(
                 tc = DataDrivenTestCase(p[i0].arg, input, tcout, tcout2, path,
                                         p[i0].line, lastline, perform,
                                         files, output_files, stale_modules,
-                                        rechecked_modules, native_sep)
+                                        rechecked_modules, deleted_paths, native_sep)
                 out.append(tc)
         if not ok:
             raise ValueError(
@@ -140,14 +172,16 @@ def parse_test_cases(
 
 class DataDrivenTestCase(TestCase):
     input = None  # type: List[str]
-    output = None  # type: List[str]
+    output = None  # type: List[str]  # Output for the first pass
+    output2 = None  # type: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
 
     file = ''
     line = 0
 
     # (file path, file content) tuples
     files = None  # type: List[Tuple[str, str]]
-    expected_stale_modules = None  # type: Optional[Set[str]]
+    expected_stale_modules = None  # type: Dict[int, Set[str]]
+    expected_rechecked_modules = None  # type: Dict[int, Set[str]]
 
     clean_up = None  # type: List[Tuple[bool, str]]
 
@@ -155,15 +189,16 @@ class DataDrivenTestCase(TestCase):
                  name: str,
                  input: List[str],
                  output: List[str],
-                 output2: List[str],
+                 output2: Dict[int, List[str]],
                  file: str,
                  line: int,
                  lastline: int,
                  perform: Callable[['DataDrivenTestCase'], None],
                  files: List[Tuple[str, str]],
                  output_files: List[Tuple[str, str]],
-                 expected_stale_modules: Optional[Set[str]],
-                 expected_rechecked_modules: Optional[Set[str]],
+                 expected_stale_modules: Dict[int, Set[str]],
+                 expected_rechecked_modules: Dict[int, Set[str]],
+                 deleted_paths: Dict[int, Set[str]],
                  native_sep: bool = False,
                  ) -> None:
         super().__init__(name)
@@ -178,24 +213,30 @@ class DataDrivenTestCase(TestCase):
         self.output_files = output_files
         self.expected_stale_modules = expected_stale_modules
         self.expected_rechecked_modules = expected_rechecked_modules
+        self.deleted_paths = deleted_paths
         self.native_sep = native_sep
 
     def set_up(self) -> None:
         super().set_up()
         encountered_files = set()
         self.clean_up = []
+        all_deleted = []  # type: List[str]
+        for paths in self.deleted_paths.values():
+            all_deleted += paths
         for path, content in self.files:
             dir = os.path.dirname(path)
             for d in self.add_dirs(dir):
                 self.clean_up.append((True, d))
             with open(path, 'w') as f:
                 f.write(content)
-            self.clean_up.append((False, path))
+            if path not in all_deleted:
+                # TODO: Don't assume that deleted files don't get reintroduced.
+                self.clean_up.append((False, path))
             encountered_files.add(path)
-            if path.endswith(".next"):
-                # Make sure new files introduced in the second run are accounted for
-                renamed_path = path[:-5]
-                if renamed_path not in encountered_files:
+            if re.search(r'\.[2-9]$', path):
+                # Make sure new files introduced in the second and later runs are accounted for
+                renamed_path = path[:-2]
+                if renamed_path not in encountered_files and renamed_path not in all_deleted:
                     encountered_files.add(renamed_path)
                     self.clean_up.append((False, renamed_path))
         for path, _ in self.output_files:
@@ -383,7 +424,7 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
 
     for i in range(len(input)):
         # The first in the split things isn't a comment
-        for possible_err_comment in input[i].split('#')[1:]:
+        for possible_err_comment in input[i].split(' # ')[1:]:
             m = re.search(
                 '^([ENW]):((?P<col>\d+):)? (?P<message>.*)$',
                 possible_err_comment.strip())

@@ -223,8 +223,32 @@ class UnboundType(Type):
                            [deserialize_type(a) for a in data['args']])
 
 
+class CallableArgument(Type):
+    """Represents a Arg(type, 'name') inside a Callable's type list.
+
+    Note that this is a synthetic type for helping parse ASTs, not a real type.
+    """
+    typ = None          # type: Type
+    name = None         # type: Optional[str]
+    constructor = None  # type: Optional[str]
+
+    def __init__(self, typ: Type, name: Optional[str], constructor: Optional[str],
+                 line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
+        self.typ = typ
+        self.name = name
+        self.constructor = constructor
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
+        return visitor.visit_callable_argument(self)
+
+    def serialize(self) -> JsonDict:
+        assert False, "Synthetic types don't serialize"
+
+
 class TypeList(Type):
-    """A list of types [...].
+    """Information about argument types and names [...].
 
     This is only used for the arguments of a Callable type, i.e. for
     [arg, ...] in Callable[[arg, ...], ret]. This is not a real type
@@ -377,8 +401,8 @@ class Instance(Type):
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
-        assert(typ is None or typ.fullname() not in ["builtins.Any", "typing.Any"])
-        # TODO: assert(typ is None or typ.fullname() != 'builtins.tuple' or len(args) == 1)
+        # TODO: assert(typ is NOT_READY or typ.fullname() != 'builtins.tuple' or len(args) == 1)
+        assert(typ is NOT_READY or typ.fullname() not in ["builtins.Any", "typing.Any"])
         self.type = typ
         self.args = args
         self.erased = erased
@@ -515,10 +539,11 @@ class CallableType(FunctionLike):
     arg_types = None  # type: List[Type]  # Types of function arguments
     arg_kinds = None  # type: List[int]   # ARG_ constants
     arg_names = None  # type: List[Optional[str]]   # None if not a keyword argument
-    min_args = 0                     # Minimum number of arguments; derived from arg_kinds
-    is_var_arg = False               # Is it a varargs function?  derived from arg_kinds
-    ret_type = None  # type: Type    # Return value type
-    name = ''  # type: Optional[str] # Name (may be None; for error messages)
+    min_args = 0                    # Minimum number of arguments; derived from arg_kinds
+    is_var_arg = False              # Is it a varargs function?  derived from arg_kinds
+    is_kw_arg = False
+    ret_type = None  # type: Type   # Return value type
+    name = ''   # type: Optional[str] # Name (may be None; for error messages)
     definition = None  # type: Optional[SymbolNode] # For error messages.  May be None.
     # Type variables for a generic function
     variables = None  # type: List[TypeVarDef]
@@ -993,7 +1018,7 @@ class UnionType(Type):
     items = None  # type: List[Type]
 
     def __init__(self, items: List[Type], line: int = -1, column: int = -1) -> None:
-        self.items = items
+        self.items = flatten_nested_unions(items)
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
         super().__init__(line, column)
@@ -1273,6 +1298,10 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
         pass
 
     @abstractmethod
+    def visit_callable_argument(self, t: CallableArgument) -> T:
+        pass
+
+    @abstractmethod
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
         pass
 
@@ -1380,6 +1409,13 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_type_list(self, t: TypeList) -> str:
         return '<TypeList {}>'.format(self.list_str(t.items))
 
+    def visit_callable_argument(self, t: CallableArgument) -> str:
+        typ = t.typ.accept(self)
+        if t.name is None:
+            return "{}({})".format(t.constructor, typ)
+        else:
+            return "{}({}, {})".format(t.constructor, typ, t.name)
+
     def visit_any(self, t: AnyType) -> str:
         return 'Any'
 
@@ -1388,7 +1424,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return "builtins.None"
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> str:
-        return "<uninhabited>"
+        return "<nothing>"
 
     def visit_erased_type(self, t: ErasedType) -> str:
         return "<Erased>"
@@ -1532,6 +1568,9 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_type_list(self, t: TypeList) -> T:
         return self.query_types(t.items)
+
+    def visit_callable_argument(self, t: CallableArgument) -> T:
+        return t.typ.accept(self)
 
     def visit_any(self, t: AnyType) -> T:
         return self.strategy([])
@@ -1740,6 +1779,17 @@ def get_type_vars(typ: Type) -> List[TypeVarType]:
     return tvars
 
 
+def flatten_nested_unions(types: Iterable[Type]) -> List[Type]:
+    """Flatten nested unions in a type list."""
+    flat_items = []  # type: List[Type]
+    for tp in types:
+        if isinstance(tp, UnionType):
+            flat_items.extend(flatten_nested_unions(tp.items))
+        else:
+            flat_items.append(tp)
+    return flat_items
+
+
 def union_items(typ: Type) -> List[Type]:
     """Return the flattened items of a union type.
 
@@ -1754,8 +1804,10 @@ def union_items(typ: Type) -> List[Type]:
         return [typ]
 
 
+names = globals().copy()
+names.pop('NOT_READY', None)
 deserialize_map = {
     key: obj.deserialize  # type: ignore
-    for key, obj in globals().items()
+    for key, obj in names.items()
     if isinstance(obj, type) and issubclass(obj, Type) and obj is not Type
 }

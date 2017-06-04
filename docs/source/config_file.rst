@@ -93,11 +93,17 @@ The following global flags may only be set in the global section
 - ``dump_inference_stats`` (Boolean, default False) dumps stats about
   type inference.
 
-- ``incremental`` (Boolean, default False) enables the experimental
-  module cache.
+- ``incremental`` (Boolean, default False) enables :ref:`incremental
+  mode <incremental>`.
 
 - ``cache_dir`` (string, default ``.mypy_cache``) stores module cache
-  info in the given folder in incremental mode.
+  info in the given folder in :ref:`incremental mode <incremental>`.
+  The cache is only read in incremental mode, but it is always written
+  unless the value is set to ``/dev/null`` (UNIX) or ``nul``
+  (Windows).
+
+- ``quick_and_dirty`` (Boolean, default False) enables :ref:`quick
+  mode <quick-mode>`.
 
 - ``show_error_context`` (Boolean, default False) shows
   context notes before errors.
@@ -172,6 +178,8 @@ overridden by the pattern sections matching the module name.
 - ``strict_boolean`` (Boolean, default False) makes using non-boolean
   expressions in conditions an error.
 
+- ``no_implicit_optional`` (Boolean, default false) changes the treatment of
+  arguments with a default value of None by not implicitly making their type Optional
 
 Example
 *******

@@ -932,9 +932,10 @@ class A:
 [builtins fixtures/list.pyi]
 
 [case testNoneReturnTypeWithExpressions2]
+import typing
 
 a, b = None, None # type: (A, bool)
-f() in a   # Fail (see output)
+f() in a   # E: "f" does not return a value  # E: Unsupported right operand type for in ("A")
 a < f()    # E: "f" does not return a value
 f() <= a   # E: "f" does not return a value
 a in f()   # E: "f" does not return a value
@@ -948,10 +949,6 @@ class A:
     def __add__(self, x: 'A') -> 'A':
         pass
 [builtins fixtures/bool.pyi]
-[out]
-main:3: error: "f" does not return a value
-main:3: error: Unsupported right operand type for in ("A")
-
 
 -- Slicing
 -- -------
@@ -1001,6 +998,16 @@ a[:o]  # E: Slice index must be an integer or None
 [builtins fixtures/slice.pyi]
 
 [case testNoneSliceBounds]
+from typing import Any
+a = None # type: Any
+a[None:1]
+a[1:None]
+a[None:]
+a[:None]
+[builtins fixtures/slice.pyi]
+
+[case testNoneSliceBoundsWithStrictOptional]
+# flags: --strict-optional
 from typing import Any
 a = None # type: Any
 a[None:1]
