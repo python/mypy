@@ -6,6 +6,7 @@
 async def f() -> int:
     pass
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncDefReturn]
 
@@ -13,12 +14,14 @@ async def f() -> int:
     return 0
 reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncDefMissingReturn]
 # flags: --warn-no-return
 async def f() -> int:
     make_this_not_trivial = 1
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:2: error: Missing return statement
 
@@ -28,6 +31,7 @@ async def f() -> int:
     make_this_not_trivial = 1
     return
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:4: error: Return value expected
 
@@ -38,6 +42,7 @@ async def f() -> int:
     reveal_type(x)  # E: Revealed type is 'builtins.int*'
     return x
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testAwaitDefaultContext]
@@ -48,6 +53,7 @@ async def f(x: T) -> T:
     y = await f(x)
     reveal_type(y)
     return y
+[typing fixtures/typing-full.pyi]
 [out]
 main:6: error: Revealed type is 'T`-1'
 
@@ -59,6 +65,7 @@ async def f(x: T) -> T:
     y = await f(x)  # type: Any
     reveal_type(y)
     return y
+[typing fixtures/typing-full.pyi]
 [out]
 main:6: error: Revealed type is 'Any'
 
@@ -70,6 +77,7 @@ async def f(x: T) -> T:
     y = await f(x)  # type: int
     reveal_type(y)
     return x
+[typing fixtures/typing-full.pyi]
 [out]
 main:5: error: Argument 1 to "f" has incompatible type "T"; expected "int"
 main:6: error: Revealed type is 'builtins.int'
@@ -83,6 +91,7 @@ def g() -> Generator[int, None, str]:
 async def f() -> int:
     x = await g()
     return x
+[typing fixtures/typing-full.pyi]
 [out]
 main:7: error: Incompatible types in await (actual type Generator[int, None, str], expected type Awaitable[Any])
 main:7: note: 'typing.Generator' missing following 'typing.Awaitable' protocol members:
@@ -96,6 +105,7 @@ def g() -> Iterator[Any]:
 async def f() -> int:
     x = await g()
     return x
+[typing fixtures/typing-full.pyi]
 [out]
 main:6: error: Incompatible types in await (actual type Iterator[Any], expected type Awaitable[Any])
 main:6: note: 'typing.Iterator' missing following 'typing.Awaitable' protocol members:
@@ -109,6 +119,7 @@ async def f() -> int:
     x = await g()
     return x
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:5: error: Incompatible types in await (actual type "int", expected type Awaitable[Any])
 main:5: note: 'builtins.int' missing following 'typing.Awaitable' protocol members:
@@ -122,6 +133,7 @@ async def f() -> str:
     x = await g()  # type: str
     return x
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
@@ -133,6 +145,7 @@ async def f() -> str:
     x = await g()
     return x
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:6: error: Incompatible return value type (got "int", expected "str")
 
@@ -145,7 +158,7 @@ async def f() -> None:
     async for x in C():
         reveal_type(x)  # E: Revealed type is 'builtins.int*'
 [builtins fixtures/async_await.pyi]
-[out]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncForError]
 
@@ -154,6 +167,7 @@ async def f() -> None:
     async for x in [1]:
         pass
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:4: error: AsyncIterable expected
 main:4: note: 'builtins.list' missing following 'typing.AsyncIterable' protocol members:
@@ -175,6 +189,7 @@ async def f() -> None:
     async for z in C():  # type: Union[int, str]
         reveal_type(z)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncForComprehension]
 # flags: --fast-parser --python-version 3.6
@@ -214,6 +229,7 @@ async def generatorexp(obj: Iterable[int]):
     reveal_type(lst2)  # E: Revealed type is 'typing.AsyncIterator[builtins.int*]'
 
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncForComprehensionErrors]
 # flags: --fast-parser --python-version 3.6
@@ -256,6 +272,7 @@ main:21: note: '__main__.asyncify' missing following 'typing.Iterable' protocol 
 main:21: note: __iter__
 main:21: error: asyncify[int] has no attribute "__iter__"; maybe "__aiter__"?
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncWith]
 
@@ -266,6 +283,7 @@ async def f() -> None:
     async with C() as x:
         reveal_type(x)  # E: Revealed type is 'builtins.int*'
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 
 
 [case testAsyncWithError]
@@ -277,6 +295,7 @@ async def f() -> None:
     async with C() as x:
         pass
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:6: error: "C" has no attribute "__aenter__"; maybe "__enter__"?
 main:6: error: "C" has no attribute "__aexit__"; maybe "__exit__"?
@@ -292,7 +311,7 @@ async def f() -> None:
                           # N: __await__
         pass
 [builtins fixtures/async_await.pyi]
-[out]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncWithErrorBadAenter2]
 
@@ -303,7 +322,7 @@ async def f() -> None:
     async with C() as x:  # E: None has no attribute "__await__"
         pass
 [builtins fixtures/async_await.pyi]
-[out]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncWithErrorBadAexit]
 
@@ -316,7 +335,7 @@ async def f() -> None:
                          # N: __await__
         pass
 [builtins fixtures/async_await.pyi]
-[out]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncWithErrorBadAexit2]
 
@@ -327,7 +346,7 @@ async def f() -> None:
     async with C() as x: # E: None has no attribute "__await__"
         pass
 [builtins fixtures/async_await.pyi]
-[out]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncWithTypeComments]
 
@@ -344,6 +363,7 @@ async def f() -> None:
     async with C() as a:  # type: int, int  # E: Invalid tuple literal type
         pass
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testNoYieldInAsyncDef]
 # flags: --python-version 3.5
@@ -381,6 +401,7 @@ def g() -> Generator[Any, None, str]:
     x = yield from f()
     return x
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:6: error: "yield from" can't be applied to Awaitable[str]
 
@@ -409,7 +430,7 @@ async def main() -> None:
     async for z in I():
         reveal_type(z)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/async_await.pyi]
-[out]
+[typing fixtures/typing-full.pyi]
 
 [case testYieldTypeCheckInDecoratedCoroutine]
 
@@ -425,7 +446,7 @@ def f() -> Generator[int, str, int]:
     else:
         return ''  # E: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/async_await.pyi]
-[out]
+[typing fixtures/typing-full.pyi]
 
 -- Async generators (PEP 525), some test cases adapted from the PEP text
 -- ---------------------------------------------------------------------
@@ -456,6 +477,7 @@ async def wrong_return() -> Generator[int, None, None]:  # E: The return type of
     yield 3
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorReturnIterator]
 # flags: --python-version 3.6
@@ -471,6 +493,7 @@ async def use_gen() -> None:
         reveal_type(item)  # E: Revealed type is 'builtins.int*'
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorManualIter]
 # flags: --python-version 3.6
@@ -488,6 +511,7 @@ async def user() -> None:
     reveal_type(await gen.__anext__())  # E: Revealed type is 'builtins.int*'
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorAsend]
 # flags: --fast-parser --python-version 3.6
@@ -508,6 +532,7 @@ async def h() -> None:
     reveal_type(await g.asend('hello'))  # E: Revealed type is 'builtins.int*'
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorAthrow]
 # flags: --fast-parser --python-version 3.6
@@ -526,6 +551,7 @@ async def h() -> None:
     reveal_type(await g.athrow(BaseException))  # E: Revealed type is 'builtins.str*'
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorNoSyncIteration]
 # flags: --fast-parser --python-version 3.6
@@ -540,6 +566,7 @@ def h() -> None:
         pass
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [out]
 main:9: error: Iterable expected
@@ -558,6 +585,7 @@ async def gen() -> AsyncGenerator[int, None]:
     yield from f()  # E: 'yield from' in async function
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorNoReturnWithValue]
 # flags: --fast-parser --python-version 3.6
@@ -579,6 +607,7 @@ async def return_f() -> AsyncGenerator[int, None]:
     return f()  # E: 'return' with value in async generator is not allowed
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- The full matrix of coroutine compatibility
 -- ------------------------------------------
@@ -674,4 +703,5 @@ async def decorated_host_coroutine() -> None:
     x = await other_coroutine()
 
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 [out]

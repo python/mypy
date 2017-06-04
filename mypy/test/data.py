@@ -68,7 +68,7 @@ def parse_test_cases(
                     elif p[i].id == 'outfile':
                         output_files.append(file_entry)
                 elif p[i].id in ('builtins', 'builtins_py2'):
-                    # Use a custom source file for the std module.
+                    # Use an alternative stub file for the builtins module.
                     arg = p[i].arg
                     assert arg is not None
                     mpath = join(os.path.dirname(path), arg)
@@ -79,6 +79,13 @@ def parse_test_cases(
                         fnam = '__builtin__.pyi'
                     with open(mpath) as f:
                         files.append((join(base_path, fnam), f.read()))
+                elif p[i].id == 'typing':
+                    # Use an alternative stub file for the typing module.
+                    arg = p[i].arg
+                    assert arg is not None
+                    src_path = join(os.path.dirname(path), arg)
+                    with open(src_path) as f:
+                        files.append((join(base_path, 'typing.pyi'), f.read()))
                 elif re.match(r'stale[0-9]*$', p[i].id):
                     if p[i].id == 'stale':
                         passnum = 1

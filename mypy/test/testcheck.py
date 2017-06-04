@@ -76,6 +76,7 @@ files = [
     'check-underscores.test',
     'check-classvar.test',
     'check-enum.test',
+    'check-incomplete-fixture.test',
 ]
 
 

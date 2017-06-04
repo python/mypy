@@ -1,5 +1,10 @@
-# Stub for typing module. Many of the definitions have special handling in
-# the type checker, so they can just be initialized to anything.
+# More complete stub for typing module.
+#
+# Use [typing fixtures/typing-full.pyi] to use this instead of lib-stub/typing.pyi
+# in a particular test case.
+#
+# Many of the definitions have special handling in the type checker, so they
+# can just be initialized to anything.
 
 from abc import abstractmethod
 
@@ -64,13 +69,48 @@ class Generator(Iterator[T], Generic[T, U, V]):
     def send(self, value: U) -> T: pass
 
     @abstractmethod
-    def throw(self, typ: Any, val: Any = None, tb: Any = None) -> None: pass
+    def throw(self, typ: Any, val: Any=None, tb: Any=None) -> None: pass
 
     @abstractmethod
     def close(self) -> None: pass
 
     @abstractmethod
     def __iter__(self) -> 'Generator[T, U, V]': pass
+
+class AsyncGenerator(AsyncIterator[T], Generic[T, U]):
+    @abstractmethod
+    def __anext__(self) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def asend(self, value: U) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def athrow(self, typ: Any, val: Any=None, tb: Any=None) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def aclose(self) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def __aiter__(self) -> 'AsyncGenerator[T, U]': pass
+
+@runtime
+class Awaitable(Protocol[T]):
+    @abstractmethod
+    def __await__(self) -> Generator[Any, Any, T]: pass
+
+class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V, S]):
+    pass
+
+@runtime
+class AsyncIterable(Protocol[T]):
+    @abstractmethod
+    def __aiter__(self) -> 'AsyncIterator[T]': pass
+
+@runtime
+class AsyncIterator(AsyncIterable[T], Protocol):
+    def __aiter__(self) -> 'AsyncIterator[T]': return self
+    @abstractmethod
+    def __anext__(self) -> Awaitable[T]: pass
 
 @runtime
 class Sequence(Iterable[T_co], Protocol):

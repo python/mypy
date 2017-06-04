@@ -1968,7 +1968,7 @@ main:3: error: Revealed type is 'builtins.int'
 main:5: error: Revealed type is 'builtins.int'
 
 -- TODO: Add another test for metaclass in import cycle (reversed from the above test).
---       This currently doesn't work.
+--       This currently does not work.
 
 [case testDeleteFile]
 import n
@@ -2055,7 +2055,11 @@ def foo(x) -> int:
 tmp/n.py:2: error: Too many arguments for "foo"
 [out3]
 
-[case testQuickAndDirty1]
+--
+-- Quick mode
+--
+
+[case testQuickAndDirtyInterfaceChangeDoesNotPropagate]
 # flags: --quick-and-dirty
 import b, c
 [file a.py]
@@ -2071,7 +2075,7 @@ def a(x): pass
 [rechecked a]
 [stale a]
 
-[case testQuickAndDirty2]
+[case testQuickAndDirtyDoesNotInvalidateImportCycle]
 # flags: --quick-and-dirty
 import b, c
 [file a.py]
@@ -2089,7 +2093,7 @@ x = 0
 [rechecked b]
 [stale b]
 
-[case testQuickAndDirty3]
+[case testQuickAndDirtySwitchToIncrementalMode]
 # flags: --quick-and-dirty
 # flags2: --incremental
 import a, b
@@ -2100,7 +2104,7 @@ import a
 [rechecked a, b, builtins]
 [stale a, b, builtins]
 
-[case testQuickAndDirty4]
+[case testQuickAndDirtyFixErrorInExistingFunction]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2116,7 +2120,7 @@ tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
 [rechecked a]
 [stale a]
 
-[case testQuickAndDirty5]
+[case testQuickAndDirtyIntroduceErrorInNewFunction]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2132,7 +2136,7 @@ tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
 [rechecked a]
 [stale]
 
-[case testQuickAndDirty6]
+[case testQuickAndDirtyPersistingError]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2150,7 +2154,7 @@ tmp/a.py:2: error: Incompatible return value type (got "float", expected "int")
 [rechecked a]
 [stale]
 
-[case testQuickAndDirty7]
+[case testQuickAndDirtyIntroduceReferencesWithinCycle]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2170,7 +2174,7 @@ tmp/a.py:3: error: Revealed type is 'def () -> builtins.int'
 [rechecked a]
 [stale]
 
-[case testQuickAndDirty8]
+[case testQuickAndDirtyIntroduceReferencesWithinCycle2]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2190,14 +2194,70 @@ tmp/b.py:3: error: Revealed type is 'def () -> builtins.int'
 [rechecked b]
 [stale]
 
+[case testQuickAndDirtyIntroduceReferencesWithinCycleNoError]
+# flags: --quick-and-dirty
+import a, b, c
+[file a.py]
+import b
+[file b.py]
+import a
+class C: pass
+def f() -> int: pass
+[file c.py]
+[file a.py.2]
+import b
+def g() -> b.C: pass
+h = b.f
+[file c.py.3]
+import a
+reveal_type(a.g)
+reveal_type(a.h)
+[out1]
+[out2]
+[out3]
+tmp/c.py:2: error: Revealed type is 'def () -> b.C'
+tmp/c.py:3: error: Revealed type is 'def () -> builtins.int'
+[rechecked a]
+[stale a]
+[rechecked2 c]
+[stale2]
+
+[case testQuickAndDirtyIntroduceReferencesWithinCycleNoError2]
+# flags: --quick-and-dirty
+import a, b, c
+[file a.py]
+import b
+class C: pass
+def f() -> int: pass
+[file b.py]
+import a
+[file c.py]
+[file b.py.2]
+import a
+def g() -> a.C: pass
+h = a.f
+[file c.py.3]
+import b
+reveal_type(b.g)
+reveal_type(b.h)
+[out1]
+[out2]
+[out3]
+tmp/c.py:2: error: Revealed type is 'def () -> a.C'
+tmp/c.py:3: error: Revealed type is 'def () -> builtins.int'
+[rechecked b]
+[stale b]
+[rechecked2 c]
+[stale2]
+
 -- (The behavior for blockers is actually no different than in regular incremental mode)
-[case testQuickAndDirty9]
+[case testQuickAndDirtyBlockerOnFirstRound]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
 import b
-class B: pass
-class C(B, B): pass  # blocker
+class B(C): pass
+class C(B): pass  # blocker
 [file b.py]
 import a
 [file a.py.2]
@@ -2205,12 +2265,12 @@ import b
 class B: pass
 class C(B): pass
 [out1]
-tmp/a.py:3: error: Duplicate base class "B"
+tmp/a.py:3: error: Cycle in inheritance hierarchy
 [out2]
 [rechecked a, b]
 [stale a, b]
 
-[case testQuickAndDirty10]
+[case testQuickAndDirtyBlockerOnSecondRound]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2221,15 +2281,15 @@ class C(B): pass
 import a
 [file a.py.2]
 import b
-class B: pass
-class C(B, B): pass  # blocker
+class B(C): pass
+class C(B): pass  # blocker
 [out1]
 [out2]
-tmp/a.py:3: error: Duplicate base class "B"
+tmp/a.py:3: error: Cycle in inheritance hierarchy
 [rechecked a, b]
 [stale a, b]
 
-[case testQuickAndDirty11]
+[case testQuickAndDirtyRenameFunctionInTwoModules]
 # flags: --quick-and-dirty
 import a, b, c, d
 [file a.py]
@@ -2247,7 +2307,7 @@ def g(): pass  # renamed f to g
 [file c.py.2]
 from a import g
 
-[case testQuickAndDirty12]
+[case testQuickAndDirtyUnmodifiedModuleDoesNotGenerateError]
 # flags: --quick-and-dirty
 import a, b, c, d
 [file a.py]
@@ -2260,7 +2320,7 @@ from a import C
 from b import C
 [file d.py]
 from c import C
-C().f()
+C().f()  # no error because unmodified
 [file a.py.2]
 import d
 class C:
@@ -2270,7 +2330,7 @@ from a import C
 [out1]
 [out2]
 
-[case testQuickAndDirty13]
+[case testQuickAndDirtyUnmodifiedModuleDoesNotGenerateError2]
 # flags: --quick-and-dirty
 import a, b, c
 [file a.py]
@@ -2292,7 +2352,7 @@ class C:
 [rechecked a]
 [stale a]
 
-[case testQuickAndDirty14]
+[case testQuickAndDirtyTypeAliasReference]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2305,7 +2365,7 @@ S = str
 import b
 def f(x: b.S) -> int: return 0
 
-[case testQuickAndDirty15]
+[case testQuickAndDirtyNamedTupleReference]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2319,7 +2379,7 @@ P = NamedTuple('P', (('x', int),))
 import b
 def f(x: b.P) -> int: return 0
 
-[case testQuickAndDirty16]
+[case testQuickAndDirtyTypeVarReference]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2332,3 +2392,344 @@ T = TypeVar('T')
 [file a.py.2]
 import b
 def f(x: b.T) -> int: return 0
+
+[case testQuickAndDirtyDeleteFunctionUsedByOtherModule]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+from b import f
+[file b.py]
+import a
+def f() -> int: pass
+a.f()
+[file b.py.2]
+import a
+reveal_type(a.f)
+[out2]
+tmp/b.py:2: error: Revealed type is 'Any'
+
+[case testQuickAndDirtyDeleteClassUsedInAnnotation]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file b.py.2]
+import a
+reveal_type(a.f)
+a.f().x
+[out2]
+tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
+tmp/b.py:3: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
+
+[case testQuickAndDirtyDeleteClassUsedAsBase]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+class D(b.C): pass
+[file b.py]
+import a
+class C: pass
+[file b.py.2]
+import a
+reveal_type(a.D)
+a.D().x
+[out2]
+tmp/b.py:2: error: Revealed type is 'Any'
+
+[case testQuickAndDirtyDeleteNestedClassUsedInAnnotation]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C.D: pass
+[file b.py]
+import a
+class C:
+    class D: pass
+[file b.py.2]
+import a
+class C:
+    pass
+reveal_type(a.f)
+a.f().x
+[out2]
+tmp/b.py:4: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
+tmp/b.py:5: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
+
+[case testQuickAndDirtyTurnGenericClassIntoNonGeneric-skip]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C[int]: pass
+[file b.py]
+from typing import TypeVar, Generic
+import a
+T = TypeVar('T')
+class C(Generic[T]): pass
+[file b.py.2]
+import a
+class C: pass
+reveal_type(a.f)
+c: C
+d = a.f()
+c = d
+d = c
+[out2]
+# TODO: Crashes (https://github.com/python/mypy/issues/3279)
+
+[case testQuickAndDirtyTurnClassIntoGenericOne-skip]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file b.py.2]
+from typing import TypeVar, Generic
+import a
+T = TypeVar('T')
+class C(Generic[T]): pass
+reveal_type(a.f)
+c: C[int]
+d = a.f()
+d = c
+c = d
+[out2]
+# TODO: Crashes (https://github.com/python/mypy/issues/3279)
+
+[case testQuickAndDirtyDeleteTypeVarUsedInAnnotation]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f(x: b.T) -> b.T: return x
+[file b.py]
+from typing import TypeVar
+import a
+T = TypeVar('T')
+[file b.py.2]
+import a
+reveal_type(a.f)
+reveal_type(a.f(1))
+[out2]
+tmp/b.py:2: error: Revealed type is 'def [b.T] (x: b.T`-1) -> b.T`-1'
+tmp/b.py:3: error: Revealed type is 'builtins.int*'
+
+[case testQuickAndDirtyDeleteNewTypeUsedInAnnotation]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+from typing import NewType
+import a
+C = NewType('C', int)
+[file b.py.2]
+import a
+reveal_type(a.f)
+a.f().x
+[out2]
+tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
+tmp/b.py:3: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
+
+[case testQuickAndDirtyChangeClassIntoFunction]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file b.py.2]
+import a
+def C() -> None: pass
+reveal_type(a.f)
+a.f().x
+[out2]
+tmp/b.py:3: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
+tmp/b.py:4: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
+
+[case testQuickAndDirtyChangeClassIntoVariable]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file b.py.2]
+import a
+C = 0
+reveal_type(a.f)
+a.f().x
+[out2]
+tmp/b.py:3: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
+tmp/b.py:4: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
+
+[case testQuickAndDirtyAddFile]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+x = ''
+[file b.py]
+import a
+[file b.py.2]
+import c
+reveal_type(c.x)
+[file c.py.2]
+import a
+x = 1
+reveal_type(a.x)
+[rechecked b, c]
+[stale]
+[out2]
+tmp/c.py:3: error: Revealed type is 'builtins.str'
+tmp/b.py:2: error: Revealed type is 'builtins.int'
+
+[case testQuickAndDirtyDeleteFile]
+# flags: --quick-and-dirty
+import b
+[file a.py]
+def f() -> None: pass
+[file b.py]
+import a
+a.f()
+[delete a.py.2]
+[file b.py.3]
+import a
+a.f() # Comment change
+[file b.py.4]
+# Remove import
+[rechecked b]
+[stale]
+[rechecked2 b]
+[stale2]
+[rechecked3 b]
+[stale3 b]
+[out2]
+tmp/b.py:1: error: Cannot find module named 'a'
+tmp/b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+[out3]
+tmp/b.py:1: error: Cannot find module named 'a'
+tmp/b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+[out4]
+
+[case testQuickAndDirtyRenameModule]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+b.f()
+[file b.py]
+def f() -> None: pass
+[delete b.py.2]
+[file c.py.2]
+def f() -> None: pass
+[file a.py.2]
+import c
+c.f(1)
+[file c.py.3]
+def f() -> None: pass # comment change
+[file c.py.4]
+def f(x) -> None: pass
+[out]
+[out2]
+tmp/a.py:2: error: Too many arguments for "f"
+[out3]
+tmp/a.py:2: error: Too many arguments for "f"
+[out4]
+[rechecked a, c]
+[stale c]
+[rechecked2 a, c]
+[stale2]
+[rechecked3 a, c]
+[stale3 a, c]
+
+[case testQuickAndDirtyMultiplePasses]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+b.f()
+[file b.py]
+def f() -> None: pass
+[file b.py.2]
+# Write cache file but the error in a is not caught yet.
+def f(x) -> None: pass
+[file a.py.3]
+# Editing a triggers the error.
+import b
+b.f()
+[rechecked b]
+[rechecked2 a]
+[out2]
+[out3]
+tmp/a.py:3: error: Too few arguments for "f"
+
+[case testQuickAndDirtySerializeStaleType]
+# flags: --quick-and-dirty
+import a, c
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file c.py]
+[file b.py.2]
+import a
+x = a.f()
+[file c.py.3]
+import b
+reveal_type(b.x)
+def g(x: object) -> None: pass
+g(b.x)
+b.x.y
+[rechecked b]
+[stale b]
+[rechecked2 c]
+[stale2]
+[out3]
+tmp/c.py:2: error: Revealed type is '<stale cache: consider running mypy without --quick>'
+tmp/c.py:5: error: "<stale cache: consider running mypy without --quick>" has no attribute "y"
+
+[case testSerializeAbstractPropertyIncremental]
+from abc import abstractmethod
+import typing
+class A:
+    @property
+    def f(self) -> int:
+        return 1
+    @f.setter  # type: ignore
+    @abstractmethod
+    def f(self, x: int) -> None:
+        pass
+a = A()
+[builtins fixtures/property.pyi]
+
+[case testSerializeAbstractPropertyDisallowUntypedIncremental]
+# flags: --disallow-untyped-defs
+from abc import abstractmethod
+import typing
+class A:
+    @property
+    def f(self) -> int:
+        return 1
+    @f.setter  # type: ignore
+    @abstractmethod
+    def f(self, x: int) -> None:
+        pass
+a = A()
+[builtins fixtures/property.pyi]
