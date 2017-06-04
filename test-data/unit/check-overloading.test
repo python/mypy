@@ -998,12 +998,12 @@ def g(x: int, *a: AnyStr) -> None: pass
 
 g('foo')
 g('foo', 'bar')
-g('foo', b'bar') # E: Type arguments of "g('AnyStr', 'AnyStr')" have incompatible values \
-# N: "AnyStr" arguments must be all "str" or all "bytes"
+g('foo', b'bar') # E: Type argument 1 of "g" has incompatible value \
+# N: "AnyStr" must be all one type: bytes or str
 g(1)
 g(1, 'foo')
-g(1, 'foo', b'bar') # E: Type arguments of "g('int', 'AnyStr')" have incompatible values \
-# N: "AnyStr" arguments must be all "str" or all "bytes"
+g(1, 'foo', b'bar') # E: Type argument 1 of "g" has incompatible value \
+# N: "AnyStr" must be all one type: bytes or str
 [builtins fixtures/primitives.pyi]
 
 [case testBadOverlapWithTypeVarsWithValues]
