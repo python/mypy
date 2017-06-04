@@ -3290,6 +3290,24 @@ x3: M = cv
 
 [builtins fixtures/classmethod.pyi]
 
+[case testMetaclassOverloadResolution]
+from typing import Type, overload
+
+class EM(type): pass
+class E(metaclass=EM): pass
+
+@overload
+def f(x: EM) -> int: return 0
+@overload
+def f(x: str) -> str: return ''
+def f(x: object) -> object: return ''
+
+e1: EM
+reveal_type(f(e1))  # E: Revealed type is 'builtins.int'
+
+e2: Type[E]
+reveal_type(f(e2))  # E: Revealed type is 'builtins.int'
+
 -- Synthetic types crashes
 -- -----------------------
 
