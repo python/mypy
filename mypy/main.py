@@ -24,10 +24,6 @@ from mypy.version import __version__
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
-class InvalidPackageName(Exception):
-    """Exception indicating that a package name was invalid."""
-
-
 def main(script_path: str, args: List[str] = None) -> None:
     """Main entry point to the type checker.
 
@@ -251,8 +247,6 @@ def process_options(args: List[str],
     add_invertible_flag('--show-error-context', default=False,
                         dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
-    add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
-                        help="don't assume arguments with default values of None are Optional")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable module cache")
     parser.add_argument('--quick-and-dirty', action='store_true',
@@ -463,15 +457,9 @@ def process_options(args: List[str],
         targets = []
         for f in special_opts.files:
             if f.endswith(PY_EXTENSIONS):
-                try:
-                    targets.append(BuildSource(f, crawl_up(f)[1], None))
-                except InvalidPackageName as e:
-                    fail(str(e))
+                targets.append(BuildSource(f, crawl_up(f)[1], None))
             elif os.path.isdir(f):
-                try:
-                    sub_targets = expand_dir(f)
-                except InvalidPackageName as e:
-                    fail(str(e))
+                sub_targets = expand_dir(f)
                 if not sub_targets:
                     fail("There are no .py[i] files in directory '{}'"
                          .format(f))
@@ -538,14 +526,10 @@ def crawl_up(arg: str) -> Tuple[str, str]:
         dir, base = os.path.split(dir)
         if not base:
             break
-        # Ensure that base is a valid python module name
-        if not base.isidentifier():
-            raise InvalidPackageName('{} is not a valid Python package name'.format(base))
         if mod == '__init__' or not mod:
             mod = base
         else:
             mod = base + '.' + mod
-
     return dir, mod
 
 

@@ -31,7 +31,7 @@ List of major changes:
 
     * Add :ref:`variance-of-generics`.
 
-    * Add :ref:`variance`.
+    * Add :ref:`invariance-vs-covariance`.
 
     * Updates to :ref:`python-36`.
 

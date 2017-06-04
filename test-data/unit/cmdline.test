@@ -75,14 +75,6 @@ undef
 dir/subpkg/a.py:1: error: Name 'undef' is not defined
 dir/a.py:1: error: Name 'undef' is not defined
 
-[case testCmdlineInvalidPackageName]
-# cmd: mypy dir/sub.pkg/a.py
-[file dir/sub.pkg/__init__.py]
-[file dir/sub.pkg/a.py]
-undef
-[out]
-sub.pkg is not a valid Python package name
-
 [case testBadFileEncoding]
 # cmd: mypy a.py
 [file a.py]

@@ -20,7 +20,6 @@ Type = 0
 no_type_check = 0
 ClassVar = 0
 NoReturn = 0
-NewType = 0
 
 # Type aliases.
 List = 0
@@ -54,13 +53,45 @@ class Generator(Iterator[T], Generic[T, U, V]):
     def send(self, value: U) -> T: pass
 
     @abstractmethod
-    def throw(self, typ: Any, val: Any = None, tb: Any = None) -> None: pass
+    def throw(self, typ: Any, val: Any=None, tb=None) -> None: pass
 
     @abstractmethod
     def close(self) -> None: pass
 
     @abstractmethod
     def __iter__(self) -> 'Generator[T, U, V]': pass
+
+class AsyncGenerator(AsyncIterator[T], Generic[T, U]):
+    @abstractmethod
+    def __anext__(self) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def asend(self, value: U) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def athrow(self, typ: Any, val: Any=None, tb: Any=None) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def aclose(self) -> Awaitable[T]: pass
+
+    @abstractmethod
+    def __aiter__(self) -> 'AsyncGenerator[T, U]': pass
+
+class Awaitable(Generic[T]):
+    @abstractmethod
+    def __await__(self) -> Generator[Any, Any, T]: pass
+
+class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V, S]):
+    pass
+
+class AsyncIterable(Generic[T]):
+    @abstractmethod
+    def __aiter__(self) -> 'AsyncIterator[T]': pass
+
+class AsyncIterator(AsyncIterable[T], Generic[T]):
+    def __aiter__(self) -> 'AsyncIterator[T]': return self
+    @abstractmethod
+    def __anext__(self) -> Awaitable[T]: pass
 
 class Sequence(Iterable[T], Generic[T]):
     @abstractmethod
@@ -69,5 +100,10 @@ class Sequence(Iterable[T], Generic[T]):
 class Mapping(Generic[T, U]): pass
 
 class MutableMapping(Generic[T, U]): pass
+
+def NewType(name: str, tp: Type[T]) -> Callable[[T], T]:
+    def new_type(x):
+        return x
+    return new_type
 
 TYPE_CHECKING = 1

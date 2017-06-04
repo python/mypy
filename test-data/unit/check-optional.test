@@ -125,10 +125,11 @@ def f(x: int = None) -> None:
 f(None)
 [out]
 
-[case testNoInferOptionalFromDefaultNone]
-# flags: --no-implicit-optional
-def f(x: int = None) -> None:  # E: Incompatible types in assignment (expression has type None, variable has type "int")
-  pass
+[case testInferOptionalFromDefaultNoneWithFastParser]
+
+def f(x: int = None) -> None:
+  x + 1  # E: Unsupported left operand type for + (some union)
+f(None)
 [out]
 
 [case testInferOptionalFromDefaultNoneComment]
@@ -138,11 +139,12 @@ def f(x=None):
 f(None)
 [out]
 
-[case testNoInferOptionalFromDefaultNoneComment]
-# flags: --no-implicit-optional
-def f(x=None):  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+[case testInferOptionalFromDefaultNoneCommentWithFastParser]
+
+def f(x=None):
   # type: (int) -> None
-  pass
+  x + 1  # E: Unsupported left operand type for + (some union)
+f(None)
 [out]
 
 [case testInferOptionalType]

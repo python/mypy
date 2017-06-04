@@ -22,10 +22,12 @@ def parse(source: Union[str, bytes],
         return mypy.fastparse.parse(source,
                                     fnam=fnam,
                                     errors=errors,
-                                    options=options)
+                                    pyversion=options.python_version,
+                                    custom_typing_module=options.custom_typing_module)
     else:
         import mypy.fastparse2
         return mypy.fastparse2.parse(source,
                                      fnam=fnam,
                                      errors=errors,
-                                     options=options)
+                                     pyversion=options.python_version,
+                                     custom_typing_module=options.custom_typing_module)

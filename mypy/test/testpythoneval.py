@@ -84,8 +84,14 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     # This uses the same PYTHONPATH as the current process.
     returncode, out = run(mypy_cmdline)
     if returncode == 0:
-        # Execute the program.
-        returncode, interp_out = run([interpreter, program])
+        # Set up module path for the execution.
+        # This needs the typing module but *not* the mypy module.
+        vers_dir = '2.7' if py2 else '3.2'
+        typing_path = os.path.join(testcase.old_cwd, 'lib-typing', vers_dir)
+        assert os.path.isdir(typing_path)
+        env = os.environ.copy()
+        env['PYTHONPATH'] = typing_path
+        returncode, interp_out = run([interpreter, program], env=env)
         out += interp_out
     # Remove temp file.
     os.remove(program_path)

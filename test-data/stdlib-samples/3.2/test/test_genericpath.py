@@ -23,7 +23,7 @@ def safe_rmdir(dirname: str) -> None:
 
 class GenericTest(unittest.TestCase):
     # The path module to be tested
-    pathmodule = genericpath  # type: Any
+    pathmodule = genericpath # type: Any
     common_attributes = ['commonprefix', 'getsize', 'getatime', 'getctime',
                          'getmtime', 'exists', 'isdir', 'isfile']
     attributes = []  # type: List[str]

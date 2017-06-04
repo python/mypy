@@ -17,7 +17,7 @@ from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
-    retry_on_error, testcase_pyversion, update_testcase_output,
+    testcase_pyversion, update_testcase_output,
 )
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -75,7 +75,6 @@ files = [
     'check-underscores.test',
     'check-classvar.test',
     'check-enum.test',
-    'check-incomplete-fixture.test',
 ]
 
 
@@ -148,18 +147,13 @@ class TypeCheckSuite(DataSuite):
                         if file.endswith('.' + str(incremental_step)):
                             full = os.path.join(dn, file)
                             target = full[:-2]
-                            # Use retries to work around potential flakiness on Windows (AppVeyor).
-                            retry_on_error(lambda: shutil.copy(full, target))
+                            shutil.copy(full, target)
 
                             # In some systems, mtime has a resolution of 1 second which can cause
                             # annoying-to-debug issues when a file has the same size after a
                             # change. We manually set the mtime to circumvent this.
                             new_time = os.stat(target).st_mtime + 1
                             os.utime(target, times=(new_time, new_time))
-                # Delete files scheduled to be deleted in [delete <path>.num] sections.
-                for path in testcase.deleted_paths.get(incremental_step, set()):
-                    # Use retries to work around potential flakiness on Windows (AppVeyor).
-                    retry_on_error(lambda: os.remove(path))
 
         # Parse options after moving files (in case mypy.ini is being moved).
         options = self.parse_options(original_program_text, testcase, incremental_step)

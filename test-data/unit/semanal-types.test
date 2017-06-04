@@ -720,7 +720,7 @@ MypyFile:1(
     def ()))
 
 [case testOverloadedFunction]
-from typing import overload, Any
+from typing import overload
 @overload
 def f(a: object) -> int: a
 @overload
@@ -730,7 +730,7 @@ def f(a: Any) -> Any: return a
 
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [overload, Any])
+  ImportFrom:1(typing, [overload])
   OverloadedFuncDef:2(
     FuncDef:7(
       f

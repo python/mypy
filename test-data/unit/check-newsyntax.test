@@ -119,19 +119,19 @@ f'{type(1)}'
 a: str
 a = f'foobar'
 a = f'{"foobar"}'
-[builtins fixtures/f_string.pyi]
+[builtins fixtures/primitives.pyi]
 
 [case testNewSyntaxFStringExpressionsOk]
 # flags: --python-version 3.6
 f'.{1 + 1}.'
 f'.{1 + 1}.{"foo" + "bar"}'
-[builtins fixtures/f_string.pyi]
+[builtins fixtures/primitives.pyi]
 
 [case testNewSyntaxFStringExpressionsErrors]
 # flags: --python-version 3.6
 f'{1 + ""}'
 f'.{1 + ""}'
-[builtins fixtures/f_string.pyi]
+[builtins fixtures/primitives.pyi]
 [out]
 main:2: error: Unsupported operand types for + ("int" and "str")
 main:3: error: Unsupported operand types for + ("int" and "str")
@@ -142,12 +142,4 @@ value = 10.5142
 width = 10
 precision = 4
 f'result: {value:{width}.{precision}}'
-[builtins fixtures/f_string.pyi]
-
-[case testNewSyntaxFStringSingleField]
-# flags: --python-version 3.6
-v = 1
-reveal_type(f'{v}') # E: Revealed type is 'builtins.str'
-reveal_type(f'{1}') # E: Revealed type is 'builtins.str'
-[builtins fixtures/f_string.pyi]
-
+[builtins fixtures/primitives.pyi]

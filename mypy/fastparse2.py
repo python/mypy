@@ -38,11 +38,11 @@ from mypy.nodes import (
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType
 )
+from mypy import defaults
 from mypy import experiments
 from mypy import messages
 from mypy.errors import Errors
 from mypy.fastparse import TypeConverter, parse_type_comment
-from mypy.options import Options
 
 try:
     from typed_ast import ast27
@@ -74,11 +74,14 @@ TYPE_COMMENT_AST_ERROR = 'invalid type comment'
 
 
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
-          options: Options = Options()) -> MypyFile:
+          pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+          custom_typing_module: str = None) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
     on failure. Otherwise, use the errors object to report parse errors.
+
+    The pyversion (major, minor) argument determines the Python syntax variant.
     """
     raise_on_error = False
     if errors is None:
@@ -87,11 +90,12 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     errors.set_file('<input>' if fnam is None else fnam, None)
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
-        assert options.python_version[0] < 3 and not is_stub_file
+        assert pyversion[0] < 3 and not is_stub_file
         ast = ast27.parse(source, fnam, 'exec')
-        tree = ASTConverter(options=options,
+        tree = ASTConverter(pyversion=pyversion,
                             is_stub=is_stub_file,
                             errors=errors,
+                            custom_typing_module=custom_typing_module,
                             ).visit(ast)
         assert isinstance(tree, MypyFile)
         tree.path = fnam
@@ -133,15 +137,17 @@ def is_no_type_check_decorator(expr: ast27.expr) -> bool:
 
 class ASTConverter(ast27.NodeTransformer):
     def __init__(self,
-                 options: Options,
+                 pyversion: Tuple[int, int],
                  is_stub: bool,
-                 errors: Errors) -> None:
+                 errors: Errors,
+                 custom_typing_module: str = None) -> None:
         self.class_nesting = 0
         self.imports = []  # type: List[ImportBase]
 
-        self.options = options
+        self.pyversion = pyversion
         self.is_stub = is_stub
         self.errors = errors
+        self.custom_typing_module = custom_typing_module
 
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg)
@@ -256,9 +262,9 @@ class ASTConverter(ast27.NodeTransformer):
 
         For example, translate '__builtin__' in Python 2 to 'builtins'.
         """
-        if id == self.options.custom_typing_module:
+        if id == self.custom_typing_module:
             return 'typing'
-        elif id == '__builtin__':
+        elif id == '__builtin__' and self.pyversion[0] == 2:
             # HACK: __builtin__ in Python 2 is aliases to builtins. However, the implementation
             #   is named __builtin__.py (there is another layer of translation elsewhere).
             return 'builtins'
@@ -364,7 +370,7 @@ class ASTConverter(ast27.NodeTransformer):
             return func_def
 
     def set_type_optional(self, type: Type, initializer: Expression) -> None:
-        if self.options.no_implicit_optional or not experiments.STRICT_OPTIONAL:
+        if not experiments.STRICT_OPTIONAL:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
         optional = isinstance(initializer, NameExpr) and initializer.name == 'None'
@@ -864,9 +870,16 @@ class ASTConverter(ast27.NodeTransformer):
             # The following line is a bit hacky, but is the best way to maintain
             # compatibility with how mypy currently parses the contents of bytes literals.
             contents = str(n)[2:-1]
-            return StrExpr(contents)
+
+            if self.pyversion[0] >= 3:
+                return BytesExpr(contents)
+            else:
+                return StrExpr(contents)
         else:
-            return UnicodeExpr(s.s)
+            if self.pyversion[0] >= 3 or self.is_stub:
+                return StrExpr(s.s)
+            else:
+                return UnicodeExpr(s.s)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast27.Ellipsis) -> EllipsisExpr:

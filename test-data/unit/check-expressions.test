@@ -1006,16 +1006,6 @@ a[None:]
 a[:None]
 [builtins fixtures/slice.pyi]
 
-[case testNoneSliceBoundsWithStrictOptional]
-# flags: --strict-optional
-from typing import Any
-a = None # type: Any
-a[None:1]
-a[1:None]
-a[None:]
-a[:None]
-[builtins fixtures/slice.pyi]
-
 
 -- String interpolation
 -- --------------------

@@ -27,7 +27,8 @@ DEALINGS IN THE SOFTWARE.
 = = = = =
 
 Portions of mypy are licensed under different licenses.  The files
-under stdlib-samples are licensed under the PSF 2 License, reproduced below.
+under stdlib-samples and lib-typing are licensed under the PSF 2
+License, reproduced below.
 
 = = = = =
 

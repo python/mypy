@@ -335,13 +335,13 @@ t_a = None  # type: Type[Any]
 reveal_type(u(t_o, t_o)) # E: Revealed type is 'Type[builtins.object]'
 reveal_type(u(t_s, t_s)) # E: Revealed type is 'Type[builtins.str]'
 reveal_type(u(t_a, t_a)) # E: Revealed type is 'Type[Any]'
-reveal_type(u(type, type)) # E: Revealed type is 'def (x: builtins.object) -> builtins.type'
+reveal_type(u(type, type)) # E: Revealed type is 'def (x: Any) -> builtins.type'
 
 # One type, other non-type
 reveal_type(u(t_s, 1)) # E: Revealed type is 'Union[builtins.int*, Type[builtins.str]]'
 reveal_type(u(1, t_s)) # E: Revealed type is 'Union[Type[builtins.str], builtins.int*]'
-reveal_type(u(type, 1)) # E: Revealed type is 'Union[builtins.int*, def (x: builtins.object) -> builtins.type]'
-reveal_type(u(1, type)) # E: Revealed type is 'Union[def (x: builtins.object) -> builtins.type, builtins.int*]'
+reveal_type(u(type, 1)) # E: Revealed type is 'Union[builtins.int*, def (x: Any) -> builtins.type]'
+reveal_type(u(1, type)) # E: Revealed type is 'Union[def (x: Any) -> builtins.type, builtins.int*]'
 reveal_type(u(t_a, 1)) # E: Revealed type is 'Union[builtins.int*, Type[Any]]'
 reveal_type(u(1, t_a)) # E: Revealed type is 'Union[Type[Any], builtins.int*]'
 reveal_type(u(t_o, 1)) # E: Revealed type is 'Union[builtins.int*, Type[builtins.object]]'

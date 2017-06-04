@@ -165,20 +165,3 @@ from typing import Any
 def g() -> Any: pass
 def f() -> Any: return g()
 [out]
-
-[case testOKReturnAnyIfProperSubtype]
-# flags: --warn-return-any --strict-optional
-from typing import Any, Optional
-
-class Test(object):
-
-    def __init__(self) -> None:
-        self.attr = "foo"  # type: Any
-
-    def foo(self, do_it: bool) -> Optional[Any]:
-        if do_it:
-            return self.attr  # Should not warn here
-        else:
-            return None
-[builtins fixtures/list.pyi]
-[out]

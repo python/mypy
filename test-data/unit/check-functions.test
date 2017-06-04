@@ -88,7 +88,6 @@ def r(x) -> None: ...
 r = l # E: Incompatible types in assignment (expression has type Callable[[Any, Any], None], variable has type Callable[[Any], None])
 
 [case testSubtypingFunctionsImplicitNames]
-from typing import Any
 
 def f(a, b): pass
 def g(c: Any, d: Any) -> Any: pass
@@ -1826,7 +1825,6 @@ class A(Generic[t]):
 
 
 [case testRedefineFunction]
-from typing import Any
 def f(x) -> Any: pass
 def g(x, y): pass
 def h(x): pass

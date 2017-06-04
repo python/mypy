@@ -54,7 +54,6 @@ def parse_test_cases(
             output_files = []  # type: List[Tuple[str, str]] # path and contents for output files
             tcout = []  # type: List[str]  # Regular output errors
             tcout2 = {}  # type: Dict[int, List[str]]  # Output errors for incremental, runs 2+
-            deleted_paths = {}  # type: Dict[int, Set[str]]  # from run number of paths
             stale_modules = {}  # type: Dict[int, Set[str]]  # from run number to module names
             rechecked_modules = {}  # type: Dict[ int, Set[str]]  # from run number module names
             while i < len(p) and p[i].id != 'case':
@@ -68,7 +67,7 @@ def parse_test_cases(
                     elif p[i].id == 'outfile':
                         output_files.append(file_entry)
                 elif p[i].id in ('builtins', 'builtins_py2'):
-                    # Use an alternative stub file for the builtins module.
+                    # Use a custom source file for the std module.
                     arg = p[i].arg
                     assert arg is not None
                     mpath = join(os.path.dirname(path), arg)
@@ -79,13 +78,6 @@ def parse_test_cases(
                         fnam = '__builtin__.pyi'
                     with open(mpath) as f:
                         files.append((join(base_path, fnam), f.read()))
-                elif p[i].id == 'typing':
-                    # Use an alternative stub file for the typing module.
-                    arg = p[i].arg
-                    assert arg is not None
-                    src_path = join(os.path.dirname(path), arg)
-                    with open(src_path) as f:
-                        files.append((join(base_path, 'typing.pyi'), f.read()))
                 elif re.match(r'stale[0-9]*$', p[i].id):
                     if p[i].id == 'stale':
                         passnum = 1
@@ -107,16 +99,6 @@ def parse_test_cases(
                         rechecked_modules[passnum] = set()
                     else:
                         rechecked_modules[passnum] = {item.strip() for item in arg.split(',')}
-                elif p[i].id == 'delete':
-                    # File to delete during a multi-step test case
-                    arg = p[i].arg
-                    assert arg is not None
-                    m = re.match(r'(.*)\.([0-9]+)$', arg)
-                    assert m, 'Invalid delete section: {}'.format(arg)
-                    num = int(m.group(2))
-                    assert num >= 2, "Can't delete during step {}".format(num)
-                    full = join(base_path, m.group(1))
-                    deleted_paths.setdefault(num, set()).add(full)
                 elif p[i].id == 'out' or p[i].id == 'out1':
                     tcout = p[i].data
                     if native_sep and os.path.sep == '\\':
@@ -160,7 +142,7 @@ def parse_test_cases(
                 tc = DataDrivenTestCase(p[i0].arg, input, tcout, tcout2, path,
                                         p[i0].line, lastline, perform,
                                         files, output_files, stale_modules,
-                                        rechecked_modules, deleted_paths, native_sep)
+                                        rechecked_modules, native_sep)
                 out.append(tc)
         if not ok:
             raise ValueError(
@@ -198,7 +180,6 @@ class DataDrivenTestCase(TestCase):
                  output_files: List[Tuple[str, str]],
                  expected_stale_modules: Dict[int, Set[str]],
                  expected_rechecked_modules: Dict[int, Set[str]],
-                 deleted_paths: Dict[int, Set[str]],
                  native_sep: bool = False,
                  ) -> None:
         super().__init__(name)
@@ -213,30 +194,24 @@ class DataDrivenTestCase(TestCase):
         self.output_files = output_files
         self.expected_stale_modules = expected_stale_modules
         self.expected_rechecked_modules = expected_rechecked_modules
-        self.deleted_paths = deleted_paths
         self.native_sep = native_sep
 
     def set_up(self) -> None:
         super().set_up()
         encountered_files = set()
         self.clean_up = []
-        all_deleted = []  # type: List[str]
-        for paths in self.deleted_paths.values():
-            all_deleted += paths
         for path, content in self.files:
             dir = os.path.dirname(path)
             for d in self.add_dirs(dir):
                 self.clean_up.append((True, d))
             with open(path, 'w') as f:
                 f.write(content)
-            if path not in all_deleted:
-                # TODO: Don't assume that deleted files don't get reintroduced.
-                self.clean_up.append((False, path))
+            self.clean_up.append((False, path))
             encountered_files.add(path)
             if re.search(r'\.[2-9]$', path):
                 # Make sure new files introduced in the second and later runs are accounted for
                 renamed_path = path[:-2]
-                if renamed_path not in encountered_files and renamed_path not in all_deleted:
+                if renamed_path not in encountered_files:
                     encountered_files.add(renamed_path)
                     self.clean_up.append((False, renamed_path))
         for path, _ in self.output_files:

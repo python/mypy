@@ -1,10 +1,9 @@
-from typing import TypeVar
+from typing import TypeVar, Optional, List, Any, Generic, Sequence
+T = TypeVar('T')
 
-_T = TypeVar('_T')
-
-def coroutine(func: _T) -> _T: pass
+def coroutine(func: T) -> T:
+    return func
 
 class bool: ...
 
-class ModuleType:
-    __file__ = ... # type: str
+class ModuleType: ...
