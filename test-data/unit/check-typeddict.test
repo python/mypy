@@ -528,7 +528,7 @@ reveal_type(f(g))  # E: Revealed type is '<nothing>'
 
 -- Methods
 
--- TODO: iter() doesn't accept TypedDictType as an argument type. Figure out why.
+-- TODO: iter() does not accept TypedDictType as an argument type. Figure out why.
 --[case testCanCallMappingMethodsOnTypedDict]
 --from mypy_extensions import TypedDict
 --Cell = TypedDict('Cell', {'value': int})
@@ -727,7 +727,6 @@ f(dict(x=1, y=3, z=4))  # E: Expected items ['x', 'y'] but found ['x', 'y', 'z']
 
 [builtins fixtures/dict.pyi]
 
-
 [case testTypedDictExplicitTypes]
 from mypy_extensions import TypedDict
 
@@ -743,4 +742,28 @@ p3 = {'x': 'hi'}  # E: Expected items ['x', 'y'] but found ['x'].
 
 p4: Point = {'x': 1, 'y': 2}
 
+[builtins fixtures/dict.pyi]
+
+
+-- Other TypedDict methods
+
+[case testTypedDictGetMethod]
+# flags: --strict-optional
+from mypy_extensions import TypedDict
+class A: pass
+D = TypedDict('D', {'x': int, 'y': str})
+d: D
+reveal_type(d.get('x')) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+reveal_type(d.get('y')) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+reveal_type(d.get('x', A())) # E: Revealed type is 'Union[builtins.int, __main__.A]'
+reveal_type(d.get('x', 1)) # E: Revealed type is 'builtins.int'
+reveal_type(d.get('y', None)) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictMissingMethod]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int, 'y': str})
+d: D
+d.bad(1) # E: "D" has no attribute "bad"
 [builtins fixtures/dict.pyi]

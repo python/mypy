@@ -39,6 +39,7 @@ class int:
     def __mul__(self, x: 'int') -> 'int': pass
     def __mod__(self, x: 'int') -> 'int': pass
     def __floordiv__(self, x: 'int') -> 'int': pass
+    def __pow__(self, x: 'int') -> Any: pass
     def __pos__(self) -> 'int': pass
     def __neg__(self) -> 'int': pass
     def __eq__(self, x: object) -> bool: pass
