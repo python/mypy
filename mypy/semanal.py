@@ -3434,7 +3434,8 @@ class SemanticAnalyzer(NodeVisitor):
                 self.add_fixture_note(fullname, ctx)
 
     def name_already_defined(self, name: str, ctx: Context) -> None:
-        self.fail("Name '{}' already defined".format(name), ctx)
+        if name != '_':
+            self.fail("Name '{}' already defined".format(name), ctx)
 
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
