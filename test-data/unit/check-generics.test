@@ -1504,7 +1504,7 @@ T = TypeVar('T')
 class C(Generic[T]):
     def __init__(self) -> None: pass
 x = C # type: Callable[[], C[int]]
-y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type Type[C[Any]], variable has type Callable[[], int])
+y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type Type[C], variable has type Callable[[], int])
 
 
 -- Special cases

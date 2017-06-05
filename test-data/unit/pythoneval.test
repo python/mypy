@@ -1122,7 +1122,7 @@ class MyDDict(t.DefaultDict[int,T], t.Generic[T]):
 MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
-_program.py:6: error: Argument 1 to "defaultdict" has incompatible type Type[List[Any]]; expected Callable[[], str]
+_program.py:6: error: Argument 1 to "defaultdict" has incompatible type Type[list]; expected Callable[[], str]
 _program.py:9: error: Invalid index type "str" for defaultdict[int, str]; expected type "int"
 _program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
 _program.py:19: error: Dict entry 0 has incompatible type "str": List[<nothing>]
