@@ -85,7 +85,7 @@ from mypy.types import (
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_silent_import
+    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -975,13 +975,12 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 self.fail('Invalid base class', base_expr)
                 info.fallback_to_any = True
-            if (self.options.disallow_implicit_any_types and
-                    has_any_from_silent_import(base)):
+            if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(base):
                 if isinstance(base_expr, (NameExpr, MemberExpr)):
                     prefix = "Base type {}".format(base_expr.name)
                 else:
                     prefix = "Base type"
-                self.msg.implicit_any_from_silent_import(prefix, base, base_expr)
+                self.msg.unimported_type_becomes_any(prefix, base, base_expr)
 
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
@@ -1436,7 +1435,7 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             var._fullname = self.qualified_name(name)
         var.is_ready = True
-        var.type = AnyType(from_silent_import=is_import)
+        var.type = AnyType(from_unimported_type=is_import)
         var.is_suppressed_import = is_import
         self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
 
@@ -1883,15 +1882,15 @@ class SemanticAnalyzer(NodeVisitor):
             return
         variance, upper_bound = res
 
-        if self.options.disallow_implicit_any_types:
-            for idx, constraint in enumerate(values):
-                if has_any_from_silent_import(constraint):
-                    prefix = "Constraint {}".format(idx + 1)
-                    self.msg.implicit_any_from_silent_import(prefix, constraint, s)
+        if 'unimported' in self.options.disallow_any:
+            for idx, constraint in enumerate(values, start=1):
+                if has_any_from_unimported_type(constraint):
+                    prefix = "Constraint {}".format(idx)
+                    self.msg.unimported_type_becomes_any(prefix, constraint, s)
 
-            if has_any_from_silent_import(upper_bound):
+            if has_any_from_unimported_type(upper_bound):
                 prefix = "Upper bound of type variable"
-                self.msg.implicit_any_from_silent_import(prefix, upper_bound, s)
+                self.msg.unimported_type_becomes_any(prefix, upper_bound, s)
 
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)

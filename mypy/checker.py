@@ -29,7 +29,7 @@ from mypy.nodes import (
     ARG_POS, MDEF,
     CONTRAVARIANT, COVARIANT)
 from mypy import nodes
-from mypy.typeanal import has_any_from_silent_import
+from mypy.typeanal import has_any_from_unimported_type
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, strip_type, TypeType,
@@ -612,17 +612,15 @@ class TypeChecker(NodeVisitor[None]):
                                 self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                             if any(is_implicit_any(t) for t in fdef.type.arg_types):
                                 self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
-                    if self.options.disallow_implicit_any_types:
+                    if 'unimported' in self.options.disallow_any:
                         if fdef.type and isinstance(fdef.type, CallableType):
                             ret_type = fdef.type.ret_type
-                            if has_any_from_silent_import(ret_type):
-                                self.msg.implicit_any_from_silent_import("Return type", ret_type,
-                                                                         fdef)
+                            if has_any_from_unimported_type(ret_type):
+                                self.msg.unimported_type_becomes_any("Return type", ret_type, fdef)
                             for idx, arg_type in enumerate(fdef.type.arg_types):
-                                if has_any_from_silent_import(arg_type):
+                                if has_any_from_unimported_type(arg_type):
                                     prefix = "Argument {} to \"{}\"".format(idx + 1, fdef.name())
-                                    self.msg.implicit_any_from_silent_import(prefix, arg_type,
-                                                                             fdef)
+                                    self.msg.unimported_type_becomes_any(prefix, arg_type, fdef)
                 if name in nodes.reverse_op_method_set:
                     self.check_reverse_op_method(item, typ, name)
                 elif name in ('__getattr__', '__getattribute__'):
@@ -1191,14 +1189,14 @@ class TypeChecker(NodeVisitor[None]):
         self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
         if (s.type is not None and
-                self.options.disallow_implicit_any_types and
-                has_any_from_silent_import(s.type)):
+                'unimported' in self.options.disallow_any and
+                has_any_from_unimported_type(s.type)):
             if isinstance(s.lvalues[-1], TupleExpr):
                 # This is a multiple assignment. Instead of figuring out which type is problematic,
                 # give a generic error message.
-                self.msg.fail(messages.IMPLICIT_CONVERT_TO_ANY_SILENT_IMPORT, s)
+                self.msg.unimported_type_becomes_any("A type on this line", AnyType(), s)
             else:
-                self.msg.implicit_any_from_silent_import("Type of variable", s.type, s)
+                self.msg.unimported_type_becomes_any("Type of variable", s.type, s)
 
         if len(s.lvalues) > 1:
             # Chained assignment (e.g. x = y = ...).

@@ -4,7 +4,7 @@ from collections import OrderedDict
 from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
 
 from mypy.errors import report_internal_error
-from mypy.typeanal import has_any_from_silent_import
+from mypy.typeanal import has_any_from_unimported_type
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
@@ -1547,8 +1547,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         options = self.chk.options
         if options.warn_redundant_casts and is_same_type(source_type, target_type):
             self.msg.redundant_cast(target_type, expr)
-        if options.disallow_implicit_any_types and has_any_from_silent_import(target_type):
-            self.msg.implicit_any_from_silent_import("Target type of cast", target_type, expr)
+        if 'unimported' in options.disallow_any and has_any_from_unimported_type(target_type):
+            self.msg.unimported_type_becomes_any("Target type of cast", target_type, expr)
         return target_type
 
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
@@ -2235,9 +2235,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
         tuple_type = e.info.tuple_type
         if tuple_type:
-            if (self.chk.options.disallow_implicit_any_types and
-                    has_any_from_silent_import(tuple_type)):
-                self.msg.implicit_any_from_silent_import("NamedTuple type", tuple_type, e)
+            if ('unimported' in self.chk.options.disallow_any and
+                    has_any_from_unimported_type(tuple_type)):
+                self.msg.unimported_type_becomes_any("NamedTuple type", tuple_type, e)
         # TODO: Perhaps return a type object type?
         return AnyType()
 

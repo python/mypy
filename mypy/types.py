@@ -274,14 +274,14 @@ class AnyType(Type):
 
     def __init__(self,
                  implicit: bool = False,
-                 from_silent_import: bool = False,
+                 from_unimported_type: bool = False,
                  line: int = -1,
                  column: int = -1) -> None:
         super().__init__(line, column)
         # Was this Any type was inferred without a type annotation?
         self.implicit = implicit
-        # Does this come from an unresolved import? See --disallow-implicit-any-types flag
-        self.from_silent_import = from_silent_import
+        # Does this come from an unfollowed import? See --disallow-any=unimported option
+        self.from_unimported_type = from_unimported_type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)

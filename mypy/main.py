@@ -179,6 +179,7 @@ def process_options(args: List[str],
 
     strict_flag_names = []  # type: List[str]
     strict_flag_assignments = []  # type: List[Tuple[str, bool]]
+    valid_disallow_any_options = {'unimported'}
 
     def add_invertible_flag(flag: str,
                             *,
@@ -203,6 +204,16 @@ def process_options(args: List[str],
             strict_flag_names.append(flag)
             strict_flag_assignments.append((dest, not default))
 
+    def disallow_any_argument_type(raw_options: str) -> List[str]:
+        current_options = raw_options.split(',')
+        for option in current_options:
+            if option not in valid_disallow_any_options:
+                formatted_opts = ', '.join(map("'{}'".format, valid_disallow_any_options))
+                message = "Unrecognized option '{}' (valid options are: {}).".format(
+                    option, formatted_opts)
+                raise argparse.ArgumentError(None, message)
+        return current_options
+
     # Unless otherwise specified, arguments will be parsed directly onto an
     # Options object.  Options that require further processing should have
     # their `dest` prefixed with `special-opts:`, which will cause them to be
@@ -222,9 +233,10 @@ def process_options(args: List[str],
                         help="silently ignore imports of missing modules")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
-    parser.add_argument('--disallow-implicit-any-types', action='store_true',
-                        help="disallow implicit conversion of types from unanalyzed modules"
-                             " into Any")
+    parser.add_argument('--disallow-any', type=disallow_any_argument_type, default=[],
+                        metavar='{{{}}}'.format(', '.join(valid_disallow_any_options)),
+                        help="disallow various types of Any in a module. Takes a comma-separated "
+                             "list of options (defaults to all options disabled)")
     add_invertible_flag('--disallow-untyped-calls', default=False, strict_flag=True,
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")

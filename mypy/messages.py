@@ -88,8 +88,6 @@ MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
-IMPLICIT_CONVERT_TO_ANY_SILENT_IMPORT = 'A type on this line is implicitly converted to "Any" ' \
-                                        'due to import from unanalyzed module'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -857,9 +855,10 @@ class MessageBuilder:
     def redundant_cast(self, typ: Type, context: Context) -> None:
         self.note('Redundant cast to {}'.format(self.format(typ)), context)
 
-    def implicit_any_from_silent_import(self, prefix: str, typ: Type, ctx: Context) -> None:
-        self.fail("{} is implicitly converted to {} due to import from unanalyzed module".format(
-            prefix, self.format(typ)), ctx)
+    def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
+        self.fail("{} becomes {} due to an unfollowed import (such imports occur either "
+                  "when the imported module does not exist or when --follow-imports=skip "
+                  "is set)".format(prefix, self.format(typ)), ctx)
 
     def typeddict_instantiated_with_unexpected_items(self,
                                                      expected_item_names: List[str],
