@@ -57,7 +57,7 @@ class StatisticsVisitor(TraverserVisitor):
 
     def visit_func_def(self, o: FuncDef) -> None:
         self.line = o.line
-        if len(o.expanded) > 1:
+        if len(o.expanded) > 1 and o.expanded != [o] * len(o.expanded):
             if o in o.expanded:
                 print('ERROR: cycle in function expansion; skipping')
                 return
