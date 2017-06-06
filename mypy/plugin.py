@@ -53,27 +53,6 @@ MethodHook = Callable[
     Type  # Return type inferred by the callback
 ]
 
-# Used to provide a custom syntax for a type.
-#
-# TODO: Maybe we should allow more stuff here, such as arbitrary string and int literals?
-#TypeAnalyzeHook = Callable[
-#    [
-#        Expression,                          # The <expression> in C[<expression>]
-#        Callable[[Type], Type],              # Callback for running semantic analysis
-#        NamedInstanceCallback
-#    ],
-#    Type  # Representation of the type
-#]
-
-# Used to provide a custom string representation for a class.
-#TypeToStrHook = Callable[
-#    [
-#        Type,
-#        Callable[[Type], str],  # Callback for ordinary pretty printing
-#    ],
-#    str
-#]
-
 
 class Plugin:
     """Base class of type checker plugins.
@@ -98,12 +77,6 @@ class Plugin:
 
     def get_method_hook(self, fullname: str) -> Optional[MethodHook]:
         return None
-
-    #def get_type_analyze_hook(self, fullname: str) -> Optional[TypeAnalyzeHook]:
-    #    return None
-
-    #def get_type_to_str_hook(self, fullname: str) -> Optional[TypeToStrHook]:
-    #    return None
 
     # TODO: metaclass / class decorator hook
 
