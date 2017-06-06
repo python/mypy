@@ -11,8 +11,8 @@ from mypy.messages import MessageBuilder
 # Create an Instance given full name of class and type arguments.
 NamedInstanceCallback = Callable[[str, List[Type]], Type]
 
-# Objects and callbacks that plugins use to get information from type checking
-# context or report errors.
+# Some objects and callbacks that plugins can use to get information from the
+# type checker or to report errors.
 PluginContext = NamedTuple('PluginContext', [('named_instance', NamedInstanceCallback),
                                              ('msg', MessageBuilder),
                                              ('context', Context)])
@@ -32,6 +32,8 @@ FunctionHook = Callable[
     Type  # Return type inferred by the callback
 ]
 
+# A callback that may infer a better signature for a method.  Note that argument types aren't
+# available yet.  If you need them, you have to use a MethodHook instead.
 MethodSignatureHook = Callable[
     [
         Type,                    # Base object type
@@ -42,6 +44,9 @@ MethodSignatureHook = Callable[
     CallableType  # Potentially more precise signature inferred for the method
 ]
 
+# A callback that infers the return type of a method with a special signature.
+#
+# This is pretty similar to FunctionHook.
 MethodHook = Callable[
     [
         Type,                    # Base object type
@@ -215,6 +220,7 @@ def int_pow_callback(
         elif isinstance(arg, UnaryExpr) and arg.op == '-' and isinstance(arg.expr, IntExpr):
             exponent = -arg.expr.value
         else:
+            # Right operand not an int literal or a negated literal -- give up.
             return inferred_return_type
         if exponent >= 0:
             return context.named_instance('builtins.int', [])

@@ -209,6 +209,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 isinstance(callee_type, CallableType)
                 and callee_type.implicit):
             return self.msg.untyped_function_call(callee_type, e)
+        # Figure out the full name of the callee for plugin loopup.
         object_type = None
         if not isinstance(e.callee, RefExpr):
             fullname = None
@@ -217,6 +218,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if (fullname is None
                     and isinstance(e.callee, MemberExpr)
                     and isinstance(callee_type, FunctionLike)):
+                # For method calls we include the defining class for the method
+                # in the full name (example: 'typing.Mapping.get').
                 callee_expr_type = self.chk.type_map.get(e.callee.expr)
                 info = None
                 # TODO: Support fallbacks of other kinds of types as well?
@@ -227,6 +230,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if info:
                     fullname = '{}.{}'.format(info.fullname(), e.callee.name)
                     object_type = callee_expr_type
+                    # Apply plugin signature hook that may generate a better signature.
                     signature_hook = self.plugin.get_method_signature_hook(fullname)
                     if signature_hook:
                         callee_type = self.apply_method_signature_hook(
@@ -373,7 +377,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                               fullname: Optional[str],
                               object_type: Optional[Type],
                               context: Context) -> Type:
-        """Use special case logic to infer the return type for of a particular named function.
+        """Use special case logic to infer the return type of a specific named function/method.
 
         Return the inferred return type.
         """
@@ -384,13 +388,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 formal_arg_types[formal].append(arg_types[actual])
                 formal_arg_exprs[formal].append(args[actual])
         if object_type is None:
+            # Apply function plugin
             callback = self.plugin.get_function_hook(fullname)
-            assert callback is not None  # Assume that caller ensure this
+            assert callback is not None  # Assume that caller ensures this
             return callback(formal_arg_types, formal_arg_exprs, inferred_ret_type,
                             self.chk.named_generic_type)
         else:
+            # Apply method plugin
             method_callback = self.plugin.get_method_hook(fullname)
-            assert method_callback is not None  # Assume that caller ensure this
+            assert method_callback is not None  # Assume that caller ensures this
             return method_callback(object_type, formal_arg_types, formal_arg_exprs,
                                    inferred_ret_type, self.create_plugin_context(context))
 
@@ -1371,6 +1377,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         object_type = None
         if isinstance(base_type, Instance):
             # TODO: Find out in which class the method was defined originally?
+            # TODO: Support non-Instance types.
             callable_name = '{}.{}'.format(base_type.type.fullname(), method)
             object_type = base_type
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
@@ -1916,7 +1923,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if item_context:
                     items.append(item_context)
             if len(items) == 1:
+                # Only one union item is TypedDict, so use the context as it's unambiguous.
                 return items[0]
+        # No TypedDict type in context.
         return None
 
     def visit_lambda_expr(self, e: LambdaExpr) -> Type:
