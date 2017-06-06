@@ -44,7 +44,7 @@ from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
-from mypy.plugin import Plugin
+from mypy.plugin import Plugin, MethodSignatureHook
 from mypy.typeanal import make_optional_type
 
 from mypy import experiments
@@ -215,13 +215,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             fullname = e.callee.fullname
             if (fullname is None
-                    and isinstance(e.callee, MemberExpr)):
+                    and isinstance(e.callee, MemberExpr)
+                    and isinstance(callee_type, FunctionLike)):
                 callee_expr_type = self.chk.type_map.get(e.callee.expr)
                 if isinstance(callee_expr_type, TypedDictType):
                     info = callee_expr_type.fallback.type.get_containing_type_info(e.callee.name)
                     if info:
                         fullname = '{}.{}'.format(info.fullname(), e.callee.name)
                         object_type = callee_expr_type
+                        signature_hook = self.plugin.get_method_signature_hook(fullname)
+                        if signature_hook:
+                            callee_type = self.apply_method_signature_hook(
+                                e, callee_type, object_type, signature_hook)
         ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname, object_type)
         if isinstance(ret_type, UninhabitedType):
             self.chk.binder.unreachable()
@@ -379,10 +384,37 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return callback(formal_arg_types, formal_arg_exprs, inferred_ret_type,
                             self.chk.named_generic_type)
         else:
-            callback = self.plugin.get_method_hook(fullname)
-            assert callback is not None  # Assume that caller ensure this
-            return callback(object_type, formal_arg_types, formal_arg_exprs, inferred_ret_type,
-                            self.chk.named_generic_type)
+            method_callback = self.plugin.get_method_hook(fullname)
+            assert method_callback is not None  # Assume that caller ensure this
+            return method_callback(object_type, formal_arg_types, formal_arg_exprs,
+                                   inferred_ret_type, self.chk.named_generic_type)
+
+    def apply_method_signature_hook(self, e: CallExpr, callee: FunctionLike, object_type: Type,
+                                    signature_hook: MethodSignatureHook) -> FunctionLike:
+        """Apply a plugin hook that may infer a more precise signature for a method."""
+        if isinstance(callee, CallableType):
+            arg_kinds = e.arg_kinds
+            arg_names = e.arg_names
+            args = e.args
+            num_formals = len(callee.arg_kinds)
+            formal_to_actual = map_actuals_to_formals(
+                arg_kinds, arg_names,
+                callee.arg_kinds, callee.arg_names,
+                lambda i: self.accept(args[i]))
+            formal_arg_exprs = [[] for _ in range(num_formals)]  # type: List[List[Expression]]
+            for formal, actuals in enumerate(formal_to_actual):
+                for actual in actuals:
+                    formal_arg_exprs[formal].append(args[actual])
+            return signature_hook(object_type, formal_arg_exprs, callee,
+                                  self.chk.named_generic_type)
+        else:
+            assert isinstance(callee, Overloaded)
+            items = []
+            for item in callee.items():
+                adjusted = self.apply_method_signature_hook(e, item, object_type, signature_hook)
+                assert isinstance(adjusted, CallableType)
+                items.append(adjusted)
+            return Overloaded(items)
 
     def check_call_expr_with_callee_type(self,
                                          callee_type: Type,

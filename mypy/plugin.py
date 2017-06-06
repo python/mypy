@@ -1,7 +1,9 @@
 from typing import Callable, List, Tuple, Optional
 
 from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr
-from mypy.types import Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp
+from mypy.types import (
+    Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType
+)
 
 
 # Create an Instance given full name of class and type arguments.
@@ -21,9 +23,19 @@ FunctionHook = Callable[
     Type  # Return type inferred by the callback
 ]
 
+MethodSignatureHook = Callable[
+    [
+        Type,                    # Base object type
+        List[List[Expression]],  # Actual argument expressions for each formal argument
+        CallableType,            # Original signature of the method
+        NamedInstanceCallback    # Callable for constructing a named instance type
+    ],
+    CallableType  # Potentially more precise signature inferred for the method
+]
+
 MethodHook = Callable[
     [
-        Type,                    # Receiver object type
+        Type,                    # Base object type
         List[List[Type]],        # List of types caller provides for each formal argument
         List[List[Expression]],  # Actual argument expressions for each formal argument
         Type,                    # Return type for call inferred using the regular signature
@@ -72,6 +84,9 @@ class Plugin:
     def get_function_hook(self, fullname: str) -> Optional[FunctionHook]:
         return None
 
+    def get_method_signature_hook(self, fullname: str) -> Optional[MethodSignatureHook]:
+        return None
+
     def get_method_hook(self, fullname: str) -> Optional[MethodHook]:
         return None
 
@@ -92,6 +107,11 @@ class DefaultPlugin(Plugin):
             return contextmanager_callback
         elif fullname == 'builtins.open' and self.python_version[0] == 3:
             return open_callback
+        return None
+
+    def get_method_signature_hook(self, fullname: str) -> Optional[MethodSignatureHook]:
+        if fullname == 'typing.Mapping.get':
+            return typed_dict_get_signature_callback
         return None
 
     def get_method_hook(self, fullname: str) -> Optional[MethodHook]:
@@ -145,6 +165,35 @@ def contextmanager_callback(
     return inferred_return_type
 
 
+def typed_dict_get_signature_callback(
+        object_type: Type,
+        args: List[List[Expression]],
+        signature: CallableType,
+        named_generic_type: Callable[[str, List[Type]], Type]) -> CallableType:
+    """Try to infer a better signature type for TypedDict.get.
+
+    This is used to get better type context for the second argument that
+    depends on a TypedDict value type.
+    """
+    if (isinstance(object_type, TypedDictType)
+            and len(args) == 2
+            and len(args[0]) == 1
+            and isinstance(args[0][0], StrExpr)
+            and len(signature.arg_types) == 2
+            and len(signature.variables) == 1):
+        key = args[0][0].value
+        value_type = object_type.items.get(key)
+        if value_type:
+            # Tweak the signature to include the value type as context. It's
+            # only needed for type inference since there's a union with a type
+            # variable that accepts everything.
+            tv = TypeVarType(signature.variables[0])
+            return signature.copy_modified(
+                arg_types=[signature.arg_types[0],
+                           UnionType.make_simplified_union([value_type, tv])])
+    return signature
+
+
 def typed_dict_get_callback(
         object_type: Type,
         arg_types: List[List[Type]],
@@ -173,7 +222,6 @@ def int_pow_callback(
         inferred_return_type: Type,
         named_generic_type: Callable[[str, List[Type]], Type]) -> Type:
     """Infer a more precise return type for int.__pow__."""
-    print(arg_types)
     if (len(arg_types) == 1
             and len(arg_types[0]) == 1):
         arg = args[0][0]

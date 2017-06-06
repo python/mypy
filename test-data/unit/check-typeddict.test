@@ -761,6 +761,32 @@ reveal_type(d.get('y', None)) # E: Revealed type is 'Union[builtins.str, builtin
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypedDictGetMethodTypeContext]
+# flags: --strict-optional
+from typing import List
+from mypy_extensions import TypedDict
+class A: pass
+D = TypedDict('D', {'x': List[int], 'y': int})
+d: D
+reveal_type(d.get('x', [])) # E: Revealed type is 'builtins.list[builtins.int]'
+d.get('x', ['x']) # E: List item 0 has incompatible type "str"
+a = ['']
+reveal_type(d.get('x', a)) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str*]]'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictGetMethodInvalidArgs]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int, 'y': str})
+d: D
+d.get() # E: No overload variant of "get" of "Mapping" matches argument types []
+d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types [builtins.str, builtins.int, builtins.int]
+reveal_type(d.get('z')) # E: Revealed type is 'builtins.object*'
+s = ''
+reveal_type(d.get(s)) # E: # E: Revealed type is 'builtins.object*'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testTypedDictMissingMethod]
 from mypy_extensions import TypedDict
 D = TypedDict('D', {'x': int, 'y': str})
