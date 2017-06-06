@@ -781,9 +781,11 @@ D = TypedDict('D', {'x': int, 'y': str})
 d: D
 d.get() # E: No overload variant of "get" of "Mapping" matches argument types []
 d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types [builtins.str, builtins.int, builtins.int]
-reveal_type(d.get('z')) # E: Revealed type is 'builtins.object*'
+x = d.get('z') # E: 'z' is not a valid item name; expected one of ['x', 'y']
+reveal_type(x) # E: Revealed type is 'Any'
 s = ''
-reveal_type(d.get(s)) # E: # E: Revealed type is 'builtins.object*'
+y = d.get(s) # E: Cannot prove expression is a valid item name; expected one of ['x', 'y']
+reveal_type(y) # E: Revealed type is 'Any'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 

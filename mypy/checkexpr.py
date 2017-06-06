@@ -44,7 +44,7 @@ from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
-from mypy.plugin import Plugin, MethodSignatureHook
+from mypy.plugin import Plugin, PluginContext, MethodSignatureHook
 from mypy.typeanal import make_optional_type
 
 from mypy import experiments
@@ -367,7 +367,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                               args: List[Expression],
                               num_formals: int,
                               fullname: Optional[str],
-                              object_type: Optional[Type]) -> Type:
+                              object_type: Optional[Type],
+                              context: Context) -> Type:
         """Use special case logic to infer the return type for of a particular named function.
 
         Return the inferred return type.
@@ -387,7 +388,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             method_callback = self.plugin.get_method_hook(fullname)
             assert method_callback is not None  # Assume that caller ensure this
             return method_callback(object_type, formal_arg_types, formal_arg_exprs,
-                                   inferred_ret_type, self.chk.named_generic_type)
+                                   inferred_ret_type, self.create_plugin_context(context))
 
     def apply_method_signature_hook(self, e: CallExpr, callee: FunctionLike, object_type: Type,
                                     signature_hook: MethodSignatureHook) -> FunctionLike:
@@ -415,6 +416,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 assert isinstance(adjusted, CallableType)
                 items.append(adjusted)
             return Overloaded(items)
+
+    def create_plugin_context(self, context: Context) -> PluginContext:
+        return PluginContext(self.chk.named_generic_type, self.msg, context)
 
     def check_call_expr_with_callee_type(self,
                                          callee_type: Type,
@@ -508,7 +512,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     or (object_type is not None and self.plugin.get_method_hook(callable_name))):
                 ret_type = self.apply_function_plugin(
                     arg_types, callee.ret_type, arg_kinds, formal_to_actual,
-                    args, len(callee.arg_types), callable_name, object_type)
+                    args, len(callee.arg_types), callable_name, object_type, context)
                 callee = callee.copy_modified(ret_type=ret_type)
             return callee.ret_type, callee
         elif isinstance(callee, Overloaded):

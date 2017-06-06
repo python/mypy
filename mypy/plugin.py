@@ -1,13 +1,22 @@
-from typing import Callable, List, Tuple, Optional
+from typing import Callable, List, Tuple, Optional, NamedTuple
 
-from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr
+from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context
 from mypy.types import (
-    Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType
+    Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
+    AnyType
 )
+from mypy.messages import MessageBuilder
 
 
 # Create an Instance given full name of class and type arguments.
 NamedInstanceCallback = Callable[[str, List[Type]], Type]
+
+# Objects and callbacks that plugins use to get information from type checking
+# context or report errors.
+PluginContext = NamedTuple('PluginContext', [('named_instance', NamedInstanceCallback),
+                                             ('msg', MessageBuilder),
+                                             ('context', Context)])
+
 
 # A callback that infers the return type of a function with a special signature.
 #
@@ -39,7 +48,7 @@ MethodHook = Callable[
         List[List[Type]],        # List of types caller provides for each formal argument
         List[List[Expression]],  # Actual argument expressions for each formal argument
         Type,                    # Return type for call inferred using the regular signature
-        NamedInstanceCallback    # Callable for constructing a named instance type
+        PluginContext            # Access to type checking context
     ],
     Type  # Return type inferred by the callback
 ]
@@ -199,19 +208,25 @@ def typed_dict_get_callback(
         arg_types: List[List[Type]],
         args: List[List[Expression]],
         inferred_return_type: Type,
-        named_generic_type: Callable[[str, List[Type]], Type]) -> Type:
+        context: PluginContext) -> Type:
     """Infer a precise return type for TypedDict.get with literal first argument."""
     if (isinstance(object_type, TypedDictType)
             and len(arg_types) >= 1
-            and len(arg_types[0]) == 1
-            and isinstance(args[0][0], StrExpr)):
-        key = args[0][0].value
-        value_type = object_type.items.get(key)
-        if value_type:
-            if len(arg_types) == 1:
-                return UnionType.make_simplified_union([value_type, NoneTyp()])
-            elif len(arg_types) == 2 and len(arg_types[1]) == 1:
-                return UnionType.make_simplified_union([value_type, arg_types[1][0]])
+            and len(arg_types[0]) == 1):
+        if isinstance(args[0][0], StrExpr):
+            key = args[0][0].value
+            value_type = object_type.items.get(key)
+            if value_type:
+                if len(arg_types) == 1:
+                    return UnionType.make_simplified_union([value_type, NoneTyp()])
+                elif len(arg_types) == 2 and len(arg_types[1]) == 1:
+                    return UnionType.make_simplified_union([value_type, arg_types[1][0]])
+            else:
+                context.msg.typeddict_item_name_not_found(object_type, key, context.context)
+                return AnyType()
+        else:
+            context.msg.typeddict_item_name_must_be_string_literal(object_type, context.context)
+            return AnyType()
     return inferred_return_type
 
 
@@ -220,7 +235,7 @@ def int_pow_callback(
         arg_types: List[List[Type]],
         args: List[List[Expression]],
         inferred_return_type: Type,
-        named_generic_type: Callable[[str, List[Type]], Type]) -> Type:
+        context: PluginContext) -> Type:
     """Infer a more precise return type for int.__pow__."""
     if (len(arg_types) == 1
             and len(arg_types[0]) == 1):
@@ -232,7 +247,7 @@ def int_pow_callback(
         else:
             return inferred_return_type
         if exponent >= 0:
-            return named_generic_type('builtins.int', [])
+            return context.named_instance('builtins.int', [])
         else:
-            return named_generic_type('builtins.float', [])
+            return context.named_instance('builtins.float', [])
     return inferred_return_type
