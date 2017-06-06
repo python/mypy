@@ -218,15 +218,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     and isinstance(e.callee, MemberExpr)
                     and isinstance(callee_type, FunctionLike)):
                 callee_expr_type = self.chk.type_map.get(e.callee.expr)
-                if isinstance(callee_expr_type, TypedDictType):
+                info = None
+                # TODO: Support fallbacks of other kinds of types as well?
+                if isinstance(callee_expr_type, Instance):
+                    info = callee_expr_type.type
+                elif isinstance(callee_expr_type, TypedDictType):
                     info = callee_expr_type.fallback.type.get_containing_type_info(e.callee.name)
-                    if info:
-                        fullname = '{}.{}'.format(info.fullname(), e.callee.name)
-                        object_type = callee_expr_type
-                        signature_hook = self.plugin.get_method_signature_hook(fullname)
-                        if signature_hook:
-                            callee_type = self.apply_method_signature_hook(
-                                e, callee_type, object_type, signature_hook)
+                if info:
+                    fullname = '{}.{}'.format(info.fullname(), e.callee.name)
+                    object_type = callee_expr_type
+                    signature_hook = self.plugin.get_method_signature_hook(fullname)
+                    if signature_hook:
+                        callee_type = self.apply_method_signature_hook(
+                            e, callee_type, object_type, signature_hook)
         ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname, object_type)
         if isinstance(ret_type, UninhabitedType):
             self.chk.binder.unreachable()
