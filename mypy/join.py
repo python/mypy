@@ -285,6 +285,13 @@ def join_instances(t: Instance, s: Instance) -> Type:
             return Instance(t.type, args)
         else:
             # Incompatible; return trivial result object.
+            if t.args and len(t.args) == len(s.args):
+                if len(t.args) == 1:
+                    if isinstance(t.args[0], (NoneTyp, UninhabitedType)):
+                        return s
+                    if isinstance(s.args[0], (NoneTyp, UninhabitedType)):
+                        return t
+                return Instance(t.type, [AnyType()]*len(t.args))  # XXX Questionable
             return object_from_instance(t)
     elif t.type.bases and is_subtype_ignoring_tvars(t, s):
         return join_instances_via_supertype(t, s)
