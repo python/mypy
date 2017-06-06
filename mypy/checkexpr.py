@@ -1848,13 +1848,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # an error, but returns the TypedDict type that matches the literal it found
         # that would cause a second error when that TypedDict type is returned upstream
         # to avoid the second error, we always return TypedDict type that was requested
-        if isinstance(self.type_context[-1], TypedDictType):
+        typeddict_context = self.find_typeddict_context(self.type_context[-1])
+        if typeddict_context:
             self.check_typeddict_call_with_dict(
-                callee=self.type_context[-1],
+                callee=typeddict_context,
                 kwargs=e,
                 context=e
             )
-            return self.type_context[-1].copy_modified()
+            return typeddict_context.copy_modified()
 
         # Collect function arguments, watching out for **expr.
         args = []  # type: List[Expression]  # Regular "key: value"
@@ -1904,6 +1905,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     method = self.analyze_external_member_access('update', rv, arg)
                     self.check_call(method, [arg], [nodes.ARG_POS], arg)
         return rv
+
+    def find_typeddict_context(self, context: Type) -> Optional[TypedDictType]:
+        if isinstance(context, TypedDictType):
+            return context
+        elif isinstance(context, UnionType):
+            items = []
+            for item in context.items:
+                item_context = self.find_typeddict_context(item)
+                if item_context:
+                    items.append(item_context)
+            if len(items) == 1:
+                return items[0]
+        return None
 
     def visit_lambda_expr(self, e: LambdaExpr) -> Type:
         """Type check lambda expression."""

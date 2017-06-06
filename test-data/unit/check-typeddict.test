@@ -784,8 +784,8 @@ d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument
 x = d.get('z') # E: 'z' is not a valid item name; expected one of ['x', 'y']
 reveal_type(x) # E: Revealed type is 'Any'
 s = ''
-y = d.get(s) # E: Cannot prove expression is a valid item name; expected one of ['x', 'y']
-reveal_type(y) # E: Revealed type is 'Any'
+y = d.get(s)
+reveal_type(y) # E: Revealed type is 'builtins.object*'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -795,3 +795,21 @@ D = TypedDict('D', {'x': int, 'y': str})
 d: D
 d.bad(1) # E: "D" has no attribute "bad"
 [builtins fixtures/dict.pyi]
+
+[case testTypedDictChainedGetMethodWithDictFallback]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int, 'y': str})
+E = TypedDict('E', {'d': D})
+p = E(d=D(x=0, y=''))
+reveal_type(p.get('d', {'x': 1, 'y': ''})) # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=__main__.D)'
+p.get('d', {}) # E: Expected items ['x', 'y'] but found [].
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictGetDefaultParameterStillTypeChecked]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+p.get('x', 1 + 'y')     # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]

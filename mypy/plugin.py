@@ -224,9 +224,6 @@ def typed_dict_get_callback(
             else:
                 context.msg.typeddict_item_name_not_found(object_type, key, context.context)
                 return AnyType()
-        else:
-            context.msg.typeddict_item_name_must_be_string_literal(object_type, context.context)
-            return AnyType()
     return inferred_return_type
 
 
