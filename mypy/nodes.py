@@ -2037,6 +2037,12 @@ class TypeInfo(SymbolNode):
                 return n
         return None
 
+    def get_containing_type_info(self, name: str) -> Optional['TypeInfo']:
+        for cls in self.mro:
+            if name in cls.names:
+                return cls
+        return None
+
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
         if n:

@@ -56,6 +56,7 @@ from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
 from mypy.options import Options
+from mypy.plugin import Plugin
 
 from mypy import experiments
 
@@ -127,8 +128,12 @@ class TypeChecker(NodeVisitor[None]):
     # directly or indirectly.
     module_refs = None  # type: Set[str]
 
+    # Plugin that provides special type checking rules for specific library
+    # functions such as open(), etc.
+    plugin = None  # type: Plugin
+
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options,
-                 tree: MypyFile, path: str) -> None:
+                 tree: MypyFile, path: str, plugin: Plugin) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
@@ -139,7 +144,8 @@ class TypeChecker(NodeVisitor[None]):
         self.tree = tree
         self.path = path
         self.msg = MessageBuilder(errors, modules)
-        self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
+        self.plugin = plugin
+        self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg, self.plugin)
         self.scope = Scope(tree)
         self.binder = ConditionalTypeBinder()
         self.globals = tree.names
