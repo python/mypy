@@ -97,6 +97,21 @@ def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) 
                        options=options)
 
 
+disallow_any_options = ['unimported']
+
+
+def disallow_any_argument_type(raw_options: str) -> List[str]:
+    flag_options = [o for o in raw_options.split(',') if len(o.strip()) > 0]
+    for option in flag_options:
+        if option not in disallow_any_options:
+            formatted_valid_options = ', '.join(
+                "'{}'".format(o) for o in disallow_any_options)
+            message = "Invalid '--disallow-any' option '{}' (valid options are: {}).".format(
+                option, formatted_valid_options)
+            raise argparse.ArgumentError(None, message)
+    return flag_options
+
+
 FOOTER = """environment variables:
 MYPYPATH     additional module search path"""
 
@@ -207,17 +222,6 @@ def process_options(args: List[str],
         if strict_flag:
             strict_flag_names.append(flag)
             strict_flag_assignments.append((dest, not default))
-
-    def disallow_any_argument_type(raw_options: str) -> List[str]:
-        flag_options = raw_options.split(',')
-        for option in flag_options:
-            if option not in disallow_any_options:
-                formatted_valid_options = ', '.join(
-                    "'{}'".format(o) for o in disallow_any_options)
-                message = "Invalid '--disallow-any' option '{}' (valid options are: {}).".format(
-                    option, formatted_valid_options)
-                raise argparse.ArgumentError(None, message)
-        return flag_options
 
     # Unless otherwise specified, arguments will be parsed directly onto an
     # Options object.  Options that require further processing should have
@@ -602,6 +606,7 @@ config_types = {
     'custom_typeshed_dir': str,
     'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
     'junit_xml': str,
+    'disallow_any': disallow_any_argument_type,
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
