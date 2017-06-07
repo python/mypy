@@ -3,7 +3,7 @@ from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
 from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
-    AnyType
+    AnyType, TypeList, UnboundType
 )
 from mypy.messages import MessageBuilder
 
@@ -11,12 +11,31 @@ from mypy.messages import MessageBuilder
 # Create an Instance given full name of class and type arguments.
 NamedInstanceCallback = Callable[[str, List[Type]], Type]
 
+AnalyzeArgListCallback = Callable[[TypeList], Optional[Tuple[List[Type],
+                                                             List[int],
+                                                             List[Optional[str]]]]]
+
 # Some objects and callbacks that plugins can use to get information from the
 # type checker or to report errors.
-PluginContext = NamedTuple('PluginContext', [('named_instance', NamedInstanceCallback),
-                                             ('msg', MessageBuilder),
-                                             ('context', Context)])
+PluginContext = NamedTuple(
+    'PluginContext',
+    [
+        ('named_instance', NamedInstanceCallback),
+        ('msg', MessageBuilder),
+        ('context', Context)
+    ]
+)
 
+SemanticAnalysisPluginContext = NamedTuple(
+    'SemanticAnalysisPluginContext',
+    [
+        ('named_instance', NamedInstanceCallback),
+        ('fail', Callable[[str, Context], None]),
+        ('analyze_type', Callable[[Type], Type]),
+        ('analyze_arg_list', AnalyzeArgListCallback),
+        ('context', Context)
+    ]
+)
 
 # A callback that infers the return type of a function with a special signature.
 #
@@ -58,6 +77,23 @@ MethodHook = Callable[
     Type  # Return type inferred by the callback
 ]
 
+AttributeHook = Callable[
+    [
+        Type,  # Base object type
+        Type   # Inferred attribute type
+        # TODO: Some context object?
+    ],
+    Type
+]
+
+TypeAnalyzeHook = Callable[
+    [
+        UnboundType,
+        SemanticAnalysisPluginContext
+    ],
+    Type
+]
+
 
 class Plugin:
     """Base class of all type checker plugins.
@@ -79,6 +115,12 @@ class Plugin:
         return None
 
     def get_method_hook(self, fullname: str) -> Optional[MethodHook]:
+        return None
+
+    def get_attribute_hook(self, fullname: str) -> Optional[AttributeHook]:
+        return None
+
+    def get_type_analyze_hook(self, fullname: str) -> Optional[TypeAnalyzeHook]:
         return None
 
     # TODO: metaclass / class decorator hook
@@ -115,6 +157,12 @@ class ChainedPlugin(Plugin):
 
     def get_method_hook(self, fullname: str) -> Optional[MethodHook]:
         return self._find_hook(lambda plugin: plugin.get_method_hook(fullname))
+
+    def get_attribute_hook(self, fullname: str) -> Optional[AttributeHook]:
+        return self._find_hook(lambda plugin: plugin.get_attribute_hook(fullname))
+
+    def get_type_analyze_hook(self, fullname: str) -> Optional[TypeAnalyzeHook]:
+        return self._find_hook(lambda plugin: plugin.get_type_analyze_hook(fullname))
 
     def _find_hook(self, lookup: Callable[[Plugin], T]) -> Optional[T]:
         for plugin in self._plugins:

@@ -10,6 +10,7 @@ from mypy.options import Options
 from mypy.report import Reports
 from mypy.plugin import Plugin
 from mypy import defaults
+from mypy.errors import Errors
 
 
 class GraphSuite(Suite):
@@ -36,6 +37,7 @@ class GraphSuite(Suite):
                       frozenset({'D'})})
 
     def _make_manager(self) -> BuildManager:
+        errors = Errors()
         manager = BuildManager(
             data_dir='',
             lib_path=[],
@@ -45,6 +47,7 @@ class GraphSuite(Suite):
             options=Options(),
             version_id=__version__,
             plugin=Plugin(defaults.PYTHON3_VERSION),
+            errors=errors,
         )
         return manager
 

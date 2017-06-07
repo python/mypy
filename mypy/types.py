@@ -549,7 +549,7 @@ class CallableType(FunctionLike):
     is_var_arg = False              # Is it a varargs function?  derived from arg_kinds
     is_kw_arg = False
     ret_type = None  # type: Type   # Return value type
-    name = ''   # type: Optional[str] # Name (may be None; for error messages)
+    name = ''   # type: Optional[str]  # Name (may be None; for error messages and plugins)
     definition = None  # type: Optional[SymbolNode] # For error messages.  May be None.
     # Type variables for a generic function
     variables = None  # type: List[TypeVarDef]

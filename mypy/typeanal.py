@@ -24,6 +24,7 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.subtypes import is_subtype
+from mypy.plugin import Plugin, SemanticAnalysisPluginContext
 from mypy import nodes
 from mypy import experiments
 
@@ -54,6 +55,7 @@ def analyze_type_alias(node: Expression,
                        lookup_fqn_func: Callable[[str], SymbolTableNode],
                        tvar_scope: TypeVarScope,
                        fail_func: Callable[[str, Context], None],
+                       plugin: Plugin,
                        allow_unnormalized: bool = False) -> Optional[Type]:
     """Return type if node is valid as a type alias rvalue.
 
@@ -96,8 +98,8 @@ def analyze_type_alias(node: Expression,
     except TypeTranslationError:
         fail_func('Invalid type alias', node)
         return None
-    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, tvar_scope, fail_func, aliasing=True,
-                            allow_unnormalized=allow_unnormalized)
+    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, tvar_scope, fail_func, plugin,
+                            aliasing=True, allow_unnormalized=allow_unnormalized)
     return type.accept(analyzer)
 
 
@@ -119,7 +121,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                  lookup_func: Callable[[str, Context], SymbolTableNode],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
                  tvar_scope: TypeVarScope,
-                 fail_func: Callable[[str, Context], None], *,
+                 fail_func: Callable[[str, Context], None],
+                 plugin: Plugin, *,
                  aliasing: bool = False,
                  allow_tuple_literal: bool = False,
                  allow_unnormalized: bool = False) -> None:
@@ -132,6 +135,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
         # Positive if we are analyzing arguments of another (outer) type
         self.nesting_level = 0
         self.allow_unnormalized = allow_unnormalized
+        self.plugin = plugin
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if t.optional:
@@ -147,6 +151,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                     self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
                 return AnyType()
             fullname = sym.node.fullname()
+            hook = self.plugin.get_type_analyze_hook(fullname)
+            if hook:
+                return hook(t, self.create_plugin_context(t))
             if (fullname in nongen_builtins and t.args and
                     not sym.normalized and not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname), t)
@@ -400,37 +407,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
             ret_type = t.args[1]
             if isinstance(t.args[0], TypeList):
                 # Callable[[ARG, ...], RET] (ordinary callable type)
-                args = []   # type: List[Type]
-                names = []  # type: List[str]
-                kinds = []  # type: List[int]
-                for arg in t.args[0].items:
-                    if isinstance(arg, CallableArgument):
-                        args.append(arg.typ)
-                        names.append(arg.name)
-                        if arg.constructor is None:
-                            return AnyType()
-                        found = self.lookup(arg.constructor, arg)
-                        if found is None:
-                            # Looking it up already put an error message in
-                            return AnyType()
-                        elif found.fullname not in ARG_KINDS_BY_CONSTRUCTOR:
-                            self.fail('Invalid argument constructor "{}"'.format(
-                                found.fullname), arg)
-                            return AnyType()
-                        else:
-                            kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
-                            kinds.append(kind)
-                            if arg.name is not None and kind in {ARG_STAR, ARG_STAR2}:
-                                self.fail("{} arguments should not have names".format(
-                                    arg.constructor), arg)
-                                return AnyType()
-                    else:
-                        args.append(arg)
-                        names.append(None)
-                        kinds.append(ARG_POS)
-
-                check_arg_names(names, [t] * len(args), self.fail, "Callable")
-                check_arg_kinds(kinds, [t] * len(args), self.fail)
+                analyzed_args = self.analyze_callable_args(t.args[0])
+                if analyzed_args is None:
+                    return AnyType()
+                args, kinds, names = analyzed_args
                 ret = CallableType(args,
                                    kinds,
                                    names,
@@ -452,6 +432,44 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
             return AnyType()
         assert isinstance(ret, CallableType)
         return ret.accept(self)
+
+    def analyze_callable_args(self, t: TypeList) -> Optional[Tuple[List[Type],
+                                                                   List[int],
+                                                                   List[Optional[str]]]]:
+        args = []   # type: List[Type]
+        kinds = []  # type: List[int]
+        names = []  # type: List[str]
+        for arg in t.items:
+            if isinstance(arg, CallableArgument):
+                args.append(arg.typ)
+                names.append(arg.name)
+                if arg.constructor is None:
+                    return None
+                found = self.lookup(arg.constructor, arg)
+                if found is None:
+                    # Looking it up already put an error message in
+                    return None
+                elif found.fullname not in ARG_KINDS_BY_CONSTRUCTOR:
+                    self.fail('Invalid argument constructor "{}"'.format(
+                        found.fullname), arg)
+                    return None
+                else:
+                    kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
+                    kinds.append(kind)
+                    if arg.name is not None and kind in {ARG_STAR, ARG_STAR2}:
+                        self.fail("{} arguments should not have names".format(
+                            arg.constructor), arg)
+                        return None
+            else:
+                args.append(arg)
+                kinds.append(ARG_POS)
+                names.append(None)
+        check_arg_names(names, [t] * len(args), self.fail, "Callable")
+        check_arg_kinds(kinds, [t] * len(args), self.fail)
+        return args, kinds, names
+
+    def analyze_type(self, t: Type) -> Type:
+        return t.accept(self)
 
     @contextmanager
     def tvar_scope_frame(self) -> Iterator[None]:
@@ -539,6 +557,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
 
     def tuple_type(self, items: List[Type]) -> TupleType:
         return TupleType(items, fallback=self.builtin_type('builtins.tuple', [AnyType()]))
+
+    def create_plugin_context(self, context: Context) -> SemanticAnalysisPluginContext:
+        return SemanticAnalysisPluginContext(
+            self.builtin_type, self.fail, self.analyze_type, self.analyze_callable_args, context)
 
 
 class TypeAnalyserPass3(TypeVisitor[None]):

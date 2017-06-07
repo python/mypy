@@ -171,8 +171,9 @@ def build(sources: List[BuildSource],
         lib_path.insert(0, alt_lib_path)
 
     reports = Reports(data_dir, options.report_dirs)
-
     source_set = BuildSourceSet(sources)
+    errors = Errors(options.show_error_context, options.show_column_numbers)
+    plugin = load_custom_plugins(DefaultPlugin(options.python_version), options, errors)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -183,9 +184,8 @@ def build(sources: List[BuildSource],
                            reports=reports,
                            options=options,
                            version_id=__version__,
-                           plugin=DefaultPlugin(options.python_version))
-
-    manager.plugin = load_custom_plugins(manager.plugin, options, manager.errors)
+                           plugin=plugin,
+                           errors=errors)
 
     try:
         graph = dispatch(sources, manager)
@@ -430,10 +430,11 @@ class BuildManager:
                  reports: Reports,
                  options: Options,
                  version_id: str,
-                 plugin: Plugin) -> None:
+                 plugin: Plugin,
+                 errors: Errors) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
-        self.errors = Errors(options.show_error_context, options.show_column_numbers)
+        self.errors = errors
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = tuple(lib_path)
         self.source_set = source_set
@@ -442,8 +443,9 @@ class BuildManager:
         self.version_id = version_id
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
+        self.plugin = plugin
         self.semantic_analyzer = SemanticAnalyzer(self.modules, self.missing_modules,
-                                                  lib_path, self.errors)
+                                                  lib_path, self.errors, self.plugin)
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
         self.all_types = {}  # type: Dict[Expression, Type]
