@@ -565,18 +565,17 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         return visitor.visit_func_def(self)
 
     def serialize(self) -> JsonDict:
-        # We're deliberating omitting arguments and storing only arg_names and
-        # arg_kinds for space-saving reasons (arguments is not used in later
-        # stages of mypy).
-        # TODO: After a FuncDef is deserialized, the only time we use `arg_names`
-        # and `arg_kinds` is when `type` is None and we need to infer a type. Can
-        # we store the inferred type ahead of time?
+        if self.type is not None:
+            type_field = self.type
+        else:
+            fallback = mypy.types.Instance(None, [])
+            fallback.type_ref = 'builtins.function'
+            type_field = mypy.types.callable_type(self, fallback)
+
         return {'.class': 'FuncDef',
                 'name': self._name,
                 'fullname': self._fullname,
-                'arg_names': self.arg_names,
-                'arg_kinds': self.arg_kinds,
-                'type': None if self.type is None else self.type.serialize(),
+                'type': type_field.serialize(),
                 'flags': get_flags(self, FuncDef.FLAGS),
                 # TODO: Do we need expanded, original_def?
                 }
@@ -594,8 +593,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         ret._fullname = data['fullname']
         set_flags(ret, data['flags'])
         # NOTE: ret.info is set in the fixup phase.
-        ret.arg_names = data['arg_names']
-        ret.arg_kinds = data['arg_kinds']
         # Mark these as 'None' so that future uses will trigger an error
         _dummy = None  # type: Any
         ret.arguments = _dummy

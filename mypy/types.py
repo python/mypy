@@ -413,6 +413,8 @@ class Instance(Type):
     type_ref = None  # type: str
 
     def serialize(self) -> Union[JsonDict, str]:
+        if self.type_ref:
+            return self.type_ref
         assert self.type is not None
         type_ref = self.type.fullname()
         if not self.args:
