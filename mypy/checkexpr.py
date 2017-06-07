@@ -4,6 +4,7 @@ from collections import OrderedDict
 from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
 
 from mypy.errors import report_internal_error
+from mypy.typeanal import has_any_from_unimported_type
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
@@ -1671,8 +1672,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check a cast expression."""
         source_type = self.accept(expr.expr, type_context=AnyType(), allow_none_return=True)
         target_type = expr.type
-        if self.chk.options.warn_redundant_casts and is_same_type(source_type, target_type):
+        options = self.chk.options
+        if options.warn_redundant_casts and is_same_type(source_type, target_type):
             self.msg.redundant_cast(target_type, expr)
+        if 'unimported' in options.disallow_any and has_any_from_unimported_type(target_type):
+            self.msg.unimported_type_becomes_any("Target type of cast", target_type, expr)
         return target_type
 
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
@@ -2374,6 +2378,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return AnyType()
 
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
+        tuple_type = e.info.tuple_type
+        if tuple_type:
+            if ('unimported' in self.chk.options.disallow_any and
+                    has_any_from_unimported_type(tuple_type)):
+                self.msg.unimported_type_becomes_any("NamedTuple type", tuple_type, e)
         # TODO: Perhaps return a type object type?
         return AnyType()
 

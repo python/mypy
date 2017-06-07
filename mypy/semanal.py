@@ -75,7 +75,7 @@ from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
-from mypy.messages import CANNOT_ASSIGN_TO_TYPE
+from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
@@ -85,7 +85,7 @@ from mypy.types import (
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVariableQuery, TypeVarList, remove_dups,
+    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -251,6 +251,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.lib_path = lib_path
         self.errors = errors
         self.modules = modules
+        self.msg = MessageBuilder(errors, modules)
         self.missing_modules = missing_modules
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
@@ -991,6 +992,12 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 self.fail('Invalid base class', base_expr)
                 info.fallback_to_any = True
+            if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(base):
+                if isinstance(base_expr, (NameExpr, MemberExpr)):
+                    prefix = "Base type {}".format(base_expr.name)
+                else:
+                    prefix = "Base type"
+                self.msg.unimported_type_becomes_any(prefix, base, base_expr)
 
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
@@ -1460,7 +1467,7 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             var._fullname = self.qualified_name(name)
         var.is_ready = True
-        var.type = AnyType()
+        var.type = AnyType(from_unimported_type=is_import)
         var.is_suppressed_import = is_import
         self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
 
@@ -1904,6 +1911,16 @@ class SemanticAnalyzer(NodeVisitor):
         if res is None:
             return
         variance, upper_bound = res
+
+        if 'unimported' in self.options.disallow_any:
+            for idx, constraint in enumerate(values, start=1):
+                if has_any_from_unimported_type(constraint):
+                    prefix = "Constraint {}".format(idx)
+                    self.msg.unimported_type_becomes_any(prefix, constraint, s)
+
+            if has_any_from_unimported_type(upper_bound):
+                prefix = "Upper bound of type variable"
+                self.msg.unimported_type_becomes_any(prefix, upper_bound, s)
 
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
