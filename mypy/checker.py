@@ -133,7 +133,7 @@ class TypeChecker(NodeVisitor[None]):
     plugin = None  # type: Plugin
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options,
-                 tree: MypyFile, path: str, plugin: Optional[Plugin] = None) -> None:
+                 tree: MypyFile, path: str, plugin: Plugin) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
@@ -144,7 +144,7 @@ class TypeChecker(NodeVisitor[None]):
         self.tree = tree
         self.path = path
         self.msg = MessageBuilder(errors, modules)
-        self.plugin = plugin or Plugin(options.python_version)
+        self.plugin = plugin
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg, self.plugin)
         self.scope = Scope(tree)
         self.binder = ConditionalTypeBinder()
