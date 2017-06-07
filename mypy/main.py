@@ -205,15 +205,15 @@ def process_options(args: List[str],
             strict_flag_assignments.append((dest, not default))
 
     def disallow_any_argument_type(raw_options: str) -> List[str]:
-        options = raw_options.split(',')
-        for option in options:
+        flag_options = raw_options.split(',')
+        for option in flag_options:
             if option not in disallow_any_options:
                 formatted_valid_options = ', '.join(
-                    "'{}'".format(option) for option in disallow_any_options)
+                    "'{}'".format(o) for o in disallow_any_options)
                 message = "Invalid '--disallow-any' option '{}' (valid options are: {}).".format(
                     option, formatted_valid_options)
                 raise argparse.ArgumentError(None, message)
-        return options
+        return flag_options
 
     # Unless otherwise specified, arguments will be parsed directly onto an
     # Options object.  Options that require further processing should have
