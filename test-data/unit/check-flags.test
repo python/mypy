@@ -381,7 +381,7 @@ if z:  # E: Condition must be a boolean
 # flags: --ignore-missing-imports --disallow-any=unimported
 from missing import MyType
 
-def f(x: MyType) -> None:  # E: Argument 1 to "f" becomes "Any" due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
+def f(x: MyType) -> None:  # E: Argument 1 to "f" becomes "Any" due to an unfollowed import
     pass
 
 [case testDisallowImplicitTypes]
@@ -393,13 +393,13 @@ def f(x: MyType) -> None:
 [out]
 main:2: error: Cannot find module named 'missing'
 main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:4: error: Argument 1 to "f" becomes "Any" due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
+main:4: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
 
 [case testDisallowImplicitAnyVariableDefinition]
 # flags: --ignore-missing-imports --disallow-any=unimported
 from missing import Unchecked
 
-t: Unchecked = 12  # E: Type of variable becomes "Any" due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
+t: Unchecked = 12  # E: Type of variable becomes "Any" due to an unfollowed import
 
 [case testDisallowImplicitAnyGeneric]
 # flags: --ignore-missing-imports --disallow-any=unimported
@@ -411,19 +411,19 @@ def foo(l: List[Unchecked]) -> List[Unchecked]:
     return l
 [builtins fixtures/list.pyi]
 [out]
-main:5: error: Return type becomes List[Any] due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
-main:5: error: Argument 1 to "foo" becomes List[Any] due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
-main:6: error: Type of variable becomes List[Any] due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
+main:5: error: Return type becomes List[Any] due to an unfollowed import
+main:5: error: Argument 1 to "foo" becomes List[Any] due to an unfollowed import
+main:6: error: Type of variable becomes List[Any] due to an unfollowed import
 
 [case testDisallowImplicitAnyInherit]
 # flags: --ignore-missing-imports --disallow-any=unimported
 from missing import Unchecked
 from typing import List
 
-class C(Unchecked): # E: Base type Unchecked becomes "Any" due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
+class C(Unchecked): # E: Base type Unchecked becomes "Any" due to an unfollowed import
     pass
 
-class A(List[Unchecked]): # E: Base type becomes List[Any] due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
+class A(List[Unchecked]): # E: Base type becomes List[Any] due to an unfollowed import
     pass
 [builtins fixtures/list.pyi]
 
@@ -434,7 +434,7 @@ from typing import List
 
 X = List[Unchecked]
 
-def f(x: X) -> None:  # E: Argument 1 to "f" becomes List[Any] due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
+def f(x: X) -> None:  # E: Argument 1 to "f" becomes List[Any] due to an unfollowed import
     pass
 [builtins fixtures/list.pyi]
 
@@ -445,8 +445,8 @@ from typing import List, cast
 
 
 foo = [1, 2, 3]
-cast(List[Unchecked], foo)  # E: Target type of cast becomes List[Any] due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
-cast(Unchecked, foo)  # E: Target type of cast becomes "Any" due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
+cast(List[Unchecked], foo)  # E: Target type of cast becomes List[Any] due to an unfollowed import
+cast(Unchecked, foo)  # E: Target type of cast becomes "Any" due to an unfollowed import
 [builtins fixtures/list.pyi]
 
 [case testDisallowImplicitAnyNamedTuple]
@@ -458,7 +458,7 @@ Point = NamedTuple('Point', [('x', List[Unchecked]),
                              ('y', Unchecked)])
 [builtins fixtures/list.pyi]
 [out]
-main:5: error: NamedTuple type becomes "Tuple[List[Any], Any]" due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
+main:5: error: NamedTuple type becomes "Tuple[List[Any], Any]" due to an unfollowed import
 
 [case testDisallowImplicitAnyTypeVarConstraints]
 # flags: --ignore-missing-imports --disallow-any=unimported
@@ -468,8 +468,8 @@ from missing import Unchecked
 T = TypeVar('T', Unchecked, List[Unchecked], str)
 [builtins fixtures/list.pyi]
 [out]
-main:5: error: Constraint 1 becomes "Any" due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
-main:5: error: Constraint 2 becomes List[Any] due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
+main:5: error: Constraint 1 becomes "Any" due to an unfollowed import
+main:5: error: Constraint 2 becomes List[Any] due to an unfollowed import
 
 [case testDisallowImplicitAnyNewType]
 # flags: --ignore-missing-imports --disallow-any=unimported
@@ -489,8 +489,8 @@ def foo(f: Callable[[], Unchecked]) -> Tuple[Unchecked]:
     return f()
 [builtins fixtures/list.pyi]
 [out]
-main:5: error: Return type becomes "Tuple[Any]" due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
-main:5: error: Argument 1 to "foo" becomes Callable[[], Any] due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
+main:5: error: Return type becomes "Tuple[Any]" due to an unfollowed import
+main:5: error: Argument 1 to "foo" becomes Callable[[], Any] due to an unfollowed import
 
 [case testDisallowImplicitAnySubclassingExplicitAny]
 # flags: --ignore-missing-imports --disallow-any=unimported --disallow-subclassing-any
@@ -507,5 +507,5 @@ foo: Unchecked = ""
 foo = ""
 x, y = 1, 2  # type: Unchecked, Unchecked
 [out]
-main:4: error: Type of variable becomes "Any" due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
-main:6: error: A type on this line becomes "Any" due to an unfollowed import (such imports occur either when the imported module does not exist or when --follow-imports=skip is set)
+main:4: error: Type of variable becomes "Any" due to an unfollowed import
+main:6: error: A type on this line becomes "Any" due to an unfollowed import

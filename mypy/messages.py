@@ -856,9 +856,8 @@ class MessageBuilder:
         self.note('Redundant cast to {}'.format(self.format(typ)), context)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
-        self.fail("{} becomes {} due to an unfollowed import (such imports occur either "
-                  "when the imported module does not exist or when --follow-imports=skip "
-                  "is set)".format(prefix, self.format(typ)), ctx)
+        self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
+                  ctx)
 
     def typeddict_instantiated_with_unexpected_items(self,
                                                      expected_item_names: List[str],
