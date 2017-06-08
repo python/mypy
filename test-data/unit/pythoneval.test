@@ -1336,3 +1336,23 @@ _program.py:13: error: Revealed type is 'def (x: builtins.int) -> contextlib.Gen
 _program.py:14: error: Revealed type is 'def (*x: builtins.str) -> contextlib.GeneratorContextManager[builtins.int*]'
 _program.py:16: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 _program.py:17: error: Revealed type is 'builtins.str*'
+
+[case testTypedDictGet]
+# Test that TypedDict get plugin works with typeshed stubs
+# TODO: Make it possible to use strict optional here
+from mypy_extensions import TypedDict
+class A: pass
+D = TypedDict('D', {'x': int, 'y': str})
+d: D
+reveal_type(d.get('x'))
+reveal_type(d.get('y'))
+d.get('z')
+d.get()
+s = ''
+reveal_type(d.get(s))
+[out]
+_testTypedDictGet.py:7: error: Revealed type is 'builtins.int'
+_testTypedDictGet.py:8: error: Revealed type is 'builtins.str'
+_testTypedDictGet.py:9: error: 'z' is not a valid item name; expected one of ['x', 'y']
+_testTypedDictGet.py:10: error: No overload variant of "get" of "Mapping" matches argument types []
+_testTypedDictGet.py:12: error: Revealed type is 'builtins.object*'

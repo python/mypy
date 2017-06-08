@@ -1687,3 +1687,23 @@ f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type Dict[s
                                    # N: Following members of builtins.dict[builtins.str*, builtins.int*] have conflicts: \
                                    # N: __getitem__: expected def (builtins.int*) -> builtins.int*, got def (builtins.str*) -> builtins.int*
 [builtins fixtures/dict.pyi]
+
+
+-- Type checker default plugin
+-- ---------------------------
+
+
+[case testIntPow]
+a = 1
+b = a + 2
+reveal_type(a**0) # E: Revealed type is 'builtins.int'
+reveal_type(a**1) # E: Revealed type is 'builtins.int'
+reveal_type(a**2) # E: Revealed type is 'builtins.int'
+reveal_type(a**-0) # E: Revealed type is 'builtins.int'
+reveal_type(a**-1) # E: Revealed type is 'builtins.float'
+reveal_type(a**(-2)) # E: Revealed type is 'builtins.float'
+reveal_type(a**b) # E: Revealed type is 'Any'
+reveal_type(a.__pow__(2)) # E: Revealed type is 'builtins.int'
+reveal_type(a.__pow__(a)) # E: Revealed type is 'Any'
+a.__pow__() # E: Too few arguments for "__pow__" of "int"
+[builtins fixtures/ops.pyi]

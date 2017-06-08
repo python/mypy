@@ -30,9 +30,10 @@ precision_names = [
 
 
 class StatisticsVisitor(TraverserVisitor):
-    def __init__(self, inferred: bool, typemap: Dict[Expression, Type] = None,
+    def __init__(self, inferred: bool, filename: str, typemap: Dict[Expression, Type] = None,
                  all_nodes: bool = False) -> None:
         self.inferred = inferred
+        self.filename = filename
         self.typemap = typemap
         self.all_nodes = all_nodes
 
@@ -57,9 +58,10 @@ class StatisticsVisitor(TraverserVisitor):
 
     def visit_func_def(self, o: FuncDef) -> None:
         self.line = o.line
-        if len(o.expanded) > 1:
+        if len(o.expanded) > 1 and o.expanded != [o] * len(o.expanded):
             if o in o.expanded:
-                print('ERROR: cycle in function expansion; skipping')
+                print('{}:{}: ERROR: cycle in function expansion; skipping'.format(self.filename,
+                                                                                   o.get_line()))
                 return
             for defn in o.expanded:
                 self.visit_func_def(cast(FuncDef, defn))
@@ -199,7 +201,7 @@ def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
     if is_special_module(path):
         return
     print(path)
-    visitor = StatisticsVisitor(inferred, typemap)
+    visitor = StatisticsVisitor(inferred, filename=tree.fullname(), typemap=typemap)
     tree.accept(visitor)
     for line in visitor.output:
         print(line)
@@ -271,7 +273,8 @@ def generate_html_report(tree: MypyFile, path: str, type_map: Dict[Expression, T
     path = os.path.relpath(path)
     if path.startswith('..'):
         return
-    visitor = StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
+    visitor = StatisticsVisitor(inferred=True, filename=tree.fullname(), typemap=type_map,
+                                all_nodes=True)
     tree.accept(visitor)
     assert not os.path.isabs(path) and not path.startswith('..')
     # This line is *wrong* if the preceding assert fails.

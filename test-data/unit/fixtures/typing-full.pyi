@@ -120,6 +120,11 @@ class Sequence(Iterable[T_co], Protocol):
 @runtime
 class Mapping(Protocol[T_contra, T_co]):
     def __getitem__(self, key: T_contra) -> T_co: pass
+    @overload
+    def get(self, k: T_contra) -> Optional[T_co]: pass
+    @overload
+    def get(self, k: T_contra, default: Union[T_co, V]) -> Union[T_co, V]: pass
+
 
 @runtime
 class MutableMapping(Mapping[T_contra, U], Protocol):
