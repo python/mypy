@@ -372,7 +372,7 @@ def process_options(args: List[str],
     parser.parse_args(args, dummy)
     config_file = dummy.config_file
     if config_file is not None and not os.path.exists(config_file):
-        parser.error("Cannot file config file '%s'" % config_file)
+        parser.error("Cannot find config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
     options = Options()
@@ -605,6 +605,7 @@ config_types = {
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
+    'plugins': lambda s: [p.strip() for p in s.split(',')],
 }
 
 SHARED_CONFIG_FILES = ('setup.cfg',)

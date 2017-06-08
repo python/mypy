@@ -1,0 +1,2 @@
+def plugin(version):
+    pass

@@ -1,4 +1,4 @@
-from typing import Callable, List, Tuple, Optional, NamedTuple
+from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
 
 from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context
 from mypy.types import (
@@ -60,7 +60,7 @@ MethodHook = Callable[
 
 
 class Plugin:
-    """Base class of type checker plugins.
+    """Base class of all type checker plugins.
 
     This defines a no-op plugin.  Subclasses can override some methods to
     provide some actual functionality.
@@ -68,8 +68,6 @@ class Plugin:
     All get_ methods are treated as pure functions (you should assume that
     results might be cached).
     """
-
-    # TODO: Way of chaining multiple plugins
 
     def __init__(self, python_version: Tuple[int, int]) -> None:
         self.python_version = python_version
@@ -84,6 +82,46 @@ class Plugin:
         return None
 
     # TODO: metaclass / class decorator hook
+
+
+T = TypeVar('T')
+
+
+class ChainedPlugin(Plugin):
+    """A plugin that represents a sequence of chained plugins.
+
+    Each lookup method returns the hook for the first plugin that
+    reports a match.
+
+    This class should not be subclassed -- use Plugin as the base class
+    for all plugins.
+    """
+
+    # TODO: Support caching of lookup results (through a LRU cache, for example).
+
+    def __init__(self, python_version: Tuple[int, int], plugins: List[Plugin]) -> None:
+        """Initialize chained plugin.
+
+        Assume that the child plugins aren't mutated (results may be cached).
+        """
+        super().__init__(python_version)
+        self._plugins = plugins
+
+    def get_function_hook(self, fullname: str) -> Optional[FunctionHook]:
+        return self._find_hook(lambda plugin: plugin.get_function_hook(fullname))
+
+    def get_method_signature_hook(self, fullname: str) -> Optional[MethodSignatureHook]:
+        return self._find_hook(lambda plugin: plugin.get_method_signature_hook(fullname))
+
+    def get_method_hook(self, fullname: str) -> Optional[MethodHook]:
+        return self._find_hook(lambda plugin: plugin.get_method_hook(fullname))
+
+    def _find_hook(self, lookup: Callable[[Plugin], T]) -> Optional[T]:
+        for plugin in self._plugins:
+            hook = lookup(plugin)
+            if hook:
+                return hook
+        return None
 
 
 class DefaultPlugin(Plugin):
