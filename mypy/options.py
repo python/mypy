@@ -21,7 +21,6 @@ class Options:
         "follow_imports",
         "disallow_any",
         "disallow_untyped_calls",
-        "disallow_untyped_defs",
         "check_untyped_defs",
         "debug_cache",
         "strict_optional_whitelist",
@@ -50,9 +49,6 @@ class Options:
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False
-
-        # Disallow defining untyped (or incompletely typed) functions
-        self.disallow_untyped_defs = False
 
         # Type check unannotated functions
         self.check_untyped_defs = False

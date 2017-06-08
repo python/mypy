@@ -97,7 +97,8 @@ def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) 
                        options=options)
 
 
-disallow_any_options = ['unimported']
+disallow_any_options = ['unimported', 'unannotated']
+disallow_any_strict = ['unannotated']
 
 
 def disallow_any_argument_type(raw_options: str) -> List[str]:
@@ -201,7 +202,8 @@ def process_options(args: List[str],
 
     strict_flag_names = []  # type: List[str]
     strict_flag_assignments = []  # type: List[Tuple[str, bool]]
-    disallow_any_options = ['unimported']
+
+    strict_flag_names.append('--disallow-any={}'.format(','.join(disallow_any_strict)))
 
     def add_invertible_flag(flag: str,
                             *,
@@ -252,9 +254,6 @@ def process_options(args: List[str],
     add_invertible_flag('--disallow-untyped-calls', default=False, strict_flag=True,
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
-    add_invertible_flag('--disallow-untyped-defs', default=False, strict_flag=True,
-                        help="disallow defining functions without type annotations"
-                        " or with incomplete type annotations")
     add_invertible_flag('--check-untyped-defs', default=False, strict_flag=True,
                         help="type check the interior of functions without type annotations")
     add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
@@ -349,6 +348,9 @@ def process_options(args: List[str],
     parser.add_argument('--no-fast-parser', action='store_true',
                         dest='special-opts:no_fast_parser',
                         help=argparse.SUPPRESS)
+    add_invertible_flag('--disallow-untyped-defs', default=False, strict_flag=True,
+                        dest='special-opts:disallow_untyped_defs',
+                        help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
         title='report generation',
@@ -390,6 +392,8 @@ def process_options(args: List[str],
     if getattr(dummy, 'special-opts:strict'):
         for dest, value in strict_flag_assignments:
             setattr(options, dest, value)
+        options.disallow_any.extend(o for o in disallow_any_strict
+                                    if o not in options.disallow_any)
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
@@ -427,6 +431,11 @@ def process_options(args: List[str],
     if special_opts.no_fast_parser:
         print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
               "is now mypy's default and only parser.")
+    if special_opts.disallow_untyped_defs:
+        print("Warning: --disallow-untyped-defs has been deprecated. "
+              "Please use --disallow-any=unannotated.")
+        if 'unannotated' not in options.disallow_any:
+            options.disallow_any.append('unannotated')
 
     # Check for invalid argument combinations.
     if require_targets:
@@ -610,9 +619,11 @@ config_types = {
     'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
     'junit_xml': str,
     'disallow_any': disallow_any_argument_type,
-    # These two are for backwards compatibility
+
+    # These are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
+    'disallow_untyped_defs': bool,
 }
 
 SHARED_CONFIG_FILES = ('setup.cfg',)
@@ -724,6 +735,20 @@ def parse_section(prefix: str, template: Options,
         except ValueError as err:
             print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
             continue
+        if key == 'disallow_untyped_defs':
+            print("%s: disallow_untyped_defs has been deprecated. "
+                  "Please use disallow_any=unannotated." % prefix, v)
+            if v:
+                disallow_any_opts = results['disallow_any'] if 'disallow_any' in results else None
+                if (disallow_any_opts
+                        and isinstance(disallow_any_opts, List)
+                        and 'unannotated' not in disallow_any_opts):
+                    disallow_any_opts.append('unannotated')
+                else:
+                    results['disallow_any'] = ['unannotated']
+            else:
+                results['disallow_any'] = []
+
         if key == 'silent_imports':
             print("%s: silent_imports has been replaced by "
                   "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)

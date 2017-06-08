@@ -1,45 +1,45 @@
 [case testUnannotatedFunction]
-# flags: --disallow-untyped-defs
+# flags: --disallow-any=unannotated
 def f(x): pass
 [out]
 main:2: error: Function is missing a type annotation
 
 [case testUnannotatedArgument]
-# flags: --disallow-untyped-defs
+# flags: --disallow-any=unannotated
 def f(x) -> int: pass
 [out]
 main:2: error: Function is missing a type annotation for one or more arguments
 
 [case testUnannotatedArgumentWithFastParser]
-# flags: --disallow-untyped-defs
+# flags: --disallow-any=unannotated
 def f(x) -> int: pass
 [out]
 main:2: error: Function is missing a type annotation for one or more arguments
 
 [case testNoArgumentFunction]
-# flags: --disallow-untyped-defs
+# flags: --disallow-any=unannotated
 def f() -> int: pass
 [out]
 
 [case testUnannotatedReturn]
-# flags: --disallow-untyped-defs
+# flags: --disallow-any=unannotated
 def f(x: int): pass
 [out]
 main:2: error: Function is missing a return type annotation
 
 [case testUnannotatedReturnWithFastParser]
-# flags: --disallow-untyped-defs
+# flags: --disallow-any=unannotated
 def f(x: int): pass
 [out]
 main:2: error: Function is missing a return type annotation
 
 [case testLambda]
-# flags: --disallow-untyped-defs
+# flags: --disallow-any=unannotated
 lambda x: x
 [out]
 
 [case testUntypedDef]
-# flags: --disallow-untyped-defs
+# flags: --disallow-any=unannotated
 def f():
     1 + "str"
 [out]

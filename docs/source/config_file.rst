@@ -151,10 +151,6 @@ overridden by the pattern sections matching the module name.
   calling functions without type annotations from functions with type
   annotations.
 
-- ``disallow_untyped_defs`` (Boolean, default False) disallows
-  defining functions without type annotations or with incomplete type
-  annotations.
-
 - ``check_untyped_defs`` (Boolean, default False) type-checks the
   interior of functions without type annotations.
 
@@ -191,13 +187,13 @@ You might put this in your ``mypy.ini`` file at the root of your repo:
     [mypy]
     python_version = 2.7
     [mypy-foo.*]
-    disallow_untyped_defs = True
+    disallow_untyped_calls = True
 
 This automatically sets ``--python-version 2.7`` (a.k.a. ``--py2``)
 for all mypy runs in this tree, and also selectively turns on the
-``--disallow-untyped-defs`` flag for all modules in the ``foo``
-package.  This issues an error for function definitions without
-type annotations in that subdirectory only.
+``--disallow-untyped-calls`` flag for all modules in the ``foo``
+package.  This issues an error for calls to functions without
+type annotations from functions with type annotations.
 
 .. note::
 

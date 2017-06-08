@@ -151,9 +151,9 @@ def f():
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
 [[mypy]
-disallow_untyped_defs = True
+disallow_any = unannotated
 [[mypy-y*]
-disallow_untyped_defs = False
+disallow_any =
 [[mypy-z*]
 disallow_untyped_calls = True
 [file x.py]
@@ -181,7 +181,7 @@ x.py:1: error: Function is missing a type annotation
 [file mypy.ini]
 [[mypy]
 [[mypy-*x*]
-disallow_untyped_defs = True
+disallow_any = unannotated
 [[mypy-*y*]
 disallow_untyped_calls = True
 [file xx.py]
@@ -209,7 +209,7 @@ xx.py:1: error: Function is missing a type annotation
 [file mypy.ini]
 [[mypy]
 [[mypy-x*,z*]
-disallow_untyped_defs = True
+disallow_any = unannotated
 [file x.py]
 def f(a): pass
 [file y.py]

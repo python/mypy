@@ -11,7 +11,8 @@ flag (or its long form ``--help``)::
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM] [-2]
               [--ignore-missing-imports]
               [--follow-imports {normal,silent,skip,error}]
-              [--disallow-untyped-calls] [--disallow-untyped-defs]
+              [--disallow-any {unimported, unannotated}]
+              [--disallow-untyped-calls]
               [--check-untyped-defs] [--disallow-subclassing-any]
               [--warn-incomplete-stub] [--warn-redundant-casts]
               [--no-warn-no-return] [--warn-return-any] [--warn-unused-ignores]
@@ -273,9 +274,6 @@ Here are some more useful flags:
   non-strict-Optional run.  Therefore, when using this flag, you should also
   re-check your code without ``--strict-optional`` to ensure new type errors
   are not introduced.
-
-- ``--disallow-untyped-defs`` reports an error whenever it encounters
-  a function definition without type annotations.
 
 - ``--check-untyped-defs`` is less severe than the previous option --
   it type checks the body of every function, regardless of whether it
