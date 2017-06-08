@@ -102,7 +102,7 @@ disallow_any_options = ['unimported']
 
 def disallow_any_argument_type(raw_options: str) -> List[str]:
     if not raw_options:
-        # comes from a config file (something like "disallow_any = ")
+        # empty string disables all options
         return []
     flag_options = [o.strip() for o in raw_options.split(',')]
     for option in flag_options:
