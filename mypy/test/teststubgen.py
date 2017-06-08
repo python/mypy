@@ -23,6 +23,7 @@ from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring
 )
+from mypy.util import delete_folder, delete_file
 
 
 class StubgenUtilSuite(Suite):
@@ -149,8 +150,8 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
                                        testcase.file, testcase.line))
     finally:
         handle.close()
-        os.unlink(handle.name)
-        shutil.rmtree(out_dir)
+        delete_file(handle.name)
+        delete_folder(out_dir)
 
 
 def reset_importlib_caches() -> None:

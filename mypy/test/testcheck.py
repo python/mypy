@@ -21,6 +21,7 @@ from mypy.test.helpers import (
 )
 from mypy.errors import CompileError
 from mypy.options import Options
+from mypy.util import delete_folder
 
 from mypy import experiments
 
@@ -123,10 +124,7 @@ class TypeCheckSuite(DataSuite):
             experiments.STRICT_OPTIONAL = old_strict_optional
 
     def clear_cache(self) -> None:
-        dn = defaults.CACHE_DIR
-
-        if os.path.exists(dn):
-            shutil.rmtree(dn)
+        delete_folder(defaults.CACHE_DIR)
 
     def run_case_once(self, testcase: DataDrivenTestCase, incremental_step: int = 0) -> None:
         find_module_clear_caches()

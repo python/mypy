@@ -2,6 +2,9 @@
 
 import re
 import subprocess
+import os
+import sys
+import shutil
 from xml.sax.saxutils import escape
 from typing import TypeVar, List, Tuple, Optional, Sequence, Dict
 
@@ -134,3 +137,21 @@ class IdMapper:
             self.id_map[o] = self.next_id
             self.next_id += 1
         return self.id_map[o]
+
+
+def delete_folder(folder_path: str) -> None:
+    if sys.platform.startswith('win'):
+        shutil.rmtree(folder_path, ignore_errors=True)
+    else:
+        if os.path.exists(folder_path):
+            shutil.rmtree(folder_path)
+
+
+def delete_file(file_path: str) -> None:
+    if sys.platform.startswith('win'):
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+    else:
+        os.remove(file_path)

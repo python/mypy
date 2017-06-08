@@ -25,7 +25,7 @@ from mypy.myunit import Suite, SkipTestCaseException
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, parse_test_cases
 from mypy.test.helpers import assert_string_arrays_equal
-from mypy.util import try_find_python2_interpreter
+from mypy.util import try_find_python2_interpreter, delete_file
 
 
 # Files which contain test case descriptions.
@@ -88,7 +88,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
         returncode, interp_out = run([interpreter, program])
         out += interp_out
     # Remove temp file.
-    os.remove(program_path)
+    delete_file(program_path)
     assert_string_arrays_equal(adapt_output(testcase), out,
                                'Invalid output ({}, line {})'.format(
                                    testcase.file, testcase.line))

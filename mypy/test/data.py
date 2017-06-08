@@ -5,12 +5,12 @@ import os
 import posixpath
 import re
 from os import remove, rmdir
-import shutil
 
 import pytest  # type: ignore  # no pytest in typeshed
 from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict
 
 from mypy.myunit import TestCase, SkipTestCaseException
+from mypy.util import delete_folder, delete_file
 
 
 def parse_test_cases(
@@ -269,13 +269,13 @@ class DataDrivenTestCase(TestCase):
         # First remove files.
         for is_dir, path in reversed(self.clean_up):
             if not is_dir:
-                remove(path)
+                delete_file(path)
         # Then remove directories.
         for is_dir, path in reversed(self.clean_up):
             if is_dir:
                 pycache = os.path.join(path, '__pycache__')
                 if os.path.isdir(pycache):
-                    shutil.rmtree(pycache)
+                    delete_folder(pycache)
                 try:
                     rmdir(path)
                 except OSError as error:
@@ -292,7 +292,7 @@ class DataDrivenTestCase(TestCase):
                     # Be defensive -- only call rmtree if we're sure we aren't removing anything
                     # valuable.
                     if path.startswith('tmp/') and os.path.isdir(path):
-                        shutil.rmtree(path)
+                        delete_folder(path)
                     raise
         super().tear_down()
 
