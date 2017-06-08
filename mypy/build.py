@@ -792,7 +792,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
 
     # Ignore cache if (relevant) options aren't the same.
     cached_options = m.options
-    current_options = manager.options.clone_for_module(id).select_options_affecting_cache()
+    current_options = manager.options.clone_for_module(id, path).select_options_affecting_cache()
     if manager.options.quick_and_dirty:
         # In quick_and_dirty mode allow non-quick_and_dirty cache files.
         cached_options['quick_and_dirty'] = True
@@ -926,7 +926,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     mtime = st.st_mtime
     size = st.st_size
-    options = manager.options.clone_for_module(id)
+    options = manager.options.clone_for_module(id, path)
     meta = {'id': id,
             'path': path,
             'mtime': mtime,
@@ -1176,7 +1176,7 @@ class State:
         else:
             self.import_context = []
         self.id = id or '__main__'
-        self.options = manager.options.clone_for_module(self.id)
+        self.options = manager.options.clone_for_module(self.id, path)
         if not path and source is None:
             file_id = id
             if id == 'builtins' and self.options.python_version[0] == 2:

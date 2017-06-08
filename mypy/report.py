@@ -16,10 +16,15 @@ import sys
 
 from mypy.nodes import MypyFile, Expression, FuncDef
 from mypy import stats
-from mypy.options import Options
 from mypy.traverser import TraverserVisitor
 from mypy.types import Type
 from mypy.version import __version__
+
+# Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
+MYPY = False
+if MYPY:
+    from typing import Deque
+    from mypy.options import Options
 
 try:
     import lxml.etree as etree
@@ -57,7 +62,7 @@ class Reports:
         self.named_reporters[report_type] = reporter
         return reporter
 
-    def file(self, tree: MypyFile, type_map: Dict[Expression, Type], options: Options) -> None:
+    def file(self, tree: MypyFile, type_map: Dict[Expression, Type], options: 'Options') -> None:
         for reporter in self.reporters:
             reporter.on_file(tree, type_map, options)
 
@@ -71,7 +76,10 @@ class AbstractReporter(metaclass=ABCMeta):
         self.output_dir = output_dir
 
     @abstractmethod
-    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type], options: Options) -> None:
+    def on_file(self,
+                tree: MypyFile,
+                type_map: Dict[Expression, Type],
+                options: 'Options') -> None:
         pass
 
     @abstractmethod
@@ -108,7 +116,7 @@ class LineCountReporter(AbstractReporter):
     def on_file(self,
                 tree: MypyFile,
                 type_map: Dict[Expression, Type],
-                options: Options) -> None:
+                options: 'Options') -> None:
         # Count physical lines.  This assumes the file's encoding is a
         # superset of ASCII (or at least uses \n in its line endings).
         with open(tree.path, 'rb') as f:
@@ -297,7 +305,7 @@ class LineCoverageReporter(AbstractReporter):
     def on_file(self,
                 tree: MypyFile,
                 type_map: Dict[Expression, Type],
-                options: Options) -> None:
+                options: 'Options') -> None:
         with open(tree.path) as f:
             tree_source = f.readlines()
 
@@ -328,7 +336,7 @@ class OldHtmlReporter(AbstractReporter):
 
     def on_file(self,
                 tree: MypyFile,
-                type_map: Dict[Expression, Type], options: Options) -> None:
+                type_map: Dict[Expression, Type], options: 'Options') -> None:
         stats.generate_html_report(tree, tree.path, type_map, self.output_dir)
 
     def on_finish(self) -> None:
@@ -371,7 +379,7 @@ class MemoryXmlReporter(AbstractReporter):
     def on_file(self,
                 tree: MypyFile,
                 type_map: Dict[Expression, Type],
-                options: Options) -> None:
+                options: 'Options') -> None:
         self.last_xml = None
         path = os.path.relpath(tree.path)
         if stats.is_special_module(path):
@@ -485,7 +493,7 @@ class CoberturaXmlReporter(AbstractReporter):
     def on_file(self,
                 tree: MypyFile,
                 type_map: Dict[Expression, Type],
-                options: Options) -> None:
+                options: 'Options') -> None:
         path = os.path.relpath(tree.path)
         visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
                                           typemap=type_map, all_nodes=True)
@@ -582,7 +590,7 @@ class XmlReporter(AbstractXmlReporter):
     def on_file(self,
                 tree: MypyFile,
                 type_map: Dict[Expression, Type],
-                options: Options) -> None:
+                options: 'Options') -> None:
         last_xml = self.memory_xml.last_xml
         if last_xml is None:
             return
@@ -624,7 +632,7 @@ class XsltHtmlReporter(AbstractXmlReporter):
     def on_file(self,
                 tree: MypyFile,
                 type_map: Dict[Expression, Type],
-                options: Options) -> None:
+                options: 'Options') -> None:
         last_xml = self.memory_xml.last_xml
         if last_xml is None:
             return
@@ -666,7 +674,7 @@ class XsltTxtReporter(AbstractXmlReporter):
     def on_file(self,
                 tree: MypyFile,
                 type_map: Dict[Expression, Type],
-                options: Options) -> None:
+                options: 'Options') -> None:
         pass
 
     def on_finish(self) -> None:

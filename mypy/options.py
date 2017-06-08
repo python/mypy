@@ -1,10 +1,15 @@
+import argparse
+from configparser import RawConfigParser
 import fnmatch
+import os
 import pprint
+import re
 import sys
 
 from typing import Mapping, Optional, Tuple, List, Pattern, Dict
 
 from mypy import defaults
+from mypy.report import reporter_classes
 
 
 class BuildType:
@@ -144,14 +149,55 @@ class Options:
     def __repr__(self) -> str:
         return 'Options({})'.format(pprint.pformat(self.__dict__))
 
-    def clone_for_module(self, module: str) -> 'Options':
+    def clone_for_module(self, module: str, path: Optional[str]) -> 'Options':
         updates = {}
         for pattern in self.per_module_options:
             if self.module_matches_pattern(module, pattern):
                 updates.update(self.per_module_options[pattern])
+
+        new_options = Options()
+
+        if path and os.path.exists(path):
+            options_section = []
+            found_options = False
+            with open(path) as file_contents:
+                for line in file_contents:
+                    if not re.match('\s*#', line):
+                        break
+
+                    if re.match('\s*#\s*\[mypy\]', line):
+                        options_section.append(line.strip().strip('#'))
+                        found_options = True
+                        continue
+
+                    if found_options:
+                        options_section.append(line.strip().strip('#'))
+
+            if found_options:
+                parser = RawConfigParser()
+                parser.read_string("\n".join(options_section))
+                updates, report_dirs = parse_section(
+                    "%s [mypy]" % path,
+                    new_options,
+                    parser['mypy']
+                )
+                if report_dirs:
+                    print("Warning: can't specify new mypy reports "
+                          "in a per-file override (from {})".format(path))
+
+                for option, file_override in updates.items():
+                    if file_override == getattr(new_options, option):
+                        # Skip options that are set to the defaults
+                        continue
+
+                    if option not in self.PER_MODULE_OPTIONS:
+                        print("Warning: {!r} in {} is not a valid "
+                              "per-module option".format(option, path))
+                    else:
+                        updates[option] = file_override
+
         if not updates:
             return self
-        new_options = Options()
         new_options.__dict__.update(self.__dict__)
         new_options.__dict__.update(updates)
         return new_options
@@ -164,3 +210,101 @@ class Options:
 
     def select_options_affecting_cache(self) -> Mapping[str, bool]:
         return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}
+
+
+def parse_version(v: str) -> Tuple[int, int]:
+    m = re.match(r'\A(\d)\.(\d+)\Z', v)
+    if not m:
+        raise argparse.ArgumentTypeError(
+            "Invalid python version '{}' (expected format: 'x.y')".format(v))
+    major, minor = int(m.group(1)), int(m.group(2))
+    if major == 2:
+        if minor != 7:
+            raise argparse.ArgumentTypeError(
+                "Python 2.{} is not supported (must be 2.7)".format(minor))
+    elif major == 3:
+        if minor <= 2:
+            raise argparse.ArgumentTypeError(
+                "Python 3.{} is not supported (must be 3.3 or higher)".format(minor))
+    else:
+        raise argparse.ArgumentTypeError(
+            "Python major version '{}' out of range (must be 2 or 3)".format(major))
+    return major, minor
+
+
+# For most options, the type of the default value set in options.py is
+# sufficient, and we don't have to do anything here.  This table
+# exists to specify types for values initialized to None or container
+# types.
+config_types = {
+    'python_version': parse_version,
+    'strict_optional_whitelist': lambda s: s.split(),
+    'custom_typing_module': str,
+    'custom_typeshed_dir': str,
+    'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
+    'junit_xml': str,
+    # These two are for backwards compatibility
+    'silent_imports': bool,
+    'almost_silent': bool,
+}
+
+
+def parse_section(prefix: str, template: Options,
+                  section: Mapping[str, str]) -> Tuple[Dict[str, object], Dict[str, str]]:
+    """Parse one section of a config file.
+
+    Returns a dict of option values encountered, and a dict of report directories.
+    """
+    results = {}  # type: Dict[str, object]
+    report_dirs = {}  # type: Dict[str, str]
+    for key in section:
+        key = key.replace('-', '_')
+        if key in config_types:
+            ct = config_types[key]
+        else:
+            dv = getattr(template, key, None)
+            if dv is None:
+                if key.endswith('_report'):
+                    report_type = key[:-7].replace('_', '-')
+                    if report_type in reporter_classes:
+                        report_dirs[report_type] = section.get(key)
+                    else:
+                        print("%s: Unrecognized report type: %s" % (prefix, key),
+                              file=sys.stderr)
+                    continue
+                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
+                      file=sys.stderr)
+                continue
+            ct = type(dv)
+        v = None  # type: Any
+        try:
+            if ct is bool:
+                v = section.getboolean(key)  # type: ignore  # Until better stub
+            elif callable(ct):
+                try:
+                    v = ct(section.get(key))
+                except argparse.ArgumentTypeError as err:
+                    print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
+                    continue
+            else:
+                print("%s: Don't know what type %s should have" % (prefix, key), file=sys.stderr)
+                continue
+        except ValueError as err:
+            print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
+            continue
+        if key == 'silent_imports':
+            print("%s: silent_imports has been replaced by "
+                  "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)
+            if v:
+                if 'ignore_missing_imports' not in results:
+                    results['ignore_missing_imports'] = True
+                if 'follow_imports' not in results:
+                    results['follow_imports'] = 'skip'
+        if key == 'almost_silent':
+            print("%s: almost_silent has been replaced by "
+                  "follow_imports=error" % prefix, file=sys.stderr)
+            if v:
+                if 'follow_imports' not in results:
+                    results['follow_imports'] = 'error'
+        results[key] = v
+    return results, report_dirs

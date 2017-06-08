@@ -16,7 +16,7 @@ from mypy import experiments
 from mypy import util
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.errors import CompileError
-from mypy.options import Options, BuildType
+from mypy.options import Options, BuildType, parse_section, parse_version
 from mypy.report import reporter_classes
 
 from mypy.version import __version__
@@ -121,26 +121,6 @@ class SplitNamespace(argparse.Namespace):
             return getattr(self._alt_namespace, name[len(self._alt_prefix):])
         else:
             return getattr(self._standard_namespace, name)
-
-
-def parse_version(v: str) -> Tuple[int, int]:
-    m = re.match(r'\A(\d)\.(\d+)\Z', v)
-    if not m:
-        raise argparse.ArgumentTypeError(
-            "Invalid python version '{}' (expected format: 'x.y')".format(v))
-    major, minor = int(m.group(1)), int(m.group(2))
-    if major == 2:
-        if minor != 7:
-            raise argparse.ArgumentTypeError(
-                "Python 2.{} is not supported (must be 2.7)".format(minor))
-    elif major == 3:
-        if minor <= 2:
-            raise argparse.ArgumentTypeError(
-                "Python 3.{} is not supported (must be 3.3 or higher)".format(minor))
-    else:
-        raise argparse.ArgumentTypeError(
-            "Python major version '{}' out of range (must be 2 or 3)".format(major))
-    return major, minor
 
 
 # Make the help output a little less jarring.
@@ -591,22 +571,6 @@ def get_init_file(dir: str) -> Optional[str]:
     return None
 
 
-# For most options, the type of the default value set in options.py is
-# sufficient, and we don't have to do anything here.  This table
-# exists to specify types for values initialized to None or container
-# types.
-config_types = {
-    'python_version': parse_version,
-    'strict_optional_whitelist': lambda s: s.split(),
-    'custom_typing_module': str,
-    'custom_typeshed_dir': str,
-    'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
-    'junit_xml': str,
-    # These two are for backwards compatibility
-    'silent_imports': bool,
-    'almost_silent': bool,
-}
-
 SHARED_CONFIG_FILES = ('setup.cfg',)
 
 
@@ -671,67 +635,6 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
                     glob = glob.replace(os.altsep, '.')
                 pattern = re.compile(fnmatch.translate(glob))
                 options.per_module_options[pattern] = updates
-
-
-def parse_section(prefix: str, template: Options,
-                  section: Mapping[str, str]) -> Tuple[Dict[str, object], Dict[str, str]]:
-    """Parse one section of a config file.
-
-    Returns a dict of option values encountered, and a dict of report directories.
-    """
-    results = {}  # type: Dict[str, object]
-    report_dirs = {}  # type: Dict[str, str]
-    for key in section:
-        key = key.replace('-', '_')
-        if key in config_types:
-            ct = config_types[key]
-        else:
-            dv = getattr(template, key, None)
-            if dv is None:
-                if key.endswith('_report'):
-                    report_type = key[:-7].replace('_', '-')
-                    if report_type in reporter_classes:
-                        report_dirs[report_type] = section.get(key)
-                    else:
-                        print("%s: Unrecognized report type: %s" % (prefix, key),
-                              file=sys.stderr)
-                    continue
-                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
-                      file=sys.stderr)
-                continue
-            ct = type(dv)
-        v = None  # type: Any
-        try:
-            if ct is bool:
-                v = section.getboolean(key)  # type: ignore  # Until better stub
-            elif callable(ct):
-                try:
-                    v = ct(section.get(key))
-                except argparse.ArgumentTypeError as err:
-                    print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
-                    continue
-            else:
-                print("%s: Don't know what type %s should have" % (prefix, key), file=sys.stderr)
-                continue
-        except ValueError as err:
-            print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
-            continue
-        if key == 'silent_imports':
-            print("%s: silent_imports has been replaced by "
-                  "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)
-            if v:
-                if 'ignore_missing_imports' not in results:
-                    results['ignore_missing_imports'] = True
-                if 'follow_imports' not in results:
-                    results['follow_imports'] = 'skip'
-        if key == 'almost_silent':
-            print("%s: almost_silent has been replaced by "
-                  "follow_imports=error" % prefix, file=sys.stderr)
-            if v:
-                if 'follow_imports' not in results:
-                    results['follow_imports'] = 'error'
-        results[key] = v
-    return results, report_dirs
 
 
 def fail(msg: str) -> None:
