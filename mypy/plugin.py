@@ -1,5 +1,6 @@
-from typing import Callable, List, Tuple, Optional, NamedTuple
+from typing import Callable, Dict, List, Tuple, Type as Class, Optional, NamedTuple
 
+from types import ModuleType
 from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
@@ -8,8 +9,72 @@ from mypy.types import (
 from mypy.messages import MessageBuilder
 
 
+def _safeimport(path: str) -> Optional[ModuleType]:
+    try:
+        module = __import__(path)
+    except ImportError as err:
+        if err.name == path:  # type: ignore  # ImportError stubs need to be updated
+            # No such module in the path.
+            return None
+        else:
+            raise
+    for part in path.split('.')[1:]:
+        try:
+            module = getattr(module, part)
+        except AttributeError:
+            return None
+    return module
+
+
+def locate(path: str) -> Optional[object]:
+    """Locate an object by string identifier, importing as necessary.
+
+    The two identifiers supported are:
+
+    dotted path:
+        package.module.object.child
+
+    file path followed by dotted object path]
+        /path/to/module.py:object.child
+    """
+    if ':' in path:
+        raise RuntimeError
+        # not supported in python 3.3
+        # file_path, obj_path = path.split(':', 1)
+        # mod_name = os.path.splitext(os.path.basename(file_path))[0]
+        # spec = importlib.util.spec_from_file_location(mod_name, file_path)
+        # module = importlib.util.module_from_spec(spec)
+        # spec.loader.exec_module(module)
+        # parts = obj_path.split('.')
+    else:
+        parts = [part for part in path.split('.') if part]
+        module, n = None, 0
+        while n < len(parts):
+            nextmodule = _safeimport('.'.join(parts[:n + 1]))
+            if nextmodule:
+                module, n = nextmodule, n + 1
+            else:
+                break
+        parts = parts[n:]
+
+    if not module:
+        return None
+
+    obj = module
+    for part in parts:
+        try:
+            obj = getattr(obj, part)
+        except AttributeError:
+            return None
+    return obj
+
+
 # Create an Instance given full name of class and type arguments.
 NamedInstanceCallback = Callable[[str, List[Type]], Type]
+
+PluginRegistry = NamedTuple('PluginRegistry', [('name', str),
+                                               ('location', str),
+                                               ('options', Dict[str, str])])
 
 # Some objects and callbacks that plugins can use to get information from the
 # type checker or to report errors.
@@ -107,6 +172,47 @@ class DefaultPlugin(Plugin):
         elif fullname == 'builtins.int.__pow__':
             return int_pow_callback
         return None
+
+
+class PluginManager(Plugin):
+    def __init__(self, python_version: Tuple[int, int],
+                 plugins: List[Class[Plugin]]) -> None:
+        super().__init__(python_version)
+        # TODO: handle exceptions to provide more feedback
+        self.plugins = [p(python_version) for p in plugins]
+        self._function_hooks = {}  # type: Dict[str, Optional[FunctionHook]]
+        self._method_signature_hooks = {}  # type: Dict[str, Optional[MethodSignatureHook]]
+        self._method_hooks = {}  # type: Dict[str, Optional[MethodHook]]
+
+    def get_function_hook(self, fullname: str) -> Optional[FunctionHook]:
+        hook = self._function_hooks.get(fullname)
+        if hook is None:
+            for plugin in self.plugins:
+                hook = plugin.get_function_hook(fullname)
+                if hook is not None:
+                    break
+            self._function_hooks[fullname] = hook
+        return hook
+
+    def get_method_signature_hook(self, fullname: str) -> Optional[MethodSignatureHook]:
+        hook = self._method_signature_hooks.get(fullname)
+        if hook is None:
+            for plugin in self.plugins:
+                hook = plugin.get_method_signature_hook(fullname)
+                if hook is not None:
+                    break
+            self._method_signature_hooks[fullname] = hook
+        return hook
+
+    def get_method_hook(self, fullname: str) -> Optional[MethodHook]:
+        hook = self._method_hooks.get(fullname)
+        if hook is None:
+            for plugin in self.plugins:
+                hook = plugin.get_method_hook(fullname)
+                if hook is not None:
+                    break
+            self._method_hooks[fullname] = hook
+        return hook
 
 
 def open_callback(

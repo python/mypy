@@ -8,7 +8,7 @@ import re
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Any, cast, Dict, List, Mapping, Optional, Set, Tuple, Type as Class
 
 from mypy import build
 from mypy import defaults
@@ -17,6 +17,7 @@ from mypy import util
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.errors import CompileError
 from mypy.options import Options, BuildType
+from mypy.plugin import Plugin, PluginRegistry, DefaultPlugin, locate
 from mypy.report import reporter_classes
 
 from mypy.version import __version__
@@ -44,10 +45,10 @@ def main(script_path: str, args: List[str] = None) -> None:
     sys.setrecursionlimit(2 ** 14)
     if args is None:
         args = sys.argv[1:]
-    sources, options = process_options(args)
+    sources, options, plugins = process_options(args)
     serious = False
     try:
-        res = type_check_only(sources, bin_dir, options)
+        res = type_check_only(sources, bin_dir, options, plugins)
         a = res.errors
     except CompileError as e:
         a = e.messages
@@ -90,11 +91,13 @@ def readlinkabs(link: str) -> str:
     return os.path.join(os.path.dirname(link), path)
 
 
-def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) -> BuildResult:
+def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options,
+                    plugins: List[Class[Plugin]]) -> BuildResult:
     # Type-check the program and dependencies and translate to Python.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
-                       options=options)
+                       options=options,
+                       plugins=plugins)
 
 
 FOOTER = """environment variables:
@@ -172,9 +175,26 @@ def invert_flag_name(flag: str) -> str:
     return '--no-{}'.format(flag[2:])
 
 
+def load_plugin(prefix: str, name: str, location: str) -> Optional[Class[Plugin]]:
+    try:
+        obj = locate(location)
+    except BaseException as err:
+        print("%s: Error finding plugin %s at %s: %s" %
+              (prefix, name, location, err), file=sys.stderr)
+        return None
+    if obj is None:
+        print("%s: Could not find plugin %s at %s" %
+              (prefix, name, location), file=sys.stderr)
+    elif not callable(obj):
+        print("%s: Hook %s at %s is not callable" %
+              (prefix, name, location), file=sys.stderr)
+        return None
+    return cast(Class[Plugin], obj)
+
+
 def process_options(args: List[str],
                     require_targets: bool = True
-                    ) -> Tuple[List[BuildSource], Options]:
+                    ) -> Tuple[List[BuildSource], Options, List[Class[Plugin]]]:
     """Parse command line arguments."""
 
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
@@ -456,11 +476,20 @@ def process_options(args: List[str],
     if options.quick_and_dirty:
         options.incremental = True
 
+    # Load plugins
+    plugins = []  # type: List[Class[Plugin]]
+    for registry in options.plugins:
+        plugin = load_plugin('[mypy]', registry.name, registry.location)
+        if plugin is not None:
+            plugins.append(plugin)
+    # always add the default last
+    plugins.append(DefaultPlugin)
+
     # Set target.
     if special_opts.modules:
         options.build_type = BuildType.MODULE
         targets = [BuildSource(None, m, None) for m in special_opts.modules]
-        return targets, options
+        return targets, options, plugins
     elif special_opts.package:
         if os.sep in special_opts.package or os.altsep and os.altsep in special_opts.package:
             fail("Package name '{}' cannot have a slash in it."
@@ -470,11 +499,11 @@ def process_options(args: List[str],
         targets = build.find_modules_recursive(special_opts.package, lib_path)
         if not targets:
             fail("Can't find package '{}'".format(special_opts.package))
-        return targets, options
+        return targets, options, plugins
     elif special_opts.command:
         options.build_type = BuildType.PROGRAM_TEXT
         targets = [BuildSource(None, None, '\n'.join(special_opts.command))]
-        return targets, options
+        return targets, options, plugins
     else:
         targets = []
         for f in special_opts.files:
@@ -495,7 +524,7 @@ def process_options(args: List[str],
             else:
                 mod = os.path.basename(f) if options.scripts_are_modules else None
                 targets.append(BuildSource(f, mod, None))
-        return targets, options
+        return targets, options, plugins
 
 
 def keyfunc(name: str) -> Tuple[int, str]:
@@ -645,18 +674,28 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
     else:
         section = parser['mypy']
         prefix = '%s: [%s]' % (file_read, 'mypy')
-        updates, report_dirs = parse_section(prefix, options, section)
+        updates, report_dirs, plugins = parse_section(prefix, options, section)
         for k, v in updates.items():
             setattr(options, k, v)
+
+        for k, v in plugins:
+            # look for an options section for this plugin
+            plug_opts = dict(parser[k]) if k in parser else {}
+            options.plugins.append(PluginRegistry(k, v, plug_opts))
+
         options.report_dirs.update(report_dirs)
 
     for name, section in parser.items():
         if name.startswith('mypy-'):
             prefix = '%s: [%s]' % (file_read, name)
-            updates, report_dirs = parse_section(prefix, options, section)
+            updates, report_dirs, plugins = parse_section(prefix, options, section)
             if report_dirs:
                 print("%s: Per-module sections should not specify reports (%s)" %
                       (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
+                      file=sys.stderr)
+            if plugins:
+                print("%s: Per-module sections should not specify plugins (%s)" %
+                      (prefix, ', '.join([p[0] for p in plugins])),
                       file=sys.stderr)
             if set(updates) - Options.PER_MODULE_OPTIONS:
                 print("%s: Per-module sections should only specify per-module flags (%s)" %
@@ -674,16 +713,23 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
 
 
 def parse_section(prefix: str, template: Options,
-                  section: Mapping[str, str]) -> Tuple[Dict[str, object], Dict[str, str]]:
+                  section: Mapping[str, str]) -> Tuple[Dict[str, object],
+                                                       Dict[str, str], List[Tuple[str, str]]]:
     """Parse one section of a config file.
 
     Returns a dict of option values encountered, and a dict of report directories.
     """
     results = {}  # type: Dict[str, object]
     report_dirs = {}  # type: Dict[str, str]
+    plugins = []  # type: List[Tuple[str, str]]
     for key in section:
         key = key.replace('-', '_')
-        if key in config_types:
+        if key.startswith('plugins.'):
+            dv = section.get(key)
+            key = key[6:]
+            plugins.append((key, dv))
+            continue
+        elif key in config_types:
             ct = config_types[key]
         else:
             dv = getattr(template, key, None)
@@ -731,7 +777,7 @@ def parse_section(prefix: str, template: Options,
                 if 'follow_imports' not in results:
                     results['follow_imports'] = 'error'
         results[key] = v
-    return results, report_dirs
+    return results, report_dirs, plugins
 
 
 def fail(msg: str) -> None:

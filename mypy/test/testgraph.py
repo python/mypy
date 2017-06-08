@@ -6,8 +6,10 @@ from mypy.myunit import Suite, assert_equal
 from mypy.build import BuildManager, State, BuildSourceSet
 from mypy.build import topsort, strongly_connected_components, sorted_components, order_ascc
 from mypy.version import __version__
+from mypy.plugin import DefaultPlugin
 from mypy.options import Options
 from mypy.report import Reports
+from mypy import defaults
 
 
 class GraphSuite(Suite):
@@ -42,6 +44,7 @@ class GraphSuite(Suite):
             reports=Reports('', {}),
             options=Options(),
             version_id=__version__,
+            plugin=DefaultPlugin(defaults.PYTHON3_VERSION)
         )
         return manager
 
