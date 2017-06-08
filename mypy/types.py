@@ -1699,6 +1699,10 @@ def true_or_false(t: Type) -> Type:
     """
     Unrestricted version of t with both True-ish and False-ish values
     """
+    if isinstance(t, UnionType):
+        new_items = [true_or_false(item) for item in t.items]
+        return UnionType.make_simplified_union(new_items, line=t.line, column=t.column)
+
     new_t = copy_type(t)
     new_t.can_be_true = type(new_t).can_be_true
     new_t.can_be_false = type(new_t).can_be_false
