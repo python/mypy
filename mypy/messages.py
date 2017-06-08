@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Optional
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -896,6 +896,10 @@ class MessageBuilder:
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
+
+    def disallowed_any_type(self, typ: Type, context: Context):
+        self.fail('Expressions of type "Any" are disallowed '
+                  '(has type {})'.format(self.format(typ)), context)
 
 
 def capitalize(s: str) -> str:

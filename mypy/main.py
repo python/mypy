@@ -97,7 +97,7 @@ def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) 
                        options=options)
 
 
-disallow_any_options = ['unimported']
+disallow_any_options = ['unimported', 'expr']
 
 
 def disallow_any_argument_type(raw_options: str) -> List[str]:
@@ -201,7 +201,6 @@ def process_options(args: List[str],
 
     strict_flag_names = []  # type: List[str]
     strict_flag_assignments = []  # type: List[Tuple[str, bool]]
-    disallow_any_options = ['unimported']
 
     def add_invertible_flag(flag: str,
                             *,

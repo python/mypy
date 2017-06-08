@@ -509,3 +509,50 @@ x, y = 1, 2  # type: Unchecked, Unchecked
 [out]
 main:4: error: Type of variable becomes "Any" due to an unfollowed import
 main:6: error: A type on this line becomes "Any" due to an unfollowed import
+
+[case testDisallowAnyBasic]
+# flags: --disallow-any=expr
+from typing import List, Any, cast
+
+def foo(z: int):
+    return z
+
+def print(s: Any) -> None:
+    s = s + 1
+    pass
+
+class Foo:
+    g: Any = 2
+
+x: List[str] = ['hello']
+
+f: int = Foo.doo()
+k = Foo.doo()
+
+z = cast(int, Foo().g)
+m = cast(Any, Foo().g)
+y = Foo().g
+print(x[0])
+print(x[foo(0)])
+[builtins fixtures/list.pyi]
+[out]
+main:8: error: Expressions of type "Any" are disallowed (has type "Any")
+main:16: error: Type[Foo] has no attribute "doo"
+main:17: error: Type[Foo] has no attribute "doo"
+main:17: error: Expressions of type "Any" are disallowed (has type "Any")
+main:20: error: Expressions of type "Any" are disallowed (has type "Any")
+main:21: error: Expressions of type "Any" are disallowed (has type "Any")
+main:23: error: Expressions of type "Any" are disallowed (has type "Any")
+
+[case testDisallowAnyExprGeneric]
+# flags: --disallow-any=expr
+from typing import List
+
+blargle: List = []
+blargle.append(1)
+k = blargle[0]
+[builtins fixtures/list.pyi]
+[out]
+main:5: error: Expressions of type "Any" are disallowed (has type List[Any])
+main:6: error: Expressions of type "Any" are disallowed (has type List[Any])
+main:6: error: Expressions of type "Any" are disallowed (has type "Any")
