@@ -370,6 +370,37 @@ type variables defined with special keyword arguments ``covariant`` or
    my_box = Box(Cat())
    look_into(my_box)  # OK, but mypy would complain here for an invariant type
 
+Note that the only change permitted in the variance of the generic class type
+variable as you move down the inheritance hierarchy is from covariant or
+contravariant to invariant. For example, this is valid:
+
+.. code-block:: python
+
+    from typing import Generic, TypeVar
+
+    K_co = TypeVar('K_co', covariant=True)
+    class MultisetCo(Generic[K_co]):
+        def choose_random_item(self) -> K_co: ...
+
+    K = TypeVar('K')
+    class Multiset(Generic[K], MultisetCo[K]):
+        def count(self, key: K) -> int: ...
+
+The following is not valid simply because ``choose_random_item`` does not
+allow contravariance:
+
+.. code-block:: python
+
+    from typing import Generic, TypeVar
+
+    K_co = TypeVar('K_co', covariant=True)
+    class MultisetCo(Generic[K_co]):
+        def choose_random_item(self) -> K_co: ...
+
+    K_contra = TypeVar('K_contra', contravariant=True)
+    class MultisetContra(Generic[K_contra], MultisetCo[K_contra]):
+        def count(self, key: K) -> int: ...
+
 .. _type-variable-value-restriction:
 
 Type variables with value restriction
