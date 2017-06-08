@@ -6,7 +6,9 @@ from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
     AnyType
 )
-from mypy.messages import MessageBuilder
+MYPY = False
+if MYPY:
+    from mypy.messages import MessageBuilder
 
 
 def _safeimport(path: str) -> Optional[ModuleType]:
@@ -79,7 +81,7 @@ PluginRegistry = NamedTuple('PluginRegistry', [('name', str),
 # Some objects and callbacks that plugins can use to get information from the
 # type checker or to report errors.
 PluginContext = NamedTuple('PluginContext', [('named_instance', NamedInstanceCallback),
-                                             ('msg', MessageBuilder),
+                                             ('msg', 'MessageBuilder'),
                                              ('context', Context)])
 
 

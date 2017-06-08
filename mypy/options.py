@@ -3,10 +3,7 @@ import pprint
 import sys
 
 from typing import Mapping, Optional, Tuple, List, Pattern, Dict
-# Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
-MYPY = False
-if MYPY:
-    from mypy.plugin import PluginRegistry
+from mypy.plugin import PluginRegistry
 
 from mypy import defaults
 
