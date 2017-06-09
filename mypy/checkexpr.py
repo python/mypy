@@ -2444,7 +2444,7 @@ def has_any_type(t: Type) -> bool:
 
 
 class HasAnyType(TypeQuery[bool]):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(any)
 
     def visit_any(self, t: AnyType) -> bool:

@@ -897,7 +897,7 @@ class MessageBuilder:
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
 
-    def disallowed_any_type(self, typ: Type, context: Context):
+    def disallowed_any_type(self, typ: Type, context: Context) -> None:
         self.fail('Expressions of type "Any" are disallowed '
                   '(has type {})'.format(self.format(typ)), context)
 
