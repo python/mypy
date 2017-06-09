@@ -176,33 +176,74 @@ z.py:1: error: Function is missing a type annotation
 z.py:4: error: Call to untyped function "f" in typed context
 x.py:1: error: Function is missing a type annotation
 
-[case testPerFileConfigSectionDisallowUnannotated]
-# cmd: mypy x.py y.py z.py
+[case testPerFileConfigSectionUntypedWithDisallowUnannotated]
+# cmd: mypy w.py x.py y.py z.py
 [file mypy.ini]
 [[mypy]
 disallow_any = unannotated
 [[mypy-y*]
 disallow_any =
 [[mypy-z*]
-disallow_untyped_calls = True
+disallow_untyped_defs = True
+[[mypy-w*]
+disallow_untyped_defs = False
 [file x.py]
 def f(a):
     pass
-def g(a: int) -> int:
-    return f(a)
 [file y.py]
 def f(a):
     pass
-def g(a: int) -> int:
-    return f(a)
 [file z.py]
 def f(a):
     pass
-def g(a: int) -> int:
-    return f(a)
+[file w.py]
+def f(a):
+    pass
 [out]
 z.py:1: error: Function is missing a type annotation
-z.py:4: error: Call to untyped function "f" in typed context
+x.py:1: error: Function is missing a type annotation
+
+[case testPerFileConfigSectionDisallowUnannotatedWithUntyped]
+# cmd: mypy x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+disallow_untyped_defs = True
+[[mypy-y*]
+disallow_any =
+[[mypy-z*]
+disallow_any = unannotated
+[file x.py]
+def f(a):
+    pass
+[file y.py]
+def f(a):
+    pass
+[file z.py]
+def f(a):
+    pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
+[case testPerFileConfigSectionDisallowUnannotatedNoOverride]
+# cmd: mypy x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+[[mypy-x*]
+disallow_untyped_defs = True
+[[mypy-z*]
+disallow_any = unannotated
+[file x.py]
+def f(a):
+    pass
+[file y.py]
+def f(a):
+    pass
+[file z.py]
+def f(a):
+    pass
+[out]
+z.py:1: error: Function is missing a type annotation
 x.py:1: error: Function is missing a type annotation
 
 [case testPerFileConfigSectionMultipleMatches]
