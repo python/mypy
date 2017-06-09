@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Tuple, Type as Class, Optional, NamedTuple
+from typing import Callable, Dict, List, Tuple, Optional, NamedTuple
 
 from types import ModuleType
 from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context
@@ -178,10 +178,9 @@ class DefaultPlugin(Plugin):
 
 class PluginManager(Plugin):
     def __init__(self, python_version: Tuple[int, int],
-                 plugins: List[Class[Plugin]]) -> None:
+                 plugins: List[Plugin]) -> None:
         super().__init__(python_version)
-        # TODO: handle exceptions to provide more feedback
-        self.plugins = [p(python_version) for p in plugins]
+        self.plugins = plugins
         self._function_hooks = {}  # type: Dict[str, Optional[FunctionHook]]
         self._method_signature_hooks = {}  # type: Dict[str, Optional[MethodSignatureHook]]
         self._method_hooks = {}  # type: Dict[str, Optional[MethodHook]]

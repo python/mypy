@@ -8,7 +8,7 @@ import re
 import sys
 import time
 
-from typing import Any, cast, Dict, List, Mapping, Optional, Set, Tuple, Type as Class
+from typing import Any, cast, Dict, List, Mapping, Optional, Set, Tuple
 
 from mypy import build
 from mypy import defaults
@@ -175,21 +175,32 @@ def invert_flag_name(flag: str) -> str:
     return '--no-{}'.format(flag[2:])
 
 
-def load_plugin(prefix: str, name: str, location: str) -> Optional[Class[Plugin]]:
+def load_plugin(prefix: str, name: str, location: str,
+                python_version: Tuple[int, int]) -> Optional[Plugin]:
     try:
-        obj = locate(location)
+        mod = __import__(location)
     except BaseException as err:
-        print("%s: Error finding plugin %s at %s: %s" %
-              (prefix, name, location, err), file=sys.stderr)
+        print("%s: Error importing plugin module %s: %s" %
+              (prefix, location, err), file=sys.stderr)
         return None
-    if obj is None:
-        print("%s: Could not find plugin %s at %s" %
-              (prefix, name, location), file=sys.stderr)
-    elif not callable(obj):
-        print("%s: Hook %s at %s is not callable" %
-              (prefix, name, location), file=sys.stderr)
+    try:
+        register = getattr(mod, 'register_plugin')
+    except AttributeError:
+        print("%s: Could not find %s.register_plugin" %
+              (prefix, location), file=sys.stderr)
         return None
-    return cast(Class[Plugin], obj)
+    try:
+        plugin = register(python_version)
+    except BaseException as err:
+        print("%s: Error calling %s.register_plugin: %s" %
+              (prefix, location, err), file=sys.stderr)
+        return None
+
+    if not isinstance(plugin, Plugin):
+        print("%s: Result of calling %s.register_plugin is not a plugin: %r" %
+              (prefix, location, plugin), file=sys.stderr)
+        return None
+    return plugin
 
 
 def process_options(args: List[str],
@@ -477,13 +488,13 @@ def process_options(args: List[str],
         options.incremental = True
 
     # Load plugins
-    plugins = []  # type: List[Class[Plugin]]
+    plugins = []  # type: List[Plugin]
     for registry in options.plugins:
-        plugin = load_plugin('[mypy]', registry.name, registry.location)
+        plugin = load_plugin('[mypy]', registry.name, registry.location, options.python_version)
         if plugin is not None:
             plugins.append(plugin)
     # always add the default last
-    plugins.append(DefaultPlugin)
+    plugins.append(DefaultPlugin(options.python_version))
     plugin_manager = PluginManager(options.python_version, plugins)
 
     # Set target.
