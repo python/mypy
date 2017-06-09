@@ -381,7 +381,7 @@ class BuildManager:
         self.reports = reports
         self.options = options
         self.version_id = version_id
-        self.plugin_manager = plugin
+        self.plugin = plugin
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
         self.semantic_analyzer = SemanticAnalyzer(self.modules, self.missing_modules,
@@ -1515,7 +1515,7 @@ class State:
             return
         with self.wrap_context():
             self.type_checker = TypeChecker(manager.errors, manager.modules, self.options,
-                                            self.tree, self.xpath, manager.plugin_manager)
+                                            self.tree, self.xpath, manager.plugin)
             self.type_checker.check_first_pass()
 
     def type_check_second_pass(self) -> bool:
