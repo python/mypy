@@ -71,11 +71,12 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
                                                       os.path.abspath(test_temp_dir))
             if testcase.native_sep and os.path.sep == '\\':
                 normalized_output = [fix_cobertura_filename(line) for line in normalized_output]
-            normalize_file_output = normalize_error_messages(normalize_file_output)
+            normalized_output = normalize_error_messages(normalized_output)
             assert_string_arrays_equal(expected_content.splitlines(), normalized_output,
                                        'Output file {} did not match its expected output'.format(
                                            path))
     else:
+        out = normalize_error_messages(out)
         assert_string_arrays_equal(testcase.output, out,
                                    'Invalid output ({}, line {})'.format(
                                        testcase.file, testcase.line))
