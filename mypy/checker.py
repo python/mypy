@@ -682,7 +682,7 @@ class TypeChecker(NodeVisitor[None]):
                             and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
                         isclass = defn.is_class or defn.name() in ('__new__', '__init_subclass__')
                         if isclass:
-                            ref_type = mypy.types.TypeType(ref_type)
+                            ref_type = mypy.types.TypeType.make_normalized(ref_type)
                         erased = erase_to_bound(arg_type)
                         if not is_subtype_ignoring_tvars(ref_type, erased):
                             note = None
@@ -2741,13 +2741,10 @@ def convert_to_typetype(type_map: TypeMap) -> TypeMap:
     if type_map is None:
         return None
     for expr, typ in type_map.items():
-        if isinstance(typ, UnionType):
-            converted_type_map[expr] = UnionType([TypeType(t) for t in typ.items])
-        elif isinstance(typ, Instance):
-            converted_type_map[expr] = TypeType(typ)
-        else:
+        if not isinstance(typ, (UnionType, Instance)):
             # unknown type; error was likely reported earlier
             return {}
+        converted_type_map[expr] = TypeType.make_normalized(typ)
     return converted_type_map
 
 

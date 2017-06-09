@@ -2214,7 +2214,7 @@ class SemanticAnalyzer(NodeVisitor):
                        is_classmethod: bool = False,
                        ) -> None:
             if is_classmethod:
-                first = [Argument(Var('cls'), TypeType(selftype), None, ARG_POS)]
+                first = [Argument(Var('cls'), TypeType.make_normalized(selftype), None, ARG_POS)]
             else:
                 first = [Argument(Var('self'), selftype, None, ARG_POS)]
             args = first + args

@@ -2184,7 +2184,6 @@ def process(cls: Type[User]):
 [out]
 
 [case testTypeUsingTypeCClassMethodUnion]
-# Ideally this would work, but not worth the effort; just don't crash
 from typing import Type, Union
 class User:
     @classmethod
@@ -2193,11 +2192,11 @@ class User:
 class ProUser(User): pass
 class BasicUser(User): pass
 def process(cls: Type[Union[BasicUser, ProUser]]):
-    cls.foo()  # E: Type[Union[BasicUser, ProUser]] has no attribute "foo"
+    cls.foo()
     obj = cls()
-    cls.bar(obj)  # E: Type[Union[BasicUser, ProUser]] has no attribute "bar"
+    cls.bar(obj)
     cls.mro()  # Defined in class type
-    cls.error  # E: Type[Union[BasicUser, ProUser]] has no attribute "error"
+    cls.error  # E: Item "type" of "Union[Type[BasicUser], Type[ProUser]]" has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
 
