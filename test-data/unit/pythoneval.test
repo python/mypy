@@ -1093,7 +1093,7 @@ d3.xyz # E
 d4 = dict(a=1, b='') # type: Dict[str, Any]
 result = dict(x=[], y=[]) # type: Dict[str, List[str]]
 [out]
-_program.py:3: error: Dict entry 1 has incompatible type "str": "str"
+_program.py:3: error: Dict entry 1 has incompatible type "str": "str"; expected "str": "int"
 _program.py:5: error: Dict[str, int] has no attribute "xyz"
 
 [case testDefaultDict]
@@ -1125,7 +1125,7 @@ MyDDict(dict)[0]
 _program.py:6: error: Argument 1 to "defaultdict" has incompatible type Type[List[Any]]; expected Callable[[], str]
 _program.py:9: error: Invalid index type "str" for defaultdict[int, str]; expected type "int"
 _program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
-_program.py:19: error: Dict entry 0 has incompatible type "str": List[<nothing>]
+_program.py:19: error: Dict entry 0 has incompatible type "str": List[<nothing>]; expected "int": List[<nothing>]
 _program.py:23: error: Invalid index type "str" for MyDDict[Dict[_KT, _VT]]; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
