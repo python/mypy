@@ -2833,7 +2833,7 @@ class B(A[int]):
     b = ['']
 [builtins fixtures/list.pyi]
 [out]
-main:8: error: List item 0 has incompatible type "str"
+main:8: error: List item 0 has incompatible type "str"; expected "int"
 
 [case testVariableMethod]
 class A:

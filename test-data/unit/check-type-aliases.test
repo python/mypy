@@ -32,7 +32,7 @@ from typing import List
 A = List[int]
 def f(x: A) -> None: pass
 f([1])
-f(['x']) # E: List item 0 has incompatible type "str"
+f(['x']) # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 [out]
 

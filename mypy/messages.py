@@ -536,20 +536,25 @@ class MessageBuilder:
         if callee.name == '<list>':
             name = callee.name[1:-1]
             n -= 1
-            msg = '{} item {} has incompatible type {}'.format(
-                name.title(), n, self.format_simple(arg_type))
+            msg = '{} item {} has incompatible type {}; expected {}'.format(
+                name.title(), n, self.format_simple(arg_type),
+                self.format_simple(callee.arg_types[0]))
         elif callee.name == '<dict>':
             name = callee.name[1:-1]
             n -= 1
             key_type, value_type = cast(TupleType, arg_type).items
-            msg = '{} entry {} has incompatible type {}: {}'.format(
-                name.title(), n, self.format_simple(key_type), self.format_simple(value_type))
+            expected = cast(TupleType, callee.arg_types[0]).items
+            msg = '{} entry {} has incompatible type {}: {}; expected {}: {}'.format(
+                name.title(), n, self.format_simple(key_type), self.format_simple(value_type),
+                self.format_simple(expected[0]), self.format_simple(expected[1]))
         elif callee.name == '<list-comprehension>':
-            msg = 'List comprehension has incompatible type List[{}]'.format(
-                strip_quotes(self.format(arg_type)))
+            msg = 'List comprehension has incompatible type List[{}]; expected List[{}]'.format(
+                strip_quotes(self.format(arg_type)),
+                strip_quotes(self.format_simple(callee.arg_types[0])))
         elif callee.name == '<set-comprehension>':
-            msg = 'Set comprehension has incompatible type Set[{}]'.format(
-                strip_quotes(self.format(arg_type)))
+            msg = 'Set comprehension has incompatible type Set[{}]; expected Set[{}]'.format(
+                strip_quotes(self.format(arg_type)),
+                strip_quotes(self.format_simple(callee.arg_types[0])))
         elif callee.name == '<dictionary-comprehension>':
             msg = ('{} expression in dictionary comprehension has incompatible type {}; '
                    'expected type {}').format(
@@ -557,8 +562,8 @@ class MessageBuilder:
                 self.format(arg_type),
                 self.format(callee.arg_types[n - 1]))
         elif callee.name == '<generator>':
-            msg = 'Generator has incompatible item type {}'.format(
-                self.format_simple(arg_type))
+            msg = 'Generator has incompatible item type {}; expected {}'.format(
+                self.format_simple(arg_type), self.format_simple(callee.arg_types[0]))
         else:
             try:
                 expected_type = callee.arg_types[m - 1]

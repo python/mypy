@@ -455,7 +455,7 @@ reveal_type(l)  # E: Revealed type is 'builtins.list[typing.Generator*[builtins.
 [builtins fixtures/list.pyi]
 
 [case testNoneListTernary]
-x = [None] if "" else [1]  # E: List item 0 has incompatible type "int"
+x = [None] if "" else [1]  # E: List item 0 has incompatible type "int"; expected None
 [builtins fixtures/list.pyi]
 
 [case testInferEqualsNotOptional]

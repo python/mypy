@@ -1268,7 +1268,7 @@ def f(a: List[A]) -> A: pass
 def f(a: B) -> B: pass
 
 b = f([a]) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = f([b]) # E: List item 0 has incompatible type "B"
+a = f([b]) # E: List item 0 has incompatible type "B"; expected "A"
 a = f(b)   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 a = f([a])
