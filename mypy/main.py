@@ -727,7 +727,7 @@ def parse_section(prefix: str, template: Options,
         key = key.replace('-', '_')
         if key.startswith('plugins.'):
             dv = section.get(key)
-            key = key[6:]
+            key = key[8:]
             plugins.append((key, dv))
             continue
         elif key in config_types:
