@@ -17,7 +17,7 @@ from mypy import util
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.errors import CompileError
 from mypy.options import Options, BuildType
-from mypy.plugin import Plugin, PluginRegistry, DefaultPlugin, locate
+from mypy.plugin import Plugin, PluginRegistry, PluginManager, DefaultPlugin, locate
 from mypy.report import reporter_classes
 
 from mypy.version import __version__
@@ -45,10 +45,10 @@ def main(script_path: str, args: List[str] = None) -> None:
     sys.setrecursionlimit(2 ** 14)
     if args is None:
         args = sys.argv[1:]
-    sources, options, plugins = process_options(args)
+    sources, options, plugin = process_options(args)
     serious = False
     try:
-        res = type_check_only(sources, bin_dir, options, plugins)
+        res = type_check_only(sources, bin_dir, options, plugin)
         a = res.errors
     except CompileError as e:
         a = e.messages
@@ -92,12 +92,12 @@ def readlinkabs(link: str) -> str:
 
 
 def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options,
-                    plugins: List[Class[Plugin]]) -> BuildResult:
+                    plugin: Plugin) -> BuildResult:
     # Type-check the program and dependencies and translate to Python.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
                        options=options,
-                       plugins=plugins)
+                       plugin=plugin)
 
 
 FOOTER = """environment variables:
@@ -194,7 +194,7 @@ def load_plugin(prefix: str, name: str, location: str) -> Optional[Class[Plugin]
 
 def process_options(args: List[str],
                     require_targets: bool = True
-                    ) -> Tuple[List[BuildSource], Options, List[Class[Plugin]]]:
+                    ) -> Tuple[List[BuildSource], Options, Plugin]:
     """Parse command line arguments."""
 
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
@@ -484,12 +484,13 @@ def process_options(args: List[str],
             plugins.append(plugin)
     # always add the default last
     plugins.append(DefaultPlugin)
+    plugin_manager = PluginManager(options.python_version, plugins)
 
     # Set target.
     if special_opts.modules:
         options.build_type = BuildType.MODULE
         targets = [BuildSource(None, m, None) for m in special_opts.modules]
-        return targets, options, plugins
+        return targets, options, plugin_manager
     elif special_opts.package:
         if os.sep in special_opts.package or os.altsep and os.altsep in special_opts.package:
             fail("Package name '{}' cannot have a slash in it."
@@ -499,11 +500,11 @@ def process_options(args: List[str],
         targets = build.find_modules_recursive(special_opts.package, lib_path)
         if not targets:
             fail("Can't find package '{}'".format(special_opts.package))
-        return targets, options, plugins
+        return targets, options, plugin_manager
     elif special_opts.command:
         options.build_type = BuildType.PROGRAM_TEXT
         targets = [BuildSource(None, None, '\n'.join(special_opts.command))]
-        return targets, options, plugins
+        return targets, options, plugin_manager
     else:
         targets = []
         for f in special_opts.files:
@@ -524,7 +525,7 @@ def process_options(args: List[str],
             else:
                 mod = os.path.basename(f) if options.scripts_are_modules else None
                 targets.append(BuildSource(f, mod, None))
-        return targets, options, plugins
+        return targets, options, plugin_manager
 
 
 def keyfunc(name: str) -> Tuple[int, str]:

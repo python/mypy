@@ -21,7 +21,7 @@ import time
 from os.path import dirname, basename
 
 from typing import (AbstractSet, Dict, Iterable, Iterator, List,
-                    NamedTuple, Optional, Set, Tuple, Type as Class, Union)
+                    NamedTuple, Optional, Set, Tuple, Union)
 # Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
 MYPY = False
 if MYPY:
@@ -113,7 +113,7 @@ def build(sources: List[BuildSource],
           options: Options,
           alt_lib_path: str = None,
           bin_dir: str = None,
-          plugins: Optional[List[Class[Plugin]]] = None,
+          plugin: Optional[Plugin] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -176,9 +176,9 @@ def build(sources: List[BuildSource],
 
     source_set = BuildSourceSet(sources)
 
-    if plugins is None:
-        plugins = [DefaultPlugin]
-    plugin_manager = PluginManager(options.python_version, plugins)
+    if plugin is None:
+        plugin = DefaultPlugin(options.python_version)
+
     # Construct a build manager object to hold state during the build.
     #
     # Ignore current directory prefix in error messages.
@@ -188,7 +188,7 @@ def build(sources: List[BuildSource],
                            reports=reports,
                            options=options,
                            version_id=__version__,
-                           plugin=plugin_manager,
+                           plugin=plugin,
                            )
 
     try:
