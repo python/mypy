@@ -1440,6 +1440,10 @@ class OpExpr(Expression):
     right = None  # type: Expression
     # Inferred type for the operator method type (when relevant).
     method_type = None  # type: Optional[mypy.types.Type]
+    # Is the right side going to be evaluated every time?
+    right_always = False
+    # Is the right side unreachable?
+    right_unreachable = False
 
     def __init__(self, op: str, left: Expression, right: Expression) -> None:
         self.op = op

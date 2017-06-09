@@ -1497,6 +1497,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             restricted_left_type = true_only(left_type)
             result_is_left = not left_type.can_be_false
 
+        if e.right_unreachable:
+            right_map = None
+        elif e.right_always:
+            left_map = None
+
         right_type = self.analyze_cond_branch(right_map, e.right, left_type)
 
         if right_map is None:
