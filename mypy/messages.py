@@ -83,7 +83,7 @@ ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'
 INVALID_TYPEDDICT_ARGS = \
     'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
 TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
-    'Expected TypedDict item name to be string literal'
+    'Expected TypedDict key to be string literal'
 MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
@@ -876,22 +876,29 @@ class MessageBuilder:
                                                      expected_item_names: List[str],
                                                      actual_item_names: List[str],
                                                      context: Context) -> None:
-        self.fail('Expected items {} but found {}.'.format(
-            expected_item_names, actual_item_names), context)
+        if not expected_item_names:
+            expected = '(no keys)'
+        else:
+            expected = format_key_list(expected_item_names)
+        found = format_key_list(actual_item_names, short=True)
+        if actual_item_names and set(actual_item_names) < set(expected_item_names):
+            found = 'only {}'.format(found)
+        self.fail('Expected {} but found {}'.format(expected, found), context)
 
     def typeddict_item_name_must_be_string_literal(self,
                                                    typ: TypedDictType,
                                                    context: Context,
                                                    ) -> None:
-        self.fail('Cannot prove expression is a valid item name; expected one of {}'.format(
-            format_item_name_list(typ.items.keys())), context)
+        self.fail(
+            'TypedDict key must be a string literal; expected one of {}'.format(
+                format_item_name_list(typ.items.keys())), context)
 
     def typeddict_item_name_not_found(self,
                                       typ: TypedDictType,
                                       item_name: str,
                                       context: Context,
                                       ) -> None:
-        self.fail('\'{}\' is not a valid item name; expected one of {}'.format(
+        self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
             item_name, format_item_name_list(typ.items.keys())), context)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
@@ -943,9 +950,9 @@ def format_string_list(s: Iterable[str]) -> str:
 def format_item_name_list(s: Iterable[str]) -> str:
     l = list(s)
     if len(l) <= 5:
-        return '[' + ', '.join(["'%s'" % name for name in l]) + ']'
+        return '(' + ', '.join(["'%s'" % name for name in l]) + ')'
     else:
-        return '[' + ', '.join(["'%s'" % name for name in l[:5]]) + ', ...]'
+        return '(' + ', '.join(["'%s'" % name for name in l[:5]]) + ', ...)'
 
 
 def callable_name(type: CallableType) -> str:
@@ -1022,3 +1029,14 @@ def make_inferred_type_note(context: Context, subtype: Type,
         return 'Perhaps you need a type annotation for "{}"? Suggestion: {}'.format(
             var_name, supertype_str)
     return ''
+
+
+def format_key_list(keys: List[str], *, short: bool = False) -> str:
+    reprs = [repr(key) for key in keys]
+    td = '' if short else 'TypedDict '
+    if len(keys) == 0:
+        return 'no {}keys'.format(td)
+    elif len(keys) == 1:
+        return '{}key {}'.format(td, reprs[0])
+    else:
+        return '{}keys ({})'.format(td, ', '.join(reprs))
