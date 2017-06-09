@@ -536,34 +536,59 @@ class MessageBuilder:
         if callee.name == '<list>':
             name = callee.name[1:-1]
             n -= 1
+            actual_type_str, expected_type_str = self.format_distinctly(arg_type,
+                                                                        callee.arg_types[0])
             msg = '{} item {} has incompatible type {}; expected {}'.format(
-                name.title(), n, self.format_simple(arg_type),
-                self.format_simple(callee.arg_types[0]))
+                name.title(), n, actual_type_str, expected_type_str)
         elif callee.name == '<dict>':
             name = callee.name[1:-1]
             n -= 1
             key_type, value_type = cast(TupleType, arg_type).items
-            expected = cast(TupleType, callee.arg_types[0]).items
+            expected_key_type, expected_value_type = cast(TupleType, callee.arg_types[0]).items
+
+            # don't increase verbosity unless there is need to do so
+            from mypy.subtypes import is_subtype
+            if is_subtype(key_type, expected_key_type):
+                key_type_str = self.format(key_type)
+                expected_key_type_str = self.format(expected_key_type)
+            else:
+                key_type_str, expected_key_type_str = self.format_distinctly(
+                    key_type, expected_key_type)
+            if is_subtype(value_type, expected_value_type):
+                value_type_str = self.format(value_type)
+                expected_value_type_str = self.format(expected_value_type)
+            else:
+                value_type_str, expected_value_type_str = self.format_distinctly(
+                    value_type, expected_value_type)
+
             msg = '{} entry {} has incompatible type {}: {}; expected {}: {}'.format(
-                name.title(), n, self.format_simple(key_type), self.format_simple(value_type),
-                self.format_simple(expected[0]), self.format_simple(expected[1]))
+                name.title(), n, key_type_str, value_type_str,
+                expected_key_type_str, expected_value_type_str)
         elif callee.name == '<list-comprehension>':
+            actual_type_str, expected_type_str = map(strip_quotes,
+                                                     self.format_distinctly(arg_type,
+                                                                            callee.arg_types[0]))
             msg = 'List comprehension has incompatible type List[{}]; expected List[{}]'.format(
-                strip_quotes(self.format(arg_type)),
-                strip_quotes(self.format_simple(callee.arg_types[0])))
+                actual_type_str, expected_type_str)
         elif callee.name == '<set-comprehension>':
+            actual_type_str, expected_type_str = map(strip_quotes,
+                                                     self.format_distinctly(arg_type,
+                                                                            callee.arg_types[0]))
             msg = 'Set comprehension has incompatible type Set[{}]; expected Set[{}]'.format(
-                strip_quotes(self.format(arg_type)),
-                strip_quotes(self.format_simple(callee.arg_types[0])))
+                actual_type_str, expected_type_str)
         elif callee.name == '<dictionary-comprehension>':
+            actual_type_str, expected_type_str = self.format_distinctly(arg_type,
+                                                                        callee.arg_types[n - 1])
             msg = ('{} expression in dictionary comprehension has incompatible type {}; '
                    'expected type {}').format(
                 'Key' if n == 1 else 'Value',
-                self.format(arg_type),
-                self.format(callee.arg_types[n - 1]))
+                actual_type_str,
+                expected_type_str)
         elif callee.name == '<generator>':
+            actual_type_str, expected_type_str = self.format_distinctly(arg_type,
+                                                                        callee.arg_types[0])
             msg = 'Generator has incompatible item type {}; expected {}'.format(
-                self.format_simple(arg_type), self.format_simple(callee.arg_types[0]))
+                actual_type_str, expected_type_str)
         else:
             try:
                 expected_type = callee.arg_types[m - 1]
