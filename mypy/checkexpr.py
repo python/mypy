@@ -1622,7 +1622,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def nonliteral_tuple_index_helper(self, left_type: TupleType, index: Expression) -> Type:
         index_type = self.accept(index)
         expected_type = UnionType.make_union([self.named_type('builtins.int'),
-                                             self.named_type('builtins.slice')])
+                                              self.named_type('builtins.slice')])
         if not self.chk.check_subtype(index_type, expected_type, index,
                                       messages.INVALID_TUPLE_INDEX_TYPE,
                                       'actual type', 'expected type'):
