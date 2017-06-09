@@ -125,7 +125,7 @@ def parse_test_cases(
                 elif p[i].id == 'out' or p[i].id == 'out1':
                     tcout = p[i].data
                     tcout = [expand_variables(line) for line in tcout]
-                    if native_sep and os.path.sep == '\\':
+                    if os.path.sep == '\\':
                         tcout = [fix_win_path(line) for line in tcout]
                     ok = True
                 elif re.match(r'out[0-9]*$', p[i].id):
