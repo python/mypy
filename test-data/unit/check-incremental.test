@@ -2700,7 +2700,7 @@ a = A()
 [builtins fixtures/property.pyi]
 
 [case testSerializeAbstractPropertyDisallowUntypedIncremental]
-# flags: --disallow-any=unimported
+# flags: --disallow-untyped-defs
 from abc import abstractmethod
 import typing
 class A:

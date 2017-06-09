@@ -606,7 +606,7 @@ class TypeChecker(NodeVisitor[None]):
                                   item)
 
                     show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
-                    if 'unannotated' in self.options.disallow_any and show_untyped:
+                    if self.options.disallow_untyped_defs and show_untyped:
                         # Check for functions with unspecified/not fully specified types.
                         def is_implicit_any(t: Type) -> bool:
                             return isinstance(t, AnyType) and t.implicit
