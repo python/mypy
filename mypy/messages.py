@@ -889,7 +889,7 @@ class MessageBuilder:
                                                    context: Context,
                                                    ) -> None:
         self.fail(
-            'Cannot prove expression is a valid TypedDict key; expected one of {}'.format(
+            'TypedDict key must be a string literal; expected one of {}'.format(
                 format_item_name_list(typ.items.keys())), context)
 
     def typeddict_item_name_not_found(self,

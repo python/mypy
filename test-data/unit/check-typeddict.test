@@ -579,7 +579,7 @@ from typing import Union
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 def get_coordinate(p: TaggedPoint, key: str) -> Union[str, int]:
-    return p[key]  # E: Cannot prove expression is a valid TypedDict key; expected one of ('type', 'x', 'y')
+    return p[key]  # E: TypedDict key must be a string literal; expected one of ('type', 'x', 'y')
 [builtins fixtures/dict.pyi]
 
 
@@ -613,7 +613,7 @@ from typing import Union
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 def set_coordinate(p: TaggedPoint, key: str, value: int) -> None:
-    p[key] = value  # E: Cannot prove expression is a valid TypedDict key; expected one of ('type', 'x', 'y')
+    p[key] = value  # E: TypedDict key must be a string literal; expected one of ('type', 'x', 'y')
 [builtins fixtures/dict.pyi]
 
 
