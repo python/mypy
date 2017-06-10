@@ -2254,6 +2254,7 @@ class SymbolTableNode:
     mod_id = ''  # type: Optional[str]
     # If this not None, override the type of the 'node' attribute.
     type_override = None  # type: Optional[mypy.types.Type]
+    alias_tvars = None  # type: Optional[List[str]]
     # If False, this name won't be imported via 'from <module> import *'.
     # This has no effect on names within classes.
     module_public = True
@@ -2265,13 +2266,15 @@ class SymbolTableNode:
 
     def __init__(self, kind: int, node: Optional[SymbolNode], mod_id: str = None,
                  typ: 'mypy.types.Type' = None,
-                 module_public: bool = True, normalized: bool = False) -> None:
+                 module_public: bool = True, normalized: bool = False,
+                 alias_tvars: Optional[List[str]] = None) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
         self.mod_id = mod_id
         self.module_public = module_public
         self.normalized = normalized
+        self.alias_tvars = alias_tvars
 
     @property
     def fullname(self) -> Optional[str]:
@@ -2329,6 +2332,7 @@ class SymbolTableNode:
                 data['node'] = self.node.serialize()
             if self.type_override is not None:
                 data['type_override'] = self.type_override.serialize()
+                data['alias_tvars'] = self.alias_tvars
         return data
 
     @classmethod
@@ -2347,6 +2351,8 @@ class SymbolTableNode:
             if 'type_override' in data:
                 typ = mypy.types.deserialize_type(data['type_override'])
             stnode = SymbolTableNode(kind, node, typ=typ)
+            if 'alias_tvars' in data:
+                stnode.alias_tvars = data['alias_tvars']
         if 'module_public' in data:
             stnode.module_public = data['module_public']
         return stnode

@@ -207,9 +207,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                 return UninhabitedType(is_noreturn=True)
             elif sym.kind == TYPE_ALIAS:
                 override = sym.type_override
+                all_vars = sym.alias_tvars
                 assert override is not None
                 an_args = self.anal_array(t.args)
-                all_vars = self.get_type_var_names(override)
                 exp_len = len(all_vars)
                 act_len = len(an_args)
                 if exp_len > 0 and act_len == 0:
@@ -273,22 +273,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
         else:
             return AnyType()
 
-    def get_type_var_names(self, tp: Type) -> List[str]:
-        """Get all type variable names that are present in a generic type alias
-        in order of textual appearance (recursively, if needed).
-        """
-        return [name for name, _
-                in tp.accept(TypeVariableQuery(self.lookup, self.tvar_scope,
-                                               include_callables=True, include_bound_tvars=True))]
-
-    def get_tvar_name(self, t: Type) -> Optional[str]:
-        if not isinstance(t, UnboundType):
-            return None
-        sym = self.lookup(t.name, t)
-        if sym is not None and sym.kind == TVAR:
-            return t.name
-        return None
-
     def replace_alias_tvars(self, tp: Type, vars: List[str], subs: List[Type],
                             newline: int, newcolumn: int) -> Type:
         """Replace type variables in a generic type alias tp with substitutions subs
@@ -297,7 +281,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
         typ_args = get_typ_args(tp)
         new_args = typ_args[:]
         for i, arg in enumerate(typ_args):
-            tvar = self.get_tvar_name(arg)
+            if isinstance(arg, (UnboundType, TypeVarType)):
+                tvar = arg.name
+            else:
+                tvar = None
             if tvar and tvar in vars:
                 # Perform actual substitution...
                 new_args[i] = subs[vars.index(tvar)]

@@ -1352,7 +1352,8 @@ class SemanticAnalyzer(NodeVisitor):
                                          self.cur_mod_id,
                                          node.type_override,
                                          module_public=module_public,
-                                         normalized=node.normalized)
+                                         normalized=node.normalized,
+                                         alias_tvars=node.alias_tvars)
                 self.add_symbol(imported_id, symbol, imp)
             elif module and not missing:
                 # Missing attribute.
@@ -1404,7 +1405,8 @@ class SemanticAnalyzer(NodeVisitor):
             normalized = True
         if normalized:
             node = SymbolTableNode(node.kind, node.node,
-                                   node.mod_id, node.type_override, normalized=True)
+                                   node.mod_id, node.type_override,
+                                   normalized=True, alias_tvars=node.alias_tvars)
         return node
 
     def add_fixture_note(self, fullname: str, ctx: Context) -> None:
@@ -1448,7 +1450,8 @@ class SemanticAnalyzer(NodeVisitor):
                     self.add_symbol(name, SymbolTableNode(node.kind, node.node,
                                                           self.cur_mod_id,
                                                           node.type_override,
-                                                          normalized=node.normalized), i)
+                                                          normalized=node.normalized,
+                                                          alias_tvars=node.alias_tvars), i)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
@@ -1594,7 +1597,7 @@ class SemanticAnalyzer(NodeVisitor):
                 if res:
                     # TODO: What if this gets reassigned?
                     node = self.lookup(lvalue.name, lvalue)
-                    if isinstance(res, Instance) and not res.args:
+                    if isinstance(res, Instance) and not res.args and isinstance(rvalue, RefExpr):
                         node.node = res.type
                         if isinstance(rvalue, RefExpr):
                             sym = self.lookup_type_node(rvalue)
@@ -1603,6 +1606,9 @@ class SemanticAnalyzer(NodeVisitor):
                         return
                     node.kind = TYPE_ALIAS
                     node.type_override = res
+                    node.alias_tvars = [name for (name, _) in
+                                        res.accept(TypeVariableQuery(self.lookup_qualified,
+                                                                     self.tvar_scope))]
                     if isinstance(s.rvalue, IndexExpr):
                         s.rvalue.analyzed = TypeAliasExpr(res,
                                                           fallback=self.alias_fallback(res))
