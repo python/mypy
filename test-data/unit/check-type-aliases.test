@@ -56,6 +56,45 @@ from typing import Union
 U = Union[int, str]
 [builtins fixtures/tuple.pyi]
 
+[case testProhibitReassigningAliases]
+A = float
+A = int  # E: Cannot assign to a type \
+         # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation
+[out]
+
+[case testProhibitReassigningSubscriptedAliases]
+from typing import Callable
+A = Callable[[], float]
+A = Callable[[], int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
+                       # E: Value of type "int" is not indexable
+                       # the second error is because of `Callable = 0` in lib-stub/typing.pyi
+[builtins fixtures/list.pyi]
+[out]
+
+[case testProhibitReassigningGenericAliases]
+from typing import TypeVar, Union, Tuple
+T = TypeVar('T')
+
+A = Tuple[T, T]
+A = Union[T, int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
+                   # E: Value of type "int" is not indexable
+                   # the second error is because of `Union = 0` in lib-stub/typing.pyi
+[out]
+
+[case testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes]
+from typing import TypeVar, Sequence, Type
+T = TypeVar('T')
+
+A: Type[float] = int
+x: A  # E: Invalid type "__main__.A"
+def bad(tp: A) -> None:  # E: Invalid type "__main__.A"
+    pass
+
+Alias = int
+GenAlias = Sequence[T]
+def fun(x: Alias) -> GenAlias[int]: pass
+[out]
+
 [case testTypeAliasInBuiltins]
 def f(x: bytes): pass
 bytes

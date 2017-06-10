@@ -1585,9 +1585,6 @@ class SemanticAnalyzer(NodeVisitor):
         if len(s.lvalues) == 1 and not s.type and (not self.type or self.is_func_scope()):
             lvalue = s.lvalues[0]
             if isinstance(lvalue, NameExpr):
-                if not lvalue.is_def:
-                    # Only a definition can create a type alias, not regular assignment.
-                    return
                 rvalue = s.rvalue
                 res = analyze_type_alias(rvalue,
                                          self.lookup_qualified,
@@ -1595,8 +1592,14 @@ class SemanticAnalyzer(NodeVisitor):
                                          self.tvar_scope,
                                          self.fail, allow_unnormalized=True)
                 if res:
-                    # TODO: What if this gets reassigned?
                     node = self.lookup(lvalue.name, lvalue)
+                    if not lvalue.is_def:
+                        # Only a definition can create a type alias, not regular assignment.
+                        if node and node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo):
+                            self.fail('Cannot assign multiple types to name "{}"'
+                                      ' without an explicit "Type[...]" annotation'
+                                      .format(lvalue.name), lvalue)
+                        return
                     if isinstance(res, Instance) and not res.args and isinstance(rvalue, RefExpr):
                         node.node = res.type
                         if isinstance(rvalue, RefExpr):
