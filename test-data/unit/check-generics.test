@@ -885,6 +885,52 @@ TupledNode = Node[T, Tuple[T, T]]
 
 [builtins fixtures/list.pyi]
 
+[case testGenericTypeAliasesImportingWithoutTypeVar]
+from typing import Tuple
+from lib import Transform
+
+def int_tf(m: int) -> Transform[int, str]:
+    def transform(i: int, pos: int) -> Tuple[int, str]:
+        pass
+    return transform
+
+[file lib.py]
+from typing import Callable, TypeVar, Tuple
+
+T = TypeVar('T')
+R = TypeVar('R')
+
+Transform = Callable[[T, int], Tuple[T, R]]
+[out]
+
+[case testGenericTypeAliasesImportingWithoutTypeVarError]
+from a import Alias
+x: Alias[int, str]  # E: Bad number of arguments for type alias, expected: 1, given: 2
+
+[file a.py]
+from typing import TypeVar, List
+T = TypeVar('T')
+
+Alias = List[List[T]]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testTypeAliasesResultingInPlainInstance]
+from typing import Optional, Union
+
+O = Optional[int]
+U = Union[int]
+
+x: O
+y: U
+
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+reveal_type(y)  # E: Revealed type is 'builtins.int'
+
+U[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
+O[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
+[out]
+
 [case testGenericTypeAliasesRuntimeExpressionsInstance]
 from typing import TypeVar, Generic
 T = TypeVar('T')
