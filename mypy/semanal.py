@@ -1517,26 +1517,11 @@ class SemanticAnalyzer(NodeVisitor):
             allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
             s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
         else:
-            # For simple assignments, allow binding type aliases.
-            # Also set the type if the rvalue is a simple literal.
+            # Set the type if the rvalue is a simple literal.
             if (s.type is None and len(s.lvalues) == 1 and
                     isinstance(s.lvalues[0], NameExpr)):
                 if s.lvalues[0].is_def:
                     s.type = self.analyze_simple_literal_type(s.rvalue)
-                res = analyze_type_alias(s.rvalue,
-                                         self.lookup_qualified,
-                                         self.lookup_fully_qualified,
-                                         self.tvar_scope,
-                                         self.fail, allow_unnormalized=True)
-                if res and (not isinstance(res, Instance) or res.args):
-                    # TODO: What if this gets reassigned?
-                    name = s.lvalues[0]
-                    node = self.lookup(name.name, name)
-                    node.kind = TYPE_ALIAS
-                    node.type_override = res
-                    if isinstance(s.rvalue, IndexExpr):
-                        s.rvalue.analyzed = TypeAliasExpr(res,
-                                                          fallback=self.alias_fallback(res))
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1592,24 +1577,35 @@ class SemanticAnalyzer(NodeVisitor):
 
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed."""
-        # For now, type aliases only work at the top level of a module.
-        if (len(s.lvalues) == 1 and not self.is_func_scope() and not self.type
-                and not s.type):
+        # For now, type aliases are not created at class scope,
+        # instead they are treated as class valued members.
+        if len(s.lvalues) == 1 and not s.type and (not self.type or self.is_func_scope()):
             lvalue = s.lvalues[0]
             if isinstance(lvalue, NameExpr):
                 if not lvalue.is_def:
                     # Only a definition can create a type alias, not regular assignment.
                     return
                 rvalue = s.rvalue
-                if isinstance(rvalue, RefExpr):
-                    node = rvalue.node
-                    if isinstance(node, TypeInfo):
-                        # TODO: We should record the fact that this is a variable
-                        #       that refers to a type, rather than making this
-                        #       just an alias for the type.
-                        sym = self.lookup_type_node(rvalue)
-                        if sym:
-                            self.globals[lvalue.name] = sym
+                res = analyze_type_alias(rvalue,
+                                         self.lookup_qualified,
+                                         self.lookup_fully_qualified,
+                                         self.tvar_scope,
+                                         self.fail, allow_unnormalized=True)
+                if res:
+                    # TODO: What if this gets reassigned?
+                    node = self.lookup(lvalue.name, lvalue)
+                    if isinstance(res, Instance) and not res.args:
+                        node.node = res.type
+                        if isinstance(rvalue, RefExpr):
+                            sym = self.lookup_type_node(rvalue)
+                            if sym:
+                                node.normalized = sym.normalized
+                        return
+                    node.kind = TYPE_ALIAS
+                    node.type_override = res
+                    if isinstance(s.rvalue, IndexExpr):
+                        s.rvalue.analyzed = TypeAliasExpr(res,
+                                                          fallback=self.alias_fallback(res))
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
