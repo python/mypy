@@ -217,7 +217,7 @@ class UnboundType(Type):
         return visitor.visit_unbound_type(self)
 
     def __hash__(self) -> int:
-        return hash((UnboundType, self.name, self.optional, tuple(self.args)))
+        return hash((self.name, self.optional, tuple(self.args)))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, UnboundType):
@@ -281,7 +281,7 @@ class TypeList(Type):
         return visitor.visit_type_list(self)
 
     def __hash__(self) -> int:
-        return hash((TypeList, tuple(self.items)))
+        return hash(tuple(self.items))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeList):
@@ -443,7 +443,7 @@ class Instance(Type):
     type_ref = None  # type: str
 
     def __hash__(self) -> int:
-        return hash((Instance, self.type, tuple(self.args)))
+        return hash((self.type, tuple(self.args)))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Instance):
@@ -513,7 +513,7 @@ class TypeVarType(Type):
             return self.upper_bound
 
     def __hash__(self) -> int:
-        return hash((TypeVarType, self.id))
+        return hash(self.id)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeVarType):
@@ -802,9 +802,9 @@ class CallableType(FunctionLike):
         return a
 
     def __hash__(self) -> int:
-        return hash((CallableType, self.ret_type, self.is_type_obj(),
-                     self.is_ellipsis_args, self.name) +
-                    tuple(self.arg_types) + tuple(self.arg_names) + tuple(self.arg_kinds))
+        return hash((self.ret_type, self.is_type_obj(),
+                     self.is_ellipsis_args, self.name,
+                    tuple(self.arg_types), tuple(self.arg_names), tuple(self.arg_kinds)))
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, CallableType):
@@ -901,7 +901,7 @@ class Overloaded(FunctionLike):
         return visitor.visit_overloaded(self)
 
     def __hash__(self) -> int:
-        return hash((Overloaded, tuple(self.items())))
+        return hash(tuple(self.items()))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Overloaded):
@@ -950,7 +950,7 @@ class TupleType(Type):
         return visitor.visit_tuple_type(self)
 
     def __hash__(self) -> int:
-        return hash((TupleType, tuple(self.items), self.fallback))
+        return hash((tuple(self.items), self.fallback))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TupleType):
@@ -1008,7 +1008,7 @@ class TypedDictType(Type):
         return visitor.visit_typeddict_type(self)
 
     def __hash__(self) -> int:
-        return hash((TypedDictType, tuple(self.items.items())))
+        return hash(tuple(self.items.items()))
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, TypedDictType):
@@ -1092,7 +1092,7 @@ class StarType(Type):
         super().__init__(line, column)
 
     def __hash__(self) -> int:
-        return hash((StarType, self.type))
+        return hash(self.type)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, StarType):
@@ -1303,7 +1303,7 @@ class TypeType(Type):
         return visitor.visit_type_type(self)
 
     def __hash__(self) -> int:
-        return hash((TypeType, self.item))
+        return hash(self.item)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeType):
