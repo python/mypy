@@ -527,7 +527,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if (callee.is_type_obj() and (len(arg_types) == 1)
                     and is_equivalent(callee.ret_type, self.named_type('builtins.type'))):
-                callee = callee.copy_modified(ret_type=TypeType(arg_types[0]))
+                callee = callee.copy_modified(ret_type=TypeType.make_normalized(arg_types[0]))
 
             if callable_node:
                 # Store the inferred callable type.
@@ -1218,7 +1218,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             owner_type = instance_type
 
         _, inferred_dunder_get_type = self.check_call(
-            dunder_get_type, [TempNode(instance_type), TempNode(TypeType(owner_type))],
+            dunder_get_type,
+            [TempNode(instance_type), TempNode(TypeType.make_normalized(owner_type))],
             [nodes.ARG_POS, nodes.ARG_POS], context)
 
         if isinstance(inferred_dunder_get_type, AnyType):
@@ -1521,6 +1522,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             restricted_left_type = true_only(left_type)
             result_is_left = not left_type.can_be_false
 
+        if e.right_unreachable:
+            right_map = None
+        elif e.right_always:
+            left_map = None
+
         right_type = self.analyze_cond_branch(right_map, e.right, left_type)
 
         if right_map is None:
@@ -1595,31 +1601,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.accept(e.analyzed)
         left_type = self.accept(e.base)
         if isinstance(left_type, TupleType) and self.chk.in_checked_function():
-            # Special case for tuples. They support indexing only by integer
-            # literals.
+            # Special case for tuples. They return a more specific type when
+            # indexed by an integer literal.
             index = e.index
             if isinstance(index, SliceExpr):
                 return self.visit_tuple_slice_helper(left_type, index)
 
-            ok = False
-            if isinstance(index, IntExpr):
-                n = index.value
-                ok = True
-            elif isinstance(index, UnaryExpr):
-                if index.op == '-':
-                    operand = index.expr
-                    if isinstance(operand, IntExpr):
-                        n = len(left_type.items) - operand.value
-                        ok = True
-            if ok:
+            n = self._get_value(index)
+            if n is not None:
+                if n < 0:
+                    n += len(left_type.items)
                 if n >= 0 and n < len(left_type.items):
                     return left_type.items[n]
                 else:
                     self.chk.fail(messages.TUPLE_INDEX_OUT_OF_RANGE, e)
                     return AnyType()
             else:
-                self.chk.fail(messages.TUPLE_INDEX_MUST_BE_AN_INT_LITERAL, e)
-                return AnyType()
+                return self.nonliteral_tuple_index_helper(left_type, index)
         elif isinstance(left_type, TypedDictType):
             return self.visit_typeddict_index_expr(left_type, e.index)
         elif (isinstance(left_type, CallableType)
@@ -1638,28 +1636,30 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if slic.begin_index:
             begin = self._get_value(slic.begin_index)
             if begin is None:
-                self.chk.fail(
-                    messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL,
-                    slic.begin_index)
-                return AnyType()
+                return self.nonliteral_tuple_index_helper(left_type, slic)
 
         if slic.end_index:
             end = self._get_value(slic.end_index)
             if end is None:
-                self.chk.fail(
-                    messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL,
-                    slic.end_index)
-                return AnyType()
+                return self.nonliteral_tuple_index_helper(left_type, slic)
 
         if slic.stride:
             stride = self._get_value(slic.stride)
             if stride is None:
-                self.chk.fail(
-                    messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL,
-                    slic.stride)
-                return AnyType()
+                return self.nonliteral_tuple_index_helper(left_type, slic)
 
         return left_type.slice(begin, stride, end)
+
+    def nonliteral_tuple_index_helper(self, left_type: TupleType, index: Expression) -> Type:
+        index_type = self.accept(index)
+        expected_type = UnionType.make_union([self.named_type('builtins.int'),
+                                              self.named_type('builtins.slice')])
+        if not self.chk.check_subtype(index_type, expected_type, index,
+                                      messages.INVALID_TUPLE_INDEX_TYPE,
+                                      'actual type', 'expected type'):
+            return AnyType()
+        else:
+            return UnionType.make_simplified_union(left_type.items)
 
     def _get_value(self, index: Expression) -> Optional[int]:
         if isinstance(index, IntExpr):

@@ -583,3 +583,28 @@ python_version = 3.3
 [[mypy]
 python_version = 3.6
 [out]
+
+[case testDisallowAnyUnimported]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+disallow_any = unimported
+ignore_missing_imports = True
+[file main.py]
+from unreal import F
+
+def f(x: F) -> None: pass
+[out]
+main.py:3: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
+
+[case testDisallowAnyEmpty]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+disallow_any =
+ignore_missing_imports = True
+[file main.py]
+from unreal import F
+
+def f(x: F) -> None: pass
+[out]

@@ -2259,7 +2259,7 @@ class SemanticAnalyzer(NodeVisitor):
                        is_classmethod: bool = False,
                        ) -> None:
             if is_classmethod:
-                first = [Argument(Var('cls'), TypeType(selftype), None, ARG_POS)]
+                first = [Argument(Var('cls'), TypeType.make_normalized(selftype), None, ARG_POS)]
             else:
                 first = [Argument(Var('self'), selftype, None, ARG_POS)]
             args = first + args
@@ -3109,6 +3109,19 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_op_expr(self, expr: OpExpr) -> None:
         expr.left.accept(self)
+
+        if expr.op in ('and', 'or'):
+            inferred = infer_condition_value(expr.left,
+                                             pyversion=self.options.python_version,
+                                             platform=self.options.platform)
+            if ((inferred == ALWAYS_FALSE and expr.op == 'and') or
+                    (inferred == ALWAYS_TRUE and expr.op == 'or')):
+                expr.right_unreachable = True
+                return
+            elif ((inferred == ALWAYS_TRUE and expr.op == 'and') or
+                    (inferred == ALWAYS_FALSE and expr.op == 'or')):
+                expr.right_always = True
+
         expr.right.accept(self)
 
     def visit_comparison_expr(self, expr: ComparisonExpr) -> None:
@@ -4052,7 +4065,7 @@ def infer_reachability_of_if_statement(s: IfStmt,
                                        pyversion: Tuple[int, int],
                                        platform: str) -> None:
     for i in range(len(s.expr)):
-        result = infer_if_condition_value(s.expr[i], pyversion, platform)
+        result = infer_condition_value(s.expr[i], pyversion, platform)
         if result in (ALWAYS_FALSE, MYPY_FALSE):
             # The condition is considered always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
@@ -4070,8 +4083,8 @@ def infer_reachability_of_if_statement(s: IfStmt,
             break
 
 
-def infer_if_condition_value(expr: Expression, pyversion: Tuple[int, int], platform: str) -> int:
-    """Infer whether if condition is always true/false.
+def infer_condition_value(expr: Expression, pyversion: Tuple[int, int], platform: str) -> int:
+    """Infer whether the given condition is always true/false.
 
     Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
     MYPY_TRUE if true under mypy and false at runtime, MYPY_FALSE if
@@ -4089,6 +4102,17 @@ def infer_if_condition_value(expr: Expression, pyversion: Tuple[int, int], platf
         name = expr.name
     elif isinstance(expr, MemberExpr):
         name = expr.name
+    elif isinstance(expr, OpExpr) and expr.op in ('and', 'or'):
+        left = infer_condition_value(expr.left, pyversion, platform)
+        if ((left == ALWAYS_TRUE and expr.op == 'and') or
+                (left == ALWAYS_FALSE and expr.op == 'or')):
+            # Either `True and <other>` or `False or <other>`: the result will
+            # always be the right-hand-side.
+            return infer_condition_value(expr.right, pyversion, platform)
+        else:
+            # The result will always be the left-hand-side (e.g. ALWAYS_* or
+            # TRUTH_VALUE_UNKNOWN).
+            return left
     else:
         result = consider_sys_version_info(expr, pyversion)
         if result == TRUTH_VALUE_UNKNOWN:

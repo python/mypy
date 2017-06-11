@@ -1292,12 +1292,25 @@ class TypeType(Type):
     # a generic class instance, a union, Any, a type variable...
     item = None  # type: Type
 
-    def __init__(self, item: Type, *, line: int = -1, column: int = -1) -> None:
+    def __init__(self, item: Union[Instance, AnyType, TypeVarType, TupleType, NoneTyp,
+                                   CallableType], *, line: int = -1, column: int = -1) -> None:
+        """To ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]], item of
+        type UnionType must be handled through make_normalized static method.
+        """
         super().__init__(line, column)
         if isinstance(item, CallableType) and item.is_type_obj():
             self.item = item.fallback
         else:
             self.item = item
+
+    @staticmethod
+    def make_normalized(item: Type, *, line: int = -1, column: int = -1) -> Type:
+        if isinstance(item, UnionType):
+            return UnionType.make_union(
+                [TypeType.make_normalized(union_item) for union_item in item.items],
+                line=line, column=column
+            )
+        return TypeType(item, line=line, column=column)  # type: ignore
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)
@@ -1314,9 +1327,9 @@ class TypeType(Type):
         return {'.class': 'TypeType', 'item': self.item.serialize()}
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeType':
+    def deserialize(cls, data: JsonDict) -> Type:
         assert data['.class'] == 'TypeType'
-        return TypeType(deserialize_type(data['item']))
+        return TypeType.make_normalized(deserialize_type(data['item']))
 
 
 #
@@ -1493,7 +1506,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return Overloaded(items=items)
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType(t.item.accept(self), line=t.line, column=t.column)
+        return TypeType.make_normalized(t.item.accept(self), line=t.line, column=t.column)
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
