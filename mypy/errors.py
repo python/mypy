@@ -253,7 +253,7 @@ class Errors:
 
     def report(self, line: int, column: int, message: str, blocker: bool = False,
                severity: str = 'error', file: str = None, only_once: bool = False,
-               origin_line: int = None) -> None:
+               origin_line: int = None, offset: int = 0) -> None:
         """Report message at the given line using the current error context.
 
         Args:
@@ -270,6 +270,8 @@ class Errors:
             type = None  # Omit type context if nested function
         if file is None:
             file = self.file
+        if offset:
+            message = " " * offset + message
         info = ErrorInfo(self.import_context(), file, self.current_module(), type,
                          self.function_or_member[-1], line, column, severity, message,
                          blocker, only_once,

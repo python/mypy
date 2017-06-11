@@ -155,12 +155,12 @@ class MessageBuilder:
         return self.errors.is_errors()
 
     def report(self, msg: str, context: Context, severity: str,
-               file: str = None, origin: Context = None) -> None:
+               file: str = None, origin: Context = None, offset: int = 0) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
-                               msg.strip(), severity=severity, file=file,
+                               msg.strip(), severity=severity, file=file, offset=offset,
                                origin_line=origin.get_line() if origin else None)
 
     def fail(self, msg: str, context: Context, file: str = None,
@@ -169,9 +169,9 @@ class MessageBuilder:
         self.report(msg, context, 'error', file=file, origin=origin)
 
     def note(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+             origin: Context = None, offset: int = 0) -> None:
         """Report a note (unless disabled)."""
-        self.report(msg, context, 'note', file=file, origin=origin)
+        self.report(msg, context, 'note', file=file, origin=origin, offset=offset)
 
     def warn(self, msg: str, context: Context, file: str = None,
              origin: Context = None) -> None:

@@ -2415,23 +2415,26 @@ class TypeChecker(NodeVisitor[None]):
         attribute flags, such as settable vs read-only or class variable vs
         instance variable.
         """
+        OFFSET = 4  # Four spaces, so that notes will look like this:
+        # note: 'Cls' is missing following 'Proto' member(s):
+        # note:     method, attr
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.fallback, Instance):
                 return
             subtype = subtype.fallback
         missing = get_missing_members(subtype, supertype)
         if missing:
-            self.note("'{}' missing following '{}' protocol members:"
+            self.note("'{}' is missing following '{}' protocol member(s):"
                       .format(subtype.type.fullname(), supertype.type.fullname()),
                       context)
-            self.note(', '.join(missing), context)
+            self.note(', '.join(missing), context, offset=OFFSET)
         conflict_types = get_conflict_types(subtype, supertype)
         if conflict_types:
-            self.note('Following members of {} have '
+            self.note('Following member(s) of {} have '
                       'conflicts:'.format(subtype), context)
             for name, got, expected in conflict_types:
                 self.note('{}: expected {}, got {}'.format(name, expected, got),
-                          context)
+                          context, offset=OFFSET)
         for name, subflags, superflags in get_all_flags(subtype, supertype):
             if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
                 self.note('Protocol member {}.{}: expected instance variable,'
@@ -2584,9 +2587,9 @@ class TypeChecker(NodeVisitor[None]):
         """Produce a warning message."""
         self.msg.warn(msg, context)
 
-    def note(self, msg: str, context: Context) -> None:
+    def note(self, msg: str, context: Context, offset: int = 0) -> None:
         """Produce a note."""
-        self.msg.note(msg, context)
+        self.msg.note(msg, context, offset=offset)
 
     def iterable_item_type(self, instance: Instance) -> Type:
         iterable = map_instance_to_supertype(

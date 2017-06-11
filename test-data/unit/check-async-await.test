@@ -94,8 +94,8 @@ async def f() -> int:
 [typing fixtures/typing-full.pyi]
 [out]
 main:7: error: Incompatible types in await (actual type Generator[int, None, str], expected type Awaitable[Any])
-main:7: note: 'typing.Generator' missing following 'typing.Awaitable' protocol members:
-main:7: note: __await__
+main:7: note: 'typing.Generator' is missing following 'typing.Awaitable' protocol member(s):
+main:7: note:     __await__
 
 [case testAwaitIteratorError]
 
@@ -108,8 +108,8 @@ async def f() -> int:
 [typing fixtures/typing-full.pyi]
 [out]
 main:6: error: Incompatible types in await (actual type Iterator[Any], expected type Awaitable[Any])
-main:6: note: 'typing.Iterator' missing following 'typing.Awaitable' protocol members:
-main:6: note: __await__
+main:6: note: 'typing.Iterator' is missing following 'typing.Awaitable' protocol member(s):
+main:6: note:     __await__
 
 [case testAwaitArgumentError]
 
@@ -122,8 +122,8 @@ async def f() -> int:
 [typing fixtures/typing-full.pyi]
 [out]
 main:5: error: Incompatible types in await (actual type "int", expected type Awaitable[Any])
-main:5: note: 'builtins.int' missing following 'typing.Awaitable' protocol members:
-main:5: note: __await__
+main:5: note: 'builtins.int' is missing following 'typing.Awaitable' protocol member(s):
+main:5: note:     __await__
 
 [case testAwaitResultError]
 
@@ -170,8 +170,8 @@ async def f() -> None:
 [typing fixtures/typing-full.pyi]
 [out]
 main:4: error: AsyncIterable expected
-main:4: note: 'builtins.list' missing following 'typing.AsyncIterable' protocol members:
-main:4: note: __aiter__
+main:4: note: 'builtins.list' is missing following 'typing.AsyncIterable' protocol member(s):
+main:4: note:     __aiter__
 main:4: error: List[int] has no attribute "__aiter__"
 
 [case testAsyncForTypeComments]
@@ -256,20 +256,20 @@ async def wrong_iterable(obj: Iterable[int]):
 
 [out]
 main:18: error: AsyncIterable expected
-main:18: note: 'typing.Iterable' missing following 'typing.AsyncIterable' protocol members:
-main:18: note: __aiter__
+main:18: note: 'typing.Iterable' is missing following 'typing.AsyncIterable' protocol member(s):
+main:18: note:     __aiter__
 main:18: error: Iterable[int] has no attribute "__aiter__"; maybe "__iter__"?
 main:19: error: Iterable expected
-main:19: note: '__main__.asyncify' missing following 'typing.Iterable' protocol members:
-main:19: note: __iter__
+main:19: note: '__main__.asyncify' is missing following 'typing.Iterable' protocol member(s):
+main:19: note:     __iter__
 main:19: error: asyncify[int] has no attribute "__iter__"; maybe "__aiter__"?
 main:20: error: AsyncIterable expected
-main:20: note: 'typing.Iterable' missing following 'typing.AsyncIterable' protocol members:
-main:20: note: __aiter__
+main:20: note: 'typing.Iterable' is missing following 'typing.AsyncIterable' protocol member(s):
+main:20: note:     __aiter__
 main:20: error: Iterable[int] has no attribute "__aiter__"; maybe "__iter__"?
 main:21: error: Iterable expected
-main:21: note: '__main__.asyncify' missing following 'typing.Iterable' protocol members:
-main:21: note: __iter__
+main:21: note: '__main__.asyncify' is missing following 'typing.Iterable' protocol member(s):
+main:21: note:     __iter__
 main:21: error: asyncify[int] has no attribute "__iter__"; maybe "__aiter__"?
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
@@ -307,8 +307,8 @@ class C:
     async def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
     async with C() as x:  # E: Incompatible types in "async with" for __aenter__ (actual type "int", expected type Awaitable[Any]) \
-                          # N: 'builtins.int' missing following 'typing.Awaitable' protocol members: \
-                          # N: __await__
+                          # N: 'builtins.int' is missing following 'typing.Awaitable' protocol member(s): \
+                          # N:     __await__
         pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
@@ -331,8 +331,8 @@ class C:
     def __aexit__(self, x, y, z) -> int: pass
 async def f() -> None:
     async with C() as x: # E: Incompatible types in "async with" for __aexit__ (actual type "int", expected type Awaitable[Any]) \
-                         # N: 'builtins.int' missing following 'typing.Awaitable' protocol members: \
-                         # N: __await__
+                         # N: 'builtins.int' is missing following 'typing.Awaitable' protocol member(s): \
+                         # N:     __await__
         pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
@@ -570,8 +570,8 @@ def h() -> None:
 
 [out]
 main:9: error: Iterable expected
-main:9: note: 'typing.AsyncGenerator' missing following 'typing.Iterable' protocol members:
-main:9: note: __iter__
+main:9: note: 'typing.AsyncGenerator' is missing following 'typing.Iterable' protocol member(s):
+main:9: note:     __iter__
 main:9: error: AsyncGenerator[int, None] has no attribute "__iter__"; maybe "__aiter__"?
 
 [case testAsyncGeneratorNoYieldFrom]
@@ -667,14 +667,14 @@ def plain_host_generator() -> Generator[str, None, None]:
 async def plain_host_coroutine() -> None:
     x = 0
     x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type Awaitable[Any]) \
-                                 # N: 'typing.Generator' missing following 'typing.Awaitable' protocol members: \
-                                 # N: __await__
+                                 # N: 'typing.Generator' is missing following 'typing.Awaitable' protocol member(s): \
+                                 # N:     __await__
     x = await plain_coroutine()
     x = await decorated_generator()
     x = await decorated_coroutine()
     x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type Awaitable[Any]) \
-                                # N: '__main__.It' missing following 'typing.Awaitable' protocol members: \
-                                # N: __await__
+                                # N: '__main__.It' is missing following 'typing.Awaitable' protocol member(s): \
+                                # N:     __await__
     x = await other_coroutine()
 
 @coroutine
@@ -692,14 +692,14 @@ def decorated_host_generator() -> Generator[str, None, None]:
 async def decorated_host_coroutine() -> None:
     x = 0
     x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type Awaitable[Any]) \
-                                 # N: 'typing.Generator' missing following 'typing.Awaitable' protocol members: \
-                                 # N: __await__
+                                 # N: 'typing.Generator' is missing following 'typing.Awaitable' protocol member(s): \
+                                 # N:     __await__
     x = await plain_coroutine()
     x = await decorated_generator()
     x = await decorated_coroutine()
     x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type Awaitable[Any]) \
-                                # N: '__main__.It' missing following 'typing.Awaitable' protocol members: \
-                                # N: __await__
+                                # N: '__main__.It' is missing following 'typing.Awaitable' protocol member(s): \
+                                # N:     __await__
     x = await other_coroutine()
 
 [builtins fixtures/async_await.pyi]
