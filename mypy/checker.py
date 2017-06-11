@@ -1112,6 +1112,13 @@ class TypeChecker(NodeVisitor[None]):
                 self.check_multiple_inheritance(typ)
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
+        """Check that protocol definition is compatible with declared
+        variances of type variables.
+
+        Note that we also prohibit declaring protocol classes as invariant
+        if they are actually covariant/contravariant, since this may break
+        transitivity of subtyping, see PEP 544.
+        """
         info = defn.info
         object_type = Instance(info.mro[-1], [])
         tvars = info.defn.type_vars

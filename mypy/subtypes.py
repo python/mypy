@@ -442,17 +442,20 @@ def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
     instance or class variable, and whether it is class or static method.
     """
     method = info.get_method(name)
+    setattr_meth = info.get_method('__setattr__')
     if method:
         # this could be settable property
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
-            if dec.var.is_settable_property:
+            if dec.var.is_settable_property or setattr_meth:
                 return {IS_SETTABLE}
         return set()
     node = info.get(name)
     if not node:
+        if setattr_meth:
+            return {IS_SETTABLE}
         return set()
     v = node.node
     if isinstance(v, Decorator):
@@ -514,6 +517,9 @@ def get_missing_members(left: Instance, right: Instance) -> List[str]:
 
 
 def get_conflict_types(left: Instance, right: Instance) -> List[Tuple[str, Type, Type]]:
+    """Find members that are defined in 'left' but have incompatible types.
+    Return them as a list of ('member', 'got', 'expected').
+    """
     assert right.type.is_protocol
     conflicts = []  # type: List[Tuple[str, Type, Type]]
     for member in right.type.protocol_members:

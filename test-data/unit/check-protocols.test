@@ -1585,6 +1585,9 @@ class PP(Protocol):
 class C:
     def __getattr__(self, attr: str) -> int:
         pass
+class C2(C):
+    def __setattr__(self, attr: str, val: int) -> None:
+        pass
 
 class D:
     def __getattr__(self, attr: str) -> str:
@@ -1597,6 +1600,7 @@ def fun_p(x: PP) -> None:
 
 fun(C())  # E: Argument 1 to "fun" has incompatible type "C"; expected "P" \
           # N: Protocol member __main__.P.attr: expected settable variable, got read-only attribute
+fun(C2())
 fun_p(D())  # E: Argument 1 to "fun_p" has incompatible type "D"; expected "PP" \
             # N: Following member(s) of __main__.D have conflicts: \
             # N:     attr: expected builtins.int, got builtins.str
