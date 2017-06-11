@@ -2,7 +2,7 @@ import fnmatch
 import pprint
 import sys
 
-from typing import Any, Mapping, Optional, Tuple, List, Pattern, Dict
+from typing import Mapping, Optional, Tuple, List, Pattern, Dict
 
 from mypy import defaults
 
@@ -19,6 +19,7 @@ class Options:
     PER_MODULE_OPTIONS = {
         "ignore_missing_imports",
         "follow_imports",
+        "disallow_any",
         "disallow_untyped_calls",
         "disallow_untyped_defs",
         "check_untyped_defs",
@@ -44,6 +45,7 @@ class Options:
         self.report_dirs = {}  # type: Dict[str, str]
         self.ignore_missing_imports = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
+        self.disallow_any = []  # type: List[str]
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False

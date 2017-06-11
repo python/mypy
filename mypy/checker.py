@@ -29,6 +29,7 @@ from mypy.nodes import (
     ARG_POS, MDEF,
     CONTRAVARIANT, COVARIANT)
 from mypy import nodes
+from mypy.typeanal import has_any_from_unimported_type
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, strip_type, TypeType,
@@ -56,6 +57,7 @@ from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
 from mypy.options import Options
+from mypy.plugin import Plugin
 
 from mypy import experiments
 
@@ -127,8 +129,12 @@ class TypeChecker(NodeVisitor[None]):
     # directly or indirectly.
     module_refs = None  # type: Set[str]
 
+    # Plugin that provides special type checking rules for specific library
+    # functions such as open(), etc.
+    plugin = None  # type: Plugin
+
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options,
-                 tree: MypyFile, path: str) -> None:
+                 tree: MypyFile, path: str, plugin: Plugin) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
@@ -139,7 +145,8 @@ class TypeChecker(NodeVisitor[None]):
         self.tree = tree
         self.path = path
         self.msg = MessageBuilder(errors, modules)
-        self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
+        self.plugin = plugin
+        self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg, self.plugin)
         self.scope = Scope(tree)
         self.binder = ConditionalTypeBinder()
         self.globals = tree.names
@@ -611,7 +618,15 @@ class TypeChecker(NodeVisitor[None]):
                                 self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                             if any(is_implicit_any(t) for t in fdef.type.arg_types):
                                 self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
-
+                    if 'unimported' in self.options.disallow_any:
+                        if fdef.type and isinstance(fdef.type, CallableType):
+                            ret_type = fdef.type.ret_type
+                            if has_any_from_unimported_type(ret_type):
+                                self.msg.unimported_type_becomes_any("Return type", ret_type, fdef)
+                            for idx, arg_type in enumerate(fdef.type.arg_types):
+                                if has_any_from_unimported_type(arg_type):
+                                    prefix = "Argument {} to \"{}\"".format(idx + 1, fdef.name())
+                                    self.msg.unimported_type_becomes_any(prefix, arg_type, fdef)
                 if name in nodes.reverse_op_method_set:
                     self.check_reverse_op_method(item, typ, name)
                 elif name in ('__getattr__', '__getattribute__'):
@@ -666,7 +681,7 @@ class TypeChecker(NodeVisitor[None]):
                             and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
                         isclass = defn.is_class or defn.name() in ('__new__', '__init_subclass__')
                         if isclass:
-                            ref_type = mypy.types.TypeType(ref_type)
+                            ref_type = mypy.types.TypeType.make_normalized(ref_type)
                         erased = erase_to_bound(arg_type)
                         if not is_subtype_ignoring_tvars(ref_type, erased):
                             note = None
@@ -1178,6 +1193,16 @@ class TypeChecker(NodeVisitor[None]):
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
         self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
+
+        if (s.type is not None and
+                'unimported' in self.options.disallow_any and
+                has_any_from_unimported_type(s.type)):
+            if isinstance(s.lvalues[-1], TupleExpr):
+                # This is a multiple assignment. Instead of figuring out which type is problematic,
+                # give a generic error message.
+                self.msg.unimported_type_becomes_any("A type on this line", AnyType(), s)
+            else:
+                self.msg.unimported_type_becomes_any("Type of variable", s.type, s)
 
         if len(s.lvalues) > 1:
             # Chained assignment (e.g. x = y = ...).
@@ -2705,13 +2730,10 @@ def convert_to_typetype(type_map: TypeMap) -> TypeMap:
     if type_map is None:
         return None
     for expr, typ in type_map.items():
-        if isinstance(typ, UnionType):
-            converted_type_map[expr] = UnionType([TypeType(t) for t in typ.items])
-        elif isinstance(typ, Instance):
-            converted_type_map[expr] = TypeType(typ)
-        else:
+        if not isinstance(typ, (UnionType, Instance)):
             # unknown type; error was likely reported earlier
             return {}
+        converted_type_map[expr] = TypeType.make_normalized(typ)
     return converted_type_map
 
 

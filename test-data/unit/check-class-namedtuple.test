@@ -541,7 +541,7 @@ class Base(NamedTuple):
         reveal_type(self.x)  # E: Revealed type is 'builtins.int'
         self.x = 3  # E: Property "x" defined in "Base" is read-only
         self[1]  # E: Tuple index out of range
-        self[T]  # E: Tuple index must be an integer literal
+        reveal_type(self[T])  # E: Revealed type is 'builtins.int'
         return self.x
     def bad_override(self) -> int:
         return self.x
@@ -570,6 +570,7 @@ reveal_type(Child(1).good_override())  # E: Revealed type is 'builtins.int'
 reveal_type(Base(1).bad_override())  # E: Revealed type is 'builtins.int'
 reveal_type(takes_base(Base(1)))  # E: Revealed type is 'builtins.int'
 reveal_type(takes_base(Child(1)))  # E: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleIllegalNames]
 from typing import Callable, NamedTuple
