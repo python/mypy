@@ -698,6 +698,7 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> Tuple[st
         # read first two lines and check if PEP-263 coding is present
         source_bytearray.extend(f.readline())
         source_bytearray.extend(f.readline())
+        m = hashlib.md5(source_bytearray)
 
         # check for BOM UTF-8 encoding and strip it out if present
         if source_bytearray.startswith(b'\xef\xbb\xbf'):
@@ -710,12 +711,14 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> Tuple[st
             if _encoding != 'mypy':
                 encoding = _encoding
 
-        source_bytearray.extend(f.read())
+        remainder = f.read()
+        m.update(remainder)
+        source_bytearray.extend(remainder)
         try:
-            source_bytearray.decode(encoding)
+            source_text = source_bytearray.decode(encoding)
         except LookupError as lookuperr:
             raise DecodeError(str(lookuperr))
-        return source_bytearray.decode(encoding), hashlib.md5(source_bytearray).hexdigest()
+        return source_text, m.hexdigest()
 
 
 def get_cache_names(id: str, path: str, cache_dir: str,
