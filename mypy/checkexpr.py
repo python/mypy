@@ -156,7 +156,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = type_object_type(node, self.named_type)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
-            result = self.named_type('types.ModuleType')
+            try:
+                result = self.named_type('types.ModuleType')
+            except KeyError:
+                # In test cases might 'types' may not be available.
+                # Fall back to a dummy 'object' type instead to
+                # avoid a crash.
+                result = self.named_type('builtins.object')
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
         else:
@@ -2035,10 +2041,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType()
 
     def visit_slice_expr(self, e: SliceExpr) -> Type:
+        expected = make_optional_type(self.named_type('builtins.int'))
         for index in [e.begin_index, e.end_index, e.stride]:
             if index:
                 t = self.accept(index)
-                self.chk.check_subtype(t, self.named_type('builtins.int'),
+                self.chk.check_subtype(t, expected,
                                        index, messages.INVALID_SLICE_INDEX)
         return self.named_type('builtins.slice')
 

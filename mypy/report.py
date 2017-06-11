@@ -396,7 +396,7 @@ class MemoryXmlReporter(AbstractReporter):
                 etree.SubElement(root, 'line',
                                  number=str(lineno),
                                  precision=stats.precision_names[status],
-                                 content=line_text[:-1])
+                                 content=line_text.rstrip('\n'))
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',

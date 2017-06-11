@@ -245,6 +245,15 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                     getattr_type = expand_type_by_instance(bound_method, typ)
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
+        else:
+            setattr_meth = info.get_method('__setattr__')
+            if setattr_meth and setattr_meth.info.fullname() != 'builtins.object':
+                setattr_func = function_type(setattr_meth, builtin_type('builtins.function'))
+                bound_type = bind_self(setattr_func, original_type)
+                typ = map_instance_to_supertype(itype, setattr_meth.info)
+                setattr_type = expand_type_by_instance(bound_type, typ)
+                if isinstance(setattr_type, CallableType) and len(setattr_type.arg_types) > 0:
+                    return setattr_type.arg_types[-1]
 
     if itype.type.fallback_to_any:
         return AnyType()

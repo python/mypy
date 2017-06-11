@@ -631,7 +631,8 @@ class TypeChecker(NodeVisitor[None]):
                     self.check_reverse_op_method(item, typ, name)
                 elif name in ('__getattr__', '__getattribute__'):
                     self.check_getattr_method(typ, defn)
-
+                elif name == '__setattr__':
+                    self.check_setattr_method(typ, defn)
                 # Refuse contravariant return type variable
                 if isinstance(typ.ret_type, TypeVarType):
                     if typ.ret_type.variance == CONTRAVARIANT:
@@ -927,6 +928,15 @@ class TypeChecker(NodeVisitor[None]):
                                    [nodes.ARG_POS, nodes.ARG_POS],
                                    [None, None],
                                    AnyType(),
+                                   self.named_type('builtins.function'))
+        if not is_subtype(typ, method_type):
+            self.msg.invalid_signature(typ, context)
+
+    def check_setattr_method(self, typ: CallableType, context: Context) -> None:
+        method_type = CallableType([AnyType(), self.named_type('builtins.str'), AnyType()],
+                                   [nodes.ARG_POS, nodes.ARG_POS, nodes.ARG_POS],
+                                   [None, None, None],
+                                   NoneTyp(),
                                    self.named_type('builtins.function'))
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature(typ, context)
@@ -1889,7 +1899,8 @@ class TypeChecker(NodeVisitor[None]):
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the
                     # function is not declared to return Any)
-                    if not isinstance(return_type, AnyType) and self.options.warn_return_any:
+                    if (self.options.warn_return_any and
+                            not is_proper_subtype(AnyType(), return_type)):
                         self.warn(messages.RETURN_ANY.format(return_type), s)
                     return
 

@@ -6,7 +6,7 @@ class object:
     def __init__(self) -> None: pass
 
 class type:
-    def __init__(self, x) -> None: pass
+    def __init__(self, x: typing.Any) -> None: pass
 
 class function: pass
 
