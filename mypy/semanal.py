@@ -43,6 +43,7 @@ TODO: Check if the third pass slows down type checking significantly.
   traverse the entire AST.
 """
 
+import os.path
 from collections import OrderedDict
 from contextlib import contextmanager
 
@@ -270,6 +271,10 @@ class SemanticAnalyzer(NodeVisitor):
                 MODULE_REF, self.modules['builtins'], self.cur_mod_id)
 
         for name in implicit_module_attrs:
+            # __path__ is only defined on __init__.py files
+            if name == '__path__' and os.path.basename(fnam) not in ('__init__.py', '__init__.pyi'):
+                continue
+
             v = self.globals[name].node
             if isinstance(v, Var):
                 v.type = self.anal_type(v.type)
@@ -3546,6 +3551,14 @@ class FirstPass(NodeVisitor):
                 else:
                     typ = UnionType([UnboundType('__builtins__.str'),
                                      UnboundType('__builtins__.unicode')])
+            elif name == '__path__':
+                # __path__ is only defined on __init__.py files
+                if os.path.basename(fnam).lower() not in ('__init__.py', '__init__.pyi'):
+                    continue
+                # typ = self.sem.named_type('builtins.list', [self.sem.named_type('builtins.str')])
+                # typ = UnboundType('__builtins__.list', args=[UnboundType('__builtins__.str')])
+                # self.visit_import(Import(ids=[('typing', None)]))
+                typ = UnboundType('typing.List', args=[UnboundType('__builtins__.str')])
             else:
                 assert t is not None, 'type should be specified for {}'.format(name)
                 typ = UnboundType(t)
