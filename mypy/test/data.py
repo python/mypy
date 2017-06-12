@@ -6,12 +6,13 @@ import posixpath
 import re
 from os import remove, rmdir
 import shutil
-from mypy.test.config import test_data_prefix, test_temp_dir
-
-import pytest  # type: ignore  # no pytest in typeshed
+from importlib import import_module
 from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict
 
+import pytest  # type: ignore  # no pytest in typeshed
+
 from mypy.myunit import TestCase, SkipTestCaseException
+from mypy.test.config import test_data_prefix, test_temp_dir
 
 
 def parse_test_cases(
@@ -71,7 +72,8 @@ def parse_test_cases(
                     # Use a custom source file for the std module.
                     arg = p[i].arg
                     assert arg is not None
-                    mpath = join(os.path.dirname(path), arg)
+                    fixtures_path = os.path.join(os.path.dirname(path), '..')
+                    mpath = join(fixtures_path, arg)
                     if p[i].id == 'builtins':
                         fnam = 'builtins.pyi'
                     else:
@@ -158,7 +160,6 @@ class DataDrivenTestCase(TestCase):
     output = None  # type: List[str]  # Output for the first pass
     output2 = None  # type: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
 
-    file = ''
     line = 0
 
     # (file path, file content) tuples
@@ -173,7 +174,7 @@ class DataDrivenTestCase(TestCase):
                  input: List[str],
                  output: List[str],
                  output2: Dict[int, List[str]],
-                 file: str,
+                 file: Any,  # py._path.local.LocalPath
                  line: int,
                  lastline: int,
                  perform: Callable[['DataDrivenTestCase'], None],
@@ -464,58 +465,59 @@ def pytest_addoption(parser: Any) -> None:
 
 
 # This function name is special to pytest.  See
-# http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
-def pytest_pycollect_makeitem(collector: Any, name: str, obj: Any) -> Any:
-    if not isinstance(obj, type) or not issubclass(obj, DataSuite):
-        return None
-    return MypyDataSuite(name, parent=collector)
+# https://docs.pytest.org/en/latest/writing_plugins.html?#_pytest.hookspec.pytest_collect_file
+def pytest_collect_file(parent: pytest.Collector, path: Any) -> pytest.Item:
+    if 'test-data' not in path.dirname:
+        return
+    return DataTestCollector(path=path, parent=parent)
 
 
-# An instance of this class is created for each subclass of DataSuite encountered by pytest;
-# pytest.Class machinery sets instance attribute obj: Type[DataSuite] to that subclass.
-# Beyond this, we should not rely on obj-related machinery, since it's undocumented and implicit.
-class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
-    # Will yield collectors that represent individual case files.
-    def collect(self) -> Iterator['MypyDataCaseFile']:
-        for case_file in self.obj.case_files:
-            yield MypyDataCaseFile(case_file, self)
+class DataTestCollector(pytest.File):  # type: ignore
+    def __init__(self, path: Any, parent: pytest.Collector) -> None:
+        super().__init__(path, parent)
 
-
-# An instance of this class is tied (via .name and .parent) to a specific case file.
-class MypyDataCaseFile(pytest.Collector):  # type: ignore  # inheriting from Any
     def collect(self) -> Iterator['MypyDataCase']:
-        for case in parse_test_cases(os.path.join(test_data_prefix, self.name),
-                                     None, test_temp_dir, True):
-            yield MypyDataCase(case.name, self, case)
+        test_filename = self.fspath.basename.split('-')[0]
+        test_handler_mod_name = 'mypy.test.test' + test_filename
+        test_handler_mod = import_module(test_handler_mod_name)
+        test_handler = test_handler_mod.test_handler  # type: ignore
+        for case in parse_test_cases(
+            path=self.fspath,
+            perform=None,
+            base_path=test_temp_dir,
+            optional_out=True,
+        ):
+            yield MypyDataCase(name=case.name, parent=self, case=case, test_handler=test_handler)
 
 
-# An instance of this class is tied (via .obj) to a specific case.
-# Note that despite the use of the obj attribute, the obj-related pytest machinery is not invoked.
-# TODO: rename obj into case.
+# An instance of this class wraps an individual test case as a pytest.Item.
+# Node is a node in collection tree; its subclasses: Collection = an internal node, Item = a leaf.
 class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
-    def __init__(self, name: str, parent: MypyDataCaseFile, obj: DataDrivenTestCase) -> None:
+    def __init__(self, name: str, parent: pytest.Collector, case: DataDrivenTestCase,
+                 test_handler: Callable[..., Any]) -> None:
         self.skip = False
         if name.endswith('-skip'):
             self.skip = True
             name = name[:-len('-skip')]
 
         super().__init__(name, parent)
-        self.obj = obj
+        self.case = case
+        self.test_handler = test_handler
 
     def runtest(self) -> None:
         if self.skip:
             pytest.skip()
         update_data = self.config.getoption('--update-data', False)
-        self.parent.parent.obj(update_data=update_data).run_case(self.obj)
+        self.test_handler(update_data=update_data).run_case(self.case)
 
     def setup(self) -> None:
-        self.obj.set_up()
+        self.case.set_up()
 
     def teardown(self) -> None:
-        self.obj.tear_down()
+        self.case.tear_down()
 
     def reportinfo(self) -> Tuple[str, int, str]:
-        return self.obj.file, self.obj.line, self.obj.name
+        return self.case.file, self.case.line, self.case.name
 
     def repr_failure(self, excinfo: Any) -> str:
         if excinfo.errisinstance(SystemExit):
@@ -528,7 +530,7 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
             self.parent._prunetraceback(excinfo)
             excrepr = excinfo.getrepr(style='short')
 
-        return "data: {}:{}:\n{}".format(self.obj.file, self.obj.line, excrepr)
+        return "data: {}:{}:\n{}".format(self.case.file, self.case.line, excrepr)
 
 
 class DataSuite:

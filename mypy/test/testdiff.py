@@ -15,10 +15,6 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 
 class ASTDiffSuite(DataSuite):
-    case_files = [
-        'diff.test'
-    ]
-
     def __init__(self, *, update_data: bool) -> None:
         pass
 
@@ -62,3 +58,6 @@ class ASTDiffSuite(DataSuite):
             # TODO: Is it okay to return None?
             return e.messages, None
         return result.errors, result.files
+
+
+test_handler = ASTDiffSuite

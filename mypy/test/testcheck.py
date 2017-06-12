@@ -25,68 +25,16 @@ from mypy.options import Options
 from mypy import experiments
 
 
-# List of files that contain test case descriptions.
 class TypeCheckSuite(DataSuite):
-    case_files = [
-        'check-basic.test',
-        'check-callable.test',
-        'check-classes.test',
-        'check-statements.test',
-        'check-generics.test',
-        'check-dynamic-typing.test',
-        'check-inference.test',
-        'check-inference-context.test',
-        'check-kwargs.test',
-        'check-overloading.test',
-        'check-type-checks.test',
-        'check-abstract.test',
-        'check-multiple-inheritance.test',
-        'check-super.test',
-        'check-modules.test',
-        'check-typevar-values.test',
-        'check-unsupported.test',
-        'check-unreachable-code.test',
-        'check-unions.test',
-        'check-isinstance.test',
-        'check-lists.test',
-        'check-namedtuple.test',
-        'check-typeddict.test',
-        'check-type-aliases.test',
-        'check-ignore.test',
-        'check-type-promotion.test',
-        'check-semanal-error.test',
-        'check-flags.test',
-        'check-incremental.test',
-        'check-serialize.test',
-        'check-bound.test',
-        'check-optional.test',
-        'check-fastparse.test',
-        'check-warnings.test',
-        'check-async-await.test',
-        'check-newtype.test',
-        'check-class-namedtuple.test',
-        'check-selftype.test',
-        'check-python2.test',
-        'check-columns.test',
-        'check-functions.test',
-        'check-tuples.test',
-        'check-expressions.test',
-        'check-generic-subtyping.test',
-        'check-varargs.test',
-        'check-newsyntax.test',
-        'check-underscores.test',
-        'check-classvar.test',
-        'check-enum.test'
-    ]
-
     def __init__(self, *, update_data: bool = False) -> None:
         self.update_data = update_data
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        filename = testcase.file.basename
         incremental = ('incremental' in testcase.name.lower()
-                       or 'incremental' in testcase.file
-                       or 'serialize' in testcase.file)
-        optional = 'optional' in testcase.file
+                       or 'incremental' in filename
+                       or 'serialize' in filename)
+        optional = 'optional' in filename
         old_strict_optional = experiments.STRICT_OPTIONAL
         try:
             if incremental:
@@ -120,6 +68,7 @@ class TypeCheckSuite(DataSuite):
             shutil.rmtree(dn)
 
     def run_case_once(self, testcase: DataDrivenTestCase, incremental_step: int = 0) -> None:
+        filename = testcase.file.basename
         find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
@@ -151,7 +100,7 @@ class TypeCheckSuite(DataSuite):
         options = self.parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
-        if 'optional' in testcase.file:
+        if 'optional' in filename:
             options.strict_optional = True
         if incremental_step:
             options.incremental = True
@@ -190,7 +139,7 @@ class TypeCheckSuite(DataSuite):
 
         if output != a and self.update_data:
             update_testcase_output(testcase, a)
-        assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
+        assert_string_arrays_equal(output, a, msg.format(filename, testcase.line))
 
         if incremental_step and res:
             if options.follow_imports == 'normal' and testcase.output is None:
@@ -321,6 +270,7 @@ class TypeCheckSuite(DataSuite):
 
     def parse_options(self, program_text: str, testcase: DataDrivenTestCase,
                       incremental_step: int) -> Options:
+        filename = testcase.file.basename
         options = Options()
         flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
         if incremental_step > 1:
@@ -342,6 +292,9 @@ class TypeCheckSuite(DataSuite):
         # Allow custom python version to override testcase_pyversion
         if (not flag_list or
                 all(flag not in flag_list for flag in ['--python-version', '-2', '--py2'])):
-            options.python_version = testcase_pyversion(testcase.file, testcase.name)
+            options.python_version = testcase_pyversion(filename, testcase.name)
 
         return options
+
+
+test_handler = TypeCheckSuite

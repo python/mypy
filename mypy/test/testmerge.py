@@ -18,7 +18,7 @@ from mypy.strconv import StrConv, indent
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
-from mypy.test.testtypegen import ignore_node
+from mypy.test.myunit.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type
 
@@ -31,10 +31,6 @@ AST = 'AST'
 
 
 class ASTMergeSuite(DataSuite):
-    case_files = [
-        'merge.test'
-    ]
-
     def __init__(self, *, update_data: bool) -> None:
         self.str_conv = StrConv(show_ids=True)
         self.id_mapper = self.str_conv.id_mapper
@@ -195,3 +191,6 @@ class ASTMergeSuite(DataSuite):
                                                 expr.line,
                                                 typ.accept(self.type_str_conv)))
         return a
+
+
+test_handler = ASTMergeSuite

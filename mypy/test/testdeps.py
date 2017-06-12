@@ -16,10 +16,6 @@ from mypy.types import Type
 
 
 class GetDependenciesSuite(DataSuite):
-    case_files = [
-        'deps.test'
-    ]
-
     def __init__(self, *, update_data: bool) -> None:
         pass
 
@@ -55,3 +51,6 @@ class GetDependenciesSuite(DataSuite):
             # TODO: Should perhaps not return None here.
             return e.messages, None, None
         return result.errors, result.files, result.types
+
+
+test_handler = GetDependenciesSuite

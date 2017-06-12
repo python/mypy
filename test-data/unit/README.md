@@ -99,12 +99,15 @@ For example, to run unit tests only, which run pretty quickly:
 The unit test suites are driven by a mixture of test frameworks: mypy's own
 `myunit` framework, and `pytest`, which we're in the process of migrating to.
 Test suites for individual components are in the files `mypy/test/test*.py`.
-You can run many of these individually by doing `runtests.py testfoobar`. For
-finer control over which unit tests are run and how, you can run `py.test` or
-`scripts/myunit` directly, or pass inferior arguments via `-a`:
+You can run many of these individually by doing `runtests.py testfoobar`.
 
-    $ py.test mypy/test/testcheck.py -v -k MethodCall
-    $ ./runtests.py -v 'pytest mypy/test/testcheck' -a -v -a -k -a MethodCall
+For finer control over which unit tests are run and how, you can run
+`py.test` or `scripts/myunit` directly, or pass inferior arguments via `-a`
+(use `-n0` for a short pytest run to avoid a long delay while distributed
+computation is being set up):
+
+    $ py.test -v mypy\test\pytest\testextensions.py -n0
+    $ py.test -v -k MethodCall -n0
 
     $ PYTHONPATH=$PWD scripts/myunit -m mypy.test.testlex -v '*backslash*'
     $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
@@ -135,7 +138,10 @@ To run the linter:
 Many test suites store test case descriptions in text files
 (`test-data/unit/*.test`). The module `mypy.test.data` parses these
 descriptions. The package `mypy.myunit` contains the test framework used for
-the non-checker test cases.
+the non-checker test cases. You can specify a particular `*.test` file to use
+as you would specify a regular file with pytest:
+
+    $ py.test test-data/unit/pytest/check-basic.test -n0
 
 Python evaluation test cases are a little different from unit tests
 (`mypy/test/testpythoneval.py`, `test-data/unit/pythoneval.test`). These
@@ -148,10 +154,11 @@ there are logical cores the `runtests.py` process is allowed to use (on
 some platforms this information isn't available, so 2 processes are used by
 default). You can change the number of workers using `-j` option.
 
-All pytest tests run as a single test from the perspective of `runtests.py`,
-and so `-j` option has no effect on them. Instead, `pytest` itself determines
-the number of processes to use. The default (set in `./pytest.ini`) is the
-number of logical cores; this can be overridden using `-n` option.
+All pytest tests run as a single test from the perspective of `runtests.py`.
+
+however, `-j` option is automatically repeated as `-n` option in pytest.
+Without an explicit `-j` or `-n`, `pytest` uses as many processes as there
+are logical cores (see `pytest.ini` for the relevant defaults).
 
 Note that running more processes than logical cores is likely to
 significantly decrease performance; the relevant count is the number of
