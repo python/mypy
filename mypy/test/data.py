@@ -73,8 +73,7 @@ def parse_test_cases(
                     # Use an alternative stub file for the builtins module.
                     arg = p[i].arg
                     assert arg is not None
-                    fixtures_path = os.path.join(os.path.dirname(path), '..')
-                    mpath = join(fixtures_path, arg)
+                    mpath = join(os.path.dirname(path), '..', arg)
                     if p[i].id == 'builtins':
                         fnam = 'builtins.pyi'
                     else:
@@ -86,7 +85,7 @@ def parse_test_cases(
                     # Use an alternative stub file for the typing module.
                     arg = p[i].arg
                     assert arg is not None
-                    src_path = join(os.path.dirname(path), arg)
+                    src_path = join(os.path.dirname(path), '..', arg)
                     with open(src_path) as f:
                         files.append((join(base_path, 'typing.pyi'), f.read()))
                 elif re.match(r'stale[0-9]*$', p[i].id):
