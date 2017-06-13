@@ -97,7 +97,7 @@ def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) 
                        options=options)
 
 
-disallow_any_options = ['unimported', 'expr']
+disallow_any_options = ['unimported', 'expr', 'unannotated']
 
 
 def disallow_any_argument_type(raw_options: str) -> List[str]:
@@ -378,7 +378,7 @@ def process_options(args: List[str],
     parser.parse_args(args, dummy)
     config_file = dummy.config_file
     if config_file is not None and not os.path.exists(config_file):
-        parser.error("Cannot file config file '%s'" % config_file)
+        parser.error("Cannot find config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
     options = Options()
@@ -426,6 +426,9 @@ def process_options(args: List[str],
     if special_opts.no_fast_parser:
         print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
               "is now mypy's default and only parser.")
+
+    if 'unannotated' in options.disallow_any:
+        options.disallow_untyped_defs = True
 
     # Check for invalid argument combinations.
     if require_targets:
@@ -612,6 +615,7 @@ config_types = {
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
+    'plugins': lambda s: [p.strip() for p in s.split(',')],
 }
 
 SHARED_CONFIG_FILES = ('setup.cfg',)
@@ -723,6 +727,8 @@ def parse_section(prefix: str, template: Options,
         except ValueError as err:
             print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
             continue
+        if key == 'disallow_any':
+            results['disallow_untyped_defs'] = v and 'unannotated' in v
         if key == 'silent_imports':
             print("%s: silent_imports has been replaced by "
                   "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)

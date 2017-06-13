@@ -44,6 +44,12 @@ def f():
     1 + "str"
 [out]
 main:2: error: Function is missing a type annotation
+[case testUntypedDefDisallowUnannotated]
+# flags: --disallow-any=unannotated
+def f():
+    1 + "str"
+[out]
+main:2: error: Function is missing a type annotation
 
 [case testSubclassingAny]
 # flags: --disallow-subclassing-any
