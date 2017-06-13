@@ -113,6 +113,9 @@ class Options:
         self.debug_cache = False
         self.quick_and_dirty = False
 
+        # Paths of user plugins
+        self.plugins = []  # type: List[str]
+
         # Per-module options (raw)
         self.per_module_options = {}  # type: Dict[Pattern[str], Dict[str, object]]
 

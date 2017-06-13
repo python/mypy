@@ -42,7 +42,7 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.plugin import DefaultPlugin
+from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 
 
 # We need to know the location of this file to load data, but
@@ -183,7 +183,9 @@ def build(sources: List[BuildSource],
                            reports=reports,
                            options=options,
                            version_id=__version__,
-                           )
+                           plugin=DefaultPlugin(options.python_version))
+
+    manager.plugin = load_custom_plugins(manager.plugin, options, manager.errors)
 
     try:
         graph = dispatch(sources, manager)
@@ -334,6 +336,67 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
+def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors) -> Plugin:
+    """Load custom plugins if any are configured.
+
+    Return a plugin that chains all custom plugins (if any) and falls
+    back to default_plugin.
+    """
+
+    def plugin_error(message: str) -> None:
+        errors.report(0, 0, message)
+        errors.raise_error()
+
+    custom_plugins = []
+    for plugin_path in options.plugins:
+        if options.config_file:
+            # Plugin paths are relative to the config file location.
+            plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
+        errors.set_file(plugin_path, None)
+
+        if not os.path.isfile(plugin_path):
+            plugin_error("Can't find plugin")
+        plugin_dir = os.path.dirname(plugin_path)
+        fnam = os.path.basename(plugin_path)
+        if not fnam.endswith('.py'):
+            plugin_error("Plugin must have .py extension")
+        module_name = fnam[:-3]
+        import importlib
+        sys.path.insert(0, plugin_dir)
+        try:
+            m = importlib.import_module(module_name)
+        except Exception:
+            print('Error importing plugin {}\n'.format(plugin_path))
+            raise  # Propagate to display traceback
+        finally:
+            assert sys.path[0] == plugin_dir
+            del sys.path[0]
+        if not hasattr(m, 'plugin'):
+            plugin_error('Plugin does not define entry point function "plugin"')
+        try:
+            plugin_type = getattr(m, 'plugin')(__version__)
+        except Exception:
+            print('Error calling the plugin(version) entry point of {}\n'.format(plugin_path))
+            raise  # Propagate to display traceback
+        if not isinstance(plugin_type, type):
+            plugin_error(
+                'Type object expected as the return value of "plugin" (got {!r})'.format(
+                    plugin_type))
+        if not issubclass(plugin_type, Plugin):
+            plugin_error(
+                'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin"')
+        try:
+            custom_plugins.append(plugin_type(options.python_version))
+        except Exception:
+            print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
+            raise  # Propagate to display traceback
+    if not custom_plugins:
+        return default_plugin
+    else:
+        # Custom plugins take precendence over built-in plugins.
+        return ChainedPlugin(options.python_version, custom_plugins + [default_plugin])
+
+
 # TODO: Get rid of all_types.  It's not used except for one log message.
 #       Maybe we could instead publish a map from module ID to its type_map.
 class BuildManager:
@@ -357,6 +420,7 @@ class BuildManager:
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked
       version_id:      The current mypy version (based on commit id when possible)
+      plugin:          Active mypy plugin(s)
     """
 
     def __init__(self, data_dir: str,
@@ -365,7 +429,8 @@ class BuildManager:
                  source_set: BuildSourceSet,
                  reports: Reports,
                  options: Options,
-                 version_id: str) -> None:
+                 version_id: str,
+                 plugin: Plugin) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = Errors(options.show_error_context, options.show_column_numbers)
@@ -385,6 +450,7 @@ class BuildManager:
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
+        self.plugin = plugin
 
     def maybe_swap_for_shadow_path(self, path: str) -> str:
         if (self.options.shadow_file and
@@ -1549,9 +1615,8 @@ class State:
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            plugin = DefaultPlugin(self.options.python_version)
             self.type_checker = TypeChecker(manager.errors, manager.modules, self.options,
-                                            self.tree, self.xpath, plugin)
+                                            self.tree, self.xpath, manager.plugin)
             self.type_checker.check_first_pass()
 
     def type_check_second_pass(self) -> bool:

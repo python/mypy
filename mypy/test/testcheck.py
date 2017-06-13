@@ -76,6 +76,7 @@ files = [
     'check-classvar.test',
     'check-enum.test',
     'check-incomplete-fixture.test',
+    'check-custom-plugin.test',
 ]
 
 
@@ -261,7 +262,8 @@ class TypeCheckSuite(DataSuite):
         for line in a:
             m = re.match(r'([^\s:]+):\d+: error:', line)
             if m:
-                p = m.group(1).replace('/', os.path.sep)
+                # Normalize to Linux paths.
+                p = m.group(1).replace(os.path.sep, '/')
                 hits.add(p)
         return hits
 
