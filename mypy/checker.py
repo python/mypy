@@ -1736,7 +1736,7 @@ class TypeChecker(NodeVisitor[None]):
             # '...' is always a valid initializer in a stub.
             return AnyType()
         else:
-            always_allow_any = lvalue_type and not isinstance(lvalue_type, AnyType)
+            always_allow_any = lvalue_type is not None and not isinstance(lvalue_type, AnyType)
             rvalue_type = self.expr_checker.accept(rvalue, lvalue_type,
                                                    always_allow_any=always_allow_any)
             if isinstance(rvalue_type, DeletedType):

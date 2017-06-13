@@ -515,17 +515,28 @@ main:6: error: A type on this line becomes "Any" due to an unfollowed import
 def g(s):
     return s  # E: Expressions of type "Any" are disallowed (has type "Any")
 
-g(0)
-
-v = g(1)  # E: Expressions of type "Any" are disallowed (has type "Any")
-w: int = g(1)
+g(0)  # E: Parameter 1 to "g" has disallowed type "Any"
+w: int = g(1)  # E: Parameter 1 to "g" has disallowed type "Any"
 
 [case testDisallowAnyExprExplicitAnyParam]
-from typing import Any
+# flags: --disallow-any=expr
+from typing import Any, List
 def f(s: Any) -> None:
     pass
 
+def g(s: List[Any]) -> None:
+    pass
+
 f(0)
+
+# because expected type is List[Any] the inferred type of [''] is List[Any], which causes
+# more than one error on the line below
+g([''])
+[out]
+main:9: error: Parameter 1 to "f" has disallowed type "Any"
+main:13: error: Parameter 1 to "g" contains disallowed type "Any" (List[Any])
+main:13: error: Parameter 1 to <list> has disallowed type "Any"
+main:13: error: Expressions of type that contains type "Any" are disallowed (has type List[Any])
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExprAllowsAnyInCast]
@@ -559,5 +570,6 @@ k = l[0]
 [builtins fixtures/list.pyi]
 [out]
 main:5: error: Expressions of type that contains type "Any" are disallowed (has type List[Any])
+main:5: error: Parameter 1 to "append" of "list" has disallowed type "Any"
 main:6: error: Expressions of type that contains type "Any" are disallowed (has type List[Any])
 main:6: error: Expressions of type "Any" are disallowed (has type "Any")
