@@ -274,6 +274,22 @@ Here are some more useful flags:
   re-check your code without ``--strict-optional`` to ensure new type errors
   are not introduced.
 
+.. _disallow-any:
+
+- ``--disallow-any`` disallows various types of ``Any`` in a module.
+  The option takes a comma-separated list of the following values:
+  ``unimported``, ``unannotated``.
+
+  ``unimported`` disallows usage of types that come from unfollowed imports
+  (such types become aliases for ``Any``). Unfollowed imports occur either
+  when the imported module does not exist or when ``--follow-imports=skip``
+  is set.
+
+  ``unannotated`` disallows function definitions that are not fully
+  typed (i.e. that are missing an explicit type annotation for any
+  of the parameters or the return type). ``unannotated`` option is
+  interchangeable with ``--disallow-untyped-defs``.
+
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
 
