@@ -9,6 +9,7 @@ from mypy.version import __version__
 from mypy.options import Options
 from mypy.report import Reports
 from mypy.plugin import Plugin
+from mypy import defaults
 
 
 class GraphSuite(Suite):
@@ -43,7 +44,7 @@ class GraphSuite(Suite):
             reports=Reports('', {}),
             options=Options(),
             version_id=__version__,
-            plugin=Plugin((3, 6)),
+            plugin=Plugin(defaults.PYTHON3_VERSION),
         )
         return manager
 
