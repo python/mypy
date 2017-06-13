@@ -516,7 +516,6 @@ def g(s):
     return s  # E: Expressions of type "Any" are disallowed (has type "Any")
 
 g(0)
-g('hello')
 
 v = g(1)  # E: Expressions of type "Any" are disallowed (has type "Any")
 w: int = g(1)
@@ -527,7 +526,6 @@ def f(s: Any) -> None:
     pass
 
 f(0)
-f('hello')
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExprAllowsAnyInCast]
@@ -550,21 +548,6 @@ class Foo:
 z: int = Foo().g
 m: Any = Foo().g
 [builtins fixtures/list.pyi]
-
-[case testDisallowAnyExprAllowsNonExistentMembers]
-# flags: --disallow-any=expr
-from typing import cast
-class Foo: pass
-
-i: int = Foo.doo()
-j = cast(int, Foo.doo())
-k = Foo.doo()
-[builtins fixtures/list.pyi]
-[out]
-main:5: error: Type[Foo] has no attribute "doo"
-main:6: error: Type[Foo] has no attribute "doo"
-main:7: error: Type[Foo] has no attribute "doo"
-main:7: error: Expressions of type "Any" are disallowed (has type "Any")
 
 [case testDisallowAnyExprGeneric]
 # flags: --disallow-any=expr
