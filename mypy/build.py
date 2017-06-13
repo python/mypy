@@ -811,6 +811,22 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     return m
 
 
+def random_string() -> str:
+    return binascii.hexlify(os.urandom(8)).decode('ascii')
+
+
+def atomic_write(filename: str, *lines: str) -> bool:
+    tmp_filename = filename + '.' + random_string()
+    try:
+        with open(tmp_filename, 'w') as f:
+            for line in lines:
+                f.write(line)
+        os.replace(tmp_filename, filename)
+    except os.error as err:
+        return False
+    return True
+
+
 def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
                   manager: BuildManager) -> Optional[CacheMeta]:
     '''Checks whether the cached AST of this module can be used.
@@ -820,12 +836,10 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
       Original meta, if mtime/size matched.
       Meta with mtime updated to match source file, if hash/size matched but mtime didn't.
     '''
-    # This requires two steps. The first is obvious: we check that the module source file
-    # contents is the same as it was when the cache file was created. The second is not
-    # obvious: we need to check that the dependencies we relied on when creating that
-    # cache file have not changed. We use cache file mtime as a way to propagate
-    # information about changes in the dependencies. Therefore, in the second step, we
-    # check that the cache file itself was not updated since its metadata was recorded.
+    # This requires two steps. The first one is obvious: we check that the module source file
+    # contents is the same as it was when the cache data file was created. The second one is not
+    # too obvious: we check that the cache data file mtime has not changed; it is needed because
+    # we use cache data file mtime to propagate information about changes in the dependencies.
 
     if meta is None:
         return None
@@ -845,13 +859,14 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
         else:
             manager.log('Metadata ok for {}: file {} (match on size, hash)'.format(id, path))
             # Optimization: update meta.mtime (otherwise, this mismatch will not disappear).
-            meta = meta._replace(mtime = st.st_mtime)
+            meta = meta._replace(mtime=st.st_mtime)
             if manager.options.debug_cache:
                 meta_str = json.dumps(meta, indent=2, sort_keys=True)
             else:
                 meta_str = json.dumps(meta)
             meta_json, _ = get_cache_names(id, os.path.abspath(path), manager)
-            manager.log('Updating mtime {} {} {} {}'.format(id, path, meta_json, meta.mtime))
+            manager.log('Updating mtime for {}: file {}, meta {}, mtime {}'
+                        .format(id, path, meta_json, meta.mtime))
             atomic_write(meta_json, meta_str)  # Ignore errors, since this is just an optimization.
 
     # It's a match on (id, path, mtime/hash, size).
@@ -864,26 +879,11 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
     return meta
 
 
-def random_string() -> str:
-    return binascii.hexlify(os.urandom(8)).decode('ascii')
-
-
 def compute_hash(text: str) -> str:
     # We use md5 instead of the builtin hash(...) function because the output of hash(...)
     # can differ between runs due to hash randomization (enabled by default in Python 3.3).
     # See the note in https://docs.python.org/3/reference/datamodel.html#object.__hash__.
     return hashlib.md5(text.encode('utf-8')).hexdigest()
-
-
-def atomic_write(filename: str, s: str) -> bool:
-    tmp_filename = filename + '.' + random_string()
-    try:
-        with open(tmp_filename, 'w') as f:
-            f.write(s)
-        os.replace(tmp_filename, filename)
-    except os.error as err:
-        return False
-    return True
 
 
 def write_cache(id: str, path: str, tree: MypyFile,
@@ -950,8 +950,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
         manager.trace("Interface for {} is unchanged".format(id))
     else:
         manager.trace("Interface for {} has changed".format(id))
-        data_str += '\n'  # Fast in CPython (it does this in-place if len(data_str) under 10^6)
-        if not atomic_write(data_json, data_str):
+        if not atomic_write(data_json, data_str, '\n'):
             # Most likely the error is the replace() call
             # (see https://github.com/python/mypy/issues/3215).
             manager.log("Error writing data JSON file {}".format(data_json))
