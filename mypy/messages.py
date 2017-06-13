@@ -898,8 +898,12 @@ class MessageBuilder:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
 
     def disallowed_any_type(self, typ: Type, context: Context) -> None:
-        self.fail('Expressions of type "Any" are disallowed '
-                  '(has type {})'.format(self.format(typ)), context)
+        if isinstance(typ, AnyType):
+            infix = 'type'
+        else:
+            infix = 'type that contains type'
+        self.fail('Expressions of {} "Any" are disallowed '
+                  '(has type {})'.format(infix, self.format(typ)), context)
 
 
 def capitalize(s: str) -> str:

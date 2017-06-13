@@ -575,6 +575,6 @@ l.append(1)
 k = l[0]
 [builtins fixtures/list.pyi]
 [out]
-main:5: error: Expressions of type "Any" are disallowed (has type List[Any])
-main:6: error: Expressions of type "Any" are disallowed (has type List[Any])
+main:5: error: Expressions of type that contains type "Any" are disallowed (has type List[Any])
+main:6: error: Expressions of type that contains type "Any" are disallowed (has type List[Any])
 main:6: error: Expressions of type "Any" are disallowed (has type "Any")
