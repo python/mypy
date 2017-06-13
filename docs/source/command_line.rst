@@ -278,7 +278,7 @@ Here are some more useful flags:
 
 - ``--disallow-any`` disallows various types of ``Any`` in a module.
   The option takes a comma-separated list of the following values:
-  ``unimported``, ``unannotated``.
+  ``unimported``, ``unannotated``, ``expr``.
 
   ``unimported`` disallows usage of types that come from unfollowed imports
   (such types become aliases for ``Any``). Unfollowed imports occur either
@@ -289,6 +289,13 @@ Here are some more useful flags:
   typed (i.e. that are missing an explicit type annotation for any
   of the parameters or the return type). ``unannotated`` option is
   interchangeable with ``--disallow-untyped-defs``.
+
+  ``expr`` disallows all expressions in the module that have type ``Any``.
+  If an expression of type ``Any`` appears anywhere in the module
+  mypy will output an error unless the expression is immediately
+  used as an argument to ``cast`` or assigned to a variable with an
+  explicit type annotation. Note that declaring a variable of type ``Any``
+  or casting to type ``Any`` is not allowed.
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
