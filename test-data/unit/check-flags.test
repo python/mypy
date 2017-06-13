@@ -510,47 +510,69 @@ x, y = 1, 2  # type: Unchecked, Unchecked
 main:4: error: Type of variable becomes "Any" due to an unfollowed import
 main:6: error: A type on this line becomes "Any" due to an unfollowed import
 
-[case testDisallowAnyBasic]
+[case testDisallowAnyExprUnannotatedFunction]
 # flags: --disallow-any=expr
-from typing import List, Any, cast
+def g(s):
+    return s  # E: Expressions of type "Any" are disallowed (has type "Any")
 
-def foo(z: int):
-    return z
+g(0)
+g('hello')
 
-def print(s: Any) -> None:
-    s = s + 1
+v = g(1)  # E: Expressions of type "Any" are disallowed (has type "Any")
+w: int = g(1)
+
+[case testDisallowAnyExprExplicitAnyParam]
+from typing import Any
+def f(s: Any) -> None:
     pass
 
+f(0)
+f('hello')
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprAllowsAnyInCast]
+# flags: --disallow-any=expr
+from typing import Any, cast
 class Foo:
     g: Any = 2
 
-x: List[str] = ['hello']
-
-f: int = Foo.doo()
-k = Foo.doo()
-
 z = cast(int, Foo().g)
 m = cast(Any, Foo().g)
-y = Foo().g
-print(x[0])
-print(x[foo(0)])
+k = Foo.g  # E: Expressions of type "Any" are disallowed (has type "Any")
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprAllowsAnyInVariableAssignmentWithExplicitTypeAnnotation]
+# flags: --disallow-any=expr
+from typing import Any
+class Foo:
+    g: Any = 2
+
+z: int = Foo().g
+m: Any = Foo().g
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprAllowsNonExistentMembers]
+# flags: --disallow-any=expr
+from typing import cast
+class Foo: pass
+
+i: int = Foo.doo()
+j = cast(int, Foo.doo())
+k = Foo.doo()
 [builtins fixtures/list.pyi]
 [out]
-main:8: error: Expressions of type "Any" are disallowed (has type "Any")
-main:16: error: Type[Foo] has no attribute "doo"
-main:17: error: Type[Foo] has no attribute "doo"
-main:17: error: Expressions of type "Any" are disallowed (has type "Any")
-main:20: error: Expressions of type "Any" are disallowed (has type "Any")
-main:21: error: Expressions of type "Any" are disallowed (has type "Any")
-main:23: error: Expressions of type "Any" are disallowed (has type "Any")
+main:5: error: Type[Foo] has no attribute "doo"
+main:6: error: Type[Foo] has no attribute "doo"
+main:7: error: Type[Foo] has no attribute "doo"
+main:7: error: Expressions of type "Any" are disallowed (has type "Any")
 
 [case testDisallowAnyExprGeneric]
 # flags: --disallow-any=expr
 from typing import List
 
-blargle: List = []
-blargle.append(1)
-k = blargle[0]
+l: List = []
+l.append(1)
+k = l[0]
 [builtins fixtures/list.pyi]
 [out]
 main:5: error: Expressions of type "Any" are disallowed (has type List[Any])
