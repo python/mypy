@@ -3,6 +3,7 @@ import pprint
 import sys
 
 from typing import Mapping, Optional, Tuple, List, Pattern, Dict
+from mypy.plugin import PluginRegistry
 
 from mypy import defaults
 
@@ -112,6 +113,9 @@ class Options:
         self.cache_dir = defaults.CACHE_DIR
         self.debug_cache = False
         self.quick_and_dirty = False
+
+        # plugins
+        self.plugins = []  # type: List[PluginRegistry]
 
         # Per-module options (raw)
         self.per_module_options = {}  # type: Dict[Pattern[str], Dict[str, object]]

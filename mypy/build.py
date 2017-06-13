@@ -42,7 +42,7 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.plugin import DefaultPlugin
+from mypy.plugin import PluginManager, Plugin, DefaultPlugin
 
 
 # We need to know the location of this file to load data, but
@@ -112,7 +112,9 @@ class BuildSourceSet:
 def build(sources: List[BuildSource],
           options: Options,
           alt_lib_path: str = None,
-          bin_dir: str = None) -> BuildResult:
+          bin_dir: str = None,
+          plugin: Optional[Plugin] = None,
+          ) -> BuildResult:
     """Analyze a program.
 
     A single call to build performs parsing, semantic analysis and optionally
@@ -174,6 +176,9 @@ def build(sources: List[BuildSource],
 
     source_set = BuildSourceSet(sources)
 
+    if plugin is None:
+        plugin = DefaultPlugin(options.python_version)
+
     # Construct a build manager object to hold state during the build.
     #
     # Ignore current directory prefix in error messages.
@@ -183,6 +188,7 @@ def build(sources: List[BuildSource],
                            reports=reports,
                            options=options,
                            version_id=__version__,
+                           plugin=plugin,
                            )
 
     try:
@@ -365,7 +371,8 @@ class BuildManager:
                  source_set: BuildSourceSet,
                  reports: Reports,
                  options: Options,
-                 version_id: str) -> None:
+                 version_id: str,
+                 plugin: Plugin) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = Errors(options.show_error_context, options.show_column_numbers)
@@ -375,6 +382,7 @@ class BuildManager:
         self.reports = reports
         self.options = options
         self.version_id = version_id
+        self.plugin = plugin
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
         self.semantic_analyzer = SemanticAnalyzer(self.modules, self.missing_modules,
@@ -1549,9 +1557,8 @@ class State:
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            plugin = DefaultPlugin(self.options.python_version)
             self.type_checker = TypeChecker(manager.errors, manager.modules, self.options,
-                                            self.tree, self.xpath, plugin)
+                                            self.tree, self.xpath, manager.plugin)
             self.type_checker.check_first_pass()
 
     def type_check_second_pass(self) -> bool:

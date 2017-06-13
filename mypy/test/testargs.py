@@ -14,5 +14,5 @@ from mypy.main import process_options
 class ArgSuite(Suite):
     def test_coherence(self) -> None:
         options = Options()
-        _, parsed_options = process_options([], require_targets=False)
+        parsed_options = process_options([], require_targets=False)[1]
         assert_equal(options, parsed_options)
