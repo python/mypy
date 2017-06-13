@@ -11,7 +11,7 @@ from mypy.types import (
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
     get_typ_args, set_typ_args,
-    StarType, TypeQuery)
+    StarType)
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
@@ -185,7 +185,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check a call expression."""
         if e.analyzed:
             # It's really a special form that only looks like a call.
-            return self.accept(e.analyzed, self.type_context[-1])
+            return self.accept(e.analyzed, self.type_context[-1], always_allow_any=True)
         if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, TypeInfo) and \
                 e.callee.node.typeddict_type is not None:
             return self.check_typeddict_call(e.callee.node.typeddict_type,
@@ -204,7 +204,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         or isinstance(typ, NameExpr) and node and node.kind == nodes.TYPE_ALIAS):
                     self.msg.type_arguments_not_allowed(e)
         self.try_infer_partial_type(e)
-        callee_type = self.accept(e.callee, disallow_any=False)
+        callee_type = self.accept(e.callee, always_allow_any=True)
         if (self.chk.options.disallow_untyped_calls and
                 self.chk.in_checked_function() and
                 isinstance(callee_type, CallableType)
@@ -1671,7 +1671,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
         source_type = self.accept(expr.expr, type_context=AnyType(), allow_none_return=True,
-                                  disallow_any=False)
+                                  always_allow_any=True)
         target_type = expr.type
         options = self.chk.options
         if options.warn_redundant_casts and is_same_type(source_type, target_type):
@@ -2193,7 +2193,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                node: Expression,
                type_context: Type = None,
                allow_none_return: bool = False,
-               disallow_any: bool = True,
+               always_allow_any: bool = False,
                ) -> Type:
         """Type check a node in the given type context.  If allow_none_return
         is True and this expression is a call, allow it to return None.  This
@@ -2214,10 +2214,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert typ is not None
         self.chk.store_type(node, typ)
 
-        if (disallow_any and
+        if ('expr' in self.chk.options.disallow_any and
+                not always_allow_any and
                 not self.chk.is_stub and
-                has_any_type(typ) and
-                'expr' in self.chk.options.disallow_any):
+                has_any_type(typ)):
             self.msg.disallowed_any_type(typ, node)
 
         if not self.chk.in_checked_function():
@@ -2443,7 +2443,7 @@ def has_any_type(t: Type) -> bool:
     return t.accept(HasAnyType())
 
 
-class HasAnyType(TypeQuery[bool]):
+class HasAnyType(types.TypeQuery[bool]):
     def __init__(self) -> None:
         super().__init__(any)
 

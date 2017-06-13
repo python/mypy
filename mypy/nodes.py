@@ -1300,6 +1300,9 @@ class CallExpr(Expression):
         self.arg_names = arg_names
         self.analyzed = analyzed
 
+    def is_cast(self) -> bool:
+        return self.analyzed is not None and isinstance(self.analyzed, CastExpr)
+
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_call_expr(self)
 
