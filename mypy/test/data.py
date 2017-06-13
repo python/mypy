@@ -515,8 +515,8 @@ class DataTestCollector(pytest.File):  # type: ignore
         super().__init__(path, parent)
 
     def collect(self) -> Iterator['MypyDataCase']:
-        test_filename = self.fspath.basename.split('-')[0]
-        test_handler_mod_name = 'mypy.test.test' + test_filename
+        test_root, _ = os.path.splitext(self.fspath.basename)
+        test_handler_mod_name = 'mypy.test.test' + test_root.split('-')[0]
         test_handler_mod = import_module(test_handler_mod_name)
         test_handler = test_handler_mod.test_handler  # type: ignore
         for case in parse_test_cases(
