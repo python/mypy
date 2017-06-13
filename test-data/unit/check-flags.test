@@ -535,7 +535,7 @@ class Foo:
     g: Any = 2
 
 z = cast(int, Foo().g)
-m = cast(Any, Foo().g)
+m = cast(Any, Foo().g)  # E: Expressions of type "Any" are disallowed (has type "Any")
 k = Foo.g  # E: Expressions of type "Any" are disallowed (has type "Any")
 [builtins fixtures/list.pyi]
 
@@ -546,7 +546,7 @@ class Foo:
     g: Any = 2
 
 z: int = Foo().g
-m: Any = Foo().g
+m: Any = Foo().g  # E: Expressions of type "Any" are disallowed (has type "Any")
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExprGeneric]

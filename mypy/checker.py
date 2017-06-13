@@ -1292,9 +1292,8 @@ class TypeChecker(NodeVisitor[None]):
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
             if inferred:
-                is_cast = isinstance(rvalue, CallExpr) and rvalue.is_cast()
-                init_type = self.expr_checker.accept(rvalue, always_allow_any=is_cast)
-                self.infer_variable_type(inferred, lvalue, init_type, rvalue)
+                self.infer_variable_type(inferred, lvalue, self.expr_checker.accept(rvalue),
+                                         rvalue)
 
     def check_compatibility_all_supers(self, lvalue: NameExpr, lvalue_type: Optional[Type],
                                        rvalue: Expression) -> bool:
@@ -1737,8 +1736,9 @@ class TypeChecker(NodeVisitor[None]):
             # '...' is always a valid initializer in a stub.
             return AnyType()
         else:
+            always_allow_any = lvalue_type and not isinstance(lvalue_type, AnyType)
             rvalue_type = self.expr_checker.accept(rvalue, lvalue_type,
-                                                   always_allow_any=lvalue_type is not None)
+                                                   always_allow_any=always_allow_any)
             if isinstance(rvalue_type, DeletedType):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if isinstance(lvalue_type, DeletedType):
