@@ -1006,6 +1006,16 @@ a[None:]
 a[:None]
 [builtins fixtures/slice.pyi]
 
+[case testNoneSliceBoundsWithStrictOptional]
+# flags: --strict-optional
+from typing import Any
+a = None # type: Any
+a[None:1]
+a[1:None]
+a[None:]
+a[:None]
+[builtins fixtures/slice.pyi]
+
 
 -- String interpolation
 -- --------------------
@@ -1672,3 +1682,23 @@ d = {**a, **b, 'c': 3}
 e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type Dict[str, int]; expected Mapping[int, str]
 f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type Dict[str, int]
 [builtins fixtures/dict.pyi]
+
+
+-- Type checker default plugin
+-- ---------------------------
+
+
+[case testIntPow]
+a = 1
+b = a + 2
+reveal_type(a**0) # E: Revealed type is 'builtins.int'
+reveal_type(a**1) # E: Revealed type is 'builtins.int'
+reveal_type(a**2) # E: Revealed type is 'builtins.int'
+reveal_type(a**-0) # E: Revealed type is 'builtins.int'
+reveal_type(a**-1) # E: Revealed type is 'builtins.float'
+reveal_type(a**(-2)) # E: Revealed type is 'builtins.float'
+reveal_type(a**b) # E: Revealed type is 'Any'
+reveal_type(a.__pow__(2)) # E: Revealed type is 'builtins.int'
+reveal_type(a.__pow__(a)) # E: Revealed type is 'Any'
+a.__pow__() # E: Too few arguments for "__pow__" of "int"
+[builtins fixtures/ops.pyi]

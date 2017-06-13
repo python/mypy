@@ -75,6 +75,14 @@ undef
 dir/subpkg/a.py:1: error: Name 'undef' is not defined
 dir/a.py:1: error: Name 'undef' is not defined
 
+[case testCmdlineInvalidPackageName]
+# cmd: mypy dir/sub.pkg/a.py
+[file dir/sub.pkg/__init__.py]
+[file dir/sub.pkg/a.py]
+undef
+[out]
+sub.pkg is not a valid Python package name
+
 [case testBadFileEncoding]
 # cmd: mypy a.py
 [file a.py]
@@ -574,4 +582,29 @@ python_version = 3.3
 [file mypy.ini]
 [[mypy]
 python_version = 3.6
+[out]
+
+[case testDisallowAnyUnimported]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+disallow_any = unimported
+ignore_missing_imports = True
+[file main.py]
+from unreal import F
+
+def f(x: F) -> None: pass
+[out]
+main.py:3: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
+
+[case testDisallowAnyEmpty]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+disallow_any =
+ignore_missing_imports = True
+[file main.py]
+from unreal import F
+
+def f(x: F) -> None: pass
 [out]

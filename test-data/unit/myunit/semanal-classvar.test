@@ -95,7 +95,7 @@ def f(x: ClassVar, y: ClassVar) -> ClassVar: pass
 main:2: error: ClassVar can only be used for assignments in class body
 
 [case testClassVarInCallableArgs]
-from typing import Callable, ClassVar
+from typing import Callable, ClassVar, Any
 f = None  # type: Callable[[int, ClassVar], Any]
 [out]
 main:2: error: Invalid type: ClassVar nested inside other type

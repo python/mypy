@@ -125,11 +125,10 @@ def f(x: int = None) -> None:
 f(None)
 [out]
 
-[case testInferOptionalFromDefaultNoneWithFastParser]
-
-def f(x: int = None) -> None:
-  x + 1  # E: Unsupported left operand type for + (some union)
-f(None)
+[case testNoInferOptionalFromDefaultNone]
+# flags: --no-implicit-optional
+def f(x: int = None) -> None:  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+  pass
 [out]
 
 [case testInferOptionalFromDefaultNoneComment]
@@ -139,12 +138,11 @@ def f(x=None):
 f(None)
 [out]
 
-[case testInferOptionalFromDefaultNoneCommentWithFastParser]
-
-def f(x=None):
+[case testNoInferOptionalFromDefaultNoneComment]
+# flags: --no-implicit-optional
+def f(x=None):  # E: Incompatible types in assignment (expression has type None, variable has type "int")
   # type: (int) -> None
-  x + 1  # E: Unsupported left operand type for + (some union)
-f(None)
+  pass
 [out]
 
 [case testInferOptionalType]
@@ -596,3 +594,12 @@ x: Optional[Union[int, str]]
 reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.None]'
 y: Optional[Union[int, None]]
 reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+
+[case testUnionTruthinessTracking]
+from typing import Optional, Any
+def test_or_shortcut(value: Optional[Any]) -> None:
+    if not value:
+        pass
+    if not value or value.get('foo') == 'hello':
+        pass
+[builtins fixtures/bool.pyi]

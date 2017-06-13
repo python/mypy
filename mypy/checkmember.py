@@ -245,6 +245,15 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                     getattr_type = expand_type_by_instance(bound_method, typ)
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
+        else:
+            setattr_meth = info.get_method('__setattr__')
+            if setattr_meth and setattr_meth.info.fullname() != 'builtins.object':
+                setattr_func = function_type(setattr_meth, builtin_type('builtins.function'))
+                bound_type = bind_self(setattr_func, original_type)
+                typ = map_instance_to_supertype(itype, setattr_meth.info)
+                setattr_type = expand_type_by_instance(bound_type, typ)
+                if isinstance(setattr_type, CallableType) and len(setattr_type.arg_types) > 0:
+                    return setattr_type.arg_types[-1]
 
     if itype.type.fallback_to_any:
         return AnyType()
@@ -641,7 +650,7 @@ def bind_self(method: F, original_type: Type = None) -> F:
         ret_type = func.ret_type
         variables = func.variables
     if isinstance(original_type, CallableType) and original_type.is_type_obj():
-        original_type = TypeType(original_type.ret_type)
+        original_type = TypeType.make_normalized(original_type.ret_type)
     res = func.copy_modified(arg_types=arg_types,
                              arg_kinds=func.arg_kinds[1:],
                              arg_names=func.arg_names[1:],
@@ -656,5 +665,5 @@ def erase_to_bound(t: Type) -> Type:
         return t.upper_bound
     if isinstance(t, TypeType):
         if isinstance(t.item, TypeVarType):
-            return TypeType(t.item.upper_bound)
+            return TypeType.make_normalized(t.item.upper_bound)
     return t
