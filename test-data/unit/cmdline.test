@@ -259,6 +259,9 @@ strict_optional = True
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (strict_optional)
 
+[case testAnyExprReportDivisionByZero]
+# cmd: mypy --any-exprs-report=out -c 'pass'
+
 [case testCoberturaParser]
 # cmd: mypy --cobertura-xml-report build pkg
 [file pkg/__init__.py]
