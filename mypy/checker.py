@@ -2262,6 +2262,7 @@ class TypeChecker(NodeVisitor[None]):
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname
+            self.check_for_untyped_decorator(e, d, dec)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e,
                                                    callable_name=fullname)
@@ -2292,6 +2293,28 @@ class TypeChecker(NodeVisitor[None]):
             else:
                 self.check_with_item(expr, target, s.target_type is None)
         self.accept(s.body)
+
+    def check_for_untyped_decorator(self,
+                                    decorated: Decorator,
+                                    dec_expr: Expression,
+                                    dec_type: Type
+                                    ) -> None:
+        def is_typed_func(func_type: Type) -> bool:
+            if func_type and isinstance(func_type, CallableType):
+                for t in func_type.arg_types + [func_type.ret_type]:
+                    if isinstance(t, AnyType):
+                        return False
+                return True
+            return False
+        short_name = None  # type: Optional[str]
+        if isinstance(dec_expr, NameExpr):
+            short_name = dec_expr.name
+
+        returns_any = isinstance(dec_type, CallableType) and isinstance(dec_type.ret_type, AnyType)
+        if ('decorator' in self.options.disallow_any and
+                (returns_any or isinstance(dec_type, AnyType)) and
+                is_typed_func(decorated.func.type)):
+            self.msg.untyped_decorator(short_name, decorated.func.name(), dec_expr)
 
     def check_async_with_item(self, expr: Expression, target: Expression,
                               infer_lvalue_type: bool) -> None:

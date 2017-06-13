@@ -97,7 +97,7 @@ def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) 
                        options=options)
 
 
-disallow_any_options = ['unimported', 'unannotated']
+disallow_any_options = ['unimported', 'unannotated', 'decorator']
 
 
 def disallow_any_argument_type(raw_options: str) -> List[str]:

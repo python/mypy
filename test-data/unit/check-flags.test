@@ -515,3 +515,68 @@ x, y = 1, 2  # type: Unchecked, Unchecked
 [out]
 main:4: error: Type of variable becomes "Any" due to an unfollowed import
 main:6: error: A type on this line becomes "Any" due to an unfollowed import
+
+[case testDisallowAnyDecoratorSimple]
+# flags: --disallow-any=decorator
+from typing import Any
+
+def d(f):
+    return f
+
+@d  # no error
+def f(x: Any) -> Any: pass
+@d  # no error
+def g(x: Any) -> None: pass
+@d  # no error
+def h(x): pass
+@d  # E: Untyped decorator 'd' makes typed function 'i' untyped
+def i(x: int) -> None: pass
+@d  # E: Untyped decorator 'd' makes typed function 'j' untyped
+def j() -> None: pass
+
+[builtins fixtures/list.pyi]
+[case testDisallowAnyDecoratorMultiple]
+# flags: --disallow-any=decorator
+
+def d(f):
+    return f
+
+def d2(f):
+    return f
+
+@d  # E: Untyped decorator 'd' makes typed function 'f' untyped
+@d2  # E: Untyped decorator 'd2' makes typed function 'f' untyped
+@d  # E: Untyped decorator 'd' makes typed function 'f' untyped
+def f(x: int) -> None: pass
+
+[case testDisallowAnyDecoratorReturnAny]
+# flags: --disallow-any=decorator
+from typing import Any
+
+def d(f) -> Any:
+    return f
+def d2(f: int) -> Any:
+    return f
+
+@d2  # E: Untyped decorator 'd2' makes typed function 'f' untyped
+@d  # E: Untyped decorator 'd' makes typed function 'f' untyped
+def f() -> None: pass
+[builtins fixtures/list.pyi]
+[case testDisallowAnyDecoratorReturnCallable]
+# flags: --disallow-any=decorator
+from typing import Any, Callable
+
+def d(f) -> Callable[..., Any]:
+    return f
+
+@d  # no error
+def f() -> None: pass
+[builtins fixtures/list.pyi]
+[case testDisallowAnyDecoratorNonexistentDecorator]
+# flags: --disallow-any=decorator --ignore-missing-imports
+from typing import Any, Callable
+from nonexistent import d
+
+@d  # E: Untyped decorator 'd' makes typed function 'f' untyped
+def f() -> None: pass
+[builtins fixtures/list.pyi]
