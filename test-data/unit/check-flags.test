@@ -608,3 +608,15 @@ def d(f) -> Callable[[int, Any], Any]: pass
 @d  # E: Parameter 2 of "f" becomes "Any" due to untyped decorator "d"
 def f(i: int, s: str): pass
 [builtins fixtures/list.pyi]
+
+[case testDisallowAnyDecoratorReturnsCallableNoParams]
+# flags: --disallow-any=decorator
+from typing import Callable
+
+def d(p) -> Callable[[], int]:
+    return p
+
+@d  # E: Parameter 1 of "f" becomes "Any" due to untyped decorator "d"
+def f(i: int) -> int:
+    return i
+[builtins fixtures/list.pyi]

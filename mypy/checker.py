@@ -2315,7 +2315,7 @@ class TypeChecker(NodeVisitor[None]):
 
         num_missing_types = len(func_type.arg_types) - len(new_param_types)
         if num_missing_types > 0:
-            new_param_types.extend([AnyType()] * num_missing_types)
+            new_param_types = new_param_types + [AnyType()] * num_missing_types
 
         dec_name = None  # type: Optional[str]
         if isinstance(dec_expr, NameExpr):
