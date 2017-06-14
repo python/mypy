@@ -2429,6 +2429,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return known_type
 
 
+def has_any_type(t: Type) -> bool:
+    """Whether t contains Any type"""
+    return t.accept(HasAnyType())
+
+
+class HasAnyType(types.TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_any(self, t: AnyType) -> bool:
+        return True
+
+
 def has_coroutine_decorator(t: Type) -> bool:
     """Whether t came from a function decorated with `@coroutine`."""
     return isinstance(t, Instance) and t.type.fullname() == 'typing.AwaitableGenerator'

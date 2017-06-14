@@ -28,7 +28,7 @@ from mypy.nodes import (
     AwaitExpr, PromoteExpr, Node, EnumCallExpr,
     ARG_POS, MDEF,
     CONTRAVARIANT, COVARIANT)
-from mypy import nodes
+from mypy import nodes, checkexpr
 from mypy.typeanal import has_any_from_unimported_type
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
@@ -2262,10 +2262,10 @@ class TypeChecker(NodeVisitor[None]):
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname
-            self.check_for_untyped_decorator(e, d, dec)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e,
                                                    callable_name=fullname)
+        self.check_untyped_after_decorator(sig, e.func)
         sig = cast(FunctionLike, sig)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
@@ -2294,39 +2294,15 @@ class TypeChecker(NodeVisitor[None]):
                 self.check_with_item(expr, target, s.target_type is None)
         self.accept(s.body)
 
-    def check_for_untyped_decorator(self,
-                                    decorated: Decorator,
-                                    dec_expr: Expression,
-                                    decorator_func_type: Type
-                                    ) -> None:
-        if 'decorator' not in self.options.disallow_any:
+    def check_untyped_after_decorator(self, typ: Type, func: FuncDef) -> None:
+        if 'decorator' not in self.options.disallow_any or self.is_stub:
+            return
+        if not isinstance(typ, CallableType):
+            self.msg.untyped_decorated_function(typ, func)
             return
 
-        func_type = decorated.func.type
-        if not func_type or not isinstance(func_type, CallableType):
-            return
-
-        new_ret_type = AnyType()  # type: Type
-        new_param_types = []  # type: List[Type]
-        if (isinstance(decorator_func_type, CallableType) and
-                isinstance(decorator_func_type.ret_type, CallableType)):
-            new_param_types = decorator_func_type.ret_type.arg_types
-            new_ret_type = decorator_func_type.ret_type.ret_type
-
-        num_missing_types = len(func_type.arg_types) - len(new_param_types)
-        if num_missing_types > 0:
-            new_param_types = new_param_types + [AnyType()] * num_missing_types
-
-        dec_name = None  # type: Optional[str]
-        if isinstance(dec_expr, NameExpr):
-            dec_name = dec_expr.name
-
-        for i, old, new in zip(itertools.count(start=1), func_type.arg_types, new_param_types):
-            if isinstance(new, AnyType) and not isinstance(old, AnyType):
-                prefix = "Parameter {}".format(i)
-                self.msg.untyped_decorator(prefix, func_type.name, dec_name, dec_expr)
-        if isinstance(new_ret_type, AnyType) and not isinstance(func_type.ret_type, AnyType):
-            self.msg.untyped_decorator("Return type", func_type.name, dec_name, dec_expr)
+        if checkexpr.has_any_type(typ):
+            self.msg.untyped_decorated_function(typ, func)
 
     def check_async_with_item(self, expr: Expression, target: Expression,
                               infer_lvalue_type: bool) -> None:
