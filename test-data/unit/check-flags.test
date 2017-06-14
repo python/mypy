@@ -517,7 +517,7 @@ main:4: error: Type of variable becomes "Any" due to an unfollowed import
 main:6: error: A type on this line becomes "Any" due to an unfollowed import
 
 [case testDisallowAnyDecoratorUnannotatedDecorator]
-# flags: --disallow-any=decorator
+# flags: --disallow-any=decorated
 from typing import Any
 
 def d(f):
@@ -531,7 +531,7 @@ def h(x):  # E: Function is untyped after decorator transformation
     pass
 [builtins fixtures/list.pyi]
 [case testDisallowAnyDecoratorErrorIsReportedOnlyOnce]
-# flags: --disallow-any=decorator
+# flags: --disallow-any=decorated
 
 def d(f):
     return f
@@ -544,7 +544,7 @@ def d2(f):
 @d
 def f(x: int) -> None: pass  # E: Function is untyped after decorator transformation
 [case testDisallowAnyDecoratorReturnAny]
-# flags: --disallow-any=decorator
+# flags: --disallow-any=decorated
 from typing import Any
 
 def d(f) -> Any:
@@ -554,7 +554,7 @@ def d(f) -> Any:
 def f() -> None: pass  # E: Function is untyped after decorator transformation
 [builtins fixtures/list.pyi]
 [case testDisallowAnyDecoratorReturnCallable]
-# flags: --disallow-any=decorator
+# flags: --disallow-any=decorated
 from typing import Any, Callable
 
 def d(f) -> Callable[..., None]:
@@ -565,7 +565,7 @@ def g(i: int, s: str) -> None: pass  # E: Type of decorated function contains ty
 
 [builtins fixtures/list.pyi]
 [case testDisallowAnyDecoratorNonexistentDecorator]
-# flags: --disallow-any=decorator --ignore-missing-imports
+# flags: --disallow-any=decorated --ignore-missing-imports
 from nonexistent import d
 
 @d
@@ -573,7 +573,7 @@ def f() -> None: pass  # E: Function is untyped after decorator transformation
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyPartlyTypedCallable]
-# flags: --disallow-any=decorator --ignore-missing-imports
+# flags: --disallow-any=decorated --ignore-missing-imports
 from typing import Callable, Any, List
 
 def d(f) -> Callable[[int, Any], Any]: pass
@@ -588,7 +588,7 @@ def g(i: int) -> None: # E: Type of decorated function contains type "Any" (Call
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyDecoratorReturnsCallableNoParams]
-# flags: --disallow-any=decorator
+# flags: --disallow-any=decorated
 from typing import Callable
 
 def d(p) -> Callable[[], int]:
