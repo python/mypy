@@ -905,15 +905,16 @@ class MessageBuilder:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
 
     def untyped_decorator(self,
-                          decorator_name: Optional[str],
+                          prefix: str,
                           func_name: str,
+                          decorator_name: Optional[str],
                           context: Context,
                           ) -> None:
-        prefix = 'Untyped decorator'
+        postfix = ''
         if decorator_name:
-            prefix += " '{}'".format(decorator_name)
-        self.fail("{} makes typed function '{}' untyped".format(prefix, func_name), context)
-
+            postfix = ' "{}"'.format(decorator_name)
+        self.fail('{} of {} becomes "Any" due to untyped decorator{}'.format(
+            prefix, func_name, postfix), context)
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""

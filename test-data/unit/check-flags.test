@@ -525,16 +525,20 @@ def d(f):
 
 @d  # no error
 def f(x: Any) -> Any: pass
-@d  # no error
+@d  # error
 def g(x: Any) -> None: pass
 @d  # no error
 def h(x): pass
-@d  # E: Untyped decorator 'd' makes typed function 'i' untyped
+@d  # errors
 def i(x: int) -> None: pass
-@d  # E: Untyped decorator 'd' makes typed function 'j' untyped
+@d  # errors
 def j() -> None: pass
-
 [builtins fixtures/list.pyi]
+[out]
+main:9: error: Return type of "g" becomes "Any" due to untyped decorator "d"
+main:13: error: Parameter 1 of "i" becomes "Any" due to untyped decorator "d"
+main:13: error: Return type of "i" becomes "Any" due to untyped decorator "d"
+main:15: error: Return type of "j" becomes "Any" due to untyped decorator "d"
 [case testDisallowAnyDecoratorMultiple]
 # flags: --disallow-any=decorator
 
@@ -544,10 +548,17 @@ def d(f):
 def d2(f):
     return f
 
-@d  # E: Untyped decorator 'd' makes typed function 'f' untyped
-@d2  # E: Untyped decorator 'd2' makes typed function 'f' untyped
-@d  # E: Untyped decorator 'd' makes typed function 'f' untyped
+@d  # errors
+@d2  # errors
+@d  # errors
 def f(x: int) -> None: pass
+[out]
+main:9: error: Parameter 1 of "f" becomes "Any" due to untyped decorator "d"
+main:9: error: Return type of "f" becomes "Any" due to untyped decorator "d"
+main:10: error: Parameter 1 of "f" becomes "Any" due to untyped decorator "d2"
+main:10: error: Return type of "f" becomes "Any" due to untyped decorator "d2"
+main:11: error: Parameter 1 of "f" becomes "Any" due to untyped decorator "d"
+main:11: error: Return type of "f" becomes "Any" due to untyped decorator "d"
 
 [case testDisallowAnyDecoratorReturnAny]
 # flags: --disallow-any=decorator
@@ -558,8 +569,8 @@ def d(f) -> Any:
 def d2(f: int) -> Any:
     return f
 
-@d2  # E: Untyped decorator 'd2' makes typed function 'f' untyped
-@d  # E: Untyped decorator 'd' makes typed function 'f' untyped
+@d2  # E: Return type of "f" becomes "Any" due to untyped decorator "d2"
+@d  # E: Return type of "f" becomes "Any" due to untyped decorator "d"
 def f() -> None: pass
 [builtins fixtures/list.pyi]
 [case testDisallowAnyDecoratorReturnCallable]
@@ -569,14 +580,31 @@ from typing import Any, Callable
 def d(f) -> Callable[..., Any]:
     return f
 
-@d  # no error
+@d  # errors
+def g(i: int, s: str) -> None: pass
+
+@d  # E: Return type of "f" becomes "Any" due to untyped decorator "d"
 def f() -> None: pass
 [builtins fixtures/list.pyi]
+[out]
+main:7: error: Parameter 1 of "g" becomes "Any" due to untyped decorator "d"
+main:7: error: Parameter 2 of "g" becomes "Any" due to untyped decorator "d"
+main:7: error: Return type of "g" becomes "Any" due to untyped decorator "d"
+
 [case testDisallowAnyDecoratorNonexistentDecorator]
 # flags: --disallow-any=decorator --ignore-missing-imports
-from typing import Any, Callable
 from nonexistent import d
 
-@d  # E: Untyped decorator 'd' makes typed function 'f' untyped
+@d  # E: Return type of "f" becomes "Any" due to untyped decorator "d"
 def f() -> None: pass
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyPartlyTypedCallable]
+# flags: --disallow-any=decorator --ignore-missing-imports
+from typing import Callable, Any
+
+def d(f) -> Callable[[int, Any], Any]: pass
+
+@d  # E: Parameter 2 of "f" becomes "Any" due to untyped decorator "d"
+def f(i: int, s: str): pass
 [builtins fixtures/list.pyi]
