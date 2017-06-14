@@ -916,6 +916,7 @@ class MessageBuilder:
         self.fail('{} of {} becomes "Any" due to untyped decorator{}'.format(
             prefix, func_name, postfix), context)
 
+
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""
     if s == '':
