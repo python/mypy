@@ -292,8 +292,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_typeddict_call_with_kwargs(self, callee: TypedDictType,
                                          kwargs: 'OrderedDict[str, Expression]',
                                          context: Context) -> Type:
-        if callee.items.keys() != kwargs.keys():
-            callee_item_names = callee.items.keys()
+        if not (callee.required_keys <= kwargs.keys() <= callee.items.keys()):
+            callee_item_names = [key for key in callee.items.keys()
+                                 if key in callee.required_keys or key in kwargs.keys()]
             kwargs_item_names = kwargs.keys()
 
             self.msg.typeddict_instantiated_with_unexpected_items(
@@ -316,7 +317,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         mapping_value_type = join.join_type_list(list(items.values()))
         fallback = self.chk.named_generic_type('typing.Mapping',
                                                [self.chk.str_type(), mapping_value_type])
-        return TypedDictType(items, fallback)
+        return TypedDictType(items, set(callee.required_keys), fallback)
 
     # Types and methods that can be used to infer partial types.
     item_args = {'builtins.list': ['append'],
@@ -1656,6 +1657,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if item_type is None:
             self.msg.typeddict_item_name_not_found(td_type, item_name, index)
             return AnyType()
+        if item_name not in td_type.required_keys:
+            self.msg.typeddict_item_may_be_undefined(item_name, index)
         return item_type
 
     def visit_enum_index_expr(self, enum_type: TypeInfo, index: Expression,

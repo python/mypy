@@ -368,7 +368,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
             (item_name, self.anal_type(item_type))
             for (item_name, item_type) in t.items.items()
         ])
-        return TypedDictType(items, t.fallback)
+        return TypedDictType(items, set(t.required_keys), t.fallback)
 
     def visit_star_type(self, t: StarType) -> Type:
         return StarType(self.anal_type(t.type), t.line)

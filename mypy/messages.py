@@ -901,6 +901,13 @@ class MessageBuilder:
         self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
             item_name, format_item_name_list(typ.items.keys())), context)
 
+    def typeddict_item_may_be_undefined(self,
+                                        item_name: str,
+                                        context: Context,
+                                        ) -> None:
+        self.fail("TypedDict key '{}' may be undefined".format(item_name), context)
+        self.note("Consider using get() instead", context)
+
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
 

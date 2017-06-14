@@ -813,3 +813,83 @@ p = TaggedPoint(type='2d', x=42, y=1337)
 p.get('x', 1 + 'y')     # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+
+
+-- Totality (the "total" keyword argument)
+
+[case testTypedDictWithTotalTrue]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int}, total=True)
+d: D
+reveal_type(d) # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=__main__.D)'
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictWithInvalidTotalArgument]
+from mypy_extensions import TypedDict
+A = TypedDict('A', {'x': int}, total=0) # E: TypedDict() "total" argument must be True or False
+B = TypedDict('B', {'x': int}, total=bool) # E: TypedDict() "total" argument must be True or False
+C = TypedDict('C', {'x': int}, x=False) # E: Unexpected keyword argument "x" for "TypedDict"
+D = TypedDict('D', {'x': int}, False) # E: Unexpected arguments to TypedDict()
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictWithTotalFalse]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int}, total=False)
+d: D
+reveal_type(d) # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=__main__.D, _total=False)'
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictIndexingWithNonRequiredKey]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int, 'y': str}, total=False)
+d: D
+v = d['x'] # E: TypedDict key 'x' may be undefined \
+           # N: Consider using get() instead
+reveal_type(v) # E: Revealed type is 'builtins.int'
+w = d['y'] # E: TypedDict key 'y' may be undefined \
+           # N: Consider using get() instead
+reveal_type(w) # E: Revealed type is 'builtins.str'
+reveal_type(d.get('x')) # E: Revealed type is 'builtins.int'
+reveal_type(d.get('y')) # E: Revealed type is 'builtins.str'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+-- Create Type (Errors)
+
+[case testCannotCreateTypedDictTypeWithTooFewArguments]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point')  # E: Too few arguments for TypedDict()
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictTypeWithTooManyArguments]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int}, dict)  # E: Unexpected arguments to TypedDict()
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictTypeWithInvalidName]
+from mypy_extensions import TypedDict
+Point = TypedDict(dict, {'x': int, 'y': int})  # E: TypedDict() expects a string literal as the first argument
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictTypeWithInvalidItems]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x'})  # E: TypedDict() expects a dictionary literal as the second argument
+[builtins fixtures/dict.pyi]
+
+-- NOTE: The following code works at runtime but is not yet supported by mypy.
+--       Keyword arguments may potentially be supported in the future.
+[case testCannotCreateTypedDictTypeWithNonpositionalArgs]
+from mypy_extensions import TypedDict
+Point = TypedDict(typename='Point', fields={'x': int, 'y': int})  # E: Unexpected arguments to TypedDict()
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictTypeWithInvalidItemName]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {int: int, int: int})  # E: Invalid TypedDict() field name
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictTypeWithInvalidItemType]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': 1, 'y': 1})  # E: Invalid field type
+[builtins fixtures/dict.pyi]

@@ -232,7 +232,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             ])
             mapping_value_type = join_type_list(list(items.values()))
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
-            return TypedDictType(items, fallback)
+            return TypedDictType(items, set(items.keys()), fallback)  # XXX required
         elif isinstance(self.s, Instance):
             return join_instances(self.s, t.fallback)
         else:
