@@ -904,6 +904,9 @@ class MessageBuilder:
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
 
+    def typed_function_untyped_decorator(self, func_name: str, context: Context) -> None:
+        self.fail('Untyped decorator makes function "{}" untyped'.format(func_name), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""

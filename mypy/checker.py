@@ -2262,6 +2262,7 @@ class TypeChecker(NodeVisitor[None]):
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname
+            self.check_for_untyped_decorator(e.func, dec, d)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e,
                                                    callable_name=fullname)
@@ -2271,6 +2272,26 @@ class TypeChecker(NodeVisitor[None]):
         e.var.is_ready = True
         if e.func.is_property:
             self.check_incompatible_property_override(e)
+
+    def check_for_untyped_decorator(self,
+                                    func: FuncDef,
+                                    dec_type: Type,
+                                    dec_expr: Expression) -> None:
+        def is_typed_callable(c: Optional[Type]) -> bool:
+            if not c or not isinstance(c, CallableType):
+                return False
+            return all(not isinstance(t, AnyType) or not t.implicit
+                       for t in c.arg_types + [c.ret_type])
+
+        def is_untyped_decorator(typ: Optional[Type]) -> bool:
+            if not typ or not isinstance(typ, CallableType):
+                return True
+            return typ.implicit
+
+        if (self.options.disallow_untyped_defs and
+                is_typed_callable(func.type) and
+                is_untyped_decorator(dec_type)):
+            self.msg.typed_function_untyped_decorator(func.name(), dec_expr)
 
     def check_incompatible_property_override(self, e: Decorator) -> None:
         if not e.var.is_settable_property and e.func.info is not None:
