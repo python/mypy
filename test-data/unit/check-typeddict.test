@@ -876,6 +876,25 @@ reveal_type(d.get('y')) # E: Revealed type is 'builtins.str'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypedDictSubtypingWithTotalFalse]
+from mypy_extensions import TypedDict
+A = TypedDict('A', {'x': int})
+B = TypedDict('B', {'x': int}, total=False)
+C = TypedDict('C', {'x': int, 'y': str}, total=False)
+def fa(a: A) -> None: pass
+def fb(b: B) -> None: pass
+def fc(c: C) -> None: pass
+a: A
+b: B
+c: C
+fb(b)
+fc(c)
+fb(c)
+fb(a) # E: Argument 1 to "fb" has incompatible type "A"; expected "B"
+fa(b) # E: Argument 1 to "fa" has incompatible type "B"; expected "A"
+fc(b) # E: Argument 1 to "fc" has incompatible type "B"; expected "C"
+[builtins fixtures/dict.pyi]
+
 
 -- Create Type (Errors)
 
