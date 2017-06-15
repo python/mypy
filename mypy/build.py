@@ -1478,7 +1478,7 @@ class State:
         fixup_module_pass_two(self.tree, self.manager.modules,
                               self.manager.options.quick_and_dirty)
 
-    def patch_dependency_parents(self):
+    def patch_dependency_parents(self) -> None:
         """
         In Python, if a and a.b are both modules, running `import a.b` will
         modify not only the current module's namespace, but a's namespace as
