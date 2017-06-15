@@ -1272,7 +1272,8 @@ class State:
                  ancestor_for: 'State' = None,
                  root_source: bool = False,
                  ) -> None:
-        assert id or path or source is not None, "Neither id, path nor source given"
+        assert id is not None or path is not None or source is not None, \
+            "Neither id, path nor source given"
         self.manager = manager
         State.order_counter += 1
         self.order = State.order_counter
@@ -1283,7 +1284,7 @@ class State:
             self.import_context.append((caller_state.xpath, caller_line))
         else:
             self.import_context = []
-        self.id = id or '__main__'
+        self.id = id if id is not None else '__main__'
         self.options = manager.options.clone_for_module(self.id)
         if not path and source is None:
             file_id = id
