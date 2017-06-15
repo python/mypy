@@ -20,4 +20,4 @@ def TypedDict(typename: str, fields: Dict[str, Type[_T]]) -> Type[dict]: ...
 
 class NoReturn: pass
 
-def decorated_type(t: Any) -> Callable[[T], T]: pass
+def declared_type(t: Any) -> Callable[[T], T]: pass

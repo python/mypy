@@ -2634,18 +2634,18 @@ class SemanticAnalyzer(NodeVisitor):
                 dec.var.type = AnyType()
                 no_type_check = True
             elif isinstance(d, CallExpr) and (
-                    refers_to_fullname(d.callee, 'typing.decorated_type')
-                    or refers_to_fullname(d.callee, 'mypy_extensions.decorated_type')):
+                    refers_to_fullname(d.callee, 'typing.declared_type')
+                    or refers_to_fullname(d.callee, 'mypy_extensions.declared_type')):
                 removed.append(i)
                 if i != 0:
-                    self.fail('"decorated_type" must be the topmost decorator', d)
+                    self.fail('"declared_type" must be the topmost decorator', d)
                 elif len(d.args) != 1:
-                    self.fail('"decorated_type" takes exactly one argument', d)
+                    self.fail('"declared_type" takes exactly one argument', d)
                 else:
                     dec.var.type = self.expr_to_analyzed_type(d.args[0])
-            elif (refers_to_fullname(d, 'typing.decorated_type') or
-                  refers_to_fullname(d, 'mypy_extensions.decorated_type')):
-                self.fail('"decorated_type" must have a type as an argument', d)
+            elif (refers_to_fullname(d, 'typing.declared_type') or
+                  refers_to_fullname(d, 'mypy_extensions.declared_type')):
+                self.fail('"declared_type" must have a type as an argument', d)
         for i in reversed(removed):
             del dec.decorators[i]
         if not dec.is_overload or dec.var.is_property:

@@ -133,7 +133,11 @@ def KwArg(type=Any):
 class NoReturn: pass
 
 
-def decorated_type(t):
-    """Declared the decorated type of a decorated item"""
+def declared_type(t):
+    """Declare the type of a declaration.
+
+    This is useful for declaring a more specific type for a decorated class or
+    function definition than the decorator provides as a return value.
+    """
     # Return the identity function -- calling this should be a noop
     return lambda __x: __x

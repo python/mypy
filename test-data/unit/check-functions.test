@@ -737,13 +737,13 @@ a.f(None) # E: Too many arguments for "f" of "A"
 [case testMethodWithDeclaredDecoratedType]
 
 from typing import Callable, Any
-from mypy_extensions import decorated_type
+from mypy_extensions import declared_type
 
 def dec(f): pass
 
 # Note that the decorated type must account for the `self` argument  -- It's applied pre-binding
 class Foo:
-    @decorated_type(Callable[[Any, int], str])
+    @declared_type(Callable[[Any, int], str])
     @dec
     def f(self): pass
 
@@ -760,13 +760,13 @@ reveal_type(foo.f)  # E: Revealed type is 'def (builtins.int) -> builtins.str'
 [case testClassMethodWithDeclaredDecoratedType]
 
 from typing import Callable, Any
-from mypy_extensions import decorated_type
+from mypy_extensions import declared_type
 
 def dec(f): pass
 
 # Note that the decorated type must account for the `cls` argument  -- It's applied pre-binding
 class Foo:
-    @decorated_type(Callable[[Any, int], str])
+    @declared_type(Callable[[Any, int], str])
     @classmethod
     @dec
     def f(cls): pass
@@ -783,12 +783,12 @@ reveal_type(Foo.f)  # E: Revealed type is 'def (builtins.int) -> builtins.str'
 [case testStaticMethodWithDeclaredDecoratedType]
 
 from typing import Callable
-from mypy_extensions import decorated_type
+from mypy_extensions import declared_type
 
 def dec(f): pass
 
 class Foo:
-    @decorated_type(Callable[[int], str])
+    @declared_type(Callable[[int], str])
     @staticmethod
     @dec
     def f(): pass
@@ -805,11 +805,11 @@ reveal_type(Foo.f)  # E: Revealed type is 'def (builtins.int) -> builtins.str'
 [case testUntypedDecoratorWithDeclaredType]
 
 from typing import Callable
-from mypy_extensions import decorated_type
+from mypy_extensions import declared_type
 
 def dec(f): pass
 
-@decorated_type(Callable[[int], str])
+@declared_type(Callable[[int], str])
 @dec
 def f(): pass
 
@@ -824,9 +824,9 @@ reveal_type(f)  # E: Revealed type is 'def (builtins.int) -> builtins.str'
 [case testDecoratorWithDeclaredTypeBare]
 
 from typing import Callable
-from mypy_extensions import decorated_type
+from mypy_extensions import declared_type
 
-@decorated_type(Callable[[int], str])
+@declared_type(Callable[[int], str])
 def f(x): pass
 
 f("a")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
@@ -839,13 +839,13 @@ reveal_type(f)  # E: Revealed type is 'def (builtins.int) -> builtins.str'
 [case testDecoratorWithDeclaredTypeIncompatible]
 
 from typing import Callable, TypeVar
-from mypy_extensions import decorated_type
+from mypy_extensions import declared_type
 
 T = TypeVar('T')
 
 def dec(f: T) -> T: pass
 
-@decorated_type(Callable[[int], str])  # E: Incompatible types (inferred decorated type Callable[[str], str], declared decorated type Callable[[int], str])
+@declared_type(Callable[[int], str])  # E: Incompatible types (inferred decorated type Callable[[str], str], declared decorated type Callable[[int], str])
 @dec
 def f(x: str) -> str: pass
 
@@ -854,7 +854,7 @@ def f(x: str) -> str: pass
 [case testDecoratorWithDeclaredTypeCompatible]
 
 from typing import Callable, TypeVar
-from mypy_extensions import decorated_type
+from mypy_extensions import declared_type
 
 T = TypeVar('T')
 
@@ -863,7 +863,7 @@ def dec(f: T) -> T: pass
 class A: pass
 class B(A): pass
 
-@decorated_type(Callable[[B], str])
+@declared_type(Callable[[B], str])
 @dec
 def f(x: A) -> str: pass
 
@@ -873,12 +873,12 @@ reveal_type(f)  # E: Revealed type is 'def (__main__.B) -> builtins.str'
 [case testDecoratorWithDeclaredTypeNotTop]
 
 from typing import Callable
-from mypy_extensions import decorated_type
+from mypy_extensions import declared_type
 
 def dec(f): pass
 
 @dec
-@decorated_type(Callable[[int], str])  # E: "decorated_type" must be the topmost decorator
+@declared_type(Callable[[int], str])  # E: "declared_type" must be the topmost decorator
 def f(): pass
 
 reveal_type(f)  # E: Revealed type is 'Any'
@@ -888,11 +888,11 @@ reveal_type(f)  # E: Revealed type is 'Any'
 [case testDecoratorWithDeclaredTypeNoArgs]
 
 from typing import Callable
-from mypy_extensions import decorated_type
+from mypy_extensions import declared_type
 
 def dec(f): pass
 
-@decorated_type()  # E: "decorated_type" takes exactly one argument
+@declared_type()  # E: "declared_type" takes exactly one argument
 @dec
 def f(): pass
 
@@ -903,11 +903,11 @@ reveal_type(f)  # E: Revealed type is 'Any'
 [case testDecoratorWithDeclaredTypeNoCall]
 
 from typing import Callable
-from mypy_extensions import decorated_type
+from mypy_extensions import declared_type
 
 def dec(f): pass
 
-@decorated_type  # E: "decorated_type" must have a type as an argument
+@declared_type  # E: "declared_type" must have a type as an argument
 @dec
 def f(): pass
 
