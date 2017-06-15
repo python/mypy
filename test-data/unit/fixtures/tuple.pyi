@@ -15,8 +15,9 @@ class tuple(Sequence[Tco], Generic[Tco]):
     def __getitem__(self, x: int) -> Tco: pass
 class function: pass
 
-# We need int for indexing tuples.
+# We need int and slice for indexing tuples.
 class int: pass
+class slice: pass
 class bool: pass
 class str: pass # For convenience
 class unicode: pass

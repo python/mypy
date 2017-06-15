@@ -1,0 +1,71 @@
+-- Test cases for user-defined plugins
+--
+-- Note: Plugins used by tests live under test-data/unit/plugins. Defining
+--       plugin files in test cases does not work reliably.
+
+[case testFunctionPlugin]
+# flags: --config-file tmp/mypy.ini
+def f() -> str: ...
+reveal_type(f())  # E: Revealed type is 'builtins.int'
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
+
+[case testTwoPlugins]
+# flags: --config-file tmp/mypy.ini
+def f(): ...
+def g(): ...
+def h(): ...
+reveal_type(f())  # E: Revealed type is 'builtins.int'
+reveal_type(g())  # E: Revealed type is 'builtins.str'
+reveal_type(h())  # E: Revealed type is 'Any'
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/fnplugin.py,
+  <ROOT>/test-data/unit/plugins/plugin2.py
+
+[case testMissingPlugin]
+# flags: --config-file tmp/mypy.ini
+[file mypy.ini]
+[[mypy]
+plugins=missing.py
+[out]
+tmp/missing.py:0: error: Can't find plugin
+--' (work around syntax highlighting)
+
+[case testInvalidPluginExtension]
+# flags: --config-file tmp/mypy.ini
+[file mypy.ini]
+[[mypy]
+plugins=badext.pyi
+[file badext.pyi]
+[out]
+tmp/badext.pyi:0: error: Plugin must have .py extension
+
+[case testMissingPluginEntryPoint]
+# flags: --config-file tmp/mypy.ini
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/noentry.py
+[out]
+<ROOT>/test-data/unit/plugins/noentry.py:0: error: Plugin does not define entry point function "plugin"
+
+[case testInvalidPluginEntryPointReturnValue]
+# flags: --config-file tmp/mypy.ini
+def f(): pass
+f()
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/badreturn.py
+[out]
+<ROOT>/test-data/unit/plugins/badreturn.py:0: error: Type object expected as the return value of "plugin" (got None)
+
+[case testInvalidPluginEntryPointReturnValue2]
+# flags: --config-file tmp/mypy.ini
+def f(): pass
+f()
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/badreturn2.py
+[out]
+<ROOT>/test-data/unit/plugins/badreturn2.py:0: error: Return value of "plugin" must be a subclass of "mypy.plugin.Plugin"

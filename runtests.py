@@ -1,29 +1,6 @@
 #!/usr/bin/env python3
 """Mypy test runner."""
 
-if False:
-    import typing
-
-if True:
-    # When this is run as a script, `typing` is not available yet.
-    import sys
-    from os.path import join, isdir
-
-    def get_versions():  # type: () -> typing.List[str]
-        major = sys.version_info[0]
-        minor = sys.version_info[1]
-        if major == 2:
-            return ['2.7']
-        else:
-            # generates list of python versions to use.
-            # For Python2, this is only [2.7].
-            # Otherwise, it is [3.4, 3.3, 3.2, 3.1, 3.0].
-            return ['%d.%d' % (major, i) for i in range(minor, -1, -1)]
-
-    sys.path[0:0] = [v for v in [join('lib-typing', v) for v in get_versions()] if isdir(v)]
-    # Now `typing` is available.
-
-
 from typing import Dict, List, Optional, Set, Iterable
 
 from mypy.waiter import Waiter, LazySubprocess
@@ -33,8 +10,21 @@ from mypy.test.testpythoneval import python_eval_files, python_34_eval_files
 
 import itertools
 import os
+from os.path import join, isdir
 import re
-import json
+import sys
+
+
+def get_versions():  # type: () -> List[str]
+    major = sys.version_info[0]
+    minor = sys.version_info[1]
+    if major == 2:
+        return ['2.7']
+    else:
+        # generates list of python versions to use.
+        # For Python2, this is only [2.7].
+        # Otherwise, it is [3.4, 3.3, 3.2, 3.1, 3.0].
+        return ['%d.%d' % (major, i) for i in range(minor, -1, -1)]
 
 
 # Ideally, all tests would be `discover`able so that they can be driven
@@ -111,7 +101,8 @@ class Driver:
         else:
             args = [sys.executable, '-m', 'pytest'] + pytest_args
 
-        self.waiter.add(LazySubprocess(full_name, args, env=self.env), sequential=True)
+        self.waiter.add(LazySubprocess(full_name, args, env=self.env, passthrough=self.verbosity),
+                        sequential=True)
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
@@ -421,6 +412,13 @@ def main() -> None:
         pyt_arglist.append('--lf')
     if ff:
         pyt_arglist.append('--ff')
+    if verbosity >= 1:
+        pyt_arglist.extend(['-v'] * verbosity)
+    elif verbosity < 0:
+        pyt_arglist.extend(['-q'] * (-verbosity))
+    if parallel_limit:
+        if '-n' not in pyt_arglist:
+            pyt_arglist.append('-n{}'.format(parallel_limit))
 
     driver = Driver(whitelist=whitelist, blacklist=blacklist, lf=lf, ff=ff,
                     arglist=arglist, pyt_arglist=pyt_arglist, verbosity=verbosity,
@@ -429,7 +427,6 @@ def main() -> None:
     driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
     driver.prepend_path('MYPYPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [driver.cwd])
-    driver.prepend_path('PYTHONPATH', [join(driver.cwd, 'lib-typing', v) for v in driver.versions])
 
     driver.add_flake8()
     add_pytest(driver)

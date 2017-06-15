@@ -1,21 +1,28 @@
 -- Checks for incremental mode (see testcheck.py).
 -- Each test is run twice, once with a cold cache, once with a warm cache.
--- Before the tests are run the second time, any *.py.next files are copied to *.py.
+-- Before the tests are run again, in step N any *.py.N files are copied to
+-- *.py.
+--
+-- You can add an empty section like `[delete mod.py.2]` to delete `mod.py`
+-- before the second run.
 --
 -- Errors expected in the first run should be in the `[out1]` section, and
--- errors expected in the second run should be in the `[out2]` section. If a
--- section is omitted, it is expected there are no errors on that run.
--- (Note that [out] is equivalent to [out1].)
+-- errors expected in the second run should be in the `[out2]` section, and so on.
+-- If a section is omitted, it is expected there are no errors on that run.
+-- The number of runs is determined by the highest N in all [outN] sections, but
+-- there are always at least two runs. (Note that [out] is equivalent to [out1].)
 --
 -- The list of modules to be checked can be specified using
 -- # cmd: mypy -m mod1 mod2 mod3
 -- To check a different list on the second run, use
 -- # cmd2: mypy -m mod1 mod3
+-- (and cmd3 for the third run, and so on).
 --
 -- Extra command line flags may be specified using
 -- # flags: --some-flag
 -- If the second run requires different flags, those can be specified using
 -- # flags2: --another-flag
+-- (and flags3 for the third run, and so on).
 --
 -- Any files that we expect to be rechecked should be annotated in the [rechecked]
 -- annotation, and any files expect to be stale (aka have a modified interface)
@@ -26,6 +33,8 @@
 -- all cases so we can avoid constantly having to annotate it. The list of
 -- rechecked/stale files can be in any arbitrary order, or can be left empty
 -- if no files should be rechecked/stale.
+--
+-- There are additional incremental mode test cases in check-serialize.test.
 
 [case testIncrementalEmpty]
 [rechecked]
@@ -36,7 +45,7 @@ import m
 [file m.py]
 def foo():
     pass
-[file m.py.next]
+[file m.py.2]
 def foo() -> None:
     pass
 [rechecked m]
@@ -47,7 +56,7 @@ import m
 [file m.py]
 def foo() -> None:
     pass
-[file m.py.next]
+[file m.py.2]
 def foo() -> None:
     bar()
 [rechecked m]
@@ -89,7 +98,7 @@ def func2() -> None: mod3.func3()
 [file mod3.py]
 def func3() -> None: pass
 
-[file mod3.py.next]
+[file mod3.py.2]
 def func3() -> None: 3 + 2
 
 [rechecked mod3]
@@ -106,7 +115,7 @@ def func1() -> A: pass
 [file mod2.py]
 class A: pass
 
-[file mod1.py.next]
+[file mod1.py.2]
 def func1() -> A: pass
 
 [rechecked mod1]
@@ -122,7 +131,7 @@ from typing import Callable
 from mypy_extensions import Arg
 def func1() -> Callable[[Arg(int, 'x')], int]: pass
 
-[file mod1.py.next]
+[file mod1.py.2]
 from typing import Callable
 from mypy_extensions import Arg
 def func1() -> Callable[[Arg(int, 'x')], int]: ...
@@ -143,7 +152,7 @@ def func1() -> A: pass
 [file mod2.py]
 class A: pass
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Parent: pass
 class A(Parent): pass
 
@@ -165,7 +174,7 @@ def func2() -> None: mod3.func3()
 [file mod3.py]
 def func3() -> None: pass
 
-[file mod3.py.next]
+[file mod3.py.2]
 def func3() -> int: return 2
 
 [rechecked mod2, mod3]
@@ -185,7 +194,7 @@ def foo() -> int:
         return 42
     return inner()
 
-[file mod2.py.next]
+[file mod2.py.2]
 def foo() -> int:
     def inner2() -> str:
         return "foo"
@@ -213,7 +222,7 @@ def bar() -> int:
 def foo() -> int:
     return bar()
 
-[file mod2.py.next]
+[file mod2.py.2]
 def foo() -> int:
     return baz()
 
@@ -236,7 +245,7 @@ class Foo:
     def bar(self, a: str) -> str:
         return "a"
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Foo:
     def bar(self, a: float) -> str:
         return "a"
@@ -257,7 +266,7 @@ class Good:
 class Bad: pass
 class Child(Good): pass
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Good:
     def good_method(self) -> int: return 1
 class Bad: pass
@@ -287,7 +296,7 @@ B = C
 [file mod4.py]
 C = 3
 
-[file mod4.py.next]
+[file mod4.py.2]
 C = "A"
 
 [rechecked mod1, mod2, mod3, mod4]
@@ -312,14 +321,14 @@ import mod4
 [file mod4.py]
 const = 3
 
-[file mod3.py.next]
+[file mod3.py.2]
 # Import to mod4 is gone!
 
 [rechecked mod1, mod2, mod3]
 [stale mod3]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "ModuleType" has no attribute "mod4"
+tmp/mod1.py:3: error: Module has no attribute "mod4"
 
 [case testIncrementalLongBrokenCascade]
 import mod1
@@ -347,14 +356,14 @@ import mod7
 [file mod7.py]
 const = 3
 
-[file mod6.py.next]
+[file mod6.py.2]
 # Import to mod7 is gone!
 
 [rechecked mod1, mod5, mod6]
 [stale mod6]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "ModuleType" has no attribute "mod7"
+tmp/mod1.py:3: error: Module has no attribute "mod7"
 
 [case testIncrementalNestedBrokenCascade]
 import mod1
@@ -370,7 +379,7 @@ import mod2.mod3 as mod3
 [file mod2/mod3/__init__.py]
 import mod2.mod3.mod4 as mod4
 
-[file mod2/mod3/__init__.py.next]
+[file mod2/mod3/__init__.py.2]
 # Import is gone!
 
 [file mod2/mod3/mod4.py]
@@ -380,7 +389,7 @@ const = 3
 [stale mod2.mod3]
 [builtins fixtures/module.pyi]
 [out2]
-tmp/mod1.py:3: error: "ModuleType" has no attribute "mod4"
+tmp/mod1.py:3: error: Module has no attribute "mod4"
 
 [case testIncrementalNestedBrokenCascadeWithType1]
 import mod1, mod2.mod3.mod5
@@ -399,7 +408,7 @@ from mod2.mod3 import CustomType
 [file mod2/mod3/__init__.py]
 from mod2.mod3.mod4 import CustomType
 
-[file mod2/mod3/__init__.py.next]
+[file mod2/mod3/__init__.py.2]
 # Import a different class that also happens to be called 'CustomType'
 from mod2.mod3.mod5 import CustomType
 def produce() -> CustomType:
@@ -437,7 +446,7 @@ from mod2.mod3.mod4 import CustomType
 def produce() -> CustomType:
     return CustomType()
 
-[file mod2/mod3/__init__.py.next]
+[file mod2/mod3/__init__.py.2]
 # Import a different class that also happens to be called 'CustomType'
 from mod2.mod3.mod5 import CustomType
 def produce() -> CustomType:
@@ -475,7 +484,7 @@ import mod4
 [file mod4.py]
 const = 3
 
-[file mod4.py.next]
+[file mod4.py.2]
 const = "foo"
 
 [rechecked mod1, mod3, mod4]
@@ -496,7 +505,7 @@ def func1() -> int:
 def func2() -> int:
     return 1
 
-[file mod2.py.next]
+[file mod2.py.2]
 def func2() -> str:
     return "foo"
 
@@ -522,7 +531,7 @@ def func1() -> int:
 def func2() -> int:
     return 1
 
-[file mod2.py.next]
+[file mod2.py.2]
 def func2() -> str:
     return "foo"
 
@@ -549,7 +558,7 @@ def func1() -> int:
 def func2() -> int:
     return 1
 
-[file mod2.py.next]
+[file mod2.py.2]
 def func2() -> str:
     return "foo"
 
@@ -569,7 +578,7 @@ my_dict = {
     'b': [4, 5, 6]
 }
 
-[file mod1_private.py.next]
+[file mod1_private.py.2]
 my_dict = {
     'a': [1, 2, 3],
     'b': [4, 5, 'a']
@@ -590,7 +599,7 @@ def foobar() -> int: return 1
 def baz() -> int: return 2
 const = 1 + foobar()
 
-[file mod1_private.py.next]
+[file mod1_private.py.2]
 def foobar() -> int: return 1
 def baz() -> int: return 2
 const = 1 + baz()
@@ -609,7 +618,7 @@ def foobar() -> int: return 1
 def baz() -> int: return 2
 const = 1 + foobar()  # type: int
 
-[file mod1_private.py.next]
+[file mod1_private.py.2]
 def foobar() -> int: return 1
 def baz() -> int: return 2
 const = 1 + baz()  # type: int
@@ -629,7 +638,7 @@ accepts_int(mod1_private.some_func(12))
 def some_func(a: int) -> int:
     return 1
 
-[file mod1_private.py.next]
+[file mod1_private.py.2]
 def some_func(a: int) -> str:
     return "a"
 
@@ -659,7 +668,7 @@ def stringify(f: Callable[[int], int]) -> Callable[[int], str]:
 def some_func(a: int) -> int:
     return a + 2
 
-[file mod1_private.py.next]
+[file mod1_private.py.2]
 from typing import Callable
 def multiply(f: Callable[[int], int]) -> Callable[[int], int]:
     return lambda a: f(a) * 10
@@ -687,7 +696,7 @@ mod2.Foo.A
 class Foo:
     A = 3
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Foo:
     A = "hello"
 
@@ -707,7 +716,7 @@ class Foo:
     def __init__(self) -> None:
         self.A = 3
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Foo:
     def __init__(self) -> None:
         self.A = "hello"
@@ -729,7 +738,7 @@ class Foo:
     def __init__(self) -> None:
         self.A = 3
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Foo:
     def __init__(self) -> None:
         self.A = "hello"
@@ -751,7 +760,7 @@ class Foo:
     def __init__(self) -> None:
         self.A = 3
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Foo:
     def __init__(self) -> None:
         self.A = "hello"
@@ -774,7 +783,7 @@ class Foo:
     class Bar:
         attr = 3
 
-[file mod2.py.next]
+[file mod2.py.2]
 class Foo:
     class Bar:
         attr = "foo"
@@ -792,7 +801,7 @@ def func() -> None: pass
 [file mod2.py]
 def func() -> None: pass
 
-[file mod1.py.next]
+[file mod1.py.2]
 def func() -> int: return 1
 
 [rechecked mod1]
@@ -931,10 +940,10 @@ from parent import a
 
 [file parent/a.py]
 
-[file parent/a.py.next]
+[file parent/a.py.2]
 from parent import b
 
-[file parent/b.py.next]
+[file parent/b.py.2]
 
 [stale parent, parent.a, parent.b]
 
@@ -947,7 +956,7 @@ from parent import a, b
 
 [file parent/b.py]
 
-[file parent/a.py.next]
+[file parent/a.py.2]
 from parent import b
 
 [stale parent.a]
@@ -996,7 +1005,7 @@ import b
 from typing import Any
 import a.b
 
-[file b.py.next]
+[file b.py.2]
 from typing import Any
 
 a = 3  # type: Any
@@ -1026,7 +1035,7 @@ def bar(a: str) -> None: pass
 
 foo(3)
 
-[file m.py.next]
+[file m.py.2]
 def foo(a: int) -> None: pass
 def bar(a: str) -> None: pass
 
@@ -1092,7 +1101,7 @@ c.C().foo()
 class B:
     def foo(self) -> None: pass
 
-[file b.py.next]
+[file b.py.2]
 
 [file c/__init__.py]
 class C: pass
@@ -1118,7 +1127,7 @@ class C:
 [file n.py]
 class A:
   def bar(self): pass
-[file n.py.next]
+[file n.py.2]
 class A:
   pass
 [rechecked m, n]
@@ -1136,7 +1145,7 @@ class C:
 [file n.py]
 class A:
   pass
-[file n.py.next]
+[file n.py.2]
 class A:
   def bar(self): pass
 [rechecked m, n]
@@ -1153,7 +1162,7 @@ accept_int(n.foo)
 [file n.py]
 foo = "hello"
 reveal_type(foo)
-[file n.py.next]
+[file n.py.2]
 foo = 3.14
 reveal_type(foo)
 [rechecked m, n]
@@ -1180,7 +1189,7 @@ import bad
 from good import foo
 foo(3)
 
-[file client.py.next]
+[file client.py.2]
 import good
 import bad
 from bad import foo
@@ -1206,7 +1215,7 @@ from m3 import A
 from m4 import B
 A = B
 
-[file m3.py.next]
+[file m3.py.2]
 from m5 import C
 A = C
 
@@ -1230,7 +1239,7 @@ tmp/m1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; exp
 [file main.py]
 from evil import Hello
 
-[file main.py.next]
+[file main.py.2]
 from evil import Hello
 reveal_type(Hello())
 
@@ -1256,7 +1265,7 @@ accept_int(bar)
 [file foo.py]
 bar = 3
 
-[file foo.py.next]
+[file foo.py.2]
 # Empty!
 
 [rechecked main]
@@ -1305,7 +1314,7 @@ class B:
         val = "str"   # deliberately triggering error
         return C()
 
-[file mod3.py.next]
+[file mod3.py.2]
 from mod4 import C
 class B:
     def makeC(self) -> C: return C()
@@ -1348,7 +1357,7 @@ class B:
 class C:
     def foo(self) -> int: return 1
 
-[file mod4.py.next]
+[file mod4.py.2]
 class C:
     def foo(self) -> str: return 'a'
 
@@ -1383,7 +1392,7 @@ class B:
         val = "str"   # deliberately triggering error
         return C()
 
-[file mod3.py.next]
+[file mod3.py.2]
 from mod4 import C
 class B:
     def makeC(self) -> C: return C()
@@ -1392,7 +1401,7 @@ class B:
 class C:
     def foo(self) -> int: return 1
 
-[file mod4.py.next]
+[file mod4.py.2]
 class C:
     def foo(self) -> str: return 'a'
 
@@ -1413,7 +1422,7 @@ tmp/mod1.py:3: error: Revealed type is 'builtins.str'
 from foo import MyClass
 m = MyClass()
 
-[file main.py.next]
+[file main.py.2]
 from foo import MyClass
 m = MyClass()
 reveal_type(m.val)
@@ -1438,7 +1447,7 @@ tmp/main.py:3: error: Revealed type is 'Any'
 from foo import MyClass
 m = MyClass()
 
-[file main.py.next]
+[file main.py.2]
 from foo import MyClass
 m = MyClass()
 reveal_type(m.val)
@@ -1489,7 +1498,7 @@ MyTuple = NamedTuple('MyTuple', [
     ('c', str)
 ])
 
-[file bar.py.next]
+[file bar.py.2]
 from typing import NamedTuple
 MyTuple = NamedTuple('MyTuple', [
     ('b', int),  # a and b are swapped
@@ -1522,7 +1531,7 @@ class Outer:
         ('c', str)
     ])
 
-[file bar.py.next]
+[file bar.py.2]
 from typing import NamedTuple
 class Outer:
     MyTuple = NamedTuple('MyTuple', [
@@ -1551,7 +1560,7 @@ class B: pass
 [file a/c.py]
 class C: pass
 
-[file a/c.py.next]
+[file a/c.py.2]
 class C: pass
 pass
 
@@ -1578,7 +1587,7 @@ class Outer:
     class Inner:
         pass
 
-[file top.py.next]
+[file top.py.2]
 from funcs import callee
 from classes import Outer
 def caller(a: Outer.Inner) -> int:
@@ -1599,7 +1608,7 @@ from . import m
 R = m.R
 a = None  # type: R
 
-[file r/s.py.next]
+[file r/s.py.2]
 from . import m
 R = m.R
 a = None  # type: R
@@ -1624,7 +1633,7 @@ main:8: error: Definition of "attr" in base class "X" is incompatible with defin
 import a
 [file a.py]
 x = 0
-[file a.py.next]
+[file a.py.2]
 x = 0
 x + ''
 
@@ -1634,7 +1643,7 @@ import a
 reveal_type(a.x)
 [file a.py]
 /
-[file a.py.next]
+[file a.py.2]
 //
 [out]
 main:3: error: Revealed type is 'Any'
@@ -1646,7 +1655,7 @@ main:3: error: Revealed type is 'Any'
 import a
 [file a.py]
 /
-[file a.py.next]
+[file a.py.2]
 //
 [out1]
 main:2: note: Import of 'a' ignored
@@ -1664,7 +1673,7 @@ x = 0
 [file mypy.ini]
 [[mypy]
 follow_imports = normal
-[file mypy.ini.next]
+[file mypy.ini.2]
 [[mypy]
 follow_imports = skip
 [out1]
@@ -1711,28 +1720,6 @@ main:1: error: Module 'ntcrash' has no attribute 'nope'
 [out2]
 main:1: error: Module 'ntcrash' has no attribute 'nope'
 
-[case testIncrementalNamedTupleInMethod4]
-from ntcrash import C
-reveal_type(C().a)
-reveal_type(C().b)
-reveal_type(C().c)
-[file ntcrash.py]
-from typing import NamedTuple
-class C:
-    def __init__(self) -> None:
-        A = NamedTuple('A', [('x', int)])
-        self.a = A(0)
-        self.b = A(0)  # type: A
-        self.c = A
-[out1]
-main:2: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:3: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:4: error: Revealed type is 'def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-[out2]
-main:2: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:3: error: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:4: error: Revealed type is 'def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-
 [case testIncrementalTypedDictInMethod]
 from tdcrash import nope
 [file tdcrash.py]
@@ -1774,29 +1761,6 @@ class C:
 main:1: error: Module 'tdcrash' has no attribute 'nope'
 [out2]
 main:1: error: Module 'tdcrash' has no attribute 'nope'
-
-[case testIncrementalTypedDictInMethod4]
-from ntcrash import C
-reveal_type(C().a)
-reveal_type(C().b)
-reveal_type(C().c)
-[file ntcrash.py]
-from mypy_extensions import TypedDict
-class C:
-    def __init__(self) -> None:
-        A = TypedDict('A', {'x': int})
-        self.a = A(x=0)
-        self.b = A(x=0)  # type: A
-        self.c = A
-[builtins fixtures/dict.pyi]
-[out1]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
-main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
-[out2]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
-main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
 
 [case testIncrementalInnerClassAttrInMethod]
 import crash
@@ -1906,7 +1870,7 @@ m.A().x = 0
 from typing import ClassVar
 class A:
     x = None  # type: ClassVar[int]
-[file m.py.next]
+[file m.py.2]
 class A:
     x = None  # type: int
 [out1]
@@ -1920,7 +1884,7 @@ class A:
     x = None  # type: ClassVar[int]
 [file b.py]
 import a
-[file b.py.next]
+[file b.py.2]
 import a
 a.A().x = 0
 [out2]
@@ -1943,7 +1907,139 @@ main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fall
 main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
 main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
 
-[case testQuickAndDirty1]
+[case testSerializeMetaclass]
+import b
+reveal_type(b.A.f())
+m: b.M = b.A
+reveal_type(b.a.f())
+[file b.py]
+from typing import Type
+
+class M(type):
+    def f(cls) -> int: return 0
+class A(metaclass=M): pass
+a: Type[A]
+[out]
+main:2: error: Revealed type is 'builtins.int'
+main:4: error: Revealed type is 'builtins.int'
+[out2]
+main:2: error: Revealed type is 'builtins.int'
+main:4: error: Revealed type is 'builtins.int'
+
+[case testSerializeMetaclassInImportCycle1]
+import b
+import c
+reveal_type(b.A.f())
+m: c.M = b.A
+reveal_type(b.a.f())
+[file b.py]
+from typing import Type
+from c import M
+class A(metaclass=M): pass
+a: Type[A]
+[file c.py]
+class M(type):
+    def f(cls) -> int: return 0
+[out]
+main:3: error: Revealed type is 'builtins.int'
+main:5: error: Revealed type is 'builtins.int'
+[out2]
+main:3: error: Revealed type is 'builtins.int'
+main:5: error: Revealed type is 'builtins.int'
+
+-- TODO: Add another test for metaclass in import cycle (reversed from the above test).
+--       This currently does not work.
+
+[case testDeleteFile]
+import n
+[file n.py]
+import m
+[file m.py]
+x = 1
+[delete m.py.2]
+[rechecked n]
+[stale]
+[out2]
+tmp/n.py:1: error: Cannot find module named 'm'
+tmp/n.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testDeleteFileWithinCycle]
+import a
+[file a.py]
+import b
+[file b.py]
+import c
+[file c.py]
+import a
+[file a.py.2]
+import c
+[delete b.py.2]
+[rechecked a, c]
+[stale a]
+[out2]
+
+[case testThreePassesBasic]
+import m
+[file m.py]
+def foo():
+    pass
+[file m.py.2]
+def foo() -> None:
+    pass
+[file m.py.3]
+def foo():
+    pass
+[rechecked m]
+[stale m]
+[rechecked2 m]
+[stale2 m]
+[out3]
+
+[case testThreePassesErrorInThirdPass]
+import m
+[file m.py]
+def foo():
+    pass
+[file m.py.2]
+def foo() -> None:
+    pass
+[file m.py.3]
+def foo() -> int:
+    return ''
+[rechecked m]
+[stale m]
+[rechecked2 m]
+[stale2]
+[out3]
+tmp/m.py:2: error: Incompatible return value type (got "str", expected "int")
+
+[case testThreePassesThirdPassFixesError]
+import n
+[file n.py]
+import m
+x = m.foo(1)
+[file m.py]
+def foo(x):
+    pass
+[file m.py.2]
+def foo() -> str:
+    pass
+[file m.py.3]
+def foo(x) -> int:
+    pass
+[rechecked m, n]
+[stale m]
+[rechecked2 m, n]
+[stale2 m, n]
+[out2]
+tmp/n.py:2: error: Too many arguments for "foo"
+[out3]
+
+--
+-- Quick mode
+--
+
+[case testQuickAndDirtyInterfaceChangeDoesNotPropagate]
 # flags: --quick-and-dirty
 import b, c
 [file a.py]
@@ -1954,12 +2050,12 @@ import c
 [file c.py]
 import a
 import b
-[file a.py.next]
+[file a.py.2]
 def a(x): pass
 [rechecked a]
 [stale a]
 
-[case testQuickAndDirty2]
+[case testQuickAndDirtyDoesNotInvalidateImportCycle]
 # flags: --quick-and-dirty
 import b, c
 [file a.py]
@@ -1970,14 +2066,14 @@ import c
 [file c.py]
 import a
 import b
-[file b.py.next]
+[file b.py.2]
 import a
 import c
 x = 0
 [rechecked b]
 [stale b]
 
-[case testQuickAndDirty3]
+[case testQuickAndDirtySwitchToIncrementalMode]
 # flags: --quick-and-dirty
 # flags2: --incremental
 import a, b
@@ -1988,7 +2084,7 @@ import a
 [rechecked a, b, builtins]
 [stale a, b, builtins]
 
-[case testQuickAndDirty4]
+[case testQuickAndDirtyFixErrorInExistingFunction]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -1996,7 +2092,7 @@ import b
 def foo() -> int: return ''
 [file b.py]
 import a
-[file a.py.next]
+[file a.py.2]
 def foo() -> int: return 0
 [out1]
 tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
@@ -2004,14 +2100,14 @@ tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
 [rechecked a]
 [stale a]
 
-[case testQuickAndDirty5]
+[case testQuickAndDirtyIntroduceErrorInNewFunction]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
 import b
 [file b.py]
 import a
-[file a.py.next]
+[file a.py.2]
 import b
 def foo() -> int: return ''
 [out1]
@@ -2020,7 +2116,7 @@ tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
 [rechecked a]
 [stale]
 
-[case testQuickAndDirty6]
+[case testQuickAndDirtyPersistingError]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2028,7 +2124,7 @@ import b
 def foo() -> int: return ''
 [file b.py]
 import a
-[file a.py.next]
+[file a.py.2]
 import b
 def foo() -> int: return 0.5
 [out1]
@@ -2038,7 +2134,7 @@ tmp/a.py:2: error: Incompatible return value type (got "float", expected "int")
 [rechecked a]
 [stale]
 
-[case testQuickAndDirty7]
+[case testQuickAndDirtyIntroduceReferencesWithinCycle]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2047,7 +2143,7 @@ import b
 import a
 class C: pass
 def f() -> int: pass
-[file a.py.next]
+[file a.py.2]
 import b
 reveal_type(b.C)
 reveal_type(b.f)
@@ -2058,7 +2154,7 @@ tmp/a.py:3: error: Revealed type is 'def () -> builtins.int'
 [rechecked a]
 [stale]
 
-[case testQuickAndDirty8]
+[case testQuickAndDirtyIntroduceReferencesWithinCycle2]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2067,7 +2163,7 @@ class C: pass
 def f() -> int: pass
 [file b.py]
 import a
-[file b.py.next]
+[file b.py.2]
 import a
 reveal_type(a.C)
 reveal_type(a.f)
@@ -2078,46 +2174,102 @@ tmp/b.py:3: error: Revealed type is 'def () -> builtins.int'
 [rechecked b]
 [stale]
 
+[case testQuickAndDirtyIntroduceReferencesWithinCycleNoError]
+# flags: --quick-and-dirty
+import a, b, c
+[file a.py]
+import b
+[file b.py]
+import a
+class C: pass
+def f() -> int: pass
+[file c.py]
+[file a.py.2]
+import b
+def g() -> b.C: pass
+h = b.f
+[file c.py.3]
+import a
+reveal_type(a.g)
+reveal_type(a.h)
+[out1]
+[out2]
+[out3]
+tmp/c.py:2: error: Revealed type is 'def () -> b.C'
+tmp/c.py:3: error: Revealed type is 'def () -> builtins.int'
+[rechecked a]
+[stale a]
+[rechecked2 c]
+[stale2]
+
+[case testQuickAndDirtyIntroduceReferencesWithinCycleNoError2]
+# flags: --quick-and-dirty
+import a, b, c
+[file a.py]
+import b
+class C: pass
+def f() -> int: pass
+[file b.py]
+import a
+[file c.py]
+[file b.py.2]
+import a
+def g() -> a.C: pass
+h = a.f
+[file c.py.3]
+import b
+reveal_type(b.g)
+reveal_type(b.h)
+[out1]
+[out2]
+[out3]
+tmp/c.py:2: error: Revealed type is 'def () -> a.C'
+tmp/c.py:3: error: Revealed type is 'def () -> builtins.int'
+[rechecked b]
+[stale b]
+[rechecked2 c]
+[stale2]
+
 -- (The behavior for blockers is actually no different than in regular incremental mode)
-[case testQuickAndDirty9]
+[case testQuickAndDirtyBlockerOnFirstRound]
+# flags: --quick-and-dirty
+import a, b
+[file a.py]
+import b
+class B(C): pass
+class C(B): pass  # blocker
+[file b.py]
+import a
+[file a.py.2]
+import b
+class B: pass
+class C(B): pass
+[out1]
+tmp/a.py:3: error: Cycle in inheritance hierarchy
+[out2]
+[rechecked a, b]
+[stale a, b]
+
+[case testQuickAndDirtyBlockerOnSecondRound]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
 import b
 class B: pass
-class C(B, B): pass  # blocker
-[file b.py]
-import a
-[file a.py.next]
-import b
-class B: pass
-class C(B): pass
-[out1]
-tmp/a.py:3: error: Duplicate base class "B"
-[out2]
-[rechecked a, b]
-[stale a, b]
-
-[case testQuickAndDirty10]
-# flags: --quick-and-dirty
-import a, b
-[file a.py]
-import b
-class B: pass
 class C(B): pass
 [file b.py]
 import a
-[file a.py.next]
+[file a.py.2]
 import b
-class B: pass
-class C(B, B): pass  # blocker
+class B(C): pass
+class C(B): pass  # blocker
 [out1]
 [out2]
-tmp/a.py:3: error: Duplicate base class "B"
+tmp/a.py:3: error: Cycle in inheritance hierarchy
 [rechecked a, b]
 [stale a, b]
 
-[case testQuickAndDirty11]
+[case testQuickAndDirtyRenameFunctionInTwoModules]
 # flags: --quick-and-dirty
 import a, b, c, d
 [file a.py]
@@ -2129,13 +2281,13 @@ from a import f
 from b import f
 [file d.py]
 from c import f
-[file a.py.next]
+[file a.py.2]
 import d
 def g(): pass  # renamed f to g
-[file c.py.next]
+[file c.py.2]
 from a import g
 
-[case testQuickAndDirty12]
+[case testQuickAndDirtyUnmodifiedModuleDoesNotGenerateError]
 # flags: --quick-and-dirty
 import a, b, c, d
 [file a.py]
@@ -2148,17 +2300,17 @@ from a import C
 from b import C
 [file d.py]
 from c import C
-C().f()
-[file a.py.next]
+C().f()  # no error because unmodified
+[file a.py.2]
 import d
 class C:
     def g(self): pass  # renamed f to g
-[file c.py.next]
+[file c.py.2]
 from a import C
 [out1]
 [out2]
 
-[case testQuickAndDirty13]
+[case testQuickAndDirtyUnmodifiedModuleDoesNotGenerateError2]
 # flags: --quick-and-dirty
 import a, b, c
 [file a.py]
@@ -2171,7 +2323,7 @@ x = a.C.x  # type: int
 [file c.py]
 import b
 x = b.x
-[file a.py.next]
+[file a.py.2]
 import c
 class C:
     pass  # Removed x
@@ -2180,7 +2332,7 @@ class C:
 [rechecked a]
 [stale a]
 
-[case testQuickAndDirty14]
+[case testQuickAndDirtyTypeAliasReference]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2189,11 +2341,11 @@ def f(x: b.S) -> b.S: return x
 [file b.py]
 import a
 S = str
-[file a.py.next]
+[file a.py.2]
 import b
 def f(x: b.S) -> int: return 0
 
-[case testQuickAndDirty15]
+[case testQuickAndDirtyNamedTupleReference]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2203,11 +2355,11 @@ def f(x: b.P) -> b.P: return x
 from typing import NamedTuple
 import a
 P = NamedTuple('P', (('x', int),))
-[file a.py.next]
+[file a.py.2]
 import b
 def f(x: b.P) -> int: return 0
 
-[case testQuickAndDirty16]
+[case testQuickAndDirtyTypeVarReference]
 # flags: --quick-and-dirty
 import a, b
 [file a.py]
@@ -2217,6 +2369,347 @@ def f(x: b.T) -> b.T: return x
 from typing import TypeVar
 import a
 T = TypeVar('T')
-[file a.py.next]
+[file a.py.2]
 import b
 def f(x: b.T) -> int: return 0
+
+[case testQuickAndDirtyDeleteFunctionUsedByOtherModule]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+from b import f
+[file b.py]
+import a
+def f() -> int: pass
+a.f()
+[file b.py.2]
+import a
+reveal_type(a.f)
+[out2]
+tmp/b.py:2: error: Revealed type is 'Any'
+
+[case testQuickAndDirtyDeleteClassUsedInAnnotation]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file b.py.2]
+import a
+reveal_type(a.f)
+a.f().x
+[out2]
+tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
+tmp/b.py:3: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
+
+[case testQuickAndDirtyDeleteClassUsedAsBase]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+class D(b.C): pass
+[file b.py]
+import a
+class C: pass
+[file b.py.2]
+import a
+reveal_type(a.D)
+a.D().x
+[out2]
+tmp/b.py:2: error: Revealed type is 'Any'
+
+[case testQuickAndDirtyDeleteNestedClassUsedInAnnotation]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C.D: pass
+[file b.py]
+import a
+class C:
+    class D: pass
+[file b.py.2]
+import a
+class C:
+    pass
+reveal_type(a.f)
+a.f().x
+[out2]
+tmp/b.py:4: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
+tmp/b.py:5: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
+
+[case testQuickAndDirtyTurnGenericClassIntoNonGeneric-skip]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C[int]: pass
+[file b.py]
+from typing import TypeVar, Generic
+import a
+T = TypeVar('T')
+class C(Generic[T]): pass
+[file b.py.2]
+import a
+class C: pass
+reveal_type(a.f)
+c: C
+d = a.f()
+c = d
+d = c
+[out2]
+# TODO: Crashes (https://github.com/python/mypy/issues/3279)
+
+[case testQuickAndDirtyTurnClassIntoGenericOne-skip]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file b.py.2]
+from typing import TypeVar, Generic
+import a
+T = TypeVar('T')
+class C(Generic[T]): pass
+reveal_type(a.f)
+c: C[int]
+d = a.f()
+d = c
+c = d
+[out2]
+# TODO: Crashes (https://github.com/python/mypy/issues/3279)
+
+[case testQuickAndDirtyDeleteTypeVarUsedInAnnotation]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f(x: b.T) -> b.T: return x
+[file b.py]
+from typing import TypeVar
+import a
+T = TypeVar('T')
+[file b.py.2]
+import a
+reveal_type(a.f)
+reveal_type(a.f(1))
+[out2]
+tmp/b.py:2: error: Revealed type is 'def [b.T] (x: b.T`-1) -> b.T`-1'
+tmp/b.py:3: error: Revealed type is 'builtins.int*'
+
+[case testQuickAndDirtyDeleteNewTypeUsedInAnnotation]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+from typing import NewType
+import a
+C = NewType('C', int)
+[file b.py.2]
+import a
+reveal_type(a.f)
+a.f().x
+[out2]
+tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
+tmp/b.py:3: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
+
+[case testQuickAndDirtyChangeClassIntoFunction]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file b.py.2]
+import a
+def C() -> None: pass
+reveal_type(a.f)
+a.f().x
+[out2]
+tmp/b.py:3: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
+tmp/b.py:4: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
+
+[case testQuickAndDirtyChangeClassIntoVariable]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file b.py.2]
+import a
+C = 0
+reveal_type(a.f)
+a.f().x
+[out2]
+tmp/b.py:3: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
+tmp/b.py:4: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
+
+[case testQuickAndDirtyAddFile]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+x = ''
+[file b.py]
+import a
+[file b.py.2]
+import c
+reveal_type(c.x)
+[file c.py.2]
+import a
+x = 1
+reveal_type(a.x)
+[rechecked b, c]
+[stale]
+[out2]
+tmp/c.py:3: error: Revealed type is 'builtins.str'
+tmp/b.py:2: error: Revealed type is 'builtins.int'
+
+[case testQuickAndDirtyDeleteFile]
+# flags: --quick-and-dirty
+import b
+[file a.py]
+def f() -> None: pass
+[file b.py]
+import a
+a.f()
+[delete a.py.2]
+[file b.py.3]
+import a
+a.f() # Comment change
+[file b.py.4]
+# Remove import
+[rechecked b]
+[stale]
+[rechecked2 b]
+[stale2]
+[rechecked3 b]
+[stale3 b]
+[out2]
+tmp/b.py:1: error: Cannot find module named 'a'
+tmp/b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+[out3]
+tmp/b.py:1: error: Cannot find module named 'a'
+tmp/b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+[out4]
+
+[case testQuickAndDirtyRenameModule]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+b.f()
+[file b.py]
+def f() -> None: pass
+[delete b.py.2]
+[file c.py.2]
+def f() -> None: pass
+[file a.py.2]
+import c
+c.f(1)
+[file c.py.3]
+def f() -> None: pass # comment change
+[file c.py.4]
+def f(x) -> None: pass
+[out]
+[out2]
+tmp/a.py:2: error: Too many arguments for "f"
+[out3]
+tmp/a.py:2: error: Too many arguments for "f"
+[out4]
+[rechecked a, c]
+[stale c]
+[rechecked2 a, c]
+[stale2]
+[rechecked3 a, c]
+[stale3 a, c]
+
+[case testQuickAndDirtyMultiplePasses]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+import b
+b.f()
+[file b.py]
+def f() -> None: pass
+[file b.py.2]
+# Write cache file but the error in a is not caught yet.
+def f(x) -> None: pass
+[file a.py.3]
+# Editing a triggers the error.
+import b
+b.f()
+[rechecked b]
+[rechecked2 a]
+[out2]
+[out3]
+tmp/a.py:3: error: Too few arguments for "f"
+
+[case testQuickAndDirtySerializeStaleType]
+# flags: --quick-and-dirty
+import a, c
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file c.py]
+[file b.py.2]
+import a
+x = a.f()
+[file c.py.3]
+import b
+reveal_type(b.x)
+def g(x: object) -> None: pass
+g(b.x)
+b.x.y
+[rechecked b]
+[stale b]
+[rechecked2 c]
+[stale2]
+[out3]
+tmp/c.py:2: error: Revealed type is '<stale cache: consider running mypy without --quick>'
+tmp/c.py:5: error: "<stale cache: consider running mypy without --quick>" has no attribute "y"
+
+[case testSerializeAbstractPropertyIncremental]
+from abc import abstractmethod
+import typing
+class A:
+    @property
+    def f(self) -> int:
+        return 1
+    @f.setter  # type: ignore
+    @abstractmethod
+    def f(self, x: int) -> None:
+        pass
+a = A()
+[builtins fixtures/property.pyi]
+
+[case testSerializeAbstractPropertyDisallowUntypedIncremental]
+# flags: --disallow-untyped-defs
+from abc import abstractmethod
+import typing
+class A:
+    @property
+    def f(self) -> int:
+        return 1
+    @f.setter  # type: ignore
+    @abstractmethod
+    def f(self, x: int) -> None:
+        pass
+a = A()
+[builtins fixtures/property.pyi]

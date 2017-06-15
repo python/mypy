@@ -932,9 +932,10 @@ class A:
 [builtins fixtures/list.pyi]
 
 [case testNoneReturnTypeWithExpressions2]
+import typing
 
 a, b = None, None # type: (A, bool)
-f() in a   # Fail (see output)
+f() in a   # E: "f" does not return a value  # E: Unsupported right operand type for in ("A")
 a < f()    # E: "f" does not return a value
 f() <= a   # E: "f" does not return a value
 a in f()   # E: "f" does not return a value
@@ -948,10 +949,6 @@ class A:
     def __add__(self, x: 'A') -> 'A':
         pass
 [builtins fixtures/bool.pyi]
-[out]
-main:3: error: "f" does not return a value
-main:3: error: Unsupported right operand type for in ("A")
-
 
 -- Slicing
 -- -------
@@ -1001,6 +998,16 @@ a[:o]  # E: Slice index must be an integer or None
 [builtins fixtures/slice.pyi]
 
 [case testNoneSliceBounds]
+from typing import Any
+a = None # type: Any
+a[None:1]
+a[1:None]
+a[None:]
+a[:None]
+[builtins fixtures/slice.pyi]
+
+[case testNoneSliceBoundsWithStrictOptional]
+# flags: --strict-optional
 from typing import Any
 a = None # type: Any
 a[None:1]
@@ -1201,6 +1208,20 @@ def void() -> None:
     pass
 x = lambda: void() # type: typing.Callable[[], None]
 
+[case testNoCrashOnLambdaGenerator]
+from typing import Iterator, Callable
+
+# These should not crash
+lambda: (yield)
+
+gen: Callable[[], Iterator[str]]
+gen = (lambda: (yield 1))  # E: Incompatible types in yield (actual type "int", expected type "str")
+
+def fun(cb: Callable[[], Iterator[str]]) -> None:
+    pass
+fun(lambda: (yield from [1]))  # E: Incompatible types in "yield from" (actual type "int", expected type "str")
+[builtins fixtures/list.pyi]
+[out]
 
 -- List comprehensions
 -- -------------------
@@ -1675,3 +1696,23 @@ d = {**a, **b, 'c': 3}
 e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type Dict[str, int]; expected Mapping[int, str]
 f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type Dict[str, int]
 [builtins fixtures/dict.pyi]
+
+
+-- Type checker default plugin
+-- ---------------------------
+
+
+[case testIntPow]
+a = 1
+b = a + 2
+reveal_type(a**0) # E: Revealed type is 'builtins.int'
+reveal_type(a**1) # E: Revealed type is 'builtins.int'
+reveal_type(a**2) # E: Revealed type is 'builtins.int'
+reveal_type(a**-0) # E: Revealed type is 'builtins.int'
+reveal_type(a**-1) # E: Revealed type is 'builtins.float'
+reveal_type(a**(-2)) # E: Revealed type is 'builtins.float'
+reveal_type(a**b) # E: Revealed type is 'Any'
+reveal_type(a.__pow__(2)) # E: Revealed type is 'builtins.int'
+reveal_type(a.__pow__(a)) # E: Revealed type is 'Any'
+a.__pow__() # E: Too few arguments for "__pow__" of "int"
+[builtins fixtures/ops.pyi]

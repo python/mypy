@@ -398,6 +398,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     impl = None  # type: Optional[OverloadPart]
 
     def __init__(self, items: List['OverloadPart']) -> None:
+        assert len(items) > 0
         self.items = items
         self.impl = None
         self.set_line(items[0].line)
@@ -730,6 +731,7 @@ class ClassDef(Statement):
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = ''  # type: Optional[str]
     decorators = None  # type: List[Expression]
+    analyzed = None  # type: Optional[Expression]
     has_incompatible_baseclass = False
 
     def __init__(self,
@@ -752,7 +754,7 @@ class ClassDef(Statement):
         return self.info.is_generic()
 
     def serialize(self) -> JsonDict:
-        # Not serialized: defs, base_type_exprs, decorators
+        # Not serialized: defs, base_type_exprs, decorators, analyzed (for named tuples etc.)
         return {'.class': 'ClassDef',
                 'name': self.name,
                 'fullname': self.fullname,
@@ -1438,6 +1440,10 @@ class OpExpr(Expression):
     right = None  # type: Expression
     # Inferred type for the operator method type (when relevant).
     method_type = None  # type: Optional[mypy.types.Type]
+    # Is the right side going to be evaluated every time?
+    right_always = False
+    # Is the right side unreachable?
+    right_unreachable = False
 
     def __init__(self, op: str, left: Expression, right: Expression) -> None:
         self.op = op
@@ -2035,6 +2041,12 @@ class TypeInfo(SymbolNode):
                 return n
         return None
 
+    def get_containing_type_info(self, name: str) -> Optional['TypeInfo']:
+        for cls in self.mro:
+            if name in cls.names:
+                return cls
+        return None
+
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
         if n:
@@ -2180,6 +2192,8 @@ class TypeInfo(SymbolNode):
                 '_promote': None if self._promote is None else self._promote.serialize(),
                 'declared_metaclass': (None if self.declared_metaclass is None
                                        else self.declared_metaclass.serialize()),
+                'metaclass_type':
+                    None if self.metaclass_type is None else self.metaclass_type.serialize(),
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
                 'typeddict_type':
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
@@ -2202,7 +2216,9 @@ class TypeInfo(SymbolNode):
                        else mypy.types.deserialize_type(data['_promote']))
         ti.declared_metaclass = (None if data['declared_metaclass'] is None
                                  else mypy.types.Instance.deserialize(data['declared_metaclass']))
-        # NOTE: ti.metaclass_type and ti.mro will be set in the fixup phase.
+        ti.metaclass_type = (None if data['metaclass_type'] is None
+                             else mypy.types.Instance.deserialize(data['metaclass_type']))
+        # NOTE: ti.mro will be set in the fixup phase.
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None
@@ -2224,7 +2240,10 @@ class FakeInfo(TypeInfo):
     #    pass cleanly.
     # 2. If NOT_READY value is accidentally used somewhere, it will be obvious where the value
     #    is from, whereas a 'None' value could come from anywhere.
-    def __getattr__(self, attr: str) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def __getattribute__(self, attr: str) -> None:
         raise AssertionError('De-serialization failure: TypeInfo not fixed')
 
 

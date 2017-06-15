@@ -189,7 +189,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                 if len(t.args) != 1:
                     self.fail('Type[...] must have exactly one type argument', t)
                 item = self.anal_type(t.args[0])
-                return TypeType(item, line=t.line)
+                return TypeType.make_normalized(item, line=t.line)
             elif fullname == 'typing.ClassVar':
                 if self.nesting_level > 0:
                     self.fail('Invalid type: ClassVar nested inside other type', t)
@@ -232,7 +232,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                     # context. This is slightly problematic as it allows using the type 'Any'
                     # as a base class -- however, this will fail soon at runtime so the problem
                     # is pretty minor.
-                    return AnyType()
+                    return AnyType(from_unimported_type=True)
                 # Allow unbound type variables when defining an alias
                 if not (self.aliasing and sym.kind == TVAR and
                         self.tvar_scope.get_binding(sym) is None):
@@ -384,7 +384,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
         return AnyType()
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType(self.anal_type(t.item), line=t.line)
+        return TypeType.make_normalized(self.anal_type(t.item), line=t.line)
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.builtin_type('builtins.function')
@@ -610,6 +610,9 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                                   arg, info.name(), tvar.upper_bound), t)
         for arg in t.args:
             arg.accept(self)
+        if info.is_newtype:
+            for base in info.bases:
+                base.accept(self)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type],
                               valids: List[Type], arg_number: int, context: Context) -> None:
@@ -729,6 +732,23 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
             return super().visit_callable_type(t)
         else:
             return []
+
+
+def has_any_from_unimported_type(t: Type) -> bool:
+    """Return true if this type is Any because an import was not followed.
+
+    If type t is such Any type or has type arguments that contain such Any type
+    this function will return true.
+    """
+    return t.accept(HasAnyFromUnimportedType())
+
+
+class HasAnyFromUnimportedType(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_any(self, t: AnyType) -> bool:
+        return t.from_unimported_type
 
 
 def make_optional_type(t: Type) -> Type:

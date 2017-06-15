@@ -2,7 +2,7 @@ Mypy: Optional Static Typing for Python
 =======================================
 
 [![Build Status](https://travis-ci.org/python/mypy.svg)](https://travis-ci.org/python/mypy)
-[![Chat at https://gitter.im/python/mypy](https://badges.gitter.im/python/mypy.svg)](https://gitter.im/python/mypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Chat at https://gitter.im/python/typing](https://badges.gitter.im/python/typing.svg)](https://gitter.im/python/typing?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 
 Got a question? Join us on Gitter!
@@ -97,6 +97,23 @@ programs, even if they have type errors:
 [statically typed parts]: http://mypy.readthedocs.io/en/latest/basics.html#function-signatures
 
 
+IDE & Linter Integrations
+-------------------------
+
+Mypy can be integrated into popular IDEs:
+
+* Vim: [vim-mypy](https://github.com/Integralist/vim-mypy)
+* Emacs: using [Flycheck](https://github.com/flycheck/) and [Flycheck-mypy](https://github.com/lbolla/emacs-flycheck-mypy/issues)
+* Sublime Text: [SublimeLinter-contrib-mypy]
+* Atom: [linter-mypy](https://atom.io/packages/linter-mypy)
+* PyCharm: PyCharm integrates [its own implementation of PEP 484](https://www.jetbrains.com/help/pycharm/2017.1/type-hinting-in-pycharm.html).
+
+Mypy can also be integrated into [Flake8] using [flake8-mypy].
+
+[Flake8]: http://flake8.pycqa.org/
+[flake8-mypy]: https://github.com/ambv/flake8-mypy
+
+
 Web site and documentation
 --------------------------
 
@@ -157,6 +174,15 @@ If you want to contribute, first clone the mypy git repository:
 
     $ git clone --recurse-submodules https://github.com/python/mypy.git
 
+If you've already cloned the repo without `--recurse-submodules`,
+you need to pull in the typeshed repo as follows:
+
+    $ git submodule init
+    $ git submodule update
+
+Either way you should now have a subdirectory `typeshed` containing a
+clone of the typeshed repo (`https://github.com/python/typeshed`).
+
 From the mypy directory, use pip to install mypy:
 
     $ cd mypy
@@ -169,10 +195,6 @@ the above as root. For example, in Ubuntu:
 
 Now you can use the `mypy` program just as above.  In case of trouble
 see "Troubleshooting" above.
-
-The mypy wiki contains some useful information for contributors:
-
-  https://github.com/python/mypy/wiki/Developer-Guides
 
 
 Working with the git version of mypy

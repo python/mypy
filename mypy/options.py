@@ -2,7 +2,7 @@ import fnmatch
 import pprint
 import sys
 
-from typing import Any, Mapping, Optional, Tuple, List, Pattern, Dict
+from typing import Mapping, Optional, Tuple, List, Pattern, Dict
 
 from mypy import defaults
 
@@ -19,6 +19,7 @@ class Options:
     PER_MODULE_OPTIONS = {
         "ignore_missing_imports",
         "follow_imports",
+        "disallow_any",
         "disallow_untyped_calls",
         "disallow_untyped_defs",
         "check_untyped_defs",
@@ -29,6 +30,7 @@ class Options:
         "warn_return_any",
         "ignore_errors",
         "strict_boolean",
+        "no_implicit_optional",
     }
 
     OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional", "quick_and_dirty"}
@@ -44,6 +46,7 @@ class Options:
         self.report_dirs = {}  # type: Dict[str, str]
         self.ignore_missing_imports = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
+        self.disallow_any = []  # type: List[str]
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False
@@ -92,6 +95,9 @@ class Options:
         # Alternate way to show/hide strict-None-checking related errors
         self.show_none_errors = True
 
+        # Don't assume arguments with default values of None are Optional
+        self.no_implicit_optional = False
+
         # Use script name instead of __main__
         self.scripts_are_modules = False
 
@@ -106,6 +112,9 @@ class Options:
         self.cache_dir = defaults.CACHE_DIR
         self.debug_cache = False
         self.quick_and_dirty = False
+
+        # Paths of user plugins
+        self.plugins = []  # type: List[str]
 
         # Per-module options (raw)
         self.per_module_options = {}  # type: Dict[Pattern[str], Dict[str, object]]

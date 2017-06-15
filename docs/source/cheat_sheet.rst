@@ -149,6 +149,18 @@ When you're puzzled or when things are complicated
    reveal_type(c)  # -> error: Revealed type is 'builtins.list[builtins.str]'
    print(c)  # -> [4] the object is not cast
 
+   # if you want dynamic attributes on your class, have it override __setattr__ or __getattr__
+   # in a stub or in your source code.
+   # __setattr__ allows for dynamic assignment to names
+   # __getattr__ allows for dynamic access to names
+   class A:
+       # this will allow assignment to any A.x, if x is the same type as `value`
+       def __setattr__(self, name, value):
+           # type: (str, int) -> None
+           ...
+   a.foo = 42  # works
+   a.bar = 'Ex-parrot'  # fails type checking
+
    # TODO: explain "Need type annotation for variable" when
    # initializing with None or an empty container
 
@@ -220,7 +232,8 @@ Other stuff
 
    # Use AnyStr for functions that should accept any kind of string
    # without allowing different kinds of strings to mix.
-   def concat(a: AnyStr, b: AnyStr) -> AnyStr:
+   def concat(a, b):
+       # type: (AnyStr, AnyStr) -> AnyStr
        return a + b
    concat(u"foo", u"bar")  # type: unicode
    concat(b"foo", b"bar")  # type: bytes
@@ -228,7 +241,8 @@ Other stuff
    # Use IO[] for functions that should accept or return any
    # object that comes from an open() call. The IO[] does not
    # distinguish between reading, writing or other modes.
-   def get_sys_IO(mode='w') -> IO[str]:
+   def get_sys_IO(mode='w'):
+       # type: (str) -> IO[str]
        if mode == 'w':
            return sys.stdout
        elif mode == 'r':
