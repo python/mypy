@@ -305,13 +305,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         items = OrderedDict()  # type: OrderedDict[str, Type]
         for (item_name, item_expected_type) in callee.items.items():
-            item_value = kwargs[item_name]
+            if item_name in kwargs:
+                item_value = kwargs[item_name]
 
-            self.chk.check_simple_assignment(
-                lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
-                msg=messages.INCOMPATIBLE_TYPES,
-                lvalue_name='TypedDict item "{}"'.format(item_name),
-                rvalue_name='expression')
+                self.chk.check_simple_assignment(
+                    lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
+                    msg=messages.INCOMPATIBLE_TYPES,
+                    lvalue_name='TypedDict item "{}"'.format(item_name),
+                    rvalue_name='expression')
             items[item_name] = item_expected_type
 
         mapping_value_type = join.join_type_list(list(items.values()))

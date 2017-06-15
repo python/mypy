@@ -967,7 +967,9 @@ class TypedDictType(Type):
             items = self.items
         else:
             items = OrderedDict(zip(self.items, item_types))
-        return TypedDictType(items, self.required_keys, fallback, self.line, self.column)
+        if required_keys is None:
+            required_keys = self.required_keys
+        return TypedDictType(items, required_keys, fallback, self.line, self.column)
 
     def create_anonymous_fallback(self, *, value_type: Type) -> Instance:
         anonymous = self.as_anonymous()
