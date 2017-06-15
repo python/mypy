@@ -520,6 +520,40 @@ def g(x: X, y: I) -> None: pass
 reveal_type(f(g))  # E: Revealed type is '<nothing>'
 [builtins fixtures/dict.pyi]
 
+[case testMeetOfTypedDictsWithNonTotal]
+from mypy_extensions import TypedDict
+from typing import TypeVar, Callable
+XY = TypedDict('XY', {'x': int, 'y': int}, total=False)
+YZ = TypedDict('YZ', {'y': int, 'z': int}, total=False)
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: XY, y: YZ) -> None: pass
+reveal_type(f(g))  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, z=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int], _total=False)'
+[builtins fixtures/dict.pyi]
+
+[case testMeetOfTypedDictsWithNonTotalAndTotal]
+from mypy_extensions import TypedDict
+from typing import TypeVar, Callable
+XY = TypedDict('XY', {'x': int}, total=False)
+YZ = TypedDict('YZ', {'y': int, 'z': int})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: XY, y: YZ) -> None: pass
+reveal_type(f(g))  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, z=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int], _required_keys=[y, z])'
+[builtins fixtures/dict.pyi]
+
+[case testMeetOfTypedDictsWithIncompatibleNonTotalAndTotal]
+# flags: --strict-optional
+from mypy_extensions import TypedDict
+from typing import TypeVar, Callable
+XY = TypedDict('XY', {'x': int, 'y': int}, total=False)
+YZ = TypedDict('YZ', {'y': int, 'z': int})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: XY, y: YZ) -> None: pass
+reveal_type(f(g)) # E: Revealed type is '<nothing>'
+[builtins fixtures/dict.pyi]
+
 
 -- Constraint Solver
 
