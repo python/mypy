@@ -228,11 +228,13 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             items = OrderedDict([
                 (item_name, s_item_type)
                 for (item_name, s_item_type, t_item_type) in self.s.zip(t)
-                if is_equivalent(s_item_type, t_item_type)
+                if (is_equivalent(s_item_type, t_item_type) and
+                    (item_name in t.required_keys) == (item_name in self.s.required_keys))
             ])
             mapping_value_type = join_type_list(list(items.values()))
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
-            return TypedDictType(items, set(items.keys()), fallback)  # XXX required
+            required_keys = set(items.keys()) & t.required_keys & self.s.required_keys
+            return TypedDictType(items, required_keys, fallback)
         elif isinstance(self.s, Instance):
             return join_instances(self.s, t.fallback)
         else:

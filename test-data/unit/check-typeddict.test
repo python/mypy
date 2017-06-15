@@ -895,6 +895,29 @@ fa(b) # E: Argument 1 to "fa" has incompatible type "B"; expected "A"
 fc(b) # E: Argument 1 to "fc" has incompatible type "B"; expected "C"
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictJoinWithTotalFalse]
+from typing import TypeVar
+from mypy_extensions import TypedDict
+A = TypedDict('A', {'x': int})
+B = TypedDict('B', {'x': int}, total=False)
+C = TypedDict('C', {'x': int, 'y': str}, total=False)
+T = TypeVar('T')
+def j(x: T, y: T) -> T: return x
+a: A
+b: B
+c: C
+reveal_type(j(a, b)) \
+    # E: Revealed type is 'TypedDict(_fallback=typing.Mapping[builtins.str, <nothing>])'
+reveal_type(j(b, b)) \
+    # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int], _total=False)'
+reveal_type(j(c, c)) \
+    # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=typing.Mapping[builtins.str, builtins.object], _total=False)'
+reveal_type(j(b, c)) \
+    # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int], _total=False)'
+reveal_type(j(c, b)) \
+    # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int], _total=False)'
+[builtins fixtures/dict.pyi]
+
 
 -- Create Type (Errors)
 
