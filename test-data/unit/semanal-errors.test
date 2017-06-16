@@ -1353,7 +1353,7 @@ def f() -> None:
 [out]
 
 [case testDuplicateDefOverload]
-from typing import overload
+from typing import overload, Any
 if 1:
     @overload
     def f(x: int) -> None:
