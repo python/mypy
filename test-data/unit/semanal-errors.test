@@ -165,7 +165,7 @@ import typing
 class A: pass
 class A: pass
 [out]
-main:3: error: Name 'A' already defined
+main:3: error: Name 'A' already defined on line 2
 
 [case testMultipleMixedDefinitions]
 import typing
@@ -173,8 +173,8 @@ x = 1
 def x(): pass
 class x: pass
 [out]
-main:3: error: Name 'x' already defined
-main:4: error: Name 'x' already defined
+main:3: error: Name 'x' already defined on line 2
+main:4: error: Name 'x' already defined on line 2
 
 [case testNameNotImported]
 import typing
@@ -1037,13 +1037,13 @@ t = 1 # E: Invalid assignment target
 [case testRedefineTypevar2]
 from typing import TypeVar
 t = TypeVar('t')
-def t(): pass # E: Name 't' already defined
+def t(): pass # E: Name 't' already defined on line 2
 [out]
 
 [case testRedefineTypevar3]
 from typing import TypeVar
 t = TypeVar('t')
-class t: pass # E: Name 't' already defined
+class t: pass # E: Name 't' already defined on line 2
 [out]
 
 [case testRedefineTypevar4]
@@ -1330,3 +1330,74 @@ a = ('spam', 'spam', 'eggs', 'spam')  # type: Tuple[str]
 [out]
 main:3: error: Name 'a' already defined
 main:4: error: Name 'a' already defined
+
+[case testDuplicateDefFromImport]
+from m import A
+class A:  # E: Name 'A' already defined (possibly by an import)
+    pass
+[file m.py]
+class A:
+    pass
+[out]
+
+[case testDuplicateDefDec]
+from typing import Any
+def dec(x: Any) -> Any:
+    return x
+@dec
+def f() -> None:
+    pass
+@dec  # E: Name 'f' already defined
+def f() -> None:
+    pass
+[out]
+
+[case testDuplicateDefOverload]
+from typing import overload
+if 1:
+    @overload
+    def f(x: int) -> None:
+        pass
+    @overload
+    def f(x: str) -> None:
+        pass
+    def f(x: Any) -> None:
+        pass
+else:
+    def f(x: str) -> None:  # E: Name 'f' already defined on line 3
+        pass
+[out]
+
+[case testDuplicateDefNT]
+from typing import NamedTuple
+N = NamedTuple('N', [('a', int),
+                     ('b', str)])
+
+class N:  # E: Name 'N' already defined on line 2
+    pass
+[out]
+
+[case testDuplicateDefTypedDict]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+
+class Point:  # E: Name 'Point' already defined on line 2
+    pass
+[builtins fixtures/dict.pyi]
+
+[out]
+
+[case testTypeVarClassDup]
+from typing import TypeVar
+T = TypeVar('T')
+class T: ...  # E: Name 'T' already defined on line 2
+
+[out]
+
+[case testAliasDup]
+from typing import List
+A = List[int]
+class A: ... # E: Name 'A' already defined on line 2
+
+[builtins fixtures/list.pyi]
+[out]
