@@ -379,8 +379,8 @@ def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors
             assert sys.path[0] == plugin_dir
             del sys.path[0]
         if not hasattr(m, 'plugin'):
-            plugin_error('Plugin "{}" does not define entry point function "plugin"'.format(
-                module_name))
+            plugin_error('Plugin \'{}\' does not define entry point function "plugin"'.format(
+                plugin_path))
         try:
             plugin_type = getattr(m, 'plugin')(__version__)
         except Exception:
@@ -388,12 +388,12 @@ def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors
             raise  # Propagate to display traceback
         if not isinstance(plugin_type, type):
             plugin_error(
-                'Type object expected as the return value of "{}.plugin" (got {!r})'.format(
-                    module_name, plugin_type))
+                'Type object expected as the return value of "plugin"; got {!r} (in {})'.format(
+                    plugin_type, plugin_path))
         if not issubclass(plugin_type, Plugin):
             plugin_error(
-                'Return value of "{}.plugin" must be a subclass of "mypy.plugin.Plugin"'.format(
-                    module_name))
+                'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" '
+                '(in {})'.format(plugin_path))
         try:
             custom_plugins.append(plugin_type(options.python_version))
         except Exception:

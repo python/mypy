@@ -48,7 +48,7 @@ tmp/mypy.ini:2: error: Plugin 'badext.pyi' does not have a .py extension
 [[mypy]
  plugins = <ROOT>/test-data/unit/plugins/noentry.py
 [out]
-tmp/mypy.ini:2: error: Plugin "noentry" does not define entry point function "plugin"
+tmp/mypy.ini:2: error: Plugin '<ROOT>/test-data/unit/plugins/noentry.py' does not define entry point function "plugin"
 
 [case testInvalidPluginEntryPointReturnValue]
 # flags: --config-file tmp/mypy.ini
@@ -59,7 +59,7 @@ f()
 
 plugins=<ROOT>/test-data/unit/plugins/badreturn.py
 [out]
-tmp/mypy.ini:3: error: Type object expected as the return value of "badreturn.plugin" (got None)
+tmp/mypy.ini:3: error: Type object expected as the return value of "plugin"; got None (in <ROOT>/test-data/unit/plugins/badreturn.py)
 
 [case testInvalidPluginEntryPointReturnValue2]
 # flags: --config-file tmp/mypy.ini
@@ -69,4 +69,4 @@ f()
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/badreturn2.py
 [out]
-tmp/mypy.ini:2: error: Return value of "badreturn2.plugin" must be a subclass of "mypy.plugin.Plugin"
+tmp/mypy.ini:2: error: Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" (in <ROOT>/test-data/unit/plugins/badreturn2.py)
