@@ -292,7 +292,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_typeddict_call_with_kwargs(self, callee: TypedDictType,
                                          kwargs: 'OrderedDict[str, Expression]',
                                          context: Context) -> Type:
-        if not (callee.required_keys <= kwargs.keys() <= callee.items.keys()):
+        if not (callee.required_keys <= set(kwargs.keys()) <= set(callee.items.keys())):
             callee_item_names = [key for key in callee.items.keys()
                                  if key in callee.required_keys or key in kwargs.keys()]
             kwargs_item_names = kwargs.keys()
