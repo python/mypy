@@ -33,6 +33,19 @@ plugins=missing.py
 tmp/mypy.ini:2: error: Can't find plugin 'tmp/missing.py'
 --' (work around syntax highlighting)
 
+[case testMultipleSectionsDefinePlugin]
+# flags: --config-file tmp/mypy.ini
+[file mypy.ini]
+[[acme]
+plugins=acmeplugin
+[[mypy]
+plugins=missing.py
+[[another]
+plugins=another_plugin
+[out]
+tmp/mypy.ini:4: error: Can't find plugin 'tmp/missing.py'
+--' (work around syntax highlighting)
+
 [case testInvalidPluginExtension]
 # flags: --config-file tmp/mypy.ini
 [file mypy.ini]

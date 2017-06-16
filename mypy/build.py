@@ -347,7 +347,7 @@ def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors
     if not options.config_file:
         return default_plugin
 
-    line = find_config_file_line_number(options.config_file, 'plugins')
+    line = find_config_file_line_number(options.config_file, 'mypy', 'plugins')
     if line == -1:
         line = 1  # We need to pick some line number that doesn't look too confusing
 
@@ -406,16 +406,21 @@ def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors
         return ChainedPlugin(options.python_version, custom_plugins + [default_plugin])
 
 
-def find_config_file_line_number(path: str, setting_name: str) -> int:
+def find_config_file_line_number(path: str, section: str, setting_name: str) -> int:
     """Return the approximate location of setting_name within mypy config file.
 
     Return -1 if can't determine the line unambiguously.
     """
+    in_desired_section = False
     try:
         results = []
         with open(path) as f:
             for i, line in enumerate(f):
-                if re.match(r'\s*{}\s*='.format(setting_name), line):
+                line = line.strip()
+                if line.startswith('[') and line.endswith(']'):
+                    current_section = line[1:-1].strip()
+                    in_desired_section = (current_section == section)
+                elif in_desired_section and re.match(r'{}\s*='.format(setting_name), line):
                     results.append(i + 1)
         if len(results) == 1:
             return results[0]
