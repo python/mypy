@@ -120,6 +120,16 @@ class TypedDictTests(BaseTestCase):
         self.assertEqual(typing.Optional[EmpD], typing.Union[None, EmpD])
         self.assertNotEqual(typing.List[EmpD], typing.Tuple[EmpD])
 
+    def test_total(self):
+        D = TypedDict('D', {'x': int}, total=False)
+        assert D() == {}
+        assert D(x=1) == {'x': 1}
+
+        class E(TypedDict, total=False):
+            x: int
+        assert E() == {}
+        assert E(x=1) == {'x': 1}
+
 
 if __name__ == '__main__':
     main()

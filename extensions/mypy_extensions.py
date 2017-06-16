@@ -30,6 +30,7 @@ def _dict_new(cls, *args, **kwargs):
 
 
 def _typeddict_new(cls, _typename, _fields=None, **kwargs):
+    total = kwargs.pop('total', True)
     if _fields is None:
         _fields = kwargs
     elif kwargs:
@@ -39,7 +40,7 @@ def _typeddict_new(cls, _typename, _fields=None, **kwargs):
 
 
 class _TypedDictMeta(type):
-    def __new__(cls, name, bases, ns):
+    def __new__(cls, name, bases, ns, total=True):
         # Create new typed dict class object.
         # This method is called directly when TypedDict is subclassed,
         # or via _typeddict_new when TypedDict is instantiated. This way
