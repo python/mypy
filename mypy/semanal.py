@@ -257,13 +257,20 @@ class SemanticAnalyzer(NodeVisitor):
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
 
-    def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
+    def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
+                   fixups: List[Callable[[], None]]) -> None:
+        """Run semantic analysis phase 2 over a file.
+
+        Add callbacks by mutating the fixups list argument. They will be called
+        after all semantic analysis phases but before type checking.
+        """
         self.options = options
         self.errors.set_file(fnam, file_node.fullname())
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.globals = file_node.names
+        self.fixups = fixups
 
         if 'builtins' in self.modules:
             self.globals['__builtins__'] = SymbolTableNode(
@@ -290,6 +297,7 @@ class SemanticAnalyzer(NodeVisitor):
                     g.module_public = False
 
         del self.options
+        del self.fixups
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
@@ -2366,10 +2374,18 @@ class SemanticAnalyzer(NodeVisitor):
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type]) -> TypeInfo:
-        mapping_value_type = join.join_type_list(types)
         fallback = (self.named_type_or_none('typing.Mapping',
-                                            [self.str_type(), mapping_value_type])
+                                            [self.str_type(), self.object_type()])
                     or self.object_type())
+
+        def fixup() -> None:
+            mapping_value_type = join.join_type_list(types)
+            fallback.args[1] = mapping_value_type
+
+        # We can't calculate the complete fallback type until after semantic
+        # analysis, since otherwise MROs might be incomplete. Postpone a fixup
+        # function that patches the fallback.
+        self.fixups.append(fixup)
 
         info = self.basic_new_typeinfo(name, fallback)
         info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), fallback)

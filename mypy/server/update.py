@@ -147,6 +147,7 @@ def build_incremental_step(manager: BuildManager,
     # TODO: state.fix_suppressed_dependencies()?
     state.semantic_analysis()
     state.semantic_analysis_pass_three()
+    # TODO: state.semantic_analysis_fixups()
     state.type_check_first_pass()
     # TODO: state.type_check_second_pass()?
     state.finish_passes()

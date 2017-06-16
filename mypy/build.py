@@ -21,7 +21,7 @@ import time
 from os.path import dirname, basename
 
 from typing import (AbstractSet, Dict, Iterable, Iterator, List,
-                    NamedTuple, Optional, Set, Tuple, Union)
+                    NamedTuple, Optional, Set, Tuple, Union, Callable)
 # Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
 MYPY = False
 if MYPY:
@@ -1601,14 +1601,20 @@ class State:
         self.check_blockers()
 
     def semantic_analysis(self) -> None:
+        fixups = []  # type: List[Callable[[], None]]
         with self.wrap_context():
-            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options)
+            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, fixups)
+        self.fixups = fixups
 
     def semantic_analysis_pass_three(self) -> None:
         with self.wrap_context():
             self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath, self.options)
             if self.options.dump_type_stats:
                 dump_type_stats(self.tree, self.xpath)
+
+    def semantic_analysis_fixups(self) -> None:
+        for fixup in self.fixups:
+            fixup()
 
     def type_check_first_pass(self) -> None:
         manager = self.manager
@@ -2043,6 +2049,8 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         graph[id].semantic_analysis_pass_three()
     for id in fresh:
         graph[id].calculate_mros()
+    for id in stale:
+        graph[id].semantic_analysis_fixups()
     for id in stale:
         graph[id].type_check_first_pass()
     more = True
