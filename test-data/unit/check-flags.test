@@ -519,7 +519,7 @@ main:6: error: A type on this line becomes "Any" due to an unfollowed import
 [case testDisallowAnyExprUnannotatedFunction]
 # flags: --disallow-any=expr
 def g(s):
-    return s  # E: Expressions of type "Any" are disallowed (has type "Any")
+    return s  # E: Expression has type "Any"
 
 g(0)  # E: Parameter 1 to "g" has disallowed type "Any"
 w: int = g(1)  # E: Parameter 1 to "g" has disallowed type "Any"
@@ -542,7 +542,7 @@ g([''])
 main:9: error: Parameter 1 to "f" has disallowed type "Any"
 main:13: error: Parameter 1 to "g" contains disallowed type "Any" (List[Any])
 main:13: error: Parameter 1 to <list> has disallowed type "Any"
-main:13: error: Expressions of type that contains type "Any" are disallowed (has type List[Any])
+main:13: error: Expression type contains "Any" (has type List[Any])
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExprAllowsAnyInCast]
@@ -552,8 +552,8 @@ class Foo:
     g: Any = 2
 
 z = cast(int, Foo().g)
-m = cast(Any, Foo().g)  # E: Expressions of type "Any" are disallowed (has type "Any")
-k = Foo.g  # E: Expressions of type "Any" are disallowed (has type "Any")
+m = cast(Any, Foo().g)  # E: Expression has type "Any"
+k = Foo.g  # E: Expression has type "Any"
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExprAllowsAnyInVariableAssignmentWithExplicitTypeAnnotation]
@@ -564,8 +564,8 @@ class Foo:
 
 z: int = Foo().g
 x = Foo().g  # type: int
-m: Any = Foo().g  # E: Expressions of type "Any" are disallowed (has type "Any")
-n = Foo().g  # type: Any  # E: Expressions of type "Any" are disallowed (has type "Any")
+m: Any = Foo().g  # E: Expression has type "Any"
+n = Foo().g  # type: Any  # E: Expression has type "Any"
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExprGeneric]
@@ -577,7 +577,7 @@ l.append(1)
 k = l[0]
 [builtins fixtures/list.pyi]
 [out]
-main:5: error: Expressions of type that contains type "Any" are disallowed (has type List[Any])
+main:5: error: Expression type contains "Any" (has type List[Any])
 main:5: error: Parameter 1 to "append" of "list" has disallowed type "Any"
-main:6: error: Expressions of type that contains type "Any" are disallowed (has type List[Any])
-main:6: error: Expressions of type "Any" are disallowed (has type "Any")
+main:6: error: Expression type contains "Any" (has type List[Any])
+main:6: error: Expression has type "Any"

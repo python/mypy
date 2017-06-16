@@ -906,11 +906,10 @@ class MessageBuilder:
 
     def disallowed_any_type(self, typ: Type, context: Context) -> None:
         if isinstance(typ, AnyType):
-            infix = 'type'
+            message = 'Expression has type "Any"'
         else:
-            infix = 'type that contains type'
-        self.fail('Expressions of {} "Any" are disallowed '
-                  '(has type {})'.format(infix, self.format(typ)), context)
+            message = 'Expression type contains "Any" (has type {})'.format(self.format(typ))
+        self.fail(message, context)
 
     def call_any_parameter(self,
                            param_index: int,
