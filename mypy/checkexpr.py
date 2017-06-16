@@ -185,7 +185,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check a call expression."""
         if e.analyzed:
             # It's really a special form that only looks like a call.
-            return self.accept(e.analyzed, self.type_context[-1], always_allow_any=True)
+            return self.accept(e.analyzed, self.type_context[-1])
         if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, TypeInfo) and \
                 e.callee.node.typeddict_type is not None:
             return self.check_typeddict_call(e.callee.node.typeddict_type,
