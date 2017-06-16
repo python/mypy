@@ -952,6 +952,38 @@ reveal_type(j(c, b)) \
     # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int], _total=False)'
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictClassWithTotalArgument]
+from mypy_extensions import TypedDict
+class D(TypedDict, total=False):
+    x: int
+    y: str
+d: D
+reveal_type(d) # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=__main__.D, _total=False)'
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictClassWithInvalidTotalArgument]
+from mypy_extensions import TypedDict
+class D(TypedDict, total=1): # E: Value of "total" must be True or False
+    x: int
+class E(TypedDict, total=bool): # E: Value of "total" must be True or False
+    x: int
+class F(TypedDict, total=xyz): # E: Value of "total" must be True or False \
+                               # E: Name 'xyz' is not defined
+    x: int
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictClassInheritanceWithTotalArgument]
+from mypy_extensions import TypedDict
+class A(TypedDict):
+    x: int
+class B(TypedDict, A, total=False):
+    y: int
+class C(TypedDict, B, total=True):
+    z: str
+c: C
+reveal_type(c) # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, z=builtins.str, _fallback=__main__.C, _required_keys=[x, z])'
+[builtins fixtures/dict.pyi]
+
 
 -- Create Type (Errors)
 
