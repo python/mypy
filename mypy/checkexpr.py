@@ -993,10 +993,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return
             messages.incompatible_argument(n, m, callee, original_caller_type,
                                            caller_kind, context)
-        elif ('expr' in self.chk.options.disallow_any and
-                has_any_type(callee_type) and
-                not self.chk.is_stub):
-            messages.call_any_parameter(n, callee.name, callee_type, context)
 
     def overload_call_target(self, arg_types: List[Type], arg_kinds: List[int],
                              arg_names: List[str],

@@ -911,18 +911,6 @@ class MessageBuilder:
             message = 'Expression type contains "Any" (has type {})'.format(self.format(typ))
         self.fail(message, context)
 
-    def call_any_parameter(self,
-                           param_index: int,
-                           func_name: str,
-                           typ: Type,
-                           context: Context) -> None:
-        if isinstance(typ, AnyType):
-            msg = 'Parameter {} to {} has disallowed type "Any"'.format(param_index, func_name)
-        else:
-            msg = 'Parameter {} to {} contains disallowed type "Any" ({})'.format(
-                param_index, func_name, self.format(typ))
-        self.fail(msg, context)
-
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""
