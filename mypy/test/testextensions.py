@@ -100,7 +100,7 @@ class TypedDictTests(BaseTestCase):
     def test_py36_class_syntax_usage(self):
         self.assertEqual(LabelPoint2D.__annotations__, {'x': int, 'y': int, 'label': str})  # noqa
         self.assertEqual(LabelPoint2D.__bases__, (dict,))  # noqa
-        self.assertEqual(LabelPoint2D.__total__, True)
+        self.assertEqual(LabelPoint2D.__total__, True)  # noqa
         self.assertNotIsSubclass(LabelPoint2D, typing.Sequence)  # noqa
         not_origin = Point2D(x=0, y=1)  # noqa
         self.assertEqual(not_origin['x'], 0)
@@ -134,9 +134,9 @@ class TypedDictTests(BaseTestCase):
         self.assertEqual(D.__total__, False)
 
         if PY36:
-            self.assertEqual(Options(), {})
-            self.assertEqual(Options(log_level=2), {'log_level': 2})
-            self.assertEqual(Options.__total__, False)
+            self.assertEqual(Options(), {})  # noqa
+            self.assertEqual(Options(log_level=2), {'log_level': 2})  # noqa
+            self.assertEqual(Options.__total__, False)  # noqa
 
 
 if __name__ == '__main__':
