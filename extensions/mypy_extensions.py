@@ -36,7 +36,8 @@ def _typeddict_new(cls, _typename, _fields=None, **kwargs):
     elif kwargs:
         raise TypeError("TypedDict takes either a dict or keyword arguments,"
                         " but not both")
-    return _TypedDictMeta(_typename, (), {'__annotations__': dict(_fields)})
+    return _TypedDictMeta(_typename, (), {'__annotations__': dict(_fields),
+                                          '__total__': total})
 
 
 class _TypedDictMeta(type):
@@ -60,6 +61,8 @@ class _TypedDictMeta(type):
         for base in bases:
             anns.update(base.__dict__.get('__annotations__', {}))
         tp_dict.__annotations__ = anns
+        if not hasattr(tp_dict, '__total__'):
+            tp_dict.__total__ = total
         return tp_dict
 
     __instancecheck__ = __subclasscheck__ = _check_fails

@@ -37,6 +37,10 @@ class Point2D(TypedDict):
     y: int
 
 class LabelPoint2D(Point2D, Label): ...
+
+class Options(TypedDict, total=False):
+    log_level: int
+    log_path: str
 """
 
 if PY36:
@@ -58,6 +62,7 @@ class TypedDictTests(BaseTestCase):
         self.assertEqual(Emp.__module__, 'mypy.test.testextensions')
         self.assertEqual(Emp.__bases__, (dict,))
         self.assertEqual(Emp.__annotations__, {'name': str, 'id': int})
+        self.assertEqual(Emp.__total__, True)
 
     def test_basics_keywords_syntax(self):
         Emp = TypedDict('Emp', name=str, id=int)
@@ -72,6 +77,7 @@ class TypedDictTests(BaseTestCase):
         self.assertEqual(Emp.__module__, 'mypy.test.testextensions')
         self.assertEqual(Emp.__bases__, (dict,))
         self.assertEqual(Emp.__annotations__, {'name': str, 'id': int})
+        self.assertEqual(Emp.__total__, True)
 
     def test_typeddict_errors(self):
         Emp = TypedDict('Emp', {'name': str, 'id': int})
@@ -94,6 +100,7 @@ class TypedDictTests(BaseTestCase):
     def test_py36_class_syntax_usage(self):
         self.assertEqual(LabelPoint2D.__annotations__, {'x': int, 'y': int, 'label': str})  # noqa
         self.assertEqual(LabelPoint2D.__bases__, (dict,))  # noqa
+        self.assertEqual(LabelPoint2D.__total__, True)
         self.assertNotIsSubclass(LabelPoint2D, typing.Sequence)  # noqa
         not_origin = Point2D(x=0, y=1)  # noqa
         self.assertEqual(not_origin['x'], 0)
@@ -122,13 +129,14 @@ class TypedDictTests(BaseTestCase):
 
     def test_total(self):
         D = TypedDict('D', {'x': int}, total=False)
-        assert D() == {}
-        assert D(x=1) == {'x': 1}
+        self.assertEqual(D(), {})
+        self.assertEqual(D(x=1), {'x': 1})
+        self.assertEqual(D.__total__, False)
 
-        class E(TypedDict, total=False):
-            x: int
-        assert E() == {}
-        assert E(x=1) == {'x': 1}
+        if PY36:
+            self.assertEqual(Options(), {})
+            self.assertEqual(Options(log_level=2), {'log_level': 2})
+            self.assertEqual(Options.__total__, False)
 
 
 if __name__ == '__main__':
