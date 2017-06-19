@@ -2297,9 +2297,6 @@ class TypeChecker(NodeVisitor[None]):
     def check_untyped_after_decorator(self, typ: Type, func: FuncDef) -> None:
         if 'decorated' not in self.options.disallow_any or self.is_stub:
             return
-        if not isinstance(typ, CallableType):
-            self.msg.untyped_decorated_function(typ, func)
-            return
 
         if mypy.checkexpr.has_any_type(typ):
             self.msg.untyped_decorated_function(typ, func)

@@ -598,3 +598,12 @@ def d(p) -> Callable[[], int]:
 def f(i):
     return i
 [builtins fixtures/list.pyi]
+
+[case testDisallowAnyDecoratedDecoratorReturnsNonCallable]
+# flags: --disallow-any=decorated
+def d(p) -> int:
+    return p(0)
+
+@d
+def f(i):
+    return i
