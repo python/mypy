@@ -294,8 +294,10 @@ Here are some more useful flags:
   If an expression of type ``Any`` appears anywhere in the module
   mypy will output an error unless the expression is immediately
   used as an argument to ``cast`` or assigned to a variable with an
-  explicit type annotation. Note that declaring a variable of type ``Any``
-  or casting to type ``Any`` is not allowed.
+  explicit type annotation. In addition, declaring a variable of type ``Any``
+  or casting to type ``Any`` is not allowed. Note that calling functions
+  that take parameters of type ``Any`` is still allowed.
+
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
