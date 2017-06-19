@@ -519,7 +519,7 @@ main:6: error: A type on this line becomes "Any" due to an unfollowed import
 [case testDisallowAnyExprUnannotatedFunction]
 # flags: --disallow-any=expr
 def g(s):
-    return s  # E: Expression has type "Any"
+    return s
 
 g(0)
 w: int = g(1)

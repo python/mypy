@@ -2217,6 +2217,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if ('expr' in self.chk.options.disallow_any and
                 not always_allow_any and
                 not self.chk.is_stub and
+                self.chk.in_checked_function() and
                 has_any_type(typ)):
             self.msg.disallowed_any_type(typ, node)
 
