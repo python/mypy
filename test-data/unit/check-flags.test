@@ -516,7 +516,7 @@ x, y = 1, 2  # type: Unchecked, Unchecked
 main:4: error: Type of variable becomes "Any" due to an unfollowed import
 main:6: error: A type on this line becomes "Any" due to an unfollowed import
 
-[case testDisallowAnyDecoratorUnannotatedDecorator]
+[case testDisallowAnyDecoratedUnannotatedDecorator]
 # flags: --disallow-any=decorated
 from typing import Any
 
@@ -530,7 +530,7 @@ def f(x: Any) -> Any:  # E: Function is untyped after decorator transformation
 def h(x):  # E: Function is untyped after decorator transformation
     pass
 [builtins fixtures/list.pyi]
-[case testDisallowAnyDecoratorErrorIsReportedOnlyOnce]
+[case testDisallowAnyDecoratedErrorIsReportedOnlyOnce]
 # flags: --disallow-any=decorated
 
 def d(f):
@@ -543,7 +543,7 @@ def d2(f):
 @d2
 @d
 def f(x: int) -> None: pass  # E: Function is untyped after decorator transformation
-[case testDisallowAnyDecoratorReturnAny]
+[case testDisallowAnyDecoratedReturnAny]
 # flags: --disallow-any=decorated
 from typing import Any
 
@@ -553,7 +553,7 @@ def d(f) -> Any:
 @d
 def f() -> None: pass  # E: Function is untyped after decorator transformation
 [builtins fixtures/list.pyi]
-[case testDisallowAnyDecoratorReturnCallable]
+[case testDisallowAnyDecoratedReturnCallable]
 # flags: --disallow-any=decorated
 from typing import Any, Callable
 
@@ -564,7 +564,7 @@ def d(f) -> Callable[..., None]:
 def g(i: int, s: str) -> None: pass  # E: Type of decorated function contains type "Any" (Callable[..., None])
 
 [builtins fixtures/list.pyi]
-[case testDisallowAnyDecoratorNonexistentDecorator]
+[case testDisallowAnyDecoratedNonexistentDecorator]
 # flags: --disallow-any=decorated --ignore-missing-imports
 from nonexistent import d
 
@@ -572,7 +572,7 @@ from nonexistent import d
 def f() -> None: pass  # E: Function is untyped after decorator transformation
 [builtins fixtures/list.pyi]
 
-[case testDisallowAnyPartlyTypedCallable]
+[case testDisallowAnyDecoratedPartlyTypedCallable]
 # flags: --disallow-any=decorated --ignore-missing-imports
 from typing import Callable, Any, List
 
@@ -587,7 +587,7 @@ def g(i: int) -> None: # E: Type of decorated function contains type "Any" (Call
     pass
 [builtins fixtures/list.pyi]
 
-[case testDisallowAnyDecoratorReturnsCallableNoParams]
+[case testDisallowAnyDecoratedReturnsCallableNoParams]
 # flags: --disallow-any=decorated
 from typing import Callable
 
