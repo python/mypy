@@ -516,6 +516,25 @@ x, y = 1, 2  # type: Unchecked, Unchecked
 main:4: error: Type of variable becomes "Any" due to an unfollowed import
 main:6: error: A type on this line becomes "Any" due to an unfollowed import
 
+[case testDisallowAnyExprSimple]
+# flags: --disallow-any=expr
+from typing import Any
+def f(s):
+    yield s
+
+x = f(0)  # E: Expression has type "Any"
+for x in f(0):  # E: Expression has type "Any"
+    g(x)  # E: Expression has type "Any"
+
+def g(x) -> Any:
+    yield x  # E: Expression has type "Any"
+
+l = [1, 2, 3]
+l[f(0)]  # E: Expression has type "Any"
+f(l)
+f(f(0))  # E: Expression has type "Any"
+[builtins fixtures/list.pyi]
+
 [case testDisallowAnyExprUnannotatedFunction]
 # flags: --disallow-any=expr
 def g(s):
