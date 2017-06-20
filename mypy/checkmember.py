@@ -37,8 +37,8 @@ def analyze_member_access(name: str,
                           not_ready_callback: Callable[[str, Context], None],
                           msg: MessageBuilder, *,
                           original_type: Type,
-                          override_info: TypeInfo = None,
-                          chk: 'mypy.checker.TypeChecker' = None) -> Type:
+                          chk: 'mypy.checker.TypeChecker',
+                          override_info: TypeInfo = None) -> Type:
     """Return the type of attribute `name` of typ.
 
     This is a general operation that supports various different variations:
@@ -77,9 +77,8 @@ def analyze_member_access(name: str,
             if method.is_property:
                 assert isinstance(method, OverloadedFuncDef)
                 first_item = cast(Decorator, method.items[0])
-                plugin = chk.plugin if chk is not None else None
                 return analyze_var(name, first_item.var, typ, info, node, is_lvalue, msg,
-                                   original_type, not_ready_callback, plugin)
+                                   original_type, not_ready_callback, chk.plugin)
             if is_lvalue:
                 msg.cant_assign_to_method(node)
             signature = function_type(method, builtin_type('builtins.function'))
@@ -104,7 +103,7 @@ def analyze_member_access(name: str,
         # The base object has dynamic type.
         return AnyType()
     elif isinstance(typ, NoneTyp):
-        if chk and chk.should_suppress_optional_error([typ]):
+        if chk.should_suppress_optional_error([typ]):
             return AnyType()
         # The only attribute NoneType has are those it inherits from object
         return analyze_member_access(name, builtin_type('builtins.object'), node, is_lvalue,
@@ -202,7 +201,7 @@ def analyze_member_access(name: str,
                                      is_operator, builtin_type, not_ready_callback, msg,
                                      original_type=original_type, chk=chk)
 
-    if chk and chk.should_suppress_optional_error([typ]):
+    if chk.should_suppress_optional_error([typ]):
         return AnyType()
     return msg.has_no_attr(original_type, typ, name, node)
 
@@ -293,6 +292,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
             msg.read_only_property(name, info, node)
         if is_lvalue and var.is_classvar:
             msg.cant_assign_to_classvar(name, node)
+        result = t
         if var.is_initialized_in_class and isinstance(t, FunctionLike) and not t.is_type_obj():
             if is_lvalue:
                 if var.is_property:
@@ -315,10 +315,6 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                     result = signature.ret_type
                 else:
                     result = signature
-            else:
-                result = t
-        else:
-            result = t
     else:
         if not var.is_ready:
             not_ready_callback(var.name(), node)

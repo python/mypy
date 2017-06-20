@@ -19,24 +19,17 @@ AnalyzeArgListCallback = Callable[[TypeList], Optional[Tuple[List[Type],
 # Some objects and callbacks that plugins can use to get information from the
 # type checker or to report errors.
 PluginContext = NamedTuple(
-    'PluginContext',
-    [
-        ('named_instance', NamedInstanceCallback),
-        ('msg', MessageBuilder),
-        ('context', Context)
-    ]
-)
+    'PluginContext', [('named_instance', NamedInstanceCallback),
+                      ('msg', MessageBuilder),
+                      ('context', Context)])
 
+# Like above, for plugins that run during semantic analysis.
 SemanticAnalysisPluginContext = NamedTuple(
-    'SemanticAnalysisPluginContext',
-    [
-        ('named_instance', NamedInstanceCallback),
-        ('fail', Callable[[str, Context], None]),
-        ('analyze_type', Callable[[Type], Type]),
-        ('analyze_arg_list', AnalyzeArgListCallback),
-        ('context', Context)
-    ]
-)
+    'SemanticAnalysisPluginContext', [('named_instance', NamedInstanceCallback),
+                                      ('fail', Callable[[str, Context], None]),
+                                      ('analyze_type', Callable[[Type], Type]),
+                                      ('analyze_arg_list', AnalyzeArgListCallback),
+                                      ('context', Context)])
 
 # A callback that infers the return type of a function with a special signature.
 #
@@ -47,7 +40,7 @@ FunctionHook = Callable[
         List[List[Type]],        # List of types caller provides for each formal argument
         List[List[Expression]],  # Actual argument expressions for each formal argument
         Type,                    # Return type for call inferred using the regular signature
-        NamedInstanceCallback    # Callable for constructing a named instance type
+        NamedInstanceCallback,   # Callable for constructing a named instance type
     ],
     Type  # Return type inferred by the callback
 ]
@@ -59,7 +52,7 @@ MethodSignatureHook = Callable[
         Type,                    # Base object type
         List[List[Expression]],  # Actual argument expressions for each formal argument
         CallableType,            # Original signature of the method
-        NamedInstanceCallback    # Callable for constructing a named instance type
+        NamedInstanceCallback,   # Callable for constructing a named instance type
     ],
     CallableType  # Potentially more precise signature inferred for the method
 ]
@@ -73,7 +66,7 @@ MethodHook = Callable[
         List[List[Type]],        # List of types caller provides for each formal argument
         List[List[Expression]],  # Actual argument expressions for each formal argument
         Type,                    # Return type for call inferred using the regular signature
-        PluginContext            # Access to type checking context
+        PluginContext,           # Access to type checking context
     ],
     Type  # Return type inferred by the callback
 ]
@@ -81,7 +74,7 @@ MethodHook = Callable[
 AttributeHook = Callable[
     [
         Type,  # Base object type
-        Type   # Inferred attribute type
+        Type,  # Inferred attribute type
         # TODO: Some context object?
     ],
     Type
@@ -90,7 +83,7 @@ AttributeHook = Callable[
 TypeAnalyzeHook = Callable[
     [
         UnboundType,
-        SemanticAnalysisPluginContext
+        SemanticAnalysisPluginContext,
     ],
     Type
 ]

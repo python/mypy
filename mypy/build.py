@@ -415,12 +415,12 @@ class BuildManager:
       semantic_analyzer_pass3:
                        Semantic analyzer, pass 3
       all_types:       Map {Expression: Type} collected from all modules
-      errors:          Used for reporting all errors
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
+      errors:          Used for reporting all errors
     """
 
     def __init__(self, data_dir: str,
