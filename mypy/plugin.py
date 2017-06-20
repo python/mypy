@@ -28,9 +28,9 @@ class AnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def analyze_callable_args(self, args: TypeList) -> Optional[Tuple[List[Type],
-                                                                      List[int],
-                                                                      List[Optional[str]]]]:
+    def analyze_callable_args(self, arglist: TypeList) -> Optional[Tuple[List[Type],
+                                                                         List[int],
+                                                                         List[Optional[str]]]]:
         raise NotImplementedError
 
 

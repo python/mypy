@@ -433,13 +433,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
         assert isinstance(ret, CallableType)
         return ret.accept(self)
 
-    def analyze_callable_args(self, t: TypeList) -> Optional[Tuple[List[Type],
-                                                                   List[int],
-                                                                   List[Optional[str]]]]:
+    def analyze_callable_args(self, arglist: TypeList) -> Optional[Tuple[List[Type],
+                                                                         List[int],
+                                                                         List[Optional[str]]]]:
         args = []   # type: List[Type]
         kinds = []  # type: List[int]
         names = []  # type: List[str]
-        for arg in t.items:
+        for arg in arglist.items:
             if isinstance(arg, CallableArgument):
                 args.append(arg.typ)
                 names.append(arg.name)
@@ -464,8 +464,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 args.append(arg)
                 kinds.append(ARG_POS)
                 names.append(None)
-        check_arg_names(names, [t] * len(args), self.fail, "Callable")
-        check_arg_kinds(kinds, [t] * len(args), self.fail)
+        # Note that arglist below is only used for error context.
+        check_arg_names(names, [arglist] * len(args), self.fail, "Callable")
+        check_arg_kinds(kinds, [arglist] * len(args), self.fail)
         return args, kinds, names
 
     def analyze_type(self, t: Type) -> Type:
