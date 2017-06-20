@@ -173,7 +173,7 @@ def build(sources: List[BuildSource],
     reports = Reports(data_dir, options.report_dirs)
     source_set = BuildSourceSet(sources)
     errors = Errors(options.show_error_context, options.show_column_numbers)
-    plugin = load_custom_plugins(DefaultPlugin(options.python_version), options, errors)
+    plugin = load_plugins(options, errors)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -336,18 +336,18 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors) -> Plugin:
-    """Load custom plugins if any are configured.
+def load_plugins(options: Options, errors: Errors) -> Plugin:
+    """Load all configured plugins.
 
-    Return a plugin that chains all custom plugins (if any) and falls
-    back to default_plugin.
+    Return a plugin that encapsulates all plugins chained together. Always
+    at least include the default plugin.
     """
 
     def plugin_error(message: str) -> None:
         errors.report(0, 0, message)
         errors.raise_error()
 
-    custom_plugins = []
+    plugins = [DefaultPlugin(options.python_version)]  # type: List[Plugin]
     for plugin_path in options.plugins:
         if options.config_file:
             # Plugin paths are relative to the config file location.
@@ -386,15 +386,15 @@ def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors
             plugin_error(
                 'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin"')
         try:
-            custom_plugins.append(plugin_type(options.python_version))
+            plugins.append(plugin_type(options.python_version))
         except Exception:
             print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
             raise  # Propagate to display traceback
-    if not custom_plugins:
-        return default_plugin
+    if len(plugins) == 1:
+        return plugins[0]
     else:
         # Custom plugins take precendence over built-in plugins.
-        return ChainedPlugin(options.python_version, custom_plugins + [default_plugin])
+        return ChainedPlugin(options.python_version, plugins)
 
 
 # TODO: Get rid of all_types.  It's not used except for one log message.
