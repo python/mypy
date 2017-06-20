@@ -344,6 +344,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
     at least include the default plugin.
     """
 
+    default_plugin = DefaultPlugin(options)  # type: Plugin
     if not options.config_file:
         return default_plugin
 
@@ -355,7 +356,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
         errors.report(line, 0, message)
         errors.raise_error()
 
-    plugins = [DefaultPlugin(options)]  # type: List[Plugin]
+    plugins = [default_plugin]
     errors.set_file(options.config_file, None)
     for plugin_path in options.plugins:
         # Plugin paths are relative to the config file location.
