@@ -1510,6 +1510,24 @@ class State:
         fixup_module_pass_two(self.tree, self.manager.modules,
                               self.manager.options.quick_and_dirty)
 
+    def patch_dependency_parents(self) -> None:
+        """
+        In Python, if a and a.b are both modules, running `import a.b` will
+        modify not only the current module's namespace, but a's namespace as
+        well -- see SemanticAnalyzer.add_submodules_to_parent_modules for more
+        details.
+
+        However, this patching process can occur after `a` has been parsed and
+        serialized during increment mode. Consequently, we need to repeat this
+        patch when deserializing a cached file.
+
+        This function should be called only when processing fresh SCCs -- the
+        semantic analyzer will perform this patch for us when processing stale
+        SCCs.
+        """
+        for dep in self.dependencies:
+            self.manager.semantic_analyzer.add_submodules_to_parent_modules(dep, True)
+
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
 
@@ -2042,6 +2060,8 @@ def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
         graph[id].fix_cross_refs()
     for id in scc:
         graph[id].calculate_mros()
+    for id in scc:
+        graph[id].patch_dependency_parents()
 
 
 def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
