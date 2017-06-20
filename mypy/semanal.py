@@ -1540,7 +1540,8 @@ class SemanticAnalyzer(NodeVisitor):
                                          self.lookup_fully_qualified,
                                          self.tvar_scope,
                                          self.fail,
-                                         self.plugin, allow_unnormalized=True)
+                                         self.plugin,
+                                         allow_unnormalized=True)
                 if res and (not isinstance(res, Instance) or res.args):
                     # TODO: What if this gets reassigned?
                     name = s.lvalues[0]
@@ -3106,7 +3107,8 @@ class SemanticAnalyzer(NodeVisitor):
                                      self.lookup_fully_qualified,
                                      self.tvar_scope,
                                      self.fail,
-                                     self.plugin, allow_unnormalized=self.is_stub_file)
+                                     self.plugin,
+                                     allow_unnormalized=self.is_stub_file)
             expr.analyzed = TypeAliasExpr(res, fallback=self.alias_fallback(res),
                                           in_runtime=True)
         elif refers_to_class_or_function(expr.base):

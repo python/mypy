@@ -13,7 +13,7 @@ from mypy.options import Options
 
 
 class AnalyzerPluginInterface:
-    """Interface for accessing semantic analyzer functionality from plugins."""
+    """Interface for accessing semantic analyzer functionality in plugins."""
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context) -> None:
@@ -43,7 +43,7 @@ AnalyzeTypeContext = NamedTuple(
 
 
 class CheckerPluginInterface:
-    """Interface for accessing type checker functionality from plugins."""
+    """Interface for accessing type checker functionality in plugins."""
 
     msg = None  # type: MessageBuilder
 
