@@ -38,7 +38,7 @@ def main(script_path: str, args: List[str] = None) -> None:
     """
     t0 = time.time()
     if script_path:
-        bin_dir = find_bin_directory(script_path)
+        bin_dir = find_bin_directory(script_path)  # type: Optional[str]
     else:
         bin_dir = None
     sys.setrecursionlimit(2 ** 14)
@@ -90,7 +90,7 @@ def readlinkabs(link: str) -> str:
     return os.path.join(os.path.dirname(link), path)
 
 
-def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) -> BuildResult:
+def type_check_only(sources: List[BuildSource], bin_dir: Optional[str], options: Options) -> BuildResult:
     # Type-check the program and dependencies and translate to Python.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
@@ -163,7 +163,7 @@ def parse_version(v: str) -> Tuple[int, int]:
 
 # Make the help output a little less jarring.
 class AugmentedHelpFormatter(argparse.HelpFormatter):
-    def __init__(self, prog: Optional[str]) -> None:
+    def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
 
@@ -221,6 +221,7 @@ def process_options(args: List[str],
                                   dest=dest,
                                   help=help)
         dest = arg.dest
+        assert dest is not None
         arg = parser.add_argument(inverse,  # type: ignore  # incorrect stub for add_argument
                                   action='store_true' if default else 'store_false',
                                   dest=dest,
@@ -454,10 +455,10 @@ def process_options(args: List[str],
     if options.strict_optional:
         experiments.STRICT_OPTIONAL = True
     if special_opts.find_occurrences:
-        experiments.find_occurrences = special_opts.find_occurrences.split('.')
-        if len(experiments.find_occurrences) < 2:
+        experiments.find_occurrences = find_occurrences = special_opts.find_occurrences.split('.')
+        if len(find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
-        if len(experiments.find_occurrences) != 2:
+        if len(find_occurrences) != 2:
             parser.error("Can only find occurrences of non-nested class members.")
 
     # Set reports.
@@ -635,9 +636,8 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
     If filename is None, fall back to default config file and then
     to setup.cfg.
     """
-    config_files = None  # type: Tuple[str, ...]
     if filename is not None:
-        config_files = (filename,)
+        config_files = (filename,)  # type: Tuple[str, ...]
     else:
         config_files = (defaults.CONFIG_FILE,) + SHARED_CONFIG_FILES
 
@@ -691,13 +691,13 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
 
 
 def parse_section(prefix: str, template: Options,
-                  section: Mapping[str, str]) -> Tuple[Dict[str, object], Dict[str, str]]:
+                  section: Mapping[str, str]) -> Tuple[Dict[str, object], Dict[str, Optional[str]]]:
     """Parse one section of a config file.
 
     Returns a dict of option values encountered, and a dict of report directories.
     """
     results = {}  # type: Dict[str, object]
-    report_dirs = {}  # type: Dict[str, str]
+    report_dirs = {}  # type: Dict[str, Optional[str]]
     for key in section:
         key = key.replace('-', '_')
         if key in config_types:
