@@ -30,25 +30,38 @@ plugins=<ROOT>/test-data/unit/plugins/fnplugin.py,
 [[mypy]
 plugins=missing.py
 [out]
-tmp/missing.py:0: error: Can't find plugin
+tmp/mypy.ini:2: error: Can't find plugin 'tmp/missing.py'
+--' (work around syntax highlighting)
+
+[case testMultipleSectionsDefinePlugin]
+# flags: --config-file tmp/mypy.ini
+[file mypy.ini]
+[[acme]
+plugins=acmeplugin
+[[mypy]
+plugins=missing.py
+[[another]
+plugins=another_plugin
+[out]
+tmp/mypy.ini:4: error: Can't find plugin 'tmp/missing.py'
 --' (work around syntax highlighting)
 
 [case testInvalidPluginExtension]
 # flags: --config-file tmp/mypy.ini
 [file mypy.ini]
 [[mypy]
-plugins=badext.pyi
-[file badext.pyi]
+plugins=dir/badext.pyi
+[file dir/badext.pyi]
 [out]
-tmp/badext.pyi:0: error: Plugin must have .py extension
+tmp/mypy.ini:2: error: Plugin 'badext.pyi' does not have a .py extension
 
 [case testMissingPluginEntryPoint]
 # flags: --config-file tmp/mypy.ini
 [file mypy.ini]
 [[mypy]
-plugins=<ROOT>/test-data/unit/plugins/noentry.py
+ plugins = <ROOT>/test-data/unit/plugins/noentry.py
 [out]
-<ROOT>/test-data/unit/plugins/noentry.py:0: error: Plugin does not define entry point function "plugin"
+tmp/mypy.ini:2: error: Plugin '<ROOT>/test-data/unit/plugins/noentry.py' does not define entry point function "plugin"
 
 [case testInvalidPluginEntryPointReturnValue]
 # flags: --config-file tmp/mypy.ini
@@ -56,9 +69,10 @@ def f(): pass
 f()
 [file mypy.ini]
 [[mypy]
+
 plugins=<ROOT>/test-data/unit/plugins/badreturn.py
 [out]
-<ROOT>/test-data/unit/plugins/badreturn.py:0: error: Type object expected as the return value of "plugin" (got None)
+tmp/mypy.ini:3: error: Type object expected as the return value of "plugin"; got None (in <ROOT>/test-data/unit/plugins/badreturn.py)
 
 [case testInvalidPluginEntryPointReturnValue2]
 # flags: --config-file tmp/mypy.ini
@@ -68,4 +82,4 @@ f()
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/badreturn2.py
 [out]
-<ROOT>/test-data/unit/plugins/badreturn2.py:0: error: Return value of "plugin" must be a subclass of "mypy.plugin.Plugin"
+tmp/mypy.ini:2: error: Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" (in <ROOT>/test-data/unit/plugins/badreturn2.py)
