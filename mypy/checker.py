@@ -29,7 +29,7 @@ from mypy.nodes import (
     ARG_POS, MDEF,
     CONTRAVARIANT, COVARIANT)
 from mypy import nodes
-from mypy.typeanal import has_any_from_unimported_type
+from mypy.typeanal import has_any_from_unimported_type, has_explicit_any
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, strip_type, TypeType,
@@ -627,6 +627,11 @@ class TypeChecker(NodeVisitor[None]):
                                 if has_any_from_unimported_type(arg_type):
                                     prefix = "Argument {} to \"{}\"".format(idx + 1, fdef.name())
                                     self.msg.unimported_type_becomes_any(prefix, arg_type, fdef)
+                    if ('explicit' in self.options.disallow_any and
+                            not self.is_typeshed_stub and
+                            fdef.type and
+                            has_explicit_any(fdef.type)):
+                        self.msg.explicit_any("type annotation", fdef)
                 if name in nodes.reverse_op_method_set:
                     self.check_reverse_op_method(item, typ, name)
                 elif name in ('__getattr__', '__getattribute__'):
@@ -1213,6 +1218,11 @@ class TypeChecker(NodeVisitor[None]):
                 self.msg.unimported_type_becomes_any("A type on this line", AnyType(), s)
             else:
                 self.msg.unimported_type_becomes_any("Type of variable", s.type, s)
+        if ('explicit' in self.options.disallow_any and
+                not self.is_typeshed_stub and
+                s.type and
+                has_explicit_any(s.type)):
+            self.msg.explicit_any("type annotation", s)
 
         if len(s.lvalues) > 1:
             # Chained assignment (e.g. x = y = ...).

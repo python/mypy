@@ -47,7 +47,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator,
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
 )
 
 from mypy.nodes import (
@@ -85,7 +85,7 @@ from mypy.types import (
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type
+    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type, has_explicit_any
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -228,6 +228,7 @@ class SemanticAnalyzer(NodeVisitor):
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     is_stub_file = False   # Are we analyzing a stub file?
+    is_typeshed_stub_file = False   # Are we analyzing a typeshed stub file?
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     errors = None  # type: Errors     # Keeps track of generated errors
 
@@ -263,6 +264,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
+        self.is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
 
         if 'builtins' in self.modules:
@@ -325,6 +327,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
+        self.is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
         if active_type:
             self.enter_class(active_type.defn.info)
@@ -998,6 +1001,10 @@ class SemanticAnalyzer(NodeVisitor):
                 else:
                     prefix = "Base type"
                 self.msg.unimported_type_becomes_any(prefix, base, base_expr)
+            if ('explicit' in self.options.disallow_any and
+                    not self.is_typeshed_stub_file and
+                    has_explicit_any(base)):
+                self.msg.explicit_any('base type', base_expr)
 
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
@@ -1537,6 +1544,14 @@ class SemanticAnalyzer(NodeVisitor):
                                          self.fail, allow_unnormalized=True)
                 if res and (not isinstance(res, Instance) or res.args):
                     # TODO: What if this gets reassigned?
+                    if ('explicit' in self.options.disallow_any and
+                            not self.is_typeshed_stub_file and
+                            has_explicit_any(res)):
+                        self.msg.explicit_any("type alias", s)
+                    # when this type alias gets "inlined", the "Any" is not explicit anymore,
+                    # so we need to mark it as such
+                    unmark_any_as_explicit(res)
+
                     name = s.lvalues[0]
                     node = self.lookup(name.name, name)
                     node.kind = TYPE_ALIAS
@@ -1801,6 +1816,11 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail(message.format(old_type), s)
             return
 
+        if ('explicit' in self.options.disallow_any and
+                not self.is_typeshed_stub_file and
+                has_explicit_any(old_type)):
+            self.msg.explicit_any("NewType declaration", s)
+
         # If so, add it to the symbol table.
         node = self.lookup(name, s)
         if node is None:
@@ -1922,6 +1942,10 @@ class SemanticAnalyzer(NodeVisitor):
                 prefix = "Upper bound of type variable"
                 self.msg.unimported_type_becomes_any(prefix, upper_bound, s)
 
+        if ('explicit' in self.options.disallow_any and
+                not self.is_typeshed_stub_file and
+                any(has_explicit_any(t) for t in values + [upper_bound])):
+            self.msg.explicit_any("TypeVar declaration", s)
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = TVAR
@@ -4310,3 +4334,21 @@ def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
             if isinstance(t.ret_type, CallableType):
                 return t.ret_type
     return None
+
+
+def unmark_any_as_explicit(t: Type) -> None:
+    """For all types within t, if that type is Any, set explicit to False"""
+    t.accept(UnmarkAnyAsExplicit())
+
+
+class UnmarkAnyAsExplicit(TypeQuery[None]):
+    def __init__(self) -> None:
+        super().__init__(UnmarkAnyAsExplicit.do_nothing_strategy)
+
+    def visit_any(self, t: AnyType) -> None:
+        t.explicit = False
+
+    @classmethod
+    def do_nothing_strategy(cls, it: Iterable[None]) -> None:
+        # "it" can be a generator (which is lazy), force it to compute the value
+        list(it)

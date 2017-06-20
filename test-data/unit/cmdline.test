@@ -681,3 +681,178 @@ from unreal import F
 
 def f(x: F) -> None: pass
 [out]
+
+[case testDisallowAnyExplicitDefSignature]
+# cmd: mypy m.py
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+
+def f(x: Any) -> None:
+    pass
+
+def g() -> Any:
+    pass
+
+def h() -> List[Any]:
+    pass
+
+[out]
+m.py:3: error: Explicit "Any" is not allowed in a type annotation
+m.py:6: error: Explicit "Any" is not allowed in a type annotation
+m.py:9: error: Explicit "Any" is not allowed in a type annotation
+
+[case testDisallowAnyExplicitVarDeclaration]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+v: Any = ''
+w = ['']  # type: List[Any]
+class X:
+    y = ''  # type: Any
+
+[out]
+m.py:2: error: Explicit "Any" is not allowed in a type annotation
+m.py:3: error: Explicit "Any" is not allowed in a type annotation
+m.py:5: error: Explicit "Any" is not allowed in a type annotation
+
+[case testDisallowAnyExplicitInheritance]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+
+class C(Any):
+    pass
+
+class D(List[Any]):
+    pass
+[out]
+m.py:3: error: Explicit "Any" is not allowed in a base type
+m.py:6: error: Explicit "Any" is not allowed in a base type
+
+[case testDisallowAnyExplicitAlias]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+
+X = Any
+Y = List[Any]
+
+def foo(x: X) -> Y:  # no error
+    x.nonexistent()  # no error
+    return x
+
+[out]
+m.py:3: error: Explicit "Any" is not allowed in a type alias
+m.py:4: error: Explicit "Any" is not allowed in a type alias
+
+[case testDisallowAnyExplicitGenericAlias]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, TypeVar, Tuple
+
+T = TypeVar('T')
+
+TupleAny = Tuple[Any, T]  # error
+
+def foo(x: TupleAny[str]) -> None:  # no error
+    pass
+
+[out]
+m.py:5: error: Explicit "Any" is not allowed in a type alias
+
+[case testDisallowAnyExplicitCast]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, cast
+
+x = 1
+y = cast(Any, x)
+z = cast(List[Any], x)
+[out]
+m.py:4: error: Explicit "Any" is not allowed in a cast
+m.py:5: error: Explicit "Any" is not allowed in a cast
+
+[case testDisallowAnyExplicitNamedTuple]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, NamedTuple
+
+Point = NamedTuple('Point', [('x', List[Any]),
+                             ('y', Any)])
+
+[out]
+m.py:3: error: Explicit "Any" is not allowed in a NamedTuple declaration
+
+[case testDisallowAnyExplicitTypeVarConstraint]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, TypeVar
+
+T = TypeVar('T', Any, List[Any])
+[out]
+m.py:3: error: Explicit "Any" is not allowed in a TypeVar declaration
+
+[case testDisallowAnyExplicitNewType]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, NewType
+
+# The commented out line is covered without the flag enabled - it is tested elsewhere
+# Baz = NewType('Baz', Any)
+Bar = NewType('Bar', List[Any])
+
+[out]
+m.py:5: error: Explicit "Any" is not allowed in a NewType declaration
