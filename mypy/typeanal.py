@@ -24,7 +24,7 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.subtypes import is_subtype
-from mypy.plugin import Plugin, SemanticAnalysisPluginContext
+from mypy.plugin import Plugin, AnalyzerPluginInterface, AnalyzeTypeContext
 from mypy import nodes
 from mypy import experiments
 
@@ -111,7 +111,7 @@ def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
     return msg
 
 
-class TypeAnalyser(SyntheticTypeVisitor[Type]):
+class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
     """Semantic analyzer for types (semantic analysis pass 2).
 
     Converts unbound types into bound types.
@@ -128,7 +128,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                  allow_unnormalized: bool = False) -> None:
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
-        self.fail = fail_func
+        self.fail_func = fail_func
         self.tvar_scope = tvar_scope
         self.aliasing = aliasing
         self.allow_tuple_literal = allow_tuple_literal
@@ -153,7 +153,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
             fullname = sym.node.fullname()
             hook = self.plugin.get_type_analyze_hook(fullname)
             if hook:
-                return hook(t, self.create_plugin_context(t))
+                return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in nongen_builtins and t.args and
                     not sym.normalized and not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname), t)
@@ -170,10 +170,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
-                    return self.builtin_type('builtins.tuple')
+                    return self.named_type('builtins.tuple')
                 if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                     # Tuple[T, ...] (uniform, variable-length tuple)
-                    instance = self.builtin_type('builtins.tuple', [self.anal_type(t.args[0])])
+                    instance = self.named_type('builtins.tuple', [self.anal_type(t.args[0])])
                     instance.line = t.line
                     return instance
                 return self.tuple_type(self.anal_array(t.args))
@@ -348,7 +348,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                 variables = self.bind_function_type_variables(t, t)
             ret = t.copy_modified(arg_types=self.anal_array(t.arg_types, nested=nested),
                                   ret_type=self.anal_type(t.ret_type, nested=nested),
-                                  fallback=t.fallback or self.builtin_type('builtins.function'),
+                                  fallback=t.fallback or self.named_type('builtins.function'),
                                   variables=self.anal_var_defs(variables))
         return ret
 
@@ -363,11 +363,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
             self.fail('At most one star type allowed in a tuple', t)
             if t.implicit:
                 return TupleType([AnyType() for _ in t.items],
-                                 self.builtin_type('builtins.tuple'),
+                                 self.named_type('builtins.tuple'),
                                  t.line)
             else:
                 return AnyType()
-        fallback = t.fallback if t.fallback else self.builtin_type('builtins.tuple', [AnyType()])
+        fallback = t.fallback if t.fallback else self.named_type('builtins.tuple', [AnyType()])
         return TupleType(self.anal_array(t.items), fallback, t.line)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
@@ -394,7 +394,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
         return TypeType.make_normalized(self.anal_type(t.item), line=t.line)
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
-        fallback = self.builtin_type('builtins.function')
+        fallback = self.named_type('builtins.function')
         if len(t.args) == 0:
             # Callable (bare). Treat as Callable[..., Any].
             ret = CallableType([AnyType(), AnyType()],
@@ -470,6 +470,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
 
     def analyze_type(self, t: Type) -> Type:
         return t.accept(self)
+
+    def fail(self, msg: str, ctx: Context) -> None:
+        self.fail_func(msg, ctx)
 
     @contextmanager
     def tvar_scope_frame(self) -> Iterator[None]:
@@ -550,17 +553,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                                 vd.line))
         return a
 
-    def builtin_type(self, fully_qualified_name: str, args: List[Type] = None) -> Instance:
+    def named_type(self, fully_qualified_name: str, args: List[Type] = None) -> Instance:
         node = self.lookup_fqn_func(fully_qualified_name)
         assert isinstance(node.node, TypeInfo)
         return Instance(node.node, args or [])
 
     def tuple_type(self, items: List[Type]) -> TupleType:
-        return TupleType(items, fallback=self.builtin_type('builtins.tuple', [AnyType()]))
-
-    def create_plugin_context(self, context: Context) -> SemanticAnalysisPluginContext:
-        return SemanticAnalysisPluginContext(
-            self.builtin_type, self.fail, self.analyze_type, self.analyze_callable_args, context)
+        return TupleType(items, fallback=self.named_type('builtins.tuple', [AnyType()]))
 
 
 class TypeAnalyserPass3(TypeVisitor[None]):

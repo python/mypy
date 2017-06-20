@@ -11,17 +11,17 @@ class MyPlugin(Plugin):
         return None
 
 
-def decorator_call_hook(arg_types, args, inferred_return_type, named_generic_type):
-    if isinstance(inferred_return_type, CallableType):
-        return inferred_return_type.copy_modified(name='m._decorated')
-    return inferred_return_type
+def decorator_call_hook(ctx):
+    if isinstance(ctx.inferred_return_type, CallableType):
+        return ctx.inferred_return_type.copy_modified(name='m._decorated')
+    return ctx.inferred_return_type
 
 
-def decorate_hook(arg_types, args, inferred_return_type, named_generic_type):
-    if isinstance(inferred_return_type, CallableType):
-        return inferred_return_type.copy_modified(
-            ret_type=named_generic_type('builtins.str', []))
-    return inferred_return_type
+def decorate_hook(ctx):
+    if isinstance(ctx.inferred_return_type, CallableType):
+        return ctx.inferred_return_type.copy_modified(
+            ret_type=ctx.api.named_generic_type('builtins.str', []))
+    return ctx.inferred_return_type
 
 
 def plugin(version):

@@ -17,7 +17,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type, freshen_function_type_vars
 from mypy.infer import infer_type_arguments
 from mypy.typevars import fill_typevars
-from mypy.plugin import Plugin
+from mypy.plugin import Plugin, AttributeContext
 from mypy import messages
 from mypy import subtypes
 MYPY = False
@@ -78,7 +78,7 @@ def analyze_member_access(name: str,
                 assert isinstance(method, OverloadedFuncDef)
                 first_item = cast(Decorator, method.items[0])
                 return analyze_var(name, first_item.var, typ, info, node, is_lvalue, msg,
-                                   original_type, not_ready_callback, chk.plugin)
+                                   original_type, not_ready_callback, chk=chk)
             if is_lvalue:
                 msg.cant_assign_to_method(node)
             signature = function_type(method, builtin_type('builtins.function'))
@@ -228,9 +228,8 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         v = vv.var
 
     if isinstance(v, Var):
-        plugin = chk.plugin if chk is not None else None
         return analyze_var(name, v, itype, info, node, is_lvalue, msg,
-                           original_type, not_ready_callback, plugin)
+                           original_type, not_ready_callback, chk=chk)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
     elif not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
@@ -272,8 +271,8 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
 
 def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Context,
                 is_lvalue: bool, msg: MessageBuilder, original_type: Type,
-                not_ready_callback: Callable[[str, Context], None],
-                plugin: Optional[Plugin]) -> Type:
+                not_ready_callback: Callable[[str, Context], None], *,
+                chk: 'mypy.checker.TypeChecker') -> Type:
     """Analyze access to an attribute via a Var node.
 
     This is conceptually part of analyze_member_access and the arguments are similar.
@@ -320,11 +319,10 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
             not_ready_callback(var.name(), node)
         # Implicit 'Any' type.
         result = AnyType()
-    if plugin:
-        fullname = '{}.{}'.format(var.info.fullname(), name)
-        hook = plugin.get_attribute_hook(fullname)
-        if hook:
-            result = hook(original_type, result)
+    fullname = '{}.{}'.format(var.info.fullname(), name)
+    hook = chk.plugin.get_attribute_hook(fullname)
+    if hook:
+        result = hook(AttributeContext(original_type, result, node, chk))
     return result
 
 
