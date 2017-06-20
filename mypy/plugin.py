@@ -6,6 +6,7 @@ from mypy.types import (
     AnyType, TypeList, UnboundType
 )
 from mypy.messages import MessageBuilder
+from mypy.options import Options
 
 
 # Create an Instance given full name of class and type arguments.
@@ -105,8 +106,9 @@ class Plugin:
     results might be cached).
     """
 
-    def __init__(self, python_version: Tuple[int, int]) -> None:
-        self.python_version = python_version
+    def __init__(self, options: Options) -> None:
+        self.options = options
+        self.python_version = options.python_version
 
     def get_function_hook(self, fullname: str) -> Optional[FunctionHook]:
         return None
@@ -141,12 +143,12 @@ class ChainedPlugin(Plugin):
 
     # TODO: Support caching of lookup results (through a LRU cache, for example).
 
-    def __init__(self, python_version: Tuple[int, int], plugins: List[Plugin]) -> None:
+    def __init__(self, options: Options, plugins: List[Plugin]) -> None:
         """Initialize chained plugin.
 
         Assume that the child plugins aren't mutated (results may be cached).
         """
-        super().__init__(python_version)
+        super().__init__(options)
         self._plugins = plugins
 
     def get_function_hook(self, fullname: str) -> Optional[FunctionHook]:

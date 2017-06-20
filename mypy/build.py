@@ -347,7 +347,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
         errors.report(0, 0, message)
         errors.raise_error()
 
-    plugins = [DefaultPlugin(options.python_version)]  # type: List[Plugin]
+    plugins = [DefaultPlugin(options)]  # type: List[Plugin]
     for plugin_path in options.plugins:
         if options.config_file:
             # Plugin paths are relative to the config file location.
@@ -386,7 +386,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
             plugin_error(
                 'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin"')
         try:
-            plugins.append(plugin_type(options.python_version))
+            plugins.append(plugin_type(options))
         except Exception:
             print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
             raise  # Propagate to display traceback
@@ -394,7 +394,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
         return plugins[0]
     else:
         # Custom plugins take precendence over built-in plugins.
-        return ChainedPlugin(options.python_version, plugins)
+        return ChainedPlugin(options, plugins)
 
 
 # TODO: Get rid of all_types.  It's not used except for one log message.
