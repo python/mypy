@@ -16,6 +16,7 @@ import contextlib
 import hashlib
 import json
 import os.path
+import re
 import sys
 import time
 from os.path import dirname, basename
@@ -343,23 +344,29 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
     at least include the default plugin.
     """
 
+    if not options.config_file:
+        return default_plugin
+
+    line = find_config_file_line_number(options.config_file, 'mypy', 'plugins')
+    if line == -1:
+        line = 1  # We need to pick some line number that doesn't look too confusing
+
     def plugin_error(message: str) -> None:
-        errors.report(0, 0, message)
+        errors.report(line, 0, message)
         errors.raise_error()
 
     plugins = [DefaultPlugin(options)]  # type: List[Plugin]
+    errors.set_file(options.config_file, None)
     for plugin_path in options.plugins:
-        if options.config_file:
-            # Plugin paths are relative to the config file location.
-            plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
-        errors.set_file(plugin_path, None)
+        # Plugin paths are relative to the config file location.
+        plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
 
         if not os.path.isfile(plugin_path):
-            plugin_error("Can't find plugin")
+            plugin_error("Can't find plugin '{}'".format(plugin_path))
         plugin_dir = os.path.dirname(plugin_path)
         fnam = os.path.basename(plugin_path)
         if not fnam.endswith('.py'):
-            plugin_error("Plugin must have .py extension")
+            plugin_error("Plugin '{}' does not have a .py extension".format(fnam))
         module_name = fnam[:-3]
         import importlib
         sys.path.insert(0, plugin_dir)
@@ -372,7 +379,8 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
             assert sys.path[0] == plugin_dir
             del sys.path[0]
         if not hasattr(m, 'plugin'):
-            plugin_error('Plugin does not define entry point function "plugin"')
+            plugin_error('Plugin \'{}\' does not define entry point function "plugin"'.format(
+                plugin_path))
         try:
             plugin_type = getattr(m, 'plugin')(__version__)
         except Exception:
@@ -380,11 +388,12 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
             raise  # Propagate to display traceback
         if not isinstance(plugin_type, type):
             plugin_error(
-                'Type object expected as the return value of "plugin" (got {!r})'.format(
-                    plugin_type))
+                'Type object expected as the return value of "plugin"; got {!r} (in {})'.format(
+                    plugin_type, plugin_path))
         if not issubclass(plugin_type, Plugin):
             plugin_error(
-                'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin"')
+                'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" '
+                '(in {})'.format(plugin_path))
         try:
             plugins.append(plugin_type(options))
         except Exception:
@@ -395,6 +404,29 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
     else:
         # Custom plugins take precendence over built-in plugins.
         return ChainedPlugin(options, plugins)
+
+
+def find_config_file_line_number(path: str, section: str, setting_name: str) -> int:
+    """Return the approximate location of setting_name within mypy config file.
+
+    Return -1 if can't determine the line unambiguously.
+    """
+    in_desired_section = False
+    try:
+        results = []
+        with open(path) as f:
+            for i, line in enumerate(f):
+                line = line.strip()
+                if line.startswith('[') and line.endswith(']'):
+                    current_section = line[1:-1].strip()
+                    in_desired_section = (current_section == section)
+                elif in_desired_section and re.match(r'{}\s*='.format(setting_name), line):
+                    results.append(i + 1)
+        if len(results) == 1:
+            return results[0]
+    except OSError:
+        pass
+    return -1
 
 
 # TODO: Get rid of all_types.  It's not used except for one log message.
@@ -1480,6 +1512,24 @@ class State:
         fixup_module_pass_two(self.tree, self.manager.modules,
                               self.manager.options.quick_and_dirty)
 
+    def patch_dependency_parents(self) -> None:
+        """
+        In Python, if a and a.b are both modules, running `import a.b` will
+        modify not only the current module's namespace, but a's namespace as
+        well -- see SemanticAnalyzer.add_submodules_to_parent_modules for more
+        details.
+
+        However, this patching process can occur after `a` has been parsed and
+        serialized during increment mode. Consequently, we need to repeat this
+        patch when deserializing a cached file.
+
+        This function should be called only when processing fresh SCCs -- the
+        semantic analyzer will perform this patch for us when processing stale
+        SCCs.
+        """
+        for dep in self.dependencies:
+            self.manager.semantic_analyzer.add_submodules_to_parent_modules(dep, True)
+
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
 
@@ -2012,6 +2062,8 @@ def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
         graph[id].fix_cross_refs()
     for id in scc:
         graph[id].calculate_mros()
+    for id in scc:
+        graph[id].patch_dependency_parents()
 
 
 def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
