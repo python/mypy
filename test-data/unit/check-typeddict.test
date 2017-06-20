@@ -829,6 +829,20 @@ m1: Mapping[str, B] = x
 m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type Mapping[str, C])
 [builtins fixtures/dict.pyi]
 
+[case testForwardReferenceInClassTypedDict]
+from typing import Mapping
+from mypy_extensions import TypedDict
+class X(TypedDict):
+    b: 'B'
+    c: 'C'
+class B: pass
+class C(B): pass
+x: X
+reveal_type(x) # E: Revealed type is 'TypedDict(b=__main__.B, c=__main__.C, _fallback=__main__.X)'
+m1: Mapping[str, B] = x
+m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type Mapping[str, C])
+[builtins fixtures/dict.pyi]
+
 [case testForwardReferenceToTypedDictInTypedDict]
 from typing import Mapping
 from mypy_extensions import TypedDict
