@@ -45,7 +45,7 @@ from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
-from mypy.plugin import Plugin, PluginContext, MethodSignatureHook
+from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
 from mypy.typeanal import make_optional_type
 
 from mypy import experiments
@@ -204,7 +204,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         or isinstance(typ, NameExpr) and node and node.kind == nodes.TYPE_ALIAS):
                     self.msg.type_arguments_not_allowed(e)
         self.try_infer_partial_type(e)
-        callee_type = self.accept(e.callee)
+        callee_type = self.accept(e.callee, always_allow_any=True)
         if (self.chk.options.disallow_untyped_calls and
                 self.chk.in_checked_function() and
                 isinstance(callee_type, CallableType)
@@ -382,6 +382,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                               context: Context) -> Type:
         """Use special case logic to infer the return type of a specific named function/method.
 
+        Caller must ensure that a plugin hook exists. There are two different cases:
+
+        - If object_type is None, the caller must ensure that a function hook exists
+          for fullname.
+        - If object_type is not None, the caller must ensure that a method hook exists
+          for fullname.
+
         Return the inferred return type.
         """
         formal_arg_types = [[] for _ in range(num_formals)]  # type: List[List[Type]]
@@ -394,17 +401,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Apply function plugin
             callback = self.plugin.get_function_hook(fullname)
             assert callback is not None  # Assume that caller ensures this
-            return callback(formal_arg_types, formal_arg_exprs, inferred_ret_type,
-                            self.chk.named_generic_type)
+            return callback(
+                FunctionContext(formal_arg_types, inferred_ret_type, formal_arg_exprs,
+                                context, self.chk))
         else:
             # Apply method plugin
             method_callback = self.plugin.get_method_hook(fullname)
             assert method_callback is not None  # Assume that caller ensures this
-            return method_callback(object_type, formal_arg_types, formal_arg_exprs,
-                                   inferred_ret_type, self.create_plugin_context(context))
+            return method_callback(
+                MethodContext(object_type, formal_arg_types,
+                              inferred_ret_type, formal_arg_exprs,
+                              context, self.chk))
 
-    def apply_method_signature_hook(self, e: CallExpr, callee: FunctionLike, object_type: Type,
-                                    signature_hook: MethodSignatureHook) -> FunctionLike:
+    def apply_method_signature_hook(
+            self, e: CallExpr, callee: FunctionLike, object_type: Type,
+            signature_hook: Callable[[MethodSigContext], CallableType]) -> FunctionLike:
         """Apply a plugin hook that may infer a more precise signature for a method."""
         if isinstance(callee, CallableType):
             arg_kinds = e.arg_kinds
@@ -419,8 +430,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for formal, actuals in enumerate(formal_to_actual):
                 for actual in actuals:
                     formal_arg_exprs[formal].append(args[actual])
-            return signature_hook(object_type, formal_arg_exprs, callee,
-                                  self.chk.named_generic_type)
+            return signature_hook(
+                MethodSigContext(object_type, formal_arg_exprs, callee, e, self.chk))
         else:
             assert isinstance(callee, Overloaded)
             items = []
@@ -429,9 +440,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 assert isinstance(adjusted, CallableType)
                 items.append(adjusted)
             return Overloaded(items)
-
-    def create_plugin_context(self, context: Context) -> PluginContext:
-        return PluginContext(self.chk.named_generic_type, self.msg, context)
 
     def check_call_expr_with_callee_type(self,
                                          callee_type: Type,
@@ -477,6 +485,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         arg_messages = arg_messages or self.msg
         if isinstance(callee, CallableType):
+            if callable_name is None and callee.name:
+                callable_name = callee.name
             if (isinstance(callable_node, RefExpr)
                 and callable_node.fullname in ('enum.Enum', 'enum.IntEnum',
                                                'enum.Flag', 'enum.IntFlag')):
@@ -1674,7 +1684,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
-        source_type = self.accept(expr.expr, type_context=AnyType(), allow_none_return=True)
+        source_type = self.accept(expr.expr, type_context=AnyType(), allow_none_return=True,
+                                  always_allow_any=True)
         target_type = expr.type
         options = self.chk.options
         if options.warn_redundant_casts and is_same_type(source_type, target_type):
@@ -2200,7 +2211,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def accept(self,
                node: Expression,
                type_context: Type = None,
-               allow_none_return: bool = False
+               allow_none_return: bool = False,
+               always_allow_any: bool = False,
                ) -> Type:
         """Type check a node in the given type context.  If allow_none_return
         is True and this expression is a call, allow it to return None.  This
@@ -2220,6 +2232,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.type_context.pop()
         assert typ is not None
         self.chk.store_type(node, typ)
+
+        if ('expr' in self.chk.options.disallow_any and
+                not always_allow_any and
+                not self.chk.is_stub and
+                self.chk.in_checked_function() and
+                has_any_type(typ)):
+            self.msg.disallowed_any_type(typ, node)
+
         if not self.chk.in_checked_function():
             return AnyType()
         else:
@@ -2436,6 +2456,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ans = narrow_declared_type(known_type, restriction)
                 return ans
         return known_type
+
+
+def has_any_type(t: Type) -> bool:
+    """Whether t contains an Any type"""
+    return t.accept(HasAnyType())
+
+
+class HasAnyType(types.TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_any(self, t: AnyType) -> bool:
+        return True
 
 
 def has_coroutine_decorator(t: Type) -> bool:

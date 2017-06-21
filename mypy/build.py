@@ -16,6 +16,7 @@ import contextlib
 import hashlib
 import json
 import os.path
+import re
 import sys
 import time
 from os.path import dirname, basename
@@ -171,8 +172,9 @@ def build(sources: List[BuildSource],
         lib_path.insert(0, alt_lib_path)
 
     reports = Reports(data_dir, options.report_dirs)
-
     source_set = BuildSourceSet(sources)
+    errors = Errors(options.show_error_context, options.show_column_numbers)
+    plugin = load_plugins(options, errors)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -183,9 +185,8 @@ def build(sources: List[BuildSource],
                            reports=reports,
                            options=options,
                            version_id=__version__,
-                           plugin=DefaultPlugin(options.python_version))
-
-    manager.plugin = load_custom_plugins(manager.plugin, options, manager.errors)
+                           plugin=plugin,
+                           errors=errors)
 
     try:
         graph = dispatch(sources, manager)
@@ -336,30 +337,37 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors) -> Plugin:
-    """Load custom plugins if any are configured.
+def load_plugins(options: Options, errors: Errors) -> Plugin:
+    """Load all configured plugins.
 
-    Return a plugin that chains all custom plugins (if any) and falls
-    back to default_plugin.
+    Return a plugin that encapsulates all plugins chained together. Always
+    at least include the default plugin (it's last in the chain).
     """
 
+    default_plugin = DefaultPlugin(options)  # type: Plugin
+    if not options.config_file:
+        return default_plugin
+
+    line = find_config_file_line_number(options.config_file, 'mypy', 'plugins')
+    if line == -1:
+        line = 1  # We need to pick some line number that doesn't look too confusing
+
     def plugin_error(message: str) -> None:
-        errors.report(0, 0, message)
+        errors.report(line, 0, message)
         errors.raise_error()
 
-    custom_plugins = []
+    custom_plugins = []  # type: List[Plugin]
+    errors.set_file(options.config_file, None)
     for plugin_path in options.plugins:
-        if options.config_file:
-            # Plugin paths are relative to the config file location.
-            plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
-        errors.set_file(plugin_path, None)
+        # Plugin paths are relative to the config file location.
+        plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
 
         if not os.path.isfile(plugin_path):
-            plugin_error("Can't find plugin")
+            plugin_error("Can't find plugin '{}'".format(plugin_path))
         plugin_dir = os.path.dirname(plugin_path)
         fnam = os.path.basename(plugin_path)
         if not fnam.endswith('.py'):
-            plugin_error("Plugin must have .py extension")
+            plugin_error("Plugin '{}' does not have a .py extension".format(fnam))
         module_name = fnam[:-3]
         import importlib
         sys.path.insert(0, plugin_dir)
@@ -372,7 +380,8 @@ def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors
             assert sys.path[0] == plugin_dir
             del sys.path[0]
         if not hasattr(m, 'plugin'):
-            plugin_error('Plugin does not define entry point function "plugin"')
+            plugin_error('Plugin \'{}\' does not define entry point function "plugin"'.format(
+                plugin_path))
         try:
             plugin_type = getattr(m, 'plugin')(__version__)
         except Exception:
@@ -380,21 +389,42 @@ def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors
             raise  # Propagate to display traceback
         if not isinstance(plugin_type, type):
             plugin_error(
-                'Type object expected as the return value of "plugin" (got {!r})'.format(
-                    plugin_type))
+                'Type object expected as the return value of "plugin"; got {!r} (in {})'.format(
+                    plugin_type, plugin_path))
         if not issubclass(plugin_type, Plugin):
             plugin_error(
-                'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin"')
+                'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" '
+                '(in {})'.format(plugin_path))
         try:
-            custom_plugins.append(plugin_type(options.python_version))
+            custom_plugins.append(plugin_type(options))
         except Exception:
             print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
             raise  # Propagate to display traceback
-    if not custom_plugins:
-        return default_plugin
-    else:
-        # Custom plugins take precendence over built-in plugins.
-        return ChainedPlugin(options.python_version, custom_plugins + [default_plugin])
+    # Custom plugins take precedence over the default plugin.
+    return ChainedPlugin(options, custom_plugins + [default_plugin])
+
+
+def find_config_file_line_number(path: str, section: str, setting_name: str) -> int:
+    """Return the approximate location of setting_name within mypy config file.
+
+    Return -1 if can't determine the line unambiguously.
+    """
+    in_desired_section = False
+    try:
+        results = []
+        with open(path) as f:
+            for i, line in enumerate(f):
+                line = line.strip()
+                if line.startswith('[') and line.endswith(']'):
+                    current_section = line[1:-1].strip()
+                    in_desired_section = (current_section == section)
+                elif in_desired_section and re.match(r'{}\s*='.format(setting_name), line):
+                    results.append(i + 1)
+        if len(results) == 1:
+            return results[0]
+    except OSError:
+        pass
+    return -1
 
 
 # TODO: Get rid of all_types.  It's not used except for one log message.
@@ -415,12 +445,12 @@ class BuildManager:
       semantic_analyzer_pass3:
                        Semantic analyzer, pass 3
       all_types:       Map {Expression: Type} collected from all modules
-      errors:          Used for reporting all errors
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
+      errors:          Used for reporting all errors
     """
 
     def __init__(self, data_dir: str,
@@ -430,10 +460,11 @@ class BuildManager:
                  reports: Reports,
                  options: Options,
                  version_id: str,
-                 plugin: Plugin) -> None:
+                 plugin: Plugin,
+                 errors: Errors) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
-        self.errors = Errors(options.show_error_context, options.show_column_numbers)
+        self.errors = errors
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = tuple(lib_path)
         self.source_set = source_set
@@ -442,8 +473,9 @@ class BuildManager:
         self.version_id = version_id
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
+        self.plugin = plugin
         self.semantic_analyzer = SemanticAnalyzer(self.modules, self.missing_modules,
-                                                  lib_path, self.errors)
+                                                  lib_path, self.errors, self.plugin)
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
         self.all_types = {}  # type: Dict[Expression, Type]
@@ -1478,6 +1510,24 @@ class State:
         fixup_module_pass_two(self.tree, self.manager.modules,
                               self.manager.options.quick_and_dirty)
 
+    def patch_dependency_parents(self) -> None:
+        """
+        In Python, if a and a.b are both modules, running `import a.b` will
+        modify not only the current module's namespace, but a's namespace as
+        well -- see SemanticAnalyzer.add_submodules_to_parent_modules for more
+        details.
+
+        However, this patching process can occur after `a` has been parsed and
+        serialized during increment mode. Consequently, we need to repeat this
+        patch when deserializing a cached file.
+
+        This function should be called only when processing fresh SCCs -- the
+        semantic analyzer will perform this patch for us when processing stale
+        SCCs.
+        """
+        for dep in self.dependencies:
+            self.manager.semantic_analyzer.add_submodules_to_parent_modules(dep, True)
+
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
 
@@ -2010,6 +2060,8 @@ def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
         graph[id].fix_cross_refs()
     for id in scc:
         graph[id].calculate_mros()
+    for id in scc:
+        graph[id].patch_dependency_parents()
 
 
 def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
