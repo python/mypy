@@ -578,12 +578,16 @@ from typing import Callable, Any, List
 
 def d(f) -> Callable[[int, Any], Any]: pass
 def d2(f) -> Callable[[int], List[Any]]: pass
+def d3(f) -> Callable[[int], List[str]]: pass
 
 @d
 def f(i: int, s: str) -> None:  # E: Type of decorated function contains type "Any" (Callable[[int, Any], Any])
     pass
 @d2
-def g(i: int) -> None: # E: Type of decorated function contains type "Any" (Callable[[int], List[Any]])
+def g(i: int) -> None:  # E: Type of decorated function contains type "Any" (Callable[[int], List[Any]])
+    pass
+@d3
+def h(i: int) -> None:  # no error
     pass
 [builtins fixtures/list.pyi]
 
@@ -606,6 +610,30 @@ def d(p) -> int:
 
 @d
 def f(i):
+    return i
+
+[case testDisallowAnyDecoratedUntypedUndecoratedFunction]
+# flags: --disallow-any=decorated
+from typing import Callable
+
+def f(i):  # no error
+    return i
+
+[case testDisallowAnyDecoratedTwoDecorators]
+# flags: --disallow-any=decorated
+from typing import Callable
+
+def typed_dec(f) -> Callable[[], int]: pass
+def untyped_dec(f): pass
+
+@typed_dec
+@untyped_dec
+def f():  # no error
+    return i
+
+@untyped_dec
+@typed_dec
+def g():  # E: Function is untyped after decorator transformation
     return i
 
 [case testDisallowAnyExprSimple]
