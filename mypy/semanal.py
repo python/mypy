@@ -1016,7 +1016,7 @@ class SemanticAnalyzer(NodeVisitor):
             if ('explicit' in self.options.disallow_any and
                     not self.is_typeshed_stub_file and
                     has_explicit_any(base)):
-                self.msg.explicit_any('base type', base_expr)
+                self.msg.explicit_any(base_expr)
 
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
@@ -1562,7 +1562,7 @@ class SemanticAnalyzer(NodeVisitor):
                     if ('explicit' in self.options.disallow_any and
                             not self.is_typeshed_stub_file and
                             has_explicit_any(res)):
-                        self.msg.explicit_any("type alias", s)
+                        self.msg.explicit_any(s)
                     # when this type alias gets "inlined", the "Any" is not explicit anymore,
                     # so we need to mark it as such
                     unmark_any_as_explicit(res)
@@ -1834,7 +1834,7 @@ class SemanticAnalyzer(NodeVisitor):
         if ('explicit' in self.options.disallow_any and
                 not self.is_typeshed_stub_file and
                 has_explicit_any(old_type)):
-            self.msg.explicit_any("NewType declaration", s)
+            self.msg.explicit_any(s)
 
         if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(old_type):
             self.msg.unimported_type_becomes_any("Argument 2 to NewType(...)", old_type, s)
@@ -1963,7 +1963,7 @@ class SemanticAnalyzer(NodeVisitor):
         if ('explicit' in self.options.disallow_any and
                 not self.is_typeshed_stub_file and
                 any(has_explicit_any(t) for t in values + [upper_bound])):
-            self.msg.explicit_any("TypeVar declaration", s)
+            self.msg.explicit_any(s)
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = TVAR
@@ -2386,7 +2386,7 @@ class SemanticAnalyzer(NodeVisitor):
         if ('explicit' in self.options.disallow_any and
                 not self.is_typeshed_stub_file and
                 any(has_explicit_any(t) for t in types)):
-            self.msg.explicit_any("in TypedDict declaration", call)
+            self.msg.explicit_any(call)
 
         return items, types, ok
 

@@ -631,7 +631,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             not self.is_typeshed_stub and
                             fdef.type and
                             has_explicit_any(fdef.type)):
-                        self.msg.explicit_any("type annotation", fdef)
+                        self.msg.explicit_any(fdef)
                 if name in nodes.reverse_op_method_set:
                     self.check_reverse_op_method(item, typ, name)
                 elif name in ('__getattr__', '__getattribute__'):
@@ -1222,7 +1222,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 not self.is_typeshed_stub and
                 s.type and
                 has_explicit_any(s.type)):
-            self.msg.explicit_any("type annotation", s)
+            self.msg.explicit_any(s)
 
         if len(s.lvalues) > 1:
             # Chained assignment (e.g. x = y = ...).

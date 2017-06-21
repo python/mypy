@@ -702,9 +702,9 @@ def h() -> List[Any]:
     pass
 
 [out]
-m.py:3: error: Explicit "Any" is not allowed in a type annotation
-m.py:6: error: Explicit "Any" is not allowed in a type annotation
-m.py:9: error: Explicit "Any" is not allowed in a type annotation
+m.py:3: error: Explicit "Any" is not allowed
+m.py:6: error: Explicit "Any" is not allowed
+m.py:9: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitVarDeclaration]
 # cmd: mypy m.py
@@ -722,9 +722,9 @@ class X:
     y = ''  # type: Any
 
 [out]
-m.py:2: error: Explicit "Any" is not allowed in a type annotation
-m.py:3: error: Explicit "Any" is not allowed in a type annotation
-m.py:5: error: Explicit "Any" is not allowed in a type annotation
+m.py:2: error: Explicit "Any" is not allowed
+m.py:3: error: Explicit "Any" is not allowed
+m.py:5: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitInheritance]
 # cmd: mypy m.py
@@ -743,8 +743,8 @@ class C(Any):
 class D(List[Any]):
     pass
 [out]
-m.py:3: error: Explicit "Any" is not allowed in a base type
-m.py:6: error: Explicit "Any" is not allowed in a base type
+m.py:3: error: Explicit "Any" is not allowed
+m.py:6: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitAlias]
 # cmd: mypy m.py
@@ -765,8 +765,8 @@ def foo(x: X) -> Y:  # no error
     return x
 
 [out]
-m.py:3: error: Explicit "Any" is not allowed in a type alias
-m.py:4: error: Explicit "Any" is not allowed in a type alias
+m.py:3: error: Explicit "Any" is not allowed
+m.py:4: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitGenericAlias]
 # cmd: mypy m.py
@@ -787,7 +787,7 @@ def foo(x: TupleAny[str]) -> None:  # no error
     pass
 
 [out]
-m.py:5: error: Explicit "Any" is not allowed in a type alias
+m.py:5: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitCast]
 # cmd: mypy m.py
@@ -804,8 +804,8 @@ x = 1
 y = cast(Any, x)
 z = cast(List[Any], x)
 [out]
-m.py:4: error: Explicit "Any" is not allowed in a cast
-m.py:5: error: Explicit "Any" is not allowed in a cast
+m.py:4: error: Explicit "Any" is not allowed
+m.py:5: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitNamedTuple]
 # cmd: mypy m.py
@@ -822,7 +822,7 @@ Point = NamedTuple('Point', [('x', List[Any]),
                              ('y', Any)])
 
 [out]
-m.py:3: error: Explicit "Any" is not allowed in a NamedTuple declaration
+m.py:3: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitTypeVarConstraint]
 # cmd: mypy m.py
@@ -837,7 +837,7 @@ from typing import Any, List, TypeVar
 
 T = TypeVar('T', Any, List[Any])
 [out]
-m.py:3: error: Explicit "Any" is not allowed in a TypeVar declaration
+m.py:3: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitNewType]
 # cmd: mypy m.py
@@ -855,7 +855,7 @@ from typing import Any, List, NewType
 Bar = NewType('Bar', List[Any])
 
 [out]
-m.py:5: error: Explicit "Any" is not allowed in a NewType declaration
+m.py:5: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitTypedDictSimple]
 # cmd: mypy m.py
@@ -873,7 +873,7 @@ M = TypedDict('M', {'x': str, 'y': Any})  # error
 M(x='x', y=2)  # no error
 def f(m: M) -> None: pass  # no error
 [out]
-m.py:4: error: Explicit "Any" is not allowed in a in TypedDict declaration
+m.py:4: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitTypedDictGeneric]
 # cmd: mypy m.py
@@ -890,4 +890,4 @@ from typing import Any, List
 M = TypedDict('M', {'x': str, 'y': List[Any]})  # error
 N = TypedDict('N', {'x': str, 'y': List})  # no error
 [out]
-m.py:4: error: Explicit "Any" is not allowed in a in TypedDict declaration
+m.py:4: error: Explicit "Any" is not allowed

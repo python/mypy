@@ -1693,7 +1693,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if ('explicit' in options.disallow_any and
                 not self.chk.is_typeshed_stub and
                 has_explicit_any(target_type)):
-            self.msg.explicit_any("cast", expr)
+            self.msg.explicit_any(expr)
         return target_type
 
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
@@ -2417,7 +2417,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if ('explicit' in self.chk.options.disallow_any and
                     not self.chk.is_typeshed_stub and
                     has_explicit_any(tuple_type)):
-                self.msg.explicit_any("NamedTuple declaration", e)
+                self.msg.explicit_any(e)
         # TODO: Perhaps return a type object type?
         return AnyType()
 

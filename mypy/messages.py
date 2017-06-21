@@ -872,8 +872,8 @@ class MessageBuilder:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
                   ctx)
 
-    def explicit_any(self, location: str, ctx: Context) -> None:
-        self.fail('Explicit "Any" is not allowed in a {}'.format(location), ctx)
+    def explicit_any(self, ctx: Context) -> None:
+        self.fail('Explicit "Any" is not allowed', ctx)
 
     def typeddict_instantiated_with_unexpected_items(self,
                                                      expected_item_names: List[str],
