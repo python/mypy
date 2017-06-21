@@ -1816,6 +1816,9 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail(message.format(old_type), s)
             return
 
+        if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(old_type):
+            self.msg.unimported_type_becomes_any("Argument 2 to NewType(...)", old_type, s)
+
         # If so, add it to the symbol table.
         node = self.lookup(name, s)
         if node is None:
