@@ -914,6 +914,13 @@ class MessageBuilder:
             message = 'Expression type contains "Any" (has type {})'.format(self.format(typ))
         self.fail(message, context)
 
+    def untyped_decorated_function(self, typ: Type, context: Context) -> None:
+        if isinstance(typ, AnyType):
+            self.fail("Function is untyped after decorator transformation", context)
+        else:
+            self.fail('Type of decorated function contains type "Any" ({})'.format(
+                self.format(typ)), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""
