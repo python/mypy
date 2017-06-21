@@ -258,10 +258,10 @@ class SemanticAnalyzer(NodeVisitor):
         self.all_exports = set()  # type: Set[str]
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
-                   fixups: List[Callable[[], None]]) -> None:
+                   patches: List[Callable[[], None]]) -> None:
         """Run semantic analysis phase 2 over a file.
 
-        Add callbacks by mutating the fixups list argument. They will be called
+        Add callbacks by mutating the patches list argument. They will be called
         after all semantic analysis phases but before type checking.
         """
         self.options = options
@@ -270,7 +270,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.globals = file_node.names
-        self.fixups = fixups
+        self.patches = patches
 
         if 'builtins' in self.modules:
             self.globals['__builtins__'] = SymbolTableNode(
@@ -297,7 +297,7 @@ class SemanticAnalyzer(NodeVisitor):
                     g.module_public = False
 
         del self.options
-        del self.fixups
+        del self.patches
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
@@ -2378,14 +2378,14 @@ class SemanticAnalyzer(NodeVisitor):
                                             [self.str_type(), self.object_type()])
                     or self.object_type())
 
-        def fixup() -> None:
-            mapping_value_type = join.join_type_list(types)
-            fallback.args[1] = mapping_value_type
+        def patch() -> None:
+            # Calculate the correct value type for the fallback Mapping.
+            fallback.args[1] = join.join_type_list(types)
 
         # We can't calculate the complete fallback type until after semantic
-        # analysis, since otherwise MROs might be incomplete. Postpone a fixup
+        # analysis, since otherwise MROs might be incomplete. Postpone a callback
         # function that patches the fallback.
-        self.fixups.append(fixup)
+        self.patches.append(patch)
 
         info = self.basic_new_typeinfo(name, fallback)
         info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), fallback)
