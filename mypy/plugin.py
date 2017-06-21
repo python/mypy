@@ -268,8 +268,9 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
             and len(ctx.args[1]) == 1):
         key = ctx.args[0][0].value
         value_type = ctx.type.items.get(key)
+        ret_type = signature.ret_type
         if value_type:
-            default_arg = args[1][0]
+            default_arg = ctx.args[1][0]
             if (isinstance(value_type, TypedDictType)
                     and isinstance(default_arg, DictExpr)
                     and len(default_arg.items) == 0):
