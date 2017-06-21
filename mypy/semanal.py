@@ -90,6 +90,7 @@ from mypy.typeanal import (
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
+from mypy.plugin import Plugin
 from mypy import join
 
 
@@ -230,11 +231,13 @@ class SemanticAnalyzer(NodeVisitor):
     is_stub_file = False   # Are we analyzing a stub file?
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     errors = None  # type: Errors     # Keeps track of generated errors
+    plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
 
     def __init__(self,
                  modules: Dict[str, MypyFile],
                  missing_modules: Set[str],
-                 lib_path: List[str], errors: Errors) -> None:
+                 lib_path: List[str], errors: Errors,
+                 plugin: Plugin) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -256,14 +259,22 @@ class SemanticAnalyzer(NodeVisitor):
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
+        self.plugin = plugin
 
-    def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
+    def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
+                   patches: List[Callable[[], None]]) -> None:
+        """Run semantic analysis phase 2 over a file.
+
+        Add callbacks by mutating the patches list argument. They will be called
+        after all semantic analysis phases but before type checking.
+        """
         self.options = options
         self.errors.set_file(fnam, file_node.fullname())
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.globals = file_node.names
+        self.patches = patches
 
         if 'builtins' in self.modules:
             self.globals['__builtins__'] = SymbolTableNode(
@@ -290,6 +301,7 @@ class SemanticAnalyzer(NodeVisitor):
                     g.module_public = False
 
         del self.options
+        del self.patches
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
@@ -1497,6 +1509,7 @@ class SemanticAnalyzer(NodeVisitor):
                             self.lookup_fully_qualified,
                             tvar_scope,
                             self.fail,
+                            self.plugin,
                             aliasing=aliasing,
                             allow_tuple_literal=allow_tuple_literal,
                             allow_unnormalized=self.is_stub_file)
@@ -1534,7 +1547,9 @@ class SemanticAnalyzer(NodeVisitor):
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
                                          self.tvar_scope,
-                                         self.fail, allow_unnormalized=True)
+                                         self.fail,
+                                         self.plugin,
+                                         allow_unnormalized=True)
                 if res and (not isinstance(res, Instance) or res.args):
                     # TODO: What if this gets reassigned?
                     name = s.lvalues[0]
@@ -1800,6 +1815,9 @@ class SemanticAnalyzer(NodeVisitor):
             message = "Argument 2 to NewType(...) must be subclassable (got {})"
             self.fail(message.format(old_type), s)
             return
+
+        if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(old_type):
+            self.msg.unimported_type_becomes_any("Argument 2 to NewType(...)", old_type, s)
 
         # If so, add it to the symbol table.
         node = self.lookup(name, s)
@@ -2366,10 +2384,18 @@ class SemanticAnalyzer(NodeVisitor):
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type]) -> TypeInfo:
-        mapping_value_type = join.join_type_list(types)
         fallback = (self.named_type_or_none('typing.Mapping',
-                                            [self.str_type(), mapping_value_type])
+                                            [self.str_type(), self.object_type()])
                     or self.object_type())
+
+        def patch() -> None:
+            # Calculate the correct value type for the fallback Mapping.
+            fallback.args[1] = join.join_type_list(types)
+
+        # We can't calculate the complete fallback type until after semantic
+        # analysis, since otherwise MROs might be incomplete. Postpone a callback
+        # function that patches the fallback.
+        self.patches.append(patch)
 
         info = self.basic_new_typeinfo(name, fallback)
         info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), fallback)
@@ -3099,7 +3125,9 @@ class SemanticAnalyzer(NodeVisitor):
                                      self.lookup_qualified,
                                      self.lookup_fully_qualified,
                                      self.tvar_scope,
-                                     self.fail, allow_unnormalized=self.is_stub_file)
+                                     self.fail,
+                                     self.plugin,
+                                     allow_unnormalized=self.is_stub_file)
             expr.analyzed = TypeAliasExpr(res, fallback=self.alias_fallback(res),
                                           in_runtime=True)
         elif refers_to_class_or_function(expr.base):
@@ -3448,7 +3476,7 @@ class SemanticAnalyzer(NodeVisitor):
             elif prev_is_overloaded:
                 self.fail("Definition of '{}' missing 'overload'".format(n), ctx)
             else:
-                self.name_already_defined(n, ctx)
+                self.name_already_defined(n, ctx, self.globals[n])
 
     def name_not_defined(self, name: str, ctx: Context) -> None:
         message = "Name '{}' is not defined".format(name)
@@ -3463,8 +3491,16 @@ class SemanticAnalyzer(NodeVisitor):
                 # Yes. Generate a helpful note.
                 self.add_fixture_note(fullname, ctx)
 
-    def name_already_defined(self, name: str, ctx: Context) -> None:
-        self.fail("Name '{}' already defined".format(name), ctx)
+    def name_already_defined(self, name: str, ctx: Context,
+                             original_ctx: Optional[SymbolTableNode] = None) -> None:
+        if original_ctx:
+            if original_ctx.node and original_ctx.node.get_line() != -1:
+                extra_msg = ' on line {}'.format(original_ctx.node.get_line())
+            else:
+                extra_msg = ' (possibly by an import)'
+        else:
+            extra_msg = ''
+        self.fail("Name '{}' already defined{}".format(name, extra_msg), ctx)
 
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
@@ -4012,8 +4048,14 @@ def infer_reachability_of_if_statement(s: IfStmt,
                 mark_block_mypy_only(s.body[i])
             for body in s.body[i + 1:]:
                 mark_block_unreachable(body)
-            if s.else_body:
-                mark_block_unreachable(s.else_body)
+
+            # Make sure else body always exists and is marked as
+            # unreachable so the type checker always knows that
+            # all control flow paths will flow through the if
+            # statement body.
+            if not s.else_body:
+                s.else_body = Block([])
+            mark_block_unreachable(s.else_body)
             break
 
 

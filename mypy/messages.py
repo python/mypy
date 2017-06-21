@@ -904,6 +904,20 @@ class MessageBuilder:
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
 
+    def disallowed_any_type(self, typ: Type, context: Context) -> None:
+        if isinstance(typ, AnyType):
+            message = 'Expression has type "Any"'
+        else:
+            message = 'Expression type contains "Any" (has type {})'.format(self.format(typ))
+        self.fail(message, context)
+
+    def untyped_decorated_function(self, typ: Type, context: Context) -> None:
+        if isinstance(typ, AnyType):
+            self.fail("Function is untyped after decorator transformation", context)
+        else:
+            self.fail('Type of decorated function contains type "Any" ({})'.format(
+                self.format(typ)), context)
+
     def typed_function_untyped_decorator(self, func_name: str, context: Context) -> None:
         self.fail('Untyped decorator makes function "{}" untyped'.format(func_name), context)
 

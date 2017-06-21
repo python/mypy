@@ -79,3 +79,19 @@ yield # E: 'yield' outside function
 [case testYieldFromOutsideFunction]
 x = 1
 yield from x # E: 'yield from' outside function
+
+[case testImportFuncDup]
+import m
+def m() -> None: ...  # ok
+
+[file m.py]
+[out]
+
+[case testIgnoredImportDup]
+import m # type: ignore
+from m import f # type: ignore
+def m() -> None: ...  # ok
+def f() -> None: ...  # ok
+
+[out]
+
