@@ -894,6 +894,18 @@ f({'x': 1, 'z': ''}) # E: Expected TypedDict key 'x' but found keys ('x', 'z')
 f({'x': ''}) # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictConstructorWithTotalFalse]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int, 'y': str}, total=False)
+def f(d: D) -> None: pass
+reveal_type(D()) # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=typing.Mapping[builtins.str, builtins.object], _total=False)'
+reveal_type(D(x=1)) # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=typing.Mapping[builtins.str, builtins.object], _total=False)'
+f(D(y=''))
+f(D(x=1, y=''))
+f(D(x=1, z='')) # E: Expected TypedDict key 'x' but found keys ('x', 'z')
+f(D(x='')) # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+[builtins fixtures/dict.pyi]
+
 [case testTypedDictIndexingWithNonRequiredKey]
 from mypy_extensions import TypedDict
 D = TypedDict('D', {'x': int, 'y': str}, total=False)
