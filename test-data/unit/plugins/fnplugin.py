@@ -6,8 +6,8 @@ class MyPlugin(Plugin):
             return my_hook
         return None
 
-def my_hook(arg_types, args, inferred_return_type, named_generic_type):
-    return named_generic_type('builtins.int', [])
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.int', [])
 
 def plugin(version):
     return MyPlugin

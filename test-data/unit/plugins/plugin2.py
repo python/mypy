@@ -6,8 +6,8 @@ class Plugin2(Plugin):
             return str_hook
         return None
 
-def str_hook(arg_types, args, inferred_return_type, named_generic_type):
-    return named_generic_type('builtins.str', [])
+def str_hook(ctx):
+    return ctx.api.named_generic_type('builtins.str', [])
 
 def plugin(version):
     return Plugin2

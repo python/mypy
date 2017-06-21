@@ -172,8 +172,9 @@ def build(sources: List[BuildSource],
         lib_path.insert(0, alt_lib_path)
 
     reports = Reports(data_dir, options.report_dirs)
-
     source_set = BuildSourceSet(sources)
+    errors = Errors(options.show_error_context, options.show_column_numbers)
+    plugin = load_plugins(options, errors)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -184,9 +185,8 @@ def build(sources: List[BuildSource],
                            reports=reports,
                            options=options,
                            version_id=__version__,
-                           plugin=DefaultPlugin(options.python_version))
-
-    manager.plugin = load_custom_plugins(manager.plugin, options, manager.errors)
+                           plugin=plugin,
+                           errors=errors)
 
     try:
         graph = dispatch(sources, manager)
@@ -337,13 +337,14 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors) -> Plugin:
-    """Load custom plugins if any are configured.
+def load_plugins(options: Options, errors: Errors) -> Plugin:
+    """Load all configured plugins.
 
-    Return a plugin that chains all custom plugins (if any) and falls
-    back to default_plugin.
+    Return a plugin that encapsulates all plugins chained together. Always
+    at least include the default plugin (it's last in the chain).
     """
 
+    default_plugin = DefaultPlugin(options)  # type: Plugin
     if not options.config_file:
         return default_plugin
 
@@ -355,8 +356,8 @@ def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors
         errors.report(line, 0, message)
         errors.raise_error()
 
+    custom_plugins = []  # type: List[Plugin]
     errors.set_file(options.config_file, None)
-    custom_plugins = []
     for plugin_path in options.plugins:
         # Plugin paths are relative to the config file location.
         plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
@@ -395,15 +396,12 @@ def load_custom_plugins(default_plugin: Plugin, options: Options, errors: Errors
                 'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" '
                 '(in {})'.format(plugin_path))
         try:
-            custom_plugins.append(plugin_type(options.python_version))
+            custom_plugins.append(plugin_type(options))
         except Exception:
             print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
             raise  # Propagate to display traceback
-    if not custom_plugins:
-        return default_plugin
-    else:
-        # Custom plugins take precendence over built-in plugins.
-        return ChainedPlugin(options.python_version, custom_plugins + [default_plugin])
+    # Custom plugins take precedence over the default plugin.
+    return ChainedPlugin(options, custom_plugins + [default_plugin])
 
 
 def find_config_file_line_number(path: str, section: str, setting_name: str) -> int:
@@ -447,12 +445,12 @@ class BuildManager:
       semantic_analyzer_pass3:
                        Semantic analyzer, pass 3
       all_types:       Map {Expression: Type} collected from all modules
-      errors:          Used for reporting all errors
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
+      errors:          Used for reporting all errors
     """
 
     def __init__(self, data_dir: str,
@@ -462,10 +460,11 @@ class BuildManager:
                  reports: Reports,
                  options: Options,
                  version_id: str,
-                 plugin: Plugin) -> None:
+                 plugin: Plugin,
+                 errors: Errors) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
-        self.errors = Errors(options.show_error_context, options.show_column_numbers)
+        self.errors = errors
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = tuple(lib_path)
         self.source_set = source_set
@@ -474,8 +473,9 @@ class BuildManager:
         self.version_id = version_id
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
+        self.plugin = plugin
         self.semantic_analyzer = SemanticAnalyzer(self.modules, self.missing_modules,
-                                                  lib_path, self.errors)
+                                                  lib_path, self.errors, self.plugin)
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
         self.all_types = {}  # type: Dict[Expression, Type]

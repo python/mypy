@@ -57,7 +57,7 @@ from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
 from mypy.options import Options
-from mypy.plugin import Plugin
+from mypy.plugin import Plugin, CheckerPluginInterface
 
 from mypy import experiments
 
@@ -80,7 +80,7 @@ DeferredNode = NamedTuple(
     ])
 
 
-class TypeChecker(NodeVisitor[None]):
+class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     """Mypy type checker.
 
     Type check mypy source files that have been semantically analyzed.
