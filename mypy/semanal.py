@@ -2383,6 +2383,11 @@ class SemanticAnalyzer(NodeVisitor):
                 "TypedDict() expects a dictionary literal as the second argument", call)
         dictexpr = args[1]
         items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        if ('explicit' in self.options.disallow_any and
+                not self.is_typeshed_stub_file and
+                any(has_explicit_any(t) for t in types)):
+            self.msg.explicit_any("in TypedDict declaration", call)
+
         return items, types, ok
 
     def parse_typeddict_fields_with_types(self, dict_items: List[Tuple[Expression, Expression]],

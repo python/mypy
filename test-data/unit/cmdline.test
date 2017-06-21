@@ -856,3 +856,38 @@ Bar = NewType('Bar', List[Any])
 
 [out]
 m.py:5: error: Explicit "Any" is not allowed in a NewType declaration
+
+[case testDisallowAnyExplicitTypedDictSimple]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from mypy_extensions import TypedDict
+from typing import Any
+
+M = TypedDict('M', {'x': str, 'y': Any})  # error
+M(x='x', y=2)  # no error
+def f(m: M) -> None: pass  # no error
+[out]
+m.py:4: error: Explicit "Any" is not allowed in a in TypedDict declaration
+
+[case testDisallowAnyExplicitTypedDictGeneric]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from mypy_extensions import TypedDict
+from typing import Any, List
+
+M = TypedDict('M', {'x': str, 'y': List[Any]})  # error
+N = TypedDict('N', {'x': str, 'y': List})  # no error
+[out]
+m.py:4: error: Explicit "Any" is not allowed in a in TypedDict declaration

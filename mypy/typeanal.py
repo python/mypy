@@ -770,6 +770,10 @@ class HasExplicitAny(TypeQuery[bool]):
     def visit_any(self, t: AnyType) -> bool:
         return t.explicit
 
+    def visit_typeddict_type(self, t: TypedDictType) -> bool:
+        # typedict is checked during TypedDict declaration
+        return False
+
 
 def has_any_from_unimported_type(t: Type) -> bool:
     """Return true if this type is Any because an import was not followed.
