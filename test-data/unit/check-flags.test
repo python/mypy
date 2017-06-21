@@ -578,7 +578,7 @@ from typing import Callable, Any, List
 
 def d(f) -> Callable[[int, Any], Any]: pass
 def d2(f) -> Callable[[int], List[Any]]: pass
-def d3(f) -> Callable[[int], List[str]]: pass
+def d3(f) -> Callable[[Any], List[str]]: pass
 
 @d
 def f(i: int, s: str) -> None:  # E: Type of decorated function contains type "Any" (Callable[[int, Any], Any])
@@ -587,7 +587,7 @@ def f(i: int, s: str) -> None:  # E: Type of decorated function contains type "A
 def g(i: int) -> None:  # E: Type of decorated function contains type "Any" (Callable[[int], List[Any]])
     pass
 @d3
-def h(i: int) -> None:  # no error
+def h(i: int) -> None:  # E: Type of decorated function contains type "Any" (Callable[[Any], List[str]])
     pass
 [builtins fixtures/list.pyi]
 
