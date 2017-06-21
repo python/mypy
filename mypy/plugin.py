@@ -299,7 +299,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
                 if len(ctx.arg_types) == 1:
                     return UnionType.make_simplified_union([value_type, NoneTyp()])
                 elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
-                          and len(ctx.args[1]) == 1):
+                      and len(ctx.args[1]) == 1):
                     default_arg = ctx.args[1][0]
                     if (isinstance(default_arg, DictExpr) and len(default_arg.items) == 0
                             and isinstance(value_type, TypedDictType)):
