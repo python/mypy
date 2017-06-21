@@ -858,8 +858,7 @@ reveal_type(d.get('x', {})) \
 reveal_type(d.get('x', None)) \
     # E: Revealed type is 'Union[TypedDict(a=builtins.int, _fallback=__main__.C), builtins.None]'
 reveal_type(d.get('x', {}).get('a')) # E: Revealed type is 'Union[builtins.int, builtins.None]'
-d.get('x', {})['a'] # E: TypedDict key 'a' may be undefined \
-                    # N: Consider using get() instead
+reveal_type(d.get('x', {})['a']) # E: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -899,12 +898,8 @@ f({'x': ''}) # E: Incompatible types (expression has type "str", TypedDict item 
 from mypy_extensions import TypedDict
 D = TypedDict('D', {'x': int, 'y': str}, total=False)
 d: D
-v = d['x'] # E: TypedDict key 'x' may be undefined \
-           # N: Consider using get() instead
-reveal_type(v) # E: Revealed type is 'builtins.int'
-w = d['y'] # E: TypedDict key 'y' may be undefined \
-           # N: Consider using get() instead
-reveal_type(w) # E: Revealed type is 'builtins.str'
+reveal_type(d['x']) # E: Revealed type is 'builtins.int'
+reveal_type(d['y']) # E: Revealed type is 'builtins.str'
 reveal_type(d.get('x')) # E: Revealed type is 'builtins.int'
 reveal_type(d.get('y')) # E: Revealed type is 'builtins.str'
 [builtins fixtures/dict.pyi]

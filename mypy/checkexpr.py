@@ -1668,8 +1668,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if item_type is None:
             self.msg.typeddict_item_name_not_found(td_type, item_name, index)
             return AnyType()
-        if item_name not in td_type.required_keys:
-            self.msg.typeddict_item_may_be_undefined(item_name, index)
         return item_type
 
     def visit_enum_index_expr(self, enum_type: TypeInfo, index: Expression,
