@@ -380,6 +380,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                               context: Context) -> Type:
         """Use special case logic to infer the return type of a specific named function/method.
 
+        Caller must ensure that a plugin hook exists. There are two different cases:
+
+        - If object_type is None, the caller must ensure that a function hook exists
+          for fullname.
+        - If object_type is not None, the caller must ensure that a method hook exists
+          for fullname.
+
         Return the inferred return type.
         """
         formal_arg_types = [[] for _ in range(num_formals)]  # type: List[List[Type]]

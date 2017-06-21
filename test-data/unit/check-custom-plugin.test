@@ -95,7 +95,7 @@ s('') # E: Argument 1 has incompatible type "str"; expected "int"
 from typing import TypeVar, Generic, Callable
 T = TypeVar('T', bound=Callable[..., None])
 class Signal(Generic[T]):
-    __call__: Callable[..., None]
+    __call__: Callable[..., None]  # This type is replaced by the plugin
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/attrhook.py

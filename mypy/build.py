@@ -341,7 +341,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
     """Load all configured plugins.
 
     Return a plugin that encapsulates all plugins chained together. Always
-    at least include the default plugin.
+    at least include the default plugin (it's last in the chain).
     """
 
     default_plugin = DefaultPlugin(options)  # type: Plugin
@@ -356,7 +356,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
         errors.report(line, 0, message)
         errors.raise_error()
 
-    plugins = [default_plugin]
+    custom_plugins = []  # type: List[Plugin]
     errors.set_file(options.config_file, None)
     for plugin_path in options.plugins:
         # Plugin paths are relative to the config file location.
@@ -396,15 +396,12 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
                 'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" '
                 '(in {})'.format(plugin_path))
         try:
-            plugins.append(plugin_type(options))
+            custom_plugins.append(plugin_type(options))
         except Exception:
             print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
             raise  # Propagate to display traceback
-    if len(plugins) == 1:
-        return plugins[0]
-    else:
-        # Custom plugins take precendence over built-in plugins.
-        return ChainedPlugin(options, plugins)
+    # Custom plugins take precedence over the default plugin.
+    return ChainedPlugin(options, custom_plugins + [default_plugin])
 
 
 def find_config_file_line_number(path: str, section: str, setting_name: str) -> int:
