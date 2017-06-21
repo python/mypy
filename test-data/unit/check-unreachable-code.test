@@ -517,3 +517,20 @@ else:
     y = 3
 reveal_type(y)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/ops.pyi]
+
+[case testConditionalAssertWithoutElse]
+import typing
+
+class A: pass
+class B(A): pass
+
+x = A()
+reveal_type(x)  # E: Revealed type is '__main__.A'
+
+if typing.TYPE_CHECKING:
+    assert isinstance(x, B)
+    reveal_type(x)  # E: Revealed type is '__main__.B'
+
+reveal_type(x)  # E: Revealed type is '__main__.B'
+
+[builtins fixtures/isinstancelist.pyi]

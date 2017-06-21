@@ -150,7 +150,7 @@ overridden by the pattern sections matching the module name.
 - ``disallow_any`` (Comma-separated list, default empty) is an option to
   disallow various types of ``Any`` in a module. The flag takes a
   comma-separated list of the following arguments: ``unimported``,
-  ``unannotated``. For explanations see the discussion for the
+  ``unannotated``, ``expr``. For explanations see the discussion for the
   :ref:`--disallow-any <disallow-any>` option.
 
 - ``disallow_untyped_calls`` (Boolean, default False) disallows

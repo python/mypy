@@ -204,7 +204,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         or isinstance(typ, NameExpr) and node and node.kind == nodes.TYPE_ALIAS):
                     self.msg.type_arguments_not_allowed(e)
         self.try_infer_partial_type(e)
-        callee_type = self.accept(e.callee)
+        callee_type = self.accept(e.callee, always_allow_any=True)
         if (self.chk.options.disallow_untyped_calls and
                 self.chk.in_checked_function() and
                 isinstance(callee_type, CallableType)
@@ -1670,7 +1670,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
-        source_type = self.accept(expr.expr, type_context=AnyType(), allow_none_return=True)
+        source_type = self.accept(expr.expr, type_context=AnyType(), allow_none_return=True,
+                                  always_allow_any=True)
         target_type = expr.type
         options = self.chk.options
         if options.warn_redundant_casts and is_same_type(source_type, target_type):
@@ -1936,12 +1937,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check lambda expression."""
         inferred_type, type_override = self.infer_lambda_type_using_context(e)
         if not inferred_type:
+            self.chk.return_types.append(AnyType())
             # No useful type context.
             ret_type = self.accept(e.expr(), allow_none_return=True)
             fallback = self.named_type('builtins.function')
+            self.chk.return_types.pop()
             return callable_type(e, fallback, ret_type)
         else:
             # Type context available.
+            self.chk.return_types.append(inferred_type.ret_type)
             self.chk.check_func_item(e, type_override=type_override)
             if e.expr() not in self.chk.type_map:
                 self.accept(e.expr(), allow_none_return=True)
@@ -1950,7 +1954,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # For "lambda ...: None", just use type from the context.
                 # Important when the context is Callable[..., None] which
                 # really means Void. See #1425.
+                self.chk.return_types.pop()
                 return inferred_type
+            self.chk.return_types.pop()
             return replace_callable_return_type(inferred_type, ret_type)
 
     def infer_lambda_type_using_context(self, e: LambdaExpr) -> Tuple[Optional[CallableType],
@@ -2191,7 +2197,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def accept(self,
                node: Expression,
                type_context: Type = None,
-               allow_none_return: bool = False
+               allow_none_return: bool = False,
+               always_allow_any: bool = False,
                ) -> Type:
         """Type check a node in the given type context.  If allow_none_return
         is True and this expression is a call, allow it to return None.  This
@@ -2211,6 +2218,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.type_context.pop()
         assert typ is not None
         self.chk.store_type(node, typ)
+
+        if ('expr' in self.chk.options.disallow_any and
+                not always_allow_any and
+                not self.chk.is_stub and
+                self.chk.in_checked_function() and
+                has_any_type(typ)):
+            self.msg.disallowed_any_type(typ, node)
+
         if not self.chk.in_checked_function():
             return AnyType()
         else:
@@ -2430,7 +2445,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
 
 def has_any_type(t: Type) -> bool:
-    """Whether t contains Any type"""
+    """Whether t contains an Any type"""
     return t.accept(HasAnyType())
 
 

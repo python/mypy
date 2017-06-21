@@ -607,3 +607,78 @@ def d(p) -> int:
 @d
 def f(i):
     return i
+
+[case testDisallowAnyExprSimple]
+# flags: --disallow-any=expr
+from typing import Any
+def f(s):
+    yield s
+
+x = f(0)  # E: Expression has type "Any"
+for x in f(0):  # E: Expression has type "Any"
+    g(x)  # E: Expression has type "Any"
+
+def g(x) -> Any:
+    yield x  # E: Expression has type "Any"
+
+l = [1, 2, 3]
+l[f(0)]  # E: Expression has type "Any"
+f(l)
+f(f(0))  # E: Expression has type "Any"
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprUnannotatedFunction]
+# flags: --disallow-any=expr
+def g(s):
+    return s
+
+g(0)
+w: int = g(1)
+
+[case testDisallowAnyExprExplicitAnyParam]
+# flags: --disallow-any=expr
+from typing import Any, List
+def f(s: Any) -> None:
+    pass
+
+def g(s: List[Any]) -> None:
+    pass
+
+f(0)
+
+# type of list below is inferred with expected type of List[Any], so that becomes it's type
+# instead of List[str]
+g([''])  # E: Expression type contains "Any" (has type List[Any])
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprAllowsAnyInCast]
+# flags: --disallow-any=expr
+from typing import Any, cast
+class Foo:
+    g: Any = 2
+
+z = cast(int, Foo().g)
+m = cast(Any, Foo().g)  # E: Expression has type "Any"
+k = Foo.g  # E: Expression has type "Any"
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprAllowsAnyInVariableAssignmentWithExplicitTypeAnnotation]
+# flags: --disallow-any=expr
+from typing import Any
+class Foo:
+    g: Any = 2
+
+z: int = Foo().g
+x = Foo().g  # type: int
+m: Any = Foo().g  # E: Expression has type "Any"
+n = Foo().g  # type: Any  # E: Expression has type "Any"
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprGeneric]
+# flags: --disallow-any=expr
+from typing import List
+
+l: List = []
+l.append(1)  # E: Expression type contains "Any" (has type List[Any])
+k = l[0]  # E: Expression type contains "Any" (has type List[Any])  # E: Expression has type "Any"
+[builtins fixtures/list.pyi]

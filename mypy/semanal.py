@@ -3448,7 +3448,7 @@ class SemanticAnalyzer(NodeVisitor):
             elif prev_is_overloaded:
                 self.fail("Definition of '{}' missing 'overload'".format(n), ctx)
             else:
-                self.name_already_defined(n, ctx)
+                self.name_already_defined(n, ctx, self.globals[n])
 
     def name_not_defined(self, name: str, ctx: Context) -> None:
         message = "Name '{}' is not defined".format(name)
@@ -3463,8 +3463,16 @@ class SemanticAnalyzer(NodeVisitor):
                 # Yes. Generate a helpful note.
                 self.add_fixture_note(fullname, ctx)
 
-    def name_already_defined(self, name: str, ctx: Context) -> None:
-        self.fail("Name '{}' already defined".format(name), ctx)
+    def name_already_defined(self, name: str, ctx: Context,
+                             original_ctx: Optional[SymbolTableNode] = None) -> None:
+        if original_ctx:
+            if original_ctx.node and original_ctx.node.get_line() != -1:
+                extra_msg = ' on line {}'.format(original_ctx.node.get_line())
+            else:
+                extra_msg = ' (possibly by an import)'
+        else:
+            extra_msg = ''
+        self.fail("Name '{}' already defined{}".format(name, extra_msg), ctx)
 
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
@@ -4012,8 +4020,14 @@ def infer_reachability_of_if_statement(s: IfStmt,
                 mark_block_mypy_only(s.body[i])
             for body in s.body[i + 1:]:
                 mark_block_unreachable(body)
-            if s.else_body:
-                mark_block_unreachable(s.else_body)
+
+            # Make sure else body always exists and is marked as
+            # unreachable so the type checker always knows that
+            # all control flow paths will flow through the if
+            # statement body.
+            if not s.else_body:
+                s.else_body = Block([])
+            mark_block_unreachable(s.else_body)
             break
 
 

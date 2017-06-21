@@ -97,7 +97,7 @@ def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) 
                        options=options)
 
 
-disallow_any_options = ['unimported', 'unannotated', 'decorated']
+disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated']
 
 
 def disallow_any_argument_type(raw_options: str) -> List[str]:
@@ -212,10 +212,14 @@ def process_options(args: List[str],
                             ) -> None:
         if inverse is None:
             inverse = invert_flag_name(flag)
+
+        if help is not argparse.SUPPRESS:
+            help += " (inverse: {})".format(inverse)
+
         arg = parser.add_argument(flag,  # type: ignore  # incorrect stub for add_argument
                                   action='store_false' if default else 'store_true',
                                   dest=dest,
-                                  help=help + " (inverse: {})".format(inverse))
+                                  help=help)
         dest = arg.dest
         arg = parser.add_argument(inverse,  # type: ignore  # incorrect stub for add_argument
                                   action='store_true' if default else 'store_false',
@@ -276,7 +280,9 @@ def process_options(args: List[str],
     add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
                         help="don't assume arguments with default values of None are Optional")
     parser.add_argument('-i', '--incremental', action='store_true',
-                        help="enable module cache")
+                        help="enable module cache, (inverse: --no-incremental)")
+    parser.add_argument('--no-incremental', action='store_false', dest='incremental',
+                        help=argparse.SUPPRESS)
     parser.add_argument('--quick-and-dirty', action='store_true',
                         help="use cache even if dependencies out of date "
                         "(implies --incremental)")
