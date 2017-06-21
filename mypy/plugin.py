@@ -60,7 +60,7 @@ class CheckerPluginInterface:
 FunctionContext = NamedTuple(
     'FunctionContext', [
         ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
-        ('inferred_return_type', Type),    # Return type inferred from signature
+        ('default_return_type', Type),     # Return type inferred from signature
         ('args', List[List[Expression]]),  # Actual expressions for each formal argument
         ('context', Context),
         ('api', CheckerPluginInterface)])
@@ -70,9 +70,9 @@ FunctionContext = NamedTuple(
 # you have to use a method hook instead.
 MethodSigContext = NamedTuple(
     'MethodSigContext', [
-        ('type', Type),                    # Base object type for method call
-        ('args', List[List[Expression]]),  # Actual expressions for each formal argument
-        ('signature', CallableType),       # Original signature of the method
+        ('type', Type),                       # Base object type for method call
+        ('args', List[List[Expression]]),     # Actual expressions for each formal argument
+        ('default_signature', CallableType),  # Original signature of the method
         ('context', Context),
         ('api', CheckerPluginInterface)])
 
@@ -84,7 +84,7 @@ MethodContext = NamedTuple(
     'MethodContext', [
         ('type', Type),                    # Base object type for method call
         ('arg_types', List[List[Type]]),
-        ('inferred_return_type', Type),
+        ('default_return_type', Type),
         ('args', List[List[Expression]]),
         ('context', Context),
         ('api', CheckerPluginInterface)])
@@ -93,7 +93,7 @@ MethodContext = NamedTuple(
 AttributeContext = NamedTuple(
     'AttributeContext', [
         ('type', Type),                # Type of object with attribute
-        ('inferred_attr_type', Type),  # Original attribute type
+        ('default_attr_type', Type),  # Original attribute type
         ('context', Context),
         ('api', CheckerPluginInterface)])
 
@@ -227,12 +227,12 @@ def open_callback(ctx: FunctionContext) -> Type:
     elif isinstance(ctx.args[1][0], StrExpr):
         mode = ctx.args[1][0].value
     if mode is not None:
-        assert isinstance(ctx.inferred_return_type, Instance)
+        assert isinstance(ctx.default_return_type, Instance)
         if 'b' in mode:
             return ctx.api.named_generic_type('typing.BinaryIO', [])
         else:
             return ctx.api.named_generic_type('typing.TextIO', [])
-    return ctx.inferred_return_type
+    return ctx.default_return_type
 
 
 def contextmanager_callback(ctx: FunctionContext) -> Type:
@@ -241,14 +241,14 @@ def contextmanager_callback(ctx: FunctionContext) -> Type:
     if ctx.arg_types and len(ctx.arg_types[0]) == 1:
         arg_type = ctx.arg_types[0][0]
         if (isinstance(arg_type, CallableType)
-                and isinstance(ctx.inferred_return_type, CallableType)):
+                and isinstance(ctx.default_return_type, CallableType)):
             # The stub signature doesn't preserve information about arguments so
             # add them back here.
-            return ctx.inferred_return_type.copy_modified(
+            return ctx.default_return_type.copy_modified(
                 arg_types=arg_type.arg_types,
                 arg_kinds=arg_type.arg_kinds,
                 arg_names=arg_type.arg_names)
-    return ctx.inferred_return_type
+    return ctx.default_return_type
 
 
 def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
@@ -257,7 +257,7 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
     This is used to get better type context for the second argument that
     depends on a TypedDict value type.
     """
-    signature = ctx.signature
+    signature = ctx.default_signature
     if (isinstance(ctx.type, TypedDictType)
             and len(ctx.args) == 2
             and len(ctx.args[0]) == 1
@@ -293,7 +293,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
             else:
                 ctx.api.msg.typeddict_item_name_not_found(ctx.type, key, ctx.context)
                 return AnyType()
-    return ctx.inferred_return_type
+    return ctx.default_return_type
 
 
 def int_pow_callback(ctx: MethodContext) -> Type:
@@ -307,9 +307,9 @@ def int_pow_callback(ctx: MethodContext) -> Type:
             exponent = -arg.expr.value
         else:
             # Right operand not an int literal or a negated literal -- give up.
-            return ctx.inferred_return_type
+            return ctx.default_return_type
         if exponent >= 0:
             return ctx.api.named_generic_type('builtins.int', [])
         else:
             return ctx.api.named_generic_type('builtins.float', [])
-    return ctx.inferred_return_type
+    return ctx.default_return_type

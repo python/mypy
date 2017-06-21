@@ -12,16 +12,16 @@ class MyPlugin(Plugin):
 
 
 def decorator_call_hook(ctx):
-    if isinstance(ctx.inferred_return_type, CallableType):
-        return ctx.inferred_return_type.copy_modified(name='m._decorated')
-    return ctx.inferred_return_type
+    if isinstance(ctx.default_return_type, CallableType):
+        return ctx.default_return_type.copy_modified(name='m._decorated')
+    return ctx.default_return_type
 
 
 def decorate_hook(ctx):
-    if isinstance(ctx.inferred_return_type, CallableType):
-        return ctx.inferred_return_type.copy_modified(
+    if isinstance(ctx.default_return_type, CallableType):
+        return ctx.default_return_type.copy_modified(
             ret_type=ctx.api.named_generic_type('builtins.str', []))
-    return ctx.inferred_return_type
+    return ctx.default_return_type
 
 
 def plugin(version):
