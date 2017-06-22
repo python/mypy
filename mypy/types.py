@@ -35,20 +35,8 @@ def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
 class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
 
-    line = 0
-    column = 0
     can_be_true = True
     can_be_false = True
-
-    def __init__(self, line: int = -1, column: int = -1) -> None:
-        self.line = line
-        self.column = column
-
-    def get_line(self) -> int:
-        return self.line
-
-    def get_column(self) -> int:
-        return self.column
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         raise RuntimeError('Not implemented')
@@ -123,12 +111,11 @@ class TypeVarDef(mypy.nodes.Context):
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type
     variance = INVARIANT  # type: int
-    line = 0
-    column = 0
 
     def __init__(self, name: str, id: Union[TypeVarId, int], values: List[Type],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1,
                  column: int = -1) -> None:
+        super().__init__(line, column)
         assert values is not None, "No restrictions must be represented by empty list"
         self.name = name
         if isinstance(id, int):
@@ -137,20 +124,12 @@ class TypeVarDef(mypy.nodes.Context):
         self.values = values
         self.upper_bound = upper_bound
         self.variance = variance
-        self.line = line
-        self.column = column
 
     @staticmethod
     def new_unification_variable(old: 'TypeVarDef') -> 'TypeVarDef':
         new_id = TypeVarId.new(meta_level=1)
         return TypeVarDef(old.name, new_id, old.values,
                           old.upper_bound, old.variance, old.line, old.column)
-
-    def get_line(self) -> int:
-        return self.line
-
-    def get_column(self) -> int:
-        return self.column
 
     def __repr__(self) -> str:
         if self.values:
@@ -272,9 +251,16 @@ class TypeList(Type):
 class AnyType(Type):
     """The type 'Any'."""
 
-    def __init__(self, implicit: bool = False, line: int = -1, column: int = -1) -> None:
+    def __init__(self,
+                 implicit: bool = False,
+                 from_unimported_type: bool = False,
+                 line: int = -1,
+                 column: int = -1) -> None:
         super().__init__(line, column)
+        # Was this Any type was inferred without a type annotation?
         self.implicit = implicit
+        # Does this come from an unfollowed import? See --disallow-any=unimported option
+        self.from_unimported_type = from_unimported_type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
@@ -542,7 +528,7 @@ class CallableType(FunctionLike):
     is_var_arg = False              # Is it a varargs function?  derived from arg_kinds
     is_kw_arg = False
     ret_type = None  # type: Type   # Return value type
-    name = ''   # type: Optional[str] # Name (may be None; for error messages)
+    name = ''   # type: Optional[str]  # Name (may be None; for error messages and plugins)
     definition = None  # type: Optional[SymbolNode] # For error messages.  May be None.
     # Type variables for a generic function
     variables = None  # type: List[TypeVarDef]
@@ -1183,12 +1169,25 @@ class TypeType(Type):
     # a generic class instance, a union, Any, a type variable...
     item = None  # type: Type
 
-    def __init__(self, item: Type, *, line: int = -1, column: int = -1) -> None:
+    def __init__(self, item: Union[Instance, AnyType, TypeVarType, TupleType, NoneTyp,
+                                   CallableType], *, line: int = -1, column: int = -1) -> None:
+        """To ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]], item of
+        type UnionType must be handled through make_normalized static method.
+        """
         super().__init__(line, column)
         if isinstance(item, CallableType) and item.is_type_obj():
             self.item = item.fallback
         else:
             self.item = item
+
+    @staticmethod
+    def make_normalized(item: Type, *, line: int = -1, column: int = -1) -> Type:
+        if isinstance(item, UnionType):
+            return UnionType.make_union(
+                [TypeType.make_normalized(union_item) for union_item in item.items],
+                line=line, column=column
+            )
+        return TypeType(item, line=line, column=column)  # type: ignore
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)
@@ -1197,9 +1196,9 @@ class TypeType(Type):
         return {'.class': 'TypeType', 'item': self.item.serialize()}
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeType':
+    def deserialize(cls, data: JsonDict) -> Type:
         assert data['.class'] == 'TypeType'
-        return TypeType(deserialize_type(data['item']))
+        return TypeType.make_normalized(deserialize_type(data['item']))
 
 
 #
@@ -1376,7 +1375,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return Overloaded(items=items)
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType(t.item.accept(self), line=t.line, column=t.column)
+        return TypeType.make_normalized(t.item.accept(self), line=t.line, column=t.column)
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
@@ -1692,6 +1691,10 @@ def true_or_false(t: Type) -> Type:
     """
     Unrestricted version of t with both True-ish and False-ish values
     """
+    if isinstance(t, UnionType):
+        new_items = [true_or_false(item) for item in t.items]
+        return UnionType.make_simplified_union(new_items, line=t.line, column=t.column)
+
     new_t = copy_type(t)
     new_t.can_be_true = type(new_t).can_be_true
     new_t.can_be_false = type(new_t).can_be_false

@@ -75,7 +75,7 @@ from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
-from mypy.messages import CANNOT_ASSIGN_TO_TYPE
+from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
@@ -85,11 +85,12 @@ from mypy.types import (
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVariableQuery, TypeVarList, remove_dups,
+    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
+from mypy.plugin import Plugin
 from mypy import join
 
 
@@ -230,11 +231,13 @@ class SemanticAnalyzer(NodeVisitor):
     is_stub_file = False   # Are we analyzing a stub file?
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     errors = None  # type: Errors     # Keeps track of generated errors
+    plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
 
     def __init__(self,
                  modules: Dict[str, MypyFile],
                  missing_modules: Set[str],
-                 lib_path: List[str], errors: Errors) -> None:
+                 lib_path: List[str], errors: Errors,
+                 plugin: Plugin) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -251,18 +254,27 @@ class SemanticAnalyzer(NodeVisitor):
         self.lib_path = lib_path
         self.errors = errors
         self.modules = modules
+        self.msg = MessageBuilder(errors, modules)
         self.missing_modules = missing_modules
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
+        self.plugin = plugin
 
-    def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
+    def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
+                   patches: List[Callable[[], None]]) -> None:
+        """Run semantic analysis phase 2 over a file.
+
+        Add callbacks by mutating the patches list argument. They will be called
+        after all semantic analysis phases but before type checking.
+        """
         self.options = options
         self.errors.set_file(fnam, file_node.fullname())
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.globals = file_node.names
+        self.patches = patches
 
         if 'builtins' in self.modules:
             self.globals['__builtins__'] = SymbolTableNode(
@@ -289,6 +301,7 @@ class SemanticAnalyzer(NodeVisitor):
                     g.module_public = False
 
         del self.options
+        del self.patches
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
@@ -991,6 +1004,12 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 self.fail('Invalid base class', base_expr)
                 info.fallback_to_any = True
+            if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(base):
+                if isinstance(base_expr, (NameExpr, MemberExpr)):
+                    prefix = "Base type {}".format(base_expr.name)
+                else:
+                    prefix = "Base type"
+                self.msg.unimported_type_becomes_any(prefix, base, base_expr)
 
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
@@ -1463,7 +1482,7 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             var._fullname = self.qualified_name(name)
         var.is_ready = True
-        var.type = AnyType()
+        var.type = AnyType(from_unimported_type=is_import)
         var.is_suppressed_import = is_import
         self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
 
@@ -1493,6 +1512,7 @@ class SemanticAnalyzer(NodeVisitor):
                             self.lookup_fully_qualified,
                             tvar_scope,
                             self.fail,
+                            self.plugin,
                             aliasing=aliasing,
                             allow_tuple_literal=allow_tuple_literal,
                             allow_unnormalized=self.is_stub_file)
@@ -1590,7 +1610,7 @@ class SemanticAnalyzer(NodeVisitor):
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
                                          self.tvar_scope,
-                                         self.fail, allow_unnormalized=True)
+                                         self.fail, self.plugin, allow_unnormalized=True)
                 if res:
                     node = self.lookup(lvalue.name, lvalue)
                     if not lvalue.is_def:
@@ -1910,6 +1930,16 @@ class SemanticAnalyzer(NodeVisitor):
             return
         variance, upper_bound = res
 
+        if 'unimported' in self.options.disallow_any:
+            for idx, constraint in enumerate(values, start=1):
+                if has_any_from_unimported_type(constraint):
+                    prefix = "Constraint {}".format(idx)
+                    self.msg.unimported_type_becomes_any(prefix, constraint, s)
+
+            if has_any_from_unimported_type(upper_bound):
+                prefix = "Upper bound of type variable"
+                self.msg.unimported_type_becomes_any(prefix, upper_bound, s)
+
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = TVAR
@@ -2202,7 +2232,7 @@ class SemanticAnalyzer(NodeVisitor):
                        is_classmethod: bool = False,
                        ) -> None:
             if is_classmethod:
-                first = [Argument(Var('cls'), TypeType(selftype), None, ARG_POS)]
+                first = [Argument(Var('cls'), TypeType.make_normalized(selftype), None, ARG_POS)]
             else:
                 first = [Argument(Var('self'), selftype, None, ARG_POS)]
             args = first + args
@@ -2354,10 +2384,18 @@ class SemanticAnalyzer(NodeVisitor):
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type]) -> TypeInfo:
-        mapping_value_type = join.join_type_list(types)
         fallback = (self.named_type_or_none('typing.Mapping',
-                                            [self.str_type(), mapping_value_type])
+                                            [self.str_type(), self.object_type()])
                     or self.object_type())
+
+        def patch() -> None:
+            # Calculate the correct value type for the fallback Mapping.
+            fallback.args[1] = join.join_type_list(types)
+
+        # We can't calculate the complete fallback type until after semantic
+        # analysis, since otherwise MROs might be incomplete. Postpone a callback
+        # function that patches the fallback.
+        self.patches.append(patch)
 
         info = self.basic_new_typeinfo(name, fallback)
         info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), fallback)
@@ -3052,6 +3090,19 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_op_expr(self, expr: OpExpr) -> None:
         expr.left.accept(self)
+
+        if expr.op in ('and', 'or'):
+            inferred = infer_condition_value(expr.left,
+                                             pyversion=self.options.python_version,
+                                             platform=self.options.platform)
+            if ((inferred == ALWAYS_FALSE and expr.op == 'and') or
+                    (inferred == ALWAYS_TRUE and expr.op == 'or')):
+                expr.right_unreachable = True
+                return
+            elif ((inferred == ALWAYS_TRUE and expr.op == 'and') or
+                    (inferred == ALWAYS_FALSE and expr.op == 'or')):
+                expr.right_always = True
+
         expr.right.accept(self)
 
     def visit_comparison_expr(self, expr: ComparisonExpr) -> None:
@@ -3074,7 +3125,9 @@ class SemanticAnalyzer(NodeVisitor):
                                      self.lookup_qualified,
                                      self.lookup_fully_qualified,
                                      self.tvar_scope,
-                                     self.fail, allow_unnormalized=self.is_stub_file)
+                                     self.fail,
+                                     self.plugin,
+                                     allow_unnormalized=self.is_stub_file)
             expr.analyzed = TypeAliasExpr(res, fallback=self.alias_fallback(res),
                                           in_runtime=True)
         elif refers_to_class_or_function(expr.base):
@@ -3423,7 +3476,7 @@ class SemanticAnalyzer(NodeVisitor):
             elif prev_is_overloaded:
                 self.fail("Definition of '{}' missing 'overload'".format(n), ctx)
             else:
-                self.name_already_defined(n, ctx)
+                self.name_already_defined(n, ctx, self.globals[n])
 
     def name_not_defined(self, name: str, ctx: Context) -> None:
         message = "Name '{}' is not defined".format(name)
@@ -3438,8 +3491,16 @@ class SemanticAnalyzer(NodeVisitor):
                 # Yes. Generate a helpful note.
                 self.add_fixture_note(fullname, ctx)
 
-    def name_already_defined(self, name: str, ctx: Context) -> None:
-        self.fail("Name '{}' already defined".format(name), ctx)
+    def name_already_defined(self, name: str, ctx: Context,
+                             original_ctx: Optional[SymbolTableNode] = None) -> None:
+        if original_ctx:
+            if original_ctx.node and original_ctx.node.get_line() != -1:
+                extra_msg = ' on line {}'.format(original_ctx.node.get_line())
+            else:
+                extra_msg = ' (possibly by an import)'
+        else:
+            extra_msg = ''
+        self.fail("Name '{}' already defined{}".format(name, extra_msg), ctx)
 
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
@@ -3974,7 +4035,7 @@ def infer_reachability_of_if_statement(s: IfStmt,
                                        pyversion: Tuple[int, int],
                                        platform: str) -> None:
     for i in range(len(s.expr)):
-        result = infer_if_condition_value(s.expr[i], pyversion, platform)
+        result = infer_condition_value(s.expr[i], pyversion, platform)
         if result in (ALWAYS_FALSE, MYPY_FALSE):
             # The condition is considered always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
@@ -3987,13 +4048,19 @@ def infer_reachability_of_if_statement(s: IfStmt,
                 mark_block_mypy_only(s.body[i])
             for body in s.body[i + 1:]:
                 mark_block_unreachable(body)
-            if s.else_body:
-                mark_block_unreachable(s.else_body)
+
+            # Make sure else body always exists and is marked as
+            # unreachable so the type checker always knows that
+            # all control flow paths will flow through the if
+            # statement body.
+            if not s.else_body:
+                s.else_body = Block([])
+            mark_block_unreachable(s.else_body)
             break
 
 
-def infer_if_condition_value(expr: Expression, pyversion: Tuple[int, int], platform: str) -> int:
-    """Infer whether if condition is always true/false.
+def infer_condition_value(expr: Expression, pyversion: Tuple[int, int], platform: str) -> int:
+    """Infer whether the given condition is always true/false.
 
     Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
     MYPY_TRUE if true under mypy and false at runtime, MYPY_FALSE if
@@ -4011,6 +4078,17 @@ def infer_if_condition_value(expr: Expression, pyversion: Tuple[int, int], platf
         name = expr.name
     elif isinstance(expr, MemberExpr):
         name = expr.name
+    elif isinstance(expr, OpExpr) and expr.op in ('and', 'or'):
+        left = infer_condition_value(expr.left, pyversion, platform)
+        if ((left == ALWAYS_TRUE and expr.op == 'and') or
+                (left == ALWAYS_FALSE and expr.op == 'or')):
+            # Either `True and <other>` or `False or <other>`: the result will
+            # always be the right-hand-side.
+            return infer_condition_value(expr.right, pyversion, platform)
+        else:
+            # The result will always be the left-hand-side (e.g. ALWAYS_* or
+            # TRUTH_VALUE_UNKNOWN).
+            return left
     else:
         result = consider_sys_version_info(expr, pyversion)
         if result == TRUTH_VALUE_UNKNOWN:

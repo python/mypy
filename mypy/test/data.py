@@ -13,6 +13,9 @@ from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict
 from mypy.myunit import TestCase, SkipTestCaseException
 
 
+root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+
 def parse_test_cases(
         path: str,
         perform: Optional[Callable[['DataDrivenTestCase'], None]],
@@ -62,7 +65,9 @@ def parse_test_cases(
                     # Record an extra file needed for the test case.
                     arg = p[i].arg
                     assert arg is not None
-                    file_entry = (join(base_path, arg), '\n'.join(p[i].data))
+                    contents = '\n'.join(p[i].data)
+                    contents = expand_variables(contents)
+                    file_entry = (join(base_path, arg), contents)
                     if p[i].id == 'file':
                         files.append(file_entry)
                     elif p[i].id == 'outfile':
@@ -119,13 +124,15 @@ def parse_test_cases(
                     deleted_paths.setdefault(num, set()).add(full)
                 elif p[i].id == 'out' or p[i].id == 'out1':
                     tcout = p[i].data
-                    if native_sep and os.path.sep == '\\':
+                    tcout = [expand_variables(line) for line in tcout]
+                    if os.path.sep == '\\':
                         tcout = [fix_win_path(line) for line in tcout]
                     ok = True
                 elif re.match(r'out[0-9]*$', p[i].id):
                     passnum = int(p[i].id[3:])
                     assert passnum > 1
                     output = p[i].data
+                    output = [expand_variables(line) for line in output]
                     if native_sep and os.path.sep == '\\':
                         output = [fix_win_path(line) for line in output]
                     tcout2[passnum] = output
@@ -415,6 +422,10 @@ def expand_includes(a: List[str], base_path: str) -> List[str]:
     return res
 
 
+def expand_variables(s: str) -> str:
+    return s.replace('<ROOT>', root_dir)
+
+
 def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
     """Transform comments such as '# E: message' or
     '# E:3: message' in input.
@@ -445,16 +456,17 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
 
 
 def fix_win_path(line: str) -> str:
-    r"""Changes paths to Windows paths in error messages.
+    r"""Changes Windows paths to Linux paths in error messages.
 
-    E.g. foo/bar.py -> foo\bar.py.
+    E.g. foo\bar.py -> foo/bar.py.
     """
+    line = line.replace(root_dir, root_dir.replace('\\', '/'))
     m = re.match(r'^([\S/]+):(\d+:)?(\s+.*)', line)
     if not m:
         return line
     else:
         filename, lineno, message = m.groups()
-        return '{}:{}{}'.format(filename.replace('/', '\\'),
+        return '{}:{}{}'.format(filename.replace('\\', '/'),
                                 lineno or '', message)
 
 

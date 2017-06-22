@@ -41,19 +41,19 @@ p = Point(42, 1337)  # E: Expected keyword arguments, {...}, or dict(...) in Typ
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 x = 'x'
-p = Point({x: 42, 'y': 1337})  # E: Expected TypedDict item name to be string literal
+p = Point({x: 42, 'y': 1337})  # E: Expected TypedDict key to be string literal
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictInstanceWithExtraItems]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
-p = Point(x=42, y=1337, z=666)  # E: Expected items ['x', 'y'] but found ['x', 'y', 'z'].
+p = Point(x=42, y=1337, z=666)  # E: Expected TypedDict keys ('x', 'y') but found keys ('x', 'y', 'z')
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictInstanceWithMissingItems]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
-p = Point(x=42)  # E: Expected items ['x', 'y'] but found ['x'].
+p = Point(x=42)  # E: Expected TypedDict keys ('x', 'y') but found only key 'x'
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictInstanceWithIncompatibleItemType]
@@ -528,7 +528,7 @@ reveal_type(f(g))  # E: Revealed type is '<nothing>'
 
 -- Methods
 
--- TODO: iter() doesn't accept TypedDictType as an argument type. Figure out why.
+-- TODO: iter() does not accept TypedDictType as an argument type. Figure out why.
 --[case testCanCallMappingMethodsOnTypedDict]
 --from mypy_extensions import TypedDict
 --Cell = TypedDict('Cell', {'value': int})
@@ -570,7 +570,7 @@ reveal_type(c[u'value'])  # E: Revealed type is 'builtins.int'
 from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
-p['z']  # E: 'z' is not a valid item name; expected one of ['type', 'x', 'y']
+p['z']  # E: 'z' is not a valid TypedDict key; expected one of ('type', 'x', 'y')
 [builtins fixtures/dict.pyi]
 
 [case testCannotGetItemOfTypedDictWithNonLiteralKey]
@@ -579,7 +579,7 @@ from typing import Union
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 def get_coordinate(p: TaggedPoint, key: str) -> Union[str, int]:
-    return p[key]  # E: Cannot prove expression is a valid item name; expected one of ['type', 'x', 'y']
+    return p[key]  # E: TypedDict key must be a string literal; expected one of ('type', 'x', 'y')
 [builtins fixtures/dict.pyi]
 
 
@@ -604,7 +604,7 @@ p['x'] = 'y'  # E: Argument 2 has incompatible type "str"; expected "int"
 from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
-p['z'] = 1  # E: 'z' is not a valid item name; expected one of ['type', 'x', 'y']
+p['z'] = 1  # E: 'z' is not a valid TypedDict key; expected one of ('type', 'x', 'y')
 [builtins fixtures/dict.pyi]
 
 [case testCannotSetItemOfTypedDictWithNonLiteralKey]
@@ -613,7 +613,7 @@ from typing import Union
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 def set_coordinate(p: TaggedPoint, key: str, value: int) -> None:
-    p[key] = value  # E: Cannot prove expression is a valid item name; expected one of ['type', 'x', 'y']
+    p[key] = value  # E: TypedDict key must be a string literal; expected one of ('type', 'x', 'y')
 [builtins fixtures/dict.pyi]
 
 
@@ -716,31 +716,140 @@ Point = TypedDict('Point', {'x': int, 'y': int})
 
 def f(p: Point) -> None:
     p = {'x': 2, 'y': 3}
-    p = {'x': 2}  # E: Expected items ['x', 'y'] but found ['x'].
+    p = {'x': 2}  # E: Expected TypedDict keys ('x', 'y') but found only key 'x'
     p = dict(x=2, y=3)
 
 f({'x': 1, 'y': 3})
 f({'x': 1, 'y': 'z'})  # E: Incompatible types (expression has type "str", TypedDict item "y" has type "int")
 
 f(dict(x=1, y=3))
-f(dict(x=1, y=3, z=4))  # E: Expected items ['x', 'y'] but found ['x', 'y', 'z'].
+f(dict(x=1, y=3, z=4))  # E: Expected TypedDict keys ('x', 'y') but found keys ('x', 'y', 'z')
 
 [builtins fixtures/dict.pyi]
-
 
 [case testTypedDictExplicitTypes]
 from mypy_extensions import TypedDict
 
 Point = TypedDict('Point', {'x': int, 'y': int})
 
-p1: Point = {'x': 'hi'}  # E: Expected items ['x', 'y'] but found ['x'].
+p1: Point = {'x': 'hi'}  # E: Expected TypedDict keys ('x', 'y') but found only key 'x'
 
 p2: Point
-p2 = dict(x='bye')  # E: Expected items ['x', 'y'] but found ['x'].
+p2 = dict(x='bye')  # E: Expected TypedDict keys ('x', 'y') but found only key 'x'
 
 p3 = Point(x=1, y=2)
-p3 = {'x': 'hi'}  # E: Expected items ['x', 'y'] but found ['x'].
+p3 = {'x': 'hi'}  # E: Expected TypedDict keys ('x', 'y') but found only key 'x'
 
 p4: Point = {'x': 1, 'y': 2}
 
+[builtins fixtures/dict.pyi]
+
+
+-- Other TypedDict methods
+
+[case testTypedDictGetMethod]
+# flags: --strict-optional
+from mypy_extensions import TypedDict
+class A: pass
+D = TypedDict('D', {'x': int, 'y': str})
+d: D
+reveal_type(d.get('x')) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+reveal_type(d.get('y')) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+reveal_type(d.get('x', A())) # E: Revealed type is 'Union[builtins.int, __main__.A]'
+reveal_type(d.get('x', 1)) # E: Revealed type is 'builtins.int'
+reveal_type(d.get('y', None)) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictGetMethodTypeContext]
+# flags: --strict-optional
+from typing import List
+from mypy_extensions import TypedDict
+class A: pass
+D = TypedDict('D', {'x': List[int], 'y': int})
+d: D
+reveal_type(d.get('x', [])) # E: Revealed type is 'builtins.list[builtins.int]'
+d.get('x', ['x']) # E: List item 0 has incompatible type "str"
+a = ['']
+reveal_type(d.get('x', a)) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str*]]'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictGetMethodInvalidArgs]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int, 'y': str})
+d: D
+d.get() # E: No overload variant of "get" of "Mapping" matches argument types []
+d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types [builtins.str, builtins.int, builtins.int]
+x = d.get('z') # E: 'z' is not a valid TypedDict key; expected one of ('x', 'y')
+reveal_type(x) # E: Revealed type is 'Any'
+s = ''
+y = d.get(s)
+reveal_type(y) # E: Revealed type is 'builtins.object*'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictMissingMethod]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int, 'y': str})
+d: D
+d.bad(1) # E: "D" has no attribute "bad"
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictChainedGetMethodWithDictFallback]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int, 'y': str})
+E = TypedDict('E', {'d': D})
+p = E(d=D(x=0, y=''))
+reveal_type(p.get('d', {'x': 1, 'y': ''})) # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=__main__.D)'
+p.get('d', {}) # E: Expected TypedDict keys ('x', 'y') but found no keys
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictGetDefaultParameterStillTypeChecked]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+p.get('x', 1 + 'y')     # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+-- Special cases
+
+[case testForwardReferenceInTypedDict]
+from typing import Mapping
+from mypy_extensions import TypedDict
+X = TypedDict('X', {'b': 'B', 'c': 'C'})
+class B: pass
+class C(B): pass
+x: X
+reveal_type(x) # E: Revealed type is 'TypedDict(b=__main__.B, c=__main__.C, _fallback=__main__.X)'
+m1: Mapping[str, B] = x
+m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type Mapping[str, C])
+[builtins fixtures/dict.pyi]
+
+[case testForwardReferenceInClassTypedDict]
+from typing import Mapping
+from mypy_extensions import TypedDict
+class X(TypedDict):
+    b: 'B'
+    c: 'C'
+class B: pass
+class C(B): pass
+x: X
+reveal_type(x) # E: Revealed type is 'TypedDict(b=__main__.B, c=__main__.C, _fallback=__main__.X)'
+m1: Mapping[str, B] = x
+m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type Mapping[str, C])
+[builtins fixtures/dict.pyi]
+
+[case testForwardReferenceToTypedDictInTypedDict]
+from typing import Mapping
+from mypy_extensions import TypedDict
+# Forward references don't quite work yet
+X = TypedDict('X', {'a': 'A'}) # E: Invalid type "__main__.A"
+A = TypedDict('A', {'b': int})
+x: X
+reveal_type(x) # E: Revealed type is 'TypedDict(a=TypedDict(b=builtins.int, _fallback=__main__.A), _fallback=__main__.X)'
+reveal_type(x['a']['b']) # E: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]

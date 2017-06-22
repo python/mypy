@@ -164,7 +164,9 @@ class AnyExpressionsReporter(AbstractReporter):
     def on_finish(self) -> None:
         total_any = sum(num_any for num_any, _ in self.counts.values())
         total_expr = sum(total for _, total in self.counts.values())
-        total_coverage = (float(total_expr - total_any) / float(total_expr)) * 100
+        total_coverage = 100.0
+        if total_expr > 0:
+            total_coverage = (float(total_expr - total_any) / float(total_expr)) * 100
 
         any_column_name = "Anys"
         total_column_name = "Exprs"
