@@ -1030,3 +1030,43 @@ Point = TypedDict('Point', {int: int, int: int})  # E: Invalid TypedDict() field
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': 1, 'y': 1})  # E: Invalid field type
 [builtins fixtures/dict.pyi]
+
+
+-- Special cases
+
+[case testForwardReferenceInTypedDict]
+from typing import Mapping
+from mypy_extensions import TypedDict
+X = TypedDict('X', {'b': 'B', 'c': 'C'})
+class B: pass
+class C(B): pass
+x: X
+reveal_type(x) # E: Revealed type is 'TypedDict(b=__main__.B, c=__main__.C, _fallback=__main__.X)'
+m1: Mapping[str, B] = x
+m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type Mapping[str, C])
+[builtins fixtures/dict.pyi]
+
+[case testForwardReferenceInClassTypedDict]
+from typing import Mapping
+from mypy_extensions import TypedDict
+class X(TypedDict):
+    b: 'B'
+    c: 'C'
+class B: pass
+class C(B): pass
+x: X
+reveal_type(x) # E: Revealed type is 'TypedDict(b=__main__.B, c=__main__.C, _fallback=__main__.X)'
+m1: Mapping[str, B] = x
+m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type Mapping[str, C])
+[builtins fixtures/dict.pyi]
+
+[case testForwardReferenceToTypedDictInTypedDict]
+from typing import Mapping
+from mypy_extensions import TypedDict
+# Forward references don't quite work yet
+X = TypedDict('X', {'a': 'A'}) # E: Invalid type "__main__.A"
+A = TypedDict('A', {'b': int})
+x: X
+reveal_type(x) # E: Revealed type is 'TypedDict(a=TypedDict(b=builtins.int, _fallback=__main__.A), _fallback=__main__.X)'
+reveal_type(x['a']['b']) # E: Revealed type is 'builtins.int'
+[builtins fixtures/dict.pyi]

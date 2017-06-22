@@ -2267,6 +2267,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e,
                                                    callable_name=fullname)
+        self.check_untyped_after_decorator(sig, e.func)
         sig = cast(FunctionLike, sig)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
@@ -2294,6 +2295,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 self.check_with_item(expr, target, s.target_type is None)
         self.accept(s.body)
+
+    def check_untyped_after_decorator(self, typ: Type, func: FuncDef) -> None:
+        if 'decorated' not in self.options.disallow_any or self.is_stub:
+            return
+
+        if mypy.checkexpr.has_any_type(typ):
+            self.msg.untyped_decorated_function(typ, func)
 
     def check_async_with_item(self, expr: Expression, target: Expression,
                               infer_lvalue_type: bool) -> None:

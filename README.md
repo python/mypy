@@ -9,7 +9,7 @@ Got a question? Join us on Gitter!
 ----------------------------------
 
 We don't have a mailing list; but we are always happy to answer
-questions on [gitter chat](https://gitter.im/python/mypy).  If you are
+questions on [gitter chat](https://gitter.im/python/typing).  If you are
 sure you've found a bug please search our issue trackers for a
 duplicate before filing a new issue:
 

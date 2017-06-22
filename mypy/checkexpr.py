@@ -377,7 +377,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                               formal_to_actual: List[List[int]],
                               args: List[Expression],
                               num_formals: int,
-                              fullname: Optional[str],
+                              fullname: str,
                               object_type: Optional[Type],
                               context: Context) -> Type:
         """Use special case logic to infer the return type of a specific named function/method.
@@ -531,8 +531,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Store the inferred callable type.
                 self.chk.store_type(callable_node, callee)
 
-            if ((object_type is None and self.plugin.get_function_hook(callable_name))
-                    or (object_type is not None and self.plugin.get_method_hook(callable_name))):
+            if (callable_name
+                    and ((object_type is None and self.plugin.get_function_hook(callable_name))
+                         or (object_type is not None
+                             and self.plugin.get_method_hook(callable_name)))):
                 ret_type = self.apply_function_plugin(
                     arg_types, callee.ret_type, arg_kinds, formal_to_actual,
                     args, len(callee.arg_types), callable_name, object_type, context)

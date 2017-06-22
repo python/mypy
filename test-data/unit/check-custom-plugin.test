@@ -11,6 +11,17 @@ reveal_type(f())  # E: Revealed type is 'builtins.int'
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
 
+[case testFunctionPluginFullnameIsNotNone]
+# flags: --config-file tmp/mypy.ini
+from typing import Callable, TypeVar
+f: Callable[[], None]
+T = TypeVar('T')
+def g(x: T) -> T: return x  # This strips out the name of a callable
+g(f)()
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
+
 [case testTwoPlugins]
 # flags: --config-file tmp/mypy.ini
 def f(): ...
