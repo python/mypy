@@ -800,8 +800,12 @@ TupleAny = Tuple[Any, T]  # error
 def foo(x: TupleAny[str]) -> None:  # no error
     pass
 
+def goo(x: TupleAny[Any]) -> None:  # error
+    pass
+
 [out]
 m.py:5: error: Explicit "Any" is not allowed
+m.py:10: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitCast]
 # cmd: mypy m.py
