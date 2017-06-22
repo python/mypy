@@ -267,7 +267,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             items = OrderedDict(item_list)
             mapping_value_type = join_type_list(list(items.values()))
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
-            required_keys = set(items.keys()) & (t.required_keys | self.s.required_keys)
+            required_keys = t.required_keys | self.s.required_keys
             return TypedDictType(items, required_keys, fallback)
         else:
             return self.default(self.s)

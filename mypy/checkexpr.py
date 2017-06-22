@@ -293,13 +293,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                          kwargs: 'OrderedDict[str, Expression]',
                                          context: Context) -> Type:
         if not (callee.required_keys <= set(kwargs.keys()) <= set(callee.items.keys())):
-            callee_item_names = [key for key in callee.items.keys()
-                                 if key in callee.required_keys or key in kwargs.keys()]
-            kwargs_item_names = kwargs.keys()
-
+            expected_item_names = [key for key in callee.items.keys()
+                                   if key in callee.required_keys or key in kwargs.keys()]
+            actual_item_names = kwargs.keys()
             self.msg.typeddict_instantiated_with_unexpected_items(
-                expected_item_names=list(callee_item_names),
-                actual_item_names=list(kwargs_item_names),
+                expected_item_names=list(expected_item_names),
+                actual_item_names=list(actual_item_names),
                 context=context)
             return AnyType()
 
@@ -307,7 +306,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for (item_name, item_expected_type) in callee.items.items():
             if item_name in kwargs:
                 item_value = kwargs[item_name]
-
                 self.chk.check_simple_assignment(
                     lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
                     msg=messages.INCOMPATIBLE_TYPES,
