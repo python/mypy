@@ -278,7 +278,7 @@ Here are some more useful flags:
 
 - ``--disallow-any`` disallows various types of ``Any`` in a module.
   The option takes a comma-separated list of the following values:
-  ``unimported``, ``unannotated``, ``expr``.
+  ``unimported``, ``unannotated``, ``expr``, ``decorated``.
 
   ``unimported`` disallows usage of types that come from unfollowed imports
   (such types become aliases for ``Any``). Unfollowed imports occur either
@@ -297,6 +297,9 @@ Here are some more useful flags:
   explicit type annotation. In addition, declaring a variable of type ``Any``
   or casting to type ``Any`` is not allowed. Note that calling functions
   that take parameters of type ``Any`` is still allowed.
+
+  ``decorated`` disallows functions that have ``Any`` in their signature
+  after decorator transformation.
 
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters

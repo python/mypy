@@ -479,12 +479,13 @@ main:5: error: Constraint 2 becomes List[Any] due to an unfollowed import
 
 [case testDisallowImplicitAnyNewType]
 # flags: --ignore-missing-imports --disallow-any=unimported
-from typing import NewType
+from typing import NewType, List
 from missing import Unchecked
 
-Baz = NewType('Baz', Unchecked)
-[out]
-main:5: error: Argument 2 to NewType(...) must be subclassable (got Any)
+Baz = NewType('Baz', Unchecked)  # E: Argument 2 to NewType(...) must be subclassable (got Any)
+Bar = NewType('Bar', List[Unchecked])  # E: Argument 2 to NewType(...) becomes List[Any] due to an unfollowed import
+
+[builtins fixtures/list.pyi]
 
 [case testDisallowImplicitAnyCallableAndTuple]
 # flags: --ignore-missing-imports --disallow-any=unimported
@@ -515,6 +516,126 @@ x, y = 1, 2  # type: Unchecked, Unchecked
 [out]
 main:4: error: Type of variable becomes "Any" due to an unfollowed import
 main:6: error: A type on this line becomes "Any" due to an unfollowed import
+
+[case testDisallowAnyDecoratedUnannotatedDecorator]
+# flags: --disallow-any=decorated
+from typing import Any
+
+def d(f):
+    return f
+
+@d
+def f(x: Any) -> Any:  # E: Function is untyped after decorator transformation
+    pass
+@d
+def h(x):  # E: Function is untyped after decorator transformation
+    pass
+[builtins fixtures/list.pyi]
+[case testDisallowAnyDecoratedErrorIsReportedOnlyOnce]
+# flags: --disallow-any=decorated
+
+def d(f):
+    return f
+
+def d2(f):
+    return f
+
+@d
+@d2
+@d
+def f(x: int) -> None: pass  # E: Function is untyped after decorator transformation
+[case testDisallowAnyDecoratedReturnAny]
+# flags: --disallow-any=decorated
+from typing import Any
+
+def d(f) -> Any:
+    return f
+
+@d
+def f() -> None: pass  # E: Function is untyped after decorator transformation
+[builtins fixtures/list.pyi]
+[case testDisallowAnyDecoratedReturnCallable]
+# flags: --disallow-any=decorated
+from typing import Any, Callable
+
+def d(f) -> Callable[..., None]:
+    return f
+
+@d
+def g(i: int, s: str) -> None: pass  # E: Type of decorated function contains type "Any" (Callable[..., None])
+
+[builtins fixtures/list.pyi]
+[case testDisallowAnyDecoratedNonexistentDecorator]
+# flags: --disallow-any=decorated --ignore-missing-imports
+from nonexistent import d
+
+@d
+def f() -> None: pass  # E: Function is untyped after decorator transformation
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyDecoratedPartlyTypedCallable]
+# flags: --disallow-any=decorated --ignore-missing-imports
+from typing import Callable, Any, List
+
+def d(f) -> Callable[[int, Any], Any]: pass
+def d2(f) -> Callable[[int], List[Any]]: pass
+def d3(f) -> Callable[[Any], List[str]]: pass
+
+@d
+def f(i: int, s: str) -> None:  # E: Type of decorated function contains type "Any" (Callable[[int, Any], Any])
+    pass
+@d2
+def g(i: int) -> None:  # E: Type of decorated function contains type "Any" (Callable[[int], List[Any]])
+    pass
+@d3
+def h(i: int) -> None:  # E: Type of decorated function contains type "Any" (Callable[[Any], List[str]])
+    pass
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyDecoratedReturnsCallableNoParams]
+# flags: --disallow-any=decorated
+from typing import Callable
+
+def d(p) -> Callable[[], int]:
+    return p
+
+@d
+def f(i):
+    return i
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyDecoratedDecoratorReturnsNonCallable]
+# flags: --disallow-any=decorated
+def d(p) -> int:
+    return p(0)
+
+@d
+def f(i):
+    return i
+
+[case testDisallowAnyDecoratedUntypedUndecoratedFunction]
+# flags: --disallow-any=decorated
+from typing import Callable
+
+def f(i):  # no error
+    return i
+
+[case testDisallowAnyDecoratedTwoDecorators]
+# flags: --disallow-any=decorated
+from typing import Callable
+
+def typed_dec(f) -> Callable[[], int]: pass
+def untyped_dec(f): pass
+
+@typed_dec
+@untyped_dec
+def f():  # no error
+    return i
+
+@untyped_dec
+@typed_dec
+def g():  # E: Function is untyped after decorator transformation
+    return i
 
 [case testDisallowAnyExprSimple]
 # flags: --disallow-any=expr
