@@ -1164,12 +1164,12 @@ Here is a typical example:
 
    movie = {'name': 'Blade Runner', 'year': 1982}
 
-Only a fixed of set of string keys is expected (``'name'`` and
+Only a fixed set of string keys is expected (``'name'`` and
 ``'year'`` above), and each key has an independent value type (``str``
 for ``'name'`` and ``int`` for ``'year'`` above). We've previously
 seen the ``Dict[K, V]`` type, which lets you declare uniform
-dictionary types, where every value has the same type, and arbitrary key
-values are supported. This is clearly not a good fit for
+dictionary types, where every value has the same type, and arbitrary keys
+are supported. This is clearly not a good fit for
 ``movie`` above. Instead, you can use a ``TypedDict`` to give a precise
 type for objects like ``movie``, where the type of each
 dictionary value depends on the key:
@@ -1190,22 +1190,25 @@ important -- without it, mypy will try to infer a regular, uniform
 
 .. note::
 
-  If you pass a TypedDict object as an argument to a function, no type
-  annotation is usually necessary since mypy can infer the desired
-  type based on the declared argument type.
+   If you pass a TypedDict object as an argument to a function, no
+   type annotation is usually necessary since mypy can infer the
+   desired type based on the declared argument type. Also, if an
+   assignment target has been previously defined, and it has a
+   TypedDict type, mypy will treat the assigned value as a TypedDict,
+   not ``Dict``.
 
 Now mypy will recognize these as valid:
 
 .. code-block:: python
 
-   movie['name']  # Okay, type is str
-   movie['year']  # Okay, type is int
+   name = movie['name']  # Okay; type of name is str
+   year = movie['year']  # Okay; type of year is int
 
 Mypy will detect an invalid key as an error:
 
 .. code-block:: python
 
-   movie['director']  # Error: 'director' is not a valid key
+   director = movie['director']  # Error: 'director' is not a valid key
 
 Mypy will also reject a runtime-computed expression as a key, as
 it can't verify that it's a valid key. You can only use string
@@ -1229,22 +1232,23 @@ arbitrarily complex types. For example, you can define nested
 TypedDicts and containers with TypedDict items.
 Unlike most other types, mypy uses structural compatibility checking
 (or structural subtyping) with TypedDicts. A TypedDict object with
-extra items is compatible with a narrower TypedDict, assuming that
-both are either total or partial (*totality* is discussed below).
+extra items is compatible with a narrower TypedDict, assuming item
+types are compatible (*totality* also affects
+subtyping, as discussed below).
 
 .. note::
 
-    You need to install ``mypy_extensions`` using pip to use ``TypedDict``:
+   You need to install ``mypy_extensions`` using pip to use ``TypedDict``:
 
-    .. code-block:: text
+   .. code-block:: text
 
-        python3 -m pip install --upgrade mypy-extensions
+       python3 -m pip install --upgrade mypy-extensions
 
-    Or, if you are using Python 2:
+   Or, if you are using Python 2:
 
-    .. code-block:: text
+   .. code-block:: text
 
-        pip install --upgrade mypy-extensions
+       pip install --upgrade mypy-extensions
 
 .. note::
 
@@ -1280,11 +1284,15 @@ just need to be careful with it, as it could result in a ``KeyError``.
 Requiring ``get()`` everywhere would be too cumbersome. (Note that you
 are free to use ``get()`` with total TypedDicts as well.)
 
+Totality also affects structural compatibility. You can't use a partial
+TypedDict when a total one is expected. Also, a total typed dict is not
+valid when a partial one is expected.
+
 Class-based syntax
 ------------------
 
-You can use an alternative, class-based syntax to define a
-TypedDict in Python 3.6:
+Python 3.6 supports an alternative, class-based syntax to define a
+TypedDict:
 
 .. code-block:: python
 
@@ -1311,6 +1319,10 @@ required for compatibility. Here is an example of inheritance:
        based_on: str
 
 Now ``BookBasedMovie`` has keys ``name``, ``year`` and ``based_on``.
+
+Mixing required and non-required items
+--------------------------------------
+
 In addition to allowing reuse across TypedDict types, inheritance also allows
 you to mix required and non-required (using ``total=False``) items
 in a single TypedDict. Example:
@@ -1325,4 +1337,8 @@ in a single TypedDict. Example:
        based_on: str
 
 Now ``Movie`` has required keys ``name`` and ``year``, while ``based_on``
-can be left out when constructing an object.
+can be left out when constructing an object. A TypedDict with a mix of required
+and non-required keys, such as ``Movie`` above, will only be compatible with
+another TypedDict if all required keys in the other TypedDict are required keys in the
+first TypedDict, and all non-required keys of the other TypedDict are also non-required keys
+in the first TypedDict.
