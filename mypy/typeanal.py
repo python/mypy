@@ -771,7 +771,7 @@ class HasExplicitAny(TypeQuery[bool]):
         return t.explicit
 
     def visit_typeddict_type(self, t: TypedDictType) -> bool:
-        # typedict is checked during TypedDict declaration
+        # typeddict is checked during TypedDict declaration, so don't typecheck it here.
         return False
 
 
