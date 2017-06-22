@@ -717,7 +717,7 @@ disallow_any = explicit
 [file m.py]
 from typing import Any, List
 v: Any = ''
-w = ['']  # type: List[Any]
+w = ''  # type: Any
 class X:
     y = ''  # type: Any
 
@@ -725,6 +725,20 @@ class X:
 m.py:2: error: Explicit "Any" is not allowed
 m.py:3: error: Explicit "Any" is not allowed
 m.py:5: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitGenericVarDeclaration]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+v: List[Any] = []
+[out]
+m.py:2: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitInheritance]
 # cmd: mypy m.py
