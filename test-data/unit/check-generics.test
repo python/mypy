@@ -1047,6 +1047,26 @@ reveal_type(BadGenList()) # E: Revealed type is 'builtins.list[Any]'
 [builtins fixtures/list.pyi]
 [out]
 
+[case testImportedTypeAliasInRuntimeContext]
+from m import Alias
+
+n = Alias[int]([1])
+reveal_type(n)  # E: Revealed type is 'm.Node[builtins.list*[builtins.int]]'
+bad = Alias[str]([1])  # E: List item 0 has incompatible type "int"
+
+n2 = Alias([1]) # Same as Node[List[Any]]
+reveal_type(n2)  # E: Revealed type is 'm.Node[builtins.list*[Any]]'
+[file m.py]
+from typing import TypeVar, Generic, List
+T = TypeVar('T')
+
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+Alias = Node[List[T]]
+[builtins fixtures/list.pyi]
+[out]
 
 -- Simplified declaration of generics
 -- ----------------------------------

@@ -1598,6 +1598,20 @@ class SemanticAnalyzer(NodeVisitor):
         fb_info.mro = [fb_info, self.object_type().type]
         return Instance(fb_info, [])
 
+    def analyze_alias(self, rvalue: Expression,
+                      allow_unnormalized: bool) -> Tuple[Optional[Type], List[str]]:
+        res = analyze_type_alias(rvalue,
+                                 self.lookup_qualified,
+                                 self.lookup_fully_qualified,
+                                 self.tvar_scope,
+                                 self.fail, self.plugin, allow_unnormalized=True)
+        if res:
+            alias_tvars = [name for (name, _) in
+                           res.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]
+        else:
+            alias_tvars = []
+        return res, alias_tvars
+
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed."""
         # For now, type aliases are not created at class scope,
@@ -1606,11 +1620,7 @@ class SemanticAnalyzer(NodeVisitor):
             lvalue = s.lvalues[0]
             if isinstance(lvalue, NameExpr):
                 rvalue = s.rvalue
-                res = analyze_type_alias(rvalue,
-                                         self.lookup_qualified,
-                                         self.lookup_fully_qualified,
-                                         self.tvar_scope,
-                                         self.fail, self.plugin, allow_unnormalized=True)
+                res, alias_tvars = self.analyze_alias(rvalue, allow_unnormalized=True)
                 if res:
                     node = self.lookup(lvalue.name, lvalue)
                     if not lvalue.is_def:
@@ -1629,12 +1639,12 @@ class SemanticAnalyzer(NodeVisitor):
                         return
                     node.kind = TYPE_ALIAS
                     node.type_override = res
-                    node.alias_tvars = [name for (name, _) in
-                                        res.accept(TypeVariableQuery(self.lookup_qualified,
-                                                                     self.tvar_scope))]
+                    node.alias_tvars = alias_tvars
                     if isinstance(s.rvalue, IndexExpr):
-                        s.rvalue.analyzed = TypeAliasExpr(res,
+                        s.rvalue.analyzed = TypeAliasExpr(res, node.alias_tvars,
                                                           fallback=self.alias_fallback(res))
+                        s.rvalue.analyzed.line = s.rvalue.line
+                        s.rvalue.analyzed.column = s.rvalue.column
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
@@ -3124,15 +3134,11 @@ class SemanticAnalyzer(NodeVisitor):
         elif isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
             # Special form -- subscripting a generic type alias.
             # Perform the type substitution and create a new alias.
-            res = analyze_type_alias(expr,
-                                     self.lookup_qualified,
-                                     self.lookup_fully_qualified,
-                                     self.tvar_scope,
-                                     self.fail,
-                                     self.plugin,
-                                     allow_unnormalized=self.is_stub_file)
-            expr.analyzed = TypeAliasExpr(res, fallback=self.alias_fallback(res),
+            res, alias_tvars = self.analyze_alias(expr, allow_unnormalized=self.is_stub_file)
+            expr.analyzed = TypeAliasExpr(res, alias_tvars, fallback=self.alias_fallback(res),
                                           in_runtime=True)
+            expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
         elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.

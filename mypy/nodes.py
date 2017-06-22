@@ -1808,11 +1808,12 @@ class TypeAliasExpr(Expression):
     # (not in a type context like type annotation or base class).
     in_runtime = False  # type: bool
 
-    def __init__(self, type: 'mypy.types.Type', fallback: 'mypy.types.Type' = None,
-                 in_runtime: bool = False) -> None:
+    def __init__(self, type: 'mypy.types.Type', tvars: List[str],
+                 fallback: 'mypy.types.Type' = None, in_runtime: bool = False) -> None:
         self.type = type
         self.fallback = fallback
         self.in_runtime = in_runtime
+        self.tvars = tvars
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_alias_expr(self)

@@ -4,7 +4,7 @@ from collections import OrderedDict
 from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
 
 from mypy.errors import report_internal_error
-from mypy.typeanal import has_any_from_unimported_type
+from mypy.typeanal import has_any_from_unimported_type, replace_alias_tvars
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
@@ -1730,7 +1730,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         item = alias.type
         if not alias.in_runtime:
             # We don't replace TypeVar's with Any for alias used as Alias[T](42).
-            item = self.replace_tvars_any(item)
+            item = replace_alias_tvars(item, alias.tvars, [AnyType()] * len(alias.tvars),
+                                       alias.line, alias.column)
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor
@@ -1754,26 +1755,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return Overloaded([self.apply_generic_arguments(it, item.args, item)
                                for it in tp.items()])
         return AnyType()
-
-    def replace_tvars_any(self, tp: Type) -> Type:
-        """Replace all type variables of a type alias tp with Any. Basically, this function
-        finishes what could not be done in method TypeAnalyser.visit_unbound_type()
-        from typeanal.py.
-        """
-        typ_args = get_typ_args(tp)
-        new_args = typ_args[:]
-        for i, arg in enumerate(typ_args):
-            if isinstance(arg, UnboundType):
-                sym = None
-                try:
-                    sym = self.chk.lookup_qualified(arg.name)
-                except KeyError:
-                    pass
-                if sym and (sym.kind == TVAR):
-                    new_args[i] = AnyType()
-            else:
-                new_args[i] = self.replace_tvars_any(arg)
-        return set_typ_args(tp, new_args, tp.line, tp.column)
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""
