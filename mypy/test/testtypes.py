@@ -75,18 +75,18 @@ class TypesSuite(Suite):
         assert_equal(str(TupleType([self.x, AnyType()], None)), 'Tuple[X?, Any]')
 
     def test_type_variable_binding(self) -> None:
-        assert_equal(str(TypeVarDef('X', 1, None, self.fx.o)), 'X')
+        assert_equal(str(TypeVarDef('X', 1, [], self.fx.o)), 'X')
         assert_equal(str(TypeVarDef('X', 1, [self.x, self.y], self.fx.o)),
                      'X in (X?, Y?)')
 
     def test_generic_function_type(self) -> None:
         c = CallableType([self.x, self.y], [ARG_POS, ARG_POS], [None, None],
                      self.y, self.function, name=None,
-                     variables=[TypeVarDef('X', -1, None, self.fx.o)])
+                     variables=[TypeVarDef('X', -1, [], self.fx.o)])
         assert_equal(str(c), 'def [X] (X?, Y?) -> Y?')
 
-        v = [TypeVarDef('Y', -1, None, self.fx.o),
-             TypeVarDef('X', -2, None, self.fx.o)]
+        v = [TypeVarDef('Y', -1, [], self.fx.o),
+             TypeVarDef('X', -2, [], self.fx.o)]
         c2 = CallableType([], [], [], NoneTyp(), self.function, name=None, variables=v)
         assert_equal(str(c2), 'def [Y, X] ()')
 
@@ -580,7 +580,7 @@ class JoinSuite(Suite):
         self.assert_join(self.fx.type_b, self.fx.type_any, self.fx.type_any)
         self.assert_join(self.fx.type_b, self.fx.type_type, self.fx.type_type)
         self.assert_join(self.fx.type_b, self.fx.type_c, self.fx.type_a)
-        self.assert_join(self.fx.type_c, self.fx.type_d, TypeType(self.fx.o))
+        self.assert_join(self.fx.type_c, self.fx.type_d, TypeType.make_normalized(self.fx.o))
         self.assert_join(self.fx.type_type, self.fx.type_any, self.fx.type_type)
         self.assert_join(self.fx.type_b, self.fx.anyt, self.fx.anyt)
 

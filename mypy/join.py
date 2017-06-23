@@ -1,7 +1,7 @@
 """Calculation of the least upper bound types (joins)."""
 
 from collections import OrderedDict
-from typing import cast, List
+from typing import cast, List, Optional
 
 from mypy.types import (
     Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType,
@@ -106,9 +106,6 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return t
         else:
             return UnionType.make_simplified_union([self.s, t])
-
-    def visit_type_list(self, t: TypeList) -> Type:
-        assert False, 'Not supported'
 
     def visit_any(self, t: AnyType) -> Type:
         return t
@@ -231,11 +228,15 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             items = OrderedDict([
                 (item_name, s_item_type)
                 for (item_name, s_item_type, t_item_type) in self.s.zip(t)
-                if is_equivalent(s_item_type, t_item_type)
+                if (is_equivalent(s_item_type, t_item_type) and
+                    (item_name in t.required_keys) == (item_name in self.s.required_keys))
             ])
             mapping_value_type = join_type_list(list(items.values()))
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
-            return TypedDictType(items, fallback)
+            # We need to filter by items.keys() since some required keys present in both t and
+            # self.s might be missing from the join if the types are incompatible.
+            required_keys = set(items.keys()) & t.required_keys & self.s.required_keys
+            return TypedDictType(items, required_keys, fallback)
         elif isinstance(self.s, Instance):
             return join_instances(self.s, t.fallback)
         else:
@@ -248,7 +249,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
 
     def visit_type_type(self, t: TypeType) -> Type:
         if isinstance(self.s, TypeType):
-            return TypeType(self.join(t.item, self.s.item), line=t.line)
+            return TypeType.make_normalized(self.join(t.item, self.s.item), line=t.line)
         elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
             return self.s
         else:
@@ -308,7 +309,7 @@ def join_instances_via_supertype(t: Instance, s: Instance) -> Type:
     # Compute the "best" supertype of t when joined with s.
     # The definition of "best" may evolve; for now it is the one with
     # the longest MRO.  Ties are broken by using the earlier base.
-    best = None  # type: Type
+    best = None  # type: Optional[Type]
     for base in t.type.bases:
         mapped = map_instance_to_supertype(t, base.type)
         res = join_instances(mapped, s)

@@ -221,7 +221,7 @@ class MyNamedTuple(NamedTuple):
     a: int
     b: str
 
-MyNamedTuple.x # E: "MyNamedTuple" has no attribute "x"
+MyNamedTuple.x # E: Type[MyNamedTuple] has no attribute "x"
 
 [case testNewNamedTupleEmptyItems]
 # flags: --python-version 3.6
@@ -296,6 +296,7 @@ class X(NamedTuple):
 reveal_type(X._fields)  # E: Revealed type is 'Tuple[builtins.str, builtins.str]'
 reveal_type(X._field_types)  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
 reveal_type(X._field_defaults)  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
+reveal_type(X.__annotations__)  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
 
 [builtins fixtures/dict.pyi]
 
@@ -344,8 +345,8 @@ from typing import NamedTuple
 
 class X(NamedTuple):
     x: int
-    y = z = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
-    def f(self): pass  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+    y = z = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+    def f(self): pass
 
 [case testNewNamedTupleWithInvalidItems2]
 # flags: --python-version 3.6
@@ -359,8 +360,8 @@ class X(typing.NamedTuple):
     aa: int
 
 [out]
-main:6: error: Invalid statement in NamedTuple definition; expected "field_name: field_type"
-main:7: error: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+main:6: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+main:7: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 main:7: error: Type cannot be declared in assignment to non-self attribute
 main:7: error: "int" has no attribute "x"
 main:9: error: Non-default NamedTuple fields cannot follow default fields
@@ -373,7 +374,7 @@ from typing import NamedTuple
 
 class X(NamedTuple):
     x: int
-    y = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+    y = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 
 [case testTypeUsingTypeCNamedTuple]
 # flags: --python-version 3.6
@@ -482,3 +483,187 @@ Y(y=1, x='1').method()
 class CallsBaseInit(X):
     def __init__(self, x: str) -> None:
         super().__init__(x)
+
+[case testNewNamedTupleWithMethods]
+from typing import NamedTuple
+
+class XMeth(NamedTuple):
+    x: int
+    def double(self) -> int:
+        return self.x
+    async def asyncdouble(self) -> int:
+        return self.x
+
+class XRepr(NamedTuple):
+    x: int
+    y: int = 1
+    def __str__(self) -> str:
+        return 'string'
+    def __add__(self, other: XRepr) -> int:
+        return 0
+
+reveal_type(XMeth(1).double()) # E: Revealed type is 'builtins.int'
+reveal_type(XMeth(1).asyncdouble())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
+reveal_type(XMeth(42).x)  # E: Revealed type is 'builtins.int'
+reveal_type(XRepr(42).__str__())  # E: Revealed type is 'builtins.str'
+reveal_type(XRepr(1, 2).__add__(XRepr(3)))  # E: Revealed type is 'builtins.int'
+[typing fixtures/typing-full.pyi]
+
+[case testNewNamedTupleOverloading]
+from typing import NamedTuple, overload
+
+class Overloader(NamedTuple):
+    x: int
+    @overload
+    def method(self, y: str) -> str: pass
+    @overload
+    def method(self, y: int) -> int: pass
+    def method(self, y):
+        return y
+
+reveal_type(Overloader(1).method('string'))  # E: Revealed type is 'builtins.str'
+reveal_type(Overloader(1).method(1))  # E: Revealed type is 'builtins.int'
+Overloader(1).method(('tuple',))  # E: No overload variant of "method" of "Overloader" matches argument types [Tuple[builtins.str]]
+
+[case testNewNamedTupleMethodInheritance]
+from typing import NamedTuple, TypeVar
+
+T = TypeVar('T')
+
+class Base(NamedTuple):
+    x: int
+    def copy(self: T) -> T:
+        reveal_type(self)  # E: Revealed type is 'T`-1'
+        return self
+    def good_override(self) -> int:
+        reveal_type(self)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.Base]'
+        reveal_type(self[0])  # E: Revealed type is 'builtins.int'
+        self[0] = 3  # E: Unsupported target for indexed assignment
+        reveal_type(self.x)  # E: Revealed type is 'builtins.int'
+        self.x = 3  # E: Property "x" defined in "Base" is read-only
+        self[1]  # E: Tuple index out of range
+        reveal_type(self[T])  # E: Revealed type is 'builtins.int'
+        return self.x
+    def bad_override(self) -> int:
+        return self.x
+
+class Child(Base):
+    def new_method(self) -> int:
+        reveal_type(self)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.Child]'
+        reveal_type(self[0])  # E: Revealed type is 'builtins.int'
+        self[0] = 3  # E: Unsupported target for indexed assignment
+        reveal_type(self.x)  # E: Revealed type is 'builtins.int'
+        self.x = 3  # E: Property "x" defined in "Child" is read-only
+        self[1]  # E: Tuple index out of range
+        return self.x
+    def good_override(self) -> int:
+        return 0
+    def bad_override(self) -> str:  # E: Return type of "bad_override" incompatible with supertype "Base"
+        return 'incompatible'
+
+def takes_base(base: Base) -> int:
+    return base.x
+
+reveal_type(Base(1).copy())  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.Base]'
+reveal_type(Child(1).copy())  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.Child]'
+reveal_type(Base(1).good_override())  # E: Revealed type is 'builtins.int'
+reveal_type(Child(1).good_override())  # E: Revealed type is 'builtins.int'
+reveal_type(Base(1).bad_override())  # E: Revealed type is 'builtins.int'
+reveal_type(takes_base(Base(1)))  # E: Revealed type is 'builtins.int'
+reveal_type(takes_base(Child(1)))  # E: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
+
+[case testNewNamedTupleIllegalNames]
+from typing import Callable, NamedTuple
+
+class XMethBad(NamedTuple):
+    x: int
+    def _fields(self):  # E: Cannot overwrite NamedTuple attribute "_fields"
+        return 'no chance for this'
+
+class MagicalFields(NamedTuple):
+    x: int
+    def __slots__(self) -> None: pass  # E: Cannot overwrite NamedTuple attribute "__slots__"
+    def __new__(cls) -> None: pass  # E: Cannot overwrite NamedTuple attribute "__new__"
+    def _source(self) -> int: pass  # E: Cannot overwrite NamedTuple attribute "_source"
+    __annotations__ = {'x': float}  # E: NamedTuple field name cannot start with an underscore: __annotations__ \
+        # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]" \
+        # E: Cannot overwrite NamedTuple attribute "__annotations__"
+
+class AnnotationsAsAMethod(NamedTuple):
+    x: int
+    # This fails at runtime because typing.py assumes that __annotations__ is a dictionary.
+    def __annotations__(self) -> float:  # E: Cannot overwrite NamedTuple attribute "__annotations__"
+        return 1.0
+
+class ReuseNames(NamedTuple):
+    x: int
+    def x(self) -> str:  # E: Name 'x' already defined
+        return ''
+
+    def y(self) -> int:
+        return 0
+    y: str  # E: Name 'y' already defined
+
+class ReuseCallableNamed(NamedTuple):
+    z: Callable[[ReuseNames], int]
+    def z(self) -> int:  # E: Name 'z' already defined
+        return 0
+
+[builtins fixtures/dict.pyi]
+
+[case testNewNamedTupleDocString]
+from typing import NamedTuple
+
+class Documented(NamedTuple):
+    """This is a docstring."""
+    x: int
+
+reveal_type(Documented.__doc__)  # E: Revealed type is 'builtins.str'
+reveal_type(Documented(1).x)  # E: Revealed type is 'builtins.int'
+
+class BadDoc(NamedTuple):
+    x: int
+    def __doc__(self) -> str:
+        return ''
+
+reveal_type(BadDoc(1).__doc__())  # E: Revealed type is 'builtins.str'
+
+[case testNewNamedTupleClassMethod]
+from typing import NamedTuple
+
+class HasClassMethod(NamedTuple):
+    x: str
+
+    @classmethod
+    def new(cls, f: str) -> 'HasClassMethod':
+        reveal_type(cls)  # E: Revealed type is 'def (x: builtins.str) -> Tuple[builtins.str, fallback=__main__.HasClassMethod]'
+        reveal_type(HasClassMethod)  # E: Revealed type is 'def (x: builtins.str) -> Tuple[builtins.str, fallback=__main__.HasClassMethod]'
+        return cls(x=f)
+
+[builtins fixtures/classmethod.pyi]
+
+[case testNewNamedTupleStaticMethod]
+from typing import NamedTuple
+
+class HasStaticMethod(NamedTuple):
+    x: str
+
+    @staticmethod
+    def new(f: str) -> 'HasStaticMethod':
+        return HasStaticMethod(x=f)
+
+[builtins fixtures/classmethod.pyi]
+
+[case testNewNamedTupleProperty]
+from typing import NamedTuple
+
+class HasStaticMethod(NamedTuple):
+    x: str
+
+    @property
+    def size(self) -> int:
+        reveal_type(self)  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.HasStaticMethod]'
+        return 4
+
+[builtins fixtures/property.pyi]

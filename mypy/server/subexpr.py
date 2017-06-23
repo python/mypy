@@ -5,8 +5,8 @@ from typing import List
 from mypy.nodes import (
     Expression, Node, MemberExpr, YieldFromExpr, YieldExpr, CallExpr, OpExpr, ComparisonExpr,
     SliceExpr, CastExpr, RevealTypeExpr, UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr,
-    IndexExpr, GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication, LambdaExpr,
-    StarExpr, BackquoteExpr, AwaitExpr
+    IndexExpr, GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
+    ConditionalExpr, TypeApplication, LambdaExpr, StarExpr, BackquoteExpr, AwaitExpr,
 )
 from mypy.traverser import TraverserVisitor
 
@@ -104,9 +104,17 @@ class SubexpressionFinder(TraverserVisitor):
         self.add(e)
         super().visit_generator_expr(e)
 
+    def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> None:
+        self.add(e)
+        super().visit_dictionary_comprehension(e)
+
     def visit_list_comprehension(self, e: ListComprehension) -> None:
         self.add(e)
         super().visit_list_comprehension(e)
+
+    def visit_set_comprehension(self, e: SetComprehension) -> None:
+        self.add(e)
+        super().visit_set_comprehension(e)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> None:
         self.add(e)

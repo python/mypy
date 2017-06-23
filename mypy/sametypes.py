@@ -55,9 +55,6 @@ class SameTypeVisitor(TypeVisitor[bool]):
     def visit_unbound_type(self, left: UnboundType) -> bool:
         return True
 
-    def visit_type_list(self, t: TypeList) -> bool:
-        assert False, 'Not supported'
-
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)
 

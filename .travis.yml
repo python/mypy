@@ -1,5 +1,7 @@
 sudo: false
 language: python
+# cache package wheels (1 cache per python version)
+cache: pip
 python:
   - "3.3"
   - "3.4"
@@ -13,6 +15,7 @@ python:
 
 install:
   - pip install -r test-requirements.txt
+  - python2 -m pip install --user typing
   - python setup.py install
 
 script:

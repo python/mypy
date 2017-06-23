@@ -75,6 +75,14 @@ undef
 dir/subpkg/a.py:1: error: Name 'undef' is not defined
 dir/a.py:1: error: Name 'undef' is not defined
 
+[case testCmdlineInvalidPackageName]
+# cmd: mypy dir/sub.pkg/a.py
+[file dir/sub.pkg/__init__.py]
+[file dir/sub.pkg/a.py]
+undef
+[out]
+sub.pkg is not a valid Python package name
+
 [case testBadFileEncoding]
 # cmd: mypy a.py
 [file a.py]
@@ -168,6 +176,76 @@ z.py:1: error: Function is missing a type annotation
 z.py:4: error: Call to untyped function "f" in typed context
 x.py:1: error: Function is missing a type annotation
 
+[case testPerFileConfigSectionUntypedWithDisallowUnannotated]
+# cmd: mypy w.py x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+disallow_any = unannotated
+[[mypy-y*]
+disallow_any =
+[[mypy-z*]
+disallow_untyped_defs = True
+[[mypy-w*]
+disallow_untyped_defs = False
+[file x.py]
+def f(a):
+    pass
+[file y.py]
+def f(a):
+    pass
+[file z.py]
+def f(a):
+    pass
+[file w.py]
+def f(a):
+    pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
+[case testPerFileConfigSectionDisallowUnannotatedWithUntyped]
+# cmd: mypy x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+disallow_untyped_defs = True
+[[mypy-y*]
+disallow_any =
+[[mypy-z*]
+disallow_any = unannotated
+[file x.py]
+def f(a):
+    pass
+[file y.py]
+def f(a):
+    pass
+[file z.py]
+def f(a):
+    pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
+[case testPerFileConfigSectionDisallowUnannotatedNoOverride]
+# cmd: mypy x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+[[mypy-x*]
+disallow_untyped_defs = True
+[[mypy-z*]
+disallow_any = unannotated
+[file x.py]
+def f(a):
+    pass
+[file y.py]
+def f(a):
+    pass
+[file z.py]
+def f(a):
+    pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
 [case testPerFileConfigSectionMultipleMatches]
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file mypy.ini]
@@ -250,6 +328,9 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 python_version = 3.4
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
+
+[case testAnyExprReportDivisionByZero]
+# cmd: mypy --any-exprs-report=out -c 'pass'
 
 [case testCoberturaParser]
 # cmd: mypy --cobertura-xml-report build pkg
@@ -365,8 +446,8 @@ x += ''  # Error reported here
 a.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:3: error: Unsupported operand types for + ("int" and "str")
 main.py:6: error: Unsupported operand types for + ("int" and "str")
-main.py:7: error: "ModuleType" has no attribute "y"
-main.py:8: error: Unsupported operand types for + ("ModuleType" and "int")
+main.py:7: error: Module has no attribute "y"
+main.py:8: error: Unsupported operand types for + (Module and "int")
 
 [case testConfigFollowImportsSilent]
 # cmd: mypy main.py
@@ -386,8 +467,8 @@ x += ''  # No error reported
 [out]
 main.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:4: error: Unsupported operand types for + ("int" and "str")
-main.py:5: error: "ModuleType" has no attribute "y"
-main.py:6: error: Unsupported operand types for + ("ModuleType" and "int")
+main.py:5: error: Module has no attribute "y"
+main.py:6: error: Unsupported operand types for + (Module and "int")
 
 [case testConfigFollowImportsSkip]
 # cmd: mypy main.py
@@ -514,3 +595,89 @@ whatever
 main.py:1: error: Cannot find module named 'a'
 main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main.py:1: error: Cannot find module named 'a.b'
+
+[case testPythonVersionTooOld10]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+python_version = 1.0
+[out]
+mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 2 or 3)
+
+[case testPythonVersionTooOld26]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+python_version = 2.6
+[out]
+mypy.ini: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
+
+[case testPythonVersionTooOld32]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+python_version = 3.2
+[out]
+mypy.ini: [mypy]: python_version: Python 3.2 is not supported (must be 3.3 or higher)
+
+[case testPythonVersionTooNew28]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+python_version = 2.8
+[out]
+mypy.ini: [mypy]: python_version: Python 2.8 is not supported (must be 2.7)
+
+[case testPythonVersionTooNew40]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+python_version = 4.0
+[out]
+mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be 2 or 3)
+
+[case testPythonVersionAccepted27]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+python_version = 2.7
+[out]
+
+[case testPythonVersionAccepted33]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+python_version = 3.3
+[out]
+
+[case testPythonVersionAccepted36]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+python_version = 3.6
+[out]
+
+[case testDisallowAnyUnimported]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+disallow_any = unimported
+ignore_missing_imports = True
+[file main.py]
+from unreal import F
+
+def f(x: F) -> None: pass
+[out]
+main.py:3: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
+
+[case testDisallowAnyEmpty]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+disallow_any =
+ignore_missing_imports = True
+[file main.py]
+from unreal import F
+
+def f(x: F) -> None: pass
+[out]

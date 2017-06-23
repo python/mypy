@@ -7,7 +7,7 @@ from mypy.nodes import MypyFile
 
 def parse(source: Union[str, bytes],
           fnam: str,
-          errors: Errors,
+          errors: Optional[Errors],
           options: Options) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
@@ -22,12 +22,10 @@ def parse(source: Union[str, bytes],
         return mypy.fastparse.parse(source,
                                     fnam=fnam,
                                     errors=errors,
-                                    pyversion=options.python_version,
-                                    custom_typing_module=options.custom_typing_module)
+                                    options=options)
     else:
         import mypy.fastparse2
         return mypy.fastparse2.parse(source,
                                      fnam=fnam,
                                      errors=errors,
-                                     pyversion=options.python_version,
-                                     custom_typing_module=options.custom_typing_module)
+                                     options=options)

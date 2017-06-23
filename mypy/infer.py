@@ -12,7 +12,7 @@ def infer_function_type_arguments(callee_type: CallableType,
                                   arg_types: List[Optional[Type]],
                                   arg_kinds: List[int],
                                   formal_to_actual: List[List[int]],
-                                  strict: bool = True) -> List[Type]:
+                                  strict: bool = True) -> List[Optional[Type]]:
     """Infer the type arguments of a generic function.
 
     Return an array of lower bound types for the type variables -1 (at
@@ -36,7 +36,7 @@ def infer_function_type_arguments(callee_type: CallableType,
 
 
 def infer_type_arguments(type_var_ids: List[TypeVarId],
-                         template: Type, actual: Type) -> List[Type]:
+                         template: Type, actual: Type) -> List[Optional[Type]]:
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.
     constraints = infer_constraints(template, actual, SUBTYPE_OF)

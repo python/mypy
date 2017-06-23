@@ -5,9 +5,8 @@ New features in Python 3.6
 
 Python 3.6 was `released
 <https://www.python.org/downloads/release/python-360/>`_ in
-December 2016.  As of mypy 0.500 most language features new in Python
-3.6 are supported, with the exception of asynchronous generators and
-comprehensions.
+December 2016.  As of mypy 0.510 all language features new in Python
+3.6 are supported.
 
 Syntax for variable annotations (`PEP 526 <https://www.python.org/dev/peps/pep-0526>`_)
 ---------------------------------------------------------------------------------------
@@ -17,6 +16,7 @@ now have type annotations using either of the two forms:
 
 .. code-block:: python
 
+   from typing import Optional
    foo: Optional[int]
    bar: List[str] = []
 
@@ -26,6 +26,29 @@ Mypy fully supports this syntax, interpreting them as equivalent to
 
    foo = None  # type: Optional[int]
    bar = []  # type: List[str]
+
+.. _class-var:
+
+An additional feature defined in PEP 526 is also supported: you can
+mark names intended to be used as class variables with ``ClassVar``.
+In a pinch you can also use ClassVar in ``# type`` comments.
+Example:
+
+.. code-block:: python
+
+   from typing import ClassVar
+
+   class C:
+       x: int  # instance variable
+       y: ClassVar[int]  # class variable
+       z = None  # type: ClassVar[int]
+
+       def foo(self) -> None:
+           self.x = 0  # OK
+           self.y = 0  # Error: Cannot assign to class variable "y" via instance
+
+   C.y = 0  # This is OK
+
 
 Literal string formatting (`PEP 498 <https://www.python.org/dev/peps/pep-0498>`_)
 ---------------------------------------------------------------------------------
@@ -50,22 +73,22 @@ Mypy fully supports this syntax:
    hexes: List[int] = []
    hexes.append(0x_FF_FF_FF_FF)
 
-Asynchronous generators (`PEP 525 <https://www.python.org/dev/peps/pep-0525>`_)
--------------------------------------------------------------------------------
+.. _async_generators_and_comprehensions:
 
-Python 3.6 feature: coroutines defined with ``async def`` (PEP 492)
-can now also be generators, i.e. contain ``yield`` expressions.
+Asynchronous generators (`PEP 525 <https://www.python.org/dev/peps/pep-0525>`_) and comprehensions (`PEP 530 <https://www.python.org/dev/peps/pep-0530>`_)
+----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Mypy does not yet support this.
+Python 3.6 allows coroutines defined with ``async def`` (PEP 492) to be
+generators, i.e. contain ``yield`` expressions, and introduces a syntax for
+asynchronous comprehensions. Mypy fully supports these features, for example:
 
-Asynchronous comprehensions (`PEP 530 <https://www.python.org/dev/peps/pep-0530>`_)
------------------------------------------------------------------------------------
+.. code-block:: python
 
-Python 3.6 feature: coroutines defined with ``async def`` (PEP 492)
-can now also contain list, set and dict comprehensions that use
-``async for`` syntax.
+   from typing import AsyncIterator
 
-Mypy does not yet support this.
+   async def gen() -> AsyncIterator[bytes]:
+       lst = [b async for b in gen()]  # Inferred type is "List[bytes]"
+       yield 'no way'  # Error: Incompatible types (got "str", expected "bytes")
 
 New named tuple syntax
 ----------------------

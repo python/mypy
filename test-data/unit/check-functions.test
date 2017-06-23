@@ -79,7 +79,7 @@ h = h
 
 def l(x) -> None: ...
 def r(__, *, x) -> None: ...
-r = l # E: Incompatible types in assignment (expression has type Callable[[Any], None], variable has type Callable[[Any, NamedArg('x', Any)], None])
+r = l # E: Incompatible types in assignment (expression has type Callable[[Any], None], variable has type Callable[[Any, NamedArg(Any, 'x')], None])
 
 [case testSubtypingFunctionsRequiredLeftArgNotPresent]
 
@@ -88,6 +88,7 @@ def r(x) -> None: ...
 r = l # E: Incompatible types in assignment (expression has type Callable[[Any, Any], None], variable has type Callable[[Any], None])
 
 [case testSubtypingFunctionsImplicitNames]
+from typing import Any
 
 def f(a, b): pass
 def g(c: Any, d: Any) -> Any: pass
@@ -114,10 +115,10 @@ hh = h
 ff = gg
 ff_nonames = ff
 ff_nonames = f_nonames # reset
-ff = ff_nonames # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg('a', int), Arg('b', str)], None])
+ff = ff_nonames # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg(int, 'a'), Arg(str, 'b')], None])
 ff = f # reset
-gg = ff # E: Incompatible types in assignment (expression has type Callable[[Arg('a', int), Arg('b', str)], None], variable has type Callable[[Arg('a', int), DefaultArg('b', str)], None])
-gg = hh # E: Incompatible types in assignment (expression has type Callable[[Arg('aa', int), DefaultArg('b', str)], None], variable has type Callable[[Arg('a', int), DefaultArg('b', str)], None])
+gg = ff # E: Incompatible types in assignment (expression has type Callable[[Arg(int, 'a'), Arg(str, 'b')], None], variable has type Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None])
+gg = hh # E: Incompatible types in assignment (expression has type Callable[[Arg(int, 'aa'), DefaultArg(str, 'b')], None], variable has type Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None])
 
 [case testSubtypingFunctionsArgsKwargs]
 from typing import Any, Callable
@@ -143,7 +144,7 @@ ee_var = everything
 ee_var = everywhere
 
 ee_var = specific_1 # The difference between Callable[..., blah] and one with a *args: Any, **kwargs: Any is that the ... goes loosely both ways.
-ee_def = specific_1 # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[StarArg(Any), KwArg(Any)], None])
+ee_def = specific_1 # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[VarArg(Any), KwArg(Any)], None])
 
 [builtins fixtures/dict.pyi]
 
@@ -174,7 +175,7 @@ ff = f
 gg = g
 
 ff = g
-gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg('a', int), Arg('b', str)], None])
+gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg(int, 'a'), Arg(str, 'b')], None])
 
 [case testLackOfNamesFastparse]
 
@@ -186,7 +187,7 @@ ff = f
 gg = g
 
 ff = g
-gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg('a', int), Arg('b', str)], None])
+gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg(int, 'a'), Arg(str, 'b')], None])
 
 [case testFunctionTypeCompatibilityWithOtherTypes]
 from typing import Callable
@@ -254,7 +255,7 @@ class A: pass
 t = None # type: type
 a = None # type: A
 
-a = A # E: Incompatible types in assignment (expression has type "A" (type object), variable has type "A")
+a = A # E: Incompatible types in assignment (expression has type Type[A], variable has type "A")
 t = f # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type "type")
 t = A
 
@@ -1212,7 +1213,7 @@ from typing import Any
 x = None # type: Any
 if x:
     def f(): pass
-def f(): pass # E: Name 'f' already defined
+def f(): pass # E: Name 'f' already defined on line 4
 
 [case testIncompatibleConditionalFunctionDefinition]
 from typing import Any
@@ -1394,6 +1395,264 @@ f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 g('x')
 g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
 
+-- Callable with specific arg list
+-- -------------------------------
+
+[case testCallableWithNamedArg]
+from typing import Callable
+from mypy_extensions import Arg
+
+def a(f: Callable[[Arg(int, 'x')], int]):
+    f(x=4)
+    f(5)
+    f(y=3) # E: Unexpected keyword argument "y"
+
+[builtins fixtures/dict.pyi]
+
+[case testCallableWithOptionalArg]
+from typing import Callable
+from mypy_extensions import DefaultArg
+
+def a(f: Callable[[DefaultArg(int, 'x')], int]):
+    f(x=4)
+    f(2)
+    f()
+    f(y=3) # E: Unexpected keyword argument "y"
+    f("foo") # E: Argument 1 has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testCallableWithNamedArgFromExpr]
+from typing import Callable
+from mypy_extensions import Arg
+
+F = Callable[[Arg(int, 'x')], int]
+
+def a(f: F):
+    f(x=4)
+    f(5)
+    f(y=3) # E: Unexpected keyword argument "y"
+
+[builtins fixtures/dict.pyi]
+
+[case testCallableWithOptionalArgFromExpr]
+from typing import Callable
+from mypy_extensions import DefaultArg
+
+F = Callable[[DefaultArg(int, 'x')], int]
+def a(f: F):
+    f(x=4)
+    f(2)
+    f()
+    f(y=3) # E: Unexpected keyword argument "y"
+    f("foo") # E: Argument 1 has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testCallableParsingInInheritence]
+
+from collections import namedtuple
+class C(namedtuple('t', 'x')):
+    pass
+
+[case testCallableParsingSameName]
+from typing import Callable
+
+def Arg(x, y): pass
+
+F = Callable[[Arg(int, 'x')], int]  # E: Invalid argument constructor "__main__.Arg"
+
+[case testCallableParsingFromExpr]
+from typing import Callable, List
+from mypy_extensions import Arg, VarArg, KwArg
+import mypy_extensions
+
+def WrongArg(x, y): return y
+# Note that for this test, the 'Value of type "int" is not indexable' errors are silly,
+# and a consequence of Callable being set to an int in the test stub.  We can't set it to
+# something else sensible, because other tests require the stub not have anything
+# that looks like a function call.
+F = Callable[[WrongArg(int, 'x')], int] # E: Invalid argument constructor "__main__.WrongArg"
+G = Callable[[Arg(1, 'x')], int] # E: Invalid type alias # E: Value of type "int" is not indexable
+H = Callable[[VarArg(int, 'x')], int] # E: VarArg arguments should not have names
+I = Callable[[VarArg(int)], int] # ok
+J = Callable[[VarArg(), KwArg()], int] # ok
+K = Callable[[VarArg(), int], int] # E: Required positional args may not appear after default, named or var args
+L = Callable[[Arg(name='x', type=int)], int] # ok
+# I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
+# M = Callable[[Arg(gnome='x', type=int)], int]   E: Invalid type alias   E: Unexpected keyword argument "gnome" for "Arg"
+N = Callable[[Arg(name=None, type=int)], int] # ok
+O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: Type expected within [...] # E: The type Type[List[Any]] is not generic and not indexable
+P = Callable[[mypy_extensions.VarArg(int)], int] # ok
+Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "type"
+R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "name"
+
+[builtins fixtures/dict.pyi]
+
+[case testCallableParsing]
+from typing import Callable
+from mypy_extensions import Arg, VarArg, KwArg
+
+def WrongArg(x, y): return y
+
+def b(f: Callable[[Arg(1, 'x')], int]): pass # E: invalid type comment or annotation
+def d(f: Callable[[VarArg(int)], int]): pass # ok
+def e(f: Callable[[VarArg(), KwArg()], int]): pass # ok
+def g(f: Callable[[Arg(name='x', type=int)], int]): pass # ok
+def h(f: Callable[[Arg(gnome='x', type=int)], int]): pass  # E: Unexpected argument "gnome" for argument constructor
+def i(f: Callable[[Arg(name=None, type=int)], int]): pass # ok
+def j(f: Callable[[Arg(int, 'x', name='y')], int]): pass # E: "Arg" gets multiple values for keyword argument "name"
+def k(f: Callable[[Arg(int, type=int)], int]): pass # E: "Arg" gets multiple values for keyword argument "type"
+
+[builtins fixtures/dict.pyi]
+
+[case testCallableTypeAnalysis]
+from typing import Callable
+from mypy_extensions import Arg, VarArg as VARG, KwArg
+import mypy_extensions as ext
+
+def WrongArg(x, y): return y
+def a(f: Callable[[WrongArg(int, 'x')], int]): pass # E: Invalid argument constructor "__main__.WrongArg"
+def b(f: Callable[[BadArg(int, 'x')], int]): pass # E: Name 'BadArg' is not defined
+def d(f: Callable[[ext.VarArg(int)], int]): pass # ok
+def e(f: Callable[[VARG(), ext.KwArg()], int]): pass # ok
+def g(f: Callable[[ext.Arg(name='x', type=int)], int]): pass # ok
+def i(f: Callable[[Arg(name=None, type=int)], int]): pass # ok
+
+def f1(*args) -> int: pass
+def f2(*args, **kwargs) -> int: pass
+
+d(f1)
+e(f2)
+d(f2)
+e(f1)  # E: Argument 1 to "e" has incompatible type Callable[[VarArg(Any)], int]; expected Callable[[VarArg(Any), KwArg(Any)], int]
+
+[builtins fixtures/dict.pyi]
+
+[case testCallableWrongTypeType]
+from typing import Callable
+from mypy_extensions import Arg
+def b(f: Callable[[Arg(1, 'x')], int]): pass # E: invalid type comment or annotation
+[builtins fixtures/dict.pyi]
+
+[case testCallableTooManyVarArg]
+from typing import Callable
+from mypy_extensions import VarArg
+def c(f: Callable[[VarArg(int, 'x')], int]): pass # E: VarArg arguments should not have names
+[builtins fixtures/dict.pyi]
+
+[case testCallableFastParseGood]
+from typing import Callable
+from mypy_extensions import VarArg, Arg, KwArg
+def d(f: Callable[[VarArg(int)], int]): pass # ok
+def e(f: Callable[[VarArg(), KwArg()], int]): pass # ok
+def g(f: Callable[[Arg(name='x', type=int)], int]): pass # ok
+def i(f: Callable[[Arg(name=None, type=int)], int]): pass # ok
+[builtins fixtures/dict.pyi]
+
+[case testCallableFastParseBadArgArgName]
+from typing import Callable
+from mypy_extensions import Arg
+def h(f: Callable[[Arg(gnome='x', type=int)], int]): pass # E: Unexpected argument "gnome" for argument constructor
+[builtins fixtures/dict.pyi]
+
+[case testCallableKindsOrdering]
+from typing import Callable, Any
+from mypy_extensions import Arg, VarArg, KwArg, DefaultArg, NamedArg
+
+def f(f: Callable[[VarArg(), int], int]): pass # E: Required positional args may not appear after default, named or var args
+def g(f: Callable[[VarArg(), VarArg()], int]): pass # E: Var args may not appear after named or var args
+def h(f: Callable[[KwArg(), KwArg()], int]): pass # E: You may only have one **kwargs argument
+def i(f: Callable[[DefaultArg(), int], int]): pass # E: Required positional args may not appear after default, named or var args
+def j(f: Callable[[NamedArg(Any, 'x'), DefaultArg(int, 'y')], int]): pass # E: Positional default args may not appear after named or var args
+def k(f: Callable[[KwArg(), NamedArg(Any, 'x')], int]): pass # E: A **kwargs argument must be the last argument
+[builtins fixtures/dict.pyi]
+
+[case testCallableDuplicateNames]
+from typing import Callable
+from mypy_extensions import Arg, VarArg, KwArg, DefaultArg
+
+def f(f: Callable[[Arg(int, 'x'), int, Arg(int, 'x')], int]): pass # E: Duplicate argument 'x' in Callable
+
+[builtins fixtures/dict.pyi]
+
+
+[case testCallableWithKeywordOnlyArg]
+from typing import Callable
+from mypy_extensions import NamedArg
+
+def a(f: Callable[[NamedArg(int, 'x')], int]):
+    f(x=4)
+    f(2) # E: Too many positional arguments
+    f() # E: Missing named argument "x"
+    f(y=3) # E: Unexpected keyword argument "y"
+    f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testCallableWithKeywordOnlyOptionalArg]
+from typing import Callable
+from mypy_extensions import DefaultNamedArg
+
+def a(f: Callable[[DefaultNamedArg(int, 'x')], int]):
+    f(x=4)
+    f(2) # E: Too many positional arguments
+    f()
+    f(y=3) # E: Unexpected keyword argument "y"
+    f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testCallableWithKwargs]
+from typing import Callable
+from mypy_extensions import KwArg
+
+def a(f: Callable[[KwArg(int)], int]):
+    f(x=4)
+    f(2) # E: Too many arguments
+    f()
+    f(y=3)
+    f(x=4, y=3, z=10)
+    f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+
+[case testCallableWithVarArg]
+from typing import Callable
+from mypy_extensions import VarArg
+
+def a(f: Callable[[VarArg(int)], int]):
+    f(x=4)  # E: Unexpected keyword argument "x"
+    f(2)
+    f()
+    f(3, 4, 5)
+    f("a")  # E: Argument 1 has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testCallableArgKindSubtyping]
+from typing import Callable
+from mypy_extensions import Arg, DefaultArg
+
+int_str_fun = None # type: Callable[[int, str], str]
+int_opt_str_fun = None # type: Callable[[int, DefaultArg(str, None)], str]
+int_named_str_fun = None # type: Callable[[int, Arg(str, 's')], str]
+
+def isf(ii: int, ss: str) -> str:
+    return ss
+
+def iosf(i: int, s: str = "bar") -> str:
+    return s
+
+def isf_unnamed(__i: int, __s: str) -> str:
+    return __s
+
+int_str_fun = isf
+int_str_fun = isf_unnamed
+int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type Callable[[int, str], str], variable has type Callable[[int, Arg(str, 's')], str])
+int_opt_str_fun = iosf
+int_str_fun = iosf
+int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg(int, 'ii'), Arg(str, 'ss')], str], variable has type Callable[[int, DefaultArg(str)], str])
+
+int_named_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg(int, 'ii'), Arg(str, 'ss')], str], variable has type Callable[[int, Arg(str, 's')], str])
+int_named_str_fun = iosf
+
+[builtins fixtures/dict.pyi]
 
 -- Callable[..., T]
 -- ----------------
@@ -1444,7 +1703,7 @@ def g4(*, y: int) -> str: pass
 f(g1)
 f(g2)
 f(g3)
-f(g4) # E: Argument 1 to "f" has incompatible type Callable[[NamedArg('y', int)], str]; expected Callable[..., int]
+f(g4) # E: Argument 1 to "f" has incompatible type Callable[[NamedArg(int, 'y')], str]; expected Callable[..., int]
 
 [case testCallableWithArbitraryArgsSubtypingWithGenericFunc]
 from typing import Callable, TypeVar
@@ -1567,17 +1826,18 @@ class A(Generic[t]):
 
 
 [case testRedefineFunction]
+from typing import Any
 def f(x) -> Any: pass
 def g(x, y): pass
 def h(x): pass
 def j(y) -> Any: pass
 f = h
-f = j # E: Incompatible types in assignment (expression has type Callable[[Arg('y', Any)], Any], variable has type Callable[[Arg('x', Any)], Any])
+f = j # E: Incompatible types in assignment (expression has type Callable[[Arg(Any, 'y')], Any], variable has type Callable[[Arg(Any, 'x')], Any])
 f = g # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[Any], Any])
 
 [case testRedefineFunction2]
 def f() -> None: pass
-def f() -> None: pass # E: Name 'f' already defined
+def f() -> None: pass # E: Name 'f' already defined on line 1
 
 
 -- Special cases
@@ -1674,7 +1934,7 @@ main:3: note: "f" defined here
 
 [case testMagicMethodPositionalOnlyArg]
 class A(object):
-    def __eq__(self, other) -> bool: return True # We are all equal.
+    def __eq__(self, other) -> bool: return True # We are all equal.  # N: "__eq__" of "A" defined here
 
 a = A()
 a.__eq__(a)
@@ -1686,7 +1946,7 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 
 
 class A(object):
-    def __eq__(self, other) -> bool: return True # We are all equal.
+    def __eq__(self, other) -> bool: return True # We are all equal.  # N: "__eq__" of "A" defined here
 
 a = A()
 a.__eq__(a)
@@ -1703,3 +1963,165 @@ def f(a, (b, c), d): pass
 # flags: --python-version 2.7
 
 def f(a, (b, c), d): pass
+
+-- Type variable shenanagins
+-- -------------------------
+
+[case testGenericFunctionTypeDecl]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+
+f: Callable[[T], T]
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
+def g(__x: T) -> T: pass
+f = g
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
+i = f(3)
+reveal_type(i)  # E: Revealed type is 'builtins.int*'
+
+[case testFunctionReturningGenericFunction]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+def deco() -> Callable[[T], T]: pass
+reveal_type(deco)  # E: Revealed type is 'def () -> def [T] (T`-1) -> T`-1'
+f = deco()
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
+i = f(3)
+reveal_type(i)  # E: Revealed type is 'builtins.int*'
+
+[case testFunctionReturningGenericFunctionPartialBinding]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+def deco(x: U) -> Callable[[T, U], T]: pass
+reveal_type(deco)  # E: Revealed type is 'def [U] (x: U`-1) -> def [T] (T`-2, U`-1) -> T`-2'
+f = deco("foo")
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-2, builtins.str*) -> T`-2'
+i = f(3, "eggs")
+reveal_type(i)  # E: Revealed type is 'builtins.int*'
+
+[case testFunctionReturningGenericFunctionTwoLevelBinding]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+R = TypeVar('R')
+def deco() -> Callable[[T], Callable[[T, R], R]]: pass
+f = deco()
+reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> def [R] (T`-1, R`-2) -> R`-2'
+g = f(3)
+reveal_type(g)  # E: Revealed type is 'def [R] (builtins.int*, R`-2) -> R`-2'
+s = g(4, "foo")
+reveal_type(s)  # E: Revealed type is 'builtins.str*'
+
+[case testGenericFunctionReturnAsDecorator]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+def deco(__i: int) -> Callable[[T], T]: pass
+
+@deco(3)
+def lol(x: int) -> str: ...
+
+reveal_type(lol)  # E: Revealed type is 'def (x: builtins.int) -> builtins.str'
+s = lol(4)
+reveal_type(s)  # E: Revealed type is 'builtins.str'
+
+[case testGenericFunctionOnReturnTypeOnly]
+from typing import TypeVar, List
+
+T = TypeVar('T')
+
+def make_list() -> List[T]: pass
+
+l: List[int] = make_list()
+
+bad = make_list()  # E: Need type annotation for variable
+[builtins fixtures/list.pyi]
+
+[case testAnonymousArgumentError]
+def foo(__b: int, x: int, y: int) -> int: pass
+foo(x=2, y=2)  # E: Missing positional argument
+foo(y=2)  # E: Missing positional arguments
+
+[case testReturnTypeLineNumberWithDecorator]
+def dec(f): pass
+
+@dec
+def test(a: str) -> (str,): # E: Invalid tuple literal type
+    return None
+
+[case testReturnTypeLineNumberNewLine]
+def fn(a: str
+       ) -> badtype: # E: Name 'badtype' is not defined
+    pass
+
+[case testArgumentTypeLineNumberWithDecorator]
+def dec(f): pass
+
+@dec
+def some_method(self: badtype): pass # E: Name 'badtype' is not defined
+
+[case TestArgumentTypeLineNumberNewline]
+def fn(
+        a: badtype) -> None: # E: Name 'badtype' is not defined
+    pass
+
+[case testInferredTypeSubTypeOfReturnType]
+from typing import Union, Dict, List
+def f() -> List[Union[str, int]]:
+    x = ['a']
+    return x # E: Incompatible return value type (got List[str], expected List[Union[str, int]]) \
+# N: Perhaps you need a type annotation for "x"? Suggestion: List[Union[str, int]]
+
+def g() -> Dict[str, Union[str, int]]:
+    x = {'a': 'a'}
+    return x # E: Incompatible return value type (got Dict[str, str], expected Dict[str, Union[str, int]]) \
+# N: Perhaps you need a type annotation for "x"? Suggestion: Dict[str, Union[str, int]]
+
+def h() -> Dict[Union[str, int], str]:
+    x = {'a': 'a'}
+    return x # E: Incompatible return value type (got Dict[str, str], expected Dict[Union[str, int], str]) \
+# N: Perhaps you need a type annotation for "x"? Suggestion: Dict[Union[str, int], str]
+
+def i() -> List[Union[int, float]]:
+    x: List[int] = [1]
+    return x # E: Incompatible return value type (got List[int], expected List[Union[int, float]]) \
+# N: Perhaps you need a type annotation for "x"? Suggestion: List[Union[int, float]]
+
+[builtins fixtures/dict.pyi]
+
+[case testInferredTypeNotSubTypeOfReturnType]
+from typing import Union, List
+def f() -> List[Union[int, float]]:
+    x = ['a']
+    return x # E: Incompatible return value type (got List[str], expected List[Union[int, float]])
+
+def g() -> List[Union[str, int]]:
+    x = ('a', 2)
+    return x # E: Incompatible return value type (got "Tuple[str, int]", expected List[Union[str, int]])
+
+[builtins fixtures/list.pyi]
+
+[case testInferredTypeIsObjectMismatch]
+from typing import Union, Dict, List
+def f() -> Dict[str, Union[str, int]]:
+    x = {'a': 'a', 'b': 2}
+    return x # E: Incompatible return value type (got Dict[str, object], expected Dict[str, Union[str, int]])
+
+def g() -> Dict[str, Union[str, int]]:
+    x: Dict[str, Union[str, int]] = {'a': 'a', 'b': 2}
+    return x
+
+def h() -> List[Union[str, int]]:
+    x = ['a', 2]
+    return x # E: Incompatible return value type (got List[object], expected List[Union[str, int]])
+
+def i() -> List[Union[str, int]]:
+    x: List[Union[str, int]] = ['a', 2]
+    return x
+
+[builtins fixtures/dict.pyi]
