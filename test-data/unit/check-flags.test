@@ -451,6 +451,30 @@ strict_optional = False
 [[mypy-optional]
 strict_optional = True
 
+[case testPerFileStrictOptionalListItemImportOptional]
+# flags: --config-file tmp/mypy.ini
+import standard, optional
+
+[file standard.py]
+import optional
+from typing import List
+def f(x: List[int]) -> None: pass
+f(optional.x)  # OK -- in non-strict Optional context
+f(optional.y)  # OK -- in non-strict Optional context
+
+[file optional.py]
+from typing import Optional, List
+def f(x: List[int]) -> None: pass
+x = []  # type: List[Optional[int]]
+y = []  # type: List[int]
+
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-optional]
+strict_optional = True
+[builtins fixtures/list.pyi]
+
 [case testDisallowImplicitTypesIgnoreMissingTypes]
 # flags: --ignore-missing-imports --disallow-any=unimported
 from missing import MyType
