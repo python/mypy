@@ -292,31 +292,31 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_typeddict_call_with_kwargs(self, callee: TypedDictType,
                                          kwargs: 'OrderedDict[str, Expression]',
                                          context: Context) -> Type:
-        if callee.items.keys() != kwargs.keys():
-            callee_item_names = callee.items.keys()
-            kwargs_item_names = kwargs.keys()
-
+        if not (callee.required_keys <= set(kwargs.keys()) <= set(callee.items.keys())):
+            expected_item_names = [key for key in callee.items.keys()
+                                   if key in callee.required_keys or key in kwargs.keys()]
+            actual_item_names = kwargs.keys()
             self.msg.typeddict_instantiated_with_unexpected_items(
-                expected_item_names=list(callee_item_names),
-                actual_item_names=list(kwargs_item_names),
+                expected_item_names=list(expected_item_names),
+                actual_item_names=list(actual_item_names),
                 context=context)
             return AnyType()
 
         items = OrderedDict()  # type: OrderedDict[str, Type]
         for (item_name, item_expected_type) in callee.items.items():
-            item_value = kwargs[item_name]
-
-            self.chk.check_simple_assignment(
-                lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
-                msg=messages.INCOMPATIBLE_TYPES,
-                lvalue_name='TypedDict item "{}"'.format(item_name),
-                rvalue_name='expression')
+            if item_name in kwargs:
+                item_value = kwargs[item_name]
+                self.chk.check_simple_assignment(
+                    lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
+                    msg=messages.INCOMPATIBLE_TYPES,
+                    lvalue_name='TypedDict item "{}"'.format(item_name),
+                    rvalue_name='expression')
             items[item_name] = item_expected_type
 
         mapping_value_type = join.join_type_list(list(items.values()))
         fallback = self.chk.named_generic_type('typing.Mapping',
                                                [self.chk.str_type(), mapping_value_type])
-        return TypedDictType(items, fallback)
+        return TypedDictType(items, set(callee.required_keys), fallback)
 
     # Types and methods that can be used to infer partial types.
     item_args = {'builtins.list': ['append'],

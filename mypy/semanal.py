@@ -666,6 +666,7 @@ class SemanticAnalyzer(NodeVisitor):
     def analyze_class_body(self, defn: ClassDef) -> Iterator[bool]:
         with self.tvar_scope_frame(self.tvar_scope.class_frame()):
             self.clean_up_bases_and_infer_type_variables(defn)
+            self.analyze_class_keywords(defn)
             if self.analyze_typeddict_classdef(defn):
                 yield False
                 return
@@ -714,6 +715,10 @@ class SemanticAnalyzer(NodeVisitor):
                 self.setup_type_promotion(defn)
 
                 self.leave_class()
+
+    def analyze_class_keywords(self, defn: ClassDef) -> None:
+        for value in defn.keywords.values():
+            value.accept(self)
 
     def enter_class(self, info: TypeInfo) -> None:
         # Remember previous active class
@@ -1213,8 +1218,8 @@ class SemanticAnalyzer(NodeVisitor):
                         isinstance(defn.base_type_exprs[0], RefExpr) and
                         defn.base_type_exprs[0].fullname == 'mypy_extensions.TypedDict'):
                     # Building a new TypedDict
-                    fields, types = self.check_typeddict_classdef(defn)
-                    info = self.build_typeddict_typeinfo(defn.name, fields, types)
+                    fields, types, required_keys = self.check_typeddict_classdef(defn)
+                    info = self.build_typeddict_typeinfo(defn.name, fields, types, required_keys)
                     node.node = info
                     defn.analyzed = TypedDictExpr(info)
                     return True
@@ -1224,38 +1229,43 @@ class SemanticAnalyzer(NodeVisitor):
                        not self.is_typeddict(expr) for expr in defn.base_type_exprs):
                     self.fail("All bases of a new TypedDict must be TypedDict types", defn)
                 typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
-                newfields = []  # type: List[str]
-                newtypes = []  # type: List[Type]
-                tpdict = None  # type: OrderedDict[str, Type]
+                keys = []  # type: List[str]
+                types = []
+                required_keys = set()
                 for base in typeddict_bases:
                     assert isinstance(base, RefExpr)
                     assert isinstance(base.node, TypeInfo)
                     assert isinstance(base.node.typeddict_type, TypedDictType)
-                    tpdict = base.node.typeddict_type.items
-                    newdict = tpdict.copy()
-                    for key in tpdict:
-                        if key in newfields:
+                    base_typed_dict = base.node.typeddict_type
+                    base_items = base_typed_dict.items
+                    valid_items = base_items.copy()
+                    for key in base_items:
+                        if key in keys:
                             self.fail('Cannot overwrite TypedDict field "{}" while merging'
                                       .format(key), defn)
-                            newdict.pop(key)
-                    newfields.extend(newdict.keys())
-                    newtypes.extend(newdict.values())
-                fields, types = self.check_typeddict_classdef(defn, newfields)
-                newfields.extend(fields)
-                newtypes.extend(types)
-                info = self.build_typeddict_typeinfo(defn.name, newfields, newtypes)
+                            valid_items.pop(key)
+                    keys.extend(valid_items.keys())
+                    types.extend(valid_items.values())
+                    required_keys.update(base_typed_dict.required_keys)
+                new_keys, new_types, new_required_keys = self.check_typeddict_classdef(defn, keys)
+                keys.extend(new_keys)
+                types.extend(new_types)
+                required_keys.update(new_required_keys)
+                info = self.build_typeddict_typeinfo(defn.name, keys, types, required_keys)
                 node.node = info
                 defn.analyzed = TypedDictExpr(info)
                 return True
         return False
 
     def check_typeddict_classdef(self, defn: ClassDef,
-                                 oldfields: List[str] = None) -> Tuple[List[str], List[Type]]:
+                                 oldfields: List[str] = None) -> Tuple[List[str],
+                                                                       List[Type],
+                                                                       Set[str]]:
         TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
                               'expected "field_name: field_type"')
         if self.options.python_version < (3, 6):
             self.fail('TypedDict class syntax is only supported in Python 3.6', defn)
-            return [], []
+            return [], [], set()
         fields = []  # type: List[str]
         types = []  # type: List[Type]
         for stmt in defn.defs.body:
@@ -1286,7 +1296,14 @@ class SemanticAnalyzer(NodeVisitor):
                 elif not isinstance(stmt.rvalue, TempNode):
                     # x: int assigns rvalue to TempNode(AnyType())
                     self.fail('Right hand side values are not supported in TypedDict', stmt)
-        return fields, types
+        total = True
+        if 'total' in defn.keywords:
+            total = self.parse_bool(defn.keywords['total'])
+            if total is None:
+                self.fail('Value of "total" must be True or False', defn)
+                total = True
+        required_keys = set(fields) if total else set()
+        return fields, types, required_keys
 
     def visit_import(self, i: Import) -> None:
         for id, as_id in i.ids:
@@ -2320,46 +2337,65 @@ class SemanticAnalyzer(NodeVisitor):
         fullname = callee.fullname
         if fullname != 'mypy_extensions.TypedDict':
             return None
-        items, types, ok = self.parse_typeddict_args(call, fullname)
+        items, types, total, ok = self.parse_typeddict_args(call, fullname)
         if not ok:
             # Error. Construct dummy return value.
-            return self.build_typeddict_typeinfo('TypedDict', [], [])
-        name = cast(StrExpr, call.args[0]).value
-        if name != var_name or self.is_func_scope():
-            # Give it a unique name derived from the line number.
-            name += '@' + str(call.line)
-        info = self.build_typeddict_typeinfo(name, items, types)
-        # Store it as a global just in case it would remain anonymous.
-        # (Or in the nearest class if there is one.)
-        stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
-        if self.type:
-            self.type.names[name] = stnode
+            info = self.build_typeddict_typeinfo('TypedDict', [], [], set())
         else:
-            self.globals[name] = stnode
+            name = cast(StrExpr, call.args[0]).value
+            if name != var_name or self.is_func_scope():
+                # Give it a unique name derived from the line number.
+                name += '@' + str(call.line)
+            required_keys = set(items) if total else set()
+            info = self.build_typeddict_typeinfo(name, items, types, required_keys)
+            # Store it as a global just in case it would remain anonymous.
+            # (Or in the nearest class if there is one.)
+            stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
+            if self.type:
+                self.type.names[name] = stnode
+            else:
+                self.globals[name] = stnode
         call.analyzed = TypedDictExpr(info)
         call.analyzed.set_line(call.line, call.column)
         return info
 
     def parse_typeddict_args(self, call: CallExpr,
-                             fullname: str) -> Tuple[List[str], List[Type], bool]:
+                             fullname: str) -> Tuple[List[str], List[Type], bool, bool]:
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
             return self.fail_typeddict_arg("Too few arguments for TypedDict()", call)
-        if len(args) > 2:
+        if len(args) > 3:
             return self.fail_typeddict_arg("Too many arguments for TypedDict()", call)
         # TODO: Support keyword arguments
-        if call.arg_kinds != [ARG_POS, ARG_POS]:
+        if call.arg_kinds not in ([ARG_POS, ARG_POS], [ARG_POS, ARG_POS, ARG_NAMED]):
             return self.fail_typeddict_arg("Unexpected arguments to TypedDict()", call)
+        if len(args) == 3 and call.arg_names[2] != 'total':
+            return self.fail_typeddict_arg(
+                'Unexpected keyword argument "{}" for "TypedDict"'.format(call.arg_names[2]), call)
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             return self.fail_typeddict_arg(
                 "TypedDict() expects a string literal as the first argument", call)
         if not isinstance(args[1], DictExpr):
             return self.fail_typeddict_arg(
                 "TypedDict() expects a dictionary literal as the second argument", call)
+        total = True
+        if len(args) == 3:
+            total = self.parse_bool(call.args[2])
+            if total is None:
+                return self.fail_typeddict_arg(
+                    'TypedDict() "total" argument must be True or False', call)
         dictexpr = args[1]
         items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
-        return items, types, ok
+        return items, types, total, ok
+
+    def parse_bool(self, expr: Expression) -> Optional[bool]:
+        if isinstance(expr, NameExpr):
+            if expr.fullname == 'builtins.True':
+                return True
+            if expr.fullname == 'builtins.False':
+                return False
+        return None
 
     def parse_typeddict_fields_with_types(self, dict_items: List[Tuple[Expression, Expression]],
                                           context: Context) -> Tuple[List[str], List[Type], bool]:
@@ -2369,21 +2405,24 @@ class SemanticAnalyzer(NodeVisitor):
             if isinstance(field_name_expr, (StrExpr, BytesExpr, UnicodeExpr)):
                 items.append(field_name_expr.value)
             else:
-                return self.fail_typeddict_arg("Invalid TypedDict() field name", field_name_expr)
+                self.fail_typeddict_arg("Invalid TypedDict() field name", field_name_expr)
+                return [], [], False
             try:
                 type = expr_to_unanalyzed_type(field_type_expr)
             except TypeTranslationError:
-                return self.fail_typeddict_arg('Invalid field type', field_type_expr)
+                self.fail_typeddict_arg('Invalid field type', field_type_expr)
+                return [], [], False
             types.append(self.anal_type(type))
         return items, types, True
 
     def fail_typeddict_arg(self, message: str,
-                           context: Context) -> Tuple[List[str], List[Type], bool]:
+                           context: Context) -> Tuple[List[str], List[Type], bool, bool]:
         self.fail(message, context)
-        return [], [], False
+        return [], [], True, False
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
-                                 types: List[Type]) -> TypeInfo:
+                                 types: List[Type],
+                                 required_keys: Set[str]) -> TypeInfo:
         fallback = (self.named_type_or_none('typing.Mapping',
                                             [self.str_type(), self.object_type()])
                     or self.object_type())
@@ -2398,8 +2437,8 @@ class SemanticAnalyzer(NodeVisitor):
         self.patches.append(patch)
 
         info = self.basic_new_typeinfo(name, fallback)
-        info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), fallback)
-
+        info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), required_keys,
+                                            fallback)
         return info
 
     def check_classvar(self, s: AssignmentStmt) -> None:

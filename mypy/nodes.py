@@ -2,6 +2,7 @@
 
 import os
 from abc import abstractmethod
+from collections import OrderedDict
 
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable,
@@ -730,6 +731,7 @@ class ClassDef(Statement):
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = ''  # type: Optional[str]
     decorators = None  # type: List[Expression]
+    keywords = None  # type: OrderedDict[str, Expression]
     analyzed = None  # type: Optional[Expression]
     has_incompatible_baseclass = False
 
@@ -738,13 +740,15 @@ class ClassDef(Statement):
                  defs: 'Block',
                  type_vars: List['mypy.types.TypeVarDef'] = None,
                  base_type_exprs: List[Expression] = None,
-                 metaclass: str = None) -> None:
+                 metaclass: str = None,
+                 keywords: List[Tuple[str, Expression]] = None) -> None:
         self.name = name
         self.defs = defs
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []
         self.metaclass = metaclass
         self.decorators = []
+        self.keywords = OrderedDict(keywords or [])
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
