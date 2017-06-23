@@ -957,7 +957,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     messages.invalid_var_arg(arg_type, context)
                 if (arg_kinds[actual] == nodes.ARG_STAR2 and
                         not self.is_valid_keyword_var_arg(arg_type)):
-                    messages.invalid_keyword_var_arg(arg_type, context)
+                    is_mapping = is_subtype(arg_type, self.chk.named_type('typing.Mapping'))
+                    messages.invalid_keyword_var_arg(arg_type, is_mapping, context)
                 # Get the type of an individual actual argument (for *args
                 # and **args this is the item type, not the collection type).
                 if (isinstance(arg_type, TupleType)
@@ -2260,17 +2261,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Is a type valid as a **kwargs argument?"""
         if self.chk.options.python_version[0] >= 3:
             return is_subtype(typ, self.chk.named_generic_type(
-                'builtins.dict', [self.named_type('builtins.str'),
-                                  AnyType()]))
+                'typing.Mapping', [self.named_type('builtins.str'),
+                                   AnyType()]))
         else:
             return (
                 is_subtype(typ, self.chk.named_generic_type(
-                    'builtins.dict',
+                    'typing.Mapping',
                     [self.named_type('builtins.str'),
                      AnyType()]))
                 or
                 is_subtype(typ, self.chk.named_generic_type(
-                    'builtins.dict',
+                    'typing.Mapping',
                     [self.named_type('builtins.unicode'),
                      AnyType()])))
 

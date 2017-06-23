@@ -740,12 +740,16 @@ class MessageBuilder:
     def invalid_var_arg(self, typ: Type, context: Context) -> None:
         self.fail('List or tuple expected as variable arguments', context)
 
-    def invalid_keyword_var_arg(self, typ: Type, context: Context) -> None:
-        if isinstance(typ, Instance) and (typ.type.fullname() == 'builtins.dict'):
+    def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
+        if isinstance(typ, Instance) and is_mapping:
             self.fail('Keywords must be strings', context)
         else:
-            self.fail('Argument after ** must be a dictionary',
-                      context)
+            suffix = ''
+            if isinstance(typ, Instance):
+                suffix = ', not {}'.format(typ.type.fullname())
+            self.fail(
+                'Argument after ** must be a subtype of Mapping{}'.format(suffix),
+                context)
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
