@@ -1502,19 +1502,22 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return 'Tuple[{}]'.format(s)
 
     def visit_typeddict_type(self, t: TypedDictType) -> str:
-        s = self.keywords_str(t.items.items())
-        if t.required_keys == set(t.items):
-            keys_str = ''
-        elif t.required_keys == set():
-            keys_str = ', _total=False'
-        else:
-            keys_str = ', _required_keys=[{}]'.format(', '.join(sorted(t.required_keys)))
-        if t.fallback and t.fallback.type:
-            if s == '':
-                return 'TypedDict(_fallback={}{})'.format(t.fallback.accept(self), keys_str)
+        def item_str(name: str, typ: str) -> str:
+            if name in t.required_keys:
+                return '{!r}: {}'.format(name, typ)
             else:
-                return 'TypedDict({}, _fallback={}{})'.format(s, t.fallback.accept(self), keys_str)
-        return 'TypedDict({})'.format(s)
+                return '{!r}?: {}'.format(name, typ)
+
+        s = '{' + ', '.join(item_str(name, typ.accept(self))
+                            for name, typ in t.items.items()) + '}'
+        prefix = ''
+        suffix = ''
+        if t.fallback and t.fallback.type:
+            if t.fallback.type.fullname() != 'typing.Mapping':
+                prefix = repr(t.fallback.type.fullname()) + ', '
+            else:
+                suffix = ', fallback={}'.format(t.fallback.accept(self))
+        return 'TypedDict({}{}{})'.format(prefix, s, suffix)
 
     def visit_star_type(self, t: StarType) -> str:
         s = t.type.accept(self)
@@ -1548,15 +1551,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             else:
                 res.append(str(t))
         return ', '.join(res)
-
-    def keywords_str(self, a: Iterable[Tuple[str, Type]]) -> str:
-        """Convert keywords to strings (pretty-print types)
-        and join the results with commas.
-        """
-        return ', '.join([
-            '{}={}'.format(name, t.accept(self))
-            for (name, t) in a
-        ])
 
 
 class TypeQuery(SyntheticTypeVisitor[T]):

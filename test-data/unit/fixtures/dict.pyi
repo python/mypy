@@ -31,6 +31,7 @@ class str: pass # for keyword argument key type
 class unicode: pass # needed for py2 docstrings
 
 class list(Iterable[T], Generic[T]): # needed by some test cases
+    def __getitem__(self, x: int) -> T: pass
     def __iter__(self) -> Iterator[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
 
