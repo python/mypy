@@ -35,20 +35,8 @@ def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
 class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
 
-    line = 0
-    column = 0
     can_be_true = True
     can_be_false = True
-
-    def __init__(self, line: int = -1, column: int = -1) -> None:
-        self.line = line
-        self.column = column
-
-    def get_line(self) -> int:
-        return self.line
-
-    def get_column(self) -> int:
-        return self.column
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         raise RuntimeError('Not implemented')
@@ -123,12 +111,11 @@ class TypeVarDef(mypy.nodes.Context):
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type
     variance = INVARIANT  # type: int
-    line = 0
-    column = 0
 
     def __init__(self, name: str, id: Union[TypeVarId, int], values: List[Type],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1,
                  column: int = -1) -> None:
+        super().__init__(line, column)
         assert values is not None, "No restrictions must be represented by empty list"
         self.name = name
         if isinstance(id, int):
@@ -137,20 +124,12 @@ class TypeVarDef(mypy.nodes.Context):
         self.values = values
         self.upper_bound = upper_bound
         self.variance = variance
-        self.line = line
-        self.column = column
 
     @staticmethod
     def new_unification_variable(old: 'TypeVarDef') -> 'TypeVarDef':
         new_id = TypeVarId.new(meta_level=1)
         return TypeVarDef(old.name, new_id, old.values,
                           old.upper_bound, old.variance, old.line, old.column)
-
-    def get_line(self) -> int:
-        return self.line
-
-    def get_column(self) -> int:
-        return self.column
 
     def __repr__(self) -> str:
         if self.values:
@@ -549,7 +528,7 @@ class CallableType(FunctionLike):
     is_var_arg = False              # Is it a varargs function?  derived from arg_kinds
     is_kw_arg = False
     ret_type = None  # type: Type   # Return value type
-    name = ''   # type: Optional[str] # Name (may be None; for error messages)
+    name = ''   # type: Optional[str]  # Name (may be None; for error messages and plugins)
     definition = None  # type: Optional[SymbolNode] # For error messages.  May be None.
     # Type variables for a generic function
     variables = None  # type: List[TypeVarDef]
@@ -921,12 +900,14 @@ class TypedDictType(Type):
     whose TypeInfo has a typeddict_type that is anonymous.
     """
 
-    items = None  # type: OrderedDict[str, Type]  # (item_name, item_type)
+    items = None  # type: OrderedDict[str, Type]  # item_name -> item_type
+    required_keys = None  # type: Set[str]
     fallback = None  # type: Instance
 
-    def __init__(self, items: 'OrderedDict[str, Type]', fallback: Instance,
-                 line: int = -1, column: int = -1) -> None:
+    def __init__(self, items: 'OrderedDict[str, Type]', required_keys: Set[str],
+                 fallback: Instance, line: int = -1, column: int = -1) -> None:
         self.items = items
+        self.required_keys = required_keys
         self.fallback = fallback
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.items) == 0
@@ -938,6 +919,7 @@ class TypedDictType(Type):
     def serialize(self) -> JsonDict:
         return {'.class': 'TypedDictType',
                 'items': [[n, t.serialize()] for (n, t) in self.items.items()],
+                'required_keys': sorted(self.required_keys),
                 'fallback': self.fallback.serialize(),
                 }
 
@@ -946,6 +928,7 @@ class TypedDictType(Type):
         assert data['.class'] == 'TypedDictType'
         return TypedDictType(OrderedDict([(n, deserialize_type(t))
                                           for (n, t) in data['items']]),
+                             set(data['required_keys']),
                              Instance.deserialize(data['fallback']))
 
     def as_anonymous(self) -> 'TypedDictType':
@@ -955,14 +938,17 @@ class TypedDictType(Type):
         return self.fallback.type.typeddict_type.as_anonymous()
 
     def copy_modified(self, *, fallback: Instance = None,
-                      item_types: List[Type] = None) -> 'TypedDictType':
+                      item_types: List[Type] = None,
+                      required_keys: Set[str] = None) -> 'TypedDictType':
         if fallback is None:
             fallback = self.fallback
         if item_types is None:
             items = self.items
         else:
             items = OrderedDict(zip(self.items, item_types))
-        return TypedDictType(items, fallback, self.line, self.column)
+        if required_keys is None:
+            required_keys = self.required_keys
+        return TypedDictType(items, required_keys, fallback, self.line, self.column)
 
     def create_anonymous_fallback(self, *, value_type: Type) -> Instance:
         anonymous = self.as_anonymous()
@@ -1371,6 +1357,7 @@ class TypeTranslator(TypeVisitor[Type]):
             for (item_name, item_type) in t.items.items()
         ])
         return TypedDictType(items,
+                             t.required_keys,
                              # TODO: This appears to be unsafe.
                              cast(Any, t.fallback.accept(self)),
                              t.line, t.column)
@@ -1516,11 +1503,17 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> str:
         s = self.keywords_str(t.items.items())
+        if t.required_keys == set(t.items):
+            keys_str = ''
+        elif t.required_keys == set():
+            keys_str = ', _total=False'
+        else:
+            keys_str = ', _required_keys=[{}]'.format(', '.join(sorted(t.required_keys)))
         if t.fallback and t.fallback.type:
             if s == '':
-                return 'TypedDict(_fallback={})'.format(t.fallback.accept(self))
+                return 'TypedDict(_fallback={}{})'.format(t.fallback.accept(self), keys_str)
             else:
-                return 'TypedDict({}, _fallback={})'.format(s, t.fallback.accept(self))
+                return 'TypedDict({}, _fallback={}{})'.format(s, t.fallback.accept(self), keys_str)
         return 'TypedDict({})'.format(s)
 
     def visit_star_type(self, t: StarType) -> str:

@@ -201,7 +201,8 @@ class TypeCheckSuite(DataSuite):
         for line in a:
             m = re.match(r'([^\s:]+):\d+: error:', line)
             if m:
-                p = m.group(1).replace('/', os.path.sep)
+                # Normalize to Linux paths.
+                p = m.group(1).replace(os.path.sep, '/')
                 hits.add(p)
         return hits
 
@@ -228,7 +229,7 @@ class TypeCheckSuite(DataSuite):
         missing = {}
         for id, path in modules.items():
             meta = build.find_cache_meta(id, path, manager)
-            if not build.is_meta_fresh(meta, id, path, manager):
+            if not build.validate_meta(meta, id, path, manager):
                 missing[id] = path
         return set(missing.values())
 

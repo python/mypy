@@ -176,6 +176,76 @@ z.py:1: error: Function is missing a type annotation
 z.py:4: error: Call to untyped function "f" in typed context
 x.py:1: error: Function is missing a type annotation
 
+[case testPerFileConfigSectionUntypedWithDisallowUnannotated]
+# cmd: mypy w.py x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+disallow_any = unannotated
+[[mypy-y*]
+disallow_any =
+[[mypy-z*]
+disallow_untyped_defs = True
+[[mypy-w*]
+disallow_untyped_defs = False
+[file x.py]
+def f(a):
+    pass
+[file y.py]
+def f(a):
+    pass
+[file z.py]
+def f(a):
+    pass
+[file w.py]
+def f(a):
+    pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
+[case testPerFileConfigSectionDisallowUnannotatedWithUntyped]
+# cmd: mypy x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+disallow_untyped_defs = True
+[[mypy-y*]
+disallow_any =
+[[mypy-z*]
+disallow_any = unannotated
+[file x.py]
+def f(a):
+    pass
+[file y.py]
+def f(a):
+    pass
+[file z.py]
+def f(a):
+    pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
+[case testPerFileConfigSectionDisallowUnannotatedNoOverride]
+# cmd: mypy x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+[[mypy-x*]
+disallow_untyped_defs = True
+[[mypy-z*]
+disallow_any = unannotated
+[file x.py]
+def f(a):
+    pass
+[file y.py]
+def f(a):
+    pass
+[file z.py]
+def f(a):
+    pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
 [case testPerFileConfigSectionMultipleMatches]
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file mypy.ini]
@@ -258,6 +328,9 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 strict_optional = True
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (strict_optional)
+
+[case testAnyExprReportDivisionByZero]
+# cmd: mypy --any-exprs-report=out -c 'pass'
 
 [case testCoberturaParser]
 # cmd: mypy --cobertura-xml-report build pkg

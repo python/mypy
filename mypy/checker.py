@@ -57,7 +57,7 @@ from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
 from mypy.options import Options
-from mypy.plugin import Plugin
+from mypy.plugin import Plugin, CheckerPluginInterface
 
 from mypy import experiments
 
@@ -80,7 +80,7 @@ DeferredNode = NamedTuple(
     ])
 
 
-class TypeChecker(NodeVisitor[None]):
+class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     """Mypy type checker.
 
     Type check mypy source files that have been semantically analyzed.
@@ -1736,7 +1736,9 @@ class TypeChecker(NodeVisitor[None]):
             # '...' is always a valid initializer in a stub.
             return AnyType()
         else:
-            rvalue_type = self.expr_checker.accept(rvalue, lvalue_type)
+            always_allow_any = lvalue_type is not None and not isinstance(lvalue_type, AnyType)
+            rvalue_type = self.expr_checker.accept(rvalue, lvalue_type,
+                                                   always_allow_any=always_allow_any)
             if isinstance(rvalue_type, DeletedType):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if isinstance(lvalue_type, DeletedType):
@@ -1855,7 +1857,7 @@ class TypeChecker(NodeVisitor[None]):
                         del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
-        self.expr_checker.accept(s.expr, allow_none_return=True)
+        self.expr_checker.accept(s.expr, allow_none_return=True, always_allow_any=True)
 
     def visit_return_stmt(self, s: ReturnStmt) -> None:
         """Type check a return statement."""
@@ -2265,6 +2267,7 @@ class TypeChecker(NodeVisitor[None]):
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e,
                                                    callable_name=fullname)
+        self.check_untyped_after_decorator(sig, e.func)
         sig = cast(FunctionLike, sig)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
@@ -2292,6 +2295,13 @@ class TypeChecker(NodeVisitor[None]):
             else:
                 self.check_with_item(expr, target, s.target_type is None)
         self.accept(s.body)
+
+    def check_untyped_after_decorator(self, typ: Type, func: FuncDef) -> None:
+        if 'decorated' not in self.options.disallow_any or self.is_stub:
+            return
+
+        if mypy.checkexpr.has_any_type(typ):
+            self.msg.untyped_decorated_function(typ, func)
 
     def check_async_with_item(self, expr: Expression, target: Expression,
                               infer_lvalue_type: bool) -> None:

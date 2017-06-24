@@ -228,8 +228,19 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TypedDictType):
             if not left.names_are_wider_than(right):
                 return False
-            for (_, l, r) in left.zip(right):
+            for name, l, r in left.zip(right):
                 if not is_equivalent(l, r, self.check_type_parameter):
+                    return False
+                # Non-required key is not compatible with a required key since
+                # indexing may fail unexpectedly if a required key is missing.
+                # Required key is not compatible with a non-required key since
+                # the prior doesn't support 'del' but the latter should support
+                # it.
+                #
+                # NOTE: 'del' support is currently not implemented (#3550). We
+                #       don't want to have to change subtyping after 'del' support
+                #       lands so here we are anticipating that change.
+                if (name in left.required_keys) != (name in right.required_keys):
                     return False
             # (NOTE: Fallbacks don't matter.)
             return True
