@@ -1,3 +1,5 @@
 recursive-include scripts *
 recursive-include test-data *
+recursive-include extensions *
 include runtests.py
+include mypy_self_check.ini mypy_strict_optional.ini
