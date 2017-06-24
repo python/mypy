@@ -1,8 +1,8 @@
 flake8
 flake8-bugbear; python_version >= '3.5'
-flake8-pyi; python_version >= '3.5'
+flake8-pyi; python_version >= '3.6'
 lxml; sys_platform != 'win32' or python_version == '3.5' or python_version == '3.6'
-typed-ast>=1.0.3,<1.1.0; sys_platform != 'win32' or python_version >= '3.5'
+typed-ast>=1.0.4,<1.1.0; sys_platform != 'win32' or python_version >= '3.5'
 pytest>=2.8
 pytest-xdist>=1.13
 pytest-cov>=2.4.0

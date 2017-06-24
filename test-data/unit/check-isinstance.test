@@ -548,7 +548,7 @@ v = A() # type: Union[A, B, C]
 
 if isinstance(v, (B, C)):
     v.method2(123)
-    v.method3('xyz') # E: Some element of union has no attribute "method3"
+    v.method3('xyz') # E: Item "B" of "Union[B, C]" has no attribute "method3"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceNeverWidens]
@@ -945,7 +945,7 @@ def bar() -> None:
           if isinstance(x, int):
              x + 1
           else:
-             x.a     # E: Some element of union has no attribute "a"
+             x.a     # E: Item "str" of "Union[str, A]" has no attribute "a"
           x = 'a'
 
 [builtins fixtures/isinstancelist.pyi]
@@ -1443,7 +1443,7 @@ else:
 [builtins fixtures/isinstancelist.pyi]
 
 
-[case testIssubclasDestructuringUnions]
+[case testIssubclasDestructuringUnions1]
 from typing import Union, List, Tuple, Dict, Type
 def f(x: Union[Type[int], Type[str], Type[List]]) -> None:
     if issubclass(x, (str, (int,))):
@@ -1452,16 +1452,61 @@ def f(x: Union[Type[int], Type[str], Type[List]]) -> None:
         x()[1]  # E: Value of type "Union[int, str]" is not indexable
     else:
         reveal_type(x)  # E: Revealed type is 'Type[builtins.list]'
-        reveal_type(x())  # E: Revealed type is 'builtins.list[<uninhabited>]'
+        reveal_type(x())  # E: Revealed type is 'builtins.list[<nothing>]'
         x()[1]
     reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list]]'
-    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<uninhabited>]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
     if issubclass(x, (str, (list,))):
         reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.str], Type[builtins.list[Any]]]'
-        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[<uninhabited>]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[<nothing>]]'
         x()[1]
     reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
-    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<uninhabited>]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testIssubclasDestructuringUnions2]
+from typing import Union, List, Tuple, Dict, Type
+def f(x: Type[Union[int, str, List]]) -> None:
+    if issubclass(x, (str, (int,))):
+        reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+    else:
+        reveal_type(x)  # E: Revealed type is 'Type[builtins.list]'
+        reveal_type(x())  # E: Revealed type is 'builtins.list[<nothing>]'
+        x()[1]
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+    if issubclass(x, (str, (list,))):
+        reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.str], Type[builtins.list[Any]]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[<nothing>]]'
+        x()[1]
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIssubclasDestructuringUnions3]
+from typing import Union, List, Tuple, Dict, Type
+def f(x: Type[Union[int, str, List]]) -> None:
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+    if issubclass(x, (str, (int,))):
+        reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+    else:
+        reveal_type(x)  # E: Revealed type is 'Type[builtins.list]'
+        reveal_type(x())  # E: Revealed type is 'builtins.list[<nothing>]'
+        x()[1]
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+    if issubclass(x, (str, (list,))):
+        reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.str], Type[builtins.list[Any]]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[<nothing>]]'
+        x()[1]
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
 [builtins fixtures/isinstancelist.pyi]
 
 

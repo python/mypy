@@ -4,7 +4,7 @@
 
 from distutils.core import setup
 
-version = '0.2.0-dev'
+version = '0.3.0-dev'
 description = 'Experimental type system extensions for programs checked with the mypy typechecker.'
 long_description = '''
 Mypy Extensions
@@ -26,6 +26,7 @@ classifiers = [
     'Programming Language :: Python :: 3.3',
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
+    'Programming Language :: Python :: 3.6',
     'Topic :: Software Development',
 ]
 
@@ -34,8 +35,8 @@ setup(
     version=version,
     description=description,
     long_description=long_description,
-    author='David Foster',
-    author_email='david@dafoster.net',
+    author='The mypy developers',
+    author_email='jukka.lehtosalo@iki.fi',
     url='http://www.mypy-lang.org/',
     license='MIT License',
     platforms=['POSIX'],

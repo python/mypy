@@ -24,6 +24,10 @@ from mypy.version import __version__
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
+class InvalidPackageName(Exception):
+    """Exception indicating that a package name was invalid."""
+
+
 def main(script_path: str, args: List[str] = None) -> None:
     """Main entry point to the type checker.
 
@@ -93,6 +97,24 @@ def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) 
                        options=options)
 
 
+disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated']
+
+
+def disallow_any_argument_type(raw_options: str) -> List[str]:
+    if not raw_options:
+        # empty string disables all options
+        return []
+    flag_options = [o.strip() for o in raw_options.split(',')]
+    for option in flag_options:
+        if option not in disallow_any_options:
+            formatted_valid_options = ', '.join(
+                "'{}'".format(o) for o in disallow_any_options)
+            message = "Invalid '--disallow-any' option '{}' (valid options are: {}).".format(
+                option, formatted_valid_options)
+            raise argparse.ArgumentError(None, message)
+    return flag_options
+
+
 FOOTER = """environment variables:
 MYPYPATH     additional module search path"""
 
@@ -121,11 +143,22 @@ class SplitNamespace(argparse.Namespace):
 
 def parse_version(v: str) -> Tuple[int, int]:
     m = re.match(r'\A(\d)\.(\d+)\Z', v)
-    if m:
-        return int(m.group(1)), int(m.group(2))
-    else:
+    if not m:
         raise argparse.ArgumentTypeError(
             "Invalid python version '{}' (expected format: 'x.y')".format(v))
+    major, minor = int(m.group(1)), int(m.group(2))
+    if major == 2:
+        if minor != 7:
+            raise argparse.ArgumentTypeError(
+                "Python 2.{} is not supported (must be 2.7)".format(minor))
+    elif major == 3:
+        if minor <= 2:
+            raise argparse.ArgumentTypeError(
+                "Python 3.{} is not supported (must be 3.3 or higher)".format(minor))
+    else:
+        raise argparse.ArgumentTypeError(
+            "Python major version '{}' out of range (must be 2 or 3)".format(major))
+    return major, minor
 
 
 # Make the help output a little less jarring.
@@ -179,10 +212,14 @@ def process_options(args: List[str],
                             ) -> None:
         if inverse is None:
             inverse = invert_flag_name(flag)
+
+        if help is not argparse.SUPPRESS:
+            help += " (inverse: {})".format(inverse)
+
         arg = parser.add_argument(flag,  # type: ignore  # incorrect stub for add_argument
                                   action='store_false' if default else 'store_true',
                                   dest=dest,
-                                  help=help + " (inverse: {})".format(inverse))
+                                  help=help)
         dest = arg.dest
         arg = parser.add_argument(inverse,  # type: ignore  # incorrect stub for add_argument
                                   action='store_true' if default else 'store_false',
@@ -211,6 +248,10 @@ def process_options(args: List[str],
                         help="silently ignore imports of missing modules")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
+    parser.add_argument('--disallow-any', type=disallow_any_argument_type, default=[],
+                        metavar='{{{}}}'.format(', '.join(disallow_any_options)),
+                        help="disallow various types of Any in a module. Takes a comma-separated "
+                             "list of options (defaults to all options disabled)")
     add_invertible_flag('--disallow-untyped-calls', default=False, strict_flag=True,
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
@@ -240,8 +281,12 @@ def process_options(args: List[str],
     add_invertible_flag('--show-error-context', default=False,
                         dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
+    add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
+                        help="don't assume arguments with default values of None are Optional")
     parser.add_argument('-i', '--incremental', action='store_true',
-                        help="enable module cache")
+                        help="enable module cache, (inverse: --no-incremental)")
+    parser.add_argument('--no-incremental', action='store_false', dest='incremental',
+                        help=argparse.SUPPRESS)
     parser.add_argument('--quick-and-dirty', action='store_true',
                         help="use cache even if dependencies out of date "
                         "(implies --incremental)")
@@ -343,7 +388,7 @@ def process_options(args: List[str],
     parser.parse_args(args, dummy)
     config_file = dummy.config_file
     if config_file is not None and not os.path.exists(config_file):
-        parser.error("Cannot file config file '%s'" % config_file)
+        parser.error("Cannot find config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
     options = Options()
@@ -391,6 +436,9 @@ def process_options(args: List[str],
     if special_opts.no_fast_parser:
         print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
               "is now mypy's default and only parser.")
+
+    if 'unannotated' in options.disallow_any:
+        options.disallow_untyped_defs = True
 
     # Check for invalid argument combinations.
     if require_targets:
@@ -450,9 +498,15 @@ def process_options(args: List[str],
         targets = []
         for f in special_opts.files:
             if f.endswith(PY_EXTENSIONS):
-                targets.append(BuildSource(f, crawl_up(f)[1], None))
+                try:
+                    targets.append(BuildSource(f, crawl_up(f)[1], None))
+                except InvalidPackageName as e:
+                    fail(str(e))
             elif os.path.isdir(f):
-                sub_targets = expand_dir(f)
+                try:
+                    sub_targets = expand_dir(f)
+                except InvalidPackageName as e:
+                    fail(str(e))
                 if not sub_targets:
                     fail("There are no .py[i] files in directory '{}'"
                          .format(f))
@@ -519,10 +573,14 @@ def crawl_up(arg: str) -> Tuple[str, str]:
         dir, base = os.path.split(dir)
         if not base:
             break
+        # Ensure that base is a valid python module name
+        if not base.isidentifier():
+            raise InvalidPackageName('{} is not a valid Python package name'.format(base))
         if mod == '__init__' or not mod:
             mod = base
         else:
             mod = base + '.' + mod
+
     return dir, mod
 
 
@@ -557,16 +615,17 @@ def get_init_file(dir: str) -> Optional[str]:
 # exists to specify types for values initialized to None or container
 # types.
 config_types = {
-    # TODO: Check validity of python version
-    'python_version': lambda s: tuple(map(int, s.split('.'))),
+    'python_version': parse_version,
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
     'custom_typeshed_dir': str,
     'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
     'junit_xml': str,
+    'disallow_any': disallow_any_argument_type,
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
+    'plugins': lambda s: [p.strip() for p in s.split(',')],
 }
 
 SHARED_CONFIG_FILES = ('setup.cfg',)
@@ -667,13 +726,19 @@ def parse_section(prefix: str, template: Options,
             if ct is bool:
                 v = section.getboolean(key)  # type: ignore  # Until better stub
             elif callable(ct):
-                v = ct(section.get(key))
+                try:
+                    v = ct(section.get(key))
+                except argparse.ArgumentTypeError as err:
+                    print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
+                    continue
             else:
                 print("%s: Don't know what type %s should have" % (prefix, key), file=sys.stderr)
                 continue
         except ValueError as err:
             print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
             continue
+        if key == 'disallow_any':
+            results['disallow_untyped_defs'] = v and 'unannotated' in v
         if key == 'silent_imports':
             print("%s: silent_imports has been replaced by "
                   "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)

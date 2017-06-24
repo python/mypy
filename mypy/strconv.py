@@ -505,6 +505,9 @@ class StrConv(NodeVisitor[str]):
     def visit_backquote_expr(self, o: 'mypy.nodes.BackquoteExpr') -> str:
         return self.dump([o.expr], o)
 
+    def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> str:
+        return self.dump([o.type], o)
+
 
 def dump_tagged(nodes: Sequence[object], tag: Optional[str], str_conv: 'StrConv') -> str:
     """Convert an array into a pretty-printed multiline string representation.

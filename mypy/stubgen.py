@@ -73,6 +73,7 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('modules', List[str]),
                                  ('ignore_errors', bool),
                                  ('recursive', bool),
+                                 ('include_private', bool),
                                  ])
 
 
@@ -86,7 +87,8 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
                              pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                              no_import: bool = False,
                              search_path: List[str] = [],
-                             interpreter: str = sys.executable) -> None:
+                             interpreter: str = sys.executable,
+                             include_private: bool = False) -> None:
     target = module.replace('.', '/')
     try:
         result = find_module_path_and_all(module=module,
@@ -118,7 +120,7 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
         target = os.path.join(output_dir, target)
         generate_stub(module_path, output_dir, module_all,
                       target=target, add_header=add_header, module=module,
-                      pyversion=pyversion)
+                      pyversion=pyversion, include_private=include_private)
     if not quiet:
         print('Created %s' % target)
 
@@ -185,7 +187,8 @@ def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optiona
 
 def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
                   target: str = None, add_header: bool = False, module: str = None,
-                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION
+                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+                  include_private: bool = False
                   ) -> None:
     with open(path, 'rb') as f:
         source = f.read()
@@ -199,7 +202,7 @@ def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
             sys.stderr.write('%s\n' % m)
         sys.exit(1)
 
-    gen = StubGenerator(_all_, pyversion=pyversion)
+    gen = StubGenerator(_all_, pyversion=pyversion, include_private=include_private)
     ast.accept(gen)
     if not target:
         target = os.path.join(output_dir, os.path.basename(path))
@@ -223,7 +226,8 @@ NOT_IN_ALL = 'NOT_IN_ALL'
 
 
 class StubGenerator(mypy.traverser.TraverserVisitor):
-    def __init__(self, _all_: Optional[List[str]], pyversion: Tuple[int, int]) -> None:
+    def __init__(self, _all_: Optional[List[str]], pyversion: Tuple[int, int],
+                 include_private: bool = False) -> None:
         self._all_ = _all_
         self._output = []  # type: List[str]
         self._import_lines = []  # type: List[str]
@@ -235,6 +239,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._classes = set()  # type: Set[str]
         self._base_classes = []  # type: List[str]
         self._pyversion = pyversion
+        self._include_private = include_private
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self._classes = find_classes(o)
@@ -515,6 +520,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return False
 
     def is_private_name(self, name: str) -> bool:
+        if self._include_private:
+            return False
         return name.startswith('_') and (not name.endswith('__')
                                          or name in ('__all__',
                                                      '__author__',
@@ -610,7 +617,7 @@ def walk_packages(packages: List[str]) -> Iterator[str]:
 
 
 def main() -> None:
-    options = parse_options()
+    options = parse_options(sys.argv[1:])
     if not os.path.isdir('out'):
         raise SystemExit('Directory "out" does not exist')
     if options.recursive and options.no_import:
@@ -636,7 +643,8 @@ def main() -> None:
                                      pyversion=options.pyversion,
                                      no_import=options.no_import,
                                      search_path=options.search_path,
-                                     interpreter=options.interpreter)
+                                     interpreter=options.interpreter,
+                                     include_private=options.include_private)
         except Exception as e:
             if not options.ignore_errors:
                 raise e
@@ -644,8 +652,7 @@ def main() -> None:
                 print("Stub generation failed for", module, file=sys.stderr)
 
 
-def parse_options() -> Options:
-    args = sys.argv[1:]
+def parse_options(args: List[str]) -> Options:
     pyversion = defaults.PYTHON3_VERSION
     no_import = False
     recursive = False
@@ -653,6 +660,7 @@ def parse_options() -> Options:
     doc_dir = ''
     search_path = []  # type: List[str]
     interpreter = ''
+    include_private = False
     while args and args[0].startswith('-'):
         if args[0] == '--doc-dir':
             doc_dir = args[1]
@@ -673,6 +681,8 @@ def parse_options() -> Options:
             pyversion = defaults.PYTHON2_VERSION
         elif args[0] == '--no-import':
             no_import = True
+        elif args[0] == '--include-private':
+            include_private = True
         elif args[0] in ('-h', '--help'):
             usage()
         else:
@@ -689,7 +699,8 @@ def parse_options() -> Options:
                    interpreter=interpreter,
                    modules=args,
                    ignore_errors=ignore_errors,
-                   recursive=recursive)
+                   recursive=recursive,
+                   include_private=include_private)
 
 
 def default_python2_interpreter() -> str:
@@ -721,6 +732,9 @@ def usage() -> None:
           --no-import     don't import the modules, just parse and analyze them
                           (doesn't work with C extension modules and doesn't
                           respect __all__)
+          --include-private
+                          generate stubs for objects and members considered private
+                          (single leading undescore and no trailing underscores)
           --doc-dir PATH  use .rst documentation in PATH (this may result in
                           better stubs in some cases; consider setting this to
                           DIR/Python-X.Y.Z/Doc/library)

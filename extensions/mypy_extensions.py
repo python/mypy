@@ -5,6 +5,8 @@ Example usage:
     from mypy_extensions import TypedDict
 """
 
+from typing import Any
+
 # NOTE: This module must support Python 2.7 in addition to Python 3.x
 
 import sys
@@ -28,16 +30,18 @@ def _dict_new(cls, *args, **kwargs):
 
 
 def _typeddict_new(cls, _typename, _fields=None, **kwargs):
+    total = kwargs.pop('total', True)
     if _fields is None:
         _fields = kwargs
     elif kwargs:
         raise TypeError("TypedDict takes either a dict or keyword arguments,"
                         " but not both")
-    return _TypedDictMeta(_typename, (), {'__annotations__': dict(_fields)})
+    return _TypedDictMeta(_typename, (), {'__annotations__': dict(_fields),
+                                          '__total__': total})
 
 
 class _TypedDictMeta(type):
-    def __new__(cls, name, bases, ns):
+    def __new__(cls, name, bases, ns, total=True):
         # Create new typed dict class object.
         # This method is called directly when TypedDict is subclassed,
         # or via _typeddict_new when TypedDict is instantiated. This way
@@ -57,6 +61,8 @@ class _TypedDictMeta(type):
         for base in bases:
             anns.update(base.__dict__.get('__annotations__', {}))
         tp_dict.__annotations__ = anns
+        if not hasattr(tp_dict, '__total__'):
+            tp_dict.__total__ = total
         return tp_dict
 
     __instancecheck__ = __subclasscheck__ = _check_fails
@@ -91,6 +97,40 @@ TypedDict.__doc__ = \
     The latter syntax is only supported in Python 3.6+, while two other
     syntax forms work for Python 2.7 and 3.2+
     """
+
+# Argument constructors for making more-detailed Callables. These all just
+# return their type argument, to make them complete noops in terms of the
+# `typing` module.
+
+
+def Arg(type=Any, name=None):
+    """A normal positional argument"""
+    return type
+
+
+def DefaultArg(type=Any, name=None):
+    """A positional argument with a default value"""
+    return type
+
+
+def NamedArg(type=Any, name=None):
+    """A keyword-only argument"""
+    return type
+
+
+def DefaultNamedArg(type=Any, name=None):
+    """A keyword-only argument with a default value"""
+    return type
+
+
+def VarArg(type=Any):
+    """A *args-style variadic positional argument"""
+    return type
+
+
+def KwArg(type=Any):
+    """A **kwargs-style variadic keyword argument"""
+    return type
 
 
 # Return type that indicates a function does not return
