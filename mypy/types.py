@@ -1496,7 +1496,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         s = self.list_str(t.items)
         if t.fallback and t.fallback.type:
             fallback_name = t.fallback.type.fullname()
-            if fallback_name not in ('builtins.tuple', 'builtins.object'):
+            if fallback_name != 'builtins.tuple':
                 return 'Tuple[{}, fallback={}]'.format(s, t.fallback.accept(self))
         return 'Tuple[{}]'.format(s)
 
@@ -1747,9 +1747,7 @@ def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -
     if isinstance(tp, Instance):
         return Instance(tp.type, new_args, line, column)
     if isinstance(tp, TupleType):
-        fallback_args = [UnionType.make_simplified_union(new_args)]
-        fallback = tp.fallback.copy_modified(args=fallback_args)
-        return tp.copy_modified(items=new_args, fallback=fallback)
+        return tp.copy_modified(items=new_args)
     if isinstance(tp, UnionType):
         return UnionType(new_args, line, column)
     if isinstance(tp, CallableType):

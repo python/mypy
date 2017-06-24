@@ -23,7 +23,7 @@ class list(Iterable[T], Generic[T]):
     def extend(self, x: Iterable[T]) -> None: pass
 
 _T_co = TypeVar('_T_co', covariant=True)
-class tuple(Sequence[_T_co], Generic[_T_co]): pass
+class tuple(Generic[_T_co]): pass
 class function: pass
 class int: pass
 class float: pass

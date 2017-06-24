@@ -604,10 +604,10 @@ b = s in t
 
 [file builtins.py]
 from typing import TypeVar, Generic
-_T = TypeVar('_T')
+_T_co = TypeVar('_T_co', covariant=True)
 class object:
     def __init__(self) -> None: pass
-class tuple(Generic[_T]):
+class tuple(Generic[_T_co]):
     def __len__(self) -> int: pass
     def __str__(self) -> str: pass
     def __contains__(self, o: object) -> bool: pass

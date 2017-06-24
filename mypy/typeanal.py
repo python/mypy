@@ -240,6 +240,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type]):
                 return t
             info = sym.node  # type: TypeInfo
             if info.fullname() == 'builtins.tuple':
+                # tuple[int] or tuple[int, ...] are invalid
+                # The naked tuple should use canonical representation with type argument Any
                 assert not t.args
                 return Instance(info, self.anal_array([AnyType()]), t.line, t.column)
             else:
@@ -633,11 +635,6 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def visit_tuple_type(self, t: TupleType) -> None:
         for item in t.items:
             item.accept(self)
-        # if it's not builtins.tuple, then its bases should have tuple[Any]
-        # TODO: put assert here if it's not too slow
-        if isinstance(t.fallback, Instance) and t.fallback.type.fullname() == 'builtins.tuple':
-            fallback_item = UnionType.make_simplified_union(t.items)
-            t.fallback.args = [fallback_item]
 
     def visit_typeddict_type(self, t: TypedDictType) -> None:
         for item_type in t.items.values():
