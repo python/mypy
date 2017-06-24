@@ -3639,7 +3639,8 @@ class FirstPass(NodeVisitor):
             if mod_id == 'builtins':
                 literal_types = [
                     ('None', NoneTyp()),
-                    # reveal_type is a mypy-only function that gives an error with the type of its arg
+                    # reveal_type is a mypy-only function that gives an error with
+                    # the type of its arg.
                     ('reveal_type', AnyType()),
                 ]  # type: List[Tuple[str, Type]]
 
