@@ -163,8 +163,8 @@ b = t1[0] # E: Incompatible types in assignment (expression has type "A", variab
 t1[2]     # E: Tuple index out of range
 t1[3]     # E: Tuple index out of range
 t2[1]     # E: Tuple index out of range
-t1[n]     # E: Tuple index must be an integer literal
-t3[n:]    # E: Tuple slice must be an integer literal
+reveal_type(t1[n])     # E: Revealed type is 'Union[__main__.A, __main__.B]'
+reveal_type(t3[n:])    # E: Revealed type is 'Union[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E]'
 b = t1[(0)] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 a = t1[0]
@@ -925,4 +925,20 @@ f(())
 f((1,))  # E: Argument 1 to "f" has incompatible type "Tuple[int]"; expected "Tuple[]"
 f(('', ''))  # E: Argument 1 to "f" has incompatible type "Tuple[str, str]"; expected "Tuple[]"
 f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[]"
+[builtins fixtures/tuple.pyi]
+
+[case testNonliteralTupleIndex]
+t = (0, "")
+x = 0
+y = ""
+reveal_type(t[x])  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+t[y]  # E: Invalid tuple index type (actual type "str", expected type "Union[int, slice]")
+[builtins fixtures/tuple.pyi]
+
+[case testNonliteralTupleSlice]
+t = (0, "")
+x = 0
+y = ""
+reveal_type(t[x:])  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+t[y:]  # E: Slice index must be an integer or None
 [builtins fixtures/tuple.pyi]

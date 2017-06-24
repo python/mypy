@@ -54,8 +54,7 @@ INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
 INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
 MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
-TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must be an integer literal'
-TUPLE_SLICE_MUST_BE_AN_INT_LITERAL = 'Tuple slice must be an integer literal'
+INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
 NEED_ANNOTATION_FOR_VAR = 'Need type annotation for variable'
 ITERABLE_EXPECTED = 'Iterable expected'
@@ -84,7 +83,7 @@ ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'
 INVALID_TYPEDDICT_ARGS = \
     'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
 TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
-    'Expected TypedDict item name to be string literal'
+    'Expected TypedDict key to be string literal'
 MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
@@ -192,7 +191,8 @@ class MessageBuilder:
             if func.is_type_obj():
                 # The type of a type object type can be derived from the
                 # return type (this always works).
-                return self.format(TypeType(erase_type(func.items()[0].ret_type)), verbosity)
+                return self.format(TypeType.make_normalized(erase_type(func.items()[0].ret_type)),
+                                   verbosity)
             elif isinstance(func, CallableType):
                 return_type = strip_quotes(self.format(func.ret_type))
                 if func.is_ellipsis_args:
@@ -871,30 +871,55 @@ class MessageBuilder:
     def redundant_cast(self, typ: Type, context: Context) -> None:
         self.note('Redundant cast to {}'.format(self.format(typ)), context)
 
+    def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
+        self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
+                  ctx)
+
     def typeddict_instantiated_with_unexpected_items(self,
                                                      expected_item_names: List[str],
                                                      actual_item_names: List[str],
                                                      context: Context) -> None:
-        self.fail('Expected items {} but found {}.'.format(
-            expected_item_names, actual_item_names), context)
+        if not expected_item_names:
+            expected = '(no keys)'
+        else:
+            expected = format_key_list(expected_item_names)
+        found = format_key_list(actual_item_names, short=True)
+        if actual_item_names and set(actual_item_names) < set(expected_item_names):
+            found = 'only {}'.format(found)
+        self.fail('Expected {} but found {}'.format(expected, found), context)
 
     def typeddict_item_name_must_be_string_literal(self,
                                                    typ: TypedDictType,
                                                    context: Context,
                                                    ) -> None:
-        self.fail('Cannot prove expression is a valid item name; expected one of {}'.format(
-            format_item_name_list(typ.items.keys())), context)
+        self.fail(
+            'TypedDict key must be a string literal; expected one of {}'.format(
+                format_item_name_list(typ.items.keys())), context)
 
     def typeddict_item_name_not_found(self,
                                       typ: TypedDictType,
                                       item_name: str,
                                       context: Context,
                                       ) -> None:
-        self.fail('\'{}\' is not a valid item name; expected one of {}'.format(
+        self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
             item_name, format_item_name_list(typ.items.keys())), context)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
+
+    def disallowed_any_type(self, typ: Type, context: Context) -> None:
+        if isinstance(typ, AnyType):
+            message = 'Expression has type "Any"'
+        else:
+            message = 'Expression type contains "Any" (has type {})'.format(self.format(typ))
+        self.fail(message, context)
+
+    def untyped_decorated_function(self, typ: Type, context: Context) -> None:
+        if isinstance(typ, AnyType):
+            self.fail("Function is untyped after decorator transformation", context)
+        else:
+            self.fail('Type of decorated function contains type "Any" ({})'.format(
+                self.format(typ)), context)
 
 
 def capitalize(s: str) -> str:
@@ -942,9 +967,9 @@ def format_string_list(s: Iterable[str]) -> str:
 def format_item_name_list(s: Iterable[str]) -> str:
     l = list(s)
     if len(l) <= 5:
-        return '[' + ', '.join(["'%s'" % name for name in l]) + ']'
+        return '(' + ', '.join(["'%s'" % name for name in l]) + ')'
     else:
-        return '[' + ', '.join(["'%s'" % name for name in l[:5]]) + ', ...]'
+        return '(' + ', '.join(["'%s'" % name for name in l[:5]]) + ', ...)'
 
 
 def callable_name(type: CallableType) -> str:
@@ -1021,3 +1046,14 @@ def make_inferred_type_note(context: Context, subtype: Type,
         return 'Perhaps you need a type annotation for "{}"? Suggestion: {}'.format(
             var_name, supertype_str)
     return ''
+
+
+def format_key_list(keys: List[str], *, short: bool = False) -> str:
+    reprs = [repr(key) for key in keys]
+    td = '' if short else 'TypedDict '
+    if len(keys) == 0:
+        return 'no {}keys'.format(td)
+    elif len(keys) == 1:
+        return '{}key {}'.format(td, reprs[0])
+    else:
+        return '{}keys ({})'.format(td, ', '.join(reprs))

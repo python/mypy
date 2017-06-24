@@ -126,7 +126,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         # union of instances or Any).  Sadly we can't report errors
         # here yet.
         item = t.item.accept(self)
-        return TypeType(item)
+        return TypeType.make_normalized(item)
 
     def expand_types(self, types: Iterable[Type]) -> List[Type]:
         a = []  # type: List[Type]

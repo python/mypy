@@ -594,3 +594,12 @@ x: Optional[Union[int, str]]
 reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.None]'
 y: Optional[Union[int, None]]
 reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+
+[case testUnionTruthinessTracking]
+from typing import Optional, Any
+def test_or_shortcut(value: Optional[Any]) -> None:
+    if not value:
+        pass
+    if not value or value.get('foo') == 'hello':
+        pass
+[builtins fixtures/bool.pyi]
