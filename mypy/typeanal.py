@@ -283,7 +283,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                                             fallback=instance)
                 return instance
         else:
-            self.implicit_any('Fallback', t)
+            self.implicit_any('Unknown type converted to Any', t)
             return AnyType()
 
     def get_type_var_names(self, tp: Type) -> List[str]:

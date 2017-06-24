@@ -168,7 +168,7 @@ def f() -> Any: return g()
 
 [case testWarnImplicitAny]
 # flags: --warn-implicit-any
-from typing import TypeVar, List, Tuple, Generic, Callable, Union
+from typing import TypeVar, List, Tuple, Generic, Callable, Union, Type, ClassVar, Any
 
 T = TypeVar('T')
 U = TypeVar('U')
@@ -186,6 +186,14 @@ a4: list  # E: Type Any created implicitly: builtins.list without type args
 a5: List # E: Type Any created implicitly: builtins.list without type args
 a6: X  # E: Type Any created implicitly: __main__.X without type args
 a7: Y  # E: Type Any created implicitly: __main__.Y without type args
+a8: Type  # E: Type Any created implicitly: Type without type args
+
+class C:
+    c: ClassVar  # E: Type Any created implicitly: ClassVar without type args
+
+C1: Any = 5
+
+class C2(C1): ...  # E: Type Any created implicitly: Assigning value of type Any
 
 def f(x: X) -> None:  # E: Type Any created implicitly: __main__.X without type args
     pass
