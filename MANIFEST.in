@@ -1,4 +1,3 @@
 recursive-include scripts *
-recursive-exclude scripts myunit
 recursive-include test-data *
 include runtests.py
