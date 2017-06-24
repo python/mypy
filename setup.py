@@ -92,9 +92,6 @@ classifiers = [
 ]
 
 
-package_dir = {'mypy': 'mypy'}
-
-
 # These requirements are used when installing by other means than bdist_wheel.
 # E.g. "pip3 install ." or
 # "pip3 install git+git://github.com/python/mypy.git"
@@ -113,9 +110,8 @@ setup(name='mypy',
       url='http://www.mypy-lang.org/',
       license='MIT License',
       platforms=['POSIX'],
-      package_dir=package_dir,
       py_modules=[],
-      packages=['mypy'],
+      packages=['mypy', 'mypy.test', 'mypy.myunit'],
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
                                         'stubgen=mypy.stubgen:main']},
       data_files=data_files,
