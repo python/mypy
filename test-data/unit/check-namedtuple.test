@@ -286,12 +286,12 @@ from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
 reveal_type(X._make([5, 'a']))  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
-X._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected "Iterable"
+X._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any]
 
 -- # FIX: not a proper class method
 -- x = None  # type: X
 -- reveal_type(x._make([5, 'a']))  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
--- x._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected "Iterable"
+-- x._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any]
 
 [builtins fixtures/list.pyi]
 

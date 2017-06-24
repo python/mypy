@@ -1122,7 +1122,7 @@ class MyDDict(t.DefaultDict[int,T], t.Generic[T]):
 MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
-_program.py:6: error: Argument 1 to "defaultdict" has incompatible type Type[list]; expected Callable[[], str]
+_program.py:6: error: Argument 1 to "defaultdict" has incompatible type Type[List[Any]]; expected Callable[[], str]
 _program.py:9: error: Invalid index type "str" for defaultdict[int, str]; expected type "int"
 _program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
 _program.py:19: error: Dict entry 0 has incompatible type "str": List[<nothing>]
@@ -1332,8 +1332,8 @@ reveal_type(g)
 with f('') as s:
     reveal_type(s)
 [out]
-_program.py:13: error: Revealed type is 'def (x: builtins.int) -> contextlib.GeneratorContextManager[builtins.str*]'
-_program.py:14: error: Revealed type is 'def (*x: builtins.str) -> contextlib.GeneratorContextManager[builtins.int*]'
+_program.py:13: error: Revealed type is 'def (x: builtins.int) -> contextlib.ContextManager[builtins.str*]'
+_program.py:14: error: Revealed type is 'def (*x: builtins.str) -> contextlib.ContextManager[builtins.int*]'
 _program.py:16: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 _program.py:17: error: Revealed type is 'builtins.str*'
 

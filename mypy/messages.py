@@ -253,7 +253,7 @@ class MessageBuilder:
                 base_str = itype.type.fullname()
             else:
                 base_str = itype.type.name()
-            if itype.args == [] or len(itype.args) == 1 and type(itype.args[0]) == AnyType:
+            if itype.args == []:
                 # No type arguments. Place the type name in quotes to avoid
                 # potential for confusion: otherwise, the type name could be
                 # interpreted as a normal word.

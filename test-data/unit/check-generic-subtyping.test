@@ -305,8 +305,8 @@ a = None # type: A
 c = None # type: C
 bc = None # type: B[C]
 
-a.x = c # E: Incompatible types in assignment (expression has type "C", variable has type "B")
-a.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"; expected "B"
+a.x = c # E: Incompatible types in assignment (expression has type "C", variable has type B[Any])
+a.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"; expected B[Any]
 a.x = bc
 a.f(bc)
 [out]
@@ -325,8 +325,8 @@ class B(Generic[T]):
 
 class A(B):
   def g(self) -> None:
-    self.x = c # E: Incompatible types in assignment (expression has type "C", variable has type "B")
-    self.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"; expected "B"
+    self.x = c # E: Incompatible types in assignment (expression has type "C", variable has type B[Any])
+    self.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"; expected B[Any]
     self.x = bc
     self.f(bc)
 
