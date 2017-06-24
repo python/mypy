@@ -282,7 +282,7 @@ reveal_type(formatter.__call__)  # E: Revealed type is 'def (message: builtins.s
 
 [case testPassingMappingForKeywordVarArg]
 from typing import Mapping
-def f( **kwargs: 'A') -> None: pass
+def f(**kwargs: 'A') -> None: pass
 d = None # type: Mapping[A, A]
 m = None # type: Mapping[str, A]
 f(**d)         # E: Keywords must be strings
@@ -292,7 +292,7 @@ class A: pass
 
 [case testInvalidTypeForKeywordVarArg]
 from typing import Dict
-def f( **kwargs: 'A') -> None: pass
+def f(**kwargs: 'A') -> None: pass
 d = None # type: Dict[A, A]
 f(**d)         # E: Keywords must be strings
 f(**A())       # E: Argument after ** must be a subtype of Mapping, not __main__.A
