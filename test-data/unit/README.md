@@ -114,7 +114,7 @@ For finer control over which unit tests are run and how, you can run
 (use `-n0` for a short pytest run to avoid a long delay while distributed
 computation is being set up):
 
-    $ py.test -v mypy\test\pytest\testextensions.py -n0
+    $ py.test -v mypy/test/pytest/test_extensions.py -n0
     $ py.test -v -k MethodCall -n0
 
     $ PYTHONPATH=$PWD scripts/myunit -m mypy.test.testlex -v '*backslash*'

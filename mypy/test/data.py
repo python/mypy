@@ -517,7 +517,7 @@ def pytest_addoption(parser: Any) -> None:
 # This function name is special to pytest.  See
 # https://docs.pytest.org/en/latest/writing_plugins.html?#_pytest.hookspec.pytest_collect_file
 def pytest_collect_file(parent: pytest.Collector, path: Any) -> pytest.Item:
-    if 'test-data' not in path.dirname:
+    if path.ext != '.test':
         return
     return DataTestCollector(path=path, parent=parent)
 
