@@ -1332,8 +1332,8 @@ reveal_type(g)
 with f('') as s:
     reveal_type(s)
 [out]
-_program.py:13: error: Revealed type is 'def (x: builtins.int) -> contextlib.ContextManager[builtins.str*]'
-_program.py:14: error: Revealed type is 'def (*x: builtins.str) -> contextlib.ContextManager[builtins.int*]'
+_program.py:13: error: Revealed type is 'def (x: builtins.int) -> contextlib.GeneratorContextManager[builtins.str*]'
+_program.py:14: error: Revealed type is 'def (*x: builtins.str) -> contextlib.GeneratorContextManager[builtins.int*]'
 _program.py:16: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 _program.py:17: error: Revealed type is 'builtins.str*'
 
