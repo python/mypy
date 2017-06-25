@@ -3,7 +3,7 @@
 import re
 import subprocess
 from xml.sax.saxutils import escape
-from typing import TypeVar, List, Tuple, Optional, Sequence
+from typing import TypeVar, List, Tuple, Optional, Sequence, Dict
 
 
 T = TypeVar('T')
@@ -37,48 +37,12 @@ def short_type(obj: object) -> str:
     return t.split('.')[-1].rstrip("'>")
 
 
-def indent(s: str, n: int) -> str:
-    """Indent all the lines in s (separated by Newlines) by n spaces."""
-    s = ' ' * n + s
-    s = s.replace('\n', '\n' + ' ' * n)
-    return s
-
-
 def array_repr(a: List[T]) -> List[str]:
     """Return the items of an array converted to strings using Repr."""
     aa = []  # type: List[str]
     for x in a:
         aa.append(repr(x))
     return aa
-
-
-def dump_tagged(nodes: Sequence[object], tag: str) -> str:
-    """Convert an array into a pretty-printed multiline string representation.
-
-    The format is
-      tag(
-        item1..
-        itemN)
-    Individual items are formatted like this:
-     - arrays are flattened
-     - pairs (str : array) are converted recursively, so that str is the tag
-     - other items are converted to strings and indented
-    """
-    a = []  # type: List[str]
-    if tag:
-        a.append(tag + '(')
-    for n in nodes:
-        if isinstance(n, list):
-            if n:
-                a.append(dump_tagged(n, None))
-        elif isinstance(n, tuple):
-            s = dump_tagged(n[1], n[0])
-            a.append(indent(s, 2))
-        elif n:
-            a.append(indent(str(n), 2))
-    if tag:
-        a[-1] += ')'
-    return '\n'.join(a)
 
 
 def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, int]:
@@ -150,3 +114,23 @@ def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str) ->
         xml = ERROR_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt)
     with open(path, 'wb') as f:
         f.write(xml.encode('utf-8'))
+
+
+class IdMapper:
+    """Generate integer ids for objects.
+
+    Unlike id(), these start from 0 and increment by 1, and ids won't
+    get reused across the life-time of IdMapper.
+
+    Assume objects don't redefine __eq__ or __hash__.
+    """
+
+    def __init__(self) -> None:
+        self.id_map = {}  # type: Dict[object, int]
+        self.next_id = 0
+
+    def id(self, o: object) -> int:
+        if o not in self.id_map:
+            self.id_map[o] = self.next_id
+            self.next_id += 1
+        return self.id_map[o]

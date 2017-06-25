@@ -1,7 +1,26 @@
 Revision history
 ================
 
-List of major changes to this document:
+List of major changes:
+
+- May 2017
+    * Publish ``mypy`` version 0.510 on PyPI.
+
+    * Remove option ``--no-fast-parser``.
+
+    * Deprecate option ``--strict-boolean``.
+
+    * Drop support for Python 3.2 as type checking target.
+
+    * Add support for :ref:`overloaded functions with implementations <function-overloading>`.
+
+    * Add :ref:`extended_callable`.
+
+    * Add :ref:`async_generators_and_comprehensions`.
+
+    * Add :ref:`ClassVar <class-var>`.
+
+    * Add :ref:`quick mode <quick-mode>`.
 
 - March 2017
     * Publish ``mypy`` version 0.500 on PyPI.
@@ -12,7 +31,7 @@ List of major changes to this document:
 
     * Add :ref:`variance-of-generics`.
 
-    * Add :ref:`invariance-vs-covariance`.
+    * Add :ref:`variance`.
 
     * Updates to :ref:`python-36`.
 

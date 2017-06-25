@@ -94,16 +94,13 @@ classifiers = [
 
 package_dir = {'mypy': 'mypy'}
 
-scripts = ['scripts/mypy', 'scripts/stubgen']
-if os.name == 'nt':
-    scripts.append('scripts/mypy.bat')
 
 # These requirements are used when installing by other means than bdist_wheel.
 # E.g. "pip3 install ." or
 # "pip3 install git+git://github.com/python/mypy.git"
 # (as suggested by README.md).
 install_requires = []
-install_requires.append('typed-ast >= 1.0.0, < 1.1.0')
+install_requires.append('typed-ast >= 1.0.4, < 1.1.0')
 if sys.version_info < (3, 5):
     install_requires.append('typing >= 3.5.3')
 
@@ -119,7 +116,8 @@ setup(name='mypy',
       package_dir=package_dir,
       py_modules=[],
       packages=['mypy'],
-      scripts=scripts,
+      entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
+                                        'stubgen=mypy.stubgen:main']},
       data_files=data_files,
       classifiers=classifiers,
       cmdclass={'build_py': CustomPythonBuild},

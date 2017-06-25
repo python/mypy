@@ -1,10 +1,9 @@
-from typing import builtinclass, overload, Any, Generic, Sequence, Tuple, TypeVar
+from typing import overload, Any, Generic, Sequence, Tuple, TypeVar
 
 Tco = TypeVar('Tco', covariant=True)
 
 # This is an extension of transform builtins with additional operations.
 
-@builtinclass
 class object:
     def __init__(self) -> None: pass
     def __eq__(self, o: 'object') -> 'bool': pass
@@ -30,6 +29,7 @@ class bool: pass
 class str:
     def __init__(self, x: 'int') -> None: pass
     def __add__(self, x: 'str') -> 'str': pass
+    def __eq__(self, x: object) -> bool: pass
     def startswith(self, x: 'str') -> bool: pass
 
 class unicode: pass
@@ -40,6 +40,7 @@ class int:
     def __mul__(self, x: 'int') -> 'int': pass
     def __mod__(self, x: 'int') -> 'int': pass
     def __floordiv__(self, x: 'int') -> 'int': pass
+    def __pow__(self, x: 'int') -> Any: pass
     def __pos__(self) -> 'int': pass
     def __neg__(self) -> 'int': pass
     def __eq__(self, x: object) -> bool: pass
@@ -54,5 +55,3 @@ class float: pass
 class BaseException: pass
 
 def __print(a1=None, a2=None, a3=None, a4=None): pass
-
-class module: pass

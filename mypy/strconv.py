@@ -3,9 +3,9 @@
 import re
 import os
 
-from typing import Any, List, Tuple, Optional, Union, Sequence
+from typing import Any, List, Tuple, Optional, Union, Sequence, Dict
 
-from mypy.util import dump_tagged, short_type
+from mypy.util import short_type, IdMapper
 import mypy.nodes
 from mypy.visitor import NodeVisitor
 
@@ -21,6 +21,24 @@ class StrConv(NodeVisitor[str]):
         ExpressionStmt:1(
           IntExpr(1)))
     """
+
+    def __init__(self, show_ids: bool = False) -> None:
+        self.show_ids = show_ids
+        self.id_mapper = None  # type: Optional[IdMapper]
+        if show_ids:
+            self.id_mapper = IdMapper()
+
+    def get_id(self, o: object) -> Optional[int]:
+        if self.id_mapper:
+            return self.id_mapper.id(o)
+        return None
+
+    def format_id(self, o: object) -> str:
+        if self.id_mapper:
+            return '<{}>'.format(self.get_id(o))
+        else:
+            return ''
+
     def dump(self, nodes: Sequence[object], obj: 'mypy.nodes.Context') -> str:
         """Convert a list of items to a multiline pretty-printed string.
 
@@ -28,7 +46,11 @@ class StrConv(NodeVisitor[str]):
         number. See mypy.util.dump_tagged for a description of the nodes
         argument.
         """
-        return dump_tagged(nodes, short_type(obj) + ':' + str(obj.get_line()))
+        tag = short_type(obj) + ':' + str(obj.get_line())
+        if self.show_ids:
+            assert self.id_mapper is not None
+            tag += '<{}>'.format(self.get_id(obj))
+        return dump_tagged(nodes, tag, self)
 
     def func_helper(self, o: 'mypy.nodes.FuncItem') -> List[object]:
         """Return a list in a format suitable for dump() that represents the
@@ -320,29 +342,35 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr], o)
 
     def visit_name_expr(self, o: 'mypy.nodes.NameExpr') -> str:
-        return (short_type(o) + '(' + self.pretty_name(o.name, o.kind,
-                                                       o.fullname, o.is_def)
-                + ')')
+        pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_def, o.node)
+        return short_type(o) + '(' + pretty + ')'
 
-    def pretty_name(self, name: str, kind: int, fullname: str, is_def: bool) -> str:
+    def pretty_name(self, name: str, kind: int, fullname: str, is_def: bool,
+                    target_node: 'mypy.nodes.Node' = None) -> str:
         n = name
         if is_def:
             n += '*'
+        if target_node:
+            id = self.format_id(target_node)
+        else:
+            id = ''
         if kind == mypy.nodes.GDEF or (fullname != name and
                                        fullname is not None):
             # Append fully qualified name for global references.
-            n += ' [{}]'.format(fullname)
+            n += ' [{}{}]'.format(fullname, id)
         elif kind == mypy.nodes.LDEF:
             # Add tag to signify a local reference.
-            n += ' [l]'
+            n += ' [l{}]'.format(id)
         elif kind == mypy.nodes.MDEF:
             # Add tag to signify a member reference.
-            n += ' [m]'
+            n += ' [m{}]'.format(id)
+        else:
+            n += id
         return n
 
     def visit_member_expr(self, o: 'mypy.nodes.MemberExpr') -> str:
-        return self.dump([o.expr, self.pretty_name(o.name, o.kind, o.fullname,
-                                                   o.is_def)], o)
+        pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_def, o.node)
+        return self.dump([o.expr, pretty], o)
 
     def visit_yield_expr(self, o: 'mypy.nodes.YieldExpr') -> str:
         return self.dump([o.expr], o)
@@ -476,3 +504,48 @@ class StrConv(NodeVisitor[str]):
 
     def visit_backquote_expr(self, o: 'mypy.nodes.BackquoteExpr') -> str:
         return self.dump([o.expr], o)
+
+    def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> str:
+        return self.dump([o.type], o)
+
+
+def dump_tagged(nodes: Sequence[object], tag: Optional[str], str_conv: 'StrConv') -> str:
+    """Convert an array into a pretty-printed multiline string representation.
+
+    The format is
+      tag(
+        item1..
+        itemN)
+    Individual items are formatted like this:
+     - arrays are flattened
+     - pairs (str, array) are converted recursively, so that str is the tag
+     - other items are converted to strings and indented
+    """
+    from mypy.types import Type, TypeStrVisitor
+
+    a = []  # type: List[str]
+    if tag:
+        a.append(tag + '(')
+    for n in nodes:
+        if isinstance(n, list):
+            if n:
+                a.append(dump_tagged(n, None, str_conv))
+        elif isinstance(n, tuple):
+            s = dump_tagged(n[1], n[0], str_conv)
+            a.append(indent(s, 2))
+        elif isinstance(n, mypy.nodes.Node):
+            a.append(indent(n.accept(str_conv), 2))
+        elif isinstance(n, Type):
+            a.append(indent(n.accept(TypeStrVisitor(str_conv.id_mapper)), 2))
+        elif n:
+            a.append(indent(str(n), 2))
+    if tag:
+        a[-1] += ')'
+    return '\n'.join(a)
+
+
+def indent(s: str, n: int) -> str:
+    """Indent all the lines in s (separated by newlines) by n spaces."""
+    s = ' ' * n + s
+    s = s.replace('\n', '\n' + ' ' * n)
+    return s

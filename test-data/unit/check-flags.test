@@ -44,6 +44,12 @@ def f():
     1 + "str"
 [out]
 main:2: error: Function is missing a type annotation
+[case testUntypedDefDisallowUnannotated]
+# flags: --disallow-any=unannotated
+def f():
+    1 + "str"
+[out]
+main:2: error: Function is missing a type annotation
 
 [case testSubclassingAny]
 # flags: --disallow-subclassing-any
@@ -376,3 +382,332 @@ if y:  # E: Condition must be a boolean
 if z:  # E: Condition must be a boolean
   pass
 [builtins fixtures/bool.pyi]
+
+[case testDisallowImplicitTypesIgnoreMissingTypes]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from missing import MyType
+
+def f(x: MyType) -> None:  # E: Argument 1 to "f" becomes "Any" due to an unfollowed import
+    pass
+
+[case testDisallowImplicitTypes]
+# flags: --disallow-any=unimported
+from missing import MyType
+
+def f(x: MyType) -> None:
+    pass
+[out]
+main:2: error: Cannot find module named 'missing'
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:4: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
+
+[case testDisallowImplicitAnyVariableDefinition]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from missing import Unchecked
+
+t: Unchecked = 12  # E: Type of variable becomes "Any" due to an unfollowed import
+
+[case testDisallowImplicitAnyGeneric]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from missing import Unchecked
+from typing import List
+
+def foo(l: List[Unchecked]) -> List[Unchecked]:
+    t = []  # type: List[Unchecked]
+    return l
+[builtins fixtures/list.pyi]
+[out]
+main:5: error: Return type becomes List[Any] due to an unfollowed import
+main:5: error: Argument 1 to "foo" becomes List[Any] due to an unfollowed import
+main:6: error: Type of variable becomes List[Any] due to an unfollowed import
+
+[case testDisallowImplicitAnyInherit]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from missing import Unchecked
+from typing import List
+
+class C(Unchecked): # E: Base type Unchecked becomes "Any" due to an unfollowed import
+    pass
+
+class A(List[Unchecked]): # E: Base type becomes List[Any] due to an unfollowed import
+    pass
+[builtins fixtures/list.pyi]
+
+[case testDisallowImplicitAnyAlias]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from missing import Unchecked
+from typing import List
+
+X = List[Unchecked]
+
+def f(x: X) -> None:  # E: Argument 1 to "f" becomes List[Any] due to an unfollowed import
+    pass
+[builtins fixtures/list.pyi]
+
+[case testDisallowImplicitAnyCast]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from missing import Unchecked
+from typing import List, cast
+
+
+foo = [1, 2, 3]
+cast(List[Unchecked], foo)  # E: Target type of cast becomes List[Any] due to an unfollowed import
+cast(Unchecked, foo)  # E: Target type of cast becomes "Any" due to an unfollowed import
+[builtins fixtures/list.pyi]
+
+[case testDisallowImplicitAnyNamedTuple]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from typing import List, NamedTuple
+from missing import Unchecked
+
+Point = NamedTuple('Point', [('x', List[Unchecked]),
+                             ('y', Unchecked)])
+[builtins fixtures/list.pyi]
+[out]
+main:5: error: NamedTuple type becomes "Tuple[List[Any], Any]" due to an unfollowed import
+
+[case testDisallowImplicitAnyTypeVarConstraints]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from typing import List, NamedTuple, TypeVar, Any
+from missing import Unchecked
+
+T = TypeVar('T', Unchecked, List[Unchecked], str)
+[builtins fixtures/list.pyi]
+[out]
+main:5: error: Constraint 1 becomes "Any" due to an unfollowed import
+main:5: error: Constraint 2 becomes List[Any] due to an unfollowed import
+
+[case testDisallowImplicitAnyNewType]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from typing import NewType, List
+from missing import Unchecked
+
+Baz = NewType('Baz', Unchecked)  # E: Argument 2 to NewType(...) must be subclassable (got Any)
+Bar = NewType('Bar', List[Unchecked])  # E: Argument 2 to NewType(...) becomes List[Any] due to an unfollowed import
+
+[builtins fixtures/list.pyi]
+
+[case testDisallowImplicitAnyCallableAndTuple]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from typing import Callable, Tuple
+from missing import Unchecked
+
+def foo(f: Callable[[], Unchecked]) -> Tuple[Unchecked]:
+    return f()
+[builtins fixtures/list.pyi]
+[out]
+main:5: error: Return type becomes "Tuple[Any]" due to an unfollowed import
+main:5: error: Argument 1 to "foo" becomes Callable[[], Any] due to an unfollowed import
+
+[case testDisallowImplicitAnySubclassingExplicitAny]
+# flags: --ignore-missing-imports --disallow-any=unimported --disallow-subclassing-any
+from typing import Any
+
+class C(Any): # E: Class cannot subclass 'Any' (has type 'Any')
+    pass
+
+[case testDisallowImplicitAnyVarDeclaration]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from missing import Unchecked
+
+foo: Unchecked = ""
+foo = ""
+x, y = 1, 2  # type: Unchecked, Unchecked
+[out]
+main:4: error: Type of variable becomes "Any" due to an unfollowed import
+main:6: error: A type on this line becomes "Any" due to an unfollowed import
+
+[case testDisallowAnyDecoratedUnannotatedDecorator]
+# flags: --disallow-any=decorated
+from typing import Any
+
+def d(f):
+    return f
+
+@d
+def f(x: Any) -> Any:  # E: Function is untyped after decorator transformation
+    pass
+@d
+def h(x):  # E: Function is untyped after decorator transformation
+    pass
+[builtins fixtures/list.pyi]
+[case testDisallowAnyDecoratedErrorIsReportedOnlyOnce]
+# flags: --disallow-any=decorated
+
+def d(f):
+    return f
+
+def d2(f):
+    return f
+
+@d
+@d2
+@d
+def f(x: int) -> None: pass  # E: Function is untyped after decorator transformation
+[case testDisallowAnyDecoratedReturnAny]
+# flags: --disallow-any=decorated
+from typing import Any
+
+def d(f) -> Any:
+    return f
+
+@d
+def f() -> None: pass  # E: Function is untyped after decorator transformation
+[builtins fixtures/list.pyi]
+[case testDisallowAnyDecoratedReturnCallable]
+# flags: --disallow-any=decorated
+from typing import Any, Callable
+
+def d(f) -> Callable[..., None]:
+    return f
+
+@d
+def g(i: int, s: str) -> None: pass  # E: Type of decorated function contains type "Any" (Callable[..., None])
+
+[builtins fixtures/list.pyi]
+[case testDisallowAnyDecoratedNonexistentDecorator]
+# flags: --disallow-any=decorated --ignore-missing-imports
+from nonexistent import d
+
+@d
+def f() -> None: pass  # E: Function is untyped after decorator transformation
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyDecoratedPartlyTypedCallable]
+# flags: --disallow-any=decorated --ignore-missing-imports
+from typing import Callable, Any, List
+
+def d(f) -> Callable[[int, Any], Any]: pass
+def d2(f) -> Callable[[int], List[Any]]: pass
+def d3(f) -> Callable[[Any], List[str]]: pass
+
+@d
+def f(i: int, s: str) -> None:  # E: Type of decorated function contains type "Any" (Callable[[int, Any], Any])
+    pass
+@d2
+def g(i: int) -> None:  # E: Type of decorated function contains type "Any" (Callable[[int], List[Any]])
+    pass
+@d3
+def h(i: int) -> None:  # E: Type of decorated function contains type "Any" (Callable[[Any], List[str]])
+    pass
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyDecoratedReturnsCallableNoParams]
+# flags: --disallow-any=decorated
+from typing import Callable
+
+def d(p) -> Callable[[], int]:
+    return p
+
+@d
+def f(i):
+    return i
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyDecoratedDecoratorReturnsNonCallable]
+# flags: --disallow-any=decorated
+def d(p) -> int:
+    return p(0)
+
+@d
+def f(i):
+    return i
+
+[case testDisallowAnyDecoratedUntypedUndecoratedFunction]
+# flags: --disallow-any=decorated
+from typing import Callable
+
+def f(i):  # no error
+    return i
+
+[case testDisallowAnyDecoratedTwoDecorators]
+# flags: --disallow-any=decorated
+from typing import Callable
+
+def typed_dec(f) -> Callable[[], int]: pass
+def untyped_dec(f): pass
+
+@typed_dec
+@untyped_dec
+def f():  # no error
+    return i
+
+@untyped_dec
+@typed_dec
+def g():  # E: Function is untyped after decorator transformation
+    return i
+
+[case testDisallowAnyExprSimple]
+# flags: --disallow-any=expr
+from typing import Any
+def f(s):
+    yield s
+
+x = f(0)  # E: Expression has type "Any"
+for x in f(0):  # E: Expression has type "Any"
+    g(x)  # E: Expression has type "Any"
+
+def g(x) -> Any:
+    yield x  # E: Expression has type "Any"
+
+l = [1, 2, 3]
+l[f(0)]  # E: Expression has type "Any"
+f(l)
+f(f(0))  # E: Expression has type "Any"
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprUnannotatedFunction]
+# flags: --disallow-any=expr
+def g(s):
+    return s
+
+g(0)
+w: int = g(1)
+
+[case testDisallowAnyExprExplicitAnyParam]
+# flags: --disallow-any=expr
+from typing import Any, List
+def f(s: Any) -> None:
+    pass
+
+def g(s: List[Any]) -> None:
+    pass
+
+f(0)
+
+# type of list below is inferred with expected type of List[Any], so that becomes it's type
+# instead of List[str]
+g([''])  # E: Expression type contains "Any" (has type List[Any])
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprAllowsAnyInCast]
+# flags: --disallow-any=expr
+from typing import Any, cast
+class Foo:
+    g: Any = 2
+
+z = cast(int, Foo().g)
+m = cast(Any, Foo().g)  # E: Expression has type "Any"
+k = Foo.g  # E: Expression has type "Any"
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprAllowsAnyInVariableAssignmentWithExplicitTypeAnnotation]
+# flags: --disallow-any=expr
+from typing import Any
+class Foo:
+    g: Any = 2
+
+z: int = Foo().g
+x = Foo().g  # type: int
+m: Any = Foo().g  # E: Expression has type "Any"
+n = Foo().g  # type: Any  # E: Expression has type "Any"
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprGeneric]
+# flags: --disallow-any=expr
+from typing import List
+
+l: List = []
+l.append(1)  # E: Expression type contains "Any" (has type List[Any])
+k = l[0]  # E: Expression type contains "Any" (has type List[Any])  # E: Expression has type "Any"
+[builtins fixtures/list.pyi]

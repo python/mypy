@@ -14,14 +14,15 @@ flag (or its long form ``--help``)::
               [--disallow-untyped-calls] [--disallow-untyped-defs]
               [--check-untyped-defs] [--disallow-subclassing-any]
               [--warn-incomplete-stub] [--warn-redundant-casts]
-              [--warn-no-return] [--warn-unused-ignores] [--show-error-context]
-              [-i] [--cache-dir DIR] [--strict-optional]
-              [--strict-optional-whitelist [GLOB [GLOB ...]]] [--strict]
+              [--no-warn-no-return] [--warn-return-any] [--warn-unused-ignores]
+              [--show-error-context] [-i] [--quick-and-dirty] [--cache-dir DIR]
+              [--strict-optional]
+              [--strict-optional-whitelist [GLOB [GLOB ...]]]
               [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
               [--inferstats] [--custom-typing MODULE]
               [--custom-typeshed-dir DIR] [--scripts-are-modules]
               [--config-file CONFIG_FILE] [--show-column-numbers]
-              [--find-occurrences CLASS.MEMBER] [--strict-boolean]
+              [--find-occurrences CLASS.MEMBER] [--strict] [--strict-boolean]
               [--cobertura-xml-report DIR] [--html-report DIR]
               [--linecount-report DIR] [--linecoverage-report DIR]
               [--memory-xml-report DIR] [--old-html-report DIR]
@@ -273,6 +274,34 @@ Here are some more useful flags:
   re-check your code without ``--strict-optional`` to ensure new type errors
   are not introduced.
 
+.. _disallow-any:
+
+- ``--disallow-any`` disallows various types of ``Any`` in a module.
+  The option takes a comma-separated list of the following values:
+  ``unimported``, ``unannotated``, ``expr``, ``decorated``.
+
+  ``unimported`` disallows usage of types that come from unfollowed imports
+  (such types become aliases for ``Any``). Unfollowed imports occur either
+  when the imported module does not exist or when ``--follow-imports=skip``
+  is set.
+
+  ``unannotated`` disallows function definitions that are not fully
+  typed (i.e. that are missing an explicit type annotation for any
+  of the parameters or the return type). ``unannotated`` option is
+  interchangeable with ``--disallow-untyped-defs``.
+
+  ``expr`` disallows all expressions in the module that have type ``Any``.
+  If an expression of type ``Any`` appears anywhere in the module
+  mypy will output an error unless the expression is immediately
+  used as an argument to ``cast`` or assigned to a variable with an
+  explicit type annotation. In addition, declaring a variable of type ``Any``
+  or casting to type ``Any`` is not allowed. Note that calling functions
+  that take parameters of type ``Any`` is still allowed.
+
+  ``decorated`` disallows functions that have ``Any`` in their signature
+  after decorator transformation.
+
+
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
 
@@ -298,10 +327,31 @@ Here are some more useful flags:
   the base class even though that may not actually be the case.  This
   flag makes mypy raise an error instead.
 
-- ``--incremental`` is an experimental option that enables incremental
-  type checking. When enabled, mypy caches results from previous runs
+.. _incremental:
+
+- ``--incremental`` is an experimental option that enables a module
+  cache. When enabled, mypy caches results from previous runs
   to speed up type checking. Incremental mode can help when most parts
-  of your program haven't changed since the previous mypy run.
+  of your program haven't changed since the previous mypy run.  A
+  companion flag is ``--cache-dir DIR``, which specifies where the
+  cache files are written.  By default this is ``.mypy_cache`` in the
+  current directory.  While the cache is only read in incremental
+  mode, it is written even in non-incremental mode, in order to "warm"
+  the cache.  To disable writing the cache, use
+  ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul`` (Windows).
+  Cache files belonging to a different mypy version are ignored.
+
+.. _quick-mode:
+
+- ``--quick-and-dirty`` is an experimental, unsafe variant of
+  :ref:`incremental mode <incremental>`.  Quick mode is faster than
+  regular incremental mode, because it only re-checks modules that
+  were modified since their cache file was last written (regular
+  incremental mode also re-checks all modules that depend on one or
+  more modules that were re-checked).  Quick mode is unsafe because it
+  may miss problems caused by a change in a dependency.  Quick mode
+  updates the cache, but regular incremental mode ignores cache files
+  written by quick mode.
 
 - ``--python-version X.Y`` will make mypy typecheck your code as if it were
   run under Python version X.Y. Without this option, mypy will default to using
@@ -365,11 +415,6 @@ Here are some more useful flags:
 
 - ``--warn-return-any`` causes mypy to generate a warning when returning a value
   with type ``Any`` from a function declared with a non- ``Any`` return type.
-
-- ``--strict-boolean`` will make using non-boolean expressions in conditions
-  an error. This means ``if x`` and ``while x`` are disallowed when ``x`` has any
-  type other than ``bool``. Instead use explicit checks like ``if x > 0`` or
-  ``while x is not None``.
 
 - ``--strict`` mode enables all optional error checking flags.  You can see the
   list of flags enabled by strict mode in the full ``mypy -h`` output.

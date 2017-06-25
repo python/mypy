@@ -26,4 +26,3 @@ class int:
 class str: pass
 class bool: pass
 class function: pass
-class module: pass

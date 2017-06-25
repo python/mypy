@@ -394,7 +394,7 @@ B(1)
 C(1)
 C('a')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 D(A(1))
-D(1)  # E: Argument 1 to "D" has incompatible type "int"; expected A[<uninhabited>]
+D(1)  # E: Argument 1 to "D" has incompatible type "int"; expected A[<nothing>]
 
 
 [case testInheritedConstructor2]
@@ -743,4 +743,21 @@ c = None  # type: G[C]
 b = a  # E: Incompatible types in assignment (expression has type G[A], variable has type G[B])
 b = c  # E: Incompatible types in assignment (expression has type G[C], variable has type G[B])
 [builtins fixtures/bool.pyi]
+[out]
+
+
+[case testTypeVarSubtypeUnion]
+from typing import Union, TypeVar, Generic
+
+class U: pass
+class W: pass
+
+T = TypeVar('T', bound=Union[U, W])
+
+class Y(Generic[T]):
+    def __init__(self) -> None:
+        pass
+    def f(self) -> T:
+        return U()  # E: Incompatible return value type (got "U", expected "T")
+
 [out]

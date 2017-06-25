@@ -1,7 +1,7 @@
 """Calculation of the least upper bound types (joins)."""
 
 from collections import OrderedDict
-from typing import cast, List
+from typing import cast, List, Optional
 
 from mypy.types import (
     Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType,
@@ -10,7 +10,7 @@ from mypy.types import (
     UninhabitedType, TypeType, true_or_false
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
+from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype
 
 from mypy import experiments
 
@@ -29,10 +29,10 @@ def join_simple(declaration: Type, s: Type, t: Type) -> Type:
     if isinstance(s, ErasedType):
         return t
 
-    if is_subtype(s, t):
+    if is_proper_subtype(s, t):
         return t
 
-    if is_subtype(t, s):
+    if is_proper_subtype(t, s):
         return s
 
     if isinstance(declaration, UnionType):
@@ -107,9 +107,6 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         else:
             return UnionType.make_simplified_union([self.s, t])
 
-    def visit_type_list(self, t: TypeList) -> Type:
-        assert False, 'Not supported'
-
     def visit_any(self, t: AnyType) -> Type:
         return t
 
@@ -152,9 +149,14 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        # TODO: Consider subtyping instead of just similarity.
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
-            return combine_similar_callables(t, self.s)
+            if is_equivalent(t, self.s):
+                return combine_similar_callables(t, self.s)
+            result = join_similar_callables(t, self.s)
+            if any(isinstance(tp, (NoneTyp, UninhabitedType)) for tp in result.arg_types):
+                # We don't want to return unusable Callable, attempt fallback instead.
+                return join_types(t.fallback, self.s)
+            return result
         elif isinstance(self.s, Overloaded):
             # Switch the order of arguments to that we'll get to visit_overloaded.
             return join_types(t, self.s)
@@ -189,7 +191,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         #   join(Ov([int, Any] -> Any, [str, Any] -> Any), [Any, int] -> Any) ==
         #       Ov([Any, int] -> Any, [Any, int] -> Any)
         #
-        # TODO: Use callable subtyping instead of just similarity.
+        # TODO: Consider more cases of callable subtyping.
         result = []  # type: List[CallableType]
         s = self.s
         if isinstance(s, FunctionLike):
@@ -197,7 +199,10 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             for t_item in t.items():
                 for s_item in s.items():
                     if is_similar_callables(t_item, s_item):
-                        result.append(combine_similar_callables(t_item, s_item))
+                        if is_equivalent(t_item, s_item):
+                            result.append(combine_similar_callables(t_item, s_item))
+                        elif is_subtype(t_item, s_item):
+                            result.append(s_item)
             if result:
                 # TODO: Simplify redundancies from the result.
                 if len(result) == 1:
@@ -223,11 +228,15 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             items = OrderedDict([
                 (item_name, s_item_type)
                 for (item_name, s_item_type, t_item_type) in self.s.zip(t)
-                if is_equivalent(s_item_type, t_item_type)
+                if (is_equivalent(s_item_type, t_item_type) and
+                    (item_name in t.required_keys) == (item_name in self.s.required_keys))
             ])
             mapping_value_type = join_type_list(list(items.values()))
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
-            return TypedDictType(items, fallback)
+            # We need to filter by items.keys() since some required keys present in both t and
+            # self.s might be missing from the join if the types are incompatible.
+            required_keys = set(items.keys()) & t.required_keys & self.s.required_keys
+            return TypedDictType(items, required_keys, fallback)
         elif isinstance(self.s, Instance):
             return join_instances(self.s, t.fallback)
         else:
@@ -240,7 +249,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
 
     def visit_type_type(self, t: TypeType) -> Type:
         if isinstance(self.s, TypeType):
-            return TypeType(self.join(t.item, self.s.item), line=t.line)
+            return TypeType.make_normalized(self.join(t.item, self.s.item), line=t.line)
         elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
             return self.s
         else:
@@ -300,7 +309,7 @@ def join_instances_via_supertype(t: Instance, s: Instance) -> Type:
     # Compute the "best" supertype of t when joined with s.
     # The definition of "best" may evolve; for now it is the one with
     # the longest MRO.  Ties are broken by using the earlier base.
-    best = None  # type: Type
+    best = None  # type: Optional[Type]
     for base in t.type.bases:
         mapped = map_instance_to_supertype(t, base.type)
         res = join_instances(mapped, s)
@@ -323,12 +332,30 @@ def is_better(t: Type, s: Type) -> bool:
 
 
 def is_similar_callables(t: CallableType, s: CallableType) -> bool:
-    """Return True if t and s are equivalent and have identical numbers of
+    """Return True if t and s have identical numbers of
     arguments, default arguments and varargs.
     """
 
-    return (len(t.arg_types) == len(s.arg_types) and t.min_args == s.min_args
-            and t.is_var_arg == s.is_var_arg and is_equivalent(t, s))
+    return (len(t.arg_types) == len(s.arg_types) and t.min_args == s.min_args and
+            t.is_var_arg == s.is_var_arg)
+
+
+def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
+    from mypy.meet import meet_types
+    arg_types = []  # type: List[Type]
+    for i in range(len(t.arg_types)):
+        arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
+    # TODO in combine_similar_callables also applies here (names and kinds)
+    # The fallback type can be either 'function' or 'type'. The result should have 'type' as
+    # fallback only if both operands have it as 'type'.
+    if t.fallback.type.fullname() != 'builtins.type':
+        fallback = t.fallback
+    else:
+        fallback = s.fallback
+    return t.copy_modified(arg_types=arg_types,
+                           ret_type=join_types(t.ret_type, s.ret_type),
+                           fallback=fallback,
+                           name=None)
 
 
 def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:

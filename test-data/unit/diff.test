@@ -1,0 +1,267 @@
+-- Test cases for taking a diff of two module ASTs/symbol tables.
+-- The diffs are used for fined-grained incremental checking.
+
+--
+-- Module top-levels
+--
+
+[case testChangeTypeOfModuleAttribute]
+x = 1
+y = 1
+[file next.py]
+x = ''
+y = 1
+[out]
+__main__.x
+
+[case testChangeSignatureOfModuleFunction]
+def f(x: int) -> None:
+    pass
+def g(y: str) -> None:
+    pass
+[file next.py]
+def f(x: str) -> None:
+    x = ''
+def g(y: str) -> None:
+    y = ''
+[out]
+__main__.f
+
+[case testAddModuleAttribute]
+x = 1
+[file next.py]
+x = 1
+y = 1
+[out]
+__main__.y
+
+[case testRemoveModuleAttribute]
+x = 1
+y = 1
+[file next.py]
+x = 1
+[out]
+__main__.y
+
+--
+-- Classes
+--
+
+[case testChangeMethodSignature]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file next.py]
+class A:
+    def f(self, x: int) -> None: pass
+    def g(self) -> None: pass
+[out]
+__main__.A.f
+
+[case testChangeAttributeType]
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.y = 1
+[file next.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.y = ''
+[out]
+__main__.A.y
+
+[case testAddAttribute]
+class A: pass
+[file next.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[out]
+__main__.A.f
+__main__.A.x
+
+[case testAddAttribute2]
+class A:
+    def f(self) -> None: pass
+[file next.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[out]
+__main__.A.x
+
+[case testRemoveAttribute]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[file next.py]
+class A: pass
+[out]
+__main__.A.f
+__main__.A.x
+
+[case testAddMethod]
+class A:
+    def f(self) -> None: pass
+[file next.py]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[out]
+__main__.A.g
+
+[case testRemoveMethod]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file next.py]
+class A:
+    def f(self) -> None: pass
+[out]
+__main__.A.g
+
+[case testAddImport]
+import nn
+[file next.py]
+import n
+import nn
+[file n.py]
+x = 1
+[file nn.py]
+y = 1
+[out]
+__main__.n
+
+[case testRemoveImport]
+import n
+[file next.py]
+[file n.py]
+x = 1
+[out]
+__main__.n
+
+[case testChangeClassIntoFunction]
+class A: pass
+[file next.py]
+def A() -> None: pass
+[out]
+__main__.A
+
+[case testDeleteClass]
+class A: pass
+[file next.py]
+[out]
+__main__.A
+
+[case testAddBaseClass]
+class A: pass
+[file next.py]
+class B: pass
+class A(B): pass
+[out]
+__main__.A
+__main__.B
+
+[case testChangeBaseClass]
+class A: pass
+class B: pass
+class C(A): pass
+[file next.py]
+class A: pass
+class B: pass
+class C(B): pass
+[out]
+__main__.C
+
+[case testRemoveBaseClass]
+class A: pass
+class B(A): pass
+[file next.py]
+class A: pass
+class B: pass
+[out]
+__main__.B
+
+[case testRemoveClassFromMiddleOfMro]
+class A: pass
+class B(A): pass
+class C(B): pass
+[file next.py]
+class A: pass
+class B: pass
+class C(B): pass
+[out]
+__main__.B
+__main__.C
+
+[case testDifferenceInConstructor]
+class A:
+    def __init__(self) -> None: pass
+[file next.py]
+class A:
+    def __init__(self, x: int) -> None: pass
+[out]
+__main__.A.__init__
+
+[case testChangeSignatureOfMethodInNestedClass]
+class A:
+    class B:
+        def f(self) -> int: pass
+[file next.py]
+class A:
+    class B:
+        def f(self) -> str: pass
+[out]
+__main__.A.B.f
+
+[case testChangeTypeOfAttributeInNestedClass]
+class A:
+    class B:
+        def f(self) -> None:
+            self.x = 1
+[file next.py]
+class A:
+    class B:
+        def f(self) -> None:
+            self.x = ''
+[out]
+__main__.A.B.x
+
+[case testAddMethodToNestedClass]
+class A:
+    class B: pass
+[file next.py]
+class A:
+    class B:
+        def f(self) -> str: pass
+[out]
+__main__.A.B.f
+
+[case testAddNestedClass]
+class A: pass
+[file next.py]
+class A:
+    class B:
+        def f(self) -> None: pass
+[out]
+__main__.A.B
+
+[case testRemoveNestedClass]
+class A:
+    class B:
+        def f(self) -> None: pass
+[file next.py]
+class A: pass
+[out]
+__main__.A.B
+
+[case testChangeNestedClassToMethod]
+class A:
+    class B: pass
+[file next.py]
+class A:
+    def B(self) -> None: pass
+
+[out]
+__main__.A.B

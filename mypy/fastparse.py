@@ -19,15 +19,18 @@ from mypy.nodes import (
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
+    check_arg_names,
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
+    CallableArgument,
 )
 from mypy import defaults
 from mypy import experiments
 from mypy import messages
 from mypy.errors import Errors
+from mypy.options import Options
 
 try:
     from typed_ast import ast3
@@ -58,30 +61,30 @@ TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
 
 
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
-          pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-          custom_typing_module: str = None) -> MypyFile:
+          options: Options = Options()) -> MypyFile:
+
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
     on failure. Otherwise, use the errors object to report parse errors.
-
-    The pyversion (major, minor) argument determines the Python syntax variant.
     """
     raise_on_error = False
     if errors is None:
         errors = Errors()
         raise_on_error = True
-    errors.set_file('<input>' if fnam is None else fnam)
+    errors.set_file('<input>' if fnam is None else fnam, None)
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
-        assert pyversion[0] >= 3 or is_stub_file
-        feature_version = pyversion[1] if not is_stub_file else defaults.PYTHON3_VERSION[1]
+        if is_stub_file:
+            feature_version = defaults.PYTHON3_VERSION[1]
+        else:
+            assert options.python_version[0] >= 3
+            feature_version = options.python_version[1]
         ast = ast3.parse(source, fnam, 'exec', feature_version=feature_version)
 
-        tree = ASTConverter(pyversion=pyversion,
+        tree = ASTConverter(options=options,
                             is_stub=is_stub_file,
                             errors=errors,
-                            custom_typing_module=custom_typing_module,
                             ).visit(ast)
         tree.path = fnam
         tree.is_stub = is_stub_file
@@ -95,7 +98,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     return tree
 
 
-def parse_type_comment(type_comment: str, line: int, errors: Errors) -> Optional[Type]:
+def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -> Optional[Type]:
     try:
         typ = ast3.parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
@@ -136,17 +139,15 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
 
 class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     def __init__(self,
-                 pyversion: Tuple[int, int],
+                 options: Options,
                  is_stub: bool,
-                 errors: Errors,
-                 custom_typing_module: str = None) -> None:
+                 errors: Errors) -> None:
         self.class_nesting = 0
         self.imports = []  # type: List[ImportBase]
 
-        self.pyversion = pyversion
+        self.options = options
         self.is_stub = is_stub
         self.errors = errors
-        self.custom_typing_module = custom_typing_module
 
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg)
@@ -260,9 +261,9 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
         For example, translate '__builtin__' in Python 2 to 'builtins'.
         """
-        if id == self.custom_typing_module:
+        if id == self.options.custom_typing_module:
             return 'typing'
-        elif id == '__builtin__' and self.pyversion[0] == 2:
+        elif id == '__builtin__' and self.options.python_version[0] == 2:
             # HACK: __builtin__ in Python 2 is aliases to builtins. However, the implementation
             #   is named __builtin__.py (there is another layer of translation elsewhere).
             return 'builtins'
@@ -341,7 +342,8 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                 return_type = AnyType()
         else:
             arg_types = [a.type_annotation for a in args]
-            return_type = TypeConverter(self.errors, line=n.lineno).visit(n.returns)
+            return_type = TypeConverter(self.errors, line=n.returns.lineno
+                                        if n.returns else n.lineno).visit(n.returns)
 
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)
@@ -388,7 +390,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             return func_def
 
     def set_type_optional(self, type: Type, initializer: Expression) -> None:
-        if not experiments.STRICT_OPTIONAL:
+        if self.options.no_implicit_optional or not experiments.STRICT_OPTIONAL:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
         optional = isinstance(initializer, NameExpr) and initializer.name == 'None'
@@ -408,7 +410,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                     self.fail(messages.DUPLICATE_TYPE_SIGNATURES, arg.lineno, arg.col_offset)
                 arg_type = None
                 if arg.annotation is not None:
-                    arg_type = TypeConverter(self.errors, line=line).visit(arg.annotation)
+                    arg_type = TypeConverter(self.errors, line=arg.lineno).visit(arg.annotation)
                 elif arg.type_comment is not None:
                     arg_type = parse_type_comment(arg.type_comment, arg.lineno, self.errors)
             return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
@@ -444,24 +446,12 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             new_args.append(make_argument(args.kwarg, None, ARG_STAR2))
             names.append(args.kwarg)
 
-        seen_names = set()  # type: Set[str]
-        for name in names:
-            if name.arg in seen_names:
-                self.fail("duplicate argument '{}' in function definition".format(name.arg),
-                          name.lineno, name.col_offset)
-                break
-            seen_names.add(name.arg)
+        def fail_arg(msg: str, arg: ast3.arg) -> None:
+            self.fail(msg, arg.lineno, arg.col_offset)
+
+        check_arg_names([name.arg for name in names], names, fail_arg)
 
         return new_args
-
-    def stringify_name(self, n: ast3.AST) -> str:
-        if isinstance(n, ast3.Name):
-            return n.id
-        elif isinstance(n, ast3.Attribute):
-            sv = self.stringify_name(n.value)
-            if sv is not None:
-                return "{}.{}".format(sv, n.attr)
-        return None  # Can't do it.
 
     # ClassDef(identifier name,
     #  expr* bases,
@@ -474,15 +464,18 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         metaclass_arg = find(lambda x: x.arg == 'metaclass', n.keywords)
         metaclass = None
         if metaclass_arg:
-            metaclass = self.stringify_name(metaclass_arg.value)
+            metaclass = stringify_name(metaclass_arg.value)
             if metaclass is None:
                 metaclass = '<error>'  # To be reported later
+        keywords = [(kw.arg, self.visit(kw.value))
+                    for kw in n.keywords]
 
         cdef = ClassDef(n.name,
                         self.as_block(n.body, n.lineno),
                         None,
                         self.translate_expr_list(n.bases),
-                        metaclass=metaclass)
+                        metaclass=metaclass,
+                        keywords=keywords)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
         self.class_nesting -= 1
         return cdef
@@ -855,38 +848,48 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     # Str(string s)
     @with_line
     def visit_Str(self, n: ast3.Str) -> Union[UnicodeExpr, StrExpr]:
-        if self.pyversion[0] >= 3 or self.is_stub:
-            # Hack: assume all string literals in Python 2 stubs are normal
-            # strs (i.e. not unicode).  All stubs are parsed with the Python 3
-            # parser, which causes unprefixed string literals to be interpreted
-            # as unicode instead of bytes.  This hack is generally okay,
-            # because mypy considers str literals to be compatible with
-            # unicode.
-            return StrExpr(n.s)
-        else:
-            return UnicodeExpr(n.s)
+        # Hack: assume all string literals in Python 2 stubs are normal
+        # strs (i.e. not unicode).  All stubs are parsed with the Python 3
+        # parser, which causes unprefixed string literals to be interpreted
+        # as unicode instead of bytes.  This hack is generally okay,
+        # because mypy considers str literals to be compatible with
+        # unicode.
+        return StrExpr(n.s)
 
     # Only available with typed_ast >= 0.6.2
     if hasattr(ast3, 'JoinedStr'):
         # JoinedStr(expr* values)
         @with_line
         def visit_JoinedStr(self, n: ast3.JoinedStr) -> Expression:
-            arg_count = len(n.values)
-            format_string = StrExpr('{}' * arg_count)
-            format_string.set_line(n.lineno, n.col_offset)
-            format_method = MemberExpr(format_string, 'format')
-            format_method.set_line(format_string)
-            format_args = self.translate_expr_list(n.values)
-            format_arg_kinds = [ARG_POS] * arg_count
-            result_expression = CallExpr(format_method,
-                                         format_args,
-                                         format_arg_kinds)
+            # Each of n.values is a str or FormattedValue; we just concatenate
+            # them all using ''.join.
+            empty_string = StrExpr('')
+            empty_string.set_line(n.lineno, n.col_offset)
+            strs_to_join = ListExpr(self.translate_expr_list(n.values))
+            strs_to_join.set_line(empty_string)
+            join_method = MemberExpr(empty_string, 'join')
+            join_method.set_line(empty_string)
+            result_expression = CallExpr(join_method,
+                                         [strs_to_join],
+                                         [ARG_POS])
             return result_expression
 
         # FormattedValue(expr value)
         @with_line
         def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
-            return self.visit(n.value)
+            # A FormattedValue is a component of a JoinedStr, or it can exist
+            # on its own. We translate them to individual '{}'.format(value)
+            # calls -- we don't bother with the conversion/format_spec fields.
+            exp = self.visit(n.value)
+            exp.set_line(n.lineno, n.col_offset)
+            format_string = StrExpr('{}')
+            format_string.set_line(n.lineno, n.col_offset)
+            format_method = MemberExpr(format_string, 'format')
+            format_method.set_line(format_string)
+            result_expression = CallExpr(format_method,
+                                         [exp],
+                                         [ARG_POS])
+            return result_expression
 
     # Bytes(bytes s)
     @with_line
@@ -894,11 +897,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         # The following line is a bit hacky, but is the best way to maintain
         # compatibility with how mypy currently parses the contents of bytes literals.
         contents = str(n.s)[2:-1]
-
-        if self.pyversion[0] >= 3:
-            return BytesExpr(contents)
-        else:
-            return StrExpr(contents)
+        return BytesExpr(contents)
 
     # NameConstant(singleton value)
     def visit_NameConstant(self, n: ast3.NameConstant) -> NameExpr:
@@ -965,6 +964,21 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     def __init__(self, errors: Errors, line: int = -1) -> None:
         self.errors = errors
         self.line = line
+        self.node_stack = []  # type: List[ast3.AST]
+
+    def visit(self, node: ast3.AST) -> Type:
+        """Modified visit -- keep track of the stack of nodes"""
+        self.node_stack.append(node)
+        try:
+            return super().visit(node)
+        finally:
+            self.node_stack.pop()
+
+    def parent(self) -> ast3.AST:
+        """Return the AST node above the one we are processing"""
+        if len(self.node_stack) < 2:
+            return None
+        return self.node_stack[-2]
 
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg)
@@ -984,6 +998,55 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     def translate_expr_list(self, l: Sequence[ast3.AST]) -> List[Type]:
         return [self.visit(e) for e in l]
+
+    def visit_Call(self, e: ast3.Call) -> Type:
+        # Parse the arg constructor
+        if not isinstance(self.parent(), ast3.List):
+            return self.generic_visit(e)
+        f = e.func
+        constructor = stringify_name(f)
+        if not constructor:
+            self.fail("Expected arg constructor name", e.lineno, e.col_offset)
+        name = None  # type: Optional[str]
+        default_type = AnyType(implicit=True)
+        typ = default_type  # type: Type
+        for i, arg in enumerate(e.args):
+            if i == 0:
+                typ = self.visit(arg)
+            elif i == 1:
+                name = self._extract_argument_name(arg)
+            else:
+                self.fail("Too many arguments for argument constructor",
+                          f.lineno, f.col_offset)
+        for k in e.keywords:
+            value = k.value
+            if k.arg == "name":
+                if name is not None:
+                    self.fail('"{}" gets multiple values for keyword argument "name"'.format(
+                        constructor), f.lineno, f.col_offset)
+                name = self._extract_argument_name(value)
+            elif k.arg == "type":
+                if typ is not default_type:
+                    self.fail('"{}" gets multiple values for keyword argument "type"'.format(
+                        constructor), f.lineno, f.col_offset)
+                typ = self.visit(value)
+            else:
+                self.fail(
+                    'Unexpected argument "{}" for argument constructor'.format(k.arg),
+                    value.lineno, value.col_offset)
+        return CallableArgument(typ, name, constructor, e.lineno, e.col_offset)
+
+    def translate_argument_list(self, l: Sequence[ast3.AST]) -> TypeList:
+        return TypeList([self.visit(e) for e in l], line=self.line)
+
+    def _extract_argument_name(self, n: ast3.expr) -> str:
+        if isinstance(n, ast3.Str):
+            return n.s.strip()
+        elif isinstance(n, ast3.NameConstant) and str(n.value) == 'None':
+            return None
+        self.fail('Expected string literal for argument name, got {}'.format(
+            type(n).__name__), self.line, 0)
+        return None
 
     def visit_Name(self, n: ast3.Name) -> Type:
         return UnboundType(n.id, line=self.line)
@@ -1036,4 +1099,14 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> Type:
-        return TypeList(self.translate_expr_list(n.elts), line=self.line)
+        return self.translate_argument_list(n.elts)
+
+
+def stringify_name(n: ast3.AST) -> Optional[str]:
+    if isinstance(n, ast3.Name):
+        return n.id
+    elif isinstance(n, ast3.Attribute):
+        sv = stringify_name(n.value)
+        if sv is not None:
+            return "{}.{}".format(sv, n.attr)
+    return None  # Can't do it.

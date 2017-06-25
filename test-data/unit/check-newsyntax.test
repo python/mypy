@@ -29,7 +29,7 @@ from typing import Dict, Any
 d: Dict[int, str] = {}
 d[42] = 'ab'
 d[42] = 42  # E: Incompatible types in assignment (expression has type "int", target has type "str")
-d['ab'] = 'ab'  # E: Invalid index type "str" for "dict"; expected type "int"
+d['ab'] = 'ab'  # E: Invalid index type "str" for Dict[int, str]; expected type "int"
 [builtins fixtures/dict.pyi]
 [out]
 
@@ -119,19 +119,19 @@ f'{type(1)}'
 a: str
 a = f'foobar'
 a = f'{"foobar"}'
-[builtins fixtures/primitives.pyi]
+[builtins fixtures/f_string.pyi]
 
 [case testNewSyntaxFStringExpressionsOk]
 # flags: --python-version 3.6
 f'.{1 + 1}.'
 f'.{1 + 1}.{"foo" + "bar"}'
-[builtins fixtures/primitives.pyi]
+[builtins fixtures/f_string.pyi]
 
 [case testNewSyntaxFStringExpressionsErrors]
 # flags: --python-version 3.6
 f'{1 + ""}'
 f'.{1 + ""}'
-[builtins fixtures/primitives.pyi]
+[builtins fixtures/f_string.pyi]
 [out]
 main:2: error: Unsupported operand types for + ("int" and "str")
 main:3: error: Unsupported operand types for + ("int" and "str")
@@ -142,4 +142,12 @@ value = 10.5142
 width = 10
 precision = 4
 f'result: {value:{width}.{precision}}'
-[builtins fixtures/primitives.pyi]
+[builtins fixtures/f_string.pyi]
+
+[case testNewSyntaxFStringSingleField]
+# flags: --python-version 3.6
+v = 1
+reveal_type(f'{v}') # E: Revealed type is 'builtins.str'
+reveal_type(f'{1}') # E: Revealed type is 'builtins.str'
+[builtins fixtures/f_string.pyi]
+

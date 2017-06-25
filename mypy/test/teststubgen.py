@@ -6,6 +6,7 @@ import shutil
 import sys
 import tempfile
 import time
+import re
 from types import ModuleType
 
 from typing import List, Tuple
@@ -16,7 +17,7 @@ from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test import config
 from mypy.parse import parse
 from mypy.errors import CompileError
-from mypy.stubgen import generate_stub, generate_stub_for_module
+from mypy.stubgen import generate_stub, generate_stub_for_module, parse_options, Options
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
@@ -104,11 +105,21 @@ class StubgenPythonSuite(Suite):
         return c
 
 
+def parse_flags(program_text: str) -> Options:
+    flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
+    if flags:
+        flag_list = flags.group(1).split()
+    else:
+        flag_list = []
+    return parse_options(flag_list + ['dummy.py'])
+
+
 def test_stubgen(testcase: DataDrivenTestCase) -> None:
     if 'stubgen-test-path' not in sys.path:
         sys.path.insert(0, 'stubgen-test-path')
     os.mkdir('stubgen-test-path')
     source = '\n'.join(testcase.input)
+    options = parse_flags(source)
     handle = tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py', dir='stubgen-test-path',
                                          delete=False)
     assert os.path.isabs(handle.name)
@@ -125,9 +136,11 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
         reset_importlib_caches()
         try:
             if testcase.name.endswith('_import'):
-                generate_stub_for_module(name, out_dir, quiet=True)
+                generate_stub_for_module(name, out_dir, quiet=True,
+                                         no_import=options.no_import,
+                                         include_private=options.include_private)
             else:
-                generate_stub(path, out_dir)
+                generate_stub(path, out_dir, include_private=options.include_private)
             a = load_output(out_dir)
         except CompileError as e:
             a = e.messages

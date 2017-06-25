@@ -1,5 +1,7 @@
 import typing
 
+_T = typing.TypeVar('_T')
+
 class object:
     def __init__(self) -> None: pass
 
@@ -20,3 +22,5 @@ class int:
 class str: pass
 class bytes: pass
 class bool: pass
+
+class tuple(typing.Generic[_T]): pass

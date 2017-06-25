@@ -221,7 +221,7 @@ a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[int]
 [case testNamedTupleMissingClassAttribute]
 import collections
 MyNamedTuple = collections.namedtuple('MyNamedTuple', ['spam', 'eggs'])
-MyNamedTuple.x # E: "MyNamedTuple" has no attribute "x"
+MyNamedTuple.x # E: Type[MyNamedTuple] has no attribute "x"
 
 
 [case testNamedTupleEmptyItems]
@@ -420,10 +420,42 @@ class C:
         A = NamedTuple('A', [('x', int)])
     def g(self):
         A = NamedTuple('A', [('y', int)])
-C.A  # E: "C" has no attribute "A"
+C.A  # E: Type[C] has no attribute "A"
 
 [case testNamedTupleInFunction]
 from typing import NamedTuple
 def f() -> None:
     A = NamedTuple('A', [('x', int)])
 A  # E: Name 'A' is not defined
+
+[case testNamedTupleWithImportCycle]
+import a
+[file a.py]
+from collections import namedtuple
+from b import f
+
+N = namedtuple('N', 'a')
+
+class X(N): pass
+[file b.py]
+import a
+
+def f(x: a.X) -> None:
+    # The type of x is broken (https://github.com/python/mypy/issues/3016) but we need to
+    # do something reasonable here to avoid a regression.
+    reveal_type(x)
+    x = a.X(1)
+    reveal_type(x)
+[out]
+tmp/b.py:6: error: Revealed type is 'a.X'
+tmp/b.py:8: error: Revealed type is 'Tuple[Any, fallback=a.X]'
+
+[case testForwardReferenceInNamedTuple]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    b: 'B'
+    x: int
+
+class B:
+    pass

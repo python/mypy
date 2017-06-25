@@ -7,9 +7,10 @@ from mypy.nodes import (
     ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
     TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealTypeExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
-    GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
+    GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
+    ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr
+    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt,
 )
 
 
@@ -211,7 +212,20 @@ class TraverserVisitor(NodeVisitor[None]):
                 cond.accept(self)
         o.left_expr.accept(self)
 
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
+        for index, sequence, conditions in zip(o.indices, o.sequences,
+                                               o.condlists):
+            sequence.accept(self)
+            index.accept(self)
+            for cond in conditions:
+                cond.accept(self)
+        o.key.accept(self)
+        o.value.accept(self)
+
     def visit_list_comprehension(self, o: ListComprehension) -> None:
+        o.generator.accept(self)
+
+    def visit_set_comprehension(self, o: SetComprehension) -> None:
         o.generator.accept(self)
 
     def visit_conditional_expr(self, o: ConditionalExpr) -> None:
@@ -224,3 +238,27 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_lambda_expr(self, o: LambdaExpr) -> None:
         self.visit_func(o)
+
+    def visit_star_expr(self, o: StarExpr) -> None:
+        o.expr.accept(self)
+
+    def visit_backquote_expr(self, o: BackquoteExpr) -> None:
+        o.expr.accept(self)
+
+    def visit_await_expr(self, o: AwaitExpr) -> None:
+        o.expr.accept(self)
+
+    def visit_import(self, o: Import) -> None:
+        for a in o.assignments:
+            a.accept(self)
+
+    def visit_import_from(self, o: ImportFrom) -> None:
+        for a in o.assignments:
+            a.accept(self)
+
+    def visit_print_stmt(self, o: PrintStmt) -> None:
+        for arg in o.args:
+            arg.accept(self)
+
+    def visit_exec_stmt(self, o: ExecStmt) -> None:
+        o.expr.accept(self)

@@ -79,8 +79,8 @@ n = 0
 d in a  # E: Unsupported right operand type for in ("A")
 d and a
 d or a
-c = d and b # Unintuitive type inference?
-c = d or b  # Unintuitive type inference?
+c = d and b # E: Incompatible types in assignment (expression has type "Union[Any, bool]", variable has type "C")
+c = d or b  # E: Incompatible types in assignment (expression has type "Union[Any, bool]", variable has type "C")
 
 c = d + a
 c = d - a
@@ -123,8 +123,8 @@ n = 0
 a and d
 a or d
 c = a in d
-c = b and d # Unintuitive type inference?
-c = b or d  # Unintuitive type inference?
+c = b and d # E: Incompatible types in assignment (expression has type "Union[bool, Any]", variable has type "C")
+c = b or d  # E: Incompatible types in assignment (expression has type "Union[bool, Any]", variable has type "C")
 b = a + d
 b = a / d
 
@@ -485,7 +485,7 @@ class A:
   def __init__(self, a, b): pass
 [out]
 main:6: error: Too few arguments for "A"
-main:7: error: Incompatible types in assignment (expression has type "A", variable has type Callable[[A], A])
+main:7: error: Incompatible types in assignment (expression has type Type[A], variable has type Callable[[A], A])
 
 [case testUsingImplicitTypeObjectWithIs]
 

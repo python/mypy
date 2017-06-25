@@ -26,10 +26,8 @@ def erase_type(typ: Type) -> Type:
 
 
 class EraseTypeVisitor(TypeVisitor[Type]):
-    def visit_unbound_type(self, t: UnboundType) -> Type:
-        assert False, 'Not supported'
 
-    def visit_type_list(self, t: TypeList) -> Type:
+    def visit_unbound_type(self, t: UnboundType) -> Type:
         assert False, 'Not supported'
 
     def visit_any(self, t: AnyType) -> Type:
@@ -73,10 +71,11 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> Type:
-        return AnyType()        # XXX: return underlying type if only one?
+        erased_items = [erase_type(item) for item in t.items]
+        return UnionType.make_simplified_union(erased_items)
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType(t.item.accept(self), line=t.line)
+        return TypeType.make_normalized(t.item.accept(self), line=t.line)
 
 
 def erase_typevars(t: Type, ids_to_erase: Optional[Container[TypeVarId]] = None) -> Type:

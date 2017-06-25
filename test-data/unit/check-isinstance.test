@@ -399,6 +399,7 @@ def f(x: Union[List[int], List[str], int]) -> None:
             a + 'x' # E: Unsupported operand types for + ("int" and "str")
 
         # type of a?
+        reveal_type(x) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
         x + 1 # E: Unsupported operand types for + (likely involving Union)
     else:
         x[0] # E: Value of type "int" is not indexable
@@ -547,7 +548,7 @@ v = A() # type: Union[A, B, C]
 
 if isinstance(v, (B, C)):
     v.method2(123)
-    v.method3('xyz') # E: Some element of union has no attribute "method3"
+    v.method3('xyz') # E: Item "B" of "Union[B, C]" has no attribute "method3"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceNeverWidens]
@@ -678,7 +679,7 @@ while bool():
         x + 'a'
         break
     x + [1]
-    x + 'a'           # E: Unsupported operand types for + ("list" and "str")
+    x + 'a'           # E: Unsupported operand types for + (List[int] and "str")
 x + [1]               # E: Unsupported operand types for + (likely involving Union)
 
 [builtins fixtures/isinstancelist.pyi]
@@ -910,7 +911,8 @@ def foo() -> Union[int, str, A]: pass
 
 def bar() -> None:
     x = foo()
-    x + 1  # E: Unsupported left operand type for + (some union)
+    x + 1  # E: Unsupported left operand type for + (some union) \
+           # E: Unsupported operand types for + (likely involving Union)
     if isinstance(x, A):
        x.a
     else:
@@ -943,7 +945,7 @@ def bar() -> None:
           if isinstance(x, int):
              x + 1
           else:
-             x.a     # E: Some element of union has no attribute "a"
+             x.a     # E: Item "str" of "Union[str, A]" has no attribute "a"
           x = 'a'
 
 [builtins fixtures/isinstancelist.pyi]
@@ -1275,6 +1277,7 @@ if isinstance(x, A):
     reveal_type(x)  # unreachable
 else:
     reveal_type(x)  # E: Revealed type is '__main__.B'
+reveal_type(x)  # E: Revealed type is '__main__.B'
 [builtins fixtures/isinstance.pyi]
 
 [case testAssertIsinstance]
@@ -1305,6 +1308,9 @@ from typing import List, Union
 def f(x: Union[List[int], str]) -> None:
     if isinstance(x, list):
         x[0]()
+    else:
+        reveal_type(x) # E: Revealed type is 'builtins.str'
+    reveal_type(x) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.str]'
 [builtins fixtures/isinstancelist.pyi]
 [out]
 main:4: error: "int" not callable
@@ -1322,6 +1328,7 @@ if isinstance(x1, B) or isinstance(x1, C):
 else:
     reveal_type(x1) # E: Revealed type is '__main__.A'
     f = 0
+reveal_type(x1) # E: Revealed type is '__main__.A'
 x2 = A()
 if isinstance(x2, A) or isinstance(x2, C):
     reveal_type(x2) # E: Revealed type is '__main__.A'
@@ -1329,6 +1336,7 @@ if isinstance(x2, A) or isinstance(x2, C):
 else:
     # unreachable
     1()
+reveal_type(x2) # E: Revealed type is '__main__.A'
 [builtins fixtures/isinstance.pyi]
 [out]
 [case testComprehensionIsInstance]
@@ -1370,6 +1378,7 @@ def f(x: Union[int, str], typ: type) -> None:
         reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
     else:
         reveal_type(x)  # E: Revealed type is 'builtins.str'
+    reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
 [builtins fixtures/isinstancelist.pyi]
 
 
@@ -1382,6 +1391,7 @@ def f(x: Union[int, A], a: Type[A]) -> None:
         reveal_type(x)  # E: Revealed type is 'Union[builtins.int, __main__.A]'
     else:
         reveal_type(x)  # E: Revealed type is '__main__.A'
+    reveal_type(x) # E: Revealed type is 'Union[builtins.int, __main__.A]'
 
 [builtins fixtures/isinstancelist.pyi]
 
@@ -1412,3 +1422,338 @@ def f(x: Union[int, A], a: Type[A]) -> None:
 
 [builtins fixtures/isinstancelist.pyi]
 
+
+[case testIssubclassUnreachable]
+from typing import Type, Sequence, Union
+x: Type[str]
+if issubclass(x, int):
+    reveal_type(x)  # unreachable block
+
+
+class X: pass
+class Y(X): pass
+class Z(X): pass
+
+a: Union[Type[Y], Type[Z]]
+if issubclass(a, X):
+    reveal_type(a)  # E: Revealed type is 'Union[Type[__main__.Y], Type[__main__.Z]]'
+else:
+    reveal_type(a)  # unreachable block
+
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testIssubclasDestructuringUnions1]
+from typing import Union, List, Tuple, Dict, Type
+def f(x: Union[Type[int], Type[str], Type[List]]) -> None:
+    if issubclass(x, (str, (int,))):
+        reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+    else:
+        reveal_type(x)  # E: Revealed type is 'Type[builtins.list]'
+        reveal_type(x())  # E: Revealed type is 'builtins.list[<nothing>]'
+        x()[1]
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+    if issubclass(x, (str, (list,))):
+        reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.str], Type[builtins.list[Any]]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[<nothing>]]'
+        x()[1]
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testIssubclasDestructuringUnions2]
+from typing import Union, List, Tuple, Dict, Type
+def f(x: Type[Union[int, str, List]]) -> None:
+    if issubclass(x, (str, (int,))):
+        reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+    else:
+        reveal_type(x)  # E: Revealed type is 'Type[builtins.list]'
+        reveal_type(x())  # E: Revealed type is 'builtins.list[<nothing>]'
+        x()[1]
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+    if issubclass(x, (str, (list,))):
+        reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.str], Type[builtins.list[Any]]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[<nothing>]]'
+        x()[1]
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIssubclasDestructuringUnions3]
+from typing import Union, List, Tuple, Dict, Type
+def f(x: Type[Union[int, str, List]]) -> None:
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+    if issubclass(x, (str, (int,))):
+        reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+    else:
+        reveal_type(x)  # E: Revealed type is 'Type[builtins.list]'
+        reveal_type(x())  # E: Revealed type is 'builtins.list[<nothing>]'
+        x()[1]
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+    if issubclass(x, (str, (list,))):
+        reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.str], Type[builtins.list[Any]]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[<nothing>]]'
+        x()[1]
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testIssubclass]
+from typing import Type, ClassVar
+
+class Goblin:
+    level: int
+
+class GoblinAmbusher(Goblin):
+    job: ClassVar[str] = 'Ranger'
+
+def test_issubclass(cls: Type[Goblin]) -> None:
+    if issubclass(cls, GoblinAmbusher):
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
+        cls.level
+        cls.job
+        ga = cls()
+        ga.level = 15
+        ga.job
+        ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
+    else:
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.Goblin]'
+        cls.level
+        cls.job  # E: Type[Goblin] has no attribute "job"
+        g = cls()
+        g.level = 15
+        g.job  # E: "Goblin" has no attribute "job"
+
+
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testIssubclassDeepHierarchy]
+from typing import Type, ClassVar
+
+class Mob:
+    pass
+
+class Goblin(Mob):
+    level: int
+
+class GoblinAmbusher(Goblin):
+    job: ClassVar[str] = 'Ranger'
+
+def test_issubclass(cls: Type[Mob]) -> None:
+    if issubclass(cls, Goblin):
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.Goblin]'
+        cls.level
+        cls.job  # E: Type[Goblin] has no attribute "job"
+        g = cls()
+        g.level = 15
+        g.job  # E: "Goblin" has no attribute "job"
+        if issubclass(cls, GoblinAmbusher):
+            reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
+            cls.level
+            cls.job
+            g = cls()
+            g.level = 15
+            g.job
+            g.job = 'Warrior' # E: Cannot assign to class variable "job" via instance
+    else:
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.Mob]'
+        cls.job  # E: Type[Mob] has no attribute "job"
+        cls.level  # E: Type[Mob] has no attribute "level"
+        m = cls()
+        m.level = 15  # E: "Mob" has no attribute "level"
+        m.job  # E: "Mob" has no attribute "job"
+        if issubclass(cls, GoblinAmbusher):
+            reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
+            cls.job
+            cls.level
+            ga = cls()
+            ga.level = 15
+            ga.job
+            ga.job = 'Warrior' # E: Cannot assign to class variable "job" via instance
+
+    if issubclass(cls, GoblinAmbusher):
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
+        cls.level
+        cls.job
+        ga = cls()
+        ga.level = 15
+        ga.job
+        ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
+
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testIssubclassTuple]
+from typing import Type, ClassVar
+
+class Mob:
+    pass
+
+class Goblin(Mob):
+    level: int
+
+class GoblinAmbusher(Goblin):
+    job: ClassVar[str] = 'Ranger'
+
+class GoblinDigger(Goblin):
+    job: ClassVar[str] = 'Thief'
+
+def test_issubclass(cls: Type[Mob]) -> None:
+    if issubclass(cls, (Goblin, GoblinAmbusher)):
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.Goblin]'
+        cls.level
+        cls.job  # E: Type[Goblin] has no attribute "job"
+        g = cls()
+        g.level = 15
+        g.job  # E: "Goblin" has no attribute "job"
+        if issubclass(cls, GoblinAmbusher):
+            cls.level
+            reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
+            cls.job
+            ga = cls()
+            ga.level = 15
+            ga.job
+            ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
+    else:
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.Mob]'
+        cls.job  # E: Type[Mob] has no attribute "job"
+        cls.level  # E: Type[Mob] has no attribute "level"
+        m = cls()
+        m.level = 15  # E: "Mob" has no attribute "level"
+        m.job  # E: "Mob" has no attribute "job"
+        if issubclass(cls, GoblinAmbusher):
+            reveal_type(cls)  # E: Revealed type is 'Type[__main__.GoblinAmbusher]'
+            cls.job
+            cls.level
+            ga = cls()
+            ga.level = 15
+            ga.job
+            ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
+
+    if issubclass(cls, (GoblinDigger, GoblinAmbusher)):
+        reveal_type(cls)  # E: Revealed type is 'Union[Type[__main__.GoblinDigger], Type[__main__.GoblinAmbusher]]'
+        cls.level
+        cls.job
+        g = cls()
+        g.level = 15
+        g.job
+        g.job = "Warrior" # E: Cannot assign to class variable "job" via instance
+
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testIssubclassBuiltins]
+from typing import List, Type
+
+class MyList(List): pass
+class MyIntList(List[int]): pass
+
+def f(cls: Type[object]) -> None:
+    if issubclass(cls, MyList):
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.MyList]'
+        cls()[0]
+    else:
+        reveal_type(cls)  # E: Revealed type is 'Type[builtins.object]'
+        cls()[0]  # E: Value of type "object" is not indexable
+
+    if issubclass(cls, MyIntList):
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.MyIntList]'
+        cls()[0] + 1
+
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsinstanceTypeArgs]
+from typing import Iterable, TypeVar
+x = 1
+T = TypeVar('T')
+
+isinstance(x, Iterable)
+isinstance(x, Iterable[int])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, Iterable[T])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, (int, (str, Iterable[int])))  # E: Parameterized generics cannot be used with class or instance checks
+
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsinstanceTypeArgsAliases]
+from typing import Iterable, TypeVar
+x = 1
+T = TypeVar('T')
+It = Iterable
+It2 = Iterable[T]
+
+isinstance(x, It[int])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, It)
+isinstance(x, It2[int])  # E: Parameterized generics cannot be used with class or instance checks
+isinstance(x, It2)  # E: Parameterized generics cannot be used with class or instance checks
+
+[builtins fixtures/isinstance.pyi]
+
+
+[case testIssubclassTypeArgs]
+from typing import Iterable, TypeVar
+x = int
+T = TypeVar('T')
+issubclass(x, Iterable)
+issubclass(x, Iterable[int])  # E: Parameterized generics cannot be used with class or instance checks
+issubclass(x, Iterable[T])  # E: Parameterized generics cannot be used with class or instance checks
+issubclass(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
+
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceAndNarrowTypeVariable]
+from typing import TypeVar
+
+class A: pass
+class B(A): pass
+
+T = TypeVar('T', bound=A)
+
+def f(x: T) -> None:
+    if isinstance(x, B):
+        reveal_type(x) # E: Revealed type is '__main__.B'
+    else:
+        reveal_type(x) # E: Revealed type is 'T`-1'
+    reveal_type(x) # E: Revealed type is 'T`-1'
+[builtins fixtures/isinstance.pyi]
+
+
+[case testIsinstanceAndTypeType]
+from typing import Type
+def f(x: Type[int]) -> None:
+    if isinstance(x, type):
+        reveal_type(x) # E: Revealed type is 'Type[builtins.int]'
+    else:
+        reveal_type(x)  # Unreachable
+    reveal_type(x) # E: Revealed type is 'Type[builtins.int]'
+[builtins fixtures/isinstance.pyi]
+
+
+[case testIsinstanceVariableSubstitution]
+T = (int, str)
+U = (list, T)
+x: object = None
+
+if isinstance(x, T):
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+if isinstance(x, U):
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.list[Any], builtins.int, builtins.str]'
+
+if isinstance(x, (set, (list, T))):
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.set[Any], builtins.list[Any], builtins.int, builtins.str]'
+
+[builtins fixtures/isinstancelist.pyi]

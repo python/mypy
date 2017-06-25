@@ -111,12 +111,15 @@ def generate_c_function_stub(module: ModuleType,
         self_arg = '%s, ' % self_var
     else:
         self_arg = ''
-    if name in ('__new__', '__init__') and name not in sigs and class_name in class_sigs:
+    if (name in ('__new__', '__init__') and name not in sigs and class_name and
+            class_name in class_sigs):
         sig = class_sigs[class_name]
     else:
         docstr = getattr(obj, '__doc__', None)
-        sig = infer_sig_from_docstring(docstr, name)
-        if not sig:
+        inferred = infer_sig_from_docstring(docstr, name)
+        if inferred:
+            sig = inferred
+        else:
             if class_name and name not in sigs:
                 sig = infer_method_sig(name)
             else:

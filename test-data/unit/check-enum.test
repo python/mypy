@@ -150,9 +150,37 @@ main:5: error: Revealed type is '__main__.E'
 from enum import IntEnum
 class E(IntEnum):
     a = 1
-E[1]
-[out]
-main:4: error: Enum index should be a string (actual index type "int")
+E[1]  # E: Enum index should be a string (actual index type "int")
+x = E[1]  # E: Enum index should be a string (actual index type "int")
+
+[case testEnumIndexIsNotAnAlias]
+from enum import Enum
+
+class E(Enum):
+    a = 1
+    b = 2
+reveal_type(E['a'])  # E: Revealed type is '__main__.E'
+E['a']
+x = E['a']
+reveal_type(x)  # E: Revealed type is '__main__.E'
+
+def get_member(name: str) -> E:
+    val = E[name]
+    return val
+
+reveal_type(get_member('a'))  # E: Revealed type is '__main__.E'
+
+[case testGenericEnum]
+from enum import Enum
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class F(Generic[T], Enum):  # E: Enum class cannot be generic
+    x: T
+    y: T
+
+reveal_type(F[int].x)  # E: Revealed type is '__main__.F[builtins.int*]'
 
 [case testEnumFlag]
 from enum import Flag
@@ -297,7 +325,7 @@ main:17: error: Enum() with dict literal requires string literals
 main:18: error: Unexpected arguments to Enum()
 main:19: error: Unexpected arguments to Enum()
 main:20: error: Unexpected arguments to Enum()
-main:22: error: "W" has no attribute "c"
+main:22: error: Type[W] has no attribute "c"
 
 [case testFunctionalEnumFlag]
 from enum import Flag, IntFlag

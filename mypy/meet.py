@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List, Optional
+from typing import List, Optional, cast, Tuple
 
 from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
@@ -25,21 +25,26 @@ def meet_types(s: Type, t: Type) -> Type:
     return t.accept(TypeMeetVisitor(s))
 
 
-def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
-    if s == t:
-        return s
-    if isinstance(s, UnionType):
-        return UnionType.make_simplified_union([meet_types(x, t) for x in s.items])
-    elif not is_overlapping_types(s, t, use_promotions=True):
+def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
+    """Return the declared type narrowed down to another type."""
+    if declared == narrowed:
+        return declared
+    if isinstance(declared, UnionType):
+        return UnionType.make_simplified_union([narrow_declared_type(x, narrowed)
+                                                for x in declared.items])
+    elif not is_overlapping_types(declared, narrowed, use_promotions=True):
         if experiments.STRICT_OPTIONAL:
             return UninhabitedType()
         else:
             return NoneTyp()
-    else:
-        if default_right:
-            return t
-        else:
-            return s
+    elif isinstance(narrowed, UnionType):
+        return UnionType.make_simplified_union([narrow_declared_type(declared, x)
+                                                for x in narrowed.items])
+    elif isinstance(narrowed, AnyType):
+        return narrowed
+    elif isinstance(declared, (Instance, TupleType)):
+        return meet_types(declared, narrowed)
+    return narrowed
 
 
 def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool:
@@ -134,9 +139,6 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         else:
             return AnyType()
 
-    def visit_type_list(self, t: TypeList) -> Type:
-        assert False, 'Not supported'
-
     def visit_any(self, t: AnyType) -> Type:
         return self.s
 
@@ -220,7 +222,13 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
-            return combine_similar_callables(t, self.s)
+            if is_equivalent(t, self.s):
+                return combine_similar_callables(t, self.s)
+            result = meet_similar_callables(t, self.s)
+            if isinstance(result.ret_type, UninhabitedType):
+                # Return a plain None or <uninhabited> instead of a weird function.
+                return self.default(self.s)
+            return result
         else:
             return self.default(self.s)
 
@@ -235,21 +243,32 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         elif (isinstance(self.s, Instance) and
               self.s.type.fullname() == 'builtins.tuple' and self.s.args):
             return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
+        elif (isinstance(self.s, Instance) and t.fallback.type == self.s.type):
+            # Uh oh, a broken named tuple type (https://github.com/python/mypy/issues/3016).
+            # Do something reasonable until that bug is fixed.
+            return t
         else:
             return self.default(self.s)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         if isinstance(self.s, TypedDictType):
-            for (_, l, r) in self.s.zip(t):
-                if not is_equivalent(l, r):
+            for (name, l, r) in self.s.zip(t):
+                if (not is_equivalent(l, r) or
+                        (name in t.required_keys) != (name in self.s.required_keys)):
                     return self.default(self.s)
-            items = OrderedDict([
-                (item_name, s_item_type or t_item_type)
-                for (item_name, s_item_type, t_item_type) in self.s.zipall(t)
-            ])
+            item_list = []  # type: List[Tuple[str, Type]]
+            for (item_name, s_item_type, t_item_type) in self.s.zipall(t):
+                if s_item_type is not None:
+                    item_list.append((item_name, s_item_type))
+                else:
+                    # at least one of s_item_type and t_item_type is not None
+                    assert t_item_type is not None
+                    item_list.append((item_name, t_item_type))
+            items = OrderedDict(item_list)
             mapping_value_type = join_type_list(list(items.values()))
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
-            return TypedDictType(items, fallback)
+            required_keys = t.required_keys | self.s.required_keys
+            return TypedDictType(items, required_keys, fallback)
         else:
             return self.default(self.s)
 
@@ -261,7 +280,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         if isinstance(self.s, TypeType):
             typ = self.meet(t.item, self.s.item)
             if not isinstance(typ, NoneTyp):
-                typ = TypeType(typ, line=t.line)
+                typ = TypeType.make_normalized(typ, line=t.line)
             return typ
         elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
             return t
@@ -279,3 +298,21 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 return UninhabitedType()
             else:
                 return NoneTyp()
+
+
+def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
+    from mypy.join import join_types
+    arg_types = []  # type: List[Type]
+    for i in range(len(t.arg_types)):
+        arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
+    # TODO in combine_similar_callables also applies here (names and kinds)
+    # The fallback type can be either 'function' or 'type'. The result should have 'function' as
+    # fallback only if both operands have it as 'function'.
+    if t.fallback.type.fullname() != 'builtins.function':
+        fallback = t.fallback
+    else:
+        fallback = s.fallback
+    return t.copy_modified(arg_types=arg_types,
+                           ret_type=meet_types(t.ret_type, s.ret_type),
+                           fallback=fallback,
+                           name=None)

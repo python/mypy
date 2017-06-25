@@ -75,6 +75,7 @@ if x is None:
   reveal_type(x)  # E: Revealed type is 'builtins.None'
 else:
   reveal_type(x)  # E: Revealed type is 'builtins.int'
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 [builtins fixtures/bool.pyi]
 
 [case testAnyCanBeNone]
@@ -124,11 +125,10 @@ def f(x: int = None) -> None:
 f(None)
 [out]
 
-[case testInferOptionalFromDefaultNoneWithFastParser]
-
-def f(x: int = None) -> None:
-  x + 1  # E: Unsupported left operand type for + (some union)
-f(None)
+[case testNoInferOptionalFromDefaultNone]
+# flags: --no-implicit-optional
+def f(x: int = None) -> None:  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+  pass
 [out]
 
 [case testInferOptionalFromDefaultNoneComment]
@@ -138,12 +138,11 @@ def f(x=None):
 f(None)
 [out]
 
-[case testInferOptionalFromDefaultNoneCommentWithFastParser]
-
-def f(x=None):
+[case testNoInferOptionalFromDefaultNoneComment]
+# flags: --no-implicit-optional
+def f(x=None):  # E: Incompatible types in assignment (expression has type None, variable has type "int")
   # type: (int) -> None
-  x + 1  # E: Unsupported left operand type for + (some union)
-f(None)
+  pass
 [out]
 
 [case testInferOptionalType]
@@ -162,6 +161,15 @@ x = None
 x = 1
 reveal_type(x)  # E: Revealed type is 'builtins.int'
 
+[case testInferOptionalAnyType]
+from typing import Any
+x = None
+a = None  # type: Any
+if bool():
+  x = a
+  reveal_type(x)  # E: Revealed type is 'Any'
+reveal_type(x)  # E: Revealed type is 'Union[Any, builtins.None]'
+[builtins fixtures/bool.pyi]
 
 [case testInferOptionalTypeFromOptional]
 from typing import Optional
@@ -186,7 +194,7 @@ x = {None: None}
 x["bar"] = 1
 [builtins fixtures/dict.pyi]
 [out]
-main:2: error: Invalid index type "str" for "dict"; expected type None
+main:2: error: Invalid index type "str" for Dict[None, None]; expected type None
 main:2: error: Incompatible types in assignment (expression has type "int", target has type None)
 
 [case testInferNonOptionalDictType]
@@ -524,7 +532,7 @@ x = None # type: ONode[int]
 x = f(1)
 x = f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
-x.x = 1 # E: Some element of union has no attribute "x"
+x.x = 1 # E: Item "None" of "Optional[Node[int]]" has no attribute "x"
 if x is not None:
     x.x = 1 # OK here
 
@@ -537,9 +545,10 @@ f = lambda x: None
 f(0)
 [builtins fixtures/function.pyi]
 
-[case testUnionSimplificationWithStrictOptional]
+[case testDontSimplifyNoneUnionsWithStrictOptional]
 from typing import Any, TypeVar, Union
-class C(Any): pass
+A = None  # type: Any
+class C(A): pass
 T = TypeVar('T')
 S = TypeVar('S')
 def u(x: T, y: S) -> Union[S, T]: pass
@@ -549,9 +558,48 @@ a = None # type: Any
 reveal_type(u(C(), None))  # E: Revealed type is 'Union[builtins.None, __main__.C*]'
 reveal_type(u(None, C()))  # E: Revealed type is 'Union[__main__.C*, builtins.None]'
 
-# This will be fixed later
-reveal_type(u(a, None))  # E: Revealed type is 'Any'
-reveal_type(u(None, a))  # E: Revealed type is 'Any'
+reveal_type(u(a, None))  # E: Revealed type is 'Union[builtins.None, Any]'
+reveal_type(u(None, a))  # E: Revealed type is 'Union[Any, builtins.None]'
 
 reveal_type(u(1, None))  # E: Revealed type is 'Union[builtins.None, builtins.int*]'
 reveal_type(u(None, 1))  # E: Revealed type is 'Union[builtins.int*, builtins.None]'
+
+[case testOptionalAndAnyBaseClass]
+from typing import Any, Optional
+A = None  # type: Any
+class C(A):
+    pass
+x = None  # type: Optional[C]
+x.foo()  # E: Item "None" of "Optional[C]" has no attribute "foo"
+
+[case testIsinstanceAndOptionalAndAnyBase]
+from typing import Any, Optional
+
+B = None  # type: Any
+class A(B): pass
+
+def f(a: Optional[A]):
+    reveal_type(a) # E: Revealed type is 'Union[__main__.A, builtins.None]'
+    if a is not None:
+        reveal_type(a) # E: Revealed type is '__main__.A'
+    else:
+        reveal_type(a) # E: Revealed type is 'builtins.None'
+    reveal_type(a) # E: Revealed type is 'Union[__main__.A, builtins.None]'
+[builtins fixtures/isinstance.pyi]
+
+[case testFlattenOptionalUnion]
+from typing import Optional, Union
+
+x: Optional[Union[int, str]]
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.None]'
+y: Optional[Union[int, None]]
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+
+[case testUnionTruthinessTracking]
+from typing import Optional, Any
+def test_or_shortcut(value: Optional[Any]) -> None:
+    if not value:
+        pass
+    if not value or value.get('foo') == 'hello':
+        pass
+[builtins fixtures/bool.pyi]
