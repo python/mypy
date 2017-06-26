@@ -2343,6 +2343,10 @@ class SemanticAnalyzer(NodeVisitor):
             info = self.build_typeddict_typeinfo('TypedDict', [], [], set())
         else:
             name = cast(StrExpr, call.args[0]).value
+            if var_name is not None and name != var_name:
+                self.fail(
+                    "First argument '{}' to TypedDict() does not match variable name '{}'".format(
+                        name, var_name), node)
             if name != var_name or self.is_func_scope():
                 # Give it a unique name derived from the line number.
                 name += '@' + str(call.line)
