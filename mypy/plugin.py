@@ -308,7 +308,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
                     else:
                         return UnionType.make_simplified_union([value_type, ctx.arg_types[1][0]])
             else:
-                ctx.api.msg.typeddict_item_name_not_found(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
                 return AnyType()
     return ctx.default_return_type
 

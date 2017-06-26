@@ -282,7 +282,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         item_names = []  # List[str]
         for item_name_expr in item_name_exprs:
             if not isinstance(item_name_expr, StrExpr):
-                self.chk.fail(messages.TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL, item_name_expr)
+                self.chk.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, item_name_expr)
                 return AnyType()
             item_names.append(item_name_expr.value)
 
@@ -293,12 +293,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                          kwargs: 'OrderedDict[str, Expression]',
                                          context: Context) -> Type:
         if not (callee.required_keys <= set(kwargs.keys()) <= set(callee.items.keys())):
-            expected_item_names = [key for key in callee.items.keys()
-                                   if key in callee.required_keys or key in kwargs.keys()]
-            actual_item_names = kwargs.keys()
-            self.msg.typeddict_instantiated_with_unexpected_items(
-                expected_item_names=list(expected_item_names),
-                actual_item_names=list(actual_item_names),
+            expected_keys = [key for key in callee.items.keys()
+                             if key in callee.required_keys or key in kwargs.keys()]
+            actual_keys = kwargs.keys()
+            self.msg.unexpected_typeddict_keys(
+                callee,
+                expected_keys=expected_keys,
+                actual_keys=list(actual_keys),
                 context=context)
             return AnyType()
 
@@ -1660,13 +1661,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
         if not isinstance(index, (StrExpr, UnicodeExpr)):
-            self.msg.typeddict_item_name_must_be_string_literal(td_type, index)
+            self.msg.typeddict_key_must_be_string_literal(td_type, index)
             return AnyType()
         item_name = index.value
 
         item_type = td_type.items.get(item_name)
         if item_type is None:
-            self.msg.typeddict_item_name_not_found(td_type, item_name, index)
+            self.msg.typeddict_key_not_found(td_type, item_name, index)
             return AnyType()
         return item_type
 
