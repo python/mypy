@@ -2691,8 +2691,12 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             else:
                 return 0
         elif isinstance(actual, TypeType):
+            item = actual.item
             if formal.type.fullname() in {"builtins.object", "builtins.type"}:
                 return 2
+            elif isinstance(item, Instance):
+                # FIX: this does not handle e.g. Union of instances
+                return overload_arg_similarity(item.type.metaclass_type, formal)
             else:
                 return 0
         else:
