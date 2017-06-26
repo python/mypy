@@ -1069,6 +1069,11 @@ from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': 1, 'y': 1})  # E: Invalid field type
 [builtins fixtures/dict.pyi]
 
+[case testCannotCreateTypedDictTypeWithInvalidName]
+from mypy_extensions import TypedDict
+X = TypedDict('Y', {'x': int})  # E: First argument 'Y' to TypedDict() does not match variable name 'X'
+[builtins fixtures/dict.pyi]
+
 
 -- Special cases
 
