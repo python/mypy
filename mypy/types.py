@@ -931,8 +931,11 @@ class TypedDictType(Type):
                              set(data['required_keys']),
                              Instance.deserialize(data['fallback']))
 
+    def is_anonymous(self) -> bool:
+        return self.fallback.type.fullname() == 'typing.Mapping'
+
     def as_anonymous(self) -> 'TypedDictType':
-        if self.fallback.type.fullname() == 'typing.Mapping':
+        if self.is_anonymous():
             return self
         assert self.fallback.type.typeddict_type is not None
         return self.fallback.type.typeddict_type.as_anonymous()
