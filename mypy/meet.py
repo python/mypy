@@ -84,6 +84,10 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
         t = t.erase_to_union_or_bound()
     if isinstance(s, TypeVarType):
         s = s.erase_to_union_or_bound()
+    if isinstance(t, TypedDictType):
+        t = t.as_anonymous().fallback
+    if isinstance(s, TypedDictType):
+        s = s.as_anonymous().fallback
     if isinstance(t, Instance):
         if isinstance(s, Instance):
             # Consider two classes non-disjoint if one is included in the mro

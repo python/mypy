@@ -2675,6 +2675,12 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             return overload_arg_similarity(actual.ret_type, formal.item)
         else:
             return 0
+    if isinstance(actual, TypedDictType):
+        if isinstance(formal, TypedDictType):
+            # Don't support overloading based on the keys or value types of a TypedDict since
+            # that would be complicated and probably only marginally useful.
+            return 2
+        return overload_arg_similarity(actual.fallback, formal)
     if isinstance(formal, Instance):
         if isinstance(actual, CallableType):
             actual = actual.fallback
