@@ -3,7 +3,7 @@
 import cgi
 import os.path
 
-from typing import Any, Dict, List, cast, Tuple
+from typing import Dict, List, cast, Tuple, Set
 
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -12,7 +12,7 @@ from mypy.types import (
 from mypy import nodes
 from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
-    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr
+    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef
 )
 
 
@@ -47,6 +47,7 @@ class StatisticsVisitor(TraverserVisitor):
         self.num_function = 0
         self.num_typevar = 0
         self.num_complex = 0
+        self.visited_lines = set()  # type: Set[int]
 
         self.line = -1
 
@@ -58,6 +59,7 @@ class StatisticsVisitor(TraverserVisitor):
 
     def visit_func_def(self, o: FuncDef) -> None:
         self.line = o.line
+        self.visited_lines.add(self.line)
         if len(o.expanded) > 1 and o.expanded != [o] * len(o.expanded):
             if o in o.expanded:
                 print('{}:{}: ERROR: cycle in function expansion; skipping'.format(self.filename,
@@ -79,8 +81,16 @@ class StatisticsVisitor(TraverserVisitor):
                 self.record_line(self.line, TYPE_ANY)
             super().visit_func_def(o)
 
+    def visit_class_def(self, o: ClassDef) -> None:
+        # this method is overridden because we don't want to visit base_type_exprs
+        # base_type_exprs are expressions without a type, which causes them to appear as Any
+        for d in o.decorators:
+            d.accept(self)
+        o.defs.accept(self)
+
     def visit_type_application(self, o: TypeApplication) -> None:
         self.line = o.line
+        self.visited_lines.add(self.line)
         for t in o.types:
             self.type(t)
         super().visit_type_application(o)
@@ -91,6 +101,7 @@ class StatisticsVisitor(TraverserVisitor):
                 isinstance(o.rvalue.analyzed, nodes.TypeVarExpr)):
             # Type variable definition -- not a real assignment.
             return
+        self.visited_lines.add(self.line)
         if o.type:
             self.type(o.type)
         elif self.inferred:
@@ -150,6 +161,7 @@ class StatisticsVisitor(TraverserVisitor):
         super().visit_unary_expr(o)
 
     def process_node(self, node: Expression) -> None:
+        self.visited_lines.add(node.line)
         if self.all_nodes:
             typ = self.typemap.get(node)
             if typ:

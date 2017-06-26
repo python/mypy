@@ -71,3 +71,107 @@ def untyped_function():
 
 [case testAnyExprReportDivisionByZero]
 # cmd: mypy --any-exprs-report=out -c 'pass'
+
+[case testClassDefIsTreatedAsEmpty]
+# cmd: mypy --html-report report n.py
+[file n.py]
+class A(object):
+    pass
+
+[file report/mypy-html.css]
+[file report/index.html]
+[outfile report/html/n.py.html]
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="../mypy-html.css">
+</head>
+<body>
+<h2>n</h2>
+<table>
+<caption>n.py</caption>
+<tbody><tr>
+<td class="table-lines"><pre><span id="L1" class="lineno"><a class="lineno" href="#L1">1</a></span>
+<span id="L2" class="lineno"><a class="lineno" href="#L2">2</a></span>
+</pre></td>
+<td class="table-code"><pre><span class="line-empty">class A(object):</span>
+<span class="line-empty">    pass</span>
+</pre></td>
+</tr></tbody>
+</table>
+</body>
+</html>
+
+[case testTypeVarTreatedAsEmptyLine]
+# cmd: mypy --html-report report n.py
+
+[file n.py]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+[file report/mypy-html.css]
+[file report/index.html]
+[outfile report/html/n.py.html]
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="../mypy-html.css">
+</head>
+<body>
+<h2>n</h2>
+<table>
+<caption>n.py</caption>
+<tbody><tr>
+<td class="table-lines"><pre><span id="L1" class="lineno"><a class="lineno" href="#L1">1</a></span>
+<span id="L2" class="lineno"><a class="lineno" href="#L2">2</a></span>
+<span id="L3" class="lineno"><a class="lineno" href="#L3">3</a></span>
+</pre></td>
+<td class="table-code"><pre><span class="line-empty">from typing import TypeVar</span>
+<span class="line-empty"></span>
+<span class="line-empty">T = TypeVar('T')</span>
+</pre></td>
+</tr></tbody>
+</table>
+</body>
+</html>
+
+[case testUnreachableCodeMarkedAsAny]
+# cmd: mypy --html-report report n.py
+
+[file n.py]
+def bar(x):
+    # type: (str) -> None
+    print(x)
+    assert False
+    print(x)
+
+[file report/mypy-html.css]
+[file report/index.html]
+[outfile report/html/n.py.html]
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="../mypy-html.css">
+</head>
+<body>
+<h2>n</h2>
+<table>
+<caption>n.py</caption>
+<tbody><tr>
+<td class="table-lines"><pre><span id="L1" class="lineno"><a class="lineno" href="#L1">1</a></span>
+<span id="L2" class="lineno"><a class="lineno" href="#L2">2</a></span>
+<span id="L3" class="lineno"><a class="lineno" href="#L3">3</a></span>
+<span id="L4" class="lineno"><a class="lineno" href="#L4">4</a></span>
+<span id="L5" class="lineno"><a class="lineno" href="#L5">5</a></span>
+</pre></td>
+<td class="table-code"><pre><span class="line-precise">def bar(x):</span>
+<span class="line-empty">    # type: (str) -&gt; None</span>
+<span class="line-precise">    print(x)</span>
+<span class="line-empty">    assert False</span>
+<span class="line-any">    print(x)</span>
+</pre></td>
+</tr></tbody>
+</table>
+</body>
+</html>
