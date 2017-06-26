@@ -2178,7 +2178,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(typ, UnionType):
             return [
                 union_typ
-                for item in typ.items
+                for item in typ.relevant_items()
                 for union_typ in self.get_types_from_except_handler(item, n)
             ]
         elif isinstance(typ, Instance) and is_named_instance(typ, 'builtins.tuple'):
@@ -2644,7 +2644,7 @@ def partition_by_callable(type: Optional[Type]) -> Tuple[List[Type], List[Type]]
     if isinstance(type, UnionType):
         callables = []
         uncallables = []
-        for subtype in type.items:
+        for subtype in type.relevant_items():
             subcallables, subuncallables = partition_by_callable(subtype)
             callables.extend(subcallables)
             uncallables.extend(subuncallables)

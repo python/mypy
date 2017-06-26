@@ -2659,10 +2659,10 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
                 return 2
     if isinstance(actual, UnionType):
         return max(overload_arg_similarity(item, formal)
-                   for item in actual.items)
+                   for item in actual.relevant_items())
     if isinstance(formal, UnionType):
         return max(overload_arg_similarity(actual, item)
-                   for item in formal.items)
+                   for item in formal.relevant_items())
     if isinstance(formal, TypeType):
         if isinstance(actual, TypeType):
             # Since Type[T] is covariant, check if actual = Type[A] is
