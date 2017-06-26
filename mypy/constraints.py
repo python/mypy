@@ -312,6 +312,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         res = []  # type: List[Constraint]
         if isinstance(actual, CallableType) and actual.fallback is not None:
             actual = actual.fallback
+        if isinstance(actual, TypedDictType):
+            actual = actual.as_anonymous().fallback
         if isinstance(actual, Instance):
             instance = actual
             if (self.direction == SUBTYPE_OF and

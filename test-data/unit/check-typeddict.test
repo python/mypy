@@ -557,6 +557,17 @@ reveal_type(f(g)) # E: Revealed type is '<nothing>'
 
 -- Constraint Solver
 
+[case testTypedDictConstraintsAgainstIterable]
+from typing import TypeVar, Iterable
+from mypy_extensions import TypedDict
+T = TypeVar('T')
+def f(x: Iterable[T]) -> T: pass
+A = TypedDict('A', {'x': int})
+a: A
+reveal_type(f(a)) # E: Revealed type is 'builtins.str*'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
 -- TODO: Figure out some way to trigger the ConstraintBuilderVisitor.visit_typeddict_type() path.
 
 
