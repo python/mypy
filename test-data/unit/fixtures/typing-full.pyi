@@ -111,4 +111,8 @@ class Mapping(Iterable[T], Generic[T, U]):
 
 class MutableMapping(Mapping[T, U]): pass
 
+class ContextManager(Generic[T]):
+    def __enter__(self) -> T: ...
+    def __exit__(self, exc_type, exc_value, traceback): ...
+
 TYPE_CHECKING = 1
