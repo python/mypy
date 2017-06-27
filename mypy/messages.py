@@ -300,8 +300,11 @@ class MessageBuilder:
                 return self.format_simple(typ.fallback)
             items = []
             for (item_name, item_type) in typ.items.items():
-                items.append('{}={}'.format(item_name, strip_quotes(self.format(item_type))))
-            s = '"TypedDict({})"'.format(', '.join(items))
+                modifier = '' if item_name in typ.required_keys else '?'
+                items.append('{!r}{}: {}'.format(item_name,
+                                                 modifier,
+                                                 strip_quotes(self.format(item_type))))
+            s = '"TypedDict({{{}}})"'.format(', '.join(items))
             return s
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
