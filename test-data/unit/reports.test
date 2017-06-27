@@ -116,7 +116,7 @@ T = TypeVar('T')
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<link rel="stylesheet" type="text/css" href="..$SEPARATORmypy-html.css">
+<link rel="stylesheet" type="text/css" href="../mypy-html.css">
 </head>
 <body>
 <h2>n</h2>
@@ -152,7 +152,7 @@ def bar(x):
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<link rel="stylesheet" type="text/css" href="..$SEPARATORmypy-html.css">
+<link rel="stylesheet" type="text/css" href="../mypy-html.css">
 </head>
 <body>
 <h2>n</h2>

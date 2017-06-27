@@ -68,7 +68,6 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
             if not os.path.exists(path):
                 raise AssertionFailure(
                     'Expected file {} was not produced by test case'.format(path))
-            expected_content = normalize_expected_output(expected_content)
             with open(path, 'r') as output_file:
                 actual_output_content = output_file.read().splitlines()
             normalized_output = normalize_file_output(actual_output_content,
@@ -101,10 +100,6 @@ def parse_args(line: str) -> List[str]:
     if not m:
         return []  # No args; mypy will spit out an error.
     return m.group(1).split()
-
-
-def normalize_expected_output(out: str) -> str:
-    return out.replace('$SEPARATOR', os.sep)
 
 
 def normalize_file_output(content: List[str], current_abs_path: str) -> List[str]:
