@@ -77,6 +77,7 @@ files = [
     'check-enum.test',
     'check-incomplete-fixture.test',
     'check-custom-plugin.test',
+    'check-default-plugin.test',
 ]
 
 
