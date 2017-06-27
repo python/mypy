@@ -867,7 +867,6 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     if not isinstance(meta, dict):
         manager.trace('Could not load cache for {}: meta cache is not a dict'.format(id))
         return None
-    path = os.path.abspath(path)
     m = CacheMeta(
         meta.get('id'),
         meta.get('path'),
@@ -884,7 +883,8 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('interface_hash', ''),
         meta.get('version_id'),
     )
-    if (m.id != id or m.path != path or
+    # Don't check for path match, that is dealt with in validate_meta().
+    if (m.id != id or
             m.mtime is None or m.size is None or
             m.dependencies is None or m.data_mtime is None):
         manager.trace('Metadata abandoned for {}: attributes are missing'.format(id))
@@ -933,7 +933,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
     Return:
       None, if the cached AST is unusable.
       Original meta, if mtime/size matched.
-      Meta with mtime updated to match source file, if hash/size matched but mtime didn't.
+      Meta with mtime updated to match source file, if hash/size matched but mtime/path didn't.
     '''
     # This requires two steps. The first one is obvious: we check that the module source file
     # contents is the same as it was when the cache data file was created. The second one is not
@@ -944,26 +944,27 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
         return None
 
     # TODO: Share stat() outcome with find_module()
+    path = os.path.abspath(path)
     st = manager.get_stat(path)  # TODO: Errors
     if st.st_size != meta.size:
         manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
         return None
 
-    if st.st_mtime != meta.mtime:
+    if st.st_mtime != meta.mtime or path != meta.path:
         with open(path, 'rb') as f:
             source_hash = hashlib.md5(f.read()).hexdigest()
         if source_hash != meta.hash:
             manager.log('Metadata abandoned for {}: file {} has different hash'.format(id, path))
             return None
         else:
-            manager.log('Metadata ok for {}: file {} (match on size, hash)'.format(id, path))
-            # Optimization: update meta.mtime (otherwise, this mismatch will not disappear).
-            meta = meta._replace(mtime=st.st_mtime)
+            manager.log('Metadata ok for {}: file {} (match on path, size, hash)'.format(id, path))
+            # Optimization: update mtime and path (otherwise, this mismatch will reappear).
+            meta = meta._replace(mtime=st.st_mtime, path=path)
             if manager.options.debug_cache:
                 meta_str = json.dumps(meta, indent=2, sort_keys=True)
             else:
                 meta_str = json.dumps(meta)
-            meta_json, _ = get_cache_names(id, os.path.abspath(path), manager)
+            meta_json, _ = get_cache_names(id, path, manager)
             manager.log('Updating mtime for {}: file {}, meta {}, mtime {}'
                         .format(id, path, meta_json, meta.mtime))
             atomic_write(meta_json, meta_str)  # Ignore errors, since this is just an optimization.
