@@ -1,13 +1,12 @@
 """Classes for producing HTML reports about imprecision."""
 
 from abc import ABCMeta, abstractmethod
-import cgi
 import json
 import os
 import shutil
 import tokenize
 from operator import attrgetter
-
+from urllib.request import pathname2url
 from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
 import time
@@ -406,7 +405,7 @@ class MemoryXmlReporter(AbstractReporter):
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
-                'type="text/xsl" href="%s"' % cgi.escape(xslt_path, True))
+                'type="text/xsl" href="%s"' % pathname2url(xslt_path))
         root.addprevious(transform_pi)
         self.schema.assertValid(doc)
 
@@ -429,7 +428,7 @@ class MemoryXmlReporter(AbstractReporter):
                              module=file_info.module)
         xslt_path = os.path.relpath('mypy-html.xslt', '.')
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
-                'type="text/xsl" href="%s"' % cgi.escape(xslt_path, True))
+                'type="text/xsl" href="%s"' % pathname2url(xslt_path))
         root.addprevious(transform_pi)
         self.schema.assertValid(doc)
 
