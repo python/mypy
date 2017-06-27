@@ -59,13 +59,13 @@ p = Point({x: 42, 'y': 1337})  # E: Expected TypedDict key to be string literal
 [case testCannotCreateTypedDictInstanceWithExtraItems]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
-p = Point(x=42, y=1337, z=666)  # E: Expected TypedDict keys ('x', 'y') but found keys ('x', 'y', 'z')
+p = Point(x=42, y=1337, z=666)  # E: Extra key 'z' for TypedDict "Point"
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictInstanceWithMissingItems]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
-p = Point(x=42)  # E: Expected TypedDict keys ('x', 'y') but found only key 'x'
+p = Point(x=42)  # E: Key 'y' missing for TypedDict "Point"
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictInstanceWithIncompatibleItemType]
@@ -676,7 +676,7 @@ p['x'] = 'y'  # E: Argument 2 has incompatible type "str"; expected "int"
 from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
-p['z'] = 1  # E: 'z' is not a valid TypedDict key; expected one of ('type', 'x', 'y')
+p['z'] = 1  # E: TypedDict "TaggedPoint" has no key 'z'
 [builtins fixtures/dict.pyi]
 
 [case testCannotSetItemOfTypedDictWithNonLiteralKey]
@@ -812,7 +812,7 @@ p2: Point
 p2 = dict(x='bye')  # E: Key 'y' missing for TypedDict "Point"
 
 p3 = Point(x=1, y=2)
-p3 = {'x': 'hi'}  # E: Expected TypedDict keys ('x', 'y') but found only key 'x'
+p3 = {'x': 'hi'}  # E: Key 'y' missing for TypedDict "Point"
 
 p4: Point = {'x': 1, 'y': 2}
 
@@ -964,7 +964,7 @@ reveal_type(D()) # E: Revealed type is 'TypedDict('__main__.D', {'x'?: builtins.
 reveal_type(D(x=1)) # E: Revealed type is 'TypedDict('__main__.D', {'x'?: builtins.int, 'y'?: builtins.str})'
 f(D(y=''))
 f(D(x=1, y=''))
-f(D(x=1, z='')) # E: Expected TypedDict key 'x' but found keys ('x', 'z')
+f(D(x=1, z='')) # E: Extra key 'z' for TypedDict "D"
 f(D(x='')) # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 [builtins fixtures/dict.pyi]
 
@@ -1149,7 +1149,7 @@ def f(x: int) -> None: ...
 def f(x): pass
 
 a: A
-f(a)  # E: No overload variant of "f" matches argument types [TypedDict(x=builtins.int, _fallback=__main__.A)]
+f(a)  # E: No overload variant of "f" matches argument types [TypedDict('__main__.A', {'x': builtins.int})]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
