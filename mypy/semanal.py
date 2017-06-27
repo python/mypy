@@ -1582,7 +1582,7 @@ class SemanticAnalyzer(NodeVisitor):
                         self.msg.explicit_any(s)
                     # when this type alias gets "inlined", the "Any" is not explicit anymore,
                     # so we need to mark it as such
-                    unmark_any_as_explicit(res)
+                    mark_any_non_explicit(res)
 
                     name = s.lvalues[0]
                     node = self.lookup(name.name, name)
@@ -4412,14 +4412,14 @@ def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
     return None
 
 
-def unmark_any_as_explicit(t: Type) -> None:
+def mark_any_non_explicit(t: Type) -> None:
     """For all types within t, if that type is Any, set explicit to False"""
-    t.accept(UnmarkAnyAsExplicit())
+    t.accept(MarkAnyNonExplicit())
 
 
-class UnmarkAnyAsExplicit(TypeQuery[None]):
+class MarkAnyNonExplicit(TypeQuery[None]):
     def __init__(self) -> None:
-        super().__init__(UnmarkAnyAsExplicit.do_nothing_strategy)
+        super().__init__(MarkAnyNonExplicit.do_nothing_strategy)
 
     def visit_any(self, t: AnyType) -> None:
         t.explicit = False
