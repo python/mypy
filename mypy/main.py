@@ -4,6 +4,7 @@ import argparse
 import configparser
 import fnmatch
 import os
+import pkg_resources
 import re
 import sys
 import time
@@ -236,7 +237,8 @@ def process_options(args: List[str],
     parser.add_argument('-v', '--verbose', action='count', dest='verbosity',
                         help="more verbose messages")
     parser.add_argument('-V', '--version', action='version',
-                        version='%(prog)s ' + __version__)
+                        version='%(prog)s {} [typed-ast {}]'.format(
+                            __version__, pkg_resources.require('typed-ast')[0].version))
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y')
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
