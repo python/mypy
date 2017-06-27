@@ -746,7 +746,7 @@ class MessageBuilder:
         else:
             suffix = ''
             if isinstance(typ, Instance):
-                suffix = ', not {}'.format(typ)
+                suffix = ', not {}'.format(self.format(typ))
             self.fail(
                 'Argument after ** must be a mapping{}'.format(suffix),
                 context)
