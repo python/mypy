@@ -20,8 +20,7 @@ class type:
 
 class tuple(Iterable[Tco], Generic[Tco]): pass
 
-class dict(Iterable[T], Mapping[T, S], Generic[T, S]):
-    pass
+class dict(Iterable[T], Mapping[T, S], Generic[T, S]): pass
 
 class int:
     def __eq__(self, o: object) -> bool: pass

@@ -746,9 +746,9 @@ class MessageBuilder:
         else:
             suffix = ''
             if isinstance(typ, Instance):
-                suffix = ', not {}'.format(typ.type.fullname())
+                suffix = ', not {}'.format(typ)
             self.fail(
-                'Argument after ** must be a subtype of Mapping{}'.format(suffix),
+                'Argument after ** must be a mapping{}'.format(suffix),
                 context)
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
