@@ -259,6 +259,9 @@ class AnyType(Type):
                  column: int = -1) -> None:
         super().__init__(line, column)
         # Was this Any type was inferred without a type annotation?
+        # Note that this is not always the opposite of explicit.
+        # For instance, if "Any" comes from an unimported type,
+        # both explicit and implicit will be False
         self.implicit = implicit
         # Does this come from an unfollowed import? See --disallow-any=unimported option
         self.from_unimported_type = from_unimported_type
