@@ -103,13 +103,17 @@ class Sequence(Iterable[T], Generic[T]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T: pass
 
-class Mapping(Generic[T, U]):
+class Mapping(Iterable[T], Generic[T, U]):
     @overload
     def get(self, k: T) -> Optional[U]: ...
     @overload
     def get(self, k: T, default: Union[U, V]) -> Union[U, V]: ...
     def values(self) -> Iterable[U]: pass  # Approximate return type
 
-class MutableMapping(Generic[T, U]): pass
+class MutableMapping(Mapping[T, U]): pass
+
+class ContextManager(Generic[T]):
+    def __enter__(self) -> T: ...
+    def __exit__(self, exc_type, exc_value, traceback): ...
 
 TYPE_CHECKING = 1

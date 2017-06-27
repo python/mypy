@@ -570,6 +570,17 @@ reveal_type(f(g)) # E: Revealed type is '<nothing>'
 
 -- Constraint Solver
 
+[case testTypedDictConstraintsAgainstIterable]
+from typing import TypeVar, Iterable
+from mypy_extensions import TypedDict
+T = TypeVar('T')
+def f(x: Iterable[T]) -> T: pass
+A = TypedDict('A', {'x': int})
+a: A
+reveal_type(f(a)) # E: Revealed type is 'builtins.str*'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
 -- TODO: Figure out some way to trigger the ConstraintBuilderVisitor.visit_typeddict_type() path.
 
 
@@ -616,8 +627,22 @@ reveal_type(c[u'value'])  # E: Revealed type is 'builtins.int'
 [case testCannotGetItemOfTypedDictWithInvalidStringLiteralKey]
 from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
-p = TaggedPoint(type='2d', x=42, y=1337)
-p['z']  # E: 'z' is not a valid TypedDict key; expected one of ('type', 'x', 'y')
+p: TaggedPoint
+p['z']  # E: TypedDict "TaggedPoint" has no key 'z'
+[builtins fixtures/dict.pyi]
+
+[case testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey]
+from typing import TypeVar
+from mypy_extensions import TypedDict
+A = TypedDict('A', {'x': str, 'y': int, 'z': str})
+B = TypedDict('B', {'x': str, 'z': int})
+C = TypedDict('C', {'x': str, 'y': int, 'z': int})
+T = TypeVar('T')
+def join(x: T, y: T) -> T: return x
+ab = join(A(x='', y=1, z=''), B(x='', z=1))
+ac = join(A(x='', y=1, z=''), C(x='', y=0, z=1))
+ab['y']  # E: 'y' is not a valid TypedDict key; expected one of ('x')
+ac['a']  # E: 'a' is not a valid TypedDict key; expected one of ('x', 'y')
 [builtins fixtures/dict.pyi]
 
 [case testCannotGetItemOfTypedDictWithNonLiteralKey]
@@ -763,14 +788,15 @@ Point = TypedDict('Point', {'x': int, 'y': int})
 
 def f(p: Point) -> None:
     p = {'x': 2, 'y': 3}
-    p = {'x': 2}  # E: Expected TypedDict keys ('x', 'y') but found only key 'x'
+    p = {'x': 2}  # E: Key 'y' missing for TypedDict "Point"
     p = dict(x=2, y=3)
 
 f({'x': 1, 'y': 3})
 f({'x': 1, 'y': 'z'})  # E: Incompatible types (expression has type "str", TypedDict item "y" has type "int")
 
 f(dict(x=1, y=3))
-f(dict(x=1, y=3, z=4))  # E: Expected TypedDict keys ('x', 'y') but found keys ('x', 'y', 'z')
+f(dict(x=1, y=3, z=4))  # E: Extra key 'z' for TypedDict "Point"
+f(dict(x=1, y=3, z=4, a=5))  # E: Extra keys ('z', 'a') for TypedDict "Point"
 
 [builtins fixtures/dict.pyi]
 
@@ -779,16 +805,39 @@ from mypy_extensions import TypedDict
 
 Point = TypedDict('Point', {'x': int, 'y': int})
 
-p1: Point = {'x': 'hi'}  # E: Expected TypedDict keys ('x', 'y') but found only key 'x'
+p1a: Point = {'x': 'hi'}  # E: Key 'y' missing for TypedDict "Point"
+p1b: Point = {}           # E: Keys ('x', 'y') missing for TypedDict "Point"
 
 p2: Point
-p2 = dict(x='bye')  # E: Expected TypedDict keys ('x', 'y') but found only key 'x'
+p2 = dict(x='bye')  # E: Key 'y' missing for TypedDict "Point"
 
 p3 = Point(x=1, y=2)
 p3 = {'x': 'hi'}  # E: Expected TypedDict keys ('x', 'y') but found only key 'x'
 
 p4: Point = {'x': 1, 'y': 2}
 
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems]
+from mypy_extensions import TypedDict
+from typing import TypeVar
+A = TypedDict('A', {'x': int, 'y': int})
+B = TypedDict('B', {'x': int, 'y': str})
+T = TypeVar('T')
+def join(x: T, y: T) -> T: return x
+ab = join(A(x=1, y=1), B(x=1, y=''))
+ab = {'x': 1, 'z': 1} # E: Expected TypedDict key 'x' but found keys ('x', 'z')
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems]
+from mypy_extensions import TypedDict
+from typing import TypeVar
+A = TypedDict('A', {'x': int, 'y': int, 'z': int})
+B = TypedDict('B', {'x': int, 'y': int, 'z': str})
+T = TypeVar('T')
+def join(x: T, y: T) -> T: return x
+ab = join(A(x=1, y=1, z=1), B(x=1, y=1, z=''))
+ab = {} # E: Expected TypedDict keys ('x', 'y') but found no keys
 [builtins fixtures/dict.pyi]
 
 
@@ -828,7 +877,7 @@ D = TypedDict('D', {'x': int, 'y': str})
 d: D
 d.get() # E: No overload variant of "get" of "Mapping" matches argument types []
 d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types [builtins.str, builtins.int, builtins.int]
-x = d.get('z') # E: 'z' is not a valid TypedDict key; expected one of ('x', 'y')
+x = d.get('z') # E: TypedDict "D" has no key 'z'
 reveal_type(x) # E: Revealed type is 'Any'
 s = ''
 y = d.get(s)
@@ -903,7 +952,7 @@ f({})
 f({'x': 1})
 f({'y': ''})
 f({'x': 1, 'y': ''})
-f({'x': 1, 'z': ''}) # E: Expected TypedDict key 'x' but found keys ('x', 'z')
+f({'x': 1, 'z': ''}) # E: Extra key 'z' for TypedDict "D"
 f({'x': ''}) # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 [builtins fixtures/dict.pyi]
 
@@ -1043,6 +1092,130 @@ Point = TypedDict('Point', {int: int, int: int})  # E: Invalid TypedDict() field
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': 1, 'y': 1})  # E: Invalid field type
 [builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictTypeWithInvalidName]
+from mypy_extensions import TypedDict
+X = TypedDict('Y', {'x': int})  # E: First argument 'Y' to TypedDict() does not match variable name 'X'
+[builtins fixtures/dict.pyi]
+
+
+-- Overloading
+
+[case testTypedDictOverloading]
+from typing import overload, Iterable
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int})
+
+@overload
+def f(x: Iterable[str]) -> str: ...
+@overload
+def f(x: int) -> int: ...
+def f(x): pass
+
+a: A
+reveal_type(f(a))  # E: Revealed type is 'builtins.str'
+reveal_type(f(1))  # E: Revealed type is 'builtins.int'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverloading2]
+from typing import overload, Iterable
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int})
+
+@overload
+def f(x: Iterable[int]) -> None: ...
+@overload
+def f(x: int) -> None: ...
+def f(x): pass
+
+a: A
+f(a)  # E: Argument 1 to "f" has incompatible type "A"; expected Iterable[int]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverloading3]
+from typing import overload
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int})
+
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> None: ...
+def f(x): pass
+
+a: A
+f(a)  # E: No overload variant of "f" matches argument types [TypedDict(x=builtins.int, _fallback=__main__.A)]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverloading4]
+from typing import overload
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int})
+B = TypedDict('B', {'x': str})
+
+@overload
+def f(x: A) -> int: ...
+@overload
+def f(x: int) -> str: ...
+def f(x): pass
+
+a: A
+b: B
+reveal_type(f(a)) # E: Revealed type is 'builtins.int'
+reveal_type(f(1)) # E: Revealed type is 'builtins.str'
+f(b) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverloading5]
+from typing import overload
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int})
+B = TypedDict('B', {'y': str})
+C = TypedDict('C', {'y': int})
+
+@overload
+def f(x: A) -> None: ...
+@overload
+def f(x: B) -> None: ...
+def f(x): pass
+
+a: A
+b: B
+c: C
+f(a)
+f(b)
+f(c) # E: Argument 1 to "f" has incompatible type "C"; expected "A"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverloading6]
+from typing import overload
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int})
+B = TypedDict('B', {'y': str})
+
+@overload
+def f(x: A) -> int: ... # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(x: B) -> str: ...
+def f(x): pass
+
+a: A
+b: B
+reveal_type(f(a)) # E: Revealed type is 'Any'
+reveal_type(f(b)) # E: Revealed type is 'Any'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 
 -- Special cases
