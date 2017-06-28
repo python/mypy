@@ -392,11 +392,7 @@ class MemoryXmlReporter(AbstractReporter):
 
         with tokenize.open(path) as input_file:
             for lineno, line_text in enumerate(input_file, 1):
-                if lineno in visitor.visited_lines:
-                    unmapped_line_status = stats.TYPE_ANY
-                else:  # if we haven't visited a line, it must be empty
-                    unmapped_line_status = stats.TYPE_EMPTY
-                status = visitor.line_map.get(lineno, unmapped_line_status)
+                status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
                 file_info.counts[status] += 1
                 etree.SubElement(root, 'line',
                                  number=str(lineno),

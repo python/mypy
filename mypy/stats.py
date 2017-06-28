@@ -3,7 +3,7 @@
 import cgi
 import os.path
 
-from typing import Dict, List, cast, Tuple, Set
+from typing import Dict, List, cast, Tuple, Set, Optional
 
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -17,12 +17,14 @@ from mypy.nodes import (
 
 
 TYPE_EMPTY = 0
-TYPE_PRECISE = 1
-TYPE_IMPRECISE = 2
-TYPE_ANY = 3
+TYPE_UNANALYZED = 1  # type of unchecked code (different from any)
+TYPE_PRECISE = 2
+TYPE_IMPRECISE = 3
+TYPE_ANY = 4
 
 precision_names = [
     'empty',
+    'unanalyzed',
     'precise',
     'imprecise',
     'any',
@@ -47,7 +49,6 @@ class StatisticsVisitor(TraverserVisitor):
         self.num_function = 0
         self.num_typevar = 0
         self.num_complex = 0
-        self.visited_lines = set()  # type: Set[int]
 
         self.line = -1
 
@@ -59,7 +60,6 @@ class StatisticsVisitor(TraverserVisitor):
 
     def visit_func_def(self, o: FuncDef) -> None:
         self.line = o.line
-        self.visited_lines.add(self.line)
         if len(o.expanded) > 1 and o.expanded != [o] * len(o.expanded):
             if o in o.expanded:
                 print('{}:{}: ERROR: cycle in function expansion; skipping'.format(self.filename,
@@ -90,7 +90,6 @@ class StatisticsVisitor(TraverserVisitor):
 
     def visit_type_application(self, o: TypeApplication) -> None:
         self.line = o.line
-        self.visited_lines.add(self.line)
         for t in o.types:
             self.type(t)
         super().visit_type_application(o)
@@ -101,7 +100,6 @@ class StatisticsVisitor(TraverserVisitor):
                 isinstance(o.rvalue.analyzed, nodes.TypeVarExpr)):
             # Type variable definition -- not a real assignment.
             return
-        self.visited_lines.add(self.line)
         if o.type:
             self.type(o.type)
         elif self.inferred:
@@ -161,15 +159,19 @@ class StatisticsVisitor(TraverserVisitor):
         super().visit_unary_expr(o)
 
     def process_node(self, node: Expression) -> None:
-        self.visited_lines.add(node.line)
         if self.all_nodes:
             typ = self.typemap.get(node)
-            if typ:
-                self.line = node.line
-                self.type(typ)
+            self.line = node.line
+            self.type(typ)
 
-    def type(self, t: Type) -> None:
-        if isinstance(t, AnyType):
+    def type(self, t: Optional[Type]) -> None:
+        if not t:
+            # if an expression does not have a type, it is often due to dead code
+            # we should not keep track of the number of these we encounter because there can be
+            # an unanalyzed value on a line with other analyzed expressions
+            self.record_line(self.line, TYPE_UNANALYZED)
+            return
+        elif isinstance(t, AnyType):
             self.log('  !! Any type around line %d' % self.line)
             self.num_any += 1
             self.record_line(self.line, TYPE_ANY)
@@ -205,7 +207,7 @@ class StatisticsVisitor(TraverserVisitor):
 
     def record_line(self, line: int, precision: int) -> None:
         self.line_map[line] = max(precision,
-                                  self.line_map.get(line, TYPE_PRECISE))
+                                  self.line_map.get(line, TYPE_EMPTY))
 
 
 def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
