@@ -604,11 +604,10 @@ def f(x: int) -> str: ...
 def f(x: Optional[int]) -> Optional[str]: ...
 def f(x): return x
 
-reveal_type(f(1))
-reveal_type(f(None))
-[out]
-main:9: error: Revealed type is 'builtins.str'
-main:10: error: Revealed type is 'Union[builtins.str, builtins.None]'
+reveal_type(f(1)) # E: Revealed type is 'builtins.str'
+reveal_type(f(None)) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+x: Optional[int]
+reveal_type(f(x)) # E: Revealed type is 'Union[builtins.str, builtins.None]'
 
 [case testUnionTruthinessTracking]
 from typing import Optional, Any
