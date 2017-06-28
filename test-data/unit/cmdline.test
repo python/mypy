@@ -868,7 +868,7 @@ disallow_any = explicit
 [file m.py]
 from typing import Any, List, NewType
 
-Baz = NewType('Baz', Any)
+Baz = NewType('Baz', Any)  # this error does not come from `--disallow-any=explicit` flag
 Bar = NewType('Bar', List[Any])
 
 [out]
