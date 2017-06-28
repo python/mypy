@@ -156,9 +156,12 @@ class AnyExpressionsReporter(AbstractReporter):
         visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
                                           typemap=type_map, all_nodes=True)
         tree.accept(visitor)
-        num_total = visitor.num_imprecise + visitor.num_precise + visitor.num_any
+        num_unanalyzed_lines = list(visitor.line_map.values()).count(stats.TYPE_UNANALYZED)
+        # count each line of dead code as one expression of type "Any"
+        num_any = visitor.num_any + num_unanalyzed_lines
+        num_total = visitor.num_imprecise + visitor.num_precise + num_any
         if num_total > 0:
-            self.counts[tree.fullname()] = (visitor.num_any, num_total)
+            self.counts[tree.fullname()] = (num_any, num_total)
 
     def on_finish(self) -> None:
         total_any = sum(num_any for num_any, _ in self.counts.values())
