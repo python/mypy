@@ -179,8 +179,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 return self.tuple_type(self.anal_array(t.args))
             elif fullname == 'typing.Union':
                 items = self.anal_array(t.args)
-                if not experiments.STRICT_OPTIONAL:
-                    items = [item for item in items if not isinstance(item, NoneTyp)]
                 return UnionType.make_union(items)
             elif fullname == 'typing.Optional':
                 if len(t.args) != 1:
@@ -780,12 +778,11 @@ def make_optional_type(t: Type) -> Type:
     is called during semantic analysis and simplification only works during
     type checking.
     """
-    if not experiments.STRICT_OPTIONAL:
-        return t
     if isinstance(t, NoneTyp):
         return t
-    if isinstance(t, UnionType):
+    elif isinstance(t, UnionType):
         items = [item for item in union_items(t)
                  if not isinstance(item, NoneTyp)]
         return UnionType(items + [NoneTyp()], t.line, t.column)
-    return UnionType([t, NoneTyp()], t.line, t.column)
+    else:
+        return UnionType([t, NoneTyp()], t.line, t.column)

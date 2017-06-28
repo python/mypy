@@ -15,6 +15,7 @@ from mypy.nodes import (
 )
 from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper
+from mypy import experiments
 
 
 T = TypeVar('T')
@@ -1086,7 +1087,14 @@ class UnionType(Type):
         """
         return all((isinstance(x, UnionType) and x.has_readable_member(name)) or
                    (isinstance(x, Instance) and x.type.has_readable_member(name))
-                   for x in self.items)
+                   for x in self.relevant_items())
+
+    def relevant_items(self) -> List[Type]:
+        """Removes NoneTypes from Unions when strict Optional checking is off."""
+        if experiments.STRICT_OPTIONAL:
+            return self.items
+        else:
+            return [i for i in self.items if not isinstance(i, NoneTyp)]
 
     def serialize(self) -> JsonDict:
         return {'.class': 'UnionType',
