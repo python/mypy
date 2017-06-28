@@ -1,4 +1,4 @@
-from typing import builtinclass, Tuple, TypeVar, Generic, Union
+from typing import Tuple, TypeVar, Generic, Union
 
 T = TypeVar('T')
 

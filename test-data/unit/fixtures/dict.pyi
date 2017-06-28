@@ -11,7 +11,7 @@ class object:
 
 class type: pass
 
-class dict(Iterable[KT], Mapping[KT, VT], Generic[KT, VT]):
+class dict(Mapping[KT, VT], Iterable[KT], Generic[KT, VT]):
     @overload
     def __init__(self, **kwargs: VT) -> None: pass
     @overload
@@ -39,4 +39,5 @@ class function: pass
 class float: pass
 class bool: pass
 
+class ellipsis: pass
 class BaseException: pass

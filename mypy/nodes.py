@@ -2,9 +2,10 @@
 
 import os
 from abc import abstractmethod
+from collections import OrderedDict
 
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable,
 )
 
 import mypy.strconv
@@ -14,11 +15,35 @@ from mypy.util import short_type
 
 class Context:
     """Base type for objects that are valid as error message locations."""
-    @abstractmethod
-    def get_line(self) -> int: pass
 
-    @abstractmethod
-    def get_column(self) -> int: pass
+    line = -1
+    column = -1
+
+    def __init__(self, line: int = -1, column: int = -1) -> None:
+        self.line = line
+        self.column = column
+
+    def set_line(self, target: Union['Context', int], column: int = None) -> None:
+        """If target is a node, pull line (and column) information
+        into this node. If column is specified, this will override any column
+        information coming from a node.
+        """
+        if isinstance(target, int):
+            self.line = target
+        else:
+            self.line = target.line
+            self.column = target.column
+
+        if column is not None:
+            self.column = column
+
+    def get_line(self) -> int:
+        """Don't use. Use x.line."""
+        return self.line
+
+    def get_column(self) -> int:
+        """Don't use. Use x.column."""
+        return self.column
 
 
 if False:
@@ -112,36 +137,11 @@ Key = tuple
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
 
-    line = -1
-    column = -1
-
     def __str__(self) -> str:
         ans = self.accept(mypy.strconv.StrConv())
         if ans is None:
             return repr(self)
         return ans
-
-    def set_line(self, target: Union['Node', int], column: int = None) -> None:
-        """If target is a node, pull line (and column) information
-        into this node. If column is specified, this will override any column
-        information coming from a node.
-        """
-        if isinstance(target, int):
-            self.line = target
-        else:
-            self.line = target.line
-            self.column = target.column
-
-        if column is not None:
-            self.column = column
-
-    def get_line(self) -> int:
-        # TODO this should be just 'line'
-        return self.line
-
-    def get_column(self) -> int:
-        # TODO this should be just 'column'
-        return self.column
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
@@ -398,6 +398,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     impl = None  # type: Optional[OverloadPart]
 
     def __init__(self, items: List['OverloadPart']) -> None:
+        assert len(items) > 0
         self.items = items
         self.impl = None
         self.set_line(items[0].line)
@@ -467,7 +468,7 @@ class Argument(Node):
         assign = AssignmentStmt([lvalue], rvalue)
         return assign
 
-    def set_line(self, target: Union[Node, int], column: int = None) -> None:
+    def set_line(self, target: Union[Context, int], column: int = None) -> None:
         super().set_line(target, column)
 
         if self.initializer:
@@ -524,7 +525,7 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(self, target: Union[Node, int], column: int = None) -> None:
+    def set_line(self, target: Union[Context, int], column: int = None) -> None:
         super().set_line(target, column)
         for arg in self.arguments:
             arg.set_line(self.line, self.column)
@@ -730,6 +731,8 @@ class ClassDef(Statement):
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = ''  # type: Optional[str]
     decorators = None  # type: List[Expression]
+    keywords = None  # type: OrderedDict[str, Expression]
+    analyzed = None  # type: Optional[Expression]
     has_incompatible_baseclass = False
 
     def __init__(self,
@@ -737,13 +740,15 @@ class ClassDef(Statement):
                  defs: 'Block',
                  type_vars: List['mypy.types.TypeVarDef'] = None,
                  base_type_exprs: List[Expression] = None,
-                 metaclass: str = None) -> None:
+                 metaclass: str = None,
+                 keywords: List[Tuple[str, Expression]] = None) -> None:
         self.name = name
         self.defs = defs
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []
         self.metaclass = metaclass
         self.decorators = []
+        self.keywords = OrderedDict(keywords or [])
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
@@ -752,7 +757,7 @@ class ClassDef(Statement):
         return self.info.is_generic()
 
     def serialize(self) -> JsonDict:
-        # Not serialized: defs, base_type_exprs, decorators
+        # Not serialized: defs, base_type_exprs, decorators, analyzed (for named tuples etc.)
         return {'.class': 'ClassDef',
                 'name': self.name,
                 'fullname': self.fullname,
@@ -1438,6 +1443,10 @@ class OpExpr(Expression):
     right = None  # type: Expression
     # Inferred type for the operator method type (when relevant).
     method_type = None  # type: Optional[mypy.types.Type]
+    # Is the right side going to be evaluated every time?
+    right_always = False
+    # Is the right side unreachable?
+    right_unreachable = False
 
     def __init__(self, op: str, left: Expression, right: Expression) -> None:
         self.op = op
@@ -2035,6 +2044,12 @@ class TypeInfo(SymbolNode):
                 return n
         return None
 
+    def get_containing_type_info(self, name: str) -> Optional['TypeInfo']:
+        for cls in self.mro:
+            if name in cls.names:
+                return cls
+        return None
+
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
         if n:
@@ -2180,6 +2195,8 @@ class TypeInfo(SymbolNode):
                 '_promote': None if self._promote is None else self._promote.serialize(),
                 'declared_metaclass': (None if self.declared_metaclass is None
                                        else self.declared_metaclass.serialize()),
+                'metaclass_type':
+                    None if self.metaclass_type is None else self.metaclass_type.serialize(),
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
                 'typeddict_type':
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
@@ -2202,7 +2219,9 @@ class TypeInfo(SymbolNode):
                        else mypy.types.deserialize_type(data['_promote']))
         ti.declared_metaclass = (None if data['declared_metaclass'] is None
                                  else mypy.types.Instance.deserialize(data['declared_metaclass']))
-        # NOTE: ti.metaclass_type and ti.mro will be set in the fixup phase.
+        ti.metaclass_type = (None if data['metaclass_type'] is None
+                             else mypy.types.Instance.deserialize(data['metaclass_type']))
+        # NOTE: ti.mro will be set in the fixup phase.
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None
@@ -2224,7 +2243,10 @@ class FakeInfo(TypeInfo):
     #    pass cleanly.
     # 2. If NOT_READY value is accidentally used somewhere, it will be obvious where the value
     #    is from, whereas a 'None' value could come from anywhere.
-    def __getattr__(self, attr: str) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def __getattribute__(self, attr: str) -> None:
         raise AssertionError('De-serialization failure: TypeInfo not fixed')
 
 
@@ -2272,7 +2294,7 @@ class SymbolTableNode:
             return None
 
     @property
-    def type(self) -> Optional['mypy.types.Type']:
+    def type(self) -> 'Optional[mypy.types.Type]':
         # IDEA: Get rid of the Any type.
         node = self.node  # type: Any
         if self.type_override is not None:
@@ -2448,3 +2470,47 @@ deserialize_map = {
     for key, obj in globals().items()
     if isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
 }
+
+
+def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T], None]) -> None:
+    is_var_arg = False
+    is_kw_arg = False
+    seen_named = False
+    seen_opt = False
+    for kind, node in zip(arg_kinds, nodes):
+        if kind == ARG_POS:
+            if is_var_arg or is_kw_arg or seen_named or seen_opt:
+                fail("Required positional args may not appear "
+                     "after default, named or var args",
+                     node)
+                break
+        elif kind == ARG_OPT:
+            if is_var_arg or is_kw_arg or seen_named:
+                fail("Positional default args may not appear after named or var args", node)
+                break
+            seen_opt = True
+        elif kind == ARG_STAR:
+            if is_var_arg or is_kw_arg or seen_named:
+                fail("Var args may not appear after named or var args", node)
+                break
+            is_var_arg = True
+        elif kind == ARG_NAMED or kind == ARG_NAMED_OPT:
+            seen_named = True
+            if is_kw_arg:
+                fail("A **kwargs argument must be the last argument", node)
+                break
+        elif kind == ARG_STAR2:
+            if is_kw_arg:
+                fail("You may only have one **kwargs argument", node)
+                break
+            is_kw_arg = True
+
+
+def check_arg_names(names: List[str], nodes: List[T], fail: Callable[[str, T], None],
+                    description: str = 'function definition') -> None:
+    seen_names = set()  # type: Set[str]
+    for name, node in zip(names, nodes):
+        if name is not None and name in seen_names:
+            fail("Duplicate argument '{}' in {}".format(name, description), node)
+            break
+        seen_names.add(name)

@@ -1,10 +1,9 @@
 # builtins stub used in type-related test cases.
 
-from typing import builtinclass, Generic, TypeVar, List
+from typing import Generic, TypeVar, List
 
 T = TypeVar('T')
 
-@builtinclass
 class object:
     def __init__(self) -> None: pass
     def __str__(self) -> 'str': pass
