@@ -2395,7 +2395,6 @@ class SemanticAnalyzer(NodeVisitor):
             for t in types:
                 if has_any_from_unimported_type(t):
                     self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, dictexpr)
-        return items, types, ok
         return items, types, total, ok
 
     def parse_bool(self, expr: Expression) -> Optional[bool]:
