@@ -475,6 +475,13 @@ strict_optional = False
 strict_optional = True
 [builtins fixtures/list.pyi]
 
+[case testPerFileStrictOptionalComplicatedList]
+from typing import Union, Optional, List
+
+def f() -> None:
+    x = [] # type: Union[List[Optional[str]], str]
+[builtins fixtures/list.pyi]
+
 [case testDisallowImplicitTypesIgnoreMissingTypes]
 # flags: --ignore-missing-imports --disallow-any=unimported
 from missing import MyType
