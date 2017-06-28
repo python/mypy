@@ -118,16 +118,17 @@ class Sequence(Iterable[T_co], Protocol):
     def __getitem__(self, n: Any) -> T_co: pass
 
 @runtime
-class Mapping(Protocol[T_contra, T_co]):
-    def __getitem__(self, key: T_contra) -> T_co: pass
+class Mapping(Iterable[T], Protocol[T, T_co]):
+    def __getitem__(self, key: T) -> T_co: pass
     @overload
-    def get(self, k: T_contra) -> Optional[T_co]: pass
+    def get(self, k: T) -> Optional[T_co]: pass
     @overload
-    def get(self, k: T_contra, default: Union[T_co, V]) -> Union[T_co, V]: pass
+    def get(self, k: T, default: Union[T_co, V]) -> Union[T_co, V]: pass
+
 
 @runtime
-class MutableMapping(Mapping[T_contra, U], Protocol):
-    def __setitem__(self, k: T_contra, v: U) -> None: pass
+class MutableMapping(Mapping[T, U], Protocol):
+    def __setitem__(self, k: T, v: U) -> None: pass
 
 class SupportsInt(Protocol):
     def __int__(self) -> int: pass
@@ -136,7 +137,7 @@ def runtime(cls: T) -> T:
     return cls
 
 class ContextManager(Generic[T]):
-    def __enter__(self) -> T: ...
-    def __exit__(self, exc_type, exc_value, traceback): ...
+    def __enter__(self) -> T: pass
+    def __exit__(self, exc_type, exc_value, traceback): pass
 
 TYPE_CHECKING = 1
