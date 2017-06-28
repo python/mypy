@@ -173,9 +173,11 @@ class AnyExpressionsReporter(AbstractReporter):
         any_column_name = "Anys"
         total_column_name = "Exprs"
         file_column_name = "Name"
+        total_row_name = "Total"
         coverage_column_name = "Coverage"
         # find the longest filename all files
-        name_width = max([len(file) for file in self.counts] + [len(file_column_name)])
+        name_width = max([len(file) for file in self.counts] +
+                         [len(file_column_name), len(total_row_name)])
         # totals are the largest numbers in their column - no need to look at others
         min_column_distance = 3  # minimum distance between numbers in two columns
         any_width = max(len(str(total_any)) + min_column_distance, len(any_column_name))
@@ -201,8 +203,8 @@ class AnyExpressionsReporter(AbstractReporter):
                                coverage_width=coverage_width))
             f.write(separator)
             f.write('{:{name_width}} {:{any_width}} {:{total_width}} {:>{coverage_width}.2f}%\n'
-                    .format('Total', total_any, total_expr, total_coverage, name_width=name_width,
-                            any_width=any_width, total_width=exprs_width,
+                    .format(total_row_name, total_any, total_expr, total_coverage,
+                            name_width=name_width, any_width=any_width, total_width=exprs_width,
                             coverage_width=coverage_width))
 
 

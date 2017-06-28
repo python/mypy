@@ -227,9 +227,9 @@ def bar(x):
     assert False
 
 [outfile report/any-exprs.txt]
-Name Anys Exprs    Coverage
------------------------------
-i       1     7      85.71%
-j       0     6     100.00%
------------------------------
+Name  Anys Exprs    Coverage
+------------------------------
+i        1     7      85.71%
+j        0     6     100.00%
+------------------------------
 Total    1    13      92.31%
