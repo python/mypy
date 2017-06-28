@@ -282,7 +282,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         item_names = []  # List[str]
         for item_name_expr in item_name_exprs:
             if not isinstance(item_name_expr, StrExpr):
-                self.chk.fail(messages.TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL, item_name_expr)
+                self.chk.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, item_name_expr)
                 return AnyType()
             item_names.append(item_name_expr.value)
 
@@ -292,31 +292,32 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_typeddict_call_with_kwargs(self, callee: TypedDictType,
                                          kwargs: 'OrderedDict[str, Expression]',
                                          context: Context) -> Type:
-        if callee.items.keys() != kwargs.keys():
-            callee_item_names = callee.items.keys()
-            kwargs_item_names = kwargs.keys()
-
-            self.msg.typeddict_instantiated_with_unexpected_items(
-                expected_item_names=list(callee_item_names),
-                actual_item_names=list(kwargs_item_names),
+        if not (callee.required_keys <= set(kwargs.keys()) <= set(callee.items.keys())):
+            expected_keys = [key for key in callee.items.keys()
+                             if key in callee.required_keys or key in kwargs.keys()]
+            actual_keys = kwargs.keys()
+            self.msg.unexpected_typeddict_keys(
+                callee,
+                expected_keys=expected_keys,
+                actual_keys=list(actual_keys),
                 context=context)
             return AnyType()
 
         items = OrderedDict()  # type: OrderedDict[str, Type]
         for (item_name, item_expected_type) in callee.items.items():
-            item_value = kwargs[item_name]
-
-            self.chk.check_simple_assignment(
-                lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
-                msg=messages.INCOMPATIBLE_TYPES,
-                lvalue_name='TypedDict item "{}"'.format(item_name),
-                rvalue_name='expression')
+            if item_name in kwargs:
+                item_value = kwargs[item_name]
+                self.chk.check_simple_assignment(
+                    lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
+                    msg=messages.INCOMPATIBLE_TYPES,
+                    lvalue_name='TypedDict item "{}"'.format(item_name),
+                    rvalue_name='expression')
             items[item_name] = item_expected_type
 
         mapping_value_type = join.join_type_list(list(items.values()))
         fallback = self.chk.named_generic_type('typing.Mapping',
                                                [self.chk.str_type(), mapping_value_type])
-        return TypedDictType(items, fallback)
+        return TypedDictType(items, set(callee.required_keys), fallback)
 
     # Types and methods that can be used to infer partial types.
     item_args = {'builtins.list': ['append'],
@@ -1660,13 +1661,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
         if not isinstance(index, (StrExpr, UnicodeExpr)):
-            self.msg.typeddict_item_name_must_be_string_literal(td_type, index)
+            self.msg.typeddict_key_must_be_string_literal(td_type, index)
             return AnyType()
         item_name = index.value
 
         item_type = td_type.items.get(item_name)
         if item_type is None:
-            self.msg.typeddict_item_name_not_found(td_type, item_name, index)
+            self.msg.typeddict_key_not_found(td_type, item_name, index)
             return AnyType()
         return item_type
 
@@ -2674,6 +2675,12 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             return overload_arg_similarity(actual.ret_type, formal.item)
         else:
             return 0
+    if isinstance(actual, TypedDictType):
+        if isinstance(formal, TypedDictType):
+            # Don't support overloading based on the keys or value types of a TypedDict since
+            # that would be complicated and probably only marginally useful.
+            return 2
+        return overload_arg_similarity(actual.fallback, formal)
     if isinstance(formal, Instance):
         if isinstance(actual, CallableType):
             actual = actual.fallback
@@ -2691,8 +2698,12 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             else:
                 return 0
         elif isinstance(actual, TypeType):
+            item = actual.item
             if formal.type.fullname() in {"builtins.object", "builtins.type"}:
                 return 2
+            elif isinstance(item, Instance):
+                # FIX: this does not handle e.g. Union of instances
+                return overload_arg_similarity(item.type.metaclass_type, formal)
             else:
                 return 0
         else:

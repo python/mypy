@@ -82,7 +82,7 @@ KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \
 ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'
 INVALID_TYPEDDICT_ARGS = \
     'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
-TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
+TYPEDDICT_KEY_MUST_BE_STRING_LITERAL = \
     'Expected TypedDict key to be string literal'
 MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
@@ -296,12 +296,15 @@ class MessageBuilder:
                 return 'tuple(length {})'.format(len(items))
         elif isinstance(typ, TypedDictType):
             # If the TypedDictType is named, return the name
-            if typ.fallback.type.fullname() != 'typing.Mapping':
+            if not typ.is_anonymous():
                 return self.format_simple(typ.fallback)
             items = []
             for (item_name, item_type) in typ.items.items():
-                items.append('{}={}'.format(item_name, strip_quotes(self.format(item_type))))
-            s = '"TypedDict({})"'.format(', '.join(items))
+                modifier = '' if item_name in typ.required_keys else '?'
+                items.append('{!r}{}: {}'.format(item_name,
+                                                 modifier,
+                                                 strip_quotes(self.format(item_type))))
+            s = '"TypedDict({{{}}})"'.format(', '.join(items))
             return s
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
@@ -872,34 +875,59 @@ class MessageBuilder:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
                   ctx)
 
-    def typeddict_instantiated_with_unexpected_items(self,
-                                                     expected_item_names: List[str],
-                                                     actual_item_names: List[str],
-                                                     context: Context) -> None:
-        if not expected_item_names:
+    def unexpected_typeddict_keys(
+            self,
+            typ: TypedDictType,
+            expected_keys: List[str],
+            actual_keys: List[str],
+            context: Context) -> None:
+        actual_set = set(actual_keys)
+        expected_set = set(expected_keys)
+        if not typ.is_anonymous():
+            # Generate simpler messages for some common special cases.
+            if actual_set < expected_set:
+                # Use list comprehension instead of set operations to preserve order.
+                missing = [key for key in expected_keys if key not in actual_set]
+                self.fail('{} missing for TypedDict {}'.format(
+                    format_key_list(missing, short=True).capitalize(), self.format(typ)),
+                    context)
+                return
+            else:
+                extra = [key for key in actual_keys if key not in expected_set]
+                if extra:
+                    # If there are both extra and missing keys, only report extra ones for
+                    # simplicity.
+                    self.fail('Extra {} for TypedDict {}'.format(
+                        format_key_list(extra, short=True), self.format(typ)),
+                        context)
+                    return
+        if not expected_keys:
             expected = '(no keys)'
         else:
-            expected = format_key_list(expected_item_names)
-        found = format_key_list(actual_item_names, short=True)
-        if actual_item_names and set(actual_item_names) < set(expected_item_names):
+            expected = format_key_list(expected_keys)
+        found = format_key_list(actual_keys, short=True)
+        if actual_keys and actual_set < expected_set:
             found = 'only {}'.format(found)
         self.fail('Expected {} but found {}'.format(expected, found), context)
 
-    def typeddict_item_name_must_be_string_literal(self,
-                                                   typ: TypedDictType,
-                                                   context: Context,
-                                                   ) -> None:
+    def typeddict_key_must_be_string_literal(
+            self,
+            typ: TypedDictType,
+            context: Context) -> None:
         self.fail(
             'TypedDict key must be a string literal; expected one of {}'.format(
                 format_item_name_list(typ.items.keys())), context)
 
-    def typeddict_item_name_not_found(self,
-                                      typ: TypedDictType,
-                                      item_name: str,
-                                      context: Context,
-                                      ) -> None:
-        self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
-            item_name, format_item_name_list(typ.items.keys())), context)
+    def typeddict_key_not_found(
+            self,
+            typ: TypedDictType,
+            item_name: str,
+            context: Context) -> None:
+        if typ.is_anonymous():
+            self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
+                item_name, format_item_name_list(typ.items.keys())), context)
+        else:
+            self.fail("TypedDict {} has no key '{}'".format(self.format(typ), item_name), context)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)

@@ -1026,6 +1026,19 @@ main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapp
 main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
 main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
 
+[case testSerializeNonTotalTypedDict]
+from m import d
+reveal_type(d)
+[file m.py]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int, 'y': str}, total=False)
+d: D
+[builtins fixtures/dict.pyi]
+[out1]
+main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=m.D, _total=False)'
+[out2]
+main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=m.D, _total=False)'
+
 --
 -- Modules
 --
