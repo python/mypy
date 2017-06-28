@@ -1,6 +1,6 @@
 # Builtins stub used to support *args, **kwargs.
 
-from typing import TypeVar, Generic, Iterable, Tuple, Dict, Any, overload
+from typing import TypeVar, Generic, Iterable, Tuple, Dict, Any, overload, Mapping
 
 Tco = TypeVar('Tco', covariant=True)
 T = TypeVar('T')
@@ -19,7 +19,8 @@ class type:
     def __call__(self, *args: Any, **kwargs: Any) -> Any: pass
 
 class tuple(Iterable[Tco], Generic[Tco]): pass
-class dict(Generic[T, S]): pass
+
+class dict(Iterable[T], Mapping[T, S], Generic[T, S]): pass
 
 class int:
     def __eq__(self, o: object) -> bool: pass

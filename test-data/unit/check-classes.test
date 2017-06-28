@@ -714,7 +714,7 @@ A()
 class A: pass
 class A: pass
 [out]
-main:4: error: Name 'A' already defined
+main:4: error: Name 'A' already defined on line 3
 
 [case testDocstringInClass]
 import typing
@@ -3289,6 +3289,38 @@ cv.x
 x3: M = cv
 
 [builtins fixtures/classmethod.pyi]
+
+[case testMetaclassOverloadResolution]
+from typing import Type, overload
+class A: pass
+
+class EM(type): pass
+class E(metaclass=EM): pass
+
+class EM1(type): pass
+class E1(metaclass=EM1): pass
+
+@overload
+def f(x: EM) -> int: ...
+@overload
+def f(x: EM1) -> A: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: object) -> object: return ''
+
+e: EM
+reveal_type(f(e))  # E: Revealed type is 'builtins.int'
+
+et: Type[E]
+reveal_type(f(et))  # E: Revealed type is 'builtins.int'
+
+e1: EM1
+reveal_type(f(e1))  # E: Revealed type is '__main__.A'
+
+e1t: Type[E1]
+reveal_type(f(e1t))  # E: Revealed type is '__main__.A'
+
+reveal_type(f(''))  # E: Revealed type is 'builtins.str'
 
 -- Synthetic types crashes
 -- -----------------------

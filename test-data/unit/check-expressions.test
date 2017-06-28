@@ -1208,6 +1208,20 @@ def void() -> None:
     pass
 x = lambda: void() # type: typing.Callable[[], None]
 
+[case testNoCrashOnLambdaGenerator]
+from typing import Iterator, Callable
+
+# These should not crash
+lambda: (yield)
+
+gen: Callable[[], Iterator[str]]
+gen = (lambda: (yield 1))  # E: Incompatible types in yield (actual type "int", expected type "str")
+
+def fun(cb: Callable[[], Iterator[str]]) -> None:
+    pass
+fun(lambda: (yield from [1]))  # E: Incompatible types in "yield from" (actual type "int", expected type "str")
+[builtins fixtures/list.pyi]
+[out]
 
 -- List comprehensions
 -- -------------------

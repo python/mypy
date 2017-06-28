@@ -125,7 +125,6 @@ class Mapping(Protocol[T_contra, T_co]):
     @overload
     def get(self, k: T_contra, default: Union[T_co, V]) -> Union[T_co, V]: pass
 
-
 @runtime
 class MutableMapping(Mapping[T_contra, U], Protocol):
     def __setitem__(self, k: T_contra, v: U) -> None: pass
@@ -135,5 +134,9 @@ class SupportsInt(Protocol):
 
 def runtime(cls: T) -> T:
     return cls
+
+class ContextManager(Generic[T]):
+    def __enter__(self) -> T: ...
+    def __exit__(self, exc_type, exc_value, traceback): ...
 
 TYPE_CHECKING = 1
