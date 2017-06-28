@@ -321,13 +321,10 @@ def process_options(args: List[str],
         ", ".join(strict_flag_names))
     parser.add_argument('--strict', action='store_true', dest='special-opts:strict',
                         help=strict_help)
+    parser.add_argument('--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
+                        dest='shadow_file',
+                        help='Typecheck SHADOW_FILE in place of SOURCE_FILE.')
     # hidden options
-    # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
-    # Useful for tools to make transformations to a file to get more
-    # information from a mypy run without having to change the file in-place
-    # (e.g. by adding a call to reveal_type).
-    parser.add_argument('--shadow-file', metavar='PATH', nargs=2, dest='shadow_file',
-                        help=argparse.SUPPRESS)
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
