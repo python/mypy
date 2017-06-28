@@ -100,7 +100,8 @@ inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}
 implicit_module_attrs = {'__name__': '__builtins__.str',
                          '__doc__': None,  # depends on Python version, see semanal.py
                          '__file__': '__builtins__.str',
-                         '__package__': '__builtins__.str'}
+                         '__package__': '__builtins__.str',
+                         '__path__': '__builtins__.str', }  # only present in __init__.py files
 
 
 type_aliases = {

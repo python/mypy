@@ -1640,3 +1640,39 @@ m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.M
 [file n.py]
 
 [builtins fixtures/module.pyi]
+
+[case testPathAttributePresence]
+import m
+import m.m
+
+x = m.__path__
+x.append('xyzzy')
+
+y = m.m.__path__  # E: Module has no attribute "__path__"
+
+[file m/__init__.py]
+import typing
+
+[file m/m.py]
+
+[builtins fixtures/module_all.pyi]
+
+[typing fixtures/typing-full.pyi]
+
+
+[case testPathAttributePresence_python2]
+import m
+import m.m
+
+x = m.__path__
+x.append('xyzzy')
+
+y = m.m.__path__  # E: Module has no attribute "__path__"
+
+[file m/__init__.py]
+
+[file m/m.py]
+
+[builtins fixtures/module_all.pyi]
+
+[typing fixtures/typing-full.pyi]
