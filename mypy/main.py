@@ -272,6 +272,10 @@ def process_options(args: List[str],
     add_invertible_flag('--warn-return-any', default=False, strict_flag=True,
                         help="warn about returning values of type Any"
                              " from non-Any typed functions")
+    add_invertible_flag('--warn-implicit-any', default=False,
+                        help='warn about implicit creation of type "Any" '
+                        "(experimental -- only warns in some limited circusmstances.)"
+                        )
     add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
                         help="warn about unneeded '# type: ignore' comments")
     add_invertible_flag('--show-error-context', default=False,

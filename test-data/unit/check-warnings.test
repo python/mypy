@@ -166,6 +166,53 @@ def g() -> Any: pass
 def f() -> Any: return g()
 [out]
 
+[case testWarnImplicitAny]
+# flags: --warn-implicit-any
+from typing import TypeVar, List, Tuple, Generic, Callable, Union, Type, ClassVar, Any
+
+T = TypeVar('T')
+U = TypeVar('U')
+A = TypeVar('A', str, int)
+
+class X(Generic[T]):
+    pass
+
+class Y(Generic[T, U]):
+    pass
+
+a1: Tuple  # E: Type Any created implicitly: Tuple without type args
+a2: Callable  # E: Type Any created implicitly: Callable without type args
+a4: list  # E: Type Any created implicitly: builtins.list without type args
+a5: List # E: Type Any created implicitly: builtins.list without type args
+a6: X  # E: Type Any created implicitly: __main__.X without type args
+a7: Y  # E: Type Any created implicitly: __main__.Y without type args
+a8: Type  # E: Type Any created implicitly: Type without type args
+
+class C:
+    c: ClassVar  # E: Type Any created implicitly: ClassVar without type args
+
+C1: Any = 5
+
+class C2(C1): ...  # E: Type Any created implicitly: Assigning value of type Any
+
+def f(x: X) -> None:  # E: Type Any created implicitly: __main__.X without type args
+    pass
+
+def g() -> X:  # E: Type Any created implicitly: __main__.X without type args
+    pass
+
+b1: str
+b2: X[int]
+b3: Y[int, str]
+b4 = (1, 2)
+b5 = [1, 2]
+b6 = 'abc'
+
+Z = Union[A, X[A]]
+def q(z: Z) -> None: ...  # E: Type Any created implicitly: Generic type without type args
+
+[builtins fixtures/list.pyi]
+
 [case testOKReturnAnyIfProperSubtype]
 # flags: --warn-return-any --strict-optional
 from typing import Any, Optional

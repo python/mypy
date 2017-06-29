@@ -3552,12 +3552,15 @@ class SemanticAnalyzer(NodeVisitor):
         self.fail("Name '{}' already defined{}".format(name, extra_msg), ctx)
 
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
-             blocker: bool = False) -> None:
+             blocker: bool = False, implicit_any: bool = False) -> None:
         if (not serious and
                 not self.options.check_untyped_defs and
                 self.function_stack and
                 self.function_stack[-1].is_dynamic()):
             return
+        if implicit_any:
+            if not self.options.warn_implicit_any or self.cur_mod_node.is_stub:
+                return
         # In case it's a bug and we don't really have context
         assert ctx is not None, msg
         self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker)
@@ -3997,7 +4000,14 @@ class ThirdPass(TraverserVisitor):
             analyzer = TypeAnalyserPass3(self.fail)
             type.accept(analyzer)
 
-    def fail(self, msg: str, ctx: Context, *, blocker: bool = False) -> None:
+    def fail(self, msg: str, ctx: Context, *, blocker: bool = False,
+             implicit_any: bool = False) -> None:
+        if implicit_any:
+            if not self.options.warn_implicit_any or self.errors.file.endswith('.pyi'):
+                return
+            # TempNode, so must have already reported in the first pass
+            if ctx.get_line() == -1:
+                return
         self.errors.report(ctx.get_line(), ctx.get_column(), msg)
 
     def fail_blocker(self, msg: str, ctx: Context) -> None:
