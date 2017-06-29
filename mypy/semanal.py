@@ -1580,9 +1580,10 @@ class SemanticAnalyzer(NodeVisitor):
 
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed."""
-        # For now, type aliases are not created at class scope,
-        # instead they are treated as class valued members.
-        if len(s.lvalues) == 1 and not s.type and (not self.type or self.is_func_scope()):
+        # Type aliases are created only at module scope, at class and function scopes
+        # assignments create class valued members and local variables with type object types.
+        if (len(s.lvalues) == 1 and not self.is_func_scope() and not self.type
+                and not s.type):
             lvalue = s.lvalues[0]
             if isinstance(lvalue, NameExpr):
                 rvalue = s.rvalue
