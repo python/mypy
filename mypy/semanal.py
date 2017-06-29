@@ -1580,7 +1580,6 @@ class SemanticAnalyzer(NodeVisitor):
                     # when this type alias gets "inlined", the Any is not explicit anymore,
                     # so we need to replace it with non-explicit Anys
                     res = make_any_non_explicit(res)
-                    assert not has_explicit_any(res)
 
                     name = s.lvalues[0]
                     node = self.lookup(name.name, name)
