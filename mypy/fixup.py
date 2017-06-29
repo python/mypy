@@ -88,6 +88,9 @@ class NodeFixer(NodeVisitor[None]):
                     if stnode is not None:
                         value.node = stnode.node
                         value.type_override = stnode.type_override
+                        if not value.type_override and self.quick_and_dirty:
+                            value.type_override = Instance(stale_info(), [])
+                        value.alias_tvars = stnode.alias_tvars or []
                     elif not self.quick_and_dirty:
                         assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
                     else:

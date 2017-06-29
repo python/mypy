@@ -29,6 +29,7 @@ class bool: pass
 class str:
     def __init__(self, x: 'int') -> None: pass
     def __add__(self, x: 'str') -> 'str': pass
+    def __eq__(self, x: object) -> bool: pass
     def startswith(self, x: 'str') -> bool: pass
 
 class unicode: pass
@@ -39,6 +40,7 @@ class int:
     def __mul__(self, x: 'int') -> 'int': pass
     def __mod__(self, x: 'int') -> 'int': pass
     def __floordiv__(self, x: 'int') -> 'int': pass
+    def __pow__(self, x: 'int') -> Any: pass
     def __pos__(self) -> 'int': pass
     def __neg__(self) -> 'int': pass
     def __eq__(self, x: object) -> bool: pass

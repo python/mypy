@@ -14,11 +14,35 @@ from mypy.util import short_type
 
 class Context:
     """Base type for objects that are valid as error message locations."""
-    @abstractmethod
-    def get_line(self) -> int: pass
 
-    @abstractmethod
-    def get_column(self) -> int: pass
+    line = -1
+    column = -1
+
+    def __init__(self, line: int = -1, column: int = -1) -> None:
+        self.line = line
+        self.column = column
+
+    def set_line(self, target: Union['Context', int], column: int = None) -> None:
+        """If target is a node, pull line (and column) information
+        into this node. If column is specified, this will override any column
+        information coming from a node.
+        """
+        if isinstance(target, int):
+            self.line = target
+        else:
+            self.line = target.line
+            self.column = target.column
+
+        if column is not None:
+            self.column = column
+
+    def get_line(self) -> int:
+        """Don't use. Use x.line."""
+        return self.line
+
+    def get_column(self) -> int:
+        """Don't use. Use x.column."""
+        return self.column
 
 
 if False:
@@ -112,36 +136,11 @@ Key = tuple
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
 
-    line = -1
-    column = -1
-
     def __str__(self) -> str:
         ans = self.accept(mypy.strconv.StrConv())
         if ans is None:
             return repr(self)
         return ans
-
-    def set_line(self, target: Union['Node', int], column: int = None) -> None:
-        """If target is a node, pull line (and column) information
-        into this node. If column is specified, this will override any column
-        information coming from a node.
-        """
-        if isinstance(target, int):
-            self.line = target
-        else:
-            self.line = target.line
-            self.column = target.column
-
-        if column is not None:
-            self.column = column
-
-    def get_line(self) -> int:
-        # TODO this should be just 'line'
-        return self.line
-
-    def get_column(self) -> int:
-        # TODO this should be just 'column'
-        return self.column
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
@@ -468,7 +467,7 @@ class Argument(Node):
         assign = AssignmentStmt([lvalue], rvalue)
         return assign
 
-    def set_line(self, target: Union[Node, int], column: int = None) -> None:
+    def set_line(self, target: Union[Context, int], column: int = None) -> None:
         super().set_line(target, column)
 
         if self.initializer:
@@ -525,7 +524,7 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(self, target: Union[Node, int], column: int = None) -> None:
+    def set_line(self, target: Union[Context, int], column: int = None) -> None:
         super().set_line(target, column)
         for arg in self.arguments:
             arg.set_line(self.line, self.column)
@@ -1440,6 +1439,10 @@ class OpExpr(Expression):
     right = None  # type: Expression
     # Inferred type for the operator method type (when relevant).
     method_type = None  # type: Optional[mypy.types.Type]
+    # Is the right side going to be evaluated every time?
+    right_always = False
+    # Is the right side unreachable?
+    right_unreachable = False
 
     def __init__(self, op: str, left: Expression, right: Expression) -> None:
         self.op = op
@@ -1805,11 +1808,12 @@ class TypeAliasExpr(Expression):
     # (not in a type context like type annotation or base class).
     in_runtime = False  # type: bool
 
-    def __init__(self, type: 'mypy.types.Type', fallback: 'mypy.types.Type' = None,
-                 in_runtime: bool = False) -> None:
+    def __init__(self, type: 'mypy.types.Type', tvars: List[str],
+                 fallback: 'mypy.types.Type' = None, in_runtime: bool = False) -> None:
         self.type = type
         self.fallback = fallback
         self.in_runtime = in_runtime
+        self.tvars = tvars
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_alias_expr(self)
@@ -2035,6 +2039,12 @@ class TypeInfo(SymbolNode):
             n = cls.names.get(name)
             if n:
                 return n
+        return None
+
+    def get_containing_type_info(self, name: str) -> Optional['TypeInfo']:
+        for cls in self.mro:
+            if name in cls.names:
+                return cls
         return None
 
     def __getitem__(self, name: str) -> 'SymbolTableNode':
