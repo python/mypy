@@ -681,6 +681,16 @@ def produce() -> Bar:
     reveal_type(Bar().make_int)  # E: Revealed type is 'def () -> builtins.int'
     return Bar()
 
+[case testInnerClassPropertyAccess]
+class Foo:
+    class Meta:
+        name = 'Bar'
+    meta = Meta
+
+reveal_type(Foo.Meta.name)  # E: Revealed type is 'builtins.str'
+reveal_type(Foo().meta.name)  # E: Revealed type is 'builtins.str'
+reveal_type(Foo().Meta.name)  # E: Revealed type is 'builtins.str'
+
 -- Declaring attribute type in method
 -- ----------------------------------
 
