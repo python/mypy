@@ -325,9 +325,9 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 [file mypy.ini]
 [[mypy]
 [[mypy-*]
-strict_optional = True
+python_version = 3.4
 [out]
-mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (strict_optional)
+mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
 
 [case testAnyExprReportDivisionByZero]
 # cmd: mypy --any-exprs-report=out -c 'pass'

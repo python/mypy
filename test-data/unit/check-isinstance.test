@@ -1233,7 +1233,7 @@ from typing import Optional
 def h(a: bool, x: object) -> Optional[int]:
     if a or isinstance(x, int):
         return None
-    return x # E: Incompatible return value type (got "object", expected "int")
+    return x # E: Incompatible return value type (got "object", expected "Optional[int]")
 [builtins fixtures/isinstance.pyi]
 [out]
 

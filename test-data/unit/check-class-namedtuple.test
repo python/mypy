@@ -408,7 +408,7 @@ class HasNone(NamedTuple):
     x: int
     y: Optional[int] = None
 
-reveal_type(HasNone(1))  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.HasNone]'
+reveal_type(HasNone(1))  # E: Revealed type is 'Tuple[builtins.int, Union[builtins.int, builtins.None], fallback=__main__.HasNone]'
 
 class Parameterized(NamedTuple):
     x: int

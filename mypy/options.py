@@ -31,9 +31,10 @@ class Options:
         "ignore_errors",
         "strict_boolean",
         "no_implicit_optional",
+        "strict_optional",
     }
 
-    OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional", "quick_and_dirty"}
+    OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"quick_and_dirty"}
 
     def __init__(self) -> None:
         # -- build options --
