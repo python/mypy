@@ -2393,6 +2393,10 @@ class SemanticAnalyzer(NodeVisitor):
                     'TypedDict() "total" argument must be True or False', call)
         dictexpr = args[1]
         items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        if 'unimported' in self.options.disallow_any:
+            for t in types:
+                if has_any_from_unimported_type(t):
+                    self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, dictexpr)
         return items, types, total, ok
 
     def parse_bool(self, expr: Expression) -> Optional[bool]:

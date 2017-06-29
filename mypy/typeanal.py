@@ -770,6 +770,10 @@ class HasAnyFromUnimportedType(TypeQuery[bool]):
     def visit_any(self, t: AnyType) -> bool:
         return t.from_unimported_type
 
+    def visit_typeddict_type(self, t: TypedDictType) -> bool:
+        # typeddict is checked during TypedDict declaration, so don't typecheck it here
+        return False
+
 
 def make_optional_type(t: Type) -> Type:
     """Return the type corresponding to Optional[t].

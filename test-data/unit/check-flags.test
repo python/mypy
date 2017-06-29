@@ -616,6 +616,28 @@ x, y = 1, 2  # type: Unchecked, Unchecked
 main:4: error: Type of variable becomes "Any" due to an unfollowed import
 main:6: error: A type on this line becomes "Any" due to an unfollowed import
 
+[case testDisallowUnimportedAnyTypedDictSimple]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from mypy_extensions import TypedDict
+from x import Unchecked
+
+M = TypedDict('M', {'x': str, 'y': Unchecked})  # E: Type of a TypedDict key becomes "Any" due to an unfollowed import
+
+def f(m: M) -> M: pass  # no error
+[builtins fixtures/dict.pyi]
+
+[case testDisallowUnimportedAnyTypedDictGeneric]
+# flags: --ignore-missing-imports --disallow-any=unimported
+
+from mypy_extensions import TypedDict
+from typing import List
+from x import Unchecked
+
+M = TypedDict('M', {'x': str, 'y': List[Unchecked]})  # E: Type of a TypedDict key becomes List[Any] due to an unfollowed import
+
+def f(m: M) -> M: pass  # no error
+[builtins fixtures/dict.pyi]
+
 [case testDisallowAnyDecoratedUnannotatedDecorator]
 # flags: --disallow-any=decorated
 from typing import Any
