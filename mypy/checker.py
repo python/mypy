@@ -178,54 +178,56 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Deferred functions will be processed by check_second_pass().
         """
-        self.errors.set_file(self.path, self.tree.fullname())
-        with self.enter_partial_types():
-            with self.binder.top_frame_context():
-                for d in self.tree.defs:
-                    self.accept(d)
+        with experiments.strict_optional_set(self.options.strict_optional):
+            self.errors.set_file(self.path, self.tree.fullname())
+            with self.enter_partial_types():
+                with self.binder.top_frame_context():
+                    for d in self.tree.defs:
+                        self.accept(d)
 
-        assert not self.current_node_deferred
+            assert not self.current_node_deferred
 
-        all_ = self.globals.get('__all__')
-        if all_ is not None and all_.type is not None:
-            all_node = all_.node
-            assert all_node is not None
-            seq_str = self.named_generic_type('typing.Sequence',
-                                              [self.named_type('builtins.str')])
-            if self.options.python_version[0] < 3:
+            all_ = self.globals.get('__all__')
+            if all_ is not None and all_.type is not None:
+                all_node = all_.node
+                assert all_node is not None
                 seq_str = self.named_generic_type('typing.Sequence',
-                                                  [self.named_type('builtins.unicode')])
-            if not is_subtype(all_.type, seq_str):
-                str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
-                self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
-                          all_node)
+                                                [self.named_type('builtins.str')])
+                if self.options.python_version[0] < 3:
+                    seq_str = self.named_generic_type('typing.Sequence',
+                                                    [self.named_type('builtins.unicode')])
+                if not is_subtype(all_.type, seq_str):
+                    str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
+                    self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
+                            all_node)
 
     def check_second_pass(self, todo: List[DeferredNode] = None) -> bool:
         """Run second or following pass of type checking.
 
         This goes through deferred nodes, returning True if there were any.
         """
-        if not todo and not self.deferred_nodes:
-            return False
-        self.errors.set_file(self.path, self.tree.fullname())
-        self.pass_num += 1
-        if not todo:
-            todo = self.deferred_nodes
-        else:
-            assert not self.deferred_nodes
-        self.deferred_nodes = []
-        done = set()  # type: Set[Union[FuncDef, LambdaExpr, MypyFile]]
-        for node, type_name, active_typeinfo in todo:
-            if node in done:
-                continue
-            # This is useful for debugging:
-            # print("XXX in pass %d, class %s, function %s" %
-            #       (self.pass_num, type_name, node.fullname() or node.name()))
-            done.add(node)
-            with self.errors.enter_type(type_name) if type_name else nothing():
-                with self.scope.push_class(active_typeinfo) if active_typeinfo else nothing():
-                    self.check_partial(node)
-        return True
+        with experiments.strict_optional_set(self.options.strict_optional):
+            if not todo and not self.deferred_nodes:
+                return False
+            self.errors.set_file(self.path, self.tree.fullname())
+            self.pass_num += 1
+            if not todo:
+                todo = self.deferred_nodes
+            else:
+                assert not self.deferred_nodes
+            self.deferred_nodes = []
+            done = set()  # type: Set[Union[FuncDef, LambdaExpr, MypyFile]]
+            for node, type_name, active_typeinfo in todo:
+                if node in done:
+                    continue
+                # This is useful for debugging:
+                # print("XXX in pass %d, class %s, function %s" %
+                #       (self.pass_num, type_name, node.fullname() or node.name()))
+                done.add(node)
+                with self.errors.enter_type(type_name) if type_name else nothing():
+                    with self.scope.push_class(active_typeinfo) if active_typeinfo else nothing():
+                        self.check_partial(node)
+            return True
 
     def check_partial(self, node: Union[FuncDef, LambdaExpr, MypyFile]) -> None:
         if isinstance(node, MypyFile):
@@ -1537,6 +1539,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         rvalue_type = self.expr_checker.accept(rvalue)  # TODO maybe elsewhere; redundant
         undefined_rvalue = False
 
+        if isinstance(rvalue_type, UnionType):
+            # If this is an Optional type in non-strict Optional code, unwrap it.
+            relevant_items = rvalue_type.relevant_items()
+            if len(relevant_items) == 1:
+                rvalue_type = relevant_items[0]
+
         if isinstance(rvalue_type, AnyType):
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
@@ -1564,7 +1572,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not undefined_rvalue:
                 # Infer rvalue again, now in the correct type context.
                 lvalue_type = self.lvalue_type_for_inference(lvalues, rvalue_type)
-                rvalue_type = cast(TupleType, self.expr_checker.accept(rvalue, lvalue_type))
+                reinferred_rvalue_type = self.expr_checker.accept(rvalue, lvalue_type)
+
+                if isinstance(reinferred_rvalue_type, UnionType):
+                    # If this is an Optional type in non-strict Optional code, unwrap it.
+                    relevant_items = reinferred_rvalue_type.relevant_items()
+                    if len(relevant_items) == 1:
+                        reinferred_rvalue_type = relevant_items[0]
+
+                assert isinstance(reinferred_rvalue_type, TupleType)
+                rvalue_type = reinferred_rvalue_type
 
             left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
                 rvalue_type.items, star_index, len(lvalues))
@@ -2200,7 +2217,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(typ, UnionType):
             return [
                 union_typ
-                for item in typ.items
+                for item in typ.relevant_items()
                 for union_typ in self.get_types_from_except_handler(item, n)
             ]
         elif isinstance(typ, Instance) and is_named_instance(typ, 'builtins.tuple'):
@@ -2714,7 +2731,7 @@ def partition_by_callable(type: Optional[Type]) -> Tuple[List[Type], List[Type]]
     if isinstance(type, UnionType):
         callables = []
         uncallables = []
-        for subtype in type.items:
+        for subtype in type.relevant_items():
             subcallables, subuncallables = partition_by_callable(subtype)
             callables.extend(subcallables)
             uncallables.extend(subuncallables)

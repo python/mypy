@@ -31,7 +31,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return declared
     if isinstance(declared, UnionType):
         return UnionType.make_simplified_union([narrow_declared_type(x, narrowed)
-                                                for x in declared.items])
+                                                for x in declared.relevant_items()])
     elif not is_overlapping_types(declared, narrowed, use_promotions=True):
         if experiments.STRICT_OPTIONAL:
             return UninhabitedType()
@@ -39,7 +39,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
             return NoneTyp()
     elif isinstance(narrowed, UnionType):
         return UnionType.make_simplified_union([narrow_declared_type(declared, x)
-                                                for x in narrowed.items])
+                                                for x in narrowed.relevant_items()])
     elif isinstance(narrowed, AnyType):
         return narrowed
     elif isinstance(declared, (Instance, TupleType)):
@@ -110,10 +110,10 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
             return False
     if isinstance(t, UnionType):
         return any(is_overlapping_types(item, s)
-                   for item in t.items)
+                   for item in t.relevant_items())
     if isinstance(s, UnionType):
         return any(is_overlapping_types(t, item)
-                   for item in s.items)
+                   for item in s.relevant_items())
     if isinstance(t, TypeType) and isinstance(s, TypeType):
         # If both types are TypeType, compare their inner types.
         return is_overlapping_types(t.item, s.item, use_promotions)
