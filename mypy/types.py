@@ -248,6 +248,9 @@ class TypeList(Type):
         assert False, "Sythetic types don't serialize"
 
 
+_dummy = object()  # type: Any
+
+
 class AnyType(Type):
     """The type 'Any'."""
 
@@ -270,6 +273,20 @@ class AnyType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
+
+    def copy_modified(self,
+                      implicit: bool = _dummy,
+                      from_unimported_type: bool = _dummy,
+                      explicit: bool = _dummy,
+                      ) -> 'AnyType':
+        if implicit is _dummy:
+            implicit = self.implicit
+        if from_unimported_type is _dummy:
+            from_unimported_type = self.from_unimported_type
+        if explicit is _dummy:
+            explicit = self.explicit
+        return AnyType(implicit=implicit, from_unimported_type=from_unimported_type,
+                       explicit=explicit, line=self.line, column=self.column)
 
     def serialize(self) -> JsonDict:
         return {'.class': 'AnyType'}
@@ -512,9 +529,6 @@ class FunctionLike(Type):
 
     # Corresponding instance type (e.g. builtins.type)
     fallback = None  # type: Instance
-
-
-_dummy = object()  # type: Any
 
 
 FormalArgument = NamedTuple('FormalArgument', [

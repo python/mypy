@@ -80,12 +80,13 @@ from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
     TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
-    TypeQuery
+    TypeTranslator,
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type, has_explicit_any
+    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type,
+    check_for_explicit_any
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -1018,10 +1019,8 @@ class SemanticAnalyzer(NodeVisitor):
                 else:
                     prefix = "Base type"
                 self.msg.unimported_type_becomes_any(prefix, base, base_expr)
-            if ('explicit' in self.options.disallow_any and
-                    not self.is_typeshed_stub_file and
-                    has_explicit_any(base)):
-                self.msg.explicit_any(base_expr)
+            check_for_explicit_any(base, self.options, self.is_typeshed_stub_file, self.msg,
+                                   context=base_expr)
 
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
@@ -1576,13 +1575,12 @@ class SemanticAnalyzer(NodeVisitor):
                                          allow_unnormalized=True)
                 if res and (not isinstance(res, Instance) or res.args):
                     # TODO: What if this gets reassigned?
-                    if ('explicit' in self.options.disallow_any and
-                            not self.is_typeshed_stub_file and
-                            has_explicit_any(res)):
-                        self.msg.explicit_any(s)
-                    # when this type alias gets "inlined", the "Any" is not explicit anymore,
-                    # so we need to mark it as such
-                    mark_any_non_explicit(res)
+                    check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg,
+                                           context=s)
+                    # when this type alias gets "inlined", the Any is not explicit anymore,
+                    # so we need to replace it with non-explicit Anys
+                    res = make_any_non_explicit(res)
+                    assert not has_explicit_any(res)
 
                     name = s.lvalues[0]
                     node = self.lookup(name.name, name)
@@ -1848,10 +1846,8 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail(message.format(old_type), s)
             return
 
-        if ('explicit' in self.options.disallow_any and
-                not self.is_typeshed_stub_file and
-                has_explicit_any(old_type)):
-            self.msg.explicit_any(s)
+        check_for_explicit_any(old_type, self.options, self.is_typeshed_stub_file, self.msg,
+                               context=s)
 
         if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(old_type):
             self.msg.unimported_type_becomes_any("Argument 2 to NewType(...)", old_type, s)
@@ -1977,10 +1973,9 @@ class SemanticAnalyzer(NodeVisitor):
                 prefix = "Upper bound of type variable"
                 self.msg.unimported_type_becomes_any(prefix, upper_bound, s)
 
-        if ('explicit' in self.options.disallow_any and
-                not self.is_typeshed_stub_file and
-                any(has_explicit_any(t) for t in values + [upper_bound])):
-            self.msg.explicit_any(s)
+        for t in values + [upper_bound]:
+            check_for_explicit_any(t, self.options, self.is_typeshed_stub_file, self.msg,
+                                   context=s)
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = TVAR
@@ -2415,10 +2410,9 @@ class SemanticAnalyzer(NodeVisitor):
                     'TypedDict() "total" argument must be True or False', call)
         dictexpr = args[1]
         items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
-        if ('explicit' in self.options.disallow_any and
-                not self.is_typeshed_stub_file and
-                any(has_explicit_any(t) for t in types)):
-            self.msg.explicit_any(call)
+        for t in types:
+            check_for_explicit_any(t, self.options, self.is_typeshed_stub_file, self.msg,
+                                   context=call)
 
         return items, types, total, ok
 
@@ -4412,19 +4406,11 @@ def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
     return None
 
 
-def mark_any_non_explicit(t: Type) -> None:
-    """For all types within t, if that type is Any, set explicit to False"""
-    t.accept(MarkAnyNonExplicit())
+def make_any_non_explicit(t: Type) -> Type:
+    """Replace all Any types within in with Any that has attribute 'explicit' set to False"""
+    return t.accept(MakeAnyNonExplicit())
 
 
-class MarkAnyNonExplicit(TypeQuery[None]):
-    def __init__(self) -> None:
-        super().__init__(MarkAnyNonExplicit.do_nothing_strategy)
-
-    def visit_any(self, t: AnyType) -> None:
-        t.explicit = False
-
-    @classmethod
-    def do_nothing_strategy(cls, it: Iterable[None]) -> None:
-        # "it" can be a generator (which is lazy), force it to compute the value
-        list(it)
+class MakeAnyNonExplicit(TypeTranslator):
+    def visit_any(self, t: AnyType) -> Type:
+        return t.copy_modified(explicit=False)

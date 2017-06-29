@@ -6,6 +6,8 @@ from itertools import chain
 
 from contextlib import contextmanager
 
+from mypy.messages import MessageBuilder
+from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
     AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
@@ -754,6 +756,18 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
             return super().visit_callable_type(t)
         else:
             return []
+
+
+def check_for_explicit_any(typ: Optional[Type],
+                           options: Options,
+                           is_typeshed_stub: bool,
+                           msg: MessageBuilder,
+                           context: Context) -> None:
+    if ('explicit' in options.disallow_any and
+            not is_typeshed_stub and
+            typ and
+            has_explicit_any(typ)):
+        msg.explicit_any(context)
 
 
 def has_explicit_any(t: Type) -> bool:
