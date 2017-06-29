@@ -4,7 +4,7 @@ from typing import cast, Callable, List, Optional, TypeVar
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
-    Overloaded, TypeVarType, UnionType, PartialType,
+    Overloaded, TypeVarType, UnionType, PartialType, UninhabitedType,
     DeletedType, NoneTyp, TypeType, function_type, get_type_vars,
 )
 from mypy.nodes import (
@@ -306,7 +306,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # class.
                 functype = t
                 check_method_type(functype, itype, var.is_classmethod, node, msg)
-                signature = bind_self(functype, original_type)
+                signature = bind_self(functype, original_type, var.is_classmethod)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
                     # is fine.
@@ -472,7 +472,7 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
         tvars = [TypeVarDef(n, i + 1, [], builtin_type('builtins.object'), tv.variance)
                  for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         if is_classmethod:
-            t = bind_self(t, original_type)
+            t = bind_self(t, original_type, is_classmethod=True)
         return t.copy_modified(variables=tvars + t.variables)
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(item, itype, is_classmethod,
@@ -596,7 +596,7 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
 F = TypeVar('F', bound=FunctionLike)
 
 
-def bind_self(method: F, original_type: Type = None) -> F:
+def bind_self(method: F, original_type: Type = None, is_classmethod: bool = False) -> F:
     """Return a copy of `method`, with the type of its first parameter (usually
     self or cls) bound to original_type.
 
@@ -642,8 +642,13 @@ def bind_self(method: F, original_type: Type = None) -> F:
             # XXX value restriction as union?
             original_type = erase_to_bound(self_param_type)
 
-        typearg = infer_type_arguments([x.id for x in func.variables],
-                                       self_param_type, original_type)[0]
+        ids = [x.id for x in func.variables]
+        typearg = infer_type_arguments(ids, self_param_type, original_type)[0]
+        if (is_classmethod and isinstance(typearg, UninhabitedType)
+                and isinstance(original_type, (Instance, TypeVarType, TupleType))):
+            # In case we call a classmethod through an instance x, fallback to type(x)
+            # TODO: handle Union
+            typearg = infer_type_arguments(ids, self_param_type, TypeType(original_type))[0]
 
         def expand(target: Type) -> Type:
             assert typearg is not None
