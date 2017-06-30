@@ -1347,7 +1347,7 @@ main:4: error: Argument 1 to "f" has incompatible type "B"; expected "A"
 [case testSimpleGeneratorExpression]
 from typing import Iterator
 # The implementation is mostly identical to list comprehensions, so only a few
-# test cases are ok.
+# test cases is ok.
 a = None # type: Iterator[int]
 a = (x for x in a)
 b = None # type: Iterator[str]
