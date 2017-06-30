@@ -227,6 +227,13 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         # The associated Var node of a decorator contains the type.
         v = vv.var
 
+    if isinstance(vv, TypeInfo):
+        # If the associated variable is a TypeInfo synthesize a Var node for
+        # the purposes of type checking.  This enables us to type check things
+        # like accessing class attributes on an inner class.
+        v = Var(name, type=type_object_type(vv, builtin_type))
+        v.info = info
+
     if isinstance(v, Var):
         return analyze_var(name, v, itype, info, node, is_lvalue, msg,
                            original_type, not_ready_callback, chk=chk)
