@@ -540,13 +540,13 @@ class MessageBuilder:
             name = callee.name[1:-1]
             n -= 1
             msg = '{} item {} has incompatible type {}'.format(
-                name.title(), n, self.format_simple(arg_type))
+                name.title(), n, self.format(arg_type))
         elif callee.name == '<dict>':
             name = callee.name[1:-1]
             n -= 1
             key_type, value_type = cast(TupleType, arg_type).items
             msg = '{} entry {} has incompatible type {}: {}'.format(
-                name.title(), n, self.format_simple(key_type), self.format_simple(value_type))
+                name.title(), n, self.format(key_type), self.format(value_type))
         elif callee.name == '<list-comprehension>':
             msg = 'List comprehension has incompatible type List[{}]'.format(
                 strip_quotes(self.format(arg_type)))
@@ -561,7 +561,7 @@ class MessageBuilder:
                 self.format(callee.arg_types[n - 1]))
         elif callee.name == '<generator>':
             msg = 'Generator has incompatible item type {}'.format(
-                self.format_simple(arg_type))
+                self.format(arg_type))
         else:
             try:
                 expected_type = callee.arg_types[m - 1]
