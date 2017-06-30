@@ -88,6 +88,8 @@ MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
+BARE_GENERIC = 'Missing type parameters for generic type'
+GENERIC_BUILTIN_TYPES_DISALLOWED = "Builtin generic types are disallowed. Use '{}' instead"
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
