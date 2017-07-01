@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Optional
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -591,7 +591,8 @@ class MessageBuilder:
             else:
                 msg = 'Missing positional arguments'
             if callee.name and diff and all(d is not None for d in diff):
-                msg += ' "{}" in call to {}'.format('", "'.join(diff), callee.name)
+                msg += ' "{}" in call to {}'.format('", "'.join(cast(List[str], diff)),
+                                                    callee.name)
         else:
             msg = 'Too few arguments'
             if callee.name:
@@ -625,6 +626,7 @@ class MessageBuilder:
         self.fail(msg, context)
         module = find_defining_module(self.modules, callee)
         if module:
+            assert callee.definition is not None
             self.note('{} defined here'.format(callee.name), callee.definition,
                       file=module.path, origin=context)
 
@@ -636,9 +638,11 @@ class MessageBuilder:
 
     def does_not_return_value(self, callee_type: Type, context: Context) -> None:
         """Report an error about use of an unusable type."""
-        if isinstance(callee_type, FunctionLike) and callee_type.get_name() is not None:
-            self.fail('{} does not return a value'.format(
-                capitalize(callee_type.get_name())), context)
+        name = None  # type: Optional[str]
+        if isinstance(callee_type, FunctionLike):
+            name = callee_type.get_name()
+        if name is not None:
+            self.fail('{} does not return a value'.format(capitalize(name)), context)
         else:
             self.fail('Function does not return a value', context)
 
@@ -1011,7 +1015,7 @@ def callable_name(type: CallableType) -> str:
         return 'function'
 
 
-def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> MypyFile:
+def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> Optional[MypyFile]:
     if not typ.definition:
         return None
     fullname = typ.definition.fullname()

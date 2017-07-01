@@ -30,7 +30,7 @@ class TypeVarScope:
 
     def get_function_scope(self) -> Optional['TypeVarScope']:
         """Get the nearest parent that's a function scope, not a class scope"""
-        it = self
+        it = self  # type: Optional[TypeVarScope]
         while it is not None and it.is_class_scope:
             it = it.parent
         return it

@@ -1,4 +1,4 @@
-from typing import (Dict, List, Set, Iterator, Union)
+from typing import Dict, List, Set, Iterator, Union, Optional, cast
 from contextlib import contextmanager
 
 from mypy.types import Type, AnyType, PartialType, UnionType, NoneTyp
@@ -15,7 +15,7 @@ BindableTypes = (IndexExpr, MemberExpr, NameExpr)
 BindableExpression = Union[IndexExpr, MemberExpr, NameExpr]
 
 
-class Frame(Dict[Key, Type]):
+class Frame(Dict[Key, Optional[Type]]):
     """A Frame represents a specific point in the execution of a program.
     It carries information about the current types of expressions at
     that point, arising either from assignments to those expressions
@@ -68,7 +68,7 @@ class ConditionalTypeBinder:
         # has no corresponding element in this list.
         self.options_on_return = []  # type: List[List[Frame]]
 
-        # Maps expr.literal_hash] to get_declaration(expr)
+        # Maps expr.literal_hash to get_declaration(expr)
         # for every expr stored in the binder
         self.declarations = Frame()
         # Set of other keys to invalidate if a key is changed, e.g. x -> {x.a, x[0]}
@@ -101,7 +101,7 @@ class ConditionalTypeBinder:
     def _put(self, key: Key, type: Type, index: int=-1) -> None:
         self.frames[index][key] = type
 
-    def _get(self, key: Key, index: int=-1) -> Type:
+    def _get(self, key: Key, index: int=-1) -> Optional[Type]:
         if index < 0:
             index += len(self.frames)
         for i in range(index, -1, -1):
@@ -124,7 +124,7 @@ class ConditionalTypeBinder:
     def unreachable(self) -> None:
         self.frames[-1].unreachable = True
 
-    def get(self, expr: Expression) -> Type:
+    def get(self, expr: Expression) -> Optional[Type]:
         return self._get(expr.literal_hash)
 
     def is_unreachable(self) -> bool:
@@ -163,15 +163,17 @@ class ConditionalTypeBinder:
                 # know anything about key in at least one possible frame.
                 continue
 
+            type = resulting_values[0]
+            assert type is not None
             if isinstance(self.declarations.get(key), AnyType):
-                type = resulting_values[0]
-                if not all(is_same_type(type, t) for t in resulting_values[1:]):
+                # At this point resulting values can't contain None, see continue above
+                if not all(is_same_type(type, cast(Type, t)) for t in resulting_values[1:]):
                     type = AnyType()
             else:
-                type = resulting_values[0]
                 for other in resulting_values[1:]:
+                    assert other is not None
                     type = join_simple(self.declarations[key], type, other)
-            if not is_same_type(type, current_value):
+            if current_value is None or not is_same_type(type, current_value):
                 self._put(key, type)
                 changed = True
 
@@ -252,7 +254,7 @@ class ConditionalTypeBinder:
         for dep in self.dependencies.get(expr.literal_hash, set()):
             self._cleanse_key(dep)
 
-    def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Type:
+    def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Optional[Type]:
         if isinstance(type, AnyType):
             return get_declaration(expr)
         key = expr.literal_hash
@@ -342,7 +344,7 @@ class ConditionalTypeBinder:
         self.pop_frame(True, 0)
 
 
-def get_declaration(expr: BindableExpression) -> Type:
+def get_declaration(expr: BindableExpression) -> Optional[Type]:
     if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
         type = expr.node.type
         if not isinstance(type, PartialType):
