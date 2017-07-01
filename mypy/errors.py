@@ -4,7 +4,7 @@ import traceback
 from collections import OrderedDict, defaultdict
 from contextlib import contextmanager
 
-from typing import Tuple, List, TypeVar, Set, Dict, Iterator, Optional
+from typing import Tuple, List, TypeVar, Set, Dict, Iterator, Optional, cast
 
 from mypy.options import Options
 from mypy.version import __version__ as mypy_version
