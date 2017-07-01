@@ -15,7 +15,7 @@ BindableTypes = (IndexExpr, MemberExpr, NameExpr)
 BindableExpression = Union[IndexExpr, MemberExpr, NameExpr]
 
 
-class Frame(Dict[Key, Optional[Type]]):
+class Frame(Dict[Key, Type]):
     """A Frame represents a specific point in the execution of a program.
     It carries information about the current types of expressions at
     that point, arising either from assignments to those expressions
@@ -26,6 +26,13 @@ class Frame(Dict[Key, Optional[Type]]):
     onto the stack, so a given Frame only has information about types
     that were assigned in that frame.
     """
+
+    def __init__(self) -> None:
+        self.unreachable = False
+
+
+class DeclarationsFrame(Dict[Key, Optional[Type]]):
+    """Same as above, but allowed to have None values."""
 
     def __init__(self) -> None:
         self.unreachable = False
@@ -70,7 +77,7 @@ class ConditionalTypeBinder:
 
         # Maps expr.literal_hash to get_declaration(expr)
         # for every expr stored in the binder
-        self.declarations = Frame()
+        self.declarations = DeclarationsFrame()
         # Set of other keys to invalidate if a key is changed, e.g. x -> {x.a, x[0]}
         # Whenever a new key (e.g. x.a.b) is added, we update this
         self.dependencies = {}  # type: Dict[Key, Set[Key]]
