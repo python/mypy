@@ -249,22 +249,45 @@ class TypeList(Type):
         assert False, "Sythetic types don't serialize"
 
 
+_dummy = object()  # type: Any
+
+
 class AnyType(Type):
     """The type 'Any'."""
 
     def __init__(self,
                  implicit: bool = False,
                  from_unimported_type: bool = False,
+                 explicit: bool = False,
                  line: int = -1,
                  column: int = -1) -> None:
         super().__init__(line, column)
         # Was this Any type was inferred without a type annotation?
+        # Note that this is not always the opposite of explicit.
+        # For instance, if "Any" comes from an unimported type,
+        # both explicit and implicit will be False
         self.implicit = implicit
         # Does this come from an unfollowed import? See --disallow-any=unimported option
         self.from_unimported_type = from_unimported_type
+        # Does this Any come from an explicit type annotation?
+        self.explicit = explicit
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
+
+    def copy_modified(self,
+                      implicit: bool = _dummy,
+                      from_unimported_type: bool = _dummy,
+                      explicit: bool = _dummy,
+                      ) -> 'AnyType':
+        if implicit is _dummy:
+            implicit = self.implicit
+        if from_unimported_type is _dummy:
+            from_unimported_type = self.from_unimported_type
+        if explicit is _dummy:
+            explicit = self.explicit
+        return AnyType(implicit=implicit, from_unimported_type=from_unimported_type,
+                       explicit=explicit, line=self.line, column=self.column)
 
     def serialize(self) -> JsonDict:
         return {'.class': 'AnyType'}
@@ -507,9 +530,6 @@ class FunctionLike(Type):
 
     # Corresponding instance type (e.g. builtins.type)
     fallback = None  # type: Instance
-
-
-_dummy = object()  # type: Any
 
 
 FormalArgument = NamedTuple('FormalArgument', [

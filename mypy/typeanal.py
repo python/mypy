@@ -6,6 +6,8 @@ from itertools import chain
 
 from contextlib import contextmanager
 
+from mypy.messages import MessageBuilder
+from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
     AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
@@ -166,7 +168,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             elif fullname == 'builtins.None':
                 return NoneTyp()
             elif fullname == 'typing.Any' or fullname == 'builtins.Any':
-                return AnyType()
+                return AnyType(explicit=True)
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
@@ -752,6 +754,37 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
             return super().visit_callable_type(t)
         else:
             return []
+
+
+def check_for_explicit_any(typ: Optional[Type],
+                           options: Options,
+                           is_typeshed_stub: bool,
+                           msg: MessageBuilder,
+                           context: Context) -> None:
+    if ('explicit' in options.disallow_any and
+            not is_typeshed_stub and
+            typ and
+            has_explicit_any(typ)):
+        msg.explicit_any(context)
+
+
+def has_explicit_any(t: Type) -> bool:
+    """
+    Whether this type is or type it contains is an Any coming from explicit type annotation
+    """
+    return t.accept(HasExplicitAny())
+
+
+class HasExplicitAny(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_any(self, t: AnyType) -> bool:
+        return t.explicit
+
+    def visit_typeddict_type(self, t: TypedDictType) -> bool:
+        # typeddict is checked during TypedDict declaration, so don't typecheck it here.
+        return False
 
 
 def has_any_from_unimported_type(t: Type) -> bool:

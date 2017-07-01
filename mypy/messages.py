@@ -879,6 +879,9 @@ class MessageBuilder:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
                   ctx)
 
+    def explicit_any(self, ctx: Context) -> None:
+        self.fail('Explicit "Any" is not allowed', ctx)
+
     def unexpected_typeddict_keys(
             self,
             typ: TypedDictType,
