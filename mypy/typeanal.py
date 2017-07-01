@@ -438,7 +438,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                                                                          List[Optional[str]]]]:
         args = []   # type: List[Type]
         kinds = []  # type: List[int]
-        names = []  # type: List[str]
+        names = []  # type: List[Optional[str]]
         for arg in arglist.items:
             if isinstance(arg, CallableArgument):
                 args.append(arg.typ)
@@ -454,6 +454,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                         found.fullname), arg)
                     return None
                 else:
+                    assert found.fullname is not None
                     kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
                     kinds.append(kind)
                     if arg.name is not None and kind in {ARG_STAR, ARG_STAR2}:

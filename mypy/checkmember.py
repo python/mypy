@@ -212,7 +212,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                               not_ready_callback: Callable[[str, Context], None],
                               msg: MessageBuilder,
                               original_type: Type,
-                              chk: 'mypy.checker.TypeChecker' = None) -> Type:
+                              chk: 'mypy.checker.TypeChecker') -> Type:
     """Analyse attribute access that does not target a method.
 
     This is logically part of analyze_member_access and the arguments are similar.
