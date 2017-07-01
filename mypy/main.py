@@ -28,7 +28,7 @@ class InvalidPackageName(Exception):
     """Exception indicating that a package name was invalid."""
 
 
-def main(script_path: str, args: List[str] = None) -> None:
+def main(script_path: Optional[str], args: List[str] = None) -> None:
     """Main entry point to the type checker.
 
     Args:
