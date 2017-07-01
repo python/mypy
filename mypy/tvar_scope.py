@@ -68,6 +68,7 @@ class TypeVarScope:
 
     def get_binding(self, item: Union[str, SymbolTableNode]) -> Optional[TypeVarDef]:
         fullname = item.fullname if isinstance(item, SymbolTableNode) else item
+        assert fullname is not None
         if fullname in self.scope:
             return self.scope[fullname]
         elif self.parent is not None:
