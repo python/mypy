@@ -233,7 +233,7 @@ def add_pythoneval(driver: Driver) -> None:
     cases = set()
     case_re = re.compile(r'^\[case ([^\]]+)\]$')
     for file in python_eval_files + python_34_eval_files:
-        with open(os.path.join(test_data_prefix, file), 'r') as f:
+        with open(os.path.join(test_data_prefix, file), 'r', encoding='utf-8') as f:
             for line in f:
                 m = case_re.match(line)
                 if m:

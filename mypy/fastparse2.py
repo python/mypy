@@ -638,8 +638,7 @@ class ASTConverter(ast27.NodeTransformer):
                            n.level,
                            [(a.name, a.asname) for a in n.names])
         self.imports.append(i)
-        if (n.module == '__future__' and len(n.names) == 1 and
-                n.names[0].name == 'unicode_literals' and n.names[0].asname is None):
+        if n.module == '__future__' and any(nm.name == 'unicode_literals' for nm in n.names):
             self.unicode_literals = True
         return i
 
