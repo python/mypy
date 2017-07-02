@@ -173,6 +173,18 @@ reveal_type('another ascii')
 _program.py:4: error: Incompatible types in assignment (expression has type "unicode", variable has type "str")
 _program.py:6: error: Revealed type is 'builtins.str'
 
+[case testUnicodeLiteralsFutureImportAllASCIIvariant1_python2]
+from __future__ import absolute_import, unicode_literals
+x = None  # type: str
+x = 'only ascii'
+[out]
+
+[case testUnicodeLiteralsFutureImportAllASCIIvariant2_python2]
+from __future__ import unicode_literals as something_else
+x = None  # type: str
+x = 'only ascii'
+[out]
+
 [case testStrUnicodeCompatibility_python2]
 import typing
 def f(s): # type: (unicode) -> None
