@@ -1680,10 +1680,19 @@ main:3: error: Revealed type is 'builtins.str'
 [case testModuleLevelGetattrNotCallable]
 import has_getattr
 
-reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'  # E: Module has no attribute "any_attribute"
 
 [file has_getattr.py]
 __getattr__ = 3
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrUntyped]
+import has_getattr
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'
+
+[file has_getattr.py]
+def __getattr__(name): ...
 
 [builtins fixtures/module.pyi]
 
