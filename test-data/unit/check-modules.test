@@ -1640,3 +1640,53 @@ m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.M
 [file n.py]
 
 [builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattr]
+import has_getattr
+
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'
+
+[file has_getattr.py]
+from typing import Any
+
+def __getattr__(name: str) -> Any: ...
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrReturnType]
+import has_getattr
+
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'builtins.str'
+
+[file has_getattr.py]
+def __getattr__(name: str) -> str: ...
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrInvalidSignature]
+import has_getattr
+
+reveal_type(has_getattr.any_attribute)
+
+[file has_getattr.py]
+def __getattr__(x: int, y: str) -> str: ...
+
+[out]
+tmp/has_getattr.py:1: error: Invalid signature "def (builtins.int, builtins.str) -> builtins.str"
+main:3: error: Revealed type is 'builtins.str'
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrNotCallable]
+import has_getattr
+
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'
+
+[file has_getattr.py]
+__getattr__ = 3
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattribute]
+
+def __getattribute__(): ...  # E: __getattribute__ is not valid at the module level
