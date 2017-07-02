@@ -151,15 +151,27 @@ f(**params)
 [out]
 
 [case testFromFutureImportUnicodeLiterals2_python2]
+# coding=utf-8
 from __future__ import unicode_literals
 def f(x): # type: (str) -> None
   pass
 f(b'')
-f(u'')
-f('')
+f(u'щось')
+f('щось інше')
 [out]
-_program.py:5: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
 _program.py:6: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+_program.py:7: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+
+[case testUnicodeLiteralsFutureImportAllASCII_python2]
+# coding=utf-8
+from __future__ import unicode_literals
+x = None  # type: str
+x = 'не латиниця'  # Error
+x = 'only ascii'  # This is however OK
+reveal_type('another ascii')
+[out]
+_program.py:4: error: Incompatible types in assignment (expression has type "unicode", variable has type "str")
+_program.py:6: error: Revealed type is 'builtins.str'
 
 [case testStrUnicodeCompatibility_python2]
 import typing
