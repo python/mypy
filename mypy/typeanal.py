@@ -523,8 +523,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 self.fail("Type variable '{}' is bound by an outer class".format(name), defn)
             self.tvar_scope.bind(name, tvar)
             binding = self.tvar_scope.get_binding(tvar.fullname())
-            if binding is not None:
-                defs.append(binding)
+            assert binding is not None
+            defs.append(binding)
 
         return defs
 
