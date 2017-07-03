@@ -1247,7 +1247,8 @@ class MemberExpr(RefExpr):
 
     expr = None  # type: Expression
     name = None  # type: str
-    # The variable node related to a definition.
+    # The variable node related to a definition through 'self.x = <initializer>'.
+    # The nodes of other kinds of member expressions are resolved during type checking.
     def_var = None  # type: Var
 
     def __init__(self, expr: Expression, name: str) -> None:

@@ -340,7 +340,9 @@ class TransformVisitor(NodeVisitor[Node]):
         member = MemberExpr(self.expr(node.expr),
                             node.name)
         if node.def_var:
-            member.def_var = self.visit_var(node.def_var)
+            # This refers to an attribute and we don't transform attributes by default,
+            # just normal variables.
+            member.def_var = node.def_var
         self.copy_ref(member, node)
         return member
 
