@@ -217,10 +217,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 all_vars = sym.alias_tvars
                 assert override is not None
                 an_args = self.anal_array(t.args)
-                exp_len = len(all_vars)
+                if all_vars is not None:
+                    exp_len = len(all_vars)
+                else:
+                    exp_len = 0
                 act_len = len(an_args)
                 if exp_len > 0 and act_len == 0:
                     # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
+                    assert all_vars is not None
                     return replace_alias_tvars(override, all_vars, [AnyType()] * exp_len,
                                                t.line, t.column)
                 if exp_len == 0 and act_len == 0:
@@ -229,6 +233,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                     self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
                               % (exp_len, act_len), t)
                     return t
+                assert all_vars is not None
                 return replace_alias_tvars(override, all_vars, an_args, t.line, t.column)
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname
@@ -678,7 +683,7 @@ def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
     new_args = typ_args[:]
     for i, arg in enumerate(typ_args):
         if isinstance(arg, (UnboundType, TypeVarType)):
-            tvar = arg.name
+            tvar = arg.name  # type: Optional[str]
         else:
             tvar = None
         if tvar and tvar in vars:
