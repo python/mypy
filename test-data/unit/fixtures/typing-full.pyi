@@ -124,7 +124,7 @@ class Mapping(Iterable[T], Protocol[T, T_co]):
     def get(self, k: T) -> Optional[T_co]: pass
     @overload
     def get(self, k: T, default: Union[T_co, V]) -> Union[T_co, V]: pass
-
+    def values(self) -> Iterable[T_co]: pass  # Approximate return type
 
 @runtime
 class MutableMapping(Mapping[T, U], Protocol):

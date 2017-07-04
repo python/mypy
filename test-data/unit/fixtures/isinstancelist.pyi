@@ -13,6 +13,7 @@ VT = TypeVar('VT')
 class tuple(Generic[T]):
     def __len__(self) -> int: pass
 class function: pass
+class ellipsis: pass
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
 def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass

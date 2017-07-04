@@ -18,7 +18,7 @@ from mypy.subtypes import (
 from mypy import experiments
 
 
-def join_simple(declaration: Type, s: Type, t: Type) -> Type:
+def join_simple(declaration: Optional[Type], s: Type, t: Type) -> Type:
     """Return a simple least upper bound given the declared type."""
 
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):

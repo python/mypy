@@ -92,7 +92,7 @@ MypyFile:1(
       NameExpr(None [builtins.None])
       builtins.int)
     AssignmentStmt:4(
-      NameExpr(x [m])
+      NameExpr(x [__main__.A.x])
       IntExpr(1))))
 
 [case testFunctionSig]

@@ -681,6 +681,21 @@ def produce() -> Bar:
     reveal_type(Bar().make_int)  # E: Revealed type is 'def () -> builtins.int'
     return Bar()
 
+[case testInnerClassPropertyAccess]
+class Foo:
+    class Meta:
+        name = 'Bar'
+    meta = Meta
+
+reveal_type(Foo.Meta)  # E: Revealed type is 'def () -> __main__.Foo.Meta'
+reveal_type(Foo.meta)  # E: Revealed type is 'def () -> __main__.Foo.Meta'
+reveal_type(Foo.Meta.name)  # E: Revealed type is 'builtins.str'
+reveal_type(Foo.meta.name)  # E: Revealed type is 'builtins.str'
+reveal_type(Foo().Meta)  # E: Revealed type is 'def () -> __main__.Foo.Meta'
+reveal_type(Foo().meta)  # E: Revealed type is 'def () -> __main__.Foo.Meta'
+reveal_type(Foo().meta.name)  # E: Revealed type is 'builtins.str'
+reveal_type(Foo().Meta.name)  # E: Revealed type is 'builtins.str'
+
 -- Declaring attribute type in method
 -- ----------------------------------
 
@@ -3351,8 +3366,8 @@ x: TD
 x1 = TD({'x': []})
 y: NM
 y1 = NM(x=[])
-reveal_type(x) # E: Revealed type is 'TypedDict(x=builtins.list[Any], _fallback=__main__.TD)'
-reveal_type(x1) # E: Revealed type is 'TypedDict(x=builtins.list[Any], _fallback=typing.Mapping[builtins.str, builtins.list[Any]])'
+reveal_type(x) # E: Revealed type is 'TypedDict('__main__.TD', {'x': builtins.list[Any]})'
+reveal_type(x1) # E: Revealed type is 'TypedDict('__main__.TD', {'x': builtins.list[Any]})'
 reveal_type(y) # E: Revealed type is 'Tuple[builtins.list[Any], fallback=__main__.NM]'
 reveal_type(y1) # E: Revealed type is 'Tuple[builtins.list[Any], fallback=__main__.NM]'
 [builtins fixtures/dict.pyi]
