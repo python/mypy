@@ -88,6 +88,7 @@ def r(x) -> None: ...
 r = l # E: Incompatible types in assignment (expression has type Callable[[Any, Any], None], variable has type Callable[[Any], None])
 
 [case testSubtypingFunctionsImplicitNames]
+from typing import Any
 
 def f(a, b): pass
 def g(c: Any, d: Any) -> Any: pass
@@ -254,7 +255,7 @@ class A: pass
 t = None # type: type
 a = None # type: A
 
-a = A # E: Incompatible types in assignment (expression has type "A" (type object), variable has type "A")
+a = A # E: Incompatible types in assignment (expression has type Type[A], variable has type "A")
 t = f # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type "type")
 t = A
 
@@ -334,10 +335,10 @@ def f(x: C) -> C: pass
 from typing import Any, Callable, List
 def f(fields: List[Callable[[Any], Any]]): pass
 class C: pass
-f([C])  # E: List item 0 has incompatible type
+f([C])  # E: List item 0 has incompatible type Type[C]
 class D:
     def __init__(self, a, b): pass
-f([D])  # E: List item 0 has incompatible type
+f([D])  # E: List item 0 has incompatible type Type[D]
 [builtins fixtures/list.pyi]
 
 [case testSubtypingTypeTypeAsCallable]
@@ -1212,7 +1213,7 @@ from typing import Any
 x = None # type: Any
 if x:
     def f(): pass
-def f(): pass # E: Name 'f' already defined
+def f(): pass # E: Name 'f' already defined on line 4
 
 [case testIncompatibleConditionalFunctionDefinition]
 from typing import Any
@@ -1479,7 +1480,7 @@ L = Callable[[Arg(name='x', type=int)], int] # ok
 # I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
 # M = Callable[[Arg(gnome='x', type=int)], int]   E: Invalid type alias   E: Unexpected keyword argument "gnome" for "Arg"
 N = Callable[[Arg(name=None, type=int)], int] # ok
-O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: Type expected within [...] # E: The type List[T] is not generic and not indexable
+O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: Type expected within [...] # E: The type Type[List[Any]] is not generic and not indexable
 P = Callable[[mypy_extensions.VarArg(int)], int] # ok
 Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "type"
 R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "name"
@@ -1825,6 +1826,7 @@ class A(Generic[t]):
 
 
 [case testRedefineFunction]
+from typing import Any
 def f(x) -> Any: pass
 def g(x, y): pass
 def h(x): pass
@@ -1835,7 +1837,7 @@ f = g # E: Incompatible types in assignment (expression has type Callable[[Any, 
 
 [case testRedefineFunction2]
 def f() -> None: pass
-def f() -> None: pass # E: Name 'f' already defined
+def f() -> None: pass # E: Name 'f' already defined on line 1
 
 
 -- Special cases
@@ -1932,7 +1934,7 @@ main:3: note: "f" defined here
 
 [case testMagicMethodPositionalOnlyArg]
 class A(object):
-    def __eq__(self, other) -> bool: return True # We are all equal.
+    def __eq__(self, other) -> bool: return True # We are all equal.  # N: "__eq__" of "A" defined here
 
 a = A()
 a.__eq__(a)
@@ -1944,7 +1946,7 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 
 
 class A(object):
-    def __eq__(self, other) -> bool: return True # We are all equal.
+    def __eq__(self, other) -> bool: return True # We are all equal.  # N: "__eq__" of "A" defined here
 
 a = A()
 a.__eq__(a)
@@ -2044,3 +2046,82 @@ bad = make_list()  # E: Need type annotation for variable
 def foo(__b: int, x: int, y: int) -> int: pass
 foo(x=2, y=2)  # E: Missing positional argument
 foo(y=2)  # E: Missing positional arguments
+
+[case testReturnTypeLineNumberWithDecorator]
+def dec(f): pass
+
+@dec
+def test(a: str) -> (str,): # E: Invalid tuple literal type
+    return None
+
+[case testReturnTypeLineNumberNewLine]
+def fn(a: str
+       ) -> badtype: # E: Name 'badtype' is not defined
+    pass
+
+[case testArgumentTypeLineNumberWithDecorator]
+def dec(f): pass
+
+@dec
+def some_method(self: badtype): pass # E: Name 'badtype' is not defined
+
+[case TestArgumentTypeLineNumberNewline]
+def fn(
+        a: badtype) -> None: # E: Name 'badtype' is not defined
+    pass
+
+[case testInferredTypeSubTypeOfReturnType]
+from typing import Union, Dict, List
+def f() -> List[Union[str, int]]:
+    x = ['a']
+    return x # E: Incompatible return value type (got List[str], expected List[Union[str, int]]) \
+# N: Perhaps you need a type annotation for "x"? Suggestion: List[Union[str, int]]
+
+def g() -> Dict[str, Union[str, int]]:
+    x = {'a': 'a'}
+    return x # E: Incompatible return value type (got Dict[str, str], expected Dict[str, Union[str, int]]) \
+# N: Perhaps you need a type annotation for "x"? Suggestion: Dict[str, Union[str, int]]
+
+def h() -> Dict[Union[str, int], str]:
+    x = {'a': 'a'}
+    return x # E: Incompatible return value type (got Dict[str, str], expected Dict[Union[str, int], str]) \
+# N: Perhaps you need a type annotation for "x"? Suggestion: Dict[Union[str, int], str]
+
+def i() -> List[Union[int, float]]:
+    x: List[int] = [1]
+    return x # E: Incompatible return value type (got List[int], expected List[Union[int, float]]) \
+# N: Perhaps you need a type annotation for "x"? Suggestion: List[Union[int, float]]
+
+[builtins fixtures/dict.pyi]
+
+[case testInferredTypeNotSubTypeOfReturnType]
+from typing import Union, List
+def f() -> List[Union[int, float]]:
+    x = ['a']
+    return x # E: Incompatible return value type (got List[str], expected List[Union[int, float]])
+
+def g() -> List[Union[str, int]]:
+    x = ('a', 2)
+    return x # E: Incompatible return value type (got "Tuple[str, int]", expected List[Union[str, int]])
+
+[builtins fixtures/list.pyi]
+
+[case testInferredTypeIsObjectMismatch]
+from typing import Union, Dict, List
+def f() -> Dict[str, Union[str, int]]:
+    x = {'a': 'a', 'b': 2}
+    return x # E: Incompatible return value type (got Dict[str, object], expected Dict[str, Union[str, int]])
+
+def g() -> Dict[str, Union[str, int]]:
+    x: Dict[str, Union[str, int]] = {'a': 'a', 'b': 2}
+    return x
+
+def h() -> List[Union[str, int]]:
+    x = ['a', 2]
+    return x # E: Incompatible return value type (got List[object], expected List[Union[str, int]])
+
+def i() -> List[Union[str, int]]:
+    x: List[Union[str, int]] = ['a', 2]
+    return x
+
+[builtins fixtures/dict.pyi]

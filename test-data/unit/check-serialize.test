@@ -23,7 +23,7 @@
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 y = b.x  # type: int
 [file b.py]
@@ -43,7 +43,7 @@ tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", 
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 b.f(1)
 x = b.f('')  # type: str
@@ -57,7 +57,7 @@ tmp/a.py:3: error: Incompatible types in assignment (expression has type "int", 
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 b.f(x=1)
 b.f()
@@ -70,7 +70,7 @@ tmp/a.py:3: error: Too few arguments for "f"
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import f
 reveal_type(f(1))
 reveal_type(f(x=''))
@@ -88,7 +88,7 @@ tmp/a.py:3: error: Revealed type is 'builtins.str*'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 reveal_type(b.f)
 reveal_type(b.f()(''))
@@ -106,7 +106,7 @@ tmp/a.py:3: error: Revealed type is 'builtins.str*'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import f
 f(1, z=1)
 f(1, '', z=1)
@@ -128,7 +128,7 @@ def f(x: int,
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 b.f(1)
 b.f('')
@@ -143,7 +143,7 @@ tmp/a.py:4: error: Unexpected keyword argument "__x" for "f"
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import f
 f('', z=1)           # Line 2
 f(1, 2, z=1)         # 3
@@ -173,7 +173,7 @@ tmp/a.py:8: error: Argument 4 to "f" has incompatible type "int"; expected "str"
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 reveal_type(b.f(1))
 reveal_type(b.f(''))
@@ -191,7 +191,7 @@ tmp/a.py:3: error: Revealed type is 'builtins.str'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 reveal_type(b.f(''))
 b.f(x=1)
@@ -212,7 +212,7 @@ tmp/a.py:3: error: Unexpected keyword argument "x" for "f"
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 b.A().x = ''
 [file b.py]
@@ -225,7 +225,7 @@ tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", 
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 b.A().f('')
 [file b.py]
@@ -238,7 +238,7 @@ tmp/a.py:2: error: Argument 1 to "f" of "A" has incompatible type "str"; expecte
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 A('')
 class B(A):
@@ -255,7 +255,7 @@ tmp/a.py:5: error: Argument 1 to "__init__" of "A" has incompatible type "str"; 
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 A(object()) # E
 A(x='')
@@ -280,7 +280,7 @@ tmp/a.py:7: error: No overload variant of "__init__" of "A" matches argument typ
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 A('')
 [file b.py]
@@ -293,7 +293,7 @@ tmp/a.py:2: error: Argument 1 to "A" has incompatible type "str"; expected "int"
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 A.x = ''
 A().x = 1
@@ -309,7 +309,7 @@ tmp/a.py:3: error: Cannot assign to class variable "x" via instance
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 a1: A[int, str] = A(1)
 a2: A[int, str] = A('')
@@ -335,7 +335,7 @@ tmp/a.py:5: error: Revealed type is 'builtins.int*'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 A()
 class B(A):
@@ -360,7 +360,7 @@ tmp/a.py:9: error: Property "x" defined in "A" is read-only
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 A.f(1)
 A.f()
@@ -377,7 +377,7 @@ tmp/a.py:2: error: Too many arguments for "f" of "A"
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 A.f(1)
 A.f()
@@ -394,7 +394,7 @@ tmp/a.py:2: error: Too many arguments for "f" of "A"
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 reveal_type(A().x)
 A().x = 0
@@ -411,7 +411,7 @@ tmp/a.py:3: error: Property "x" defined in "A" is read-only
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 reveal_type(A().x)
 A().x = ''
@@ -431,7 +431,7 @@ tmp/a.py:3: error: Incompatible types in assignment (expression has type "str", 
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 reveal_type(A().f())
 class B(A): pass
@@ -449,7 +449,7 @@ tmp/a.py:4: error: Revealed type is 'a.B*'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A, B, C
 C().f(1) # E
 C().g(1) # E
@@ -475,7 +475,7 @@ tmp/a.py:7: error: Incompatible types in assignment (expression has type "C", va
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import B
 b: B[int]
 reveal_type(b.f())
@@ -493,7 +493,7 @@ tmp/a.py:3: error: Revealed type is 'b.A*[builtins.int*]'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 a: A
 a.f(1)
@@ -511,7 +511,7 @@ tmp/a.py:4: error: Revealed type is 'Tuple[builtins.int, builtins.str]'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 a: A
 a.f(1)
@@ -529,7 +529,7 @@ tmp/a.py:4: error: Revealed type is 'Tuple[builtins.int*, builtins.int*]'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 a: A
 a.f(1)
@@ -547,7 +547,7 @@ tmp/a.py:4: error: Revealed type is 'Tuple[Any, Any]'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 a: A
 a.f(1)
@@ -567,7 +567,7 @@ tmp/a.py:5: error: Revealed type is 'Tuple[builtins.int, builtins.str]'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import B
 B().f(1)
 reveal_type(B().xyz)
@@ -585,7 +585,7 @@ tmp/a.py:3: error: Revealed type is 'Any'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import C
 C().f(1)
 C().g(1)
@@ -607,7 +607,7 @@ tmp/a.py:4: error: Revealed type is 'Any'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 b.A.B().f(1)
 b.A.B.C().g(1)
@@ -632,7 +632,7 @@ tmp/a.py:5: error: Too many arguments for "g" of "C"
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 t: type
 t = b.A
@@ -648,7 +648,7 @@ tmp/a.py:4: error: Incompatible types in assignment (expression has type Callabl
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 t: type
 t = b.A
@@ -699,7 +699,7 @@ main:4: error: Revealed type is 'def (x: builtins.int) -> Tuple[builtins.int, fa
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 reveal_type(b.x)
 b.f(b.x)
@@ -767,7 +767,7 @@ main:3: error: Revealed type is 'Any'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 reveal_type(b.m)
 reveal_type(b.x)
@@ -786,7 +786,7 @@ tmp/a.py:3: error: Revealed type is 'Any'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 def f(x: b.T) -> b.T: return x
 reveal_type(f)
@@ -800,7 +800,7 @@ tmp/a.py:3: error: Revealed type is 'def [b.T] (x: b.T`-1) -> b.T`-1'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 def f(x: b.T) -> b.T: return x
 reveal_type(f)
@@ -817,7 +817,7 @@ tmp/a.py:4: error: Revealed type is 'def [T <: builtins.int] (x: T`-1) -> T`-1'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 def f(x: b.T) -> b.T: return x
 reveal_type(f)
@@ -834,7 +834,7 @@ tmp/a.py:4: error: Revealed type is 'def [T in (builtins.int, builtins.str)] (x:
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 from b import A
 def f(x: A.T) -> A.T: return x
 reveal_type(f)
@@ -853,7 +853,7 @@ tmp/a.py:3: error: Revealed type is 'def [A.T in (builtins.int, builtins.str)] (
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 y: b.N
 y = 1
@@ -879,7 +879,7 @@ tmp/a.py:8: error: Argument 1 to "N" has incompatible type "str"; expected "int"
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 from typing import Tuple
 y: b.N
@@ -910,7 +910,7 @@ tmp/a.py:11: error: Argument 1 to "N" has incompatible type "str"; expected "int
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 d: b.D
 a: b.A
@@ -974,7 +974,7 @@ main:4: error: Revealed type is 'Tuple[builtins.int, builtins.str]'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 reveal_type(b.x)
 reveal_type(b.y)
@@ -991,7 +991,7 @@ tmp/a.py:3: error: Revealed type is 'builtins.tuple[Any]'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 reveal_type(b.x)
 [file b.py]
@@ -1018,13 +1018,26 @@ class C:
         self.c = A
 [builtins fixtures/dict.pyi]
 [out1]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
+main:2: error: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
+main:3: error: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
 main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
 [out2]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
+main:2: error: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
+main:3: error: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
 main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
+
+[case testSerializeNonTotalTypedDict]
+from m import d
+reveal_type(d)
+[file m.py]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int, 'y': str}, total=False)
+d: D
+[builtins fixtures/dict.pyi]
+[out1]
+main:2: error: Revealed type is 'TypedDict('m.D', {'x'?: builtins.int, 'y'?: builtins.str})'
+[out2]
+main:2: error: Revealed type is 'TypedDict('m.D', {'x'?: builtins.int, 'y'?: builtins.str})'
 
 --
 -- Modules
@@ -1103,8 +1116,7 @@ main:3: error: Too few arguments for "g"
 [out2]
 main:3: error: Too few arguments for "g"
 
-[case testSerializeQualifiedImport-skip]
-# This fails currently: https://github.com/python/mypy/issues/3274
+[case testSerializeQualifiedImport]
 import b
 b.c.d.f()
 b.c.d.g()
@@ -1189,7 +1201,7 @@ main:3: error: Revealed type is 'c.A'
 import a
 [file a.py]
 import b
-[file a.py.next]
+[file a.py.2]
 import b
 b.f(1)
 x: b.A

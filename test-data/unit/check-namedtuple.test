@@ -221,7 +221,7 @@ a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[int]
 [case testNamedTupleMissingClassAttribute]
 import collections
 MyNamedTuple = collections.namedtuple('MyNamedTuple', ['spam', 'eggs'])
-MyNamedTuple.x # E: "MyNamedTuple" has no attribute "x"
+MyNamedTuple.x # E: Type[MyNamedTuple] has no attribute "x"
 
 
 [case testNamedTupleEmptyItems]
@@ -420,7 +420,7 @@ class C:
         A = NamedTuple('A', [('x', int)])
     def g(self):
         A = NamedTuple('A', [('y', int)])
-C.A  # E: "C" has no attribute "A"
+C.A  # E: Type[C] has no attribute "A"
 
 [case testNamedTupleInFunction]
 from typing import NamedTuple

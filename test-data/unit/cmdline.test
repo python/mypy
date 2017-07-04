@@ -75,6 +75,14 @@ undef
 dir/subpkg/a.py:1: error: Name 'undef' is not defined
 dir/a.py:1: error: Name 'undef' is not defined
 
+[case testCmdlineInvalidPackageName]
+# cmd: mypy dir/sub.pkg/a.py
+[file dir/sub.pkg/__init__.py]
+[file dir/sub.pkg/a.py]
+undef
+[out]
+sub.pkg is not a valid Python package name
+
 [case testBadFileEncoding]
 # cmd: mypy a.py
 [file a.py]
@@ -168,6 +176,76 @@ z.py:1: error: Function is missing a type annotation
 z.py:4: error: Call to untyped function "f" in typed context
 x.py:1: error: Function is missing a type annotation
 
+[case testPerFileConfigSectionUntypedWithDisallowUnannotated]
+# cmd: mypy w.py x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+disallow_any = unannotated
+[[mypy-y*]
+disallow_any =
+[[mypy-z*]
+disallow_untyped_defs = True
+[[mypy-w*]
+disallow_untyped_defs = False
+[file x.py]
+def f(a):
+    pass
+[file y.py]
+def f(a):
+    pass
+[file z.py]
+def f(a):
+    pass
+[file w.py]
+def f(a):
+    pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
+[case testPerFileConfigSectionDisallowUnannotatedWithUntyped]
+# cmd: mypy x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+disallow_untyped_defs = True
+[[mypy-y*]
+disallow_any =
+[[mypy-z*]
+disallow_any = unannotated
+[file x.py]
+def f(a):
+    pass
+[file y.py]
+def f(a):
+    pass
+[file z.py]
+def f(a):
+    pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
+[case testPerFileConfigSectionDisallowUnannotatedNoOverride]
+# cmd: mypy x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+[[mypy-x*]
+disallow_untyped_defs = True
+[[mypy-z*]
+disallow_any = unannotated
+[file x.py]
+def f(a):
+    pass
+[file y.py]
+def f(a):
+    pass
+[file z.py]
+def f(a):
+    pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
 [case testPerFileConfigSectionMultipleMatches]
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file mypy.ini]
@@ -247,9 +325,12 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 [file mypy.ini]
 [[mypy]
 [[mypy-*]
-strict_optional = True
+python_version = 3.4
 [out]
-mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (strict_optional)
+mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
+
+[case testAnyExprReportDivisionByZero]
+# cmd: mypy --any-exprs-report=out -c 'pass'
 
 [case testCoberturaParser]
 # cmd: mypy --cobertura-xml-report build pkg
@@ -575,3 +656,256 @@ python_version = 3.3
 [[mypy]
 python_version = 3.6
 [out]
+
+[case testDisallowAnyUnimported]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+disallow_any = unimported
+ignore_missing_imports = True
+[file main.py]
+from unreal import F
+
+def f(x: F) -> None: pass
+[out]
+main.py:3: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
+
+[case testDisallowAnyEmpty]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+disallow_any =
+ignore_missing_imports = True
+[file main.py]
+from unreal import F
+
+def f(x: F) -> None: pass
+[out]
+
+[case testDisallowAnyExplicitDefSignature]
+# cmd: mypy m.py
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+
+def f(x: Any) -> None:
+    pass
+
+def g() -> Any:
+    pass
+
+def h() -> List[Any]:
+    pass
+
+[out]
+m.py:3: error: Explicit "Any" is not allowed
+m.py:6: error: Explicit "Any" is not allowed
+m.py:9: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitVarDeclaration]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+v: Any = ''
+w = ''  # type: Any
+class X:
+    y = ''  # type: Any
+
+[out]
+m.py:2: error: Explicit "Any" is not allowed
+m.py:3: error: Explicit "Any" is not allowed
+m.py:5: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitGenericVarDeclaration]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+v: List[Any] = []
+[out]
+m.py:2: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitInheritance]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+
+class C(Any):
+    pass
+
+class D(List[Any]):
+    pass
+[out]
+m.py:3: error: Explicit "Any" is not allowed
+m.py:6: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitAlias]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+
+X = Any
+Y = List[Any]
+
+def foo(x: X) -> Y:  # no error
+    x.nonexistent()  # no error
+    return x
+
+[out]
+m.py:3: error: Explicit "Any" is not allowed
+m.py:4: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitGenericAlias]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, TypeVar, Tuple
+
+T = TypeVar('T')
+
+TupleAny = Tuple[Any, T]  # error
+
+def foo(x: TupleAny[str]) -> None:  # no error
+    pass
+
+def goo(x: TupleAny[Any]) -> None:  # error
+    pass
+
+[out]
+m.py:5: error: Explicit "Any" is not allowed
+m.py:10: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitCast]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, cast
+
+x = 1
+y = cast(Any, x)
+z = cast(List[Any], x)
+[out]
+m.py:4: error: Explicit "Any" is not allowed
+m.py:5: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitNamedTuple]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, NamedTuple
+
+Point = NamedTuple('Point', [('x', List[Any]),
+                             ('y', Any)])
+
+[out]
+m.py:3: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitTypeVarConstraint]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, TypeVar
+
+T = TypeVar('T', Any, List[Any])
+[out]
+m.py:3: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitNewType]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, NewType
+
+Baz = NewType('Baz', Any)  # this error does not come from `--disallow-any=explicit` flag
+Bar = NewType('Bar', List[Any])
+
+[out]
+m.py:3: error: Argument 2 to NewType(...) must be subclassable (got Any)
+m.py:4: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitTypedDictSimple]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from mypy_extensions import TypedDict
+from typing import Any
+
+M = TypedDict('M', {'x': str, 'y': Any})  # error
+M(x='x', y=2)  # no error
+def f(m: M) -> None: pass  # no error
+[out]
+m.py:4: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitTypedDictGeneric]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from mypy_extensions import TypedDict
+from typing import Any, List
+
+M = TypedDict('M', {'x': str, 'y': List[Any]})  # error
+N = TypedDict('N', {'x': str, 'y': List})  # no error
+[out]
+m.py:4: error: Explicit "Any" is not allowed

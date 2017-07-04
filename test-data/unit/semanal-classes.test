@@ -252,7 +252,7 @@ MypyFile:1(
       IntExpr(1))
     AssignmentStmt:3(
       NameExpr(y* [m])
-      NameExpr(x [m]))))
+      NameExpr(x [__main__.A.x]))))
 
 [case testMethodRefInClassBody]
 class A:
@@ -270,7 +270,7 @@ MypyFile:1(
         PassStmt:2()))
     AssignmentStmt:3(
       NameExpr(g* [m])
-      NameExpr(f [m]))))
+      NameExpr(f [__main__.A.f]))))
 
 [case testIfStatementInClassBody]
 class A:
@@ -291,7 +291,7 @@ MypyFile:1(
           IntExpr(1)))
       Else(
         AssignmentStmt:5(
-          NameExpr(x [m])
+          NameExpr(x [__main__.A.x])
           IntExpr(2))))))
 
 [case testForStatementInClassBody]
@@ -310,7 +310,7 @@ MypyFile:1(
       Block:2(
         AssignmentStmt:3(
           NameExpr(y* [m])
-          NameExpr(x [m]))))))
+          NameExpr(x [__main__.A.x]))))))
 
 [case testReferenceToClassWithinFunction]
 def f():
@@ -550,7 +550,7 @@ MypyFile:1(
       Init(
         AssignmentStmt:4(
           NameExpr(x [l])
-          NameExpr(X [m])))
+          NameExpr(X [__main__.A.X])))
       Block:4(
         PassStmt:4()))))
 

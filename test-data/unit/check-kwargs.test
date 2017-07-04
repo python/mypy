@@ -280,12 +280,33 @@ reveal_type(formatter.__call__)  # E: Revealed type is 'def (message: builtins.s
 [builtins fixtures/bool.pyi]
 [out]
 
+[case testPassingMappingForKeywordVarArg]
+from typing import Mapping
+def f(**kwargs: 'A') -> None: pass
+b = None # type: Mapping
+d = None # type: Mapping[A, A]
+m = None # type: Mapping[str, A]
+f(**d)         # E: Keywords must be strings
+f(**m)
+f(**b)
+class A: pass
+[builtins fixtures/dict.pyi]
+
+[case testPassingMappingSubclassForKeywordVarArg]
+from typing import Mapping
+class MappingSubclass(Mapping[str, str]): pass
+def f(**kwargs: 'A') -> None: pass
+d = None # type: MappingSubclass
+f(**d)
+class A: pass
+[builtins fixtures/dict.pyi]
+
 [case testInvalidTypeForKeywordVarArg]
 from typing import Dict
-def f( **kwargs: 'A') -> None: pass
+def f(**kwargs: 'A') -> None: pass
 d = None # type: Dict[A, A]
 f(**d)         # E: Keywords must be strings
-f(**A())       # E: Argument after ** must be a dictionary
+f(**A())       # E: Argument after ** must be a mapping, not "A"
 class A: pass
 [builtins fixtures/dict.pyi]
 
@@ -320,7 +341,7 @@ f(y=0) # E: Unexpected keyword argument "y" for "f"
 [case testKeywordArgumentAndCommentSignature2]
 import typing
 class A:
-    def f(self, x): # type: (int) -> str
+    def f(self, x): # type: (int) -> str  # N: "f" of "A" defined here
         pass
 A().f(x='') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 A().f(x=0)
@@ -359,3 +380,18 @@ f(**c) # E: Keywords must be strings
 def f(**k): pass
 f(*(1, 2))  # E: Too many arguments for "f"
 [builtins fixtures/dict.pyi]
+
+[case testUnexpectedMethodKwargInNestedClass]
+class A:
+    class B:
+        def __init__(self) -> None:  # N: "B" defined here
+            pass
+A.B(x=1)  # E: Unexpected keyword argument "x" for "B"
+
+[case testUnexpectedMethodKwargFromOtherModule]
+import m
+m.A(x=1)  # E: Unexpected keyword argument "x" for "A"
+[file m.py]
+class A:
+    def __init__(self) -> None:  # N: "A" defined here
+        pass
