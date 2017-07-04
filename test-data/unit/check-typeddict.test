@@ -369,6 +369,24 @@ def unprotect(p: Point) -> Any:
     return p
 [builtins fixtures/dict.pyi]
 
+[case testAnonymousTypedDictInErrorMessages]
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': str})
+B = TypedDict('B', {'x': int, 'z': str, 'a': int})
+C = TypedDict('C', {'x': int, 'z': str, 'a': str})
+a: A
+b: B
+c: C
+
+def f(a: A) -> None: pass
+
+l = [a, b]  # Join generates an anonymous TypedDict
+f(l) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x': int})]; expected "A"
+ll = [b, c]
+f(ll) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x': int, 'z': str})]; expected "A"
+[builtins fixtures/dict.pyi]
+
 
 -- Join
 
@@ -1051,6 +1069,24 @@ class C(TypedDict, B, total=True):
     z: str
 c: C
 reveal_type(c) # E: Revealed type is 'TypedDict('__main__.C', {'x': builtins.int, 'y'?: builtins.int, 'z': builtins.str})'
+[builtins fixtures/dict.pyi]
+
+[case testNonTotalTypedDictInErrorMessages]
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': str}, total=False)
+B = TypedDict('B', {'x': int, 'z': str, 'a': int}, total=False)
+C = TypedDict('C', {'x': int, 'z': str, 'a': str}, total=False)
+a: A
+b: B
+c: C
+
+def f(a: A) -> None: pass
+
+l = [a, b]  # Join generates an anonymous TypedDict
+f(l) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x'?: int})]; expected "A"
+ll = [b, c]
+f(ll) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x'?: int, 'z'?: str})]; expected "A"
 [builtins fixtures/dict.pyi]
 
 

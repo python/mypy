@@ -115,7 +115,7 @@ def analyze_member_access(name: str,
         results = [analyze_member_access(name, subtype, node, is_lvalue, is_super,
                                          is_operator, builtin_type, not_ready_callback, msg,
                                          original_type=original_type, chk=chk)
-                   for subtype in typ.items]
+                   for subtype in typ.relevant_items()]
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):

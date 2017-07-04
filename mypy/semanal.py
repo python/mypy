@@ -90,6 +90,7 @@ from mypy.typeanal import (
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
+from mypy import experiments
 from mypy.plugin import Plugin
 from mypy import join
 
@@ -276,32 +277,33 @@ class SemanticAnalyzer(NodeVisitor):
         self.globals = file_node.names
         self.patches = patches
 
-        if 'builtins' in self.modules:
-            self.globals['__builtins__'] = SymbolTableNode(
-                MODULE_REF, self.modules['builtins'], self.cur_mod_id)
+        with experiments.strict_optional_set(options.strict_optional):
+            if 'builtins' in self.modules:
+                self.globals['__builtins__'] = SymbolTableNode(
+                    MODULE_REF, self.modules['builtins'], self.cur_mod_id)
 
-        for name in implicit_module_attrs:
-            v = self.globals[name].node
-            if isinstance(v, Var):
-                v.type = self.anal_type(v.type)
-                v.is_ready = True
+            for name in implicit_module_attrs:
+                v = self.globals[name].node
+                if isinstance(v, Var):
+                    v.type = self.anal_type(v.type)
+                    v.is_ready = True
 
-        defs = file_node.defs
-        for d in defs:
-            self.accept(d)
+            defs = file_node.defs
+            for d in defs:
+                self.accept(d)
 
-        if self.cur_mod_id == 'builtins':
-            remove_imported_names_from_symtable(self.globals, 'builtins')
-            for alias_name in type_aliases:
-                self.globals.pop(alias_name.split('.')[-1], None)
+            if self.cur_mod_id == 'builtins':
+                remove_imported_names_from_symtable(self.globals, 'builtins')
+                for alias_name in type_aliases:
+                    self.globals.pop(alias_name.split('.')[-1], None)
 
-        if '__all__' in self.globals:
-            for name, g in self.globals.items():
-                if name not in self.all_exports:
-                    g.module_public = False
+            if '__all__' in self.globals:
+                for name, g in self.globals.items():
+                    if name not in self.all_exports:
+                        g.module_public = False
 
-        del self.options
-        del self.patches
+            del self.options
+            del self.patches
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
@@ -2391,6 +2393,10 @@ class SemanticAnalyzer(NodeVisitor):
                     'TypedDict() "total" argument must be True or False', call)
         dictexpr = args[1]
         items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        if 'unimported' in self.options.disallow_any:
+            for t in types:
+                if has_any_from_unimported_type(t):
+                    self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, dictexpr)
         return items, types, total, ok
 
     def parse_bool(self, expr: Expression) -> Optional[bool]:
@@ -3616,52 +3622,54 @@ class FirstPass(NodeVisitor):
 
         defs = file.defs
 
-        # Add implicit definitions of module '__name__' etc.
-        for name, t in implicit_module_attrs.items():
-            # unicode docstrings should be accepted in Python 2
-            if name == '__doc__':
-                if self.pyversion >= (3, 0):
-                    typ = UnboundType('__builtins__.str')  # type: Type
+        with experiments.strict_optional_set(options.strict_optional):
+            # Add implicit definitions of module '__name__' etc.
+            for name, t in implicit_module_attrs.items():
+                # unicode docstrings should be accepted in Python 2
+                if name == '__doc__':
+                    if self.pyversion >= (3, 0):
+                        typ = UnboundType('__builtins__.str')  # type: Type
+                    else:
+                        typ = UnionType([UnboundType('__builtins__.str'),
+                                        UnboundType('__builtins__.unicode')])
                 else:
-                    typ = UnionType([UnboundType('__builtins__.str'),
-                                     UnboundType('__builtins__.unicode')])
-            else:
-                assert t is not None, 'type should be specified for {}'.format(name)
-                typ = UnboundType(t)
-            v = Var(name, typ)
-            v._fullname = self.sem.qualified_name(name)
-            self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
-
-        for d in defs:
-            d.accept(self)
-
-        # Add implicit definition of literals/keywords to builtins, as we
-        # cannot define a variable with them explicitly.
-        if mod_id == 'builtins':
-            literal_types = [
-                ('None', NoneTyp()),
-                # reveal_type is a mypy-only function that gives an error with the type of its arg
-                ('reveal_type', AnyType()),
-            ]  # type: List[Tuple[str, Type]]
-
-            # TODO(ddfisher): This guard is only needed because mypy defines
-            # fake builtins for its tests which often don't define bool.  If
-            # mypy is fast enough that we no longer need those, this
-            # conditional check should be removed.
-            if 'bool' in self.sem.globals:
-                bool_type = self.sem.named_type('bool')
-                literal_types.extend([
-                    ('True', bool_type),
-                    ('False', bool_type),
-                    ('__debug__', bool_type),
-                ])
-
-            for name, typ in literal_types:
+                    assert t is not None, 'type should be specified for {}'.format(name)
+                    typ = UnboundType(t)
                 v = Var(name, typ)
                 v._fullname = self.sem.qualified_name(name)
                 self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
 
-        del self.sem.options
+            for d in defs:
+                d.accept(self)
+
+            # Add implicit definition of literals/keywords to builtins, as we
+            # cannot define a variable with them explicitly.
+            if mod_id == 'builtins':
+                literal_types = [
+                    ('None', NoneTyp()),
+                    # reveal_type is a mypy-only function that gives an error with
+                    # the type of its arg.
+                    ('reveal_type', AnyType()),
+                ]  # type: List[Tuple[str, Type]]
+
+                # TODO(ddfisher): This guard is only needed because mypy defines
+                # fake builtins for its tests which often don't define bool.  If
+                # mypy is fast enough that we no longer need those, this
+                # conditional check should be removed.
+                if 'bool' in self.sem.globals:
+                    bool_type = self.sem.named_type('bool')
+                    literal_types.extend([
+                        ('True', bool_type),
+                        ('False', bool_type),
+                        ('__debug__', bool_type),
+                    ])
+
+                for name, typ in literal_types:
+                    v = Var(name, typ)
+                    v._fullname = self.sem.qualified_name(name)
+                    self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
+
+            del self.sem.options
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
@@ -3855,7 +3863,8 @@ class ThirdPass(TraverserVisitor):
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
         self.errors.set_file(fnam, file_node.fullname())
         self.options = options
-        self.accept(file_node)
+        with experiments.strict_optional_set(options.strict_optional):
+            self.accept(file_node)
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""

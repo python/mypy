@@ -558,7 +558,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.disable_type_names += 1
             results = [self.check_call(subtype, args, arg_kinds, context, arg_names,
                                        arg_messages=arg_messages)
-                       for subtype in callee.items]
+                       for subtype in callee.relevant_items()]
             self.msg.disable_type_names -= 1
             return (UnionType.make_simplified_union([res[0] for res in results]),
                     callee)
@@ -594,7 +594,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return res
         if isinstance(item, UnionType):
             return UnionType([self.analyze_type_type_callee(item, context)
-                              for item in item.items], item.line)
+                              for item in item.relevant_items()], item.line)
         if isinstance(item, TypeVarType):
             # Pretend we're calling the typevar's upper bound,
             # i.e. its constructor (a poor approximation for reality,
@@ -955,7 +955,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     messages.invalid_var_arg(arg_type, context)
                 if (arg_kinds[actual] == nodes.ARG_STAR2 and
                         not self.is_valid_keyword_var_arg(arg_type)):
-                    messages.invalid_keyword_var_arg(arg_type, context)
+                    is_mapping = is_subtype(arg_type, self.chk.named_type('typing.Mapping'))
+                    messages.invalid_keyword_var_arg(arg_type, is_mapping, context)
                 # Get the type of an individual actual argument (for *args
                 # and **args this is the item type, not the collection type).
                 if (isinstance(arg_type, TupleType)
@@ -1980,7 +1981,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ctx = self.type_context[-1]
 
         if isinstance(ctx, UnionType):
-            callables = [t for t in ctx.items if isinstance(t, CallableType)]
+            callables = [t for t in ctx.relevant_items() if isinstance(t, CallableType)]
             if len(callables) == 1:
                 ctx = callables[0]
 
@@ -2258,17 +2259,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Is a type valid as a **kwargs argument?"""
         if self.chk.options.python_version[0] >= 3:
             return is_subtype(typ, self.chk.named_generic_type(
-                'builtins.dict', [self.named_type('builtins.str'),
-                                  AnyType()]))
+                'typing.Mapping', [self.named_type('builtins.str'),
+                                   AnyType()]))
         else:
             return (
                 is_subtype(typ, self.chk.named_generic_type(
-                    'builtins.dict',
+                    'typing.Mapping',
                     [self.named_type('builtins.str'),
                      AnyType()]))
                 or
                 is_subtype(typ, self.chk.named_generic_type(
-                    'builtins.dict',
+                    'typing.Mapping',
                     [self.named_type('builtins.unicode'),
                      AnyType()])))
 
@@ -2282,7 +2283,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(typ, AnyType):
             return True
         elif isinstance(typ, UnionType):
-            result = all(self.has_member(x, member) for x in typ.items)
+            result = all(self.has_member(x, member) for x in typ.relevant_items())
             return result
         elif isinstance(typ, TupleType):
             return self.has_member(typ.fallback, member)
@@ -2657,10 +2658,10 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
                 return 2
     if isinstance(actual, UnionType):
         return max(overload_arg_similarity(item, formal)
-                   for item in actual.items)
+                   for item in actual.relevant_items())
     if isinstance(formal, UnionType):
         return max(overload_arg_similarity(actual, item)
-                   for item in formal.items)
+                   for item in formal.relevant_items())
     if isinstance(formal, TypeType):
         if isinstance(actual, TypeType):
             # Since Type[T] is covariant, check if actual = Type[A] is
