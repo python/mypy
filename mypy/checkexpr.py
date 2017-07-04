@@ -192,7 +192,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             typeddict_type = e.callee.node.typeddict_type.copy_modified(
                 fallback=Instance(e.callee.node, []))
             return self.check_typeddict_call(typeddict_type, e.arg_kinds, e.arg_names, e.args, e)
-        if isinstance(e.callee, NameExpr) and e.callee.name in ('isinstance', 'issubclass'):
+        if (isinstance(e.callee, NameExpr) and e.callee.name in ('isinstance', 'issubclass')
+                and len(e.args) == 2):
             for typ in mypy.checker.flatten(e.args[1]):
                 if isinstance(typ, NameExpr):
                     try:
