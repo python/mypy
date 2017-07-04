@@ -245,8 +245,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         callee_type = self.apply_method_signature_hook(
                             e, callee_type, object_type, signature_hook)
         ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname, object_type)
-        if isinstance(e.callee, RefExpr) and e.callee.fullname in ('builtins.isinstance',
-                                                                   'builtins.issubclass'):
+        if (isinstance(e.callee, RefExpr) and len(e.args) == 2 and
+                e.callee.fullname in ('builtins.isinstance', 'builtins.issubclass')):
             for expr in mypy.checker.flatten(e.args[1]):
                 tp = self.chk.type_map[expr]
                 if (isinstance(tp, CallableType) and tp.is_type_obj() and
