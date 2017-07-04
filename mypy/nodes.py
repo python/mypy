@@ -156,7 +156,7 @@ class Statement(Node):
 class Expression(Node):
     """An expression node."""
     literal = LITERAL_NO
-    literal_hash = None  # type: Key
+    literal_hash = None  # type: Optional[Key]
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
