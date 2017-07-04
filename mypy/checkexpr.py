@@ -200,11 +200,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     except KeyError:
                         # Undefined names should already be reported in semantic analysis.
                         node = None
-                if (isinstance(typ, IndexExpr)
-                        and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr))
+                if ((isinstance(typ, IndexExpr)
+                        and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr)))
                         # node.kind == TYPE_ALIAS only for aliases like It = Iterable[int].
-                        or isinstance(typ, NameExpr) and node and node.kind == nodes.TYPE_ALIAS):
+                        or (isinstance(typ, NameExpr) and node and node.kind == nodes.TYPE_ALIAS)):
                     self.msg.type_arguments_not_allowed(e)
+                if isinstance(typ, RefExpr) and isinstance(typ.node, TypeInfo):
+                    if typ.node.typeddict_type:
+                        self.msg.fail(messages.CANNOT_ISINSTANCE_TYPEDDICT, e)
+                    elif typ.node.is_newtype:
+                        self.msg.fail(messages.CANNOT_ISINSTANCE_NEWTYPE, e)
         self.try_infer_partial_type(e)
         callee_type = self.accept(e.callee, always_allow_any=True)
         if (self.chk.options.disallow_untyped_calls and

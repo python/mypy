@@ -717,8 +717,14 @@ def set_coordinate(p: TaggedPoint, key: str, value: int) -> None:
 
 -- isinstance
 
--- TODO: Implement support for this case.
---[case testCannotIsInstanceTypedDictType]
+[case testTypedDictAndInstance]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int})
+d: object
+if isinstance(d, D):  # E: Cannot use isinstance() with a TypedDict type
+    reveal_type(d) # E: Revealed type is '__main__.D'
+[builtins fixtures/isinstancelist.pyi]
+
 
 -- scoping
 [case testTypedDictInClassNamespace]
