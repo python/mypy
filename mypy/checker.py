@@ -1704,8 +1704,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
                 self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         elif (isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None
-                  and lvalue.def_var in self.inferred_attribute_types
-                  and not is_same_type(self.inferred_attribute_types[lvalue.def_var], init_type)):
+              and lvalue.def_var in self.inferred_attribute_types
+              and not is_same_type(self.inferred_attribute_types[lvalue.def_var], init_type)):
             # Multiple, inconsistent types inferred for an attribute.
             self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
             name.type = AnyType()
