@@ -6,7 +6,7 @@ import tempfile
 import time
 import traceback
 
-from typing import List, Tuple, Any, Callable, Union, cast
+from typing import List, Tuple, Any, Callable, Union, cast, Optional
 from types import TracebackType
 
 
@@ -72,7 +72,7 @@ def assert_raises(typ: type, *rest: Any) -> None:
     TODO use overloads for better type checking
     """
     # Parse arguments.
-    msg = None  # type: str
+    msg = None  # type: Optional[str]
     if isinstance(rest[0], str) or rest[0] is None:
         msg = rest[0]
         rest = rest[1:]
@@ -111,8 +111,8 @@ class TestCase:
         self.func = func
         self.name = name
         self.suite = suite
-        self.old_cwd = None  # type: str
-        self.tmpdir = None  # type: tempfile.TemporaryDirectory
+        self.old_cwd = None  # type: Optional[str]
+        self.tmpdir = None  # type: Optional[tempfile.TemporaryDirectory]
 
     def run(self) -> None:
         if self.func:
@@ -129,6 +129,8 @@ class TestCase:
     def tear_down(self) -> None:
         if self.suite:
             self.suite.tear_down()
+        assert self.old_cwd is not None and self.tmpdir is not None, ("test was not"
+                                                                      " properly set up")
         os.chdir(self.old_cwd)
         try:
             self.tmpdir.cleanup()
@@ -265,10 +267,9 @@ def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
             if is_skip: num_skip += 1
             num_total += 1
     else:
-        suite = None  # type: Suite
         suite_prefix = ''
         if isinstance(test, list) or isinstance(test, tuple):
-            suite = test[1]
+            suite = test[1]  # type: Suite
             suite_prefix = test[0]
         else:
             suite = test
@@ -307,6 +308,7 @@ def run_single_test(name: str, test: Any) -> Tuple[bool, bool]:
                 sys.stderr.write(' (skipped)\n')
             return False, True
         else:
+            assert exc_type is not None and exc_value is not None
             handle_failure(name, exc_type, exc_value, exc_traceback)
             return True, False
     elif is_verbose:
