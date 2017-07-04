@@ -7,9 +7,10 @@ from mypy.nodes import (
     ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
     TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealTypeExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
-    GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
+    GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
+    ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr
+    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt,
 )
 
 
@@ -121,8 +122,9 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_try_stmt(self, o: TryStmt) -> None:
         o.body.accept(self)
         for i in range(len(o.types)):
-            if o.types[i]:
-                o.types[i].accept(self)
+            tp = o.types[i]
+            if tp is not None:
+                tp.accept(self)
             o.handlers[i].accept(self)
         if o.else_body is not None:
             o.else_body.accept(self)
@@ -132,8 +134,9 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_with_stmt(self, o: WithStmt) -> None:
         for i in range(len(o.expr)):
             o.expr[i].accept(self)
-            if o.target[i] is not None:
-                o.target[i].accept(self)
+            targ = o.target[i]
+            if targ is not None:
+                targ.accept(self)
         o.body.accept(self)
 
     def visit_member_expr(self, o: MemberExpr) -> None:
@@ -211,7 +214,20 @@ class TraverserVisitor(NodeVisitor[None]):
                 cond.accept(self)
         o.left_expr.accept(self)
 
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
+        for index, sequence, conditions in zip(o.indices, o.sequences,
+                                               o.condlists):
+            sequence.accept(self)
+            index.accept(self)
+            for cond in conditions:
+                cond.accept(self)
+        o.key.accept(self)
+        o.value.accept(self)
+
     def visit_list_comprehension(self, o: ListComprehension) -> None:
+        o.generator.accept(self)
+
+    def visit_set_comprehension(self, o: SetComprehension) -> None:
         o.generator.accept(self)
 
     def visit_conditional_expr(self, o: ConditionalExpr) -> None:
@@ -232,4 +248,19 @@ class TraverserVisitor(NodeVisitor[None]):
         o.expr.accept(self)
 
     def visit_await_expr(self, o: AwaitExpr) -> None:
+        o.expr.accept(self)
+
+    def visit_import(self, o: Import) -> None:
+        for a in o.assignments:
+            a.accept(self)
+
+    def visit_import_from(self, o: ImportFrom) -> None:
+        for a in o.assignments:
+            a.accept(self)
+
+    def visit_print_stmt(self, o: PrintStmt) -> None:
+        for arg in o.args:
+            arg.accept(self)
+
+    def visit_exec_stmt(self, o: ExecStmt) -> None:
         o.expr.accept(self)

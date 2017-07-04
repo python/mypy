@@ -1,0 +1,148 @@
+-- Test cases for user-defined plugins
+--
+-- Note: Plugins used by tests live under test-data/unit/plugins. Defining
+--       plugin files in test cases does not work reliably.
+
+[case testFunctionPlugin]
+# flags: --config-file tmp/mypy.ini
+def f() -> str: ...
+reveal_type(f())  # E: Revealed type is 'builtins.int'
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
+
+[case testFunctionPluginFullnameIsNotNone]
+# flags: --config-file tmp/mypy.ini
+from typing import Callable, TypeVar
+f: Callable[[], None]
+T = TypeVar('T')
+def g(x: T) -> T: return x  # This strips out the name of a callable
+g(f)()
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
+
+[case testTwoPlugins]
+# flags: --config-file tmp/mypy.ini
+def f(): ...
+def g(): ...
+def h(): ...
+reveal_type(f())  # E: Revealed type is 'builtins.int'
+reveal_type(g())  # E: Revealed type is 'builtins.str'
+reveal_type(h())  # E: Revealed type is 'Any'
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/fnplugin.py,
+  <ROOT>/test-data/unit/plugins/plugin2.py
+
+[case testMissingPlugin]
+# flags: --config-file tmp/mypy.ini
+[file mypy.ini]
+[[mypy]
+plugins=missing.py
+[out]
+tmp/mypy.ini:2: error: Can't find plugin 'tmp/missing.py'
+--' (work around syntax highlighting)
+
+[case testMultipleSectionsDefinePlugin]
+# flags: --config-file tmp/mypy.ini
+[file mypy.ini]
+[[acme]
+plugins=acmeplugin
+[[mypy]
+plugins=missing.py
+[[another]
+plugins=another_plugin
+[out]
+tmp/mypy.ini:4: error: Can't find plugin 'tmp/missing.py'
+--' (work around syntax highlighting)
+
+[case testInvalidPluginExtension]
+# flags: --config-file tmp/mypy.ini
+[file mypy.ini]
+[[mypy]
+plugins=dir/badext.pyi
+[file dir/badext.pyi]
+[out]
+tmp/mypy.ini:2: error: Plugin 'badext.pyi' does not have a .py extension
+
+[case testMissingPluginEntryPoint]
+# flags: --config-file tmp/mypy.ini
+[file mypy.ini]
+[[mypy]
+ plugins = <ROOT>/test-data/unit/plugins/noentry.py
+[out]
+tmp/mypy.ini:2: error: Plugin '<ROOT>/test-data/unit/plugins/noentry.py' does not define entry point function "plugin"
+
+[case testInvalidPluginEntryPointReturnValue]
+# flags: --config-file tmp/mypy.ini
+def f(): pass
+f()
+[file mypy.ini]
+[[mypy]
+
+plugins=<ROOT>/test-data/unit/plugins/badreturn.py
+[out]
+tmp/mypy.ini:3: error: Type object expected as the return value of "plugin"; got None (in <ROOT>/test-data/unit/plugins/badreturn.py)
+
+[case testInvalidPluginEntryPointReturnValue2]
+# flags: --config-file tmp/mypy.ini
+def f(): pass
+f()
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/badreturn2.py
+[out]
+tmp/mypy.ini:2: error: Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" (in <ROOT>/test-data/unit/plugins/badreturn2.py)
+
+[case testAttributeTypeHookPlugin]
+# flags: --config-file tmp/mypy.ini
+from typing import Callable
+from m import Signal
+s: Signal[Callable[[int], None]] = Signal()
+s(1)
+s('') # E: Argument 1 has incompatible type "str"; expected "int"
+[file m.py]
+from typing import TypeVar, Generic, Callable
+T = TypeVar('T', bound=Callable[..., None])
+class Signal(Generic[T]):
+    __call__: Callable[..., None]  # This type is replaced by the plugin
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/attrhook.py
+
+[case testTypeAnalyzeHookPlugin]
+# flags: --config-file tmp/mypy.ini
+from typing import Callable
+from mypy_extensions import DefaultArg
+from m import Signal
+s: Signal[[int, DefaultArg(str, 'x')]] = Signal()
+reveal_type(s) # E: Revealed type is 'm.Signal[def (builtins.int, x: builtins.str =)]'
+s.x # E: Signal[Callable[[int, str], None]] has no attribute "x"
+ss: Signal[int, str] # E: Invalid "Signal" type (expected "Signal[[t, ...]]")
+[file m.py]
+from typing import TypeVar, Generic, Callable
+T = TypeVar('T', bound=Callable[..., None])
+class Signal(Generic[T]):
+    __call__: Callable[..., None]
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/type_anal_hook.py
+[builtins fixtures/dict.pyi]
+
+[case testFunctionPluginHookForReturnedCallable]
+# flags: --config-file tmp/mypy.ini
+from m import decorator1, decorator2
+@decorator1()
+def f() -> None: pass
+@decorator2()
+def g() -> None: pass
+reveal_type(f) # E: Revealed type is 'def (*Any, **Any) -> builtins.str'
+reveal_type(g) # E: Revealed type is 'def (*Any, **Any) -> builtins.int'
+[file m.py]
+from typing import Callable
+def decorator1() -> Callable[..., Callable[..., int]]: pass
+def decorator2() -> Callable[..., Callable[..., int]]: pass
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/named_callable.py

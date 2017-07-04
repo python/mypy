@@ -1,25 +1,21 @@
-from typing import builtinclass, Iterable, Iterator, TypeVar, List, Mapping, overload, Tuple, Set, Union
+from typing import Iterable, Iterator, TypeVar, List, Mapping, overload, Tuple, Set, Union
 
-@builtinclass
 class object:
     def __init__(self) -> None: pass
 
-@builtinclass
 class type:
     def __init__(self, x) -> None: pass
 
 class tuple: pass
 class function: pass
+class ellipsis: pass
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
 def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass
 
-@builtinclass
 class int:
     def __add__(self, x: int) -> int: pass
-@builtinclass
 class bool(int): pass
-@builtinclass
 class str:
     def __add__(self, x: str) -> str: pass
     def __getitem__(self, x: int) -> str: pass

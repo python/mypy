@@ -2,7 +2,7 @@
 
 import re
 
-from typing import cast, List, Tuple, Dict, Callable, Union
+from typing import cast, List, Tuple, Dict, Callable, Union, Optional
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType
@@ -18,6 +18,7 @@ from mypy import messages
 from mypy.messages import MessageBuilder
 
 FormatStringExpr = Union[StrExpr, BytesExpr, UnicodeExpr]
+Checkers = Tuple[Callable[[Expression], None], Callable[[Type], None]]
 
 
 class ConversionSpecifier:
@@ -105,7 +106,7 @@ class StringFormatterChecker:
         return specifiers
 
     def analyze_conversion_specifiers(self, specifiers: List[ConversionSpecifier],
-                                      context: Context) -> bool:
+                                      context: Context) -> Optional[bool]:
         has_star = any(specifier.has_star() for specifier in specifiers)
         has_key = any(specifier.has_key() for specifier in specifiers)
         all_have_keys = all(
@@ -192,9 +193,8 @@ class StringFormatterChecker:
 
     def build_replacement_checkers(self, specifiers: List[ConversionSpecifier],
                                    context: Context, expr: FormatStringExpr
-                                   ) -> List[Tuple[Callable[[Expression], None],
-                                                   Callable[[Type], None]]]:
-        checkers = []  # type: List[Tuple[Callable[[Expression], None], Callable[[Type], None]]]
+                                   ) -> Optional[List[Checkers]]:
+        checkers = []  # type: List[Checkers]
         for specifier in specifiers:
             checker = self.replacement_checkers(specifier, context, expr)
             if checker is None:
@@ -203,13 +203,12 @@ class StringFormatterChecker:
         return checkers
 
     def replacement_checkers(self, specifier: ConversionSpecifier, context: Context,
-                             expr: FormatStringExpr) -> List[Tuple[Callable[[Expression], None],
-                                                                   Callable[[Type], None]]]:
+                             expr: FormatStringExpr) -> Optional[List[Checkers]]:
         """Returns a list of tuples of two functions that check whether a replacement is
         of the right type for the specifier. The first functions take a node and checks
         its type in the right type context. The second function just checks a type.
         """
-        checkers = []  # type: List[Tuple[Callable[[Expression], None], Callable[[Type], None]]]
+        checkers = []  # type: List[Checkers]
 
         if specifier.width == '*':
             checkers.append(self.checkers_for_star(context))
@@ -227,14 +226,13 @@ class StringFormatterChecker:
             checkers.append(c)
         return checkers
 
-    def checkers_for_star(self, context: Context) -> Tuple[Callable[[Expression], None],
-                                                           Callable[[Type], None]]:
+    def checkers_for_star(self, context: Context) -> Checkers:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with a star in a conversion specifier
         """
         expected = self.named_type('builtins.int')
 
-        def check_type(type: Type = None) -> None:
+        def check_type(type: Type) -> None:
             expected = self.named_type('builtins.int')
             self.chk.check_subtype(type, expected, context, '* wants int')
 
@@ -246,8 +244,7 @@ class StringFormatterChecker:
 
     def checkers_for_regular_type(self, type: str,
                                   context: Context,
-                                  expr: FormatStringExpr) -> Tuple[Callable[[Expression], None],
-                                                                   Callable[[Type], None]]:
+                                  expr: FormatStringExpr) -> Optional[Checkers]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type'. Return None in case of an
         """
@@ -255,7 +252,8 @@ class StringFormatterChecker:
         if expected_type is None:
             return None
 
-        def check_type(type: Type = None) -> None:
+        def check_type(type: Type) -> None:
+            assert expected_type is not None
             self.chk.check_subtype(type, expected_type, context,
                               messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                               'expression has type', 'placeholder has type')
@@ -268,8 +266,7 @@ class StringFormatterChecker:
 
     def checkers_for_c_type(self, type: str,
                             context: Context,
-                            expr: FormatStringExpr) -> Tuple[Callable[[Expression], None],
-                                                             Callable[[Type], None]]:
+                            expr: FormatStringExpr) -> Optional[Checkers]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type' that is a character type
         """
@@ -277,7 +274,8 @@ class StringFormatterChecker:
         if expected_type is None:
             return None
 
-        def check_type(type: Type = None) -> None:
+        def check_type(type: Type) -> None:
+            assert expected_type is not None
             self.chk.check_subtype(type, expected_type, context,
                               messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                               'expression has type', 'placeholder has type')
@@ -291,7 +289,7 @@ class StringFormatterChecker:
 
         return check_expr, check_type
 
-    def conversion_type(self, p: str, context: Context, expr: FormatStringExpr) -> Type:
+    def conversion_type(self, p: str, context: Context, expr: FormatStringExpr) -> Optional[Type]:
         """Return the type that is accepted for a string interpolation
         conversion specifier type.
 

@@ -51,17 +51,24 @@ from typing import Union
 class A: y = 1
 class B: y = 2
 class C: pass
+class D: pass
 
+u = None # type: Union[A, C, D]
+v = None # type: Union[C, D]
 w = None # type: Union[A, B]
 x = None # type: Union[A, C]
 y = None # type: int
 z = None # type: str
 
 y = w.y
+v.y           # E: Item "C" of "Union[C, D]" has no attribute "y" \
+              # E: Item "D" of "Union[C, D]" has no attribute "y"
+u.y           # E: Item "C" of "Union[A, C, D]" has no attribute "y" \
+              # E: Item "D" of "Union[A, C, D]" has no attribute "y"
 z = w.y       # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 w.y = 'a'     # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-y = x.y       # E: Some element of union has no attribute "y"
-zz = x.y      # E: Some element of union has no attribute "y"
+y = x.y       # E: Item "C" of "Union[A, C]" has no attribute "y"
+zz = x.y      # E: Item "C" of "Union[A, C]" has no attribute "y"
 z = zz        # E: Incompatible types in assignment (expression has type "Union[int, Any]", variable has type "str")
 
 [builtins fixtures/isinstance.pyi]
@@ -122,7 +129,7 @@ from typing import Optional
 def f(x: Optional[int]) -> None: pass
 f(1)
 f(None)
-f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+f('') # E: Argument 1 to "f" has incompatible type "str"; expected "Optional[int]"
 
 [case testUnionSimplificationGenericFunction]
 from typing import TypeVar, Union, List
@@ -296,7 +303,8 @@ def foo(a: Union[A, B, C]):
     if isinstance(a, (B, C)):
         reveal_type(a) # E: Revealed type is 'Union[Tuple[builtins.int, fallback=__main__.B], Tuple[builtins.int, fallback=__main__.C]]'
         a.x
-        a.y # E: Some element of union has no attribute "y"
+        a.y # E: Item "B" of "Union[B, C]" has no attribute "y" \
+            # E: Item "C" of "Union[B, C]" has no attribute "y"
         b = a # type: Union[B, C]
 [builtins fixtures/isinstance.pyi]
 
@@ -327,13 +335,13 @@ t_a = None  # type: Type[Any]
 reveal_type(u(t_o, t_o)) # E: Revealed type is 'Type[builtins.object]'
 reveal_type(u(t_s, t_s)) # E: Revealed type is 'Type[builtins.str]'
 reveal_type(u(t_a, t_a)) # E: Revealed type is 'Type[Any]'
-reveal_type(u(type, type)) # E: Revealed type is 'def (x: Any) -> builtins.type'
+reveal_type(u(type, type)) # E: Revealed type is 'def (x: builtins.object) -> builtins.type'
 
 # One type, other non-type
 reveal_type(u(t_s, 1)) # E: Revealed type is 'Union[builtins.int*, Type[builtins.str]]'
 reveal_type(u(1, t_s)) # E: Revealed type is 'Union[Type[builtins.str], builtins.int*]'
-reveal_type(u(type, 1)) # E: Revealed type is 'Union[builtins.int*, def (x: Any) -> builtins.type]'
-reveal_type(u(1, type)) # E: Revealed type is 'Union[def (x: Any) -> builtins.type, builtins.int*]'
+reveal_type(u(type, 1)) # E: Revealed type is 'Union[builtins.int*, def (x: builtins.object) -> builtins.type]'
+reveal_type(u(1, type)) # E: Revealed type is 'Union[def (x: builtins.object) -> builtins.type, builtins.int*]'
 reveal_type(u(t_a, 1)) # E: Revealed type is 'Union[builtins.int*, Type[Any]]'
 reveal_type(u(1, t_a)) # E: Revealed type is 'Union[Type[Any], builtins.int*]'
 reveal_type(u(t_o, 1)) # E: Revealed type is 'Union[builtins.int*, Type[builtins.object]]'
@@ -452,6 +460,21 @@ l = reveal_type([]) # type: List[Union[bool, int, float, str]] \
 reveal_type(l) \
     # E: Revealed type is 'builtins.list[Union[builtins.bool, builtins.int, builtins.float, builtins.str]]'
 [builtins fixtures/list.pyi]
+
+[case testNestedUnionsProcessedCorrectly]
+from typing import Union
+
+class A: pass
+class B: pass
+class C: pass
+
+def foo(bar: Union[Union[A, B], C]) -> None:
+    if isinstance(bar, A):
+        reveal_type(bar)  # E: Revealed type is '__main__.A'
+    else:
+        reveal_type(bar)  # E: Revealed type is 'Union[__main__.B, __main__.C]'
+[builtins fixtures/isinstance.pyi]
+[out]
 
 [case testAssignAnyToUnion]
 from typing import Union, Any

@@ -208,7 +208,6 @@ class B(A):
 
 [case testSelfTypeClone]
 from typing import TypeVar, Type
-
 T = TypeVar('T', bound='C')
 
 class C:
@@ -219,13 +218,26 @@ class C:
     def new(cls: Type[T]) -> T:
         return cls()
 
-def clone(arg: T) -> T:
-    reveal_type(arg.copy)  # E: Revealed type is 'def () -> T`-1'
+class D(C): pass
+
+reveal_type(D.new)  # E: Revealed type is 'def () -> __main__.D*'
+reveal_type(D().new)  # E: Revealed type is 'def () -> __main__.D*'
+reveal_type(D.new())  # E: Revealed type is '__main__.D*'
+reveal_type(D().new())  # E: Revealed type is '__main__.D*'
+
+Q = TypeVar('Q', bound=C)
+
+def clone(arg: Q) -> Q:
+    reveal_type(arg.copy)  # E: Revealed type is 'def () -> Q`-1'
+    reveal_type(arg.copy())  # E: Revealed type is 'Q`-1'
+    reveal_type(arg.new)  # E: Revealed type is 'def () -> Q`-1'
+    reveal_type(arg.new())  # E: Revealed type is 'Q`-1'
     return arg.copy()
 
-
-def make(cls: Type[T]) -> T:
-    reveal_type(cls.new)  # E: Revealed type is 'def () -> T`-1'
+def make(cls: Type[Q]) -> Q:
+    reveal_type(cls.new)  # E: Revealed type is 'def () -> Q`-1'
+    reveal_type(cls().new)  # E: Revealed type is 'def () -> Q`-1'
+    reveal_type(cls().new())  # E: Revealed type is 'Q`-1'
     return cls.new()
 
 [builtins fixtures/classmethod.pyi]

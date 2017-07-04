@@ -1,7 +1,7 @@
 """Test cases for AST diff (used for fine-grained incremental checking)"""
 
-import os.path
-from typing import List, Tuple, Dict
+import os
+from typing import List, Tuple, Dict, Optional
 
 from mypy import build
 from mypy.build import BuildSource
@@ -46,6 +46,8 @@ class ASTDiffSuite(DataSuite):
             a.append('== next ==')
             a.extend(messages2)
 
+        assert files1 is not None and files2 is not None, ('cases where CompileError'
+                                                           ' occurred should not be run')
         diff = compare_symbol_tables(
             '__main__',
             files1['__main__'].names,
@@ -58,10 +60,11 @@ class ASTDiffSuite(DataSuite):
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
 
-    def build(self, source: str) -> Tuple[List[str], Dict[str, MypyFile]]:
+    def build(self, source: str) -> Tuple[List[str], Optional[Dict[str, MypyFile]]]:
         options = Options()
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.cache_dir = os.devnull
         try:
             result = build.build(sources=[BuildSource('main', None, source)],
                                  options=options,

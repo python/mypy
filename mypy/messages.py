@@ -6,8 +6,9 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Optional
 
+from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
@@ -16,7 +17,8 @@ from mypy.types import (
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
+    ReturnStmt, NameExpr, Var
 )
 
 
@@ -52,8 +54,7 @@ INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
 INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
 MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
-TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must be an integer literal'
-TUPLE_SLICE_MUST_BE_AN_INT_LITERAL = 'Tuple slice must be an integer literal'
+INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
 NEED_ANNOTATION_FOR_VAR = 'Need type annotation for variable'
 ITERABLE_EXPECTED = 'Iterable expected'
@@ -81,19 +82,21 @@ KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \
 ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'
 INVALID_TYPEDDICT_ARGS = \
     'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
-TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
-    'Expected TypedDict item name to be string literal'
+TYPEDDICT_KEY_MUST_BE_STRING_LITERAL = \
+    'Expected TypedDict key to be string literal'
 MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
+CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'
+CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
     ARG_OPT: "DefaultArg",
     ARG_NAMED: "NamedArg",
     ARG_NAMED_OPT: "DefaultNamedArg",
-    ARG_STAR: "StarArg",
+    ARG_STAR: "VarArg",
     ARG_STAR2: "KwArg",
 }
 
@@ -190,13 +193,8 @@ class MessageBuilder:
             if func.is_type_obj():
                 # The type of a type object type can be derived from the
                 # return type (this always works).
-                itype = cast(Instance, func.items()[0].ret_type)
-                result = self.format(itype)
-                if verbosity >= 1:
-                    # In some contexts we want to be explicit about the distinction
-                    # between type X and the type of type object X.
-                    result += ' (type object)'
-                return result
+                return self.format(TypeType.make_normalized(erase_type(func.items()[0].ret_type)),
+                                   verbosity)
             elif isinstance(func, CallableType):
                 return_type = strip_quotes(self.format(func.ret_type))
                 if func.is_ellipsis_args:
@@ -214,15 +212,15 @@ class MessageBuilder:
                                     verbosity = max(verbosity - 1, 0))))
                     else:
                         constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
-                        if arg_kind in (ARG_STAR, ARG_STAR2):
+                        if arg_kind in (ARG_STAR, ARG_STAR2) or arg_name is None:
                             arg_strings.append("{}({})".format(
                                 constructor,
                                 strip_quotes(self.format(arg_type))))
                         else:
-                            arg_strings.append("{}('{}', {})".format(
+                            arg_strings.append("{}({}, {})".format(
                                 constructor,
-                                arg_name,
-                                strip_quotes(self.format(arg_type))))
+                                strip_quotes(self.format(arg_type)),
+                                repr(arg_name)))
 
                 return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
             else:
@@ -249,6 +247,10 @@ class MessageBuilder:
         if isinstance(typ, Instance):
             itype = typ
             # Get the short name of the type.
+            if itype.type.fullname() in ('types.ModuleType',
+                                         '_importlib_modulespec.ModuleType'):
+                # Make some common error messages simpler and tidier.
+                return 'Module'
             if verbosity >= 2:
                 base_str = itype.type.fullname()
             else:
@@ -296,12 +298,15 @@ class MessageBuilder:
                 return 'tuple(length {})'.format(len(items))
         elif isinstance(typ, TypedDictType):
             # If the TypedDictType is named, return the name
-            if typ.fallback.type.fullname() != 'typing.Mapping':
+            if not typ.is_anonymous():
                 return self.format_simple(typ.fallback)
             items = []
             for (item_name, item_type) in typ.items.items():
-                items.append('{}={}'.format(item_name, strip_quotes(self.format(item_type))))
-            s = '"TypedDict({})"'.format(', '.join(items))
+                modifier = '' if item_name in typ.required_keys else '?'
+                items.append('{!r}{}: {}'.format(item_name,
+                                                 modifier,
+                                                 strip_quotes(self.format(item_type))))
+            s = '"TypedDict({{{}}})"'.format(', '.join(items))
             return s
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
@@ -329,7 +334,7 @@ class MessageBuilder:
             if typ.is_noreturn:
                 return 'NoReturn'
             else:
-                return '<uninhabited>'
+                return '<nothing>'
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(
                 strip_quotes(self.format_simple(typ.item, verbosity)))
@@ -362,72 +367,84 @@ class MessageBuilder:
     # get some information as arguments, and they build an error message based
     # on them.
 
-    def has_no_attr(self, typ: Type, member: str, context: Context) -> Type:
+    def has_no_attr(self, original_type: Type, typ: Type, member: str, context: Context) -> Type:
         """Report a missing or non-accessible member.
 
-        The type argument is the base type. If member corresponds to
-        an operator, use the corresponding operator name in the
-        messages. Return type Any.
+        original_type is the top-level type on which the error occurred.
+        typ is the actual type that is missing the member. These can be
+        different, e.g., in a union, original_type will be the union and typ
+        will be the specific item in the union that does not have the member
+        attribute.
+
+        If member corresponds to an operator, use the corresponding operator
+        name in the messages. Return type Any.
         """
-        if (isinstance(typ, Instance) and
-                typ.type.has_readable_member(member)):
+        if (isinstance(original_type, Instance) and
+                original_type.type.has_readable_member(member)):
             self.fail('Member "{}" is not assignable'.format(member), context)
         elif member == '__contains__':
             self.fail('Unsupported right operand type for in ({})'.format(
-                self.format(typ)), context)
+                self.format(original_type)), context)
         elif member in op_methods.values():
             # Access to a binary operator member (e.g. _add). This case does
             # not handle indexing operations.
             for op, method in op_methods.items():
                 if method == member:
-                    self.unsupported_left_operand(op, typ, context)
+                    self.unsupported_left_operand(op, original_type, context)
                     break
         elif member == '__neg__':
             self.fail('Unsupported operand type for unary - ({})'.format(
-                self.format(typ)), context)
+                self.format(original_type)), context)
         elif member == '__pos__':
             self.fail('Unsupported operand type for unary + ({})'.format(
-                self.format(typ)), context)
+                self.format(original_type)), context)
         elif member == '__invert__':
             self.fail('Unsupported operand type for ~ ({})'.format(
-                self.format(typ)), context)
+                self.format(original_type)), context)
         elif member == '__getitem__':
             # Indexed get.
             # TODO: Fix this consistently in self.format
-            if isinstance(typ, CallableType) and typ.is_type_obj():
+            if isinstance(original_type, CallableType) and original_type.is_type_obj():
                 self.fail('The type {} is not generic and not indexable'.format(
-                    self.format(typ)), context)
+                    self.format(original_type)), context)
             else:
                 self.fail('Value of type {} is not indexable'.format(
-                    self.format(typ)), context)
+                    self.format(original_type)), context)
         elif member == '__setitem__':
             # Indexed set.
             self.fail('Unsupported target for indexed assignment', context)
         elif member == '__call__':
-            if isinstance(typ, Instance) and (typ.type.fullname() == 'builtins.function'):
+            if isinstance(original_type, Instance) and \
+                    (original_type.type.fullname() == 'builtins.function'):
                 # "'function' not callable" is a confusing error message.
                 # Explain that the problem is that the type of the function is not known.
                 self.fail('Cannot call function of unknown type', context)
             else:
-                self.fail('{} not callable'.format(self.format(typ)), context)
+                self.fail('{} not callable'.format(self.format(original_type)), context)
         else:
             # The non-special case: a missing ordinary attribute.
             if not self.disable_type_names:
                 failed = False
-                if isinstance(typ, Instance) and typ.type.names:
-                    alternatives = set(typ.type.names.keys())
+                if isinstance(original_type, Instance) and original_type.type.names:
+                    alternatives = set(original_type.type.names.keys())
                     matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                     matches.extend(best_matches(member, alternatives)[:3])
                     if matches:
                         self.fail('{} has no attribute "{}"; maybe {}?'.format(
-                            self.format(typ), member, pretty_or(matches)), context)
+                            self.format(original_type), member, pretty_or(matches)), context)
                         failed = True
                 if not failed:
-                    self.fail('{} has no attribute "{}"'.format(self.format(typ),
+                    self.fail('{} has no attribute "{}"'.format(self.format(original_type),
                                                                 member), context)
-            else:
-                self.fail('Some element of union has no attribute "{}"'.format(
-                    member), context)
+            elif isinstance(original_type, UnionType):
+                # The checker passes "object" in lieu of "None" for attribute
+                # checks, so we manually convert it back.
+                typ_format = self.format(typ)
+                if typ_format == '"object"' and \
+                        any(type(item) == NoneTyp for item in original_type.items):
+                    typ_format = '"None"'
+                self.fail('Item {} of {} has no attribute "{}"'.format(
+                    typ_format, self.format(original_type), member), context)
         return AnyType()
 
     def unsupported_operand_types(self, op: str, left_type: Any,
@@ -525,13 +542,13 @@ class MessageBuilder:
             name = callee.name[1:-1]
             n -= 1
             msg = '{} item {} has incompatible type {}'.format(
-                name.title(), n, self.format_simple(arg_type))
+                name.title(), n, self.format(arg_type))
         elif callee.name == '<dict>':
             name = callee.name[1:-1]
             n -= 1
             key_type, value_type = cast(TupleType, arg_type).items
             msg = '{} entry {} has incompatible type {}: {}'.format(
-                name.title(), n, self.format_simple(key_type), self.format_simple(value_type))
+                name.title(), n, self.format(key_type), self.format(value_type))
         elif callee.name == '<list-comprehension>':
             msg = 'List comprehension has incompatible type List[{}]'.format(
                 strip_quotes(self.format(arg_type)))
@@ -546,7 +563,7 @@ class MessageBuilder:
                 self.format(callee.arg_types[n - 1]))
         elif callee.name == '<generator>':
             msg = 'Generator has incompatible item type {}'.format(
-                self.format_simple(arg_type))
+                self.format(arg_type))
         else:
             try:
                 expected_type = callee.arg_types[m - 1]
@@ -575,8 +592,9 @@ class MessageBuilder:
                 msg = 'Missing positional argument'
             else:
                 msg = 'Missing positional arguments'
-            if callee.name and diff:
-                msg += ' "{}" in call to {}'.format('", "'.join(diff), callee.name)
+            if callee.name and diff and all(d is not None for d in diff):
+                msg += ' "{}" in call to {}'.format('", "'.join(cast(List[str], diff)),
+                                                    callee.name)
         else:
             msg = 'Too few arguments'
             if callee.name:
@@ -608,13 +626,11 @@ class MessageBuilder:
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
-        if callee.definition:
-            fullname = callee.definition.fullname()
-            if fullname is not None and '.' in fullname:
-                module_name = fullname.rsplit('.', 1)[0]
-                path = self.modules[module_name].path
-                self.note('{} defined here'.format(callee.name), callee.definition,
-                          file=path, origin=context)
+        module = find_defining_module(self.modules, callee)
+        if module:
+            assert callee.definition is not None
+            self.note('{} defined here'.format(callee.name), callee.definition,
+                      file=module.path, origin=context)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
                                  context: Context) -> None:
@@ -624,9 +640,11 @@ class MessageBuilder:
 
     def does_not_return_value(self, callee_type: Type, context: Context) -> None:
         """Report an error about use of an unusable type."""
-        if isinstance(callee_type, FunctionLike) and callee_type.get_name() is not None:
-            self.fail('{} does not return a value'.format(
-                capitalize(callee_type.get_name())), context)
+        name = None  # type: Optional[str]
+        if isinstance(callee_type, FunctionLike):
+            name = callee_type.get_name()
+        if name is not None:
+            self.fail('{} does not return a value'.format(capitalize(name)), context)
         else:
             self.fail('Function does not return a value', context)
 
@@ -731,12 +749,16 @@ class MessageBuilder:
     def invalid_var_arg(self, typ: Type, context: Context) -> None:
         self.fail('List or tuple expected as variable arguments', context)
 
-    def invalid_keyword_var_arg(self, typ: Type, context: Context) -> None:
-        if isinstance(typ, Instance) and (typ.type.fullname() == 'builtins.dict'):
+    def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
+        if isinstance(typ, Instance) and is_mapping:
             self.fail('Keywords must be strings', context)
         else:
-            self.fail('Argument after ** must be a dictionary',
-                      context)
+            suffix = ''
+            if isinstance(typ, Instance):
+                suffix = ', not {}'.format(self.format(typ))
+            self.fail(
+                'Argument after ** must be a mapping{}'.format(suffix),
+                context)
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
@@ -859,30 +881,83 @@ class MessageBuilder:
     def redundant_cast(self, typ: Type, context: Context) -> None:
         self.note('Redundant cast to {}'.format(self.format(typ)), context)
 
-    def typeddict_instantiated_with_unexpected_items(self,
-                                                     expected_item_names: List[str],
-                                                     actual_item_names: List[str],
-                                                     context: Context) -> None:
-        self.fail('Expected items {} but found {}.'.format(
-            expected_item_names, actual_item_names), context)
+    def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
+        self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
+                  ctx)
 
-    def typeddict_item_name_must_be_string_literal(self,
-                                                   typ: TypedDictType,
-                                                   context: Context,
-                                                   ) -> None:
-        self.fail('Cannot prove expression is a valid item name; expected one of {}'.format(
-            format_item_name_list(typ.items.keys())), context)
+    def explicit_any(self, ctx: Context) -> None:
+        self.fail('Explicit "Any" is not allowed', ctx)
 
-    def typeddict_item_name_not_found(self,
-                                      typ: TypedDictType,
-                                      item_name: str,
-                                      context: Context,
-                                      ) -> None:
-        self.fail('\'{}\' is not a valid item name; expected one of {}'.format(
-            item_name, format_item_name_list(typ.items.keys())), context)
+    def unexpected_typeddict_keys(
+            self,
+            typ: TypedDictType,
+            expected_keys: List[str],
+            actual_keys: List[str],
+            context: Context) -> None:
+        actual_set = set(actual_keys)
+        expected_set = set(expected_keys)
+        if not typ.is_anonymous():
+            # Generate simpler messages for some common special cases.
+            if actual_set < expected_set:
+                # Use list comprehension instead of set operations to preserve order.
+                missing = [key for key in expected_keys if key not in actual_set]
+                self.fail('{} missing for TypedDict {}'.format(
+                    format_key_list(missing, short=True).capitalize(), self.format(typ)),
+                    context)
+                return
+            else:
+                extra = [key for key in actual_keys if key not in expected_set]
+                if extra:
+                    # If there are both extra and missing keys, only report extra ones for
+                    # simplicity.
+                    self.fail('Extra {} for TypedDict {}'.format(
+                        format_key_list(extra, short=True), self.format(typ)),
+                        context)
+                    return
+        if not expected_keys:
+            expected = '(no keys)'
+        else:
+            expected = format_key_list(expected_keys)
+        found = format_key_list(actual_keys, short=True)
+        if actual_keys and actual_set < expected_set:
+            found = 'only {}'.format(found)
+        self.fail('Expected {} but found {}'.format(expected, found), context)
+
+    def typeddict_key_must_be_string_literal(
+            self,
+            typ: TypedDictType,
+            context: Context) -> None:
+        self.fail(
+            'TypedDict key must be a string literal; expected one of {}'.format(
+                format_item_name_list(typ.items.keys())), context)
+
+    def typeddict_key_not_found(
+            self,
+            typ: TypedDictType,
+            item_name: str,
+            context: Context) -> None:
+        if typ.is_anonymous():
+            self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
+                item_name, format_item_name_list(typ.items.keys())), context)
+        else:
+            self.fail("TypedDict {} has no key '{}'".format(self.format(typ), item_name), context)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
+
+    def disallowed_any_type(self, typ: Type, context: Context) -> None:
+        if isinstance(typ, AnyType):
+            message = 'Expression has type "Any"'
+        else:
+            message = 'Expression type contains "Any" (has type {})'.format(self.format(typ))
+        self.fail(message, context)
+
+    def untyped_decorated_function(self, typ: Type, context: Context) -> None:
+        if isinstance(typ, AnyType):
+            self.fail("Function is untyped after decorator transformation", context)
+        else:
+            self.fail('Type of decorated function contains type "Any" ({})'.format(
+                self.format(typ)), context)
 
 
 def capitalize(s: str) -> str:
@@ -930,9 +1005,9 @@ def format_string_list(s: Iterable[str]) -> str:
 def format_item_name_list(s: Iterable[str]) -> str:
     l = list(s)
     if len(l) <= 5:
-        return '[' + ', '.join(["'%s'" % name for name in l]) + ']'
+        return '(' + ', '.join(["'%s'" % name for name in l]) + ')'
     else:
-        return '[' + ', '.join(["'%s'" % name for name in l[:5]]) + ', ...]'
+        return '(' + ', '.join(["'%s'" % name for name in l[:5]]) + ', ...)'
 
 
 def callable_name(type: CallableType) -> str:
@@ -940,6 +1015,21 @@ def callable_name(type: CallableType) -> str:
         return type.name
     else:
         return 'function'
+
+
+def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> Optional[MypyFile]:
+    if not typ.definition:
+        return None
+    fullname = typ.definition.fullname()
+    if fullname is not None and '.' in fullname:
+        for i in range(fullname.count('.')):
+            module_name = fullname.rsplit('.', i + 1)[0]
+            try:
+                return modules[module_name]
+            except KeyError:
+                pass
+        assert False, "Couldn't determine module from CallableType"
+    return None
 
 
 def temp_message_builder() -> MessageBuilder:
@@ -966,3 +1056,42 @@ def pretty_or(args: List[str]) -> str:
     if len(quoted) == 2:
         return "{} or {}".format(quoted[0], quoted[1])
     return ", ".join(quoted[:-1]) + ", or " + quoted[-1]
+
+
+def make_inferred_type_note(context: Context, subtype: Type,
+                            supertype: Type, supertype_str: str) -> str:
+    """Explain that the user may have forgotten to type a variable.
+
+    The user does not expect an error if the inferred container type is the same as the return
+    type of a function and the argument type(s) are a subtype of the argument type(s) of the
+    return type. This note suggests that they add a type annotation with the return type instead
+    of relying on the inferred type.
+    """
+    from mypy.subtypes import is_subtype
+    if (isinstance(subtype, Instance) and
+            isinstance(supertype, Instance) and
+            subtype.type.fullname() == supertype.type.fullname() and
+            subtype.args and
+            supertype.args and
+            isinstance(context, ReturnStmt) and
+            isinstance(context.expr, NameExpr) and
+            isinstance(context.expr.node, Var) and
+            context.expr.node.is_inferred):
+        for subtype_arg, supertype_arg in zip(subtype.args, supertype.args):
+            if not is_subtype(subtype_arg, supertype_arg):
+                return ''
+        var_name = context.expr.name
+        return 'Perhaps you need a type annotation for "{}"? Suggestion: {}'.format(
+            var_name, supertype_str)
+    return ''
+
+
+def format_key_list(keys: List[str], *, short: bool = False) -> str:
+    reprs = [repr(key) for key in keys]
+    td = '' if short else 'TypedDict '
+    if len(keys) == 0:
+        return 'no {}keys'.format(td)
+    elif len(keys) == 1:
+        return '{}key {}'.format(td, reprs[0])
+    else:
+        return '{}keys ({})'.format(td, ', '.join(reprs))

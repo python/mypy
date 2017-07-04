@@ -25,7 +25,7 @@ class Constraint:
     It can be either T <: type or T :> type (T is a type variable).
     """
 
-    type_var = None  # Type variable id
+    type_var = None  # type: TypeVarId
     op = 0           # SUBTYPE_OF or SUPERTYPE_OF
     target = None    # type: Type
 
@@ -53,10 +53,11 @@ def infer_constraints_for_callable(
 
     for i, actuals in enumerate(formal_to_actual):
         for actual in actuals:
-            if arg_types[actual] is None:
+            actual_arg_type = arg_types[actual]
+            if actual_arg_type is None:
                 continue
 
-            actual_type = get_actual_type(arg_types[actual], arg_kinds[actual],
+            actual_type = get_actual_type(actual_arg_type, arg_kinds[actual],
                                           tuple_counter)
             c = infer_constraints(callee.arg_types[i], actual_type,
                                   SUPERTYPE_OF)
@@ -253,9 +254,6 @@ class CompleteTypeVisitor(TypeQuery[bool]):
     def __init__(self) -> None:
         super().__init__(all)
 
-    def visit_none_type(self, t: NoneTyp) -> bool:
-        return experiments.STRICT_OPTIONAL
-
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return False
 
@@ -311,6 +309,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         res = []  # type: List[Constraint]
         if isinstance(actual, CallableType) and actual.fallback is not None:
             actual = actual.fallback
+        if isinstance(actual, TypedDictType):
+            actual = actual.as_anonymous().fallback
         if isinstance(actual, Instance):
             instance = actual
             if (self.direction == SUBTYPE_OF and

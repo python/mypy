@@ -399,7 +399,33 @@ f.write('x')
 f.write(b'x')
 f.foobar()
 [out]
-_program.py:4: error: IO[Any] has no attribute "foobar"
+_program.py:3: error: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
+_program.py:4: error: "TextIO" has no attribute "foobar"
+
+[case testOpenReturnTypeInference]
+reveal_type(open('x'))
+reveal_type(open('x', 'r'))
+reveal_type(open('x', 'rb'))
+mode = 'rb'
+reveal_type(open('x', mode))
+[out]
+_program.py:1: error: Revealed type is 'typing.TextIO'
+_program.py:2: error: Revealed type is 'typing.TextIO'
+_program.py:3: error: Revealed type is 'typing.BinaryIO'
+_program.py:5: error: Revealed type is 'typing.IO[Any]'
+
+[case testOpenReturnTypeInferenceSpecialCases]
+reveal_type(open())
+reveal_type(open(mode='rb', file='x'))
+reveal_type(open(file='x', mode='rb'))
+mode = 'rb'
+reveal_type(open(mode=mode, file='r'))
+[out]
+_testOpenReturnTypeInferenceSpecialCases.py:1: error: Revealed type is 'typing.TextIO'
+_testOpenReturnTypeInferenceSpecialCases.py:1: error: Too few arguments for "open"
+_testOpenReturnTypeInferenceSpecialCases.py:2: error: Revealed type is 'typing.BinaryIO'
+_testOpenReturnTypeInferenceSpecialCases.py:3: error: Revealed type is 'typing.BinaryIO'
+_testOpenReturnTypeInferenceSpecialCases.py:5: error: Revealed type is 'typing.IO[Any]'
 
 [case testGenericPatterns]
 from typing import Pattern
@@ -758,7 +784,7 @@ def f(*args: str) -> str: return args[0]
 map(f, ['x'])
 map(f, [1])
 [out]
-_program.py:4: error: Argument 1 to "map" has incompatible type Callable[[StarArg(str)], str]; expected Callable[[int], str]
+_program.py:4: error: Argument 1 to "map" has incompatible type Callable[[VarArg(str)], str]; expected Callable[[int], str]
 
 [case testMapStr]
 import typing
@@ -1096,10 +1122,10 @@ class MyDDict(t.DefaultDict[int,T], t.Generic[T]):
 MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
-_program.py:6: error: Argument 1 to "defaultdict" has incompatible type List[_T]; expected Callable[[], str]
+_program.py:6: error: Argument 1 to "defaultdict" has incompatible type Type[List[Any]]; expected Callable[[], str]
 _program.py:9: error: Invalid index type "str" for defaultdict[int, str]; expected type "int"
 _program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
-_program.py:19: error: Dict entry 0 has incompatible type "str": List[<uninhabited>]
+_program.py:19: error: Dict entry 0 has incompatible type "str": List[<nothing>]
 _program.py:23: error: Invalid index type "str" for MyDDict[Dict[_KT, _VT]]; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
@@ -1171,8 +1197,8 @@ collections.Deque()
 typing.deque()
 
 [out]
-_testDequeWrongCase.py:4: error: "ModuleType" has no attribute "Deque"
-_testDequeWrongCase.py:5: error: "ModuleType" has no attribute "deque"
+_testDequeWrongCase.py:4: error: Module has no attribute "Deque"
+_testDequeWrongCase.py:5: error: Module has no attribute "deque"
 
 [case testDictUpdateInference]
 from typing import Dict, Optional
@@ -1286,3 +1312,47 @@ a[1] = 2, 'y'
 a[:] = [('z', 3)]
 [out]
 _program.py:4: error: Incompatible types in assignment (expression has type "Tuple[int, str]", target has type "Tuple[str, int]")
+
+[case testContextManager]
+import contextlib
+from contextlib import contextmanager
+from typing import Iterator
+
+@contextmanager
+def f(x: int) -> Iterator[str]:
+    yield 'foo'
+
+@contextlib.contextmanager
+def g(*x: str) -> Iterator[int]:
+    yield 1
+
+reveal_type(f)
+reveal_type(g)
+
+with f('') as s:
+    reveal_type(s)
+[out]
+_program.py:13: error: Revealed type is 'def (x: builtins.int) -> contextlib.GeneratorContextManager[builtins.str*]'
+_program.py:14: error: Revealed type is 'def (*x: builtins.str) -> contextlib.GeneratorContextManager[builtins.int*]'
+_program.py:16: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+_program.py:17: error: Revealed type is 'builtins.str*'
+
+[case testTypedDictGet]
+# Test that TypedDict get plugin works with typeshed stubs
+# TODO: Make it possible to use strict optional here
+from mypy_extensions import TypedDict
+class A: pass
+D = TypedDict('D', {'x': int, 'y': str})
+d: D
+reveal_type(d.get('x'))
+reveal_type(d.get('y'))
+d.get('z')
+d.get()
+s = ''
+reveal_type(d.get(s))
+[out]
+_testTypedDictGet.py:7: error: Revealed type is 'builtins.int'
+_testTypedDictGet.py:8: error: Revealed type is 'builtins.str'
+_testTypedDictGet.py:9: error: TypedDict "D" has no key 'z'
+_testTypedDictGet.py:10: error: No overload variant of "get" of "Mapping" matches argument types []
+_testTypedDictGet.py:12: error: Revealed type is 'builtins.object*'
