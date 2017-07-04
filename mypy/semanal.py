@@ -1713,6 +1713,7 @@ class SemanticAnalyzer(NodeVisitor):
                 v.info = self.type
                 v.is_initialized_in_class = True
                 v.set_line(lval)
+                v._fullname = self.qualified_name(lval.name)
                 lval.node = v
                 lval.is_def = True
                 lval.kind = MDEF
