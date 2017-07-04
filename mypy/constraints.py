@@ -347,6 +347,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 for member in template.type.protocol_members:
                     inst = mypy.subtypes.find_member(member, instance, original_actual)
                     temp = mypy.subtypes.find_member(member, template, original_actual)
+                    assert inst is not None and temp is not None
                     res.extend(infer_constraints(temp, inst, self.direction))
                     if (mypy.subtypes.IS_SETTABLE in
                             mypy.subtypes.get_member_flags(member, template.type)):
@@ -362,6 +363,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 for member in instance.type.protocol_members:
                     inst = mypy.subtypes.find_member(member, instance, template)
                     temp = mypy.subtypes.find_member(member, template, template)
+                    assert inst is not None and temp is not None
                     res.extend(infer_constraints(temp, inst, self.direction))
                     if (mypy.subtypes.IS_SETTABLE in
                             mypy.subtypes.get_member_flags(member, instance.type)):

@@ -142,7 +142,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
     def visit_instance(self, t: Instance) -> Type:
         if isinstance(self.s, Instance):
             nominal = join_instances(t, self.s)
-            structural = None  # type: Instance
+            structural = None  # type: Optional[Instance]
             if t.type.is_protocol and is_protocol_implementation(self.s, t):
                 structural = t
             elif self.s.type.is_protocol and is_protocol_implementation(t, self.s):

@@ -358,6 +358,7 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
             if member in ('__init__', '__new__'):
                 continue
             supertype = find_member(member, right, left)
+            assert supertype is not None
             subtype = find_member(member, left, left)
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
@@ -537,6 +538,7 @@ def get_conflict_types(left: Instance, right: Instance) -> List[Tuple[str, Type,
         if member in ('__init__', '__new__'):
             continue
         supertype = find_member(member, right, left)
+        assert supertype is not None
         subtype = find_member(member, left, left)
         if not subtype:
             continue
