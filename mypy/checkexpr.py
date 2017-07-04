@@ -188,8 +188,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.accept(e.analyzed, self.type_context[-1])
         if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, TypeInfo) and \
                 e.callee.node.typeddict_type is not None:
-            return self.check_typeddict_call(e.callee.node.typeddict_type,
-                                             e.arg_kinds, e.arg_names, e.args, e)
+            # Use named fallback for better error messages.
+            typeddict_type = e.callee.node.typeddict_type.copy_modified(
+                fallback=Instance(e.callee.node, []))
+            return self.check_typeddict_call(typeddict_type, e.arg_kinds, e.arg_names, e.args, e)
         if isinstance(e.callee, NameExpr) and e.callee.name in ('isinstance', 'issubclass'):
             for typ in mypy.checker.flatten(e.args[1]):
                 if isinstance(typ, NameExpr):
@@ -303,7 +305,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 context=context)
             return AnyType()
 
-        items = OrderedDict()  # type: OrderedDict[str, Type]
         for (item_name, item_expected_type) in callee.items.items():
             if item_name in kwargs:
                 item_value = kwargs[item_name]
@@ -312,12 +313,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     msg=messages.INCOMPATIBLE_TYPES,
                     lvalue_name='TypedDict item "{}"'.format(item_name),
                     rvalue_name='expression')
-            items[item_name] = item_expected_type
 
-        mapping_value_type = join.join_type_list(list(items.values()))
-        fallback = self.chk.named_generic_type('typing.Mapping',
-                                               [self.chk.str_type(), mapping_value_type])
-        return TypedDictType(items, set(callee.required_keys), fallback)
+        return callee
 
     # Types and methods that can be used to infer partial types.
     item_args = {'builtins.list': ['append'],

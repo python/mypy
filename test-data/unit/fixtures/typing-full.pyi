@@ -108,6 +108,7 @@ class Mapping(Iterable[T], Generic[T, U]):
     def get(self, k: T) -> Optional[U]: ...
     @overload
     def get(self, k: T, default: Union[U, V]) -> Union[U, V]: ...
+    def values(self) -> Iterable[U]: pass  # Approximate return type
 
 class MutableMapping(Mapping[T, U]): pass
 

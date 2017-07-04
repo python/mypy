@@ -1901,11 +1901,11 @@ A = TypedDict('A', {'x': int, 'y': str})
 x: A
 [builtins fixtures/dict.pyi]
 [out1]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
-main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+main:2: error: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
+main:4: error: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
 [out2]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
-main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+main:2: error: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
+main:4: error: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
 
 [case testSerializeMetaclass]
 import b
