@@ -2,7 +2,7 @@
 
 import os
 import shutil
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 
 from mypy import build
 from mypy.build import BuildManager, BuildSource, State
@@ -20,7 +20,7 @@ from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
-from mypy.util import short_type
+from mypy.util import short_type, IdMapper
 
 
 files = [
@@ -38,7 +38,8 @@ AST = 'AST'
 class ASTMergeSuite(DataSuite):
     def __init__(self, *, update_data: bool) -> None:
         self.str_conv = StrConv(show_ids=True)
-        self.id_mapper = self.str_conv.id_mapper
+        assert self.str_conv.id_mapper is not None
+        self.id_mapper = self.str_conv.id_mapper  # type: IdMapper
         self.type_str_conv = TypeStrVisitor(self.id_mapper)
 
     @classmethod
@@ -64,6 +65,7 @@ class ASTMergeSuite(DataSuite):
 
         main_src = '\n'.join(testcase.input)
         messages, manager, graph = self.build(main_src)
+        assert manager is not None, 'cases where CompileError occurred should not be run'
 
         a = []
         if messages:
@@ -96,7 +98,7 @@ class ASTMergeSuite(DataSuite):
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
 
-    def build(self, source: str) -> Tuple[List[str], BuildManager, Dict[str, State]]:
+    def build(self, source: str) -> Tuple[List[str], Optional[BuildManager], Dict[str, State]]:
         options = Options()
         options.use_builtins_fixtures = True
         options.show_traceback = True

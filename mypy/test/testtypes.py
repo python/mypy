@@ -45,7 +45,7 @@ class TypesSuite(Suite):
                          AnyType(), self.function)
         assert_equal(str(c), 'def (X?, Y?) -> Any')
 
-        c2 = CallableType([], [], [], NoneTyp(), None)
+        c2 = CallableType([], [], [], NoneTyp(), self.fx.function)
         assert_equal(str(c2), 'def ()')
 
     def test_callable_type_with_default_args(self) -> None:
@@ -70,9 +70,9 @@ class TypesSuite(Suite):
         assert_equal(str(c3), 'def (X? =, *Y?) -> Any')
 
     def test_tuple_type(self) -> None:
-        assert_equal(str(TupleType([], None)), 'Tuple[]')
-        assert_equal(str(TupleType([self.x], None)), 'Tuple[X?]')
-        assert_equal(str(TupleType([self.x, AnyType()], None)), 'Tuple[X?, Any]')
+        assert_equal(str(TupleType([], self.fx.std_tuple)), 'Tuple[]')
+        assert_equal(str(TupleType([self.x], self.fx.std_tuple)), 'Tuple[X?]')
+        assert_equal(str(TupleType([self.x, AnyType()], self.fx.std_tuple)), 'Tuple[X?, Any]')
 
     def test_type_variable_binding(self) -> None:
         assert_equal(str(TypeVarDef('X', 1, [], self.fx.o)), 'X')
@@ -343,7 +343,7 @@ class TypeOpsSuite(Suite):
         tv = []  # type: List[TypeVarDef]
         n = -1
         for v in vars:
-            tv.append(TypeVarDef(v, n, None, self.fx.o))
+            tv.append(TypeVarDef(v, n, [], self.fx.o))
             n -= 1
         return CallableType(list(a[:-1]),
                             [ARG_POS] * (len(a) - 1),
