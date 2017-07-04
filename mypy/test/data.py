@@ -164,7 +164,9 @@ def parse_test_cases(
                 for file_path, contents in files:
                     expand_errors(contents.split('\n'), tcout, file_path)
                 lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
-                tc = DataDrivenTestCase(p[i0].arg, input, tcout, tcout2, path,
+                arg0 = p[i0].arg
+                assert arg0 is not None
+                tc = DataDrivenTestCase(arg0, input, tcout, tcout2, path,
                                         p[i0].line, lastline, perform,
                                         files, output_files, stale_modules,
                                         rechecked_modules, deleted_paths, native_sep)
@@ -200,7 +202,7 @@ class DataDrivenTestCase(TestCase):
                  file: str,
                  line: int,
                  lastline: int,
-                 perform: Callable[['DataDrivenTestCase'], None],
+                 perform: Optional[Callable[['DataDrivenTestCase'], None]],
                  files: List[Tuple[str, str]],
                  output_files: List[Tuple[str, str]],
                  expected_stale_modules: Dict[int, Set[str]],
@@ -270,6 +272,7 @@ class DataDrivenTestCase(TestCase):
         if self.name.endswith('-skip'):
             raise SkipTestCaseException()
         else:
+            assert self.perform is not None, 'Tests without `perform` should not be `run`'
             self.perform(self)
 
     def tear_down(self) -> None:

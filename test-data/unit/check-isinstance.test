@@ -1233,7 +1233,7 @@ from typing import Optional
 def h(a: bool, x: object) -> Optional[int]:
     if a or isinstance(x, int):
         return None
-    return x # E: Incompatible return value type (got "object", expected "int")
+    return x # E: Incompatible return value type (got "object", expected "Optional[int]")
 [builtins fixtures/isinstance.pyi]
 [out]
 
@@ -1756,4 +1756,25 @@ if isinstance(x, U):
 if isinstance(x, (set, (list, T))):
     reveal_type(x)  # E: Revealed type is 'Union[builtins.set[Any], builtins.list[Any], builtins.int, builtins.str]'
 
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceTooFewArgs]
+isinstance() # E: Too few arguments for "isinstance"
+x: object
+if isinstance(): # E: Too few arguments for "isinstance"
+    x = 1
+    reveal_type(x) # E: Revealed type is 'builtins.int'
+if isinstance(x): # E: Too few arguments for "isinstance"
+    x = 1
+    reveal_type(x) # E: Revealed type is 'builtins.int'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceTooManyArgs]
+isinstance(1, 1, 1) # E: Too many arguments for "isinstance" \
+         # E: Argument 2 to "isinstance" has incompatible type "int"; expected "Union[type, tuple]"
+x: object
+if isinstance(x, str, 1): # E: Too many arguments for "isinstance"
+    reveal_type(x) # E: Revealed type is 'builtins.object'
+    x = 1
+    reveal_type(x) # E: Revealed type is 'builtins.int'
 [builtins fixtures/isinstancelist.pyi]

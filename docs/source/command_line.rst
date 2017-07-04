@@ -278,7 +278,7 @@ Here are some more useful flags:
 
 - ``--disallow-any`` disallows various types of ``Any`` in a module.
   The option takes a comma-separated list of the following values:
-  ``unimported``, ``unannotated``, ``expr``, ``decorated``.
+  ``unimported``, ``unannotated``, ``expr``, ``decorated``, ``explicit``.
 
   ``unimported`` disallows usage of types that come from unfollowed imports
   (such types become aliases for ``Any``). Unfollowed imports occur either
@@ -301,6 +301,8 @@ Here are some more useful flags:
   ``decorated`` disallows functions that have ``Any`` in their signature
   after decorator transformation.
 
+  ``explicit`` disallows explicit ``Any`` in type positions such as type
+  annotations and generic type parameters.
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
@@ -418,6 +420,13 @@ Here are some more useful flags:
 
 - ``--strict`` mode enables all optional error checking flags.  You can see the
   list of flags enabled by strict mode in the full ``mypy -h`` output.
+
+- ``--shadow-file SOURCE_FILE SHADOW_FILE`` makes mypy typecheck SHADOW_FILE in
+  place of SOURCE_FILE.  Primarily intended for tooling.  Allows tooling to
+  make transformations to a file before type checking without having to change
+  the file in-place.  (For example, tooling could use this to display the type
+  of an expression by wrapping it with a call to reveal_type in the shadow
+  file and then parsing the output.)
 
 For the remaining flags you can read the full ``mypy -h`` output.
 
