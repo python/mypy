@@ -300,11 +300,11 @@ def default_lib_path(data_dir: str,
 CacheMeta = NamedTuple('CacheMeta',
                        [('id', str),
                         ('path', str),
-                        ('mtime', float),
+                        ('mtime', int),
                         ('size', int),
                         ('hash', str),
                         ('dependencies', List[str]),  # names of imported modules
-                        ('data_mtime', float),  # mtime of data_json
+                        ('data_mtime', int),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
                         ('child_modules', List[str]),  # all submodules of the given module
