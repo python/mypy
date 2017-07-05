@@ -1190,9 +1190,9 @@ class StarExpr(Expression):
 class RefExpr(Expression):
     """Abstract base class for name-like constructs"""
 
-    kind = None  # type: int      # LDEF/GDEF/MDEF/... (None if not available)
+    kind = None  # type: Optional[int]      # LDEF/GDEF/MDEF/... (None if not available)
     node = None  # type: Optional[SymbolNode]  # Var, FuncDef or TypeInfo that describes this
-    fullname = None  # type: str  # Fully qualified name (or name if not global)
+    fullname = None  # type: Optional[str]  # Fully qualified name (or name if not global)
 
     # Does this define a new name with inferred type?
     #
@@ -1248,7 +1248,7 @@ class MemberExpr(RefExpr):
     expr = None  # type: Expression
     name = None  # type: str
     # The variable node related to a definition.
-    def_var = None  # type: Var
+    def_var = None  # type: Optional[Var]
 
     def __init__(self, expr: Expression, name: str) -> None:
         self.expr = expr

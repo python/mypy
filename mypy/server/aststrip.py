@@ -1,7 +1,7 @@
 """Strip AST from semantic information."""
 
 import contextlib
-from typing import Union, Iterator
+from typing import Union, Iterator, Optional
 
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
@@ -16,7 +16,7 @@ def strip_target(node: Union[MypyFile, FuncItem]) -> None:
 
 class NodeStripVisitor(TraverserVisitor):
     def __init__(self) -> None:
-        self.type = None  # type: TypeInfo
+        self.type = None  # type: Optional[TypeInfo]
 
     def strip_target(self, node: Union[MypyFile, FuncItem]) -> None:
         """Strip a fine-grained incremental mode target."""
@@ -64,16 +64,20 @@ class NodeStripVisitor(TraverserVisitor):
     def visit_member_expr(self, node: MemberExpr) -> None:
         self.strip_ref_expr(node)
         if self.is_duplicate_attribute_def(node):
-            # This is marked as a instance variable definition but a base class
+            # This is marked as an instance variable definition but a base class
             # defines an attribute with the same name, and we can't have
             # multiple definitions for an attribute. Defer to the base class
             # definition.
-            del self.type.names[node.name]
+            if self.type is not None:
+                del self.type.names[node.name]
             node.is_def = False
             node.def_var = None
 
     def is_duplicate_attribute_def(self, node: MemberExpr) -> bool:
-        if not node.is_def or node.name not in self.type.names:
+        if not node.is_def:
+            return False
+        assert self.type is not None, "members can't be defined outside a class"
+        if node.name not in self.type.names:
             return False
         return any(info.get(node.name) is not None for info in self.type.mro[1:])
 

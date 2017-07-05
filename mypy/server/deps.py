@@ -121,15 +121,17 @@ class DependencyVisitor(TraverserVisitor):
             # We don't track depdendencies to local variables, since they
             # aren't externally visible.
             return
-        trigger = make_trigger(o.fullname)
-        self.add_dependency(trigger)
+        if o.fullname is not None:
+            trigger = make_trigger(o.fullname)
+            self.add_dependency(trigger)
 
     def visit_member_expr(self, e: MemberExpr) -> None:
         super().visit_member_expr(e)
         if e.kind is not None:
             # Reference to a module attribute
-            trigger = make_trigger(e.fullname)
-            self.add_dependency(trigger)
+            if e.fullname is not None:
+                trigger = make_trigger(e.fullname)
+                self.add_dependency(trigger)
         else:
             # Reference to a non-module attribute
             typ = self.type_map[e.expr]
