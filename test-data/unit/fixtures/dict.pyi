@@ -24,6 +24,7 @@ class dict(Generic[KT, VT]):
     def get(self, k: KT) -> Optional[VT]: pass
     @overload
     def get(self, k: KT, default: Union[KT, T]) -> Union[VT, T]: pass
+    def __len__(self) -> int: ...
 
 class int: # for convenience
     def __add__(self, x: int) -> int: pass
