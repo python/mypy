@@ -2,6 +2,7 @@
 
 import os
 from abc import abstractmethod
+from collections import OrderedDict
 
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable,
@@ -155,7 +156,7 @@ class Statement(Node):
 class Expression(Node):
     """An expression node."""
     literal = LITERAL_NO
-    literal_hash = None  # type: Key
+    literal_hash = None  # type: Optional[Key]
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
@@ -730,6 +731,7 @@ class ClassDef(Statement):
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = ''  # type: Optional[str]
     decorators = None  # type: List[Expression]
+    keywords = None  # type: OrderedDict[str, Expression]
     analyzed = None  # type: Optional[Expression]
     has_incompatible_baseclass = False
 
@@ -738,13 +740,15 @@ class ClassDef(Statement):
                  defs: 'Block',
                  type_vars: List['mypy.types.TypeVarDef'] = None,
                  base_type_exprs: List[Expression] = None,
-                 metaclass: str = None) -> None:
+                 metaclass: str = None,
+                 keywords: List[Tuple[str, Expression]] = None) -> None:
         self.name = name
         self.defs = defs
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []
         self.metaclass = metaclass
         self.decorators = []
+        self.keywords = OrderedDict(keywords or [])
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
@@ -1950,7 +1954,7 @@ class TypeInfo(SymbolNode):
     mro = None  # type: List[TypeInfo]
 
     declared_metaclass = None  # type: Optional[mypy.types.Instance]
-    metaclass_type = None  # type: mypy.types.Instance
+    metaclass_type = None  # type: Optional[mypy.types.Instance]
 
     subtypes = None  # type: Set[TypeInfo] # Direct subclasses encountered so far
     names = None  # type: SymbolTable      # Names defined directly in this type
@@ -2502,9 +2506,9 @@ def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T
             is_kw_arg = True
 
 
-def check_arg_names(names: List[str], nodes: List[T], fail: Callable[[str, T], None],
+def check_arg_names(names: List[Optional[str]], nodes: List[T], fail: Callable[[str, T], None],
                     description: str = 'function definition') -> None:
-    seen_names = set()  # type: Set[str]
+    seen_names = set()  # type: Set[Optional[str]]
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:
             fail("Duplicate argument '{}' in {}".format(name, description), node)

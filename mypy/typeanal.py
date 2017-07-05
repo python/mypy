@@ -6,6 +6,8 @@ from itertools import chain
 
 from contextlib import contextmanager
 
+from mypy.messages import MessageBuilder
+from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
     AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
@@ -166,7 +168,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             elif fullname == 'builtins.None':
                 return NoneTyp()
             elif fullname == 'typing.Any' or fullname == 'builtins.Any':
-                return AnyType()
+                return AnyType(explicit=True)
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
@@ -179,8 +181,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 return self.tuple_type(self.anal_array(t.args))
             elif fullname == 'typing.Union':
                 items = self.anal_array(t.args)
-                if not experiments.STRICT_OPTIONAL:
-                    items = [item for item in items if not isinstance(item, NoneTyp)]
                 return UnionType.make_union(items)
             elif fullname == 'typing.Optional':
                 if len(t.args) != 1:
@@ -375,7 +375,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             (item_name, self.anal_type(item_type))
             for (item_name, item_type) in t.items.items()
         ])
-        return TypedDictType(items, t.fallback)
+        return TypedDictType(items, set(t.required_keys), t.fallback)
 
     def visit_star_type(self, t: StarType) -> Type:
         return StarType(self.anal_type(t.type), t.line)
@@ -438,7 +438,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                                                                          List[Optional[str]]]]:
         args = []   # type: List[Type]
         kinds = []  # type: List[int]
-        names = []  # type: List[str]
+        names = []  # type: List[Optional[str]]
         for arg in arglist.items:
             if isinstance(arg, CallableArgument):
                 args.append(arg.typ)
@@ -454,6 +454,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                         found.fullname), arg)
                     return None
                 else:
+                    assert found.fullname is not None
                     kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
                     kinds.append(kind)
                     if arg.name is not None and kind in {ARG_STAR, ARG_STAR2}:
@@ -756,6 +757,37 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
             return []
 
 
+def check_for_explicit_any(typ: Optional[Type],
+                           options: Options,
+                           is_typeshed_stub: bool,
+                           msg: MessageBuilder,
+                           context: Context) -> None:
+    if ('explicit' in options.disallow_any and
+            not is_typeshed_stub and
+            typ and
+            has_explicit_any(typ)):
+        msg.explicit_any(context)
+
+
+def has_explicit_any(t: Type) -> bool:
+    """
+    Whether this type is or type it contains is an Any coming from explicit type annotation
+    """
+    return t.accept(HasExplicitAny())
+
+
+class HasExplicitAny(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_any(self, t: AnyType) -> bool:
+        return t.explicit
+
+    def visit_typeddict_type(self, t: TypedDictType) -> bool:
+        # typeddict is checked during TypedDict declaration, so don't typecheck it here.
+        return False
+
+
 def has_any_from_unimported_type(t: Type) -> bool:
     """Return true if this type is Any because an import was not followed.
 
@@ -772,6 +804,10 @@ class HasAnyFromUnimportedType(TypeQuery[bool]):
     def visit_any(self, t: AnyType) -> bool:
         return t.from_unimported_type
 
+    def visit_typeddict_type(self, t: TypedDictType) -> bool:
+        # typeddict is checked during TypedDict declaration, so don't typecheck it here
+        return False
+
 
 def make_optional_type(t: Type) -> Type:
     """Return the type corresponding to Optional[t].
@@ -780,12 +816,11 @@ def make_optional_type(t: Type) -> Type:
     is called during semantic analysis and simplification only works during
     type checking.
     """
-    if not experiments.STRICT_OPTIONAL:
-        return t
     if isinstance(t, NoneTyp):
         return t
-    if isinstance(t, UnionType):
+    elif isinstance(t, UnionType):
         items = [item for item in union_items(t)
                  if not isinstance(item, NoneTyp)]
         return UnionType(items + [NoneTyp()], t.line, t.column)
-    return UnionType([t, NoneTyp()], t.line, t.column)
+    else:
+        return UnionType([t, NoneTyp()], t.line, t.column)

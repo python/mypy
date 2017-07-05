@@ -201,6 +201,7 @@ class SemAnalTypeInfoSuite(Suite):
             for f in result.files.values():
                 for n in f.names.values():
                     if isinstance(n.node, TypeInfo):
+                        assert n.fullname is not None
                         typeinfos[n.fullname] = n.node
 
             # The output is the symbol table converted into a string.

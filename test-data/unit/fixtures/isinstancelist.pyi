@@ -8,6 +8,7 @@ class type:
 
 class tuple: pass
 class function: pass
+class ellipsis: pass
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
 def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass

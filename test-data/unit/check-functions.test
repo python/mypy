@@ -335,10 +335,10 @@ def f(x: C) -> C: pass
 from typing import Any, Callable, List
 def f(fields: List[Callable[[Any], Any]]): pass
 class C: pass
-f([C])  # E: List item 0 has incompatible type
+f([C])  # E: List item 0 has incompatible type Type[C]
 class D:
     def __init__(self, a, b): pass
-f([D])  # E: List item 0 has incompatible type
+f([D])  # E: List item 0 has incompatible type Type[D]
 [builtins fixtures/list.pyi]
 
 [case testSubtypingTypeTypeAsCallable]

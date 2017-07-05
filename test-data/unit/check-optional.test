@@ -458,6 +458,16 @@ reveal_type(l)  # E: Revealed type is 'builtins.list[typing.Generator*[builtins.
 x = [None] if "" else [1]  # E: List item 0 has incompatible type "int"
 [builtins fixtures/list.pyi]
 
+[case testListIncompatibleErrorMessage]
+from typing import List, Callable
+
+def foo(l: List[Callable[[], str]]) -> None: pass
+def f() -> int:
+    return 42
+
+foo([f])  # E: List item 0 has incompatible type Callable[[], int]
+[builtins fixtures/list.pyi]
+
 [case testInferEqualsNotOptional]
 from typing import Optional
 x = ''  # type: Optional[str]

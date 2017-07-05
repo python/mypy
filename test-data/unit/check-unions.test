@@ -129,7 +129,7 @@ from typing import Optional
 def f(x: Optional[int]) -> None: pass
 f(1)
 f(None)
-f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+f('') # E: Argument 1 to "f" has incompatible type "str"; expected "Optional[int]"
 
 [case testUnionSimplificationGenericFunction]
 from typing import TypeVar, Union, List

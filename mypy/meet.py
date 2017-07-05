@@ -31,7 +31,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return declared
     if isinstance(declared, UnionType):
         return UnionType.make_simplified_union([narrow_declared_type(x, narrowed)
-                                                for x in declared.items])
+                                                for x in declared.relevant_items()])
     elif not is_overlapping_types(declared, narrowed, use_promotions=True):
         if experiments.STRICT_OPTIONAL:
             return UninhabitedType()
@@ -39,7 +39,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
             return NoneTyp()
     elif isinstance(narrowed, UnionType):
         return UnionType.make_simplified_union([narrow_declared_type(declared, x)
-                                                for x in narrowed.items])
+                                                for x in narrowed.relevant_items()])
     elif isinstance(narrowed, AnyType):
         return narrowed
     elif isinstance(declared, (Instance, TupleType)):
@@ -84,6 +84,10 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
         t = t.erase_to_union_or_bound()
     if isinstance(s, TypeVarType):
         s = s.erase_to_union_or_bound()
+    if isinstance(t, TypedDictType):
+        t = t.as_anonymous().fallback
+    if isinstance(s, TypedDictType):
+        s = s.as_anonymous().fallback
     if isinstance(t, Instance):
         if isinstance(s, Instance):
             # Consider two classes non-disjoint if one is included in the mro
@@ -99,10 +103,10 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
             return t.type in s.type.mro or s.type in t.type.mro
     if isinstance(t, UnionType):
         return any(is_overlapping_types(item, s)
-                   for item in t.items)
+                   for item in t.relevant_items())
     if isinstance(s, UnionType):
         return any(is_overlapping_types(t, item)
-                   for item in s.items)
+                   for item in s.relevant_items())
     if isinstance(t, TypeType) and isinstance(s, TypeType):
         # If both types are TypeType, compare their inner types.
         return is_overlapping_types(t.item, s.item, use_promotions)
@@ -252,8 +256,9 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         if isinstance(self.s, TypedDictType):
-            for (_, l, r) in self.s.zip(t):
-                if not is_equivalent(l, r):
+            for (name, l, r) in self.s.zip(t):
+                if (not is_equivalent(l, r) or
+                        (name in t.required_keys) != (name in self.s.required_keys)):
                     return self.default(self.s)
             item_list = []  # type: List[Tuple[str, Type]]
             for (item_name, s_item_type, t_item_type) in self.s.zipall(t):
@@ -266,7 +271,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             items = OrderedDict(item_list)
             mapping_value_type = join_type_list(list(items.values()))
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
-            return TypedDictType(items, fallback)
+            required_keys = t.required_keys | self.s.required_keys
+            return TypedDictType(items, required_keys, fallback)
         else:
             return self.default(self.s)
 

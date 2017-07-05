@@ -113,7 +113,10 @@ class StatisticsVisitor(TraverserVisitor):
                     items = [lvalue]
                 for item in items:
                     if isinstance(item, RefExpr) and item.is_def:
-                        t = self.typemap.get(item)
+                        if self.typemap is not None:
+                            t = self.typemap.get(item)
+                        else:
+                            t = None
                         if t:
                             self.type(t)
                         else:
@@ -161,9 +164,10 @@ class StatisticsVisitor(TraverserVisitor):
 
     def process_node(self, node: Expression) -> None:
         if self.all_nodes:
-            typ = self.typemap.get(node)
-            self.line = node.line
-            self.type(typ)
+            if self.typemap is not None:typ = self.typemap.get(node)
+
+                self.line = node.line
+                self.type(typ)
 
     def type(self, t: Optional[Type]) -> None:
         if not t:

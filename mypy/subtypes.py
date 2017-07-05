@@ -228,8 +228,19 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TypedDictType):
             if not left.names_are_wider_than(right):
                 return False
-            for (_, l, r) in left.zip(right):
+            for name, l, r in left.zip(right):
                 if not is_equivalent(l, r, self.check_type_parameter):
+                    return False
+                # Non-required key is not compatible with a required key since
+                # indexing may fail unexpectedly if a required key is missing.
+                # Required key is not compatible with a non-required key since
+                # the prior doesn't support 'del' but the latter should support
+                # it.
+                #
+                # NOTE: 'del' support is currently not implemented (#3550). We
+                #       don't want to have to change subtyping after 'del' support
+                #       lands so here we are anticipating that change.
+                if (name in left.required_keys) != (name in right.required_keys):
                     return False
             # (NOTE: Fallbacks don't matter.)
             return True
@@ -538,7 +549,7 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
     if isinstance(t, UnionType):
         # Since runtime type checks will ignore type arguments, erase the types.
         erased_s = erase_type(s)
-        new_items = [item for item in t.items
+        new_items = [item for item in t.relevant_items()
                      if (not is_proper_subtype(erase_type(item), erased_s)
                          or isinstance(item, AnyType))]
         return UnionType.make_union(new_items)
