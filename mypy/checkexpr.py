@@ -4,7 +4,7 @@ from collections import OrderedDict
 from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
 
 from mypy.errors import report_internal_error
-from mypy.typeanal import has_any_from_unimported_type
+from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
@@ -188,9 +188,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.accept(e.analyzed, self.type_context[-1])
         if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, TypeInfo) and \
                 e.callee.node.typeddict_type is not None:
-            return self.check_typeddict_call(e.callee.node.typeddict_type,
-                                             e.arg_kinds, e.arg_names, e.args, e)
-        if isinstance(e.callee, NameExpr) and e.callee.name in ('isinstance', 'issubclass'):
+            # Use named fallback for better error messages.
+            typeddict_type = e.callee.node.typeddict_type.copy_modified(
+                fallback=Instance(e.callee.node, []))
+            return self.check_typeddict_call(typeddict_type, e.arg_kinds, e.arg_names, e.args, e)
+        if (isinstance(e.callee, NameExpr) and e.callee.name in ('isinstance', 'issubclass')
+                and len(e.args) == 2):
             for typ in mypy.checker.flatten(e.args[1]):
                 if isinstance(typ, NameExpr):
                     try:
@@ -198,11 +201,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     except KeyError:
                         # Undefined names should already be reported in semantic analysis.
                         node = None
-                if (isinstance(typ, IndexExpr)
-                        and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr))
+                if ((isinstance(typ, IndexExpr)
+                        and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr)))
                         # node.kind == TYPE_ALIAS only for aliases like It = Iterable[int].
-                        or isinstance(typ, NameExpr) and node and node.kind == nodes.TYPE_ALIAS):
+                        or (isinstance(typ, NameExpr) and node and node.kind == nodes.TYPE_ALIAS)):
                     self.msg.type_arguments_not_allowed(e)
+                if isinstance(typ, RefExpr) and isinstance(typ.node, TypeInfo):
+                    if typ.node.typeddict_type:
+                        self.msg.fail(messages.CANNOT_ISINSTANCE_TYPEDDICT, e)
+                    elif typ.node.is_newtype:
+                        self.msg.fail(messages.CANNOT_ISINSTANCE_NEWTYPE, e)
         self.try_infer_partial_type(e)
         callee_type = self.accept(e.callee, always_allow_any=True)
         if (self.chk.options.disallow_untyped_calls and
@@ -303,7 +311,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 context=context)
             return AnyType()
 
-        items = OrderedDict()  # type: OrderedDict[str, Type]
         for (item_name, item_expected_type) in callee.items.items():
             if item_name in kwargs:
                 item_value = kwargs[item_name]
@@ -312,12 +319,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     msg=messages.INCOMPATIBLE_TYPES,
                     lvalue_name='TypedDict item "{}"'.format(item_name),
                     rvalue_name='expression')
-            items[item_name] = item_expected_type
 
-        mapping_value_type = join.join_type_list(list(items.values()))
-        fallback = self.chk.named_generic_type('typing.Mapping',
-                                               [self.chk.str_type(), mapping_value_type])
-        return TypedDictType(items, set(callee.required_keys), fallback)
+        return callee
 
     # Types and methods that can be used to infer partial types.
     item_args = {'builtins.list': ['append'],
@@ -1692,6 +1695,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.redundant_cast(target_type, expr)
         if 'unimported' in options.disallow_any and has_any_from_unimported_type(target_type):
             self.msg.unimported_type_becomes_any("Target type of cast", target_type, expr)
+        check_for_explicit_any(target_type, self.chk.options, self.chk.is_typeshed_stub, self.msg,
+                               context=expr)
         return target_type
 
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
@@ -2412,6 +2417,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if ('unimported' in self.chk.options.disallow_any and
                     has_any_from_unimported_type(tuple_type)):
                 self.msg.unimported_type_becomes_any("NamedTuple type", tuple_type, e)
+            check_for_explicit_any(tuple_type, self.chk.options, self.chk.is_typeshed_stub,
+                                   self.msg, context=e)
         # TODO: Perhaps return a type object type?
         return AnyType()
 

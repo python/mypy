@@ -6,6 +6,7 @@ from itertools import chain
 
 from contextlib import contextmanager
 
+from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
@@ -171,7 +172,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             elif fullname == 'builtins.None':
                 return NoneTyp()
             elif fullname == 'typing.Any' or fullname == 'builtins.Any':
-                return AnyType()
+                return AnyType(explicit=True)
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
@@ -449,7 +450,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                                                                          List[Optional[str]]]]:
         args = []   # type: List[Type]
         kinds = []  # type: List[int]
-        names = []  # type: List[str]
+        names = []  # type: List[Optional[str]]
         for arg in arglist.items:
             if isinstance(arg, CallableArgument):
                 args.append(arg.typ)
@@ -465,6 +466,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                         found.fullname), arg)
                     return None
                 else:
+                    assert found.fullname is not None
                     kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
                     kinds.append(kind)
                     if arg.name is not None and kind in {ARG_STAR, ARG_STAR2}:
@@ -781,6 +783,37 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
             return super().visit_callable_type(t)
         else:
             return []
+
+
+def check_for_explicit_any(typ: Optional[Type],
+                           options: Options,
+                           is_typeshed_stub: bool,
+                           msg: MessageBuilder,
+                           context: Context) -> None:
+    if ('explicit' in options.disallow_any and
+            not is_typeshed_stub and
+            typ and
+            has_explicit_any(typ)):
+        msg.explicit_any(context)
+
+
+def has_explicit_any(t: Type) -> bool:
+    """
+    Whether this type is or type it contains is an Any coming from explicit type annotation
+    """
+    return t.accept(HasExplicitAny())
+
+
+class HasExplicitAny(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_any(self, t: AnyType) -> bool:
+        return t.explicit
+
+    def visit_typeddict_type(self, t: TypedDictType) -> bool:
+        # typeddict is checked during TypedDict declaration, so don't typecheck it here.
+        return False
 
 
 def has_any_from_unimported_type(t: Type) -> bool:

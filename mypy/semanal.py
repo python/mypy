@@ -47,7 +47,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator,
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
 )
 
 from mypy.nodes import (
@@ -78,12 +78,15 @@ from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType, FunctionLike,
-    UnboundType, TypeVarDef, TypeType, TupleType, UnionType, StarType, function_type, TypedDictType
+    UnboundType, TypeVarDef, TypeType, TupleType, UnionType, StarType, function_type, TypedDictType,
+    NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
+    TypeTranslator,
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type, collect_any_types
+    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type,
+    check_for_explicit_any, collect_any_types,
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -1018,6 +1021,8 @@ class SemanticAnalyzer(NodeVisitor):
                 else:
                     prefix = "Base type"
                 self.msg.unimported_type_becomes_any(prefix, base, base_expr)
+            check_for_explicit_any(base, self.options, self.is_typeshed_stub_file, self.msg,
+                                   context=base_expr)
 
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
@@ -1576,6 +1581,12 @@ class SemanticAnalyzer(NodeVisitor):
                                          allow_unnormalized=True)
                 if res and (not isinstance(res, Instance) or res.args):
                     # TODO: What if this gets reassigned?
+                    check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg,
+                                           context=s)
+                    # when this type alias gets "inlined", the Any is not explicit anymore,
+                    # so we need to replace it with non-explicit Anys
+                    res = make_any_non_explicit(res)
+
                     name = s.lvalues[0]
                     node = self.lookup(name.name, name)
                     node.kind = TYPE_ALIAS
@@ -1706,6 +1717,7 @@ class SemanticAnalyzer(NodeVisitor):
                 v.info = self.type
                 v.is_initialized_in_class = True
                 v.set_line(lval)
+                v._fullname = self.qualified_name(lval.name)
                 lval.node = v
                 lval.is_def = True
                 lval.kind = MDEF
@@ -1840,6 +1852,9 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail(message.format(old_type), s)
             return
 
+        check_for_explicit_any(old_type, self.options, self.is_typeshed_stub_file, self.msg,
+                               context=s)
+
         if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(old_type):
             self.msg.unimported_type_becomes_any("Argument 2 to NewType(...)", old_type, s)
 
@@ -1964,6 +1979,9 @@ class SemanticAnalyzer(NodeVisitor):
                 prefix = "Upper bound of type variable"
                 self.msg.unimported_type_becomes_any(prefix, upper_bound, s)
 
+        for t in values + [upper_bound]:
+            check_for_explicit_any(t, self.options, self.is_typeshed_stub_file, self.msg,
+                                   context=s)
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = TVAR
@@ -2398,6 +2416,10 @@ class SemanticAnalyzer(NodeVisitor):
                     'TypedDict() "total" argument must be True or False', call)
         dictexpr = args[1]
         items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        for t in types:
+            check_for_explicit_any(t, self.options, self.is_typeshed_stub_file, self.msg,
+                                   context=call)
+
         if 'unimported' in self.options.disallow_any:
             for t in types:
                 if has_any_from_unimported_type(t):
@@ -4407,3 +4429,13 @@ def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
             if isinstance(t.ret_type, CallableType):
                 return t.ret_type
     return None
+
+
+def make_any_non_explicit(t: Type) -> Type:
+    """Replace all Any types within in with Any that has attribute 'explicit' set to False"""
+    return t.accept(MakeAnyNonExplicit())
+
+
+class MakeAnyNonExplicit(TypeTranslator):
+    def visit_any(self, t: AnyType) -> Type:
+        return t.copy_modified(explicit=False)

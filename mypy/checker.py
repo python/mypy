@@ -29,7 +29,7 @@ from mypy.nodes import (
     ARG_POS, MDEF,
     CONTRAVARIANT, COVARIANT)
 from mypy import nodes
-from mypy.typeanal import has_any_from_unimported_type
+from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, strip_type, TypeType,
@@ -629,6 +629,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 if has_any_from_unimported_type(arg_type):
                                     prefix = "Argument {} to \"{}\"".format(idx + 1, fdef.name())
                                     self.msg.unimported_type_becomes_any(prefix, arg_type, fdef)
+                    check_for_explicit_any(fdef.type, self.options, self.is_typeshed_stub,
+                                           self.msg, context=fdef)
                 if name in nodes.reverse_op_method_set:
                     self.check_reverse_op_method(item, typ, name)
                 elif name in ('__getattr__', '__getattribute__'):
@@ -1215,6 +1217,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg.unimported_type_becomes_any("A type on this line", AnyType(), s)
             else:
                 self.msg.unimported_type_becomes_any("Type of variable", s.type, s)
+        check_for_explicit_any(s.type, self.options, self.is_typeshed_stub, self.msg, context=s)
 
         if len(s.lvalues) > 1:
             # Chained assignment (e.g. x = y = ...).
