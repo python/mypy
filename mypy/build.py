@@ -874,7 +874,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     m = CacheMeta(
         meta.get('id'),
         meta.get('path'),
-        int(meta.get('mtime')) if 'mtime' in meta else None,
+        int(meta['mtime']) if 'mtime' in meta else None,
         meta.get('size'),
         meta.get('hash'),
         meta.get('dependencies', []),
