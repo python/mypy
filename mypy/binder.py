@@ -15,7 +15,7 @@ BindableTypes = (IndexExpr, MemberExpr, NameExpr)
 BindableExpression = Union[IndexExpr, MemberExpr, NameExpr]
 
 
-class Frame(Dict[Optional[Key], Type]):
+class Frame(Dict[Key, Type]):
     """A Frame represents a specific point in the execution of a program.
     It carries information about the current types of expressions at
     that point, arising either from assignments to those expressions
@@ -31,7 +31,7 @@ class Frame(Dict[Optional[Key], Type]):
         self.unreachable = False
 
 
-class DeclarationsFrame(Dict[Optional[Key], Optional[Type]]):
+class DeclarationsFrame(Dict[Key, Optional[Type]]):
     """Same as above, but allowed to have None values."""
 
     def __init__(self) -> None:
@@ -80,7 +80,7 @@ class ConditionalTypeBinder:
         self.declarations = DeclarationsFrame()
         # Set of other keys to invalidate if a key is changed, e.g. x -> {x.a, x[0]}
         # Whenever a new key (e.g. x.a.b) is added, we update this
-        self.dependencies = {}  # type: Dict[Optional[Key], Set[Key]]
+        self.dependencies = {}  # type: Dict[Key, Set[Key]]
 
         # Whether the last pop changed the newly top frame on exit
         self.last_pop_changed = False
@@ -89,7 +89,7 @@ class ConditionalTypeBinder:
         self.break_frames = []  # type: List[int]
         self.continue_frames = []  # type: List[int]
 
-    def _add_dependencies(self, key: Key, value: Optional[Key] = None) -> None:
+    def _add_dependencies(self, key: Key, value: Key = None) -> None:
         if value is None:
             value = key
         else:
@@ -105,10 +105,10 @@ class ConditionalTypeBinder:
         self.options_on_return.append([])
         return f
 
-    def _put(self, key: Optional[Key], type: Type, index: int=-1) -> None:
+    def _put(self, key: Key, type: Type, index: int=-1) -> None:
         self.frames[index][key] = type
 
-    def _get(self, key: Optional[Key], index: int=-1) -> Optional[Type]:
+    def _get(self, key: Key, index: int=-1) -> Optional[Type]:
         if index < 0:
             index += len(self.frames)
         for i in range(index, -1, -1):
@@ -122,17 +122,18 @@ class ConditionalTypeBinder:
         if not expr.literal:
             return
         key = expr.literal_hash
+        assert key is not None
         if key not in self.declarations:
             assert isinstance(expr, BindableTypes)
             self.declarations[key] = get_declaration(expr)
-            if key is not None:
-                self._add_dependencies(key)
+            self._add_dependencies(key)
         self._put(key, typ)
 
     def unreachable(self) -> None:
         self.frames[-1].unreachable = True
 
     def get(self, expr: Expression) -> Optional[Type]:
+        assert expr.literal_hash is not None
         return self._get(expr.literal_hash)
 
     def is_unreachable(self) -> bool:
@@ -142,9 +143,10 @@ class ConditionalTypeBinder:
 
     def cleanse(self, expr: Expression) -> None:
         """Remove all references to a Node from the binder."""
+        assert expr.literal_hash is not None
         self._cleanse_key(expr.literal_hash)
 
-    def _cleanse_key(self, key: Optional[Key]) -> None:
+    def _cleanse_key(self, key: Key) -> None:
         """Remove all references to a key from the binder."""
         for frame in self.frames:
             if key in frame:
@@ -259,6 +261,7 @@ class ConditionalTypeBinder:
         It is overly conservative: it invalidates globally, including
         in code paths unreachable from here.
         """
+        assert expr.literal_hash is not None
         for dep in self.dependencies.get(expr.literal_hash, set()):
             self._cleanse_key(dep)
 
@@ -266,6 +269,7 @@ class ConditionalTypeBinder:
         if isinstance(type, AnyType):
             return get_declaration(expr)
         key = expr.literal_hash
+        assert key is not None
         enclosers = ([get_declaration(expr)] +
                      [f[key] for f in self.frames
                       if key in f and is_subtype(type, f[key])])
