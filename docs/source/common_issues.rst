@@ -234,7 +234,8 @@ Consider this example:
 
 .. code-block:: python
 
-   from typing import Protocol
+   from typing_extensions import Protocol
+
    class P(Protocol):
        x: float
 
@@ -253,7 +254,8 @@ the protocol definition:
 
 .. code-block:: python
 
-   from typing import Protocol
+   from typing_extensions import Protocol
+
    class P(Protocol):
        @property
        def x(self) -> float:

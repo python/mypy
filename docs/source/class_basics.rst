@@ -195,12 +195,13 @@ specification of protocols and structural subtyping in Python.
 User defined protocols
 **********************
 
-To define a protocol class, one must inherit the special ``typing.Protocol``
-class:
+To define a protocol class, one must inherit the special
+``typing_extensions.Protocol`` class:
 
 .. code-block:: python
 
-   from typing import Protocol, Iterable
+   from typing import Iterable
+   from typing_extensions import Protocol
 
    class SupportsClose(Protocol):
        def close(self) -> None:
@@ -216,6 +217,13 @@ class:
            thing.close()
 
    close_all([Resource(), open('some/file')])  # This passes type check
+
+.. note::
+
+   The ``Protocol`` base class is currently provided in ``typing_extensions``
+   package. Stub files are however allowed to use
+   ``from typing import Protocol``. When structural subtyping is mature and
+   PEP 544 is accepted, ``Protocol`` will be included in the ``typing`` module.
 
 Defining subprotocols
 *********************
@@ -244,8 +252,8 @@ and merged using multiple inheritance. For example:
 
 Note that inheriting from existing protocols does not automatically turn
 a subclass into a protocol, it just creates a usual (non-protocol) ABC that
-implements given protocols. The ``typing.Protocol`` base must always be
-explicitly present:
+implements given protocols. The ``typing_extensions.Protocol`` base must always
+be explicitly present:
 
 .. code-block:: python
 
@@ -269,7 +277,8 @@ the class definition. Examples:
 
 .. code-block:: python
 
-   from typing import Protocol, TypeVar
+   from typing import TypeVar
+   from typing_extensions import Protocol
 
    T = TypeVar('T')
 
@@ -317,7 +326,8 @@ such as trees and linked lists:
 
 .. code-block:: python
 
-   from typing import Protocol, TypeVar, Optional
+   from typing import TypeVar, Optional
+   from typing_extensions import Protocol
 
    class TreeLike(Protocol):
       value: int
@@ -378,7 +388,7 @@ structural checks:
 
 .. code-block:: python
 
-   from typing import Protocol, runtime
+   from typing_extensions import Protocol, runtime
 
    @runtime
    class Portable(Protocol):
