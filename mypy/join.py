@@ -250,7 +250,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             required_keys = set(items.keys()) & t.required_keys & self.s.required_keys
             return TypedDictType(items, required_keys, fallback)
         elif isinstance(self.s, Instance):
-            return join_instances(self.s, t.fallback)
+            return join_types(self.s, t.fallback)
         else:
             return self.default(self.s)
 
