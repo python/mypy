@@ -243,7 +243,7 @@ Consider this example:
        arg.x = 3.14
 
    class C:
-       x: int
+       x = 42
    c = C()
    fun(c)  # This is not safe
    c.x << 5  # Since this will fail!
@@ -265,7 +265,7 @@ the protocol definition:
        ...
 
    class C:
-       x: int
+       x = 42
    fun(C())  # OK
 
 Declaring a supertype as variable type

@@ -223,7 +223,8 @@ To define a protocol class, one must inherit the special
    The ``Protocol`` base class is currently provided in ``typing_extensions``
    package. Stub files are however allowed to use
    ``from typing import Protocol``. When structural subtyping is mature and
-   PEP 544 is accepted, ``Protocol`` will be included in the ``typing`` module.
+   `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ is accepted,
+   ``Protocol`` will be included in the ``typing`` module.
 
 Defining subprotocols
 *********************
@@ -244,7 +245,7 @@ and merged using multiple inheritance. For example:
        def __len__(self) -> int:
            ...
 
-   resource: SizedLabeledResource
+   resource = None  # type: SizedLabeledResource
 
    # some code
 
@@ -261,11 +262,19 @@ be explicitly present:
        new_attr: int
 
    class Concrete:
-      new_attr: int
+      new_attr = None  # type: int
       def __len__(self) -> int:
           ...
+   # Below is an error, since nominal subtyping is used by default
+   x = Concrete()  # type: NewProtocol  # Error!
 
-   x: NewProtocol = Concrete()  # Error, nominal subtyping is used by default
+.. note::
+
+   The `PEP 526 <https://www.python.org/dev/peps/pep-0526/>`_ variable
+   annotations can be used to declare protocol attributes. However, protocols
+   are also supported on Python 2.7 and Python 3.3+ with the help of type
+   comments and properties, see
+   `backwards compatibility in PEP 544 <https://www.python.org/dev/peps/pep-0544/#backwards-compatibility>`_.
 
 Generic protocols
 *****************
@@ -298,8 +307,8 @@ the class definition. Examples:
 
    do_stuff(StringWrapper('one'), BytesWrapper(b'other'))  # OK
 
-   x: Box[float]
-   y: Box[int]
+   x = None  # type: Box[float]
+   y = None  # type: Box[int]
    x = y  # Error, since the protocol 'Box' is invariant.
 
    class AnotherBox(Protocol[T]):  # Error, covariant type variable expected
@@ -311,8 +320,8 @@ the class definition. Examples:
        def content(self) -> T_co:
            ...
 
-   ax: AnotherBox[float]
-   ay: AnotherBox[int]
+   ax = None  # type: AnotherBox[float]
+   ay = None  # type: AnotherBox[int]
    ax = ay  # OK for covariant protocols
 
 See :ref:`generic-classes` for more details on generic classes and variance.
@@ -339,7 +348,7 @@ such as trees and linked lists:
           self.value = value
           self.left = self.right = None
 
-   root: TreeLike = SimpleTree(0)  # OK
+   root = SimpleTree(0)  # type: TreeLike  # OK
 
    T = TypeVar('T')
    class Linked(Protocol[T]):
