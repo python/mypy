@@ -127,12 +127,11 @@ leaving structural subtyping opt-in. Here are some reasons why:
    C#. Only few languages use structural subtyping.
 
 However, structural subtyping can also be useful. For example, a "public API"
-will be more flexible and convenient for users if it is typed with protocols.
-Also, using protocol types removes the necessity to explicitly declare
-implementations of ABCs. Finally, protocol types may feel more natural for
-Python programmers. As a rule of thumb, one could prefer protocols for
-function argument types and normal classes for return types. For more details
-about protocol types and structural subtyping see :ref:`protocol-types` and
+may be more flexible if it is typed with protocols. Also, using protocol types
+removes the necessity to explicitly declare implementations of ABCs.
+As a rule of thumb, we recommend using nominal classes where possible, and
+protocols where necessary. For more details about protocol types and structural
+subtyping see :ref:`protocol-types` and
 `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_.
 
 I like Python and I have no need for static typing
