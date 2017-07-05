@@ -491,6 +491,73 @@ restrict the valid values for the type parameter in the same way.
 A type variable may not have both a value restriction (see
 :ref:`type-variable-value-restriction`) and an upper bound.
 
+Generic protocols
+*****************
+
+Generic protocols (see :ref:`protocol-types`) are also supported, generic
+protocols mostly follow the normal rules for generic classes, the main
+difference is that mypy checks that declared variance of type variables is
+compatible with the class definition. Examples:
+
+.. code-block:: python
+
+   from typing import TypeVar
+   from typing_extensions import Protocol
+
+   T = TypeVar('T')
+
+   class Box(Protocol[T]):
+       content: T
+
+   def do_stuff(one: Box[str], other: Box[bytes]) -> None:
+       ...
+
+   class StringWrapper:
+       def __init__(self, content: str) -> None:
+           self.content = content
+
+   class BytesWrapper:
+       def __init__(self, content: bytes) -> None:
+           self.content = content
+
+   do_stuff(StringWrapper('one'), BytesWrapper(b'other'))  # OK
+
+   x = None  # type: Box[float]
+   y = None  # type: Box[int]
+   x = y  # Error, since the protocol 'Box' is invariant.
+
+   class AnotherBox(Protocol[T]):  # Error, covariant type variable expected
+       def content(self) -> T:
+           ...
+
+   T_co = TypeVar('T_co', covariant=True)
+   class AnotherBox(Protocol[T_co]):  # OK
+       def content(self) -> T_co:
+           ...
+
+   ax = None  # type: AnotherBox[float]
+   ay = None  # type: AnotherBox[int]
+   ax = ay  # OK for covariant protocols
+
+See :ref:`variance-of-generics` above for more details on variance.
+Generic protocols can be recursive, for example:
+
+.. code-block:: python
+
+   T = TypeVar('T')
+   class Linked(Protocol[T]):
+       val: T
+       def next(self) -> 'Linked[T]': ...
+
+   class L:
+       val: int
+       def next(self) -> 'L': ...
+
+   def last(seq: Linked[T]) -> T:
+       ...
+
+   result = last(L())  # The inferred type of 'result' is 'int'
+
 .. _declaring-decorators:
 
 Declaring decorators

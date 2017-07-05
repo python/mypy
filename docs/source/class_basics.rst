@@ -276,62 +276,11 @@ be explicitly present:
    comments and properties, see
    `backwards compatibility in PEP 544 <https://www.python.org/dev/peps/pep-0544/#backwards-compatibility>`_.
 
-Generic protocols
-*****************
-
-Generic protocols are also supported, generic protocols mostly follow
-the normal rules for generic classes, the main difference is that mypy checks
-that declared variance of type variables is compatible with
-the class definition. Examples:
-
-.. code-block:: python
-
-   from typing import TypeVar
-   from typing_extensions import Protocol
-
-   T = TypeVar('T')
-
-   class Box(Protocol[T]):
-       content: T
-
-   def do_stuff(one: Box[str], other: Box[bytes]) -> None:
-       ...
-
-   class StringWrapper:
-       def __init__(self, content: str) -> None:
-           self.content = content
-
-   class BytesWrapper:
-       def __init__(self, content: bytes) -> None:
-           self.content = content
-
-   do_stuff(StringWrapper('one'), BytesWrapper(b'other'))  # OK
-
-   x = None  # type: Box[float]
-   y = None  # type: Box[int]
-   x = y  # Error, since the protocol 'Box' is invariant.
-
-   class AnotherBox(Protocol[T]):  # Error, covariant type variable expected
-       def content(self) -> T:
-           ...
-
-   T_co = TypeVar('T_co', covariant=True)
-   class AnotherBox(Protocol[T_co]):  # OK
-       def content(self) -> T_co:
-           ...
-
-   ax = None  # type: AnotherBox[float]
-   ay = None  # type: AnotherBox[int]
-   ax = ay  # OK for covariant protocols
-
-See :ref:`generic-classes` for more details on generic classes and variance.
-
 Recursive protocols
 *******************
 
-Protocols (both generic and non-generic) can be recursive and mutually
-recursive. This could be useful for declaring abstract recursive collections
-such as trees and linked lists:
+Protocols can be recursive and mutually recursive. This could be useful for
+declaring abstract recursive collections such as trees and linked lists:
 
 .. code-block:: python
 
@@ -339,30 +288,18 @@ such as trees and linked lists:
    from typing_extensions import Protocol
 
    class TreeLike(Protocol):
-      value: int
-      left: Optional['TreeLike']
-      right: Optional['TreeLike']
+       value: int
+       @property
+       def left(self) -> Optional['TreeLike']: ...
+       @property
+       def right(self) -> Optional['TreeLike']: ...
 
    class SimpleTree:
        def __init__(self, value: int) -> None:
-          self.value = value
-          self.left = self.right = None
+           self.value = value
+           self.left = self.right = None
 
    root = SimpleTree(0)  # type: TreeLike  # OK
-
-   T = TypeVar('T')
-   class Linked(Protocol[T]):
-       val: T
-       def next(self) -> 'Linked[T]': ...
-
-   class L:
-       val: int
-       def next(self) -> 'L': ...
-
-   def last(seq: Linked[T]) -> T:
-       ...
-
-   result = last(L())  # The inferred type of 'result' is 'int'
 
 Predefined protocols in ``typing`` module
 *****************************************
