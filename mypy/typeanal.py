@@ -573,7 +573,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                    column: int = -1) -> Instance:
         node = self.lookup_fqn_func(fully_qualified_name)
         assert isinstance(node.node, TypeInfo)
-        return Instance(node.node, args or [], line=line, column=column)
+        return Instance(node.node, args or [AnyType()] * len(node.node.defn.type_vars),
+                        line=line, column=column)
 
     def tuple_type(self, items: List[Type]) -> TupleType:
         return TupleType(items, fallback=self.named_type('builtins.tuple', [AnyType()]))

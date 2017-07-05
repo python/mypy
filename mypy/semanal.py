@@ -77,9 +77,8 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
-    NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType, FunctionLike,
-    UnboundType, TypeVarDef, TypeType, TupleType, UnionType, StarType, function_type, TypedDictType,
-    NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
+    FunctionLike, UnboundType, TypeVarDef, TypeType, TupleType, UnionType, StarType, function_type,
+    TypedDictType, NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     TypeTranslator,
 )
 from mypy.nodes import implicit_module_attrs
