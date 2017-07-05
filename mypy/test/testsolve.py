@@ -1,6 +1,6 @@
 """Test cases for the constraint solver used in type inference."""
 
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 
 from mypy.myunit import Suite, assert_equal
 from mypy.constraints import SUPERTYPE_OF, SUBTYPE_OF, Constraint
@@ -114,9 +114,9 @@ class SolveSuite(Suite):
     def assert_solve(self,
                      vars: List[TypeVarId],
                      constraints: List[Constraint],
-                     results: List[Union[Type, Tuple[Type, Type]]],
+                     results: List[Union[None, Type, Tuple[Type, Type]]],
                      ) -> None:
-        res = []
+        res = []  # type: List[Optional[Type]]
         for r in results:
             if isinstance(r, tuple):
                 res.append(r[0])

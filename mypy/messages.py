@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Optional
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -88,6 +88,8 @@ MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
+CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'
+CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -300,8 +302,11 @@ class MessageBuilder:
                 return self.format_simple(typ.fallback)
             items = []
             for (item_name, item_type) in typ.items.items():
-                items.append('{}={}'.format(item_name, strip_quotes(self.format(item_type))))
-            s = '"TypedDict({})"'.format(', '.join(items))
+                modifier = '' if item_name in typ.required_keys else '?'
+                items.append('{!r}{}: {}'.format(item_name,
+                                                 modifier,
+                                                 strip_quotes(self.format(item_type))))
+            s = '"TypedDict({{{}}})"'.format(', '.join(items))
             return s
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
@@ -537,13 +542,13 @@ class MessageBuilder:
             name = callee.name[1:-1]
             n -= 1
             msg = '{} item {} has incompatible type {}'.format(
-                name.title(), n, self.format_simple(arg_type))
+                name.title(), n, self.format(arg_type))
         elif callee.name == '<dict>':
             name = callee.name[1:-1]
             n -= 1
             key_type, value_type = cast(TupleType, arg_type).items
             msg = '{} entry {} has incompatible type {}: {}'.format(
-                name.title(), n, self.format_simple(key_type), self.format_simple(value_type))
+                name.title(), n, self.format(key_type), self.format(value_type))
         elif callee.name == '<list-comprehension>':
             msg = 'List comprehension has incompatible type List[{}]'.format(
                 strip_quotes(self.format(arg_type)))
@@ -558,7 +563,7 @@ class MessageBuilder:
                 self.format(callee.arg_types[n - 1]))
         elif callee.name == '<generator>':
             msg = 'Generator has incompatible item type {}'.format(
-                self.format_simple(arg_type))
+                self.format(arg_type))
         else:
             try:
                 expected_type = callee.arg_types[m - 1]
@@ -588,7 +593,8 @@ class MessageBuilder:
             else:
                 msg = 'Missing positional arguments'
             if callee.name and diff and all(d is not None for d in diff):
-                msg += ' "{}" in call to {}'.format('", "'.join(diff), callee.name)
+                msg += ' "{}" in call to {}'.format('", "'.join(cast(List[str], diff)),
+                                                    callee.name)
         else:
             msg = 'Too few arguments'
             if callee.name:
@@ -622,6 +628,7 @@ class MessageBuilder:
         self.fail(msg, context)
         module = find_defining_module(self.modules, callee)
         if module:
+            assert callee.definition is not None
             self.note('{} defined here'.format(callee.name), callee.definition,
                       file=module.path, origin=context)
 
@@ -633,9 +640,11 @@ class MessageBuilder:
 
     def does_not_return_value(self, callee_type: Type, context: Context) -> None:
         """Report an error about use of an unusable type."""
-        if isinstance(callee_type, FunctionLike) and callee_type.get_name() is not None:
-            self.fail('{} does not return a value'.format(
-                capitalize(callee_type.get_name())), context)
+        name = None  # type: Optional[str]
+        if isinstance(callee_type, FunctionLike):
+            name = callee_type.get_name()
+        if name is not None:
+            self.fail('{} does not return a value'.format(capitalize(name)), context)
         else:
             self.fail('Function does not return a value', context)
 
@@ -740,12 +749,16 @@ class MessageBuilder:
     def invalid_var_arg(self, typ: Type, context: Context) -> None:
         self.fail('List or tuple expected as variable arguments', context)
 
-    def invalid_keyword_var_arg(self, typ: Type, context: Context) -> None:
-        if isinstance(typ, Instance) and (typ.type.fullname() == 'builtins.dict'):
+    def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
+        if isinstance(typ, Instance) and is_mapping:
             self.fail('Keywords must be strings', context)
         else:
-            self.fail('Argument after ** must be a dictionary',
-                      context)
+            suffix = ''
+            if isinstance(typ, Instance):
+                suffix = ', not {}'.format(self.format(typ))
+            self.fail(
+                'Argument after ** must be a mapping{}'.format(suffix),
+                context)
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
@@ -871,6 +884,9 @@ class MessageBuilder:
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
                   ctx)
+
+    def explicit_any(self, ctx: Context) -> None:
+        self.fail('Explicit "Any" is not allowed', ctx)
 
     def unexpected_typeddict_keys(
             self,
@@ -1001,7 +1017,7 @@ def callable_name(type: CallableType) -> str:
         return 'function'
 
 
-def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> MypyFile:
+def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> Optional[MypyFile]:
     if not typ.definition:
         return None
     fullname = typ.definition.fullname()

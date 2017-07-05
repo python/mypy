@@ -28,7 +28,7 @@ class InvalidPackageName(Exception):
     """Exception indicating that a package name was invalid."""
 
 
-def main(script_path: str, args: List[str] = None) -> None:
+def main(script_path: Optional[str], args: List[str] = None) -> None:
     """Main entry point to the type checker.
 
     Args:
@@ -97,7 +97,7 @@ def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) 
                        options=options)
 
 
-disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated']
+disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated', 'explicit']
 
 
 def disallow_any_argument_type(raw_options: str) -> List[str]:

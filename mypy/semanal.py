@@ -47,7 +47,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator,
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
 )
 
 from mypy.nodes import (
@@ -80,16 +80,18 @@ from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
     TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
-    TypeQuery
+    TypeTranslator,
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type
+    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type,
+    check_for_explicit_any
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
+from mypy import experiments
 from mypy.plugin import Plugin
 from mypy import join
 
@@ -229,6 +231,7 @@ class SemanticAnalyzer(NodeVisitor):
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     is_stub_file = False   # Are we analyzing a stub file?
+    is_typeshed_stub_file = False   # Are we analyzing a typeshed stub file?
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     errors = None  # type: Errors     # Keeps track of generated errors
     plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
@@ -273,35 +276,37 @@ class SemanticAnalyzer(NodeVisitor):
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
+        self.is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
         self.patches = patches
 
-        if 'builtins' in self.modules:
-            self.globals['__builtins__'] = SymbolTableNode(
-                MODULE_REF, self.modules['builtins'], self.cur_mod_id)
+        with experiments.strict_optional_set(options.strict_optional):
+            if 'builtins' in self.modules:
+                self.globals['__builtins__'] = SymbolTableNode(
+                    MODULE_REF, self.modules['builtins'], self.cur_mod_id)
 
-        for name in implicit_module_attrs:
-            v = self.globals[name].node
-            if isinstance(v, Var):
-                v.type = self.anal_type(v.type)
-                v.is_ready = True
+            for name in implicit_module_attrs:
+                v = self.globals[name].node
+                if isinstance(v, Var):
+                    v.type = self.anal_type(v.type)
+                    v.is_ready = True
 
-        defs = file_node.defs
-        for d in defs:
-            self.accept(d)
+            defs = file_node.defs
+            for d in defs:
+                self.accept(d)
 
-        if self.cur_mod_id == 'builtins':
-            remove_imported_names_from_symtable(self.globals, 'builtins')
-            for alias_name in type_aliases:
-                self.globals.pop(alias_name.split('.')[-1], None)
+            if self.cur_mod_id == 'builtins':
+                remove_imported_names_from_symtable(self.globals, 'builtins')
+                for alias_name in type_aliases:
+                    self.globals.pop(alias_name.split('.')[-1], None)
 
-        if '__all__' in self.globals:
-            for name, g in self.globals.items():
-                if name not in self.all_exports:
-                    g.module_public = False
+            if '__all__' in self.globals:
+                for name, g in self.globals.items():
+                    if name not in self.all_exports:
+                        g.module_public = False
 
-        del self.options
-        del self.patches
+            del self.options
+            del self.patches
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
@@ -337,6 +342,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
+        self.is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
         if active_type:
             self.enter_class(active_type.defn.info)
@@ -1015,6 +1021,8 @@ class SemanticAnalyzer(NodeVisitor):
                 else:
                     prefix = "Base type"
                 self.msg.unimported_type_becomes_any(prefix, base, base_expr)
+            check_for_explicit_any(base, self.options, self.is_typeshed_stub_file, self.msg,
+                                   context=base_expr)
 
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
@@ -1569,6 +1577,12 @@ class SemanticAnalyzer(NodeVisitor):
                                          allow_unnormalized=True)
                 if res and (not isinstance(res, Instance) or res.args):
                     # TODO: What if this gets reassigned?
+                    check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg,
+                                           context=s)
+                    # when this type alias gets "inlined", the Any is not explicit anymore,
+                    # so we need to replace it with non-explicit Anys
+                    res = make_any_non_explicit(res)
+
                     name = s.lvalues[0]
                     node = self.lookup(name.name, name)
                     node.kind = TYPE_ALIAS
@@ -1699,6 +1713,7 @@ class SemanticAnalyzer(NodeVisitor):
                 v.info = self.type
                 v.is_initialized_in_class = True
                 v.set_line(lval)
+                v._fullname = self.qualified_name(lval.name)
                 lval.node = v
                 lval.is_def = True
                 lval.kind = MDEF
@@ -1833,6 +1848,9 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail(message.format(old_type), s)
             return
 
+        check_for_explicit_any(old_type, self.options, self.is_typeshed_stub_file, self.msg,
+                               context=s)
+
         if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(old_type):
             self.msg.unimported_type_becomes_any("Argument 2 to NewType(...)", old_type, s)
 
@@ -1957,6 +1975,9 @@ class SemanticAnalyzer(NodeVisitor):
                 prefix = "Upper bound of type variable"
                 self.msg.unimported_type_becomes_any(prefix, upper_bound, s)
 
+        for t in values + [upper_bound]:
+            check_for_explicit_any(t, self.options, self.is_typeshed_stub_file, self.msg,
+                                   context=s)
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = TVAR
@@ -2391,6 +2412,14 @@ class SemanticAnalyzer(NodeVisitor):
                     'TypedDict() "total" argument must be True or False', call)
         dictexpr = args[1]
         items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        for t in types:
+            check_for_explicit_any(t, self.options, self.is_typeshed_stub_file, self.msg,
+                                   context=call)
+
+        if 'unimported' in self.options.disallow_any:
+            for t in types:
+                if has_any_from_unimported_type(t):
+                    self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, dictexpr)
         return items, types, total, ok
 
     def parse_bool(self, expr: Expression) -> Optional[bool]:
@@ -3616,52 +3645,54 @@ class FirstPass(NodeVisitor):
 
         defs = file.defs
 
-        # Add implicit definitions of module '__name__' etc.
-        for name, t in implicit_module_attrs.items():
-            # unicode docstrings should be accepted in Python 2
-            if name == '__doc__':
-                if self.pyversion >= (3, 0):
-                    typ = UnboundType('__builtins__.str')  # type: Type
+        with experiments.strict_optional_set(options.strict_optional):
+            # Add implicit definitions of module '__name__' etc.
+            for name, t in implicit_module_attrs.items():
+                # unicode docstrings should be accepted in Python 2
+                if name == '__doc__':
+                    if self.pyversion >= (3, 0):
+                        typ = UnboundType('__builtins__.str')  # type: Type
+                    else:
+                        typ = UnionType([UnboundType('__builtins__.str'),
+                                        UnboundType('__builtins__.unicode')])
                 else:
-                    typ = UnionType([UnboundType('__builtins__.str'),
-                                     UnboundType('__builtins__.unicode')])
-            else:
-                assert t is not None, 'type should be specified for {}'.format(name)
-                typ = UnboundType(t)
-            v = Var(name, typ)
-            v._fullname = self.sem.qualified_name(name)
-            self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
-
-        for d in defs:
-            d.accept(self)
-
-        # Add implicit definition of literals/keywords to builtins, as we
-        # cannot define a variable with them explicitly.
-        if mod_id == 'builtins':
-            literal_types = [
-                ('None', NoneTyp()),
-                # reveal_type is a mypy-only function that gives an error with the type of its arg
-                ('reveal_type', AnyType()),
-            ]  # type: List[Tuple[str, Type]]
-
-            # TODO(ddfisher): This guard is only needed because mypy defines
-            # fake builtins for its tests which often don't define bool.  If
-            # mypy is fast enough that we no longer need those, this
-            # conditional check should be removed.
-            if 'bool' in self.sem.globals:
-                bool_type = self.sem.named_type('bool')
-                literal_types.extend([
-                    ('True', bool_type),
-                    ('False', bool_type),
-                    ('__debug__', bool_type),
-                ])
-
-            for name, typ in literal_types:
+                    assert t is not None, 'type should be specified for {}'.format(name)
+                    typ = UnboundType(t)
                 v = Var(name, typ)
                 v._fullname = self.sem.qualified_name(name)
                 self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
 
-        del self.sem.options
+            for d in defs:
+                d.accept(self)
+
+            # Add implicit definition of literals/keywords to builtins, as we
+            # cannot define a variable with them explicitly.
+            if mod_id == 'builtins':
+                literal_types = [
+                    ('None', NoneTyp()),
+                    # reveal_type is a mypy-only function that gives an error with
+                    # the type of its arg.
+                    ('reveal_type', AnyType()),
+                ]  # type: List[Tuple[str, Type]]
+
+                # TODO(ddfisher): This guard is only needed because mypy defines
+                # fake builtins for its tests which often don't define bool.  If
+                # mypy is fast enough that we no longer need those, this
+                # conditional check should be removed.
+                if 'bool' in self.sem.globals:
+                    bool_type = self.sem.named_type('bool')
+                    literal_types.extend([
+                        ('True', bool_type),
+                        ('False', bool_type),
+                        ('__debug__', bool_type),
+                    ])
+
+                for name, typ in literal_types:
+                    v = Var(name, typ)
+                    v._fullname = self.sem.qualified_name(name)
+                    self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
+
+            del self.sem.options
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
@@ -3855,7 +3886,8 @@ class ThirdPass(TraverserVisitor):
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
         self.errors.set_file(fnam, file_node.fullname())
         self.options = options
-        self.accept(file_node)
+        with experiments.strict_optional_set(options.strict_optional):
+            self.accept(file_node)
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
@@ -4381,3 +4413,13 @@ def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
             if isinstance(t.ret_type, CallableType):
                 return t.ret_type
     return None
+
+
+def make_any_non_explicit(t: Type) -> Type:
+    """Replace all Any types within in with Any that has attribute 'explicit' set to False"""
+    return t.accept(MakeAnyNonExplicit())
+
+
+class MakeAnyNonExplicit(TypeTranslator):
+    def visit_any(self, t: AnyType) -> Type:
+        return t.copy_modified(explicit=False)
