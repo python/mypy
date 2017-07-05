@@ -17,7 +17,7 @@ from mypy.nodes import (
 
 
 TYPE_EMPTY = 0
-TYPE_UNANALYZED = 1  # type of unchecked code (different from any)
+TYPE_UNANALYZED = 1  # type of non-typechecked code
 TYPE_PRECISE = 2
 TYPE_IMPRECISE = 3
 TYPE_ANY = 4
@@ -82,8 +82,9 @@ class StatisticsVisitor(TraverserVisitor):
             super().visit_func_def(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
-        # this method is overridden because we don't want to visit base_type_exprs
-        # base_type_exprs are expressions without a type, which causes them to appear as Any
+        # Override this method because we don't want to analyze ClassDef.base_type_exprs.
+        # While base_type_exprs are expressions, type analyzer does not visit them
+        # and they are not in the typemap.
         for d in o.decorators:
             d.accept(self)
         o.defs.accept(self)
@@ -166,9 +167,9 @@ class StatisticsVisitor(TraverserVisitor):
 
     def type(self, t: Optional[Type]) -> None:
         if not t:
-            # if an expression does not have a type, it is often due to dead code
-            # we should not keep track of the number of these we encounter because there can be
-            # an unanalyzed value on a line with other analyzed expressions
+            # If an expression does not have a type, it is often due to dead code.
+            # We should *not* keep track of the number of these we encounter because there can be
+            # an unanalyzed value on a line with other analyzed expressions.
             self.record_line(self.line, TYPE_UNANALYZED)
             return
         elif isinstance(t, AnyType):
