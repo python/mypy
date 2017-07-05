@@ -1,22 +1,20 @@
 """Classes for representing mypy types."""
 
-from abc import abstractmethod
 import copy
+from abc import abstractmethod
 from collections import OrderedDict
 from typing import (
-    Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional, Union, Iterable,
-    NamedTuple, Callable,
+    Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
+    Callable,
 )
 
 import mypy.nodes
+from mypy import experiments
 from mypy.nodes import (
-    INVARIANT, SymbolNode,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
+    INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
 from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper
-from mypy import experiments
-
 
 T = TypeVar('T')
 
@@ -259,6 +257,7 @@ class AnyType(Type):
                  implicit: bool = False,
                  from_unimported_type: bool = False,
                  explicit: bool = False,
+                 from_omitted_generics: bool = False,
                  line: int = -1,
                  column: int = -1) -> None:
         super().__init__(line, column)
@@ -271,6 +270,8 @@ class AnyType(Type):
         self.from_unimported_type = from_unimported_type
         # Does this Any come from an explicit type annotation?
         self.explicit = explicit
+        # Does this type come from omitted generics?
+        self.from_omitted_generics = from_omitted_generics
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
@@ -279,6 +280,7 @@ class AnyType(Type):
                       implicit: bool = _dummy,
                       from_unimported_type: bool = _dummy,
                       explicit: bool = _dummy,
+                      from_omitted_generics: bool = _dummy,
                       ) -> 'AnyType':
         if implicit is _dummy:
             implicit = self.implicit
@@ -286,8 +288,11 @@ class AnyType(Type):
             from_unimported_type = self.from_unimported_type
         if explicit is _dummy:
             explicit = self.explicit
+        if from_omitted_generics is _dummy:
+            from_omitted_generics = self.from_omitted_generics
         return AnyType(implicit=implicit, from_unimported_type=from_unimported_type,
-                       explicit=explicit, line=self.line, column=self.column)
+                       explicit=explicit, from_omitted_generics=from_omitted_generics,
+                       line=self.line, column=self.column)
 
     def serialize(self) -> JsonDict:
         return {'.class': 'AnyType'}
@@ -408,6 +413,7 @@ class Instance(Type):
     args = None  # type: List[Type]
     erased = False  # True if result of type variable substitution
     invalid = False  # True if recovered after incorrect number of type arguments error
+    from_generic_builtin = False  # True if created from a generic builtin (e.g. list() or set())
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
