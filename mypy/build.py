@@ -56,6 +56,10 @@ PYTHON_EXTENSIONS = ['.pyi', '.py']
 Graph = Dict[str, 'State']
 
 
+def getmtime(name: str) -> int:
+    return int(os.path.getmtime(name))
+
+
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
 class BuildResult:
     """The result of a successful build.
@@ -296,11 +300,11 @@ def default_lib_path(data_dir: str,
 CacheMeta = NamedTuple('CacheMeta',
                        [('id', str),
                         ('path', str),
-                        ('mtime', float),
+                        ('mtime', int),
                         ('size', int),
                         ('hash', str),
                         ('dependencies', List[str]),  # names of imported modules
-                        ('data_mtime', float),  # mtime of data_json
+                        ('data_mtime', int),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
                         ('child_modules', List[str]),  # all submodules of the given module
@@ -870,11 +874,11 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     m = CacheMeta(
         meta.get('id'),
         meta.get('path'),
-        meta.get('mtime'),
+        int(meta['mtime']) if 'mtime' in meta else None,
         meta.get('size'),
         meta.get('hash'),
         meta.get('dependencies', []),
-        meta.get('data_mtime'),
+        int(meta['data_mtime']) if 'data_mtime' in meta else None,
         data_json,
         meta.get('suppressed', []),
         meta.get('child_modules', []),
@@ -950,7 +954,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
         manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
         return None
 
-    if st.st_mtime != meta.mtime or path != meta.path:
+    if int(st.st_mtime) != meta.mtime or path != meta.path:
         with open(path, 'rb') as f:
             source_hash = hashlib.md5(f.read()).hexdigest()
         if source_hash != meta.hash:
@@ -959,7 +963,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
         else:
             manager.log('Metadata ok for {}: file {} (match on path, size, hash)'.format(id, path))
             # Optimization: update mtime and path (otherwise, this mismatch will reappear).
-            meta = meta._replace(mtime=st.st_mtime, path=path)
+            meta = meta._replace(mtime=int(st.st_mtime), path=path)
             if manager.options.debug_cache:
                 meta_str = json.dumps(meta, indent=2, sort_keys=True)
             else:
@@ -972,7 +976,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
     # It's a match on (id, path, mtime/hash, size).
     # Check data_json; assume if its mtime matches it's good.
     # TODO: stat() errors
-    if os.path.getmtime(meta.data_json) != meta.data_mtime:
+    if getmtime(meta.data_json) != meta.data_mtime:
         manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
         return None
     manager.log('Found {} {} (metadata is fresh)'.format(id, meta.data_json))
@@ -1046,7 +1050,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     if old_interface_hash == interface_hash:
         # If the interface is unchanged, the cached data is guaranteed
         # to be equivalent, and we only need to update the metadata.
-        data_mtime = os.path.getmtime(data_json)
+        data_mtime = getmtime(data_json)
         manager.trace("Interface for {} is unchanged".format(id))
     else:
         manager.trace("Interface for {} has changed".format(id))
@@ -1063,9 +1067,9 @@ def write_cache(id: str, path: str, tree: MypyFile,
             # Both have the effect of slowing down the next run a
             # little bit due to an out-of-date cache file.
             return interface_hash
-        data_mtime = os.path.getmtime(data_json)
+        data_mtime = getmtime(data_json)
 
-    mtime = st.st_mtime
+    mtime = int(st.st_mtime)
     size = st.st_size
     options = manager.options.clone_for_module(id)
     assert source_hash is not None
