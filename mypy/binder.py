@@ -122,7 +122,7 @@ class ConditionalTypeBinder:
         if not expr.literal:
             return
         key = expr.literal_hash
-        assert key is not None
+        assert key is not None, 'Internal error: binder tried to put non-literal'
         if key not in self.declarations:
             assert isinstance(expr, BindableTypes)
             self.declarations[key] = get_declaration(expr)
@@ -133,7 +133,7 @@ class ConditionalTypeBinder:
         self.frames[-1].unreachable = True
 
     def get(self, expr: Expression) -> Optional[Type]:
-        assert expr.literal_hash is not None
+        assert expr.literal_hash is not None, 'Internal error: binder tried to get non-literal'
         return self._get(expr.literal_hash)
 
     def is_unreachable(self) -> bool:
@@ -143,7 +143,7 @@ class ConditionalTypeBinder:
 
     def cleanse(self, expr: Expression) -> None:
         """Remove all references to a Node from the binder."""
-        assert expr.literal_hash is not None
+        assert expr.literal_hash is not None, 'Internal error: binder tried cleanse non-literal'
         self._cleanse_key(expr.literal_hash)
 
     def _cleanse_key(self, key: Key) -> None:
