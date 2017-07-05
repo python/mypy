@@ -77,21 +77,20 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
-    NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
-    TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
+    FunctionLike, UnboundType, TypeVarDef, TypeType, TupleType, UnionType, StarType, function_type,
+    TypedDictType, NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     TypeTranslator,
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, TypeAnalyserPass3, analyze_type_alias, no_subscript_builtin_alias,
     TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type,
-    check_for_explicit_any
+    check_for_explicit_any, collect_any_types,
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
-from mypy import experiments
+from mypy import experiments, messages
 from mypy.plugin import Plugin
 from mypy import join
 
@@ -231,7 +230,7 @@ class SemanticAnalyzer(NodeVisitor):
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     is_stub_file = False   # Are we analyzing a stub file?
-    is_typeshed_stub_file = False   # Are we analyzing a typeshed stub file?
+    is_typeshed_stub_file = False  # Are we analyzing a typeshed stub file?
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     errors = None  # type: Errors     # Keeps track of generated errors
     plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
@@ -1538,6 +1537,8 @@ class SemanticAnalyzer(NodeVisitor):
                             tvar_scope,
                             self.fail,
                             self.plugin,
+                            self.options,
+                            self.is_typeshed_stub_file,
                             aliasing=aliasing,
                             allow_tuple_literal=allow_tuple_literal,
                             allow_unnormalized=self.is_stub_file)
@@ -1629,7 +1630,11 @@ class SemanticAnalyzer(NodeVisitor):
                                  self.lookup_qualified,
                                  self.lookup_fully_qualified,
                                  self.tvar_scope,
-                                 self.fail, self.plugin, allow_unnormalized=True)
+                                 self.fail,
+                                 self.plugin,
+                                 self.options,
+                                 self.is_typeshed_stub_file,
+                                 allow_unnormalized=True)
         if res:
             alias_tvars = [name for (name, _) in
                            res.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]
@@ -3895,6 +3900,7 @@ class ThirdPass(TraverserVisitor):
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
         self.errors.set_file(fnam, file_node.fullname())
         self.options = options
+        self.is_typeshed_file = self.errors.is_typeshed_file(fnam)
         with experiments.strict_optional_set(options.strict_optional):
             self.accept(file_node)
 
@@ -4026,8 +4032,17 @@ class ThirdPass(TraverserVisitor):
 
     def analyze(self, type: Optional[Type]) -> None:
         if type:
-            analyzer = TypeAnalyserPass3(self.fail)
+            analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file)
             type.accept(analyzer)
+            self.check_for_omitted_generics(type)
+
+    def check_for_omitted_generics(self, typ: Type) -> None:
+        if 'generics' not in self.options.disallow_any or self.is_typeshed_file:
+            return
+
+        for t in collect_any_types(typ):
+            if t.from_omitted_generics:
+                self.fail(messages.BARE_GENERIC, t)
 
     def fail(self, msg: str, ctx: Context, *, blocker: bool = False) -> None:
         self.errors.report(ctx.get_line(), ctx.get_column(), msg)

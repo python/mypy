@@ -88,6 +88,10 @@ MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
+CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'
+CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
+BARE_GENERIC = 'Missing type parameters for generic type'
+IMPLICIT_GENERIC_ANY_BUILTIN = 'Implicit generic "Any". Use \'{}\' and specify generic parameters'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",

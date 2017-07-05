@@ -194,6 +194,9 @@ class TypeFixer(TypeVisitor[None]):
                 for val in v.values:
                     val.accept(self)
             v.upper_bound.accept(self)
+        for arg in ct.bound_args:
+            if arg:
+                arg.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
         for ct in t.items():
