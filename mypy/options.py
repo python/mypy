@@ -34,7 +34,7 @@ class Options:
         "strict_optional",
     }
 
-    OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"quick_and_dirty"}
+    OPTIONS_AFFECTING_CACHE = (PER_MODULE_OPTIONS | {"quick_and_dirty", "platform"})
 
     def __init__(self) -> None:
         # -- build options --

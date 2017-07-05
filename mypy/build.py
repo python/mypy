@@ -308,7 +308,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('data_json', str),  # path of <id>.data.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
                         ('child_modules', List[str]),  # all submodules of the given module
-                        ('options', Optional[Dict[str, bool]]),  # build options
+                        ('options', Optional[Dict[str, object]]),  # build options
                         ('dep_prios', List[int]),
                         ('interface_hash', str),  # hash representing the public interface
                         ('version_id', str),  # mypy version for cache invalidation
@@ -907,6 +907,9 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     if manager.options.quick_and_dirty:
         # In quick_and_dirty mode allow non-quick_and_dirty cache files.
         cached_options['quick_and_dirty'] = True
+    if not cached_options.get('platform') and manager.options.skip_version_check:
+        # Older versions didn't write platform.
+        cached_options['platform'] = manager.options.platform
     if cached_options != current_options:
         manager.trace('Metadata abandoned for {}: options differ'.format(id))
         return None
