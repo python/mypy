@@ -499,7 +499,7 @@ class XRepr(NamedTuple):
     y: int = 1
     def __str__(self) -> str:
         return 'string'
-    def __add__(self, other: XRepr) -> int:
+    def __add__(self, other: 'XRepr') -> int:
         return 0
 
 reveal_type(XMeth(1).double()) # E: Revealed type is 'builtins.int'

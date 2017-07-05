@@ -109,7 +109,11 @@ def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -
             raise
     else:
         assert isinstance(typ, ast3.Expression)
-        return TypeConverter(errors, line=line).visit(typ.body)
+
+        # parse_type_comments() is meant to be used on types within strings or comments, so
+        # there's no need to check if the class is currently being defined or not. It also
+        # doesn't matter if we're using stub files or not.
+        return TypeConverter(errors, set(), line=line).visit(typ.body)
 
 
 def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
@@ -142,7 +146,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                  options: Options,
                  is_stub: bool,
                  errors: Errors) -> None:
-        self.class_nesting = 0
+        self.classes_being_defined = [set()]  # type: List[Set[str]]
         self.imports = []  # type: List[ImportBase]
 
         self.options = options
@@ -151,6 +155,14 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg)
+
+    def convert_to_type(self, node: ast3.AST, lineno: int, skip_class_check: bool = False) -> Type:
+        if skip_class_check or self.is_stub:
+            classes = set()  # type: Set[str]
+        else:
+            classes = self.classes_being_defined[-1]
+
+        return TypeConverter(self.errors, classes, line=lineno).visit(node)
 
     def generic_visit(self, node: ast3.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))
@@ -254,7 +266,21 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         return ret
 
     def in_class(self) -> bool:
-        return self.class_nesting > 0
+        return len(self.classes_being_defined[-1]) > 0
+
+    def enter_function_body(self) -> None:
+        # When defining a method, the body is not processed until
+        # after the containing class is fully defined, so we reset
+        # the set of classes being defined since to record that we
+        # can refer to our parent class directly, without needing
+        # forward references.
+        #
+        # If this is a regular function, not a method, pushing an
+        # empty set is a harmless no-op.
+        self.classes_being_defined.append(set())
+
+    def leave_function_body(self) -> None:
+        self.classes_being_defined.pop()
 
     def translate_module_id(self, id: str) -> str:
         """Return the actual, internal module id for a source text id.
@@ -326,12 +352,12 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                     # PEP 484 disallows both type annotations and type comments
                     if n.returns or any(a.type_annotation is not None for a in args):
                         self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
-                    translated_args = (TypeConverter(self.errors, line=n.lineno)
+                    translated_args = (TypeConverter(self.errors, set(), line=n.lineno)
                                        .translate_expr_list(func_type_ast.argtypes))
                     arg_types = [a if a is not None else AnyType()
                                 for a in translated_args]
-                return_type = TypeConverter(self.errors,
-                                            line=n.lineno).visit(func_type_ast.returns)
+                return_type = TypeConverter(
+                        self.errors, set(), line=n.lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
                 if self.in_class() and len(arg_types) < len(args):
@@ -342,8 +368,9 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                 return_type = AnyType()
         else:
             arg_types = [a.type_annotation for a in args]
-            return_type = TypeConverter(self.errors, line=n.returns.lineno
-                                        if n.returns else n.lineno).visit(n.returns)
+            return_type = self.convert_to_type(
+                n.returns,
+                n.returns.lineno if n.returns else n.lineno)
 
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)
@@ -366,10 +393,13 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                                          AnyType(implicit=True),
                                          None)
 
+        self.enter_function_body()
         func_def = FuncDef(n.name,
                        args,
                        self.as_block(n.body, n.lineno),
                        func_type)
+        self.leave_function_body()
+
         if is_coroutine:
             # A coroutine is also a generator, mostly for internal reasons.
             func_def.is_generator = func_def.is_coroutine = True
@@ -410,7 +440,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                     self.fail(messages.DUPLICATE_TYPE_SIGNATURES, arg.lineno, arg.col_offset)
                 arg_type = None
                 if arg.annotation is not None:
-                    arg_type = TypeConverter(self.errors, line=arg.lineno).visit(arg.annotation)
+                    arg_type = self.convert_to_type(arg.annotation, arg.lineno)
                 elif arg.type_comment is not None:
                     arg_type = parse_type_comment(arg.type_comment, arg.lineno, self.errors)
             return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
@@ -460,7 +490,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     #  expr* decorator_list)
     @with_line
     def visit_ClassDef(self, n: ast3.ClassDef) -> ClassDef:
-        self.class_nesting += 1
+        self.classes_being_defined[-1].add(n.name)
         metaclass_arg = find(lambda x: x.arg == 'metaclass', n.keywords)
         metaclass = None
         if metaclass_arg:
@@ -477,7 +507,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                         metaclass=metaclass,
                         keywords=keywords)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
-        self.class_nesting -= 1
+        self.classes_being_defined[-1].remove(n.name)
         return cdef
 
     # Return(expr? value)
@@ -513,7 +543,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             rvalue = TempNode(AnyType())  # type: Expression
         else:
             rvalue = self.visit(n.value)
-        typ = TypeConverter(self.errors, line=n.lineno).visit(n.annotation)
+        typ = self.convert_to_type(n.annotation, n.lineno)
         typ.column = n.annotation.col_offset
         return AssignmentStmt([self.visit(n.target)], rvalue, type=typ, new_syntax=True)
 
@@ -961,10 +991,17 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
 
 class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
-    def __init__(self, errors: Errors, line: int = -1) -> None:
+    def __init__(self,
+                 errors: Errors,
+                 classes_being_defined: Set[str],
+                 line: int = -1) -> None:
         self.errors = errors
+        self.classes_being_defined = classes_being_defined
         self.line = line
         self.node_stack = []  # type: List[ast3.AST]
+
+    def _definition_is_incomplete(self, name: str) -> bool:
+        return name in self.classes_being_defined
 
     def visit(self, node: ast3.AST) -> Type:
         """Modified visit -- keep track of the stack of nodes"""
@@ -1049,6 +1086,9 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         return None
 
     def visit_Name(self, n: ast3.Name) -> Type:
+        if self._definition_is_incomplete(n.id):
+            self.fail("class '{}' is not fully defined; use a forward reference".format(n.id),
+                      n.lineno, n.col_offset)
         return UnboundType(n.id, line=self.line)
 
     def visit_NameConstant(self, n: ast3.NameConstant) -> Type:

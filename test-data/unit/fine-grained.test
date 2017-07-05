@@ -52,7 +52,7 @@ class A:
     def g(self) -> None: pass
 [file m.py.2]
 class A:
-    def g(self, a: A) -> None: pass
+    def g(self, a: 'A') -> None: pass
 [out]
 ==
 main:4: error: Too few arguments for "g" of "A"
