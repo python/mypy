@@ -357,7 +357,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                     arg_types = [a if a is not None else AnyType()
                                 for a in translated_args]
                 return_type = TypeConverter(
-                        self.errors, set(), line=n.lineno).visit(func_type_ast.returns)
+                    self.errors, set(), line=n.lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
                 if self.in_class() and len(arg_types) < len(args):
