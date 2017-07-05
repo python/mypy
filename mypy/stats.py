@@ -172,7 +172,8 @@ class StatisticsVisitor(TraverserVisitor):
             # an unanalyzed value on a line with other analyzed expressions.
             self.record_line(self.line, TYPE_UNANALYZED)
             return
-        elif isinstance(t, AnyType):
+
+        if isinstance(t, AnyType):
             self.log('  !! Any type around line %d' % self.line)
             self.num_any += 1
             self.record_line(self.line, TYPE_ANY)
