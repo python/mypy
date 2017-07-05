@@ -304,14 +304,6 @@ bad = 0
 [out]
 mypy.ini: [mypy]: Unrecognized option: bad = 0
 
-[case testConfigErrorUnknownReport]
-# cmd: mypy -c pass
-[file mypy.ini]
-[[mypy]
-bad_report = .
-[out]
-mypy.ini: [mypy]: Unrecognized report type: bad_report
-
 [case testConfigErrorBadBoolean]
 # cmd: mypy -c pass
 [file mypy.ini]
@@ -328,64 +320,6 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 python_version = 3.4
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
-
-[case testAnyExprReportDivisionByZero]
-# cmd: mypy --any-exprs-report=out -c 'pass'
-
-[case testCoberturaParser]
-# cmd: mypy --cobertura-xml-report build pkg
-[file pkg/__init__.py]
-[file pkg/a.py]
-from typing import Dict
-
-def foo() -> Dict:
-  z = {'hello': 'world'}
-  return z
-[file pkg/subpkg/__init__.py]
-[file pkg/subpkg/a.py]
-def bar() -> str:
-  return 'world'
-def untyped_function():
-  return 42
-[outfile build/cobertura.xml]
-<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.8000" branch-rate="0">
-  <sources>
-    <source>$PWD</source>
-  </sources>
-  <packages>
-    <package complexity="1.0" name="pkg" branch-rate="0" line-rate="1.0000">
-      <classes>
-        <class complexity="1.0" filename="pkg/__init__.py" name="__init__.py" branch-rate="0" line-rate="1.0">
-          <methods/>
-          <lines/>
-        </class>
-        <class complexity="1.0" filename="pkg/a.py" name="a.py" branch-rate="0" line-rate="1.0000">
-          <methods/>
-          <lines>
-            <line branch="true" hits="1" number="3" precision="imprecise" condition-coverage="50% (1/2)"/>
-            <line branch="false" hits="1" number="4" precision="precise"/>
-            <line branch="false" hits="1" number="5" precision="precise"/>
-          </lines>
-        </class>
-      </classes>
-    </package>
-    <package complexity="1.0" name="pkg.subpkg" branch-rate="0" line-rate="0.5000">
-      <classes>
-        <class complexity="1.0" filename="pkg/subpkg/__init__.py" name="__init__.py" branch-rate="0" line-rate="1.0">
-          <methods/>
-          <lines/>
-        </class>
-        <class complexity="1.0" filename="pkg/subpkg/a.py" name="a.py" branch-rate="0" line-rate="0.5000">
-          <methods/>
-          <lines>
-            <line branch="false" hits="1" number="1" precision="precise"/>
-            <line branch="false" hits="0" number="3" precision="any"/>
-          </lines>
-        </class>
-      </classes>
-    </package>
-  </packages>
-</coverage>
 
 [case testConfigMypyPath]
 # cmd: mypy file.py

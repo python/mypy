@@ -99,6 +99,6 @@ a:hover.lineno, a:active.lineno {
     background-color: #ffa;
 }
 
-.line-any {
+.line-any, .line-unanalyzed {
     background-color: #faa;
 }
