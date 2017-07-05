@@ -91,7 +91,7 @@ GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via cl
 CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'
 CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
 BARE_GENERIC = 'Missing type parameters for generic type'
-GENERIC_BUILTIN_TYPES_DISALLOWED = "Builtin generic types are disallowed. Use '{}' instead"
+IMPLICIT_GENERIC_ANY_BUILTIN = 'Implicit generic "Any". Use \'{}\' and specify generic parameters'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",

@@ -618,7 +618,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                         not self.is_typeshed_stub and
                         from_builtins):
                     alternative = nongen_builtins[t.type.fullname()]
-                    self.fail(messages.GENERIC_BUILTIN_TYPES_DISALLOWED.format(alternative), t)
+                    self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
                 # Insert implicit 'Any' type arguments.
                 any_type = AnyType(from_omitted_generics=not from_builtins, line=t.line,
                                    column=t.line)

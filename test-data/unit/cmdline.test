@@ -1070,11 +1070,11 @@ def h(s: dict) -> None: pass
 def i(s: set) -> None: pass
 def j(s: frozenset) -> None: pass
 [out]
-m.py:3: error: Builtin generic types are disallowed. Use 'typing.Tuple' instead
-m.py:4: error: Builtin generic types are disallowed. Use 'typing.List' instead
-m.py:5: error: Builtin generic types are disallowed. Use 'typing.Dict' instead
-m.py:6: error: Builtin generic types are disallowed. Use 'typing.Set' instead
-m.py:7: error: Builtin generic types are disallowed. Use 'typing.FrozenSet' instead
+m.py:3: error: Implicit generic "Any". Use 'typing.Tuple' and specify generic parameters
+m.py:4: error: Implicit generic "Any". Use 'typing.List' and specify generic parameters
+m.py:5: error: Implicit generic "Any". Use 'typing.Dict' and specify generic parameters
+m.py:6: error: Implicit generic "Any". Use 'typing.Set' and specify generic parameters
+m.py:7: error: Implicit generic "Any". Use 'typing.FrozenSet' and specify generic parameters
 
 [case testDisallowAnyGenericsTypingCollections]
 # cmd: mypy m.py
