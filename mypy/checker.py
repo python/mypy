@@ -2280,17 +2280,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     func: FuncDef,
                                     dec_type: Type,
                                     dec_expr: Expression) -> None:
-        def is_typed_callable(c: Optional[Type]) -> bool:
-            if not c or not isinstance(c, CallableType):
-                return False
-            return all(not isinstance(t, AnyType) or not t.implicit
-                       for t in c.arg_types + [c.ret_type])
-
-        def is_untyped_decorator(typ: Optional[Type]) -> bool:
-            if not typ or not isinstance(typ, CallableType):
-                return True
-            return typ.implicit
-
         if (self.options.disallow_untyped_defs and
                 is_typed_callable(func.type) and
                 is_untyped_decorator(dec_type)):
@@ -3188,3 +3177,16 @@ class Scope:
 @contextmanager
 def nothing() -> Iterator[None]:
     yield
+
+
+def is_typed_callable(c: Optional[Type]) -> bool:
+    if not c or not isinstance(c, CallableType):
+        return False
+    return not any(isinstance(t, AnyType) and t.implicit
+                   for t in c.arg_types + [c.ret_type])
+
+
+def is_untyped_decorator(typ: Optional[Type]) -> bool:
+    if not typ or not isinstance(typ, CallableType):
+        return True
+    return typ.implicit
