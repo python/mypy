@@ -527,11 +527,18 @@ class C:
     def attr2(self) -> str: pass
 
 var: P[Union[int, P], Union[P, str]] = C() # OK for covariant
-var2: P[Union[str, P], Union[P, int]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[str, P[Any, Any]], Union[P[Any, Any], int]]) \
-                                            # N: Following member(s) of "C" have conflicts: \
-                                            # N:     attr1: expected Callable[[], Union[str, P[Any, Any]]], got Callable[[], int] \
-                                            # N:     attr2: expected Callable[[], Union[P[Any, Any], int]], got Callable[[], str]
+var2: P[Union[str, P], Union[P, int]] = C()
 [out]
+main:18: error: Incompatible types in assignment (expression has type "C", variable has type P[Union[str, P[Any, Any]], Union[P[Any, Any], int]])
+main:18: note: Following member(s) of "C" have conflicts:
+main:18: note:     Expected:
+main:18: note:         def attr1(self) -> Union[str, P[Any, Any]]
+main:18: note:     Got:
+main:18: note:         def attr1(self) -> int
+main:18: note:     Expected:
+main:18: note:         def attr2(self) -> Union[P[Any, Any], int]
+main:18: note:     Got:
+main:18: note:         def attr2(self) -> str
 
 [case testSelfTypesWithProtocolsBehaveAsWithNominal]
 from typing import Protocol, TypeVar
@@ -559,15 +566,24 @@ s: Shape
 
 f(NonProtoShape())
 f(Circle())
-s = Triangle() # E: Incompatible types in assignment (expression has type "Triangle", variable has type "Shape") \
-               # N: Following member(s) of "Triangle" have conflicts: \
-               # N:     combine: expected Callable[[Triangle], Triangle], got Callable[[Shape], Shape]
-s = Bad() # E: Incompatible types in assignment (expression has type "Bad", variable has type "Shape") \
-          # N: Following member(s) of "Bad" have conflicts: \
-          # N:     combine: expected Callable[[Bad], Bad], got Callable[[int], str]
+s = Triangle()
+s = Bad()
 
-n2: NonProtoShape = s # E: Incompatible types in assignment (expression has type "Shape", variable has type "NonProtoShape")
+n2: NonProtoShape = s
 [out]
+main:26: error: Incompatible types in assignment (expression has type "Triangle", variable has type "Shape")
+main:26: note: Following member(s) of "Triangle" have conflicts:
+main:26: note:     Expected:
+main:26: note:         def combine(self, other: Triangle) -> Triangle
+main:26: note:     Got:
+main:26: note:         def combine(self, other: Shape) -> Shape
+main:27: error: Incompatible types in assignment (expression has type "Bad", variable has type "Shape")
+main:27: note: Following member(s) of "Bad" have conflicts:
+main:27: note:     Expected:
+main:27: note:         def combine(self, other: Bad) -> Bad
+main:27: note:     Got:
+main:27: note:         def combine(self, other: int) -> str
+main:29: error: Incompatible types in assignment (expression has type "Shape", variable has type "NonProtoShape")
 
 [case testBadVarianceInProtocols]
 from typing import Protocol, TypeVar
@@ -751,10 +767,10 @@ y: PClass
 
 x = CInst()
 x = CClass() # E: Incompatible types in assignment (expression has type "CClass", variable has type "PInst") \
-             # N: Protocol member PInst.v: expected instance variable, got class variable
+             # N: Protocol member PInst.v expected instance variable, got class variable
 y = CClass()
 y = CInst()  # E: Incompatible types in assignment (expression has type "CInst", variable has type "PClass") \
-             # N: Protocol member PClass.v: expected class variable, got instance variable
+             # N: Protocol member PClass.v expected class variable, got instance variable
 [out]
 
 [case testPropertyInProtocols]
@@ -775,7 +791,7 @@ y = x
 x2: P
 y2: PP
 x2 = y2 # E: Incompatible types in assignment (expression has type "PP", variable has type "P") \
-        # N: Protocol member P.attr: expected settable variable, got read-only attribute
+        # N: Protocol member P.attr expected settable variable, got read-only attribute
 [builtins fixtures/property.pyi]
 [out]
 
@@ -813,7 +829,7 @@ y3 = z3
 y4: PP
 z4: PPS
 z4 = y4 # E: Incompatible types in assignment (expression has type "PP", variable has type "PPS") \
-        # N: Protocol member PPS.attr: expected settable variable, got read-only attribute
+        # N: Protocol member PPS.attr expected settable variable, got read-only attribute
 [builtins fixtures/property.pyi]
 [out]
 
@@ -845,7 +861,7 @@ x = B()
 y: PC
 y = B()
 y = C() # E: Incompatible types in assignment (expression has type "C", variable has type "PC") \
-        # N: Protocol member PC.meth: expected class or static method
+        # N: Protocol member PC.meth expected class or static method
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -867,10 +883,17 @@ class D:
         pass
 
 x: P = C()
-x = D() # E: Incompatible types in assignment (expression has type "D", variable has type "P") \
-        # N: Following member(s) of "D" have conflicts: \
-        # N:     f: expected overloaded function, got Callable[[int], None]
+x = D()
 [out]
+main:18: error: Incompatible types in assignment (expression has type "D", variable has type "P")
+main:18: note: Following member(s) of "D" have conflicts:
+main:18: note:     Expected:
+main:18: note:         @overload
+main:18: note:         def f(self, x: int) -> int
+main:18: note:         @overload
+main:18: note:         def f(self, x: str) -> str
+main:18: note:     Got:
+main:18: note:         def f(self, x: int) -> None
 
 -- Join and meet with protocol types
 -- ---------------------------------
@@ -1482,7 +1505,7 @@ x: P = C() # E: Incompatible types in assignment (expression has type "C", varia
            # N: Following member(s) of "C" have conflicts: \
            # N:     attr1: expected "int", got "str" \
            # N:     attr2: expected "str", got "int" \
-           # N: Protocol member P.attr2: expected settable variable, got read-only attribute
+           # N: Protocol member P.attr2 expected settable variable, got read-only attribute
 
 def f(x: P) -> P:
     return C() # E: Incompatible return value type (got "C", expected "P") \
@@ -1491,7 +1514,7 @@ def f(x: P) -> P:
                # N: Following member(s) of "C" have conflicts: \
                # N:     attr1: expected "int", got "str" \
                # N:     attr2: expected "str", got "int" \
-               # N: Protocol member P.attr2: expected settable variable, got read-only attribute
+               # N: Protocol member P.attr2 expected settable variable, got read-only attribute
 
 f(C()) # E: Argument 1 to "f" has incompatible type "C"; expected "P" \
        # N: 'C' is missing following 'P' protocol member: \
@@ -1499,7 +1522,7 @@ f(C()) # E: Argument 1 to "f" has incompatible type "C"; expected "P" \
        # N: Following member(s) of "C" have conflicts: \
        # N:     attr1: expected "int", got "str" \
        # N:     attr2: expected "str", got "int" \
-       # N: Protocol member P.attr2: expected settable variable, got read-only attribute
+       # N: Protocol member P.attr2 expected settable variable, got read-only attribute
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1563,7 +1586,7 @@ def fun_p(x: PP) -> None:
     reveal_type(P.attr) # E: Revealed type is 'builtins.int'
 
 fun(C())  # E: Argument 1 to "fun" has incompatible type "C"; expected "P" \
-          # N: Protocol member P.attr: expected settable variable, got read-only attribute
+          # N: Protocol member P.attr expected settable variable, got read-only attribute
 fun(C2())
 fun_p(D())  # E: Argument 1 to "fun_p" has incompatible type "D"; expected "PP" \
             # N: Following member(s) of "D" have conflicts: \

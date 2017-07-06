@@ -11,6 +11,7 @@ from mypy.version import __version__ as mypy_version
 
 
 T = TypeVar('T')
+allowed_duplicates = ['@overload', 'Got:', 'Expected:']
 
 
 class ErrorInfo:
@@ -473,6 +474,9 @@ class Errors:
             while (j >= 0 and errors[j][0] == errors[i][0] and
                     errors[j][1] == errors[i][1]):
                 if (errors[j][3] == errors[i][3] and
+                        # Allow duplicate notes in overload conficts reporting
+                        not (errors[i][3] == 'note' and
+                             errors[i][4].strip() in allowed_duplicates) and
                         errors[j][4] == errors[i][4]):  # ignore column
                     dup = True
                     break

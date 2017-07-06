@@ -989,7 +989,7 @@ class MessageBuilder:
         from mypy.subtypes import (get_missing_members, get_conflict_types, get_all_flags,
                                    is_subtype, IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC)
         OFFSET = 4  # Four spaces, so that notes will look like this:
-        # note: 'Cls' is missing following 'Proto' member(s):
+        # note: 'Cls' is missing following 'Proto' members:
         # note:     method, attr
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.fallback, Instance):
@@ -1009,22 +1009,81 @@ class MessageBuilder:
             self.note('Following member(s) of {} have '
                       'conflicts:'.format(self.format(subtype)), context)
             for name, got, exp in conflict_types:
-                self.note('{}: expected {}, got {}'.format(name,
-                                                           *self.format_distinctly(exp, got)),
-                          context, offset=OFFSET)
+                if (not isinstance(exp, (CallableType, Overloaded)) or
+                        not isinstance(exp, (CallableType, Overloaded))):
+                    self.note('{}: expected {}, got {}'.format(name,
+                                                               *self.format_distinctly(exp, got)),
+                              context, offset=OFFSET)
+                else:
+                    self.note('Expected:', context, offset=OFFSET)
+                    if isinstance(exp, CallableType):
+                        self.note(self.pretty_callable(exp), context, offset=2 * OFFSET)
+                    else:
+                        assert isinstance(exp, Overloaded)
+                        for item in exp.items():
+                            self.note('@overload', context, offset=2 * OFFSET)
+                            self.note(self.pretty_callable(item), context, offset=2 * OFFSET)
+                    self.note('Got:', context, offset=OFFSET)
+                    if isinstance(got, CallableType):
+                        self.note(self.pretty_callable(got), context, offset=2 * OFFSET)
+                    else:
+                        assert isinstance(got, Overloaded)
+                        for item in got.items():
+                            self.note('@overload', context, offset=2 * OFFSET)
+                            self.note(self.pretty_callable(item), context, offset=2 * OFFSET)
         for name, subflags, superflags in get_all_flags(subtype, supertype):
             if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
-                self.note('Protocol member {}.{}: expected instance variable,'
+                self.note('Protocol member {}.{} expected instance variable,'
                           ' got class variable'.format(supertype.type.name(), name), context)
             if IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
-                self.note('Protocol member {}.{}: expected class variable,'
+                self.note('Protocol member {}.{} expected class variable,'
                           ' got instance variable'.format(supertype.type.name(), name), context)
             if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
-                self.note('Protocol member {}.{}: expected settable variable,'
+                self.note('Protocol member {}.{} expected settable variable,'
                           ' got read-only attribute'.format(supertype.type.name(), name), context)
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
-                self.note('Protocol member {}.{}: expected class or static method'
+                self.note('Protocol member {}.{} expected class or static method'
                           .format(supertype.type.name(), name), context)
+
+    def pretty_callable(self, tp: CallableType) -> str:
+        s = ''
+        bare_asterisk = False
+        for i in range(len(tp.arg_types)):
+            if len(tp.arg_types) > 5:
+                s += '\n'
+            if s != '':
+                s += ', '
+            if tp.arg_kinds[i] in (ARG_NAMED, ARG_NAMED_OPT) and not bare_asterisk:
+                s += '*, '
+                bare_asterisk = True
+            if tp.arg_kinds[i] == ARG_STAR:
+                s += '*'
+            if tp.arg_kinds[i] == ARG_STAR2:
+                s += '**'
+            name = tp.arg_names[i]
+            if name:
+                s += name + ': '
+            s += self.format(tp.arg_types[i]).replace('"', '')
+            if tp.arg_kinds[i] in (ARG_OPT, ARG_NAMED_OPT):
+                s += ' ='
+
+        # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
+        if tp.definition is not None and tp.definition.name() is not None:
+            definition_args = getattr(tp.definition, 'arg_names')
+            if definition_args and tp.arg_names != definition_args \
+                    and len(definition_args) > 0:
+                special_arg = definition_args[0]
+                if s != '':
+                    s = ', ' + s
+                s = special_arg + s
+            s = '{}({})'.format(tp.definition.name(), s)
+        else:
+            s = '({})'.format(s)
+
+        s += ' -> {}'.format(self.format(tp.ret_type).replace('"', ''))
+        if tp.variables:
+            s = '{} {}'.format(tp.variables, s)
+        return 'def {}'.format(s)
 
 
 def variance_string(variance: int) -> str:
