@@ -1042,7 +1042,8 @@ class MessageBuilder:
                                       .format(len(got.items()) - MAX_ITEMS),
                                       context, offset=2 * OFFSET)
             if len(conflict_types) > MAX_ITEMS:
-                self.note('<{} more conflict(s) not shown>'.format(len(conflict_types) - MAX_ITEMS),
+                self.note('<{} more conflict(s) not shown>'
+                          .format(len(conflict_types) - MAX_ITEMS),
                           context, offset=OFFSET)
         for name, subflags, superflags in get_all_flags(subtype, supertype):
             if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
