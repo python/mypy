@@ -894,6 +894,8 @@ def int_tf(m: int) -> Transform[int, str]:
         pass
     return transform
 
+var: Transform[int, str]
+reveal_type(var)  # E: Revealed type is 'def (builtins.int, builtins.int) -> Tuple[builtins.int, builtins.str]'
 [file lib.py]
 from typing import Callable, TypeVar, Tuple
 
@@ -906,12 +908,45 @@ Transform = Callable[[T, int], Tuple[T, R]]
 [case testGenericTypeAliasesImportingWithoutTypeVarError]
 from a import Alias
 x: Alias[int, str]  # E: Bad number of arguments for type alias, expected: 1, given: 2
+reveal_type(x)  # E: Revealed type is 'Any'
 
 [file a.py]
 from typing import TypeVar, List
 T = TypeVar('T')
 
 Alias = List[List[T]]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testGenericAliasWithTypeVarsFromDifferentModules]
+from mod import Alias, TypeVar
+
+S = TypeVar('S')
+NewAlias = Alias[int, int, S, S]
+class C: pass
+
+x: NewAlias[str]
+reveal_type(x)  # E: Revealed type is 'builtins.list[Tuple[builtins.int, builtins.int, builtins.str, builtins.str]]'
+y: Alias[int, str, C, C]
+reveal_type(y)  # E: Revealed type is 'builtins.list[Tuple[builtins.int, builtins.str, __main__.C, __main__.C]]'
+
+[file mod.py]
+from typing import TypeVar, List, Tuple
+import a
+import b
+T = TypeVar('T')
+Alias = List[Tuple[T, a.T, b.T, b.B.T]]
+
+[file a.py]
+from typing import TypeVar
+T = TypeVar('T')
+
+[file b.py]
+from typing import TypeVar
+
+T = TypeVar('T')
+class B:
+    T = TypeVar('T')
 [builtins fixtures/list.pyi]
 [out]
 
@@ -929,6 +964,26 @@ reveal_type(y)  # E: Revealed type is 'builtins.int'
 
 U[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
 O[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
+[out]
+
+[case testAliasesInClassBodyNormalVsSubscripted]
+from typing import Union, Type, Iterable
+
+class A: pass
+class B(A): pass
+class C:
+    a = A  # This is a variable
+    b = Union[int, str]  # This is an alias
+    c: Type[object] = Iterable[int]  # This is however also a variable
+    a = B
+    b = int  # E: Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation \
+             # E: Incompatible types in assignment (expression has type Type[int], variable has type "Type alias to Union")
+    c = int
+    def f(self, x: a) -> None: pass  # E: Invalid type "__main__.C.a"
+    def g(self, x: b) -> None: pass
+    def h(self, x: c) -> None: pass  # E: Invalid type "__main__.C.c"
+    x: b
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
 [out]
 
 [case testGenericTypeAliasesRuntimeExpressionsInstance]

@@ -86,6 +86,7 @@ from typing import TypeVar, Sequence, Type
 T = TypeVar('T')
 
 A: Type[float] = int
+A = float  # OK
 x: A  # E: Invalid type "__main__.A"
 def bad(tp: A) -> None:  # E: Invalid type "__main__.A"
     pass
