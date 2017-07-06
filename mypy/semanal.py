@@ -847,7 +847,8 @@ class SemanticAnalyzer(NodeVisitor):
             if isinstance(base, UnboundType):
                 sym = self.lookup_qualified(base.name, base)
                 if sym is not None and sym.node is not None:
-                    if (sym.node.fullname() in ('typing.Protocol', 'typing_extensions.Protocol') and
+                    if (sym.node.fullname() in ('typing.Protocol',
+                                                'typing_extensions.Protocol') and
                             i not in removed):
                         # also remove bare 'Protocol' bases
                         removed.append(i)
