@@ -178,7 +178,7 @@ class StatisticsVisitor(TraverserVisitor):
             return
 
         if isinstance(t, AnyType) and t.is_higher_kinded_type:
-            # Don't collect stats higher-kinded types.
+            # Don't collect stats for higher-kinded types.
             return
 
         if isinstance(t, AnyType):
