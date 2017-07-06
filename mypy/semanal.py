@@ -1655,46 +1655,48 @@ class SemanticAnalyzer(NodeVisitor):
         """
         # Type aliases are created only at module scope and class scope (for subscripted types),
         # at function scope assignments always create local variables with type object types.
+        lvalue = s.lvalues[0]
+        if not isinstance(lvalue, NameExpr):
+            return
         if (len(s.lvalues) == 1 and not self.is_func_scope() and
-                not (self.type and isinstance(s.rvalue, NameExpr) and s.lvalues[0].is_def)
+                not (self.type and isinstance(s.rvalue, NameExpr) and lvalue.is_def)
                 and not s.type):
-            lvalue = s.lvalues[0]
-            if isinstance(lvalue, NameExpr):
-                rvalue = s.rvalue
-                res, alias_tvars = self.analyze_alias(rvalue, allow_unnormalized=True)
-                if res:
-                    node = self.lookup(lvalue.name, lvalue)
-                    if not lvalue.is_def:
-                        # Only a definition can create a type alias, not regular assignment.
-                        if node and node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo):
-                            self.fail('Cannot assign multiple types to name "{}"'
-                                      ' without an explicit "Type[...]" annotation'
-                                      .format(lvalue.name), lvalue)
-                        return
-                    check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg,
-                                           context=s)
-                    # when this type alias gets "inlined", the Any is not explicit anymore,
-                    # so we need to replace it with non-explicit Anys
-                    res = make_any_non_explicit(res)
-                    if isinstance(res, Instance) and not res.args and isinstance(rvalue, RefExpr):
-                        # For simple (on-generic) aliases we use aliasing TypeInfo's
-                        # to allow using them in runtime context where it makes sense.
-                        node.node = res.type
-                        if isinstance(rvalue, RefExpr):
-                            sym = self.lookup_type_node(rvalue)
-                            if sym:
-                                node.normalized = sym.normalized
-                        return
-                    node.kind = TYPE_ALIAS
-                    node.type_override = res
-                    node.alias_tvars = alias_tvars
-                    if isinstance(s.rvalue, IndexExpr):
-                        # We only need this for subscripted aliases, since simple aliases
-                        # are already processed using aliasing TypeInfo's above.
-                        s.rvalue.analyzed = TypeAliasExpr(res, node.alias_tvars,
-                                                          fallback=self.alias_fallback(res))
-                        s.rvalue.analyzed.line = s.rvalue.line
-                        s.rvalue.analyzed.column = s.rvalue.column
+            rvalue = s.rvalue
+            res, alias_tvars = self.analyze_alias(rvalue, allow_unnormalized=True)
+            if not res:
+                return
+            node = self.lookup(lvalue.name, lvalue)
+            if not lvalue.is_def:
+                # Only a definition can create a type alias, not regular assignment.
+                if node and node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo):
+                    self.fail('Cannot assign multiple types to name "{}"'
+                              ' without an explicit "Type[...]" annotation'
+                              .format(lvalue.name), lvalue)
+                return
+            check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg,
+                                   context=s)
+            # when this type alias gets "inlined", the Any is not explicit anymore,
+            # so we need to replace it with non-explicit Anys
+            res = make_any_non_explicit(res)
+            if isinstance(res, Instance) and not res.args and isinstance(rvalue, RefExpr):
+                # For simple (on-generic) aliases we use aliasing TypeInfo's
+                # to allow using them in runtime context where it makes sense.
+                node.node = res.type
+                if isinstance(rvalue, RefExpr):
+                    sym = self.lookup_type_node(rvalue)
+                    if sym:
+                        node.normalized = sym.normalized
+                return
+            node.kind = TYPE_ALIAS
+            node.type_override = res
+            node.alias_tvars = alias_tvars
+            if isinstance(rvalue, IndexExpr):
+                # We only need this for subscripted aliases, since simple aliases
+                # are already processed using aliasing TypeInfo's above.
+                rvalue.analyzed = TypeAliasExpr(res, node.alias_tvars,
+                                                fallback=self.alias_fallback(res))
+                rvalue.analyzed.line = rvalue.line
+                rvalue.analyzed.column = rvalue.column
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
