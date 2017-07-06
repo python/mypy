@@ -30,21 +30,15 @@ def fun(x: P) -> None:
     x.bad # E: "P" has no attribute "bad"
 
 x = C()
-x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P") \
-    # N: '__main__.B' is missing following '__main__.P' protocol member(s): \
-    # N:     meth
+x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P")
 
 fun(C())
-fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "P" \
-    # N: '__main__.B' is missing following '__main__.P' protocol member(s): \
-    # N:     meth
+fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "P"
 
 def fun2() -> P:
     return C()
 def fun3() -> P:
-    return B() # E: Incompatible return value type (got "B", expected "P") \
-               # N: '__main__.B' is missing following '__main__.P' protocol member(s): \
-               # N:     meth
+    return B() # E: Incompatible return value type (got "B", expected "P")
 [out]
 
 [case testSimpleProtocolOneAbstractMethod]
@@ -72,14 +66,10 @@ def fun(x: P) -> None:
 
 x = C()
 x = D()
-x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P") \
-    # N: '__main__.B' is missing following '__main__.P' protocol member(s): \
-    # N:     meth
+x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P")
 fun(C())
 fun(D())
-fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "P" \
-    # N: '__main__.B' is missing following '__main__.P' protocol member(s): \
-    # N:     meth
+fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "P"
 [out]
 
 [case testSimpleProtocolOneMethodOverride]
@@ -104,14 +94,10 @@ def fun(x: SubP) -> str:
 
 z = x
 x = C()
-x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "SubP") \
-    # N: '__main__.B' is missing following '__main__.SubP' protocol member(s): \
-    # N:     meth
+x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "SubP")
 
 reveal_type(fun(C())) # E: Revealed type is 'builtins.str'
-fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "SubP" \
-    # N: '__main__.B' is missing following '__main__.SubP' protocol member(s): \
-    # N:     meth
+fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "SubP"
 [out]
 
 [case testSimpleProtocolTwoMethodsMerge]
@@ -154,11 +140,9 @@ c2: C2
 y: AnotherP
 
 x = c
-x = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "P") \
-    # N: '__main__.B' is missing following '__main__.P' protocol member(s): \
-    # N:     meth1, meth2
+x = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "P")
 x = c1 # E: Incompatible types in assignment (expression has type "C1", variable has type "P") \
-    # N: '__main__.C1' is missing following '__main__.P' protocol member(s): \
+    # N: 'C1' is missing following 'P' protocol member: \
     # N:     meth2
 x = c2
 x = y
@@ -191,7 +175,7 @@ reveal_type(x.meth2()) # E: Revealed type is 'builtins.str'
 
 x = C() # OK
 x = Cbad() # E: Incompatible types in assignment (expression has type "Cbad", variable has type "P2") \
-    # N: '__main__.Cbad' is missing following '__main__.P2' protocol member(s): \
+    # N: 'Cbad' is missing following 'P2' protocol member: \
     # N:     meth2
 [out]
 
@@ -496,7 +480,7 @@ class E(D[T]):
 def f(x: T) -> T:
     z: P2[T, T] = E[T]()
     y: P2[T, T] = D[T]() # E: Incompatible types in assignment (expression has type D[T], variable has type P2[T, T]) \
-                         # N: '__main__.D' is missing following '__main__.P2' protocol member(s): \
+                         # N: 'D' is missing following 'P2' protocol member: \
                          # N:     attr2
     return x
 [builtins fixtures/isinstancelist.pyi]
@@ -651,9 +635,7 @@ class D(Generic[T]):
 
 t: Traversable
 t = D[int]() # OK
-t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "Traversable") \
-        # N: '__main__.C' is missing following '__main__.Traversable' protocol member(s): \
-        # N:     leaves
+t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "Traversable")
 [builtins fixtures/list.pyi]
 [out]
 
@@ -697,12 +679,8 @@ class B:
 
 t: P1
 t = A() # OK
-t = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P1") \
-        # N: '__main__.B' is missing following '__main__.P1' protocol member(s): \
-        # N:     attr1
-t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P1") \
-        # N: '__main__.C' is missing following '__main__.P1' protocol member(s): \
-        # N:     attr1
+t = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P1")
+t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P1")
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1364,7 +1342,7 @@ fun2(z) # E: Argument 1 to "fun2" has incompatible type "N"; expected P[int, int
         # N:     y: expected builtins.int*, got builtins.str
 
 fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected P[int, str] \
-           # N: '__main__.N2' is missing following '__main__.P' protocol member(s): \
+           # N: 'N2' is missing following 'P' protocol member: \
            # N:     y
 
 reveal_type(fun3(z)) # E: Revealed type is 'builtins.object*'
@@ -1438,8 +1416,6 @@ bar(1)
 [builtins fixtures/isinstancelist.pyi]
 [out]
 main:11: error: Argument 1 to "bar" has incompatible type "int"; expected "Sized"
-main:11: note: 'builtins.int' is missing following 'typing.Sized' protocol member(s):
-main:11: note:     __len__
 
 [case testBasicSupportsIntProtocol]
 from typing import SupportsInt
@@ -1457,8 +1433,6 @@ foo('no way')
 [builtins fixtures/isinstancelist.pyi]
 [out]
 main:11: error: Argument 1 to "foo" has incompatible type "str"; expected "SupportsInt"
-main:11: note: 'builtins.str' is missing following 'typing.SupportsInt' protocol member(s):
-main:11: note:     __int__
 
 -- Additional test and corner cases for protocols
 -- ----------------------------------------------
@@ -1490,9 +1464,7 @@ f1(C1())
 f2(C2())
 f3(C3())
 
-f2(C3())  # E: Argument 1 to "f2" has incompatible type "C3"; expected P2[str] \
-          # N: '__main__.C3' is missing following '__main__.P2' protocol member(s): \
-          # N:     attr2
+f2(C3())  # E: Argument 1 to "f2" has incompatible type "C3"; expected P2[str]
 a: Any
 f1(a)
 f2(a)
@@ -1513,7 +1485,7 @@ class C:
     def attr2(self) -> int: pass
 
 x: P = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P") \
-           # N: '__main__.C' is missing following '__main__.P' protocol member(s): \
+           # N: 'C' is missing following 'P' protocol member: \
            # N:     attr3 \
            # N: Following member(s) of __main__.C have conflicts: \
            # N:     attr1: expected builtins.int, got builtins.str \
@@ -1522,7 +1494,7 @@ x: P = C() # E: Incompatible types in assignment (expression has type "C", varia
 
 def f(x: P) -> P:
     return C() # E: Incompatible return value type (got "C", expected "P") \
-               # N: '__main__.C' is missing following '__main__.P' protocol member(s): \
+               # N: 'C' is missing following 'P' protocol member: \
                # N:     attr3 \
                # N: Following member(s) of __main__.C have conflicts: \
                # N:     attr1: expected builtins.int, got builtins.str \
@@ -1530,7 +1502,7 @@ def f(x: P) -> P:
                # N: Protocol member __main__.P.attr2: expected settable variable, got read-only attribute
 
 f(C()) # E: Argument 1 to "f" has incompatible type "C"; expected "P" \
-       # N: '__main__.C' is missing following '__main__.P' protocol member(s): \
+       # N: 'C' is missing following 'P' protocol member: \
        # N:     attr3 \
        # N: Following member(s) of __main__.C have conflicts: \
        # N:     attr1: expected builtins.int, got builtins.str \

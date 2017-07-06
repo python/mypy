@@ -996,9 +996,10 @@ class MessageBuilder:
                 return
             subtype = subtype.fallback
         missing = get_missing_members(subtype, supertype)
-        if missing:
-            self.note("'{}' is missing following '{}' protocol member(s):"
-                      .format(subtype.type.fullname(), supertype.type.fullname()),
+        if missing and len(missing) < len(supertype.type.protocol_members) and len(missing) < 3:
+            self.note("'{}' is missing following '{}' protocol member{}:"
+                      .format(subtype.type.name(), supertype.type.name(),
+                              's' if len(missing) > 1 else ''),
                       context)
             self.note(', '.join(missing), context, offset=OFFSET)
         conflict_types = get_conflict_types(subtype, supertype)

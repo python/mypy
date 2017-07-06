@@ -286,10 +286,7 @@ from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
 reveal_type(X._make([5, 'a']))  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
-X._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any] \
-                # N: 'builtins.str' is missing following 'typing.Iterable' protocol member(s): \
-                # N:     __iter__
-# Note that the above will not fail with real stubs, since 'str', is a subtype of 'Iterable[str]'
+X._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any]
 
 -- # FIX: not a proper class method
 -- x = None  # type: X
