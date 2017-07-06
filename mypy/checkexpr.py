@@ -515,7 +515,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                   # Exceptions for Type[...] and classmethod first argument
                   and not callee.from_type_type and not callee.is_classmethod_class):
                 self.chk.fail('Cannot instantiate protocol class "{}"'
-                              .format(callee.type_object().fullname()), context)
+                              .format(callee.type_object().name()), context)
 
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds, arg_names,

@@ -1003,25 +1003,28 @@ class MessageBuilder:
                       context)
             self.note(', '.join(missing), context, offset=OFFSET)
         conflict_types = get_conflict_types(subtype, supertype)
-        if conflict_types:
+        if conflict_types and (not is_subtype(subtype, erase_type(supertype)) or
+                               not subtype.type.defn.type_vars or
+                               not supertype.type.defn.type_vars):
             self.note('Following member(s) of {} have '
-                      'conflicts:'.format(subtype), context)
-            for name, got, expected in conflict_types:
-                self.note('{}: expected {}, got {}'.format(name, expected, got),
+                      'conflicts:'.format(self.format(subtype)), context)
+            for name, got, exp in conflict_types:
+                self.note('{}: expected {}, got {}'.format(name,
+                                                           *self.format_distinctly(exp, got)),
                           context, offset=OFFSET)
         for name, subflags, superflags in get_all_flags(subtype, supertype):
             if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
                 self.note('Protocol member {}.{}: expected instance variable,'
-                          ' got class variable'.format(supertype, name), context)
+                          ' got class variable'.format(supertype.type.name(), name), context)
             if IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
                 self.note('Protocol member {}.{}: expected class variable,'
-                          ' got instance variable'.format(supertype, name), context)
+                          ' got instance variable'.format(supertype.type.name(), name), context)
             if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
                 self.note('Protocol member {}.{}: expected settable variable,'
-                          ' got read-only attribute'.format(supertype, name), context)
+                          ' got read-only attribute'.format(supertype.type.name(), name), context)
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 self.note('Protocol member {}.{}: expected class or static method'
-                          .format(supertype, name), context)
+                          .format(supertype.type.name(), name), context)
 
 
 def variance_string(variance: int) -> str:

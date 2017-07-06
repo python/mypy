@@ -1701,12 +1701,8 @@ b = {'z': 26, **a}
 c = {**b}
 d = {**a, **b, 'c': 3}
 # These errors changed because Mapping is a protocol
-e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type Dict[str, int]; expected Mapping[int, str] \
-                   # N: Following member(s) of builtins.dict[builtins.str*, builtins.int*] have conflicts: \
-                   # N:     __getitem__: expected def (builtins.int*) -> builtins.str*, got def (builtins.str*) -> builtins.int*
-f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type Dict[str, int] \
-                                   # N: Following member(s) of builtins.dict[builtins.str*, builtins.int*] have conflicts: \
-                                   # N:     __getitem__: expected def (builtins.int*) -> builtins.int*, got def (builtins.str*) -> builtins.int*
+e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type Dict[str, int]; expected Mapping[int, str]
+f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type Dict[str, int]
 [builtins fixtures/dict.pyi]
 
 [case testDictIncompatibleTypeErrorMessage]

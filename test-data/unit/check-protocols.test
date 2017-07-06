@@ -8,7 +8,7 @@ class P(Protocol):
     def meth(self) -> None:
         pass
 
-P() # E: Cannot instantiate protocol class "__main__.P"
+P() # E: Cannot instantiate protocol class "P"
 [out]
 
 [case testSimpleProtocolOneMethod]
@@ -361,26 +361,18 @@ class B(A): pass
 
 x1: Pco[B]
 y1: Pco[A]
-x1 = y1 # E: Incompatible types in assignment (expression has type Pco[A], variable has type Pco[B]) \
-        # N: Following member(s) of __main__.Pco[__main__.A] have conflicts: \
-        # N:     meth: expected def () -> __main__.B*, got def () -> __main__.A*
+x1 = y1 # E: Incompatible types in assignment (expression has type Pco[A], variable has type Pco[B])
 y1 = x1
 
 x2: Pcontra[B]
 y2: Pcontra[A]
-y2 = x2 # E: Incompatible types in assignment (expression has type Pcontra[B], variable has type Pcontra[A]) \
-        # N: Following member(s) of __main__.Pcontra[__main__.B] have conflicts: \
-        # N:     meth: expected def (x: __main__.A*), got def (x: __main__.B*)
+y2 = x2 # E: Incompatible types in assignment (expression has type Pcontra[B], variable has type Pcontra[A])
 x2 = y2
 
 x3: Pinv[B]
 y3: Pinv[A]
-y3 = x3 # E: Incompatible types in assignment (expression has type Pinv[B], variable has type Pinv[A]) \
-        # N: Following member(s) of __main__.Pinv[__main__.B] have conflicts: \
-        # N:     attr: expected __main__.A*, got __main__.B*
-x3 = y3 # E: Incompatible types in assignment (expression has type Pinv[A], variable has type Pinv[B]) \
-        # N: Following member(s) of __main__.Pinv[__main__.A] have conflicts: \
-        # N:     attr: expected __main__.B*, got __main__.A*
+y3 = x3 # E: Incompatible types in assignment (expression has type Pinv[B], variable has type Pinv[A])
+x3 = y3 # E: Incompatible types in assignment (expression has type Pinv[A], variable has type Pinv[B])
 [out]
 
 [case testGenericProtocolsInference1]
@@ -469,8 +461,8 @@ class C:
 c: C
 var: P2[int, int] = c
 var2: P2[int, str] = c # E: Incompatible types in assignment (expression has type "C", variable has type P2[int, str]) \
-                       # N: Following member(s) of __main__.C have conflicts: \
-                       # N:     attr2: expected Tuple[builtins.int*, builtins.str*], got Tuple[builtins.int, builtins.int]
+                       # N: Following member(s) of "C" have conflicts: \
+                       # N:     attr2: expected "Tuple[int, str]", got "Tuple[int, int]"
 
 class D(Generic[T]):
     attr1: T
@@ -512,9 +504,9 @@ class D(A, B): pass
 x: P = D()  # Same as P[Any, Any]
 
 var: P[Union[int, P], Union[P, str]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[int, P[Any, Any]], Union[P[Any, Any], str]]) \
-                                           # N: Following member(s) of __main__.C have conflicts: \
-                                           # N:     attr1: expected Union[builtins.int, __main__.P[Any, Any]], got builtins.int \
-                                           # N:     attr2: expected Union[__main__.P[Any, Any], builtins.str], got builtins.str
+                                           # N: Following member(s) of "C" have conflicts: \
+                                           # N:     attr1: expected "Union[int, P[Any, Any]]", got "int" \
+                                           # N:     attr2: expected "Union[P[Any, Any], str]", got "str"
 [out]
 
 [case testGenericSubProtocolsExtensionCovariant]
@@ -536,9 +528,9 @@ class C:
 
 var: P[Union[int, P], Union[P, str]] = C() # OK for covariant
 var2: P[Union[str, P], Union[P, int]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[str, P[Any, Any]], Union[P[Any, Any], int]]) \
-                                            # N: Following member(s) of __main__.C have conflicts: \
-                                            # N:     attr1: expected def () -> Union[builtins.str, __main__.P[Any, Any]], got def () -> builtins.int \
-                                            # N:     attr2: expected def () -> Union[__main__.P[Any, Any], builtins.int], got def () -> builtins.str
+                                            # N: Following member(s) of "C" have conflicts: \
+                                            # N:     attr1: expected Callable[[], Union[str, P[Any, Any]]], got Callable[[], int] \
+                                            # N:     attr2: expected Callable[[], Union[P[Any, Any], int]], got Callable[[], str]
 [out]
 
 [case testSelfTypesWithProtocolsBehaveAsWithNominal]
@@ -568,11 +560,11 @@ s: Shape
 f(NonProtoShape())
 f(Circle())
 s = Triangle() # E: Incompatible types in assignment (expression has type "Triangle", variable has type "Shape") \
-               # N: Following member(s) of __main__.Triangle have conflicts: \
-               # N:     combine: expected def (other: __main__.Triangle*) -> __main__.Triangle*, got def (other: __main__.Shape) -> __main__.Shape
+               # N: Following member(s) of "Triangle" have conflicts: \
+               # N:     combine: expected Callable[[Triangle], Triangle], got Callable[[Shape], Shape]
 s = Bad() # E: Incompatible types in assignment (expression has type "Bad", variable has type "Shape") \
-          # N: Following member(s) of __main__.Bad have conflicts: \
-          # N:     combine: expected def (other: __main__.Bad*) -> __main__.Bad*, got def (other: builtins.int) -> builtins.str
+          # N: Following member(s) of "Bad" have conflicts: \
+          # N:     combine: expected Callable[[Bad], Bad], got Callable[[int], str]
 
 n2: NonProtoShape = s # E: Incompatible types in assignment (expression has type "Shape", variable has type "NonProtoShape")
 [out]
@@ -759,10 +751,10 @@ y: PClass
 
 x = CInst()
 x = CClass() # E: Incompatible types in assignment (expression has type "CClass", variable has type "PInst") \
-             # N: Protocol member __main__.PInst.v: expected instance variable, got class variable
+             # N: Protocol member PInst.v: expected instance variable, got class variable
 y = CClass()
 y = CInst()  # E: Incompatible types in assignment (expression has type "CInst", variable has type "PClass") \
-             # N: Protocol member __main__.PClass.v: expected class variable, got instance variable
+             # N: Protocol member PClass.v: expected class variable, got instance variable
 [out]
 
 [case testPropertyInProtocols]
@@ -783,7 +775,7 @@ y = x
 x2: P
 y2: PP
 x2 = y2 # E: Incompatible types in assignment (expression has type "PP", variable has type "P") \
-        # N: Protocol member __main__.P.attr: expected settable variable, got read-only attribute
+        # N: Protocol member P.attr: expected settable variable, got read-only attribute
 [builtins fixtures/property.pyi]
 [out]
 
@@ -821,7 +813,7 @@ y3 = z3
 y4: PP
 z4: PPS
 z4 = y4 # E: Incompatible types in assignment (expression has type "PP", variable has type "PPS") \
-        # N: Protocol member __main__.PPS.attr: expected settable variable, got read-only attribute
+        # N: Protocol member PPS.attr: expected settable variable, got read-only attribute
 [builtins fixtures/property.pyi]
 [out]
 
@@ -853,7 +845,7 @@ x = B()
 y: PC
 y = B()
 y = C() # E: Incompatible types in assignment (expression has type "C", variable has type "PC") \
-        # N: Protocol member __main__.PC.meth: expected class or static method
+        # N: Protocol member PC.meth: expected class or static method
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -876,8 +868,8 @@ class D:
 
 x: P = C()
 x = D() # E: Incompatible types in assignment (expression has type "D", variable has type "P") \
-        # N: Following member(s) of __main__.D have conflicts: \
-        # N:     f: expected Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str), got def (x: builtins.int)
+        # N: Following member(s) of "D" have conflicts: \
+        # N:     f: expected overloaded function, got Callable[[int], None]
 [out]
 
 -- Join and meet with protocol types
@@ -1084,7 +1076,7 @@ class C:
 def f(cls: Type[P]) -> P:
     return cls()  # OK
 def g() -> P:
-    return P()  # E: Cannot instantiate protocol class "__main__.P"
+    return P()  # E: Cannot instantiate protocol class "P"
 
 f(P)  # E: Only concrete class can be given where 'Type[P]' is expected
 f(B)  # OK
@@ -1109,7 +1101,7 @@ def f(cls: Type[P]) -> P:
 
 Alias = P
 GoodAlias = C
-Alias()  # E: Cannot instantiate protocol class "__main__.P"
+Alias()  # E: Cannot instantiate protocol class "P"
 GoodAlias()
 f(Alias)  # E: Only concrete class can be given where 'Type[P]' is expected
 f(GoodAlias)
@@ -1338,8 +1330,8 @@ def fun3(x: P[T, T]) -> T:
 
 fun(z)
 fun2(z) # E: Argument 1 to "fun2" has incompatible type "N"; expected P[int, int] \
-        # N: Following member(s) of __main__.N have conflicts: \
-        # N:     y: expected builtins.int*, got builtins.str
+        # N: Following member(s) of "N" have conflicts: \
+        # N:     y: expected "int", got "str"
 
 fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected P[int, str] \
            # N: 'N2' is missing following 'P' protocol member: \
@@ -1487,27 +1479,27 @@ class C:
 x: P = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P") \
            # N: 'C' is missing following 'P' protocol member: \
            # N:     attr3 \
-           # N: Following member(s) of __main__.C have conflicts: \
-           # N:     attr1: expected builtins.int, got builtins.str \
-           # N:     attr2: expected builtins.str, got builtins.int \
-           # N: Protocol member __main__.P.attr2: expected settable variable, got read-only attribute
+           # N: Following member(s) of "C" have conflicts: \
+           # N:     attr1: expected "int", got "str" \
+           # N:     attr2: expected "str", got "int" \
+           # N: Protocol member P.attr2: expected settable variable, got read-only attribute
 
 def f(x: P) -> P:
     return C() # E: Incompatible return value type (got "C", expected "P") \
                # N: 'C' is missing following 'P' protocol member: \
                # N:     attr3 \
-               # N: Following member(s) of __main__.C have conflicts: \
-               # N:     attr1: expected builtins.int, got builtins.str \
-               # N:     attr2: expected builtins.str, got builtins.int \
-               # N: Protocol member __main__.P.attr2: expected settable variable, got read-only attribute
+               # N: Following member(s) of "C" have conflicts: \
+               # N:     attr1: expected "int", got "str" \
+               # N:     attr2: expected "str", got "int" \
+               # N: Protocol member P.attr2: expected settable variable, got read-only attribute
 
 f(C()) # E: Argument 1 to "f" has incompatible type "C"; expected "P" \
        # N: 'C' is missing following 'P' protocol member: \
        # N:     attr3 \
-       # N: Following member(s) of __main__.C have conflicts: \
-       # N:     attr1: expected builtins.int, got builtins.str \
-       # N:     attr2: expected builtins.str, got builtins.int \
-       # N: Protocol member __main__.P.attr2: expected settable variable, got read-only attribute
+       # N: Following member(s) of "C" have conflicts: \
+       # N:     attr1: expected "int", got "str" \
+       # N:     attr2: expected "str", got "int" \
+       # N: Protocol member P.attr2: expected settable variable, got read-only attribute
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1571,11 +1563,11 @@ def fun_p(x: PP) -> None:
     reveal_type(P.attr) # E: Revealed type is 'builtins.int'
 
 fun(C())  # E: Argument 1 to "fun" has incompatible type "C"; expected "P" \
-          # N: Protocol member __main__.P.attr: expected settable variable, got read-only attribute
+          # N: Protocol member P.attr: expected settable variable, got read-only attribute
 fun(C2())
 fun_p(D())  # E: Argument 1 to "fun_p" has incompatible type "D"; expected "PP" \
-            # N: Following member(s) of __main__.D have conflicts: \
-            # N:     attr: expected builtins.int, got builtins.str
+            # N: Following member(s) of "D" have conflicts: \
+            # N:     attr: expected "int", got "str"
 fun_p(C())  # OK
 [builtins fixtures/list.pyi]
 [out]
@@ -1594,8 +1586,8 @@ class D:
 
 x: P
 x = D() # E: Incompatible types in assignment (expression has type "D", variable has type "P") \
-        # N: Following member(s) of __main__.D have conflicts: \
-        # N:     x: expected builtins.int, got builtins.str
+        # N: Following member(s) of "D" have conflicts: \
+        # N:     x: expected "int", got "str"
 x = C() # OK
 [builtins fixtures/list.pyi]
 [out]
