@@ -747,7 +747,7 @@ class SemanticAnalyzer(NodeVisitor):
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> bool:
         decorator.accept(self)
         return (isinstance(decorator, RefExpr) and
-                decorator.fullname in ('typing.runtime', 'mypy_extensions.runtime'))
+                decorator.fullname in ('typing.runtime', 'typing_extensions.runtime'))
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.
@@ -810,7 +810,7 @@ class SemanticAnalyzer(NodeVisitor):
             sym = self.lookup_qualified(base.name, base)
             if sym is None or sym.node is None:
                 continue
-            if sym.node.fullname() in ('typing.Protocol', 'mypy_extensions.Protocol'):
+            if sym.node.fullname() in ('typing.Protocol', 'typing_extensions.Protocol'):
                 return True
         return False
 
@@ -847,7 +847,7 @@ class SemanticAnalyzer(NodeVisitor):
             if isinstance(base, UnboundType):
                 sym = self.lookup_qualified(base.name, base)
                 if sym is not None and sym.node is not None:
-                    if (sym.node.fullname() in ('typing.Protocol', 'mypy_extensions.Protocol') and
+                    if (sym.node.fullname() in ('typing.Protocol', 'typing_extensions.Protocol') and
                             i not in removed):
                         # also remove bare 'Protocol' bases
                         removed.append(i)
@@ -883,7 +883,7 @@ class SemanticAnalyzer(NodeVisitor):
             return None
         if (sym.node.fullname() == 'typing.Generic' or
                 sym.node.fullname() == 'typing.Protocol' and t.args or
-                sym.node.fullname() == 'mypy_extensions.Protocol' and t.args):
+                sym.node.fullname() == 'typing_extensions.Protocol' and t.args):
             tvars = []  # type: TypeVarList
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)

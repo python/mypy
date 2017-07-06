@@ -317,8 +317,8 @@ class B2(P2):
 x2: P2 = B2()  # OK
 [out]
 
-[case testProtocolsInMypyExtensions]
-from mypy_extensions import Protocol, runtime
+[case testProtocolsInTypingExtensions]
+from typing_extensions import Protocol, runtime
 
 @runtime
 class P(Protocol):
