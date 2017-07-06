@@ -258,7 +258,7 @@ class AnyType(Type):
                  from_unimported_type: bool = False,
                  explicit: bool = False,
                  from_omitted_generics: bool = False,
-                 is_higher_kinded_type: bool = False,
+                 special_form: bool = False,
                  line: int = -1,
                  column: int = -1) -> None:
         super().__init__(line, column)
@@ -273,10 +273,9 @@ class AnyType(Type):
         self.explicit = explicit
         # Does this type come from omitted generics?
         self.from_omitted_generics = from_omitted_generics
-        # Is this type a higher-kinded type (e.g. type of call expr to NewType or NamedTuple)?
-        # We can't fully represent higher-kinded types in mypy's type system, so we treat them
-        # as 'Any' and give specific errors for each higher-kinded type (e.g. NewType).
-        self.is_higher_kinded_type = is_higher_kinded_type
+        # Is this a type that can't be represented in mypy's type system? For instance, type of
+        # call to NewType(...)). Even though these types aren't real Anys, we treat them as such.
+        self.special_form = special_form
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
@@ -286,7 +285,7 @@ class AnyType(Type):
                       from_unimported_type: bool = _dummy,
                       explicit: bool = _dummy,
                       from_omitted_generics: bool = _dummy,
-                      is_higher_kinded_type: bool = _dummy,
+                      special_form: bool = _dummy,
                       ) -> 'AnyType':
         if implicit is _dummy:
             implicit = self.implicit
@@ -296,11 +295,11 @@ class AnyType(Type):
             explicit = self.explicit
         if from_omitted_generics is _dummy:
             from_omitted_generics = self.from_omitted_generics
-        if is_higher_kinded_type is _dummy:
-            is_higher_kinded_type = self.is_higher_kinded_type
+        if special_form is _dummy:
+            special_form = self.special_form
         return AnyType(implicit=implicit, from_unimported_type=from_unimported_type,
                        explicit=explicit, from_omitted_generics=from_omitted_generics,
-                       is_higher_kinded_type=is_higher_kinded_type,
+                       special_form=special_form,
                        line=self.line, column=self.column)
 
     def serialize(self) -> JsonDict:
