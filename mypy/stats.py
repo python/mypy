@@ -177,6 +177,10 @@ class StatisticsVisitor(TraverserVisitor):
             self.record_line(self.line, TYPE_UNANALYZED)
             return
 
+        if isinstance(t, AnyType) and t.is_higher_kinded_type:
+            # Don't collect stats higher-kinded types.
+            return
+
         if isinstance(t, AnyType):
             self.log('  !! Any type around line %d' % self.line)
             self.num_any += 1

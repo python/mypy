@@ -2405,11 +2405,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return e.type
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
-        # TODO: Perhaps return a special type used for type variables only?
-        return AnyType()
+        return AnyType(is_higher_kinded_type=True)
 
     def visit_newtype_expr(self, e: NewTypeExpr) -> Type:
-        return AnyType()
+        return AnyType(is_higher_kinded_type=True)
 
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
         tuple_type = e.info.tuple_type
@@ -2419,8 +2418,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.msg.unimported_type_becomes_any("NamedTuple type", tuple_type, e)
             check_for_explicit_any(tuple_type, self.chk.options, self.chk.is_typeshed_stub,
                                    self.msg, context=e)
-        # TODO: Perhaps return a type object type?
-        return AnyType()
+        return AnyType(is_higher_kinded_type=True)
 
     def visit_enum_call_expr(self, e: EnumCallExpr) -> Type:
         for name, value in zip(e.items, e.values):
@@ -2435,12 +2433,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         # to have type Any in the typeshed stub.)
                         var.type = typ
                         var.is_inferred = True
-        # TODO: Perhaps return a type object type?
-        return AnyType()
+        return AnyType(is_higher_kinded_type=True)
 
     def visit_typeddict_expr(self, e: TypedDictExpr) -> Type:
-        # TODO: Perhaps return a type object type?
-        return AnyType()
+        return AnyType(is_higher_kinded_type=True)
 
     def visit__promote_expr(self, e: PromoteExpr) -> Type:
         return e.type
@@ -2475,7 +2471,7 @@ class HasAnyType(types.TypeQuery[bool]):
         super().__init__(any)
 
     def visit_any(self, t: AnyType) -> bool:
-        return True
+        return not t.is_higher_kinded_type  # higher kinded types are not real any types
 
 
 def has_coroutine_decorator(t: Type) -> bool:
