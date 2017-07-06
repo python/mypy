@@ -174,8 +174,8 @@ def f(cls: Type[A]) -> A:
 def g() -> A:
     return A()  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
 
-f(A)  # E: Only concrete class can be given where 'Type[__main__.A]' is expected
-f(B)  # E: Only concrete class can be given where 'Type[__main__.A]' is expected
+f(A)  # E: Only concrete class can be given where 'Type[A]' is expected
+f(B)  # E: Only concrete class can be given where 'Type[A]' is expected
 f(C)  # OK
 x: Type[B]
 f(x)  # OK
@@ -200,7 +200,7 @@ Alias = A
 GoodAlias = C
 Alias()  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
 GoodAlias()
-f(Alias)  # E: Only concrete class can be given where 'Type[__main__.A]' is expected
+f(Alias)  # E: Only concrete class can be given where 'Type[A]' is expected
 f(GoodAlias)
 [out]
 
@@ -218,14 +218,14 @@ class C(B):
 
 var: Type[A]
 var()
-var = A # E: Can only assign concrete classes to a variable of type 'Type[__main__.A]'
-var = B # E: Can only assign concrete classes to a variable of type 'Type[__main__.A]'
+var = A # E: Can only assign concrete classes to a variable of type 'Type[A]'
+var = B # E: Can only assign concrete classes to a variable of type 'Type[A]'
 var = C # OK
 
 var_old = None # type: Type[A] # Old syntax for variable annotations
 var_old()
-var_old = A # E: Can only assign concrete classes to a variable of type 'Type[__main__.A]'
-var_old = B # E: Can only assign concrete classes to a variable of type 'Type[__main__.A]'
+var_old = A # E: Can only assign concrete classes to a variable of type 'Type[A]'
+var_old = B # E: Can only assign concrete classes to a variable of type 'Type[A]'
 var_old = C # OK
 [out]
 
