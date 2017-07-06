@@ -1812,7 +1812,6 @@ class SemanticAnalyzer(NodeVisitor):
         if self.is_self_member_ref(lval):
             node = self.type.get(lval.name)
             if node is None or isinstance(node.node, Var) and node.node.is_abstract_var:
-                # Protocol members can't be defined via self
                 if self.type.is_protocol and node is None:
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
                 else:

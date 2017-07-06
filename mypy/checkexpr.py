@@ -2357,9 +2357,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Also used by `async for` and `async with`.
         """
-        if not self.chk.check_subtype(t, self.chk.named_generic_type('typing.Awaitable',
-                                                                     [AnyType()]),
-                                      ctx, msg, 'actual type', 'expected type'):
+        if not self.chk.check_subtype(t, self.named_type('typing.Awaitable'), ctx,
+                                      msg, 'actual type', 'expected type'):
             return AnyType()
         else:
             method = self.analyze_external_member_access('__await__', t, ctx)
