@@ -1626,6 +1626,11 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_alias(self, rvalue: Expression,
                       allow_unnormalized: bool) -> Tuple[Optional[Type], List[str]]:
+        """Check if 'rvalue' represents a valid type allowed for aliasing
+        (e.g. not a type variable). If yes, return the corresponding type and a list of
+        qualified type variable names for generic aliases.
+        If 'allow_unnormalized' is True, allow types like builtins.list[T].
+        """
         res = analyze_type_alias(rvalue,
                                  self.lookup_qualified,
                                  self.lookup_fully_qualified,
@@ -1643,9 +1648,13 @@ class SemanticAnalyzer(NodeVisitor):
         return res, alias_tvars
 
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
-        """Check if assignment creates a type alias and set it up as needed."""
-        # Type aliases are created only at module scope, at class and function scopes
-        # assignments create class valued members and local variables with type object types.
+        """Check if assignment creates a type alias and set it up as needed.
+        For simple aliases like L = List we use a simpler mechanism, just copying TypeInfo.
+        For subscripted (including generic) aliases we mark corresponding node as TYPE_ALIAS
+        and store the corresponding type in node.override and in rvalue.analyzed.
+        """
+        # Type aliases are created only at module scope and class scope (for subscripted types),
+        # at function scope assignments always create local variables with type object types.
         if (len(s.lvalues) == 1 and not self.is_func_scope() and
                 not (self.type and isinstance(s.rvalue, NameExpr) and s.lvalues[0].is_def)
                 and not s.type):
@@ -1668,6 +1677,8 @@ class SemanticAnalyzer(NodeVisitor):
                     # so we need to replace it with non-explicit Anys
                     res = make_any_non_explicit(res)
                     if isinstance(res, Instance) and not res.args and isinstance(rvalue, RefExpr):
+                        # For simple (on-generic) aliases we use aliasing TypeInfo's
+                        # to allow using them in runtime context where it makes sense.
                         node.node = res.type
                         if isinstance(rvalue, RefExpr):
                             sym = self.lookup_type_node(rvalue)
@@ -1678,6 +1689,8 @@ class SemanticAnalyzer(NodeVisitor):
                     node.type_override = res
                     node.alias_tvars = alias_tvars
                     if isinstance(s.rvalue, IndexExpr):
+                        # We only need this for subscripted aliases, since simple aliases
+                        # are already processed using aliasing TypeInfo's above.
                         s.rvalue.analyzed = TypeAliasExpr(res, node.alias_tvars,
                                                           fallback=self.alias_fallback(res))
                         s.rvalue.analyzed.line = s.rvalue.line

@@ -2268,6 +2268,8 @@ class SymbolTableNode:
     mod_id = ''  # type: Optional[str]
     # If this not None, override the type of the 'node' attribute.
     type_override = None  # type: Optional[mypy.types.Type]
+    # For generic aliases this stores the (qualified) names of type variables.
+    # (For example see testGenericAliasWithTypeVarsFromDifferentModules.)
     alias_tvars = None  # type: Optional[List[str]]
     # If False, this name won't be imported via 'from <module> import *'.
     # This has no effect on names within classes.

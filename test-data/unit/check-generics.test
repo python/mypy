@@ -935,7 +935,7 @@ from typing import TypeVar, List, Tuple
 import a
 import b
 T = TypeVar('T')
-Alias = List[Tuple[T, a.T, b.T, b.B.T]]
+Alias = List[Tuple[T, a.T, b.T, b.B.T]]  # alias_tvars here will be ['T', 'a.T', 'b.T', 'b.B.T']
 
 [file a.py]
 from typing import TypeVar
