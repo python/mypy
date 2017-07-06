@@ -44,8 +44,7 @@ from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
     restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_subtype,
-    unify_generic_callable, get_missing_members, get_conflict_types, get_all_flags,
-    IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC, find_member
+    unify_generic_callable, find_member
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars
@@ -1131,23 +1130,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             down_args = [UninhabitedType() if i == j else AnyType() for j, _ in enumerate(tvars)]
             up, down = Instance(info, up_args), Instance(info, down_args)
             # TODO: add advanced variance checks for recursive protocols
-            is_co = is_subtype(down, up, ignore_declared_variance=True)
-            is_contra = is_subtype(up, down, ignore_declared_variance=True)
-            if is_co:
-                expected = 'covariant'
-            elif is_contra:
-                expected = 'contravariant'
+            if is_subtype(down, up, ignore_declared_variance=True):
+                expected = COVARIANT
+            elif is_subtype(up, down, ignore_declared_variance=True):
+                expected = CONTRAVARIANT
             else:
-                expected = 'invariant'
-            if tvar.variance == COVARIANT:
-                actual = 'Covariant'
-            elif tvar.variance == CONTRAVARIANT:
-                actual = 'Contravariant'
-            else:
-                actual = 'Invariant'
-            if expected != actual.lower():
-                self.fail("{} type variable '{}' used in protocol where"
-                          " {} one is expected".format(actual, tvar.name, expected), defn)
+                expected = INVARIANT
+            if expected != tvar.variance:
+                self.msg.bad_proto_variance(tvar.variance, tvar.name, expected, defn)
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Check for multiple inheritance related errors."""
@@ -1327,8 +1317,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         isinstance(lvalue_type.item, Instance) and
                         (lvalue_type.item.type.is_abstract or
                          lvalue_type.item.type.is_protocol)):
-                    self.fail("Can only assign concrete classes"
-                              " to a variable of type '{}'".format(lvalue_type), rvalue)
+                    self.msg.concrete_only_assign(lvalue_type, rvalue)
                     return
                 if rvalue_type and infer_lvalue_type:
                     self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
@@ -2438,53 +2427,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.note(note_msg, context)
             if (isinstance(supertype, Instance) and supertype.type.is_protocol and
                     isinstance(subtype, (Instance, TupleType))):
-                self.report_protocol_problems(subtype, supertype, context)
+                self.msg.report_protocol_problems(subtype, supertype, context)
             if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
                 call = find_member('__call__', subtype, subtype)
                 if call:
-                    self.note("{}.__call__ has type {}".format(subtype, call), context)
+                    self.msg.note_call(subtype, call, context)
             return False
-
-    def report_protocol_problems(self, subtype: Union[Instance, TupleType], supertype: Instance,
-                                 context: Context) -> None:
-        """Report possible protocol conflicts between 'subtype' and 'supertype'.
-        This includes missing members, incompatible types, and incompatible
-        attribute flags, such as settable vs read-only or class variable vs
-        instance variable.
-        """
-        OFFSET = 4  # Four spaces, so that notes will look like this:
-        # note: 'Cls' is missing following 'Proto' member(s):
-        # note:     method, attr
-        if isinstance(subtype, TupleType):
-            if not isinstance(subtype.fallback, Instance):
-                return
-            subtype = subtype.fallback
-        missing = get_missing_members(subtype, supertype)
-        if missing:
-            self.note("'{}' is missing following '{}' protocol member(s):"
-                      .format(subtype.type.fullname(), supertype.type.fullname()),
-                      context)
-            self.note(', '.join(missing), context, offset=OFFSET)
-        conflict_types = get_conflict_types(subtype, supertype)
-        if conflict_types:
-            self.note('Following member(s) of {} have '
-                      'conflicts:'.format(subtype), context)
-            for name, got, expected in conflict_types:
-                self.note('{}: expected {}, got {}'.format(name, expected, got),
-                          context, offset=OFFSET)
-        for name, subflags, superflags in get_all_flags(subtype, supertype):
-            if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
-                self.note('Protocol member {}.{}: expected instance variable,'
-                          ' got class variable'.format(supertype, name), context)
-            if IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
-                self.note('Protocol member {}.{}: expected class variable,'
-                          ' got instance variable'.format(supertype, name), context)
-            if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
-                self.note('Protocol member {}.{}: expected settable variable,'
-                          ' got read-only attribute'.format(supertype, name), context)
-            if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
-                self.note('Protocol member {}.{}: expected class or static method'
-                          .format(supertype, name), context)
 
     def contains_none(self, t: Type) -> bool:
         return (

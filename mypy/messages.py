@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Optional
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Optional, Union
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -18,7 +18,7 @@ from mypy.types import (
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
-    ReturnStmt, NameExpr, Var
+    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT
 )
 
 
@@ -958,6 +958,78 @@ class MessageBuilder:
         else:
             self.fail('Type of decorated function contains type "Any" ({})'.format(
                 self.format(typ)), context)
+
+    def bad_proto_variance(self, actual: int, tvar_name: str, expected: int,
+                           context: Context) -> None:
+        msg = capitalize("{} type variable '{}' used in protocol where"
+                         " {} one is expected".format(variance_string(actual),
+                                                      tvar_name,
+                                                      variance_string(expected)))
+        self.fail(msg, context)
+
+    def concrete_only_assign(self, typ: Type, context: Context) -> None:
+        self.fail("Can only assign concrete classes to a variable of type '{}'"
+                  .format(self.format(typ)), context)
+
+    def concrete_only_call(self, typ: Type, context: Context) -> None:
+        self.fail("Only concrete class can be given where '{}' is expected"
+                  .format(self.format(typ)), context)
+
+    def note_call(self, subtype: Type, call: Type, context: Context) -> None:
+        self.note("'{}.__call__' has type '{}'".format(self.format(subtype).replace('"', ''),
+                                                       self.format(call)), context)
+
+    def report_protocol_problems(self, subtype: Union[Instance, TupleType], supertype: Instance,
+                                 context: Context) -> None:
+        """Report possible protocol conflicts between 'subtype' and 'supertype'.
+        This includes missing members, incompatible types, and incompatible
+        attribute flags, such as settable vs read-only or class variable vs
+        instance variable.
+        """
+        from mypy.subtypes import (get_missing_members, get_conflict_types, get_all_flags,
+                                   is_subtype, IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC)
+        OFFSET = 4  # Four spaces, so that notes will look like this:
+        # note: 'Cls' is missing following 'Proto' member(s):
+        # note:     method, attr
+        if isinstance(subtype, TupleType):
+            if not isinstance(subtype.fallback, Instance):
+                return
+            subtype = subtype.fallback
+        missing = get_missing_members(subtype, supertype)
+        if missing:
+            self.note("'{}' is missing following '{}' protocol member(s):"
+                      .format(subtype.type.fullname(), supertype.type.fullname()),
+                      context)
+            self.note(', '.join(missing), context, offset=OFFSET)
+        conflict_types = get_conflict_types(subtype, supertype)
+        if conflict_types:
+            self.note('Following member(s) of {} have '
+                      'conflicts:'.format(subtype), context)
+            for name, got, expected in conflict_types:
+                self.note('{}: expected {}, got {}'.format(name, expected, got),
+                          context, offset=OFFSET)
+        for name, subflags, superflags in get_all_flags(subtype, supertype):
+            if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
+                self.note('Protocol member {}.{}: expected instance variable,'
+                          ' got class variable'.format(supertype, name), context)
+            if IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
+                self.note('Protocol member {}.{}: expected class variable,'
+                          ' got instance variable'.format(supertype, name), context)
+            if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
+                self.note('Protocol member {}.{}: expected settable variable,'
+                          ' got read-only attribute'.format(supertype, name), context)
+            if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
+                self.note('Protocol member {}.{}: expected class or static method'
+                          .format(supertype, name), context)
+
+
+def variance_string(variance: int) -> str:
+    if variance == COVARIANT:
+        return 'covariant'
+    elif variance == CONTRAVARIANT:
+        return 'contravariant'
+    else:
+        return 'invariant'
 
 
 def capitalize(s: str) -> str:

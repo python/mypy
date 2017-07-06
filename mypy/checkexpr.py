@@ -1019,8 +1019,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
               (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol) and
               # ...except for classmethod first argument
               not caller_type.is_classmethod_class):
-            messages.fail("Only concrete class can be given where '{}' is expected"
-                          .format(callee_type), context)
+            self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return
@@ -1028,13 +1027,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                            caller_kind, context)
             if (isinstance(original_caller_type, (Instance, TupleType)) and
                     isinstance(callee_type, Instance) and callee_type.type.is_protocol):
-                self.chk.report_protocol_problems(original_caller_type, callee_type, context)
+                self.msg.report_protocol_problems(original_caller_type, callee_type, context)
             if (isinstance(callee_type, CallableType) and
                     isinstance(original_caller_type, Instance)):
                 call = find_member('__call__', original_caller_type, original_caller_type)
                 if call:
-                    self.chk.note("{}.__call__ has type {}"
-                              .format(original_caller_type, call), context)
+                    self.msg.note_call(original_caller_type, call, context)
 
     def overload_call_target(self, arg_types: List[Type], arg_kinds: List[int],
                              arg_names: List[str],

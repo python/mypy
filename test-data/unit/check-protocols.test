@@ -1108,7 +1108,7 @@ def f(cls: Type[P]) -> P:
 def g() -> P:
     return P()  # E: Cannot instantiate protocol class "__main__.P"
 
-f(P)  # E: Only concrete class can be given where 'Type[__main__.P]' is expected
+f(P)  # E: Only concrete class can be given where 'Type[P]' is expected
 f(B)  # OK
 f(C)  # OK
 x: Type[P1]
@@ -1133,7 +1133,7 @@ Alias = P
 GoodAlias = C
 Alias()  # E: Cannot instantiate protocol class "__main__.P"
 GoodAlias()
-f(Alias)  # E: Only concrete class can be given where 'Type[__main__.P]' is expected
+f(Alias)  # E: Only concrete class can be given where 'Type[P]' is expected
 f(GoodAlias)
 [out]
 
@@ -1149,13 +1149,13 @@ class C:
 
 var: Type[P]
 var()
-var = P # E: Can only assign concrete classes to a variable of type 'Type[__main__.P]'
+var = P # E: Can only assign concrete classes to a variable of type 'Type[P]'
 var = B # OK
 var = C # OK
 
 var_old = None # type: Type[P] # Old syntax for variable annotations
 var_old()
-var_old = P # E: Can only assign concrete classes to a variable of type 'Type[__main__.P]'
+var_old = P # E: Can only assign concrete classes to a variable of type 'Type[P]'
 var_old = B # OK
 var_old = C # OK
 [out]
@@ -1394,7 +1394,7 @@ reveal_type(apply_gen(Add5())) # E: Revealed type is 'builtins.int*'
 def apply_str(f: Callable[[str], int], x: str) -> int:
     return f(x)
 apply_str(Add5(), 'a') # E: Argument 1 to "apply_str" has incompatible type "Add5"; expected Callable[[str], int] \
-                       # N: __main__.Add5.__call__ has type def (x: builtins.int) -> builtins.int
+                       # N: 'Add5.__call__' has type 'Callable[[int], int]'
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
