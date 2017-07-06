@@ -991,12 +991,14 @@ class MessageBuilder:
         OFFSET = 4  # Four spaces, so that notes will look like this:
         # note: 'Cls' is missing following 'Proto' members:
         # note:     method, attr
+        MAX_ITEMS = 2  # Maximum number of conflicts, missing members, and overloads shown
         if isinstance(subtype, TupleType):
             if not isinstance(subtype.fallback, Instance):
                 return
             subtype = subtype.fallback
         missing = get_missing_members(subtype, supertype)
-        if missing and len(missing) < len(supertype.type.protocol_members) and len(missing) < 3:
+        if (missing and len(missing) < len(supertype.type.protocol_members) and
+                len(missing) <= MAX_ITEMS):
             self.note("'{}' is missing following '{}' protocol member{}:"
                       .format(subtype.type.name(), supertype.type.name(),
                               's' if len(missing) > 1 else ''),
@@ -1008,7 +1010,7 @@ class MessageBuilder:
                                not supertype.type.defn.type_vars):
             self.note('Following member(s) of {} have '
                       'conflicts:'.format(self.format(subtype)), context)
-            for name, got, exp in conflict_types:
+            for name, got, exp in conflict_types[:MAX_ITEMS]:
                 if (not isinstance(exp, (CallableType, Overloaded)) or
                         not isinstance(exp, (CallableType, Overloaded))):
                     self.note('{}: expected {}, got {}'.format(name,
@@ -1020,17 +1022,28 @@ class MessageBuilder:
                         self.note(self.pretty_callable(exp), context, offset=2 * OFFSET)
                     else:
                         assert isinstance(exp, Overloaded)
-                        for item in exp.items():
+                        for item in exp.items()[:MAX_ITEMS]:
                             self.note('@overload', context, offset=2 * OFFSET)
                             self.note(self.pretty_callable(item), context, offset=2 * OFFSET)
+                        if len(exp.items()) > MAX_ITEMS:
+                            self.note('<{} more overload(s) not shown>'
+                                      .format(len(exp.items()) - MAX_ITEMS),
+                                      context, offset=2 * OFFSET)
                     self.note('Got:', context, offset=OFFSET)
                     if isinstance(got, CallableType):
                         self.note(self.pretty_callable(got), context, offset=2 * OFFSET)
                     else:
                         assert isinstance(got, Overloaded)
-                        for item in got.items():
+                        for item in got.items()[:MAX_ITEMS]:
                             self.note('@overload', context, offset=2 * OFFSET)
                             self.note(self.pretty_callable(item), context, offset=2 * OFFSET)
+                        if len(got.items()) > MAX_ITEMS:
+                            self.note('<{} more overload(s) not shown>'
+                                      .format(len(got.items()) - MAX_ITEMS),
+                                      context, offset=2 * OFFSET)
+            if len(conflict_types) > MAX_ITEMS:
+                self.note('<{} more conflict(s) not shown>'.format(len(conflict_types) - MAX_ITEMS),
+                          context, offset=OFFSET)
         for name, subflags, superflags in get_all_flags(subtype, supertype):
             if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
                 self.note('Protocol member {}.{} expected instance variable,'
@@ -1049,8 +1062,6 @@ class MessageBuilder:
         s = ''
         bare_asterisk = False
         for i in range(len(tp.arg_types)):
-            if len(tp.arg_types) > 5:
-                s += '\n'
             if s != '':
                 s += ', '
             if tp.arg_kinds[i] in (ARG_NAMED, ARG_NAMED_OPT) and not bare_asterisk:
@@ -1082,7 +1093,19 @@ class MessageBuilder:
 
         s += ' -> {}'.format(self.format(tp.ret_type).replace('"', ''))
         if tp.variables:
-            s = '{} {}'.format(tp.variables, s)
+            tvars = []
+            for tvar in tp.variables:
+                if (tvar.upper_bound and isinstance(tvar.upper_bound, Instance) and
+                        tvar.upper_bound.type.fullname() != 'builtins.object'):
+                    tvars.append('{} <: {}'.format(tvar.name,
+                                                  self.format(tvar.upper_bound).replace('"', '')))
+                elif tvar.values:
+                    tvars.append('{} in ({})'
+                                 .format(tvar.name, ', '.join([self.format(tp).replace('"', '')
+                                                               for tp in tvar.values])))
+                else:
+                    tvars.append(tvar.name)
+            s = '[{}] {}'.format(', '.join(tvars), s)
         return 'def {}'.format(s)
 
 

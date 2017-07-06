@@ -545,7 +545,8 @@ class SemanticAnalyzer(NodeVisitor):
                 assert defn.impl is defn.items[-1]
                 defn.items = defn.items[:-1]
 
-            elif not self.is_stub_file and not non_overload_indexes:
+            elif (not self.is_stub_file and not non_overload_indexes and
+                    not (self.type and self.type.is_protocol)):
                 self.fail(
                     "An overloaded function outside a stub file must have an implementation",
                     defn)

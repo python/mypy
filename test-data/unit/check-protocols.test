@@ -1614,3 +1614,122 @@ x = D() # E: Incompatible types in assignment (expression has type "D", variable
 x = C() # OK
 [builtins fixtures/list.pyi]
 [out]
+
+[case testProtocolIncompatibilityWithGenericMethod]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class A(Protocol):
+    def f(self, x: T) -> None: pass
+class B:
+    def f(self, x: S, y: T) -> None: pass
+
+x: A = B()
+[out]
+main:11: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:11: note: Following member(s) of "B" have conflicts:
+main:11: note:     Expected:
+main:11: note:         def [T] f(self, x: T) -> None
+main:11: note:     Got:
+main:11: note:         def [S, T] f(self, x: S, y: T) -> None
+
+[case testProtocolIncompatibilityWithGenericMethodBounded]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T')
+S = TypeVar('S', bound=int)
+
+class A(Protocol):
+    def f(self, x: T) -> None: pass
+class B:
+    def f(self, x: S, y: T) -> None: pass
+
+x: A = B()
+[out]
+main:11: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:11: note: Following member(s) of "B" have conflicts:
+main:11: note:     Expected:
+main:11: note:         def [T] f(self, x: T) -> None
+main:11: note:     Got:
+main:11: note:         def [S <: int, T] f(self, x: S, y: T) -> None
+
+[case testProtocolIncompatibilityWithGenericRestricted]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T')
+S = TypeVar('S', int, str)
+
+class A(Protocol):
+    def f(self, x: T) -> None: pass
+class B:
+    def f(self, x: S, y: T) -> None: pass
+
+x: A = B()
+[out]
+main:11: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:11: note: Following member(s) of "B" have conflicts:
+main:11: note:     Expected:
+main:11: note:         def [T] f(self, x: T) -> None
+main:11: note:     Got:
+main:11: note:         def [S in (int, str), T] f(self, x: S, y: T) -> None
+
+[case testProtocolIncompatibilityWithManyOverloads]
+from typing import Protocol, overload
+
+class C1: pass
+class C2: pass
+class A(Protocol):
+    @overload
+    def f(self, x: int) -> int: pass
+    @overload
+    def f(self, x: str) -> str: pass
+    @overload
+    def f(self, x: C1) -> C2: pass
+    @overload
+    def f(self, x: C2) -> C1: pass
+
+class B:
+    def f(self) -> None: pass
+
+x: A = B()
+[out]
+main:18: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:18: note: Following member(s) of "B" have conflicts:
+main:18: note:     Expected:
+main:18: note:         @overload
+main:18: note:         def f(self, x: int) -> int
+main:18: note:         @overload
+main:18: note:         def f(self, x: str) -> str
+main:18: note:         <2 more overload(s) not shown>
+main:18: note:     Got:
+main:18: note:         def f(self) -> None
+
+[case testProtocolIncompatibilityWithManyConflicts]
+from typing import Protocol
+
+class A(Protocol):
+    def f(self, x: int) -> None: pass
+    def g(self, x: int) -> None: pass
+    def h(self, x: int) -> None: pass
+    def i(self, x: int) -> None: pass
+class B:
+    def f(self, x: str) -> None: pass
+    def g(self, x: str) -> None: pass
+    def h(self, x: str) -> None: pass
+    def i(self, x: str) -> None: pass
+
+x: A = B()
+[out]
+main:14: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:14: note: Following member(s) of "B" have conflicts:
+main:14: note:     Expected:
+main:14: note:         def f(self, x: int) -> None
+main:14: note:     Got:
+main:14: note:         def f(self, x: str) -> None
+main:14: note:     Expected:
+main:14: note:         def g(self, x: int) -> None
+main:14: note:     Got:
+main:14: note:         def g(self, x: str) -> None
+main:14: note:     <2 more conflict(s) not shown>
