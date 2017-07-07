@@ -278,7 +278,8 @@ Here are some more useful flags:
 
 - ``--disallow-any`` disallows various types of ``Any`` in a module.
   The option takes a comma-separated list of the following values:
-  ``unimported``, ``unannotated``, ``expr``, ``decorated``, ``explicit``.
+  ``unimported``, ``unannotated``, ``expr``, ``decorated``, ``explicit``,
+  ``generics``.
 
   ``unimported`` disallows usage of types that come from unfollowed imports
   (such types become aliases for ``Any``). Unfollowed imports occur either
@@ -303,6 +304,11 @@ Here are some more useful flags:
 
   ``explicit`` disallows explicit ``Any`` in type positions such as type
   annotations and generic type parameters.
+
+  ``generics`` disallows usage of generic types that do not specify explicit
+  type parameters. Moreover, built-in collections (such as ``list`` and
+  ``dict``) become disallowed as you should use their aliases from the typing
+  module (such as ``List[int]`` and ``Dict[str, str]``).
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
