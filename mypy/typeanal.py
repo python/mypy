@@ -223,23 +223,27 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 return UninhabitedType(is_noreturn=True)
             elif sym.kind == TYPE_ALIAS:
                 override = sym.type_override
+                all_vars = sym.alias_tvars
                 assert override is not None
                 an_args = self.anal_array(t.args)
-                all_vars = self.get_type_var_names(override)
-                exp_len = len(all_vars)
+                if all_vars is not None:
+                    exp_len = len(all_vars)
+                else:
+                    exp_len = 0
                 act_len = len(an_args)
                 if exp_len > 0 and act_len == 0:
                     # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
-                    any_type = AnyType(from_omitted_generics=True, line=t.line, column=t.column)
-                    return self.replace_alias_tvars(override, all_vars, [any_type] * exp_len,
-                                                    t.line, t.column)
+                    assert all_vars is not None
+                    return set_any_tvars(override, all_vars, t.line, t.column)
                 if exp_len == 0 and act_len == 0:
                     return override
                 if act_len != exp_len:
                     self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
                               % (exp_len, act_len), t)
-                    return t
-                return self.replace_alias_tvars(override, all_vars, an_args, t.line, t.column)
+                    return set_any_tvars(override, all_vars or [],
+                                         t.line, t.column, implicit=False)
+                assert all_vars is not None
+                return replace_alias_tvars(override, all_vars, an_args, t.line, t.column)
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname
                 if name is None:
@@ -290,39 +294,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 return instance
         else:
             return AnyType()
-
-    def get_type_var_names(self, tp: Type) -> List[str]:
-        """Get all type variable names that are present in a generic type alias
-        in order of textual appearance (recursively, if needed).
-        """
-        return [name for name, _
-                in tp.accept(TypeVariableQuery(self.lookup, self.tvar_scope,
-                                               include_callables=True, include_bound_tvars=True))]
-
-    def get_tvar_name(self, t: Type) -> Optional[str]:
-        if not isinstance(t, UnboundType):
-            return None
-        sym = self.lookup(t.name, t)
-        if sym is not None and sym.kind == TVAR:
-            return t.name
-        return None
-
-    def replace_alias_tvars(self, tp: Type, vars: List[str], subs: List[Type],
-                            newline: int, newcolumn: int) -> Type:
-        """Replace type variables in a generic type alias tp with substitutions subs
-        resetting context. Length of subs should be already checked.
-        """
-        typ_args = get_typ_args(tp)
-        new_args = typ_args[:]
-        for i, arg in enumerate(typ_args):
-            tvar = self.get_tvar_name(arg)
-            if tvar and tvar in vars:
-                # Perform actual substitution...
-                new_args[i] = subs[vars.index(tvar)]
-            else:
-                # ...recursively, if needed.
-                new_args[i] = self.replace_alias_tvars(arg, vars, subs, newline, newcolumn)
-        return set_typ_args(tp, new_args, newline, newcolumn)
 
     def visit_any(self, t: AnyType) -> Type:
         return t
@@ -729,6 +700,33 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
 
 TypeVarList = List[Tuple[str, TypeVarExpr]]
+
+
+def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
+                        newline: int, newcolumn: int) -> Type:
+    """Replace type variables in a generic type alias tp with substitutions subs
+    resetting context. Length of subs should be already checked.
+    """
+    typ_args = get_typ_args(tp)
+    new_args = typ_args[:]
+    for i, arg in enumerate(typ_args):
+        if isinstance(arg, (UnboundType, TypeVarType)):
+            tvar = arg.name  # type: Optional[str]
+        else:
+            tvar = None
+        if tvar and tvar in vars:
+            # Perform actual substitution...
+            new_args[i] = subs[vars.index(tvar)]
+        else:
+            # ...recursively, if needed.
+            new_args[i] = replace_alias_tvars(arg, vars, subs, newline, newcolumn)
+    return set_typ_args(tp, new_args, newline, newcolumn)
+
+
+def set_any_tvars(tp: Type, vars: List[str],
+                  newline: int, newcolumn: int, implicit: bool = True) -> Type:
+    any_type = AnyType(from_omitted_generics=implicit, line=newline, column=newcolumn)
+    return replace_alias_tvars(tp, vars, [any_type] * len(vars), newline, newcolumn)
 
 
 def remove_dups(tvars: Iterable[T]) -> List[T]:

@@ -1395,7 +1395,8 @@ class SemanticAnalyzer(NodeVisitor):
                                          self.cur_mod_id,
                                          node.type_override,
                                          module_public=module_public,
-                                         normalized=node.normalized)
+                                         normalized=node.normalized,
+                                         alias_tvars=node.alias_tvars)
                 self.add_symbol(imported_id, symbol, imp)
             elif module and not missing:
                 # Missing attribute.
@@ -1447,7 +1448,8 @@ class SemanticAnalyzer(NodeVisitor):
             normalized = True
         if normalized:
             node = SymbolTableNode(node.kind, node.node,
-                                   node.mod_id, node.type_override, normalized=True)
+                                   node.mod_id, node.type_override,
+                                   normalized=True, alias_tvars=node.alias_tvars)
         return node
 
     def add_fixture_note(self, fullname: str, ctx: Context) -> None:
@@ -1491,7 +1493,8 @@ class SemanticAnalyzer(NodeVisitor):
                     self.add_symbol(name, SymbolTableNode(node.kind, node.node,
                                                           self.cur_mod_id,
                                                           node.type_override,
-                                                          normalized=node.normalized), i)
+                                                          normalized=node.normalized,
+                                                          alias_tvars=node.alias_tvars), i)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
@@ -1563,36 +1566,11 @@ class SemanticAnalyzer(NodeVisitor):
             allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
             s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
         else:
-            # For simple assignments, allow binding type aliases.
-            # Also set the type if the rvalue is a simple literal.
+            # Set the type if the rvalue is a simple literal.
             if (s.type is None and len(s.lvalues) == 1 and
                     isinstance(s.lvalues[0], NameExpr)):
                 if s.lvalues[0].is_def:
                     s.type = self.analyze_simple_literal_type(s.rvalue)
-                res = analyze_type_alias(s.rvalue,
-                                         self.lookup_qualified,
-                                         self.lookup_fully_qualified,
-                                         self.tvar_scope,
-                                         self.fail,
-                                         self.plugin,
-                                         self.options,
-                                         self.is_typeshed_stub_file,
-                                         allow_unnormalized=True)
-                if res and (not isinstance(res, Instance) or res.args):
-                    # TODO: What if this gets reassigned?
-                    check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg,
-                                           context=s)
-                    # when this type alias gets "inlined", the Any is not explicit anymore,
-                    # so we need to replace it with non-explicit Anys
-                    res = make_any_non_explicit(res)
-
-                    name = s.lvalues[0]
-                    node = self.lookup(name.name, name)
-                    node.kind = TYPE_ALIAS
-                    node.type_override = res
-                    if isinstance(s.rvalue, IndexExpr):
-                        s.rvalue.analyzed = TypeAliasExpr(res,
-                                                          fallback=self.alias_fallback(res))
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1646,26 +1624,79 @@ class SemanticAnalyzer(NodeVisitor):
         fb_info.mro = [fb_info, self.object_type().type]
         return Instance(fb_info, [])
 
+    def analyze_alias(self, rvalue: Expression,
+                      allow_unnormalized: bool) -> Tuple[Optional[Type], List[str]]:
+        """Check if 'rvalue' represents a valid type allowed for aliasing
+        (e.g. not a type variable). If yes, return the corresponding type and a list of
+        qualified type variable names for generic aliases.
+        If 'allow_unnormalized' is True, allow types like builtins.list[T].
+        """
+        res = analyze_type_alias(rvalue,
+                                 self.lookup_qualified,
+                                 self.lookup_fully_qualified,
+                                 self.tvar_scope,
+                                 self.fail,
+                                 self.plugin,
+                                 self.options,
+                                 self.is_typeshed_stub_file,
+                                 allow_unnormalized=True)
+        if res:
+            alias_tvars = [name for (name, _) in
+                           res.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]
+        else:
+            alias_tvars = []
+        return res, alias_tvars
+
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
-        """Check if assignment creates a type alias and set it up as needed."""
-        # For now, type aliases only work at the top level of a module.
-        if (len(s.lvalues) == 1 and not self.is_func_scope() and not self.type
+        """Check if assignment creates a type alias and set it up as needed.
+        For simple aliases like L = List we use a simpler mechanism, just copying TypeInfo.
+        For subscripted (including generic) aliases the resulting types are stored
+        in rvalue.analyzed.
+        """
+        # Type aliases are created only at module scope and class scope (for subscripted types),
+        # at function scope assignments always create local variables with type object types.
+        lvalue = s.lvalues[0]
+        if not isinstance(lvalue, NameExpr):
+            return
+        if (len(s.lvalues) == 1 and not self.is_func_scope() and
+                not (self.type and isinstance(s.rvalue, NameExpr) and lvalue.is_def)
                 and not s.type):
-            lvalue = s.lvalues[0]
-            if isinstance(lvalue, NameExpr):
-                if not lvalue.is_def:
-                    # Only a definition can create a type alias, not regular assignment.
-                    return
-                rvalue = s.rvalue
+            rvalue = s.rvalue
+            res, alias_tvars = self.analyze_alias(rvalue, allow_unnormalized=True)
+            if not res:
+                return
+            node = self.lookup(lvalue.name, lvalue)
+            if not lvalue.is_def:
+                # Only a definition can create a type alias, not regular assignment.
+                if node and node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo):
+                    self.fail('Cannot assign multiple types to name "{}"'
+                              ' without an explicit "Type[...]" annotation'
+                              .format(lvalue.name), lvalue)
+                return
+            check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg,
+                                   context=s)
+            # when this type alias gets "inlined", the Any is not explicit anymore,
+            # so we need to replace it with non-explicit Anys
+            res = make_any_non_explicit(res)
+            if isinstance(res, Instance) and not res.args and isinstance(rvalue, RefExpr):
+                # For simple (on-generic) aliases we use aliasing TypeInfo's
+                # to allow using them in runtime context where it makes sense.
+                node.node = res.type
                 if isinstance(rvalue, RefExpr):
-                    node = rvalue.node
-                    if isinstance(node, TypeInfo):
-                        # TODO: We should record the fact that this is a variable
-                        #       that refers to a type, rather than making this
-                        #       just an alias for the type.
-                        sym = self.lookup_type_node(rvalue)
-                        if sym:
-                            self.globals[lvalue.name] = sym
+                    sym = self.lookup_type_node(rvalue)
+                    if sym:
+                        node.normalized = sym.normalized
+                return
+            node.kind = TYPE_ALIAS
+            node.type_override = res
+            node.alias_tvars = alias_tvars
+            if isinstance(rvalue, IndexExpr):
+                # We only need this for subscripted aliases, since simple aliases
+                # are already processed using aliasing TypeInfo's above.
+                rvalue.analyzed = TypeAliasExpr(res, node.alias_tvars,
+                                                fallback=self.alias_fallback(res))
+                rvalue.analyzed.line = rvalue.line
+                rvalue.analyzed.column = rvalue.column
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
@@ -3196,17 +3227,11 @@ class SemanticAnalyzer(NodeVisitor):
         elif isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
             # Special form -- subscripting a generic type alias.
             # Perform the type substitution and create a new alias.
-            res = analyze_type_alias(expr,
-                                     self.lookup_qualified,
-                                     self.lookup_fully_qualified,
-                                     self.tvar_scope,
-                                     self.fail,
-                                     self.plugin,
-                                     self.options,
-                                     self.is_typeshed_stub_file,
-                                     allow_unnormalized=self.is_stub_file)
-            expr.analyzed = TypeAliasExpr(res, fallback=self.alias_fallback(res),
+            res, alias_tvars = self.analyze_alias(expr, allow_unnormalized=self.is_stub_file)
+            expr.analyzed = TypeAliasExpr(res, alias_tvars, fallback=self.alias_fallback(res),
                                           in_runtime=True)
+            expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
         elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
