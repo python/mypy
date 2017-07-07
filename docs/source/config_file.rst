@@ -124,7 +124,7 @@ overridden by the pattern sections matching the module name.
 .. note::
 
    If multiple pattern sections match a module they are processed in
-   unspecified order.
+   order of their occurrence in the config file.
 
 - ``follow_imports`` (string, default ``normal``) directs what to do
   with imports when the imported module is found as a ``.py`` file and
