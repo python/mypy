@@ -308,7 +308,7 @@ Here are some more useful flags:
   ``generics`` disallows usage of generic types that do not specify explicit
   type parameters. Moreover, built-in collections (such as ``list`` and
   ``dict``) become disallowed as you should use their aliases from the typing
-  module (such as ``List`` and ``Dict``).
+  module (such as ``List[int]`` and ``Dict[str, str]``).
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
