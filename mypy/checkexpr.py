@@ -4,9 +4,7 @@ from collections import OrderedDict
 from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
 
 from mypy.errors import report_internal_error
-from mypy.typeanal import (
-    has_any_from_unimported_type, check_for_explicit_any, replace_alias_tvars
-)
+from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, set_any_tvars
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
@@ -1739,8 +1737,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         item = alias.type
         if not alias.in_runtime:
             # We don't replace TypeVar's with Any for alias used as Alias[T](42).
-            item = replace_alias_tvars(item, alias.tvars, [AnyType()] * len(alias.tvars),
-                                       alias.line, alias.column)
+            item = set_any_tvars(item, alias.tvars, alias.line, alias.column)
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor

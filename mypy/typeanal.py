@@ -234,15 +234,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 if exp_len > 0 and act_len == 0:
                     # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
                     assert all_vars is not None
-                    any_type = AnyType(from_omitted_generics=True, line=t.line, column=t.column)
-                    return replace_alias_tvars(override, all_vars, [any_type] * exp_len,
-                                               t.line, t.column)
+                    return set_any_tvars(override, all_vars, t.line, t.column)
                 if exp_len == 0 and act_len == 0:
                     return override
                 if act_len != exp_len:
                     self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
                               % (exp_len, act_len), t)
-                    return AnyType()
+                    return set_any_tvars(override, all_vars or [],
+                                         t.line, t.column, implicit=False)
                 assert all_vars is not None
                 return replace_alias_tvars(override, all_vars, an_args, t.line, t.column)
             elif not isinstance(sym.node, TypeInfo):
@@ -722,6 +721,12 @@ def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
             # ...recursively, if needed.
             new_args[i] = replace_alias_tvars(arg, vars, subs, newline, newcolumn)
     return set_typ_args(tp, new_args, newline, newcolumn)
+
+
+def set_any_tvars(tp: Type, vars: List[str],
+                  newline: int, newcolumn: int, implicit: bool = True) -> Type:
+    any_type = AnyType(from_omitted_generics=implicit, line=newline, column=newcolumn)
+    return replace_alias_tvars(tp, vars, [any_type] * len(vars), newline, newcolumn)
 
 
 def remove_dups(tvars: Iterable[T]) -> List[T]:

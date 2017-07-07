@@ -604,7 +604,7 @@ F = Node[List[T, T], S] # Error
 G = Callable[..., List[T, T]] # Error
 H = Union[int, Tuple[T, Node[T]]] # Error
 h: H # Error
-h1: H[int, str] # Error
+h1: H[int, str] # Two errors here, wrong number of args for H, and for Node
 
 x = None # type: D[int, str]
 reveal_type(x)
@@ -622,6 +622,7 @@ main:16:18: error: "list" expects 1 type argument, but 2 given
 main:17:24: error: "Node" expects 2 type arguments, but 1 given
 main:18:3: error: "Node" expects 2 type arguments, but 1 given
 main:19:4: error: Bad number of arguments for type alias, expected: 1, given: 2
+main:19:4: error: "Node" expects 2 type arguments, but 1 given
 main:22:0: error: Revealed type is '__main__.Node[builtins.int, builtins.str]'
 main:24:0: error: Revealed type is '__main__.Node[__main__.Node[builtins.int, builtins.int], builtins.list[builtins.int]]'
 main:26:4: error: Type variable "__main__.T" is invalid as target for type alias
@@ -908,7 +909,7 @@ Transform = Callable[[T, int], Tuple[T, R]]
 [case testGenericTypeAliasesImportingWithoutTypeVarError]
 from a import Alias
 x: Alias[int, str]  # E: Bad number of arguments for type alias, expected: 1, given: 2
-reveal_type(x)  # E: Revealed type is 'Any'
+reveal_type(x)  # E: Revealed type is 'builtins.list[builtins.list[Any]]'
 
 [file a.py]
 from typing import TypeVar, List

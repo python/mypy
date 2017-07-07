@@ -1650,8 +1650,8 @@ class SemanticAnalyzer(NodeVisitor):
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed.
         For simple aliases like L = List we use a simpler mechanism, just copying TypeInfo.
-        For subscripted (including generic) aliases we mark corresponding node as TYPE_ALIAS
-        and store the corresponding type in node.override and in rvalue.analyzed.
+        For subscripted (including generic) aliases the resulting types are stored
+        in rvalue.analyzed.
         """
         # Type aliases are created only at module scope and class scope (for subscripted types),
         # at function scope assignments always create local variables with type object types.
