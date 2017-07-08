@@ -3436,7 +3436,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
     def lookup_qualified(self, name: str, ctx: Context,
-                         suppres_errors: bool = False) -> SymbolTableNode:
+                         suppres_errors: bool = False) -> Optional[SymbolTableNode]:
         if '.' not in name:
             return self.lookup(name, ctx, suppres_errors=suppres_errors)
         else:
