@@ -3381,7 +3381,8 @@ class SemanticAnalyzer(NodeVisitor):
         yield
         self.tvar_scope = old_scope
 
-    def lookup(self, name: str, ctx: Context, suppres_errors: bool = False) -> SymbolTableNode:
+    def lookup(self, name: str, ctx: Context,
+               suppres_errors: bool = False) -> Optional[SymbolTableNode]:
         """Look up an unqualified name in all active namespaces."""
         # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
@@ -3389,7 +3390,7 @@ class SemanticAnalyzer(NodeVisitor):
                 return self.globals[name]
             elif not suppres_errors:
                 self.name_not_defined(name, ctx)
-                return None
+            return None
         # 1b. Name declared using 'nonlocal x' takes precedence
         if name in self.nonlocal_decls[-1]:
             for table in reversed(self.locals[:-1]):
