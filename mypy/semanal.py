@@ -2573,8 +2573,8 @@ class SemanticAnalyzer(NodeVisitor):
             elementwise_assignments = zip(seq_rval.items, *[v.items for v in seq_lvals])
             for rv, *lvs in elementwise_assignments:
                 self.process_module_assignment(lvs, rv, ctx)
-        elif isinstance(rval, NameExpr):
-            rnode = self.lookup(rval.name, ctx)
+        elif isinstance(rval, RefExpr):
+            rnode = self.lookup_type_node(rval)
             if rnode and rnode.kind == MODULE_REF:
                 for lval in lvals:
                     if not isinstance(lval, NameExpr):
@@ -3263,7 +3263,7 @@ class SemanticAnalyzer(NodeVisitor):
         except TypeTranslationError:
             return None
         if isinstance(t, UnboundType):
-            n = self.lookup_qualified(t.name, expr)
+            n = self.lookup_qualified(t.name, expr, suppres_errors=True)
             return n
         return None
 
@@ -3381,13 +3381,13 @@ class SemanticAnalyzer(NodeVisitor):
         yield
         self.tvar_scope = old_scope
 
-    def lookup(self, name: str, ctx: Context) -> SymbolTableNode:
+    def lookup(self, name: str, ctx: Context, suppres_errors: bool = False) -> SymbolTableNode:
         """Look up an unqualified name in all active namespaces."""
         # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
             if name in self.globals:
                 return self.globals[name]
-            else:
+            elif not suppres_errors:
                 self.name_not_defined(name, ctx)
                 return None
         # 1b. Name declared using 'nonlocal x' takes precedence
@@ -3396,7 +3396,8 @@ class SemanticAnalyzer(NodeVisitor):
                 if table is not None and name in table:
                     return table[name]
             else:
-                self.name_not_defined(name, ctx)
+                if not suppres_errors:
+                    self.name_not_defined(name, ctx)
                 return None
         # 2. Class attributes (if within class definition)
         if self.is_class_scope() and name in self.type.names:
@@ -3415,13 +3416,15 @@ class SemanticAnalyzer(NodeVisitor):
             table = b.node.names
             if name in table:
                 if name[0] == "_" and name[1] != "_":
-                    self.name_not_defined(name, ctx)
+                    if not suppres_errors:
+                        self.name_not_defined(name, ctx)
                     return None
                 node = table[name]
                 return node
         # Give up.
-        self.name_not_defined(name, ctx)
-        self.check_for_obsolete_short_name(name, ctx)
+        if not suppres_errors:
+            self.name_not_defined(name, ctx)
+            self.check_for_obsolete_short_name(name, ctx)
         return None
 
     def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
@@ -3431,12 +3434,13 @@ class SemanticAnalyzer(NodeVisitor):
         if len(matches) == 1:
             self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
-    def lookup_qualified(self, name: str, ctx: Context) -> SymbolTableNode:
+    def lookup_qualified(self, name: str, ctx: Context,
+                         suppres_errors: bool = False) -> SymbolTableNode:
         if '.' not in name:
-            return self.lookup(name, ctx)
+            return self.lookup(name, ctx, suppres_errors=suppres_errors)
         else:
             parts = name.split('.')
-            n = self.lookup(parts[0], ctx)  # type: SymbolTableNode
+            n = self.lookup(parts[0], ctx, suppres_errors=suppres_errors)  # type: SymbolTableNode
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
@@ -3458,7 +3462,7 @@ class SemanticAnalyzer(NodeVisitor):
                     elif isinstance(n.node, MypyFile):
                         n = n.node.names.get(parts[i], None)
                     # TODO: What if node is Var or FuncDef?
-                    if not n:
+                    if not n and not suppres_errors:
                         self.name_not_defined(name, ctx)
                         break
                 if n:
