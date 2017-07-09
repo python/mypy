@@ -3263,7 +3263,7 @@ class SemanticAnalyzer(NodeVisitor):
         except TypeTranslationError:
             return None
         if isinstance(t, UnboundType):
-            n = self.lookup_qualified(t.name, expr, suppres_errors=True)
+            n = self.lookup_qualified(t.name, expr, suppress_errors=True)
             return n
         return None
 
@@ -3382,13 +3382,13 @@ class SemanticAnalyzer(NodeVisitor):
         self.tvar_scope = old_scope
 
     def lookup(self, name: str, ctx: Context,
-               suppres_errors: bool = False) -> Optional[SymbolTableNode]:
+               suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         """Look up an unqualified name in all active namespaces."""
         # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
             if name in self.globals:
                 return self.globals[name]
-            elif not suppres_errors:
+            elif not suppress_errors:
                 self.name_not_defined(name, ctx)
             return None
         # 1b. Name declared using 'nonlocal x' takes precedence
@@ -3397,7 +3397,7 @@ class SemanticAnalyzer(NodeVisitor):
                 if table is not None and name in table:
                     return table[name]
             else:
-                if not suppres_errors:
+                if not suppress_errors:
                     self.name_not_defined(name, ctx)
                 return None
         # 2. Class attributes (if within class definition)
@@ -3417,13 +3417,13 @@ class SemanticAnalyzer(NodeVisitor):
             table = b.node.names
             if name in table:
                 if name[0] == "_" and name[1] != "_":
-                    if not suppres_errors:
+                    if not suppress_errors:
                         self.name_not_defined(name, ctx)
                     return None
                 node = table[name]
                 return node
         # Give up.
-        if not suppres_errors:
+        if not suppress_errors:
             self.name_not_defined(name, ctx)
             self.check_for_obsolete_short_name(name, ctx)
         return None
@@ -3436,12 +3436,12 @@ class SemanticAnalyzer(NodeVisitor):
             self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
     def lookup_qualified(self, name: str, ctx: Context,
-                         suppres_errors: bool = False) -> Optional[SymbolTableNode]:
+                         suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         if '.' not in name:
-            return self.lookup(name, ctx, suppres_errors=suppres_errors)
+            return self.lookup(name, ctx, suppress_errors=suppress_errors)
         else:
             parts = name.split('.')
-            n = self.lookup(parts[0], ctx, suppres_errors=suppres_errors)  # type: SymbolTableNode
+            n = self.lookup(parts[0], ctx, suppress_errors=suppress_errors)
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
@@ -3463,7 +3463,7 @@ class SemanticAnalyzer(NodeVisitor):
                     elif isinstance(n.node, MypyFile):
                         n = n.node.names.get(parts[i], None)
                     # TODO: What if node is Var or FuncDef?
-                    if not n and not suppres_errors:
+                    if not n and not suppress_errors:
                         self.name_not_defined(name, ctx)
                         break
                 if n:
