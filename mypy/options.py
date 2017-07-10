@@ -31,9 +31,10 @@ class Options:
         "ignore_errors",
         "strict_boolean",
         "no_implicit_optional",
+        "strict_optional",
     }
 
-    OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional", "quick_and_dirty"}
+    OPTIONS_AFFECTING_CACHE = (PER_MODULE_OPTIONS | {"quick_and_dirty", "platform"})
 
     def __init__(self) -> None:
         # -- build options --
@@ -112,6 +113,10 @@ class Options:
         self.cache_dir = defaults.CACHE_DIR
         self.debug_cache = False
         self.quick_and_dirty = False
+        self.skip_version_check = False
+
+        # Paths of user plugins
+        self.plugins = []  # type: List[str]
 
         # Per-module options (raw)
         self.per_module_options = {}  # type: Dict[Pattern[str], Dict[str, object]]

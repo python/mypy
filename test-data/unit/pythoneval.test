@@ -1353,6 +1353,44 @@ reveal_type(d.get(s))
 [out]
 _testTypedDictGet.py:7: error: Revealed type is 'builtins.int'
 _testTypedDictGet.py:8: error: Revealed type is 'builtins.str'
-_testTypedDictGet.py:9: error: 'z' is not a valid item name; expected one of ['x', 'y']
+_testTypedDictGet.py:9: error: TypedDict "D" has no key 'z'
 _testTypedDictGet.py:10: error: No overload variant of "get" of "Mapping" matches argument types []
 _testTypedDictGet.py:12: error: Revealed type is 'builtins.object*'
+
+[case testTypedDictMappingMethods]
+from mypy_extensions import TypedDict
+Cell = TypedDict('Cell', {'value': int})
+c = Cell(value=42)
+for x in c:
+    reveal_type(x)
+reveal_type(iter(c))
+reveal_type(len(c))
+reveal_type('value' in c)
+reveal_type(c.keys())
+reveal_type(c.items())
+reveal_type(c.values())
+c == c
+c != c
+[out]
+_testTypedDictMappingMethods.py:5: error: Revealed type is 'builtins.str*'
+_testTypedDictMappingMethods.py:6: error: Revealed type is 'typing.Iterator[builtins.str*]'
+_testTypedDictMappingMethods.py:7: error: Revealed type is 'builtins.int'
+_testTypedDictMappingMethods.py:8: error: Revealed type is 'builtins.bool'
+_testTypedDictMappingMethods.py:9: error: Revealed type is 'typing.AbstractSet[builtins.str*]'
+_testTypedDictMappingMethods.py:10: error: Revealed type is 'typing.AbstractSet[Tuple[builtins.str*, builtins.int*]]'
+_testTypedDictMappingMethods.py:11: error: Revealed type is 'typing.ValuesView[builtins.int*]'
+
+[case testCanConvertTypedDictToAnySuperclassOfMapping]
+from mypy_extensions import TypedDict
+from typing import Sized, Iterable, Container
+
+Point = TypedDict('Point', {'x': int, 'y': int})
+
+p: Point
+s: Sized = p
+it: Iterable[str] = p
+c: Container[str] = p
+o: object = p
+it2: Iterable[int] = p
+[out]
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type Iterable[int])

@@ -604,7 +604,7 @@ F = Node[List[T, T], S] # Error
 G = Callable[..., List[T, T]] # Error
 H = Union[int, Tuple[T, Node[T]]] # Error
 h: H # Error
-h1: H[int, str] # Error
+h1: H[int, str] # Two errors here, wrong number of args for H, and for Node
 
 x = None # type: D[int, str]
 reveal_type(x)
@@ -622,6 +622,7 @@ main:16:18: error: "list" expects 1 type argument, but 2 given
 main:17:24: error: "Node" expects 2 type arguments, but 1 given
 main:18:3: error: "Node" expects 2 type arguments, but 1 given
 main:19:4: error: Bad number of arguments for type alias, expected: 1, given: 2
+main:19:4: error: "Node" expects 2 type arguments, but 1 given
 main:22:0: error: Revealed type is '__main__.Node[builtins.int, builtins.str]'
 main:24:0: error: Revealed type is '__main__.Node[__main__.Node[builtins.int, builtins.int], builtins.list[builtins.int]]'
 main:26:4: error: Type variable "__main__.T" is invalid as target for type alias
@@ -885,6 +886,107 @@ TupledNode = Node[T, Tuple[T, T]]
 
 [builtins fixtures/list.pyi]
 
+[case testGenericTypeAliasesImportingWithoutTypeVar]
+from typing import Tuple
+from lib import Transform
+
+def int_tf(m: int) -> Transform[int, str]:
+    def transform(i: int, pos: int) -> Tuple[int, str]:
+        pass
+    return transform
+
+var: Transform[int, str]
+reveal_type(var)  # E: Revealed type is 'def (builtins.int, builtins.int) -> Tuple[builtins.int, builtins.str]'
+[file lib.py]
+from typing import Callable, TypeVar, Tuple
+
+T = TypeVar('T')
+R = TypeVar('R')
+
+Transform = Callable[[T, int], Tuple[T, R]]
+[out]
+
+[case testGenericTypeAliasesImportingWithoutTypeVarError]
+from a import Alias
+x: Alias[int, str]  # E: Bad number of arguments for type alias, expected: 1, given: 2
+reveal_type(x)  # E: Revealed type is 'builtins.list[builtins.list[Any]]'
+
+[file a.py]
+from typing import TypeVar, List
+T = TypeVar('T')
+
+Alias = List[List[T]]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testGenericAliasWithTypeVarsFromDifferentModules]
+from mod import Alias, TypeVar
+
+S = TypeVar('S')
+NewAlias = Alias[int, int, S, S]
+class C: pass
+
+x: NewAlias[str]
+reveal_type(x)  # E: Revealed type is 'builtins.list[Tuple[builtins.int, builtins.int, builtins.str, builtins.str]]'
+y: Alias[int, str, C, C]
+reveal_type(y)  # E: Revealed type is 'builtins.list[Tuple[builtins.int, builtins.str, __main__.C, __main__.C]]'
+
+[file mod.py]
+from typing import TypeVar, List, Tuple
+import a
+import b
+T = TypeVar('T')
+Alias = List[Tuple[T, a.T, b.T, b.B.T]]  # alias_tvars here will be ['T', 'a.T', 'b.T', 'b.B.T']
+
+[file a.py]
+from typing import TypeVar
+T = TypeVar('T')
+
+[file b.py]
+from typing import TypeVar
+
+T = TypeVar('T')
+class B:
+    T = TypeVar('T')
+[builtins fixtures/list.pyi]
+[out]
+
+[case testTypeAliasesResultingInPlainInstance]
+from typing import Optional, Union
+
+O = Optional[int]
+U = Union[int]
+
+x: O
+y: U
+
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+reveal_type(y)  # E: Revealed type is 'builtins.int'
+
+U[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
+O[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
+[out]
+
+[case testAliasesInClassBodyNormalVsSubscripted]
+from typing import Union, Type, Iterable
+
+class A: pass
+class B(A): pass
+class C:
+    a = A  # This is a variable
+    b = Union[int, str]  # This is an alias
+    c: Type[object] = Iterable[int]  # This is however also a variable
+    a = B
+    b = int  # E: Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation \
+             # E: Incompatible types in assignment (expression has type Type[int], variable has type "Type alias to Union")
+    c = int
+    def f(self, x: a) -> None: pass  # E: Invalid type "__main__.C.a"
+    def g(self, x: b) -> None: pass
+    def h(self, x: c) -> None: pass  # E: Invalid type "__main__.C.c"
+    x: b
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[out]
+
 [case testGenericTypeAliasesRuntimeExpressionsInstance]
 from typing import TypeVar, Generic
 T = TypeVar('T')
@@ -1001,6 +1103,26 @@ reveal_type(BadGenList()) # E: Revealed type is 'builtins.list[Any]'
 [builtins fixtures/list.pyi]
 [out]
 
+[case testImportedTypeAliasInRuntimeContext]
+from m import Alias
+
+n = Alias[int]([1])
+reveal_type(n)  # E: Revealed type is 'm.Node[builtins.list*[builtins.int]]'
+bad = Alias[str]([1])  # E: List item 0 has incompatible type "int"; expected "str"
+
+n2 = Alias([1]) # Same as Node[List[Any]]
+reveal_type(n2)  # E: Revealed type is 'm.Node[builtins.list*[Any]]'
+[file m.py]
+from typing import TypeVar, Generic, List
+T = TypeVar('T')
+
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+Alias = Node[List[T]]
+[builtins fixtures/list.pyi]
+[out]
 
 -- Simplified declaration of generics
 -- ----------------------------------

@@ -124,6 +124,26 @@ def f(x: int,
 [builtins fixtures/dict.pyi]
 [out2]
 
+[case testSerializeCallableWithBoundTypeArguments]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+x = b.f
+[file b.py]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def f(self, x: T) -> None: pass
+
+c: C[int]
+f = c.f
+[out]
+[out2]
+
 [case testSerializePositionalOnlyArgument]
 import a
 [file a.py]
@@ -1018,13 +1038,26 @@ class C:
         self.c = A
 [builtins fixtures/dict.pyi]
 [out1]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
+main:2: error: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
+main:3: error: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
 main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
 [out2]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
+main:2: error: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
+main:3: error: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
 main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
+
+[case testSerializeNonTotalTypedDict]
+from m import d
+reveal_type(d)
+[file m.py]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {'x': int, 'y': str}, total=False)
+d: D
+[builtins fixtures/dict.pyi]
+[out1]
+main:2: error: Revealed type is 'TypedDict('m.D', {'x'?: builtins.int, 'y'?: builtins.str})'
+[out2]
+main:2: error: Revealed type is 'TypedDict('m.D', {'x'?: builtins.int, 'y'?: builtins.str})'
 
 --
 -- Modules
@@ -1103,8 +1136,7 @@ main:3: error: Too few arguments for "g"
 [out2]
 main:3: error: Too few arguments for "g"
 
-[case testSerializeQualifiedImport-skip]
-# This fails currently: https://github.com/python/mypy/issues/3274
+[case testSerializeQualifiedImport]
 import b
 b.c.d.f()
 b.c.d.g()

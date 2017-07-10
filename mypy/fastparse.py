@@ -467,12 +467,15 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             metaclass = stringify_name(metaclass_arg.value)
             if metaclass is None:
                 metaclass = '<error>'  # To be reported later
+        keywords = [(kw.arg, self.visit(kw.value))
+                    for kw in n.keywords]
 
         cdef = ClassDef(n.name,
                         self.as_block(n.body, n.lineno),
                         None,
                         self.translate_expr_list(n.bases),
-                        metaclass=metaclass)
+                        metaclass=metaclass,
+                        keywords=keywords)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
         self.class_nesting -= 1
         return cdef

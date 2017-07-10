@@ -1027,6 +1027,11 @@ value of type ``Awaitable[T]``:
    my_coroutine = countdown_1("Millennium Falcon", 5)
    reveal_type(my_coroutine)  # has type 'Awaitable[str]'
 
+.. note::
+
+    :ref:`reveal_type() <reveal-type>` displays the inferred static type of
+    an expression.
+
 If you want to use coroutines in older versions of Python that do not support
 the ``async def`` syntax, you can instead use the ``@asyncio.coroutine``
 decorator to convert a generator into a coroutine.
@@ -1153,3 +1158,200 @@ demonstrates how to work with coroutines. One version
 `uses async/await <https://github.com/python/mypy/blob/master/test-data/samples/crawl2.py>`_
 and one
 `uses yield from <https://github.com/python/mypy/blob/master/test-data/samples/crawl.py>`_.
+
+TypedDict
+*********
+
+Python programs often use dictionaries with string keys to represent objects.
+Here is a typical example:
+
+.. code-block:: python
+
+   movie = {'name': 'Blade Runner', 'year': 1982}
+
+Only a fixed set of string keys is expected (``'name'`` and
+``'year'`` above), and each key has an independent value type (``str``
+for ``'name'`` and ``int`` for ``'year'`` above). We've previously
+seen the ``Dict[K, V]`` type, which lets you declare uniform
+dictionary types, where every value has the same type, and arbitrary keys
+are supported. This is clearly not a good fit for
+``movie`` above. Instead, you can use a ``TypedDict`` to give a precise
+type for objects like ``movie``, where the type of each
+dictionary value depends on the key:
+
+.. code-block:: python
+
+   from mypy_extensions import TypedDict
+
+   Movie = TypedDict('Movie', {'name': str, 'year': int})
+
+   movie = {'name': 'Blade Runner', 'year': 1982}  # type: Movie
+
+``Movie`` is a TypedDict type with two items: ``'name'`` (with type ``str``)
+and ``'year'`` (with type ``int``). Note that we used an explicit type
+annotation for the ``movie`` variable. This type annotation is
+important -- without it, mypy will try to infer a regular, uniform
+``Dict`` type for ``movie``, which is not what we want here.
+
+.. note::
+
+   If you pass a TypedDict object as an argument to a function, no
+   type annotation is usually necessary since mypy can infer the
+   desired type based on the declared argument type. Also, if an
+   assignment target has been previously defined, and it has a
+   TypedDict type, mypy will treat the assigned value as a TypedDict,
+   not ``Dict``.
+
+Now mypy will recognize these as valid:
+
+.. code-block:: python
+
+   name = movie['name']  # Okay; type of name is str
+   year = movie['year']  # Okay; type of year is int
+
+Mypy will detect an invalid key as an error:
+
+.. code-block:: python
+
+   director = movie['director']  # Error: 'director' is not a valid key
+
+Mypy will also reject a runtime-computed expression as a key, as
+it can't verify that it's a valid key. You can only use string
+literals as TypedDict keys.
+
+The ``TypedDict`` type object can also act as a constructor. It
+returns a normal ``dict`` object at runtime -- a ``TypedDict`` does
+not define a new runtime type:
+
+.. code-block:: python
+
+   toy_story = Movie(name='Toy Story', year=1995)
+
+This is equivalent to just constructing a dictionary directly using
+``{ ... }`` or ``dict(key=value, ...)``. The constructor form is
+sometimes convenient, since it can be used without a type annotation,
+and it also makes the type of the object explicit.
+
+Like all types, TypedDicts can be used as components to build
+arbitrarily complex types. For example, you can define nested
+TypedDicts and containers with TypedDict items.
+Unlike most other types, mypy uses structural compatibility checking
+(or structural subtyping) with TypedDicts. A TypedDict object with
+extra items is compatible with a narrower TypedDict, assuming item
+types are compatible (*totality* also affects
+subtyping, as discussed below).
+
+.. note::
+
+   You need to install ``mypy_extensions`` using pip to use ``TypedDict``:
+
+   .. code-block:: text
+
+       python3 -m pip install --upgrade mypy-extensions
+
+   Or, if you are using Python 2:
+
+   .. code-block:: text
+
+       pip install --upgrade mypy-extensions
+
+.. note::
+
+   TypedDict is experimental.  Details of TypedDict may change in
+   future mypy releases.
+
+Totality
+--------
+
+By default mypy ensures that a TypedDict object has all the specified
+keys. This will be flagged as an error:
+
+.. code-block:: python
+
+   # Error: 'year' missing
+   toy_story = {'name': 'Toy Story'}  # type: Movie
+
+Sometimes you want to allow keys to be left out when creating a
+TypedDict object. You can provide the ``total=False`` argument to
+``TypedDict(...)`` to achieve this:
+
+.. code-block:: python
+
+   GuiOptions = TypedDict(
+       'GuiOptions', {'language': str, 'color': str}, total=False)
+   options = {}  # type: GuiOptions  # Okay
+   options['language'] = 'en'
+
+You may need to use ``get()`` to access items of a partial (non-total)
+TypedDict, since indexing using ``[]`` could fail at runtime.
+However, mypy still lets use ``[]`` with a partial TypedDict -- you
+just need to be careful with it, as it could result in a ``KeyError``.
+Requiring ``get()`` everywhere would be too cumbersome. (Note that you
+are free to use ``get()`` with total TypedDicts as well.)
+
+Keys that aren't required are shown with a ``?`` in error messages:
+
+.. code-block:: python
+
+   # Revealed type is 'TypedDict('GuiOptions', {'language'?: builtins.str,
+   #                                            'color'?: builtins.str})'
+   reveal_type(options)
+
+Totality also affects structural compatibility. You can't use a partial
+TypedDict when a total one is expected. Also, a total typed dict is not
+valid when a partial one is expected.
+
+Class-based syntax
+------------------
+
+Python 3.6 supports an alternative, class-based syntax to define a
+TypedDict:
+
+.. code-block:: python
+
+   from mypy_extensions import TypedDict
+
+   class Movie(TypedDict):
+       name: str
+       year: int
+
+The above definition is equivalent to the original ``Movie``
+definition. It doesn't actually define a real class. This syntax also
+supports a form of inheritance -- subclasses can define additional
+items. However, this is primarily a notational shortcut. Since mypy
+uses structural compatibility with TypedDicts, inheritance is not
+required for compatibility. Here is an example of inheritance:
+
+.. code-block:: python
+
+   class Movie(TypedDict):
+       name: str
+       year: int
+
+   class BookBasedMovie(Movie):
+       based_on: str
+
+Now ``BookBasedMovie`` has keys ``name``, ``year`` and ``based_on``.
+
+Mixing required and non-required items
+--------------------------------------
+
+In addition to allowing reuse across TypedDict types, inheritance also allows
+you to mix required and non-required (using ``total=False``) items
+in a single TypedDict. Example:
+
+.. code-block:: python
+
+   class MovieBase(TypedDict):
+       name: str
+       year: int
+
+   class Movie(MovieBase, total=False):
+       based_on: str
+
+Now ``Movie`` has required keys ``name`` and ``year``, while ``based_on``
+can be left out when constructing an object. A TypedDict with a mix of required
+and non-required keys, such as ``Movie`` above, will only be compatible with
+another TypedDict if all required keys in the other TypedDict are required keys in the
+first TypedDict, and all non-required keys of the other TypedDict are also non-required keys
+in the first TypedDict.

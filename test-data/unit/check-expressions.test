@@ -1208,6 +1208,20 @@ def void() -> None:
     pass
 x = lambda: void() # type: typing.Callable[[], None]
 
+[case testNoCrashOnLambdaGenerator]
+from typing import Iterator, Callable
+
+# These should not crash
+lambda: (yield)
+
+gen: Callable[[], Iterator[str]]
+gen = (lambda: (yield 1))  # E: Incompatible types in yield (actual type "int", expected type "str")
+
+def fun(cb: Callable[[], Iterator[str]]) -> None:
+    pass
+fun(lambda: (yield from [1]))  # E: Incompatible types in "yield from" (actual type "int", expected type "str")
+[builtins fixtures/list.pyi]
+[out]
 
 -- List comprehensions
 -- -------------------
@@ -1332,14 +1346,21 @@ main:4: error: Argument 1 to "f" has incompatible type "B"; expected "A"
 
 [case testSimpleGeneratorExpression]
 from typing import Iterator
-# The implementation is mostly identical to list comprehensions, so a single
-# test case is ok.
+# The implementation is mostly identical to list comprehensions, so only a few
+# test cases is ok.
 a = None # type: Iterator[int]
 a = (x for x in a)
 b = None # type: Iterator[str]
 b = (x for x in a) # E: Generator has incompatible item type "int"; expected "str"
 [builtins fixtures/for.pyi]
 
+[case testGeneratorIncompatibleErrorMessage]
+from typing import Callable, Iterator, List
+
+a = []  # type: List[Callable[[], str]]
+b = None  # type: Iterator[Callable[[], int]]
+b = (x for x in a)  # E: Generator has incompatible item type Callable[[], str]; expected Callable[[], int]
+[builtins fixtures/list.pyi]
 
 -- Conditional expressions
 -- -----------------------
@@ -1683,6 +1704,16 @@ e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type D
 f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type Dict[str, int]; expected Mapping[int, int]
 [builtins fixtures/dict.pyi]
 
+[case testDictIncompatibleTypeErrorMessage]
+from typing import Dict, Callable
+
+def things() -> int:
+    return 42
+
+stuff: Dict[int, Callable[[], str]] = {  # E: Dict entry 0 has incompatible type "int": Callable[[], int]; expected "int": Callable[[], str]
+    1: things
+}
+[builtins fixtures/dict.pyi]
 
 -- Type checker default plugin
 -- ---------------------------

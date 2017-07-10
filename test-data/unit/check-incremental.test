@@ -1232,6 +1232,28 @@ def C() -> str:
 [out2]
 tmp/m1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
+[case testIncrementalStoresAliasTypeVars]
+import a
+
+[file mod.py]
+from typing import TypeVar, Union
+T = TypeVar('T')
+Alias = Union[int, T]
+x: Alias[str]
+
+[file a.py]
+from mod import Alias, x
+
+[file a.py.2]
+from mod import Alias, x
+
+reveal_type(x)
+y: Alias[int]
+reveal_type(y)
+[out2]
+tmp/a.py:3: error: Revealed type is 'Union[builtins.int, builtins.str]'
+tmp/a.py:5: error: Revealed type is 'Union[builtins.int, builtins.int]'
+
 [case testIncrementalSilentImportsWithBlatantError]
 # cmd: mypy -m main
 # flags: --follow-imports=skip
@@ -1901,11 +1923,11 @@ A = TypedDict('A', {'x': int, 'y': str})
 x: A
 [builtins fixtures/dict.pyi]
 [out1]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
-main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+main:2: error: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
+main:4: error: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
 [out2]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
-main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+main:2: error: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
+main:4: error: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
 
 [case testSerializeMetaclass]
 import b
