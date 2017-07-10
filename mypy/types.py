@@ -258,6 +258,7 @@ class AnyType(Type):
                  from_unimported_type: bool = False,
                  explicit: bool = False,
                  from_omitted_generics: bool = False,
+                 special_form: bool = False,
                  line: int = -1,
                  column: int = -1) -> None:
         super().__init__(line, column)
@@ -272,6 +273,9 @@ class AnyType(Type):
         self.explicit = explicit
         # Does this type come from omitted generics?
         self.from_omitted_generics = from_omitted_generics
+        # Is this a type that can't be represented in mypy's type system? For instance, type of
+        # call to NewType(...)). Even though these types aren't real Anys, we treat them as such.
+        self.special_form = special_form
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
@@ -281,6 +285,7 @@ class AnyType(Type):
                       from_unimported_type: bool = _dummy,
                       explicit: bool = _dummy,
                       from_omitted_generics: bool = _dummy,
+                      special_form: bool = _dummy,
                       ) -> 'AnyType':
         if implicit is _dummy:
             implicit = self.implicit
@@ -290,8 +295,11 @@ class AnyType(Type):
             explicit = self.explicit
         if from_omitted_generics is _dummy:
             from_omitted_generics = self.from_omitted_generics
+        if special_form is _dummy:
+            special_form = self.special_form
         return AnyType(implicit=implicit, from_unimported_type=from_unimported_type,
                        explicit=explicit, from_omitted_generics=from_omitted_generics,
+                       special_form=special_form,
                        line=self.line, column=self.column)
 
     def serialize(self) -> JsonDict:

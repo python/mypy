@@ -177,6 +177,10 @@ class StatisticsVisitor(TraverserVisitor):
             self.record_line(self.line, TYPE_UNANALYZED)
             return
 
+        if isinstance(t, AnyType) and t.special_form:
+            # This is not a real Any type, so don't collect stats for it.
+            return
+
         if isinstance(t, AnyType):
             self.log('  !! Any type around line %d' % self.line)
             self.num_any += 1
