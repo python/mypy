@@ -11,18 +11,21 @@ flag (or its long form ``--help``)::
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM] [-2]
               [--ignore-missing-imports]
               [--follow-imports {normal,silent,skip,error}]
+              [--disallow-any {unimported, expr, unannotated, decorated, explicit, generics}]
               [--disallow-untyped-calls] [--disallow-untyped-defs]
               [--check-untyped-defs] [--disallow-subclassing-any]
               [--warn-incomplete-stub] [--warn-redundant-casts]
               [--no-warn-no-return] [--warn-return-any] [--warn-unused-ignores]
-              [--show-error-context] [-i] [--quick-and-dirty] [--cache-dir DIR]
+              [--show-error-context] [--no-implicit-optional] [-i]
+              [--quick-and-dirty] [--cache-dir DIR] [--skip-version-check]
               [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]]
               [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
               [--inferstats] [--custom-typing MODULE]
               [--custom-typeshed-dir DIR] [--scripts-are-modules]
               [--config-file CONFIG_FILE] [--show-column-numbers]
-              [--find-occurrences CLASS.MEMBER] [--strict] [--strict-boolean]
+              [--find-occurrences CLASS.MEMBER] [--strict]
+              [--shadow-file SOURCE_FILE SHADOW_FILE] [--any-exprs-report DIR]
               [--cobertura-xml-report DIR] [--html-report DIR]
               [--linecount-report DIR] [--linecoverage-report DIR]
               [--memory-xml-report DIR] [--old-html-report DIR]
@@ -427,12 +430,20 @@ Here are some more useful flags:
 - ``--strict`` mode enables all optional error checking flags.  You can see the
   list of flags enabled by strict mode in the full ``mypy -h`` output.
 
+.. _shadow-file:
+
 - ``--shadow-file SOURCE_FILE SHADOW_FILE`` makes mypy typecheck SHADOW_FILE in
   place of SOURCE_FILE.  Primarily intended for tooling.  Allows tooling to
   make transformations to a file before type checking without having to change
   the file in-place.  (For example, tooling could use this to display the type
   of an expression by wrapping it with a call to reveal_type in the shadow
   file and then parsing the output.)
+
+.. _no-implicit-optional:
+
+- ``--no-implicit-optional`` causes mypy to stop treating arguments
+  with a ``None`` default value as having an implicit ``Optional[...]``
+  type.
 
 For the remaining flags you can read the full ``mypy -h`` output.
 
