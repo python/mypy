@@ -3463,8 +3463,9 @@ class SemanticAnalyzer(NodeVisitor):
                     elif isinstance(n.node, MypyFile):
                         n = n.node.names.get(parts[i], None)
                     # TODO: What if node is Var or FuncDef?
-                    if not n and not suppress_errors:
-                        self.name_not_defined(name, ctx)
+                    if not n:
+                        if not suppress_errors:
+                            self.name_not_defined(name, ctx)
                         break
                 if n:
                     n = self.normalize_type_alias(n, ctx)
