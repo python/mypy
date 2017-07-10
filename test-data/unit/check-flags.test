@@ -482,6 +482,23 @@ def f() -> None:
     x = [] # type: Union[List[Optional[str]], str]
 [builtins fixtures/list.pyi]
 
+[case testPerFileStrictOptionalNoneArguments]
+# flags: --config-file tmp/mypy.ini
+import standard, optional
+
+[file standard.py]
+def f(x: int = None) -> None: pass
+[file optional.py]
+def f(x: int = None) -> None: pass
+
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-optional]
+strict_optional = True
+
+
+
 [case testDisallowImplicitTypesIgnoreMissingTypes]
 # flags: --ignore-missing-imports --disallow-any=unimported
 from missing import MyType
