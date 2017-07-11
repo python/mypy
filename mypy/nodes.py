@@ -900,8 +900,12 @@ class ForStmt(Statement):
     else_body = None  # type: Optional[Block]
     is_async = False  # True if `async for ...` (PEP 492, Python 3.5)
 
-    def __init__(self, index: Lvalue, expr: Expression, body: Block,
-                 else_body: Optional[Block], index_type: Optional['mypy.types.Type'] = None) -> None:
+    def __init__(self,
+                 index: Lvalue,
+                 expr: Expression,
+                 body: Block,
+                 else_body: Optional[Block],
+                 index_type: Optional['mypy.types.Type'] = None) -> None:
         self.index = index
         self.index_type = index_type
         self.expr = expr
@@ -1038,7 +1042,10 @@ class PrintStmt(Statement):
     # The file-like target object (given using >>).
     target = None  # type: Optional[Expression]
 
-    def __init__(self, args: List[Expression], newline: bool, target: Optional[Expression] = None) -> None:
+    def __init__(self,
+                 args: List[Expression],
+                 newline: bool,
+                 target: Optional[Expression] = None) -> None:
         self.args = args
         self.newline = newline
         self.target = target
