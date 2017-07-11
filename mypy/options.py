@@ -1,8 +1,9 @@
+from collections import OrderedDict
 import fnmatch
 import pprint
 import sys
 
-from typing import Mapping, Optional, Tuple, List, Pattern, Dict
+from typing import Mapping, MutableMapping, Optional, Tuple, List, Pattern, Dict
 
 from mypy import defaults
 
@@ -119,7 +120,8 @@ class Options:
         self.plugins = []  # type: List[str]
 
         # Per-module options (raw)
-        self.per_module_options = {}  # type: Dict[Pattern[str], Dict[str, object]]
+        pm_opts = OrderedDict()  # type: OrderedDict[Pattern[str], Dict[str, object]]
+        self.per_module_options = pm_opts
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)

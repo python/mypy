@@ -1031,3 +1031,26 @@ m.py:4: error: Missing type parameters for generic type
 m.py:5: error: Missing type parameters for generic type
 m.py:6: error: Missing type parameters for generic type
 m.py:7: error: Missing type parameters for generic type
+
+[case testDeterministicSectionOrdering]
+# cmd: mypy a
+[file a/__init__.py]
+[file a/b/__init__.py]
+[file a/b/c/__init__.py]
+[file a/b/c/d/__init__.py]
+[file a/b/c/d/e/__init__.py]
+0()
+[file mypy.ini]
+[[mypy]
+[[mypy-a.*]
+ignore_errors = True
+[[mypy-a.b.*]
+ignore_errors = True
+[[mypy-a.b.c.*]
+ignore_errors = True
+[[mypy-a.b.c.d.*]
+ignore_errors = True
+[[mypy-a.b.c.d.e]
+ignore_errors = False
+[out]
+a/b/c/d/e/__init__.py:1: error: "int" not callable
