@@ -850,6 +850,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         abstract.append(name)
                 concrete.add(name)
         typ.abstract_attributes = sorted(abstract)
+        if abstract:
+            self.fail('Class {} has abstract attributes {}'.format(typ.fullname(), sorted(abstract)), typ)
 
     def setup_type_promotion(self, defn: ClassDef) -> None:
         """Setup extra, ad-hoc subtyping relationships between classes (promotion).
