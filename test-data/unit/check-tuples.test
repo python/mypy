@@ -448,8 +448,8 @@ na = a  # E
 class A: pass
 [builtins fixtures/list.pyi]
 [out]
-main:6: error: List item 0 has incompatible type "A"
-main:6: error: List item 1 has incompatible type "A"
+main:6: error: List item 0 has incompatible type "A"; expected "int"
+main:6: error: List item 1 has incompatible type "A"; expected "int"
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type List[A])
 
 [case testAssignmentToStarFromTupleInference]

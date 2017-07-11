@@ -1108,7 +1108,7 @@ from m import Alias
 
 n = Alias[int]([1])
 reveal_type(n)  # E: Revealed type is 'm.Node[builtins.list*[builtins.int]]'
-bad = Alias[str]([1])  # E: List item 0 has incompatible type "int"
+bad = Alias[str]([1])  # E: List item 0 has incompatible type "int"; expected "str"
 
 n2 = Alias([1]) # Same as Node[List[Any]]
 reveal_type(n2)  # E: Revealed type is 'm.Node[builtins.list*[Any]]'
@@ -1390,7 +1390,7 @@ def f(a: List[A]) -> A: pass
 def f(a: B) -> B: pass
 
 b = f([a]) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = f([b]) # E: List item 0 has incompatible type "B"
+a = f([b]) # E: List item 0 has incompatible type "B"; expected "A"
 a = f(b)   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 a = f([a])
