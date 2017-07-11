@@ -1721,7 +1721,8 @@ def narrow_any_to_str_then_reassign_to_int() -> None:
     v = 1 # type: Any
 
     if isinstance(v, str):
+        reveal_type(v)  # E: Revealed type is 'builtins.str'
         v = 2
-        v + 3
+        reveal_type(v)  # E: Revealed type is 'Any'
 
 [builtins fixtures/isinstance.pyi]
