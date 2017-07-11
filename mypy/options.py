@@ -1,4 +1,4 @@
-import collections
+from collections import OrderedDict
 import fnmatch
 import pprint
 import sys
@@ -120,7 +120,7 @@ class Options:
         self.plugins = []  # type: List[str]
 
         # Per-module options (raw)
-        self.per_module_options = collections.OrderedDict()  # type: MutableMapping[Pattern[str], Dict[str, object]]
+        self.per_module_options = OrderedDict()  # type: OrderedDict[Pattern[str], Dict[str, object]]
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
