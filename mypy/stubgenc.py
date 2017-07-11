@@ -6,7 +6,7 @@ The public interface is via the mypy.stubgen module.
 import importlib
 import os.path
 import re
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from types import ModuleType
 
 from mypy.stubutil import (
@@ -102,9 +102,9 @@ def generate_c_function_stub(module: ModuleType,
                              name: str,
                              obj: object,
                              output: List[str],
-                             self_var: str = None,
+                             self_var: Optional[str] = None,
                              sigs: Dict[str, str] = {},
-                             class_name: str = None,
+                             class_name: Optional[str] = None,
                              class_sigs: Dict[str, str] = {},
                              ) -> None:
     if self_var:

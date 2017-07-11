@@ -346,7 +346,7 @@ class StrConv(NodeVisitor[str]):
         return short_type(o) + '(' + pretty + ')'
 
     def pretty_name(self, name: str, kind: int, fullname: str, is_def: bool,
-                    target_node: 'mypy.nodes.Node' = None) -> str:
+                    target_node: 'Optional[mypy.nodes.Node]' = None) -> str:
         n = name
         if is_def:
             n += '*'

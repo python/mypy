@@ -23,7 +23,7 @@ class Context:
         self.line = line
         self.column = column
 
-    def set_line(self, target: Union['Context', int], column: int = None) -> None:
+    def set_line(self, target: Union['Context', int], column: Optional[int] = None) -> None:
         """If target is a node, pull line (and column) information
         into this node. If column is specified, this will override any column
         information coming from a node.
@@ -254,7 +254,7 @@ class MypyFile(SymbolNode):
                  defs: List[Statement],
                  imports: List['ImportBase'],
                  is_bom: bool = False,
-                 ignored_lines: Set[int] = None) -> None:
+                 ignored_lines: Optional[Set[int]] = None) -> None:
         self.defs = defs
         self.line = 1  # Dummy line number
         self.imports = imports
@@ -468,7 +468,7 @@ class Argument(Node):
         assign = AssignmentStmt([lvalue], rvalue)
         return assign
 
-    def set_line(self, target: Union[Context, int], column: int = None) -> None:
+    def set_line(self, target: Union[Context, int], column: Optional[int] = None) -> None:
         super().set_line(target, column)
 
         if self.initializer:
@@ -507,7 +507,7 @@ class FuncItem(FuncBase):
     ]
 
     def __init__(self, arguments: List[Argument], body: 'Block',
-                 typ: 'mypy.types.FunctionLike' = None) -> None:
+                 typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
         self.arguments = arguments
         self.arg_names = [arg.variable.name() for arg in self.arguments]
         self.arg_kinds = [arg.kind for arg in self.arguments]
@@ -525,7 +525,7 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(self, target: Union[Context, int], column: int = None) -> None:
+    def set_line(self, target: Union[Context, int], column: Optional[int] = None) -> None:
         super().set_line(target, column)
         for arg in self.arguments:
             arg.set_line(self.line, self.column)
@@ -554,7 +554,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                  name: str,              # Function name
                  arguments: List[Argument],
                  body: 'Block',
-                 typ: 'mypy.types.FunctionLike' = None) -> None:
+                 typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
         super().__init__(arguments, body, typ)
         self._name = name
 
@@ -679,7 +679,7 @@ class Var(SymbolNode):
         'is_classvar'
     ]
 
-    def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
+    def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
         self._name = name
         self.type = type
         if self.type is None:
@@ -738,10 +738,10 @@ class ClassDef(Statement):
     def __init__(self,
                  name: str,
                  defs: 'Block',
-                 type_vars: List['mypy.types.TypeVarDef'] = None,
-                 base_type_exprs: List[Expression] = None,
-                 metaclass: str = None,
-                 keywords: List[Tuple[str, Expression]] = None) -> None:
+                 type_vars: Optional[List['mypy.types.TypeVarDef']] = None,
+                 base_type_exprs: Optional[List[Expression]] = None,
+                 metaclass: Optional[str] = None,
+                 keywords: Optional[List[Tuple[str, Expression]]] = None) -> None:
         self.name = name
         self.defs = defs
         self.type_vars = type_vars or []
@@ -848,7 +848,7 @@ class AssignmentStmt(Statement):
     new_syntax = False  # type: bool
 
     def __init__(self, lvalues: List[Lvalue], rvalue: Expression,
-                 type: 'mypy.types.Type' = None, new_syntax: bool = False) -> None:
+                 type: Optional['mypy.types.Type'] = None, new_syntax: bool = False) -> None:
         self.lvalues = lvalues
         self.rvalue = rvalue
         self.type = type
@@ -901,7 +901,7 @@ class ForStmt(Statement):
     is_async = False  # True if `async for ...` (PEP 492, Python 3.5)
 
     def __init__(self, index: Lvalue, expr: Expression, body: Block,
-                 else_body: Optional[Block], index_type: 'mypy.types.Type' = None) -> None:
+                 else_body: Optional[Block], index_type: Optional['mypy.types.Type'] = None) -> None:
         self.index = index
         self.index_type = index_type
         self.expr = expr
@@ -926,7 +926,7 @@ class AssertStmt(Statement):
     expr = None  # type: Expression
     msg = None  # type: Optional[Expression]
 
-    def __init__(self, expr: Expression, msg: Expression = None) -> None:
+    def __init__(self, expr: Expression, msg: Optional[Expression] = None) -> None:
         self.expr = expr
         self.msg = msg
 
@@ -1020,7 +1020,7 @@ class WithStmt(Statement):
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
     def __init__(self, expr: List[Expression], target: List[Optional[Lvalue]],
-                 body: Block, target_type: 'mypy.types.Type' = None) -> None:
+                 body: Block, target_type: Optional['mypy.types.Type'] = None) -> None:
         self.expr = expr
         self.target = target
         self.target_type = target_type
@@ -1038,7 +1038,7 @@ class PrintStmt(Statement):
     # The file-like target object (given using >>).
     target = None  # type: Optional[Expression]
 
-    def __init__(self, args: List[Expression], newline: bool, target: Expression = None) -> None:
+    def __init__(self, args: List[Expression], newline: bool, target: Optional[Expression] = None) -> None:
         self.args = args
         self.newline = newline
         self.target = target
@@ -1292,8 +1292,12 @@ class CallExpr(Expression):
     # cast(...) this is a CastExpr.
     analyzed = None  # type: Optional[Expression]
 
-    def __init__(self, callee: Expression, args: List[Expression], arg_kinds: List[int],
-                 arg_names: List[Optional[str]] = None, analyzed: Expression = None) -> None:
+    def __init__(self,
+                 callee: Expression,
+                 args: List[Expression],
+                 arg_kinds: List[int],
+                 arg_names: Optional[List[Optional[str]]] = None,
+                 analyzed: Optional[Expression] = None) -> None:
         if not arg_names:
             arg_names = [None] * len(args)
 
@@ -1813,7 +1817,7 @@ class TypeAliasExpr(Expression):
     in_runtime = False  # type: bool
 
     def __init__(self, type: 'mypy.types.Type', tvars: List[str],
-                 fallback: 'mypy.types.Type' = None, in_runtime: bool = False) -> None:
+                 fallback: Optional['mypy.types.Type'] = None, in_runtime: bool = False) -> None:
         self.type = type
         self.fallback = fallback
         self.in_runtime = in_runtime
@@ -2150,8 +2154,8 @@ class TypeInfo(SymbolNode):
         return self.dump()
 
     def dump(self,
-             str_conv: 'mypy.strconv.StrConv' = None,
-             type_str_conv: 'mypy.types.TypeStrVisitor' = None) -> str:
+             str_conv: Optional['mypy.strconv.StrConv'] = None,
+             type_str_conv: Optional['mypy.types.TypeStrVisitor'] = None) -> str:
         """Return a string dump of the contents of the TypeInfo."""
         if not str_conv:
             str_conv = mypy.strconv.StrConv()
@@ -2280,9 +2284,13 @@ class SymbolTableNode:
     # Was this node created by normalіze_type_alias?
     normalized = False  # type: bool
 
-    def __init__(self, kind: int, node: Optional[SymbolNode], mod_id: str = None,
-                 typ: 'mypy.types.Type' = None,
-                 module_public: bool = True, normalized: bool = False,
+    def __init__(self,
+                 kind: int,
+                 node: Optional[SymbolNode],
+                 mod_id: Optional[str] = None,
+                 typ: Optional['mypy.types.Type'] = None,
+                 module_public: bool = True,
+                 normalized: bool = False,
                  alias_tvars: Optional[List[str]] = None) -> None:
         self.kind = kind
         self.node = node
