@@ -554,14 +554,14 @@ class MessageBuilder:
             expected_key_type, expected_value_type = cast(TupleType, callee.arg_types[0]).items
 
             # don't increase verbosity unless there is need to do so
-            from mypy.sametypes import is_same_type
-            if is_same_type(key_type, expected_key_type):
+            from mypy.subtypes import is_subtype
+            if is_subtype(key_type, expected_key_type):
                 key_type_str = self.format(key_type)
                 expected_key_type_str = self.format(expected_key_type)
             else:
                 key_type_str, expected_key_type_str = self.format_distinctly(
                     key_type, expected_key_type)
-            if is_same_type(value_type, expected_value_type):
+            if is_subtype(value_type, expected_value_type):
                 value_type_str = self.format(value_type)
                 expected_value_type_str = self.format(expected_value_type)
             else:
