@@ -1715,7 +1715,7 @@ stuff: Dict[int, Callable[[], str]] = {  # E: Dict entry 0 has incompatible type
 }
 [builtins fixtures/dict.pyi]
 
-[case testDictIncompatibleArgVerbosity]
+[case testDictIncompatibleKeyVerbosity]
 from typing import Dict
 import mod
 
@@ -1723,6 +1723,20 @@ class A: ...
 class B(A): ...
 
 d: Dict[A, B] = {A(): mod.B()}  # E: Dict entry 0 has incompatible type "A": "mod.B"; expected "A": "__main__.B"
+
+[file mod.py]
+class B: ...
+
+[builtins fixtures/dict.pyi]
+
+[case testDictIncompatibleValueVerbosity]
+from typing import Dict
+import mod
+
+class A: ...
+class B(A): ...
+
+d: Dict[B, A] = {mod.B(): A()}  # E: Dict entry 0 has incompatible type "mod.B": "A"; expected "__main__.B": "A"
 
 [file mod.py]
 class B: ...
