@@ -1715,6 +1715,26 @@ stuff: Dict[int, Callable[[], str]] = {  # E: Dict entry 0 has incompatible type
 }
 [builtins fixtures/dict.pyi]
 
+[case testDictIncompatibleKeyInvariance]
+from typing import Dict
+class A: ...
+class B(A): ...
+x: Dict[A, int]
+y: Dict[B, int]
+x = y  # E: Incompatible types in assignment (expression has type Dict[B, int], variable has type Dict[A, int])
+y = x  # E: Incompatible types in assignment (expression has type Dict[A, int], variable has type Dict[B, int])
+[builtins fixtures/dict.pyi]
+
+[case testDictIncompatibleValueInvariance]
+from typing import Dict
+class A: ...
+class B(A): ...
+x: Dict[int, A]
+y: Dict[int, B]
+x = y  # E: Incompatible types in assignment (expression has type Dict[int, B], variable has type Dict[int, A])
+y = x  # E: Incompatible types in assignment (expression has type Dict[int, A], variable has type Dict[int, B])
+[builtins fixtures/dict.pyi]
+
 -- Type checker default plugin
 -- ---------------------------
 
