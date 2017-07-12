@@ -9,8 +9,6 @@ install:
     - "git config core.symlinks true"
     - "git reset --hard"
     - "%PYTHON%\\python.exe -m pip install -r test-requirements.txt"
-    - "git submodule update --init typeshed"
-    - "cd typeshed && git config core.symlinks true && git reset --hard && cd .."
     - "%PYTHON%\\python.exe setup.py -q install"
 
 build: off

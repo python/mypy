@@ -101,7 +101,6 @@ class Builder:
         tag = 'v{}'.format(self.version)
         self.heading('Check out {}'.format(tag))
         self.run('cd mypy && git checkout {}'.format(tag))
-        self.run('cd mypy && git submodule update --init typeshed'.format(tag))
 
     def make_virtualenv(self) -> None:
         self.heading('Creating a fresh virtualenv')
