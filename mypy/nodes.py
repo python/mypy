@@ -2274,7 +2274,7 @@ class SymbolTableNode:
     # If False, this name won't be imported via 'from <module> import *'.
     # This has no effect on names within classes.
     module_public = True
-    # If true, the name will be never exported (neede for stub files)
+    # If True, the name will be never exported (needed for stub files)
     module_hidden = False
     # For deserialized MODULE_REF nodes, the referenced module name;
     # for other nodes, optionally the name of the referenced object.
