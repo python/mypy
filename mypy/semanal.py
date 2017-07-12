@@ -1317,15 +1317,15 @@ class SemanticAnalyzer(NodeVisitor):
             if as_id is not None:
                 self.add_module_symbol(id, as_id, module_public=True, context=i)
             else:
-                # Modules imported in a stub file without using 'as x' won't get exported when
-                # doing 'from m import *'.
-                module_public = not self.is_stub_file
+                # Modules imported in a stub file without using 'as x' won't get exported
+                module_hidden = self.is_stub_file
                 base = id.split('.')[0]
-                self.add_module_symbol(base, base, module_public=module_public,
-                                       context=i)
-                self.add_submodules_to_parent_modules(id, module_public)
+                self.add_module_symbol(base, base, module_public=not module_hidden,
+                                       context=i, module_hidden=module_hidden)
+                self.add_submodules_to_parent_modules(id, not module_hidden, module_hidden=module_hidden)
 
-    def add_submodules_to_parent_modules(self, id: str, module_public: bool) -> None:
+    def add_submodules_to_parent_modules(self, id: str, module_public: bool,
+                                         module_hidden: bool = False) -> None:
         """Recursively adds a reference to a newly loaded submodule to its parent.
 
         When you import a submodule in any way, Python will add a reference to that
@@ -1346,16 +1346,18 @@ class SemanticAnalyzer(NodeVisitor):
                 child_mod = self.modules.get(id)
                 if child_mod:
                     sym = SymbolTableNode(MODULE_REF, child_mod, parent,
-                                          module_public=module_public)
+                                          module_public=module_public,
+                                          module_hidden=module_hidden)
                     parent_mod.names[child] = sym
             id = parent
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
-                          context: Context) -> None:
+                          context: Context, module_hidden: bool = False) -> None:
         if id in self.modules:
             m = self.modules[id]
             self.add_symbol(as_id, SymbolTableNode(MODULE_REF, m, self.cur_mod_id,
-                                                   module_public=module_public), context)
+                                                   module_public=module_public,
+                                                   module_hidden=module_hidden), context)
         else:
             self.add_unknown_symbol(as_id, context, is_import=True)
 
@@ -1378,7 +1380,7 @@ class SemanticAnalyzer(NodeVisitor):
                 elif possible_module_id in self.missing_modules:
                     missing = True
 
-            if node and node.kind != UNBOUND_IMPORTED:
+            if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
                 node = self.normalize_type_alias(node, imp)
                 if not node:
                     return
@@ -1390,13 +1392,14 @@ class SemanticAnalyzer(NodeVisitor):
                             imported_id, existing_symbol, node, imp):
                         continue
                 # 'from m import x as x' exports x in a stub file.
-                module_public = not self.is_stub_file or as_id is not None
+                module_hidden = self.is_stub_file and as_id is None
                 symbol = SymbolTableNode(node.kind, node.node,
                                          self.cur_mod_id,
                                          node.type_override,
-                                         module_public=module_public,
+                                         module_public=not module_hidden,
                                          normalized=node.normalized,
-                                         alias_tvars=node.alias_tvars)
+                                         alias_tvars=node.alias_tvars,
+                                         module_hidden=module_hidden)
                 self.add_symbol(imported_id, symbol, imp)
             elif module and not missing:
                 # Missing attribute.
@@ -3145,7 +3148,7 @@ class SemanticAnalyzer(NodeVisitor):
             # bar in its namespace.  This must be done for all types of bar.
             file = cast(Optional[MypyFile], base.node)  # can't use isinstance due to issue #2999
             n = file.names.get(expr.name, None) if file is not None else None
-            if n:
+            if n and not n.module_hidden:
                 n = self.normalize_type_alias(n, expr)
                 if not n:
                     return
@@ -3458,12 +3461,12 @@ class SemanticAnalyzer(NodeVisitor):
                     elif isinstance(n.node, MypyFile):
                         n = n.node.names.get(parts[i], None)
                     # TODO: What if node is Var or FuncDef?
-                    if not n:
+                    if not n or n.module_hidden:
                         self.name_not_defined(name, ctx)
                         break
                 if n:
                     n = self.normalize_type_alias(n, ctx)
-            return n
+            return n if n and not n.module_hidden else None
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
         sym = self.lookup_fully_qualified(fully_qualified_name)

@@ -960,7 +960,7 @@ from other import y # Disallowed
 x + '' # Error here
 y + '' # But not here
 [file stub.pyi]
-from non_stub import x
+from non_stub import x as x
 [file non_stub.py]
 x = 42
 [file other.py]
@@ -1638,5 +1638,63 @@ m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.M
 [file m.py]
 
 [file n.py]
+
+[builtins fixtures/module.pyi]
+
+[case testNoReExportFromStubs]
+from stub import Iterable  # E: Module 'stub' has no attribute 'Iterable'
+from stub import C
+
+c = C()
+reveal_type(c.x)  # E: Revealed type is 'builtins.int'
+it: Iterable[int]
+reveal_type(it)  # E: Revealed type is 'Any'
+
+[file stub.pyi]
+from typing import Iterable
+from substub import C as C
+
+def fun(x: Iterable[str]) -> Iterable[int]: pass
+
+[file substub.pyi]
+class C:
+    x: int
+
+[builtins fixtures/module.pyi]
+
+[case testNoReExportFromStubsMemberType]
+import stub
+
+c = stub.C()
+reveal_type(c.x)  # E: Revealed type is 'builtins.int'
+it: stub.Iterable[int]  # E: Name 'stub.Iterable' is not defined
+reveal_type(it)  # E: Revealed type is 'Any'
+
+[file stub.pyi]
+from typing import Iterable
+from substub import C as C
+
+def fun(x: Iterable[str]) -> Iterable[int]: pass
+
+[file substub.pyi]
+class C:
+    x: int
+
+[builtins fixtures/module.pyi]
+
+[case testNoReExportFromStubsMemberVar]
+import stub
+
+reveal_type(stub.y)  # E: Revealed type is 'builtins.int'
+reveal_type(stub.z)  # E: Revealed type is 'Any' \
+                     # E: Module has no attribute "z"
+
+[file stub.pyi]
+from substub import y as y
+from substub import z
+
+[file substub.pyi]
+y = 42
+z: int
 
 [builtins fixtures/module.pyi]
