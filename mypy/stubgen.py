@@ -347,9 +347,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 if base.name != 'object':
                     base_types.append(base.name)
             elif isinstance(base, MemberExpr):
-                modname = get_qualified_name(base.expr)
-                base_types.append('%s.%s' % (modname, base.name))
-                self.add_import_line('import %s\n' % modname)
+                base_types.append(get_qualified_name(base))
         return base_types
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
@@ -437,8 +435,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 exported_names.update(sub_names)
                 self.import_and_export_names(o.id, o.relative, sub_names)
         # Import names used as base classes.
+        base_class_imports = [base_class.split('.')[0] for base_class in self._base_classes]
         base_names = [(name, alias) for name, alias in o.names
-                      if alias or name in self._base_classes and name not in exported_names]
+                      if alias or name in base_class_imports and name not in exported_names]
         if base_names:
             imp_names = []  # type: List[str]
             for name, alias in base_names:
@@ -468,6 +467,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                              '.' not in id):
                 self.add_import_line('import %s as %s\n' % (id, target_name))
                 self.record_name(target_name)
+            base_class_imports = [base_class.split('.')[0] for base_class in self._base_classes]
+            if target_name in base_class_imports:
+                if as_id:
+                    self.add_import_line('import %s as %s\n' % (id, as_id))
+                else:
+                    self.add_import_line('import %s\n' % (id, ))
 
     def get_init(self, lvalue: str, rvalue: Expression) -> Optional[str]:
         """Return initializer for a variable.

@@ -530,6 +530,14 @@ import x.y
 
 class D(x.y.C): ...
 
+[case testArbitraryBaseClassWithAlias]
+import x as y
+class D(y.C): ...
+[out]
+import x as y
+
+class D(y.C): ...
+
 [case testUnqualifiedArbitraryBaseClassWithNoDef]
 class A(int): ...
 [out]
@@ -627,6 +635,24 @@ from typing import Any, Optional
 class A:
     x = ...  # type: Any
     def __init__(self, a: Optional[Any] = ...) -> None: ...
+
+[case testImportAddedForQualifiedBaseClass]
+from foo import bar
+
+class A(bar.fuzz.Baz): ...
+[out]
+from foo import bar
+
+class A(bar.fuzz.Baz): ...
+
+[case testImportAddedForQualifiedBaseClassWithAlias]
+from foo import bar as baz
+
+class A(baz.Baz): ...
+[out]
+from foo import bar as baz
+
+class A(baz.Baz): ...
 
 -- More features/fixes:
 --   do not export deleted names
