@@ -2279,11 +2279,14 @@ class SymbolTableNode:
     cross_ref = None  # type: Optional[str]
     # Was this node created by normalіze_type_alias?
     normalized = False  # type: bool
+    # Was this defined by assignment to self attribute?
+    implicit = False  # type: bool
 
     def __init__(self, kind: int, node: Optional[SymbolNode], mod_id: str = None,
                  typ: 'mypy.types.Type' = None,
                  module_public: bool = True, normalized: bool = False,
-                 alias_tvars: Optional[List[str]] = None) -> None:
+                 alias_tvars: Optional[List[str]] = None,
+                 implicit: bool = False) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
@@ -2291,6 +2294,7 @@ class SymbolTableNode:
         self.module_public = module_public
         self.normalized = normalized
         self.alias_tvars = alias_tvars
+        self.implicit = implicit
 
     @property
     def fullname(self) -> Optional[str]:
