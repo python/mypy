@@ -852,7 +852,7 @@ fun1(1) # E: Argument 1 to "fun1" has incompatible type "int"; expected List[Tup
 fun1([(1, 'x')]) # E: Cannot infer type argument 1 of "fun1"
 
 reveal_type(fun2([(1, 1)], 1)) # E: Revealed type is 'builtins.list[Tuple[builtins.int*, builtins.int*]]'
-fun2([('x', 'x')], 'x') # E: Type argument 1 of "fun2" has incompatible value "str"
+fun2([('x', 'x')], 'x') # E: Type argument 1 of "fun2" (TypeVar "T") cannot be "str"
 
 [builtins fixtures/list.pyi]
 
@@ -1068,9 +1068,9 @@ y = None # type: SameA[str] # Two errors here, for both args of A
 
 [builtins fixtures/list.pyi]
 [out]
-main:9:7: error: Type argument 1 of "A" has incompatible value "str"
-main:13: error: Type argument 1 of "A" has incompatible value "str"
-main:13: error: Type argument 2 of "A" has incompatible value "str"
+main:9:7: error: Type argument 1 of "A" (TypeVar "T") cannot be "str"
+main:13: error: Type argument 1 of "A" (TypeVar "T") cannot be "str"
+main:13: error: Type argument 2 of "A" (TypeVar "S") cannot be "str"
 
 [case testGenericTypeAliasesIgnoredPotentialAlias]
 class A: ...

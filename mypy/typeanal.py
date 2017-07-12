@@ -625,8 +625,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                             continue
                     else:
                         arg_values = [arg]
-                    self.check_type_var_values(info, arg_values,
-                                               tvar.values, i + 1, t)
+                    self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
                 if not is_subtype(arg, tvar.upper_bound):
                     self.fail('Type argument "{}" of "{}" must be '
                               'a subtype of "{}"'.format(
@@ -637,7 +636,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             for base in info.bases:
                 base.accept(self)
 
-    def check_type_var_values(self, type: TypeInfo, actuals: List[Type],
+    def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
                               valids: List[Type], arg_number: int, context: Context) -> None:
         for actual in actuals:
             if (not isinstance(actual, AnyType) and
@@ -646,8 +645,11 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     self.fail('Invalid type argument value for "{}"'.format(
                         type.name()), context)
                 else:
-                    self.fail('Type argument {} of "{}" has incompatible value "{}"'.format(
-                        arg_number, type.name(), actual.type.name()), context)
+                    class_name = '"{}"'.format(type.name())
+                    actual_type_name = '"{}"'.format(actual.type.name())
+                    self.fail(messages.INCOMPATIBLE_TYPEVAR_VALUE.format(
+                        arg_number, class_name, arg_name, actual_type_name),
+                        context)
 
     def visit_callable_type(self, t: CallableType) -> None:
         t.ret_type.accept(self)
