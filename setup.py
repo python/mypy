@@ -71,11 +71,7 @@ class CustomPythonBuild(build_py):
         build_py.run(self)
 
 
-data_files = []
-
-data_files += find_data_files('typeshed', ['*.py', '*.pyi'])
-
-data_files += find_data_files('xml', ['*.xsd', '*.xslt', '*.css'])
+data_files = find_data_files('xml', ['*.xsd', '*.xslt', '*.css'])
 
 classifiers = [
     'Development Status :: 2 - Pre-Alpha',
