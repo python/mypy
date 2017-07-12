@@ -6,6 +6,7 @@ import posixpath
 import re
 from os import remove, rmdir
 import shutil
+import errno
 
 import pytest  # type: ignore  # no pytest in typeshed
 from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict
@@ -279,7 +280,11 @@ class DataDrivenTestCase(TestCase):
         # First remove files.
         for is_dir, path in reversed(self.clean_up):
             if not is_dir:
-                remove(path)
+                try:
+                    remove(path)
+                except OSError as e:
+                    if e.errno != errno.ENOENT:
+                        raise e
         # Then remove directories.
         for is_dir, path in reversed(self.clean_up):
             if is_dir:
