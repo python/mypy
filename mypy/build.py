@@ -869,7 +869,8 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         manager.trace('Meta {} {}'.format(id, meta_str.rstrip()))
         meta = json.loads(meta_str)  # TODO: Errors
     if not isinstance(meta, dict):
-        manager.log('Could not load cache for {}: meta cache is not a dict'.format(id))
+        manager.log('Could not load cache for {}: meta cache is not a dict: {}'
+                    .format(id, repr(meta)))
         return None
     m = CacheMeta(
         meta.get('id'),
@@ -902,16 +903,25 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         return None
 
     # Ignore cache if (relevant) options aren't the same.
+    # Note that it's fine to mutilate cached_options since it's only used here.
     cached_options = m.options
     current_options = manager.options.clone_for_module(id).select_options_affecting_cache()
     if manager.options.quick_and_dirty:
         # In quick_and_dirty mode allow non-quick_and_dirty cache files.
         cached_options['quick_and_dirty'] = True
-    if not cached_options.get('platform') and manager.options.skip_version_check:
-        # Older versions didn't write platform.
-        cached_options['platform'] = manager.options.platform
+    if manager.options.skip_version_check:
+        # When we're lax about version we're also lax about platform.
+        cached_options['platform'] = current_options['platform']
+    if 'debug_cache' in cached_options:
+        # Older versions included debug_cache, but it's silly to compare it.
+        del cached_options['debug_cache']
     if cached_options != current_options:
         manager.log('Metadata abandoned for {}: options differ'.format(id))
+        if manager.options.verbosity >= 2:
+            for key in sorted(set(cached_options) | set(current_options)):
+                if cached_options.get(key) != current_options.get(key):
+                    manager.trace('    {}: {} != {}'
+                                  .format(key, cached_options.get(key), current_options.get(key)))
         return None
 
     return m
@@ -953,35 +963,53 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
 
     # Check data_json; assume if its mtime matches it's good.
     # TODO: stat() errors
-    if getmtime(meta.data_json) != meta.data_mtime:
+    data_mtime = getmtime(meta.data_json)
+    if data_mtime != meta.data_mtime:
         manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
         return None
 
     # TODO: Share stat() outcome with find_module()
     path = os.path.abspath(path)
     st = manager.get_stat(path)  # TODO: Errors
-    if st.st_size != meta.size:
+    size = st.st_size
+    if size != meta.size:
         manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
         return None
 
-    if int(st.st_mtime) != meta.mtime or path != meta.path:
+    mtime = int(st.st_mtime)
+    if mtime != meta.mtime or path != meta.path:
         with open(path, 'rb') as f:
             source_hash = hashlib.md5(f.read()).hexdigest()
         if source_hash != meta.hash:
             manager.log('Metadata abandoned for {}: file {} has different hash'.format(id, path))
             return None
         else:
-            manager.log('Metadata refreshed for {}: file {}'.format(id, path))
             # Optimization: update mtime and path (otherwise, this mismatch will reappear).
-            meta = meta._replace(mtime=int(st.st_mtime), path=path)
+            meta = meta._replace(mtime=mtime, path=path)
+            meta_dict = {
+                'id': id,
+                'path': path,
+                'mtime': mtime,
+                'size': size,
+                'hash': source_hash,
+                'data_mtime': data_mtime,
+                'dependencies': meta.dependencies,
+                'suppressed': meta.suppressed,
+                'child_modules': meta.child_modules,
+                'options': (manager.options.clone_for_module(id)
+                            .select_options_affecting_cache()),
+                'dep_prios': meta.dep_prios,
+                'interface_hash': meta.interface_hash,
+                'version_id': manager.version_id,
+            }
             if manager.options.debug_cache:
-                meta_str = json.dumps(meta, indent=2, sort_keys=True)
+                meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
             else:
-                meta_str = json.dumps(meta)
+                meta_str = json.dumps(meta_dict)
             meta_json, _ = get_cache_names(id, path, manager)
             manager.log('Updating mtime for {}: file {}, meta {}, mtime {}'
                         .format(id, path, meta_json, meta.mtime))
-            atomic_write(meta_json, meta_str)  # Ignore errors, since this is just an optimization.
+            atomic_write(meta_json, meta_str, '\n')  # Ignore errors, it's just an optimization.
             return meta
 
     # It's a match on (id, path, size, hash, mtime).
@@ -1099,7 +1127,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
         meta_str = json.dumps(meta, indent=2, sort_keys=True)
     else:
         meta_str = json.dumps(meta)
-    if not atomic_write(meta_json, meta_str):
+    if not atomic_write(meta_json, meta_str, '\n'):
         # Most likely the error is the replace() call
         # (see https://github.com/python/mypy/issues/3215).
         # The next run will simply find the cache entry out of date.
