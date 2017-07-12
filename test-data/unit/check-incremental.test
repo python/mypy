@@ -2759,6 +2759,35 @@ class C:
 [out2]
 tmp/mod.py:6: error: "int" has no attribute "x"
 
+[case testClassNamesResolutionCrashReadCache]
+import mod
+
+[file mod.py]
+import submod
+
+[file mod.py.2]
+from submod import C
+
+c = C()
+reveal_type(c.int)
+reveal_type(c.y)
+
+[file submod.py]
+from typing import List
+
+class C:
+    def __init__(self) -> None:
+        self.int = []  # type: List[int]
+
+    def f(self, f: int) -> None:
+        self.y = f
+
+[builtins fixtures/list.pyi]
+[out]
+[out2]
+tmp/mod.py:4: error: Revealed type is 'builtins.list[builtins.int]'
+tmp/mod.py:5: error: Revealed type is 'builtins.int'
+
 [case testClassNamesResolutionCrashReveal]
 import mod
 
