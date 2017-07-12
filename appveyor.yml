@@ -9,7 +9,7 @@ install:
     - "git config core.symlinks true"
     - "git reset --hard"
     - "%PYTHON%\\python.exe -m pip install -r test-requirements.txt"
-    - "%PYTHON%\\python.exe setup.py -q install"
+    - "%PYTHON%\\python.exe setup.py install"
 
 build: off
 
