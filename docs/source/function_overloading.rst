@@ -56,7 +56,7 @@ accurately describe the function's behavior.
         # It may or may not have type hints; if it does,
         # these are checked against the overload definitions
         # as well as against the implementation body.
-        def __getitem__(self, index):
+        def __getitem__(self, index: Union[int, slice]) -> Union[T, Sequence[T]]:
             # This is exactly the same as before.
             if isinstance(index, int):
                 ...  # Return a T here
@@ -64,6 +64,29 @@ accurately describe the function's behavior.
                 ...  # Return a sequence of Ts here
             else:
                 raise TypeError(...)
+
+Calls to overloaded functions are type checked against the variants,
+not against the implementation. A call like ``my_list[5]`` would have
+type ``T``, not ``Union[T, Sequence[T]]`` because it matches the
+first overloaded definition, and ignores the type annotations on the
+implementation of ``__getitem__``. The code in the body of the
+definition of ``__getitem__`` is checked against the annotations on
+the the corresponding declaration. In this case the body is checked
+with ``index: Union[int, slice]`` and a return type
+``Union[T, Sequence[T]]``. If there are no annotations on the
+corresponding definition, then code in the function body is not type
+checked.
+
+The annotations on the function body must be compatible with the
+types given for the overloaded variants listed above it. The type
+checker will verify that all the types listed the overloaded variants
+are compatible with the types given for the implementation. In this
+case it checks that the parameter type ``int`` and the return type
+``T`` are compatible with ``Union[int, slice]`` and
+``Union[T, Sequence[T]]`` for the first variant. For the second
+variant it verifies that the parameter type ``slice`` are the return
+type ``Sequence[T]`` are compatible with ``Union[int, slice]`` and
+``Union[T, Sequence[T]]``.
 
 Overloaded function variants are still ordinary Python functions and
 they still define a single runtime object. There is no automatic

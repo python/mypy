@@ -122,6 +122,7 @@ class ConditionalTypeBinder:
         if not expr.literal:
             return
         key = expr.literal_hash
+        assert key is not None, 'Internal error: binder tried to put non-literal'
         if key not in self.declarations:
             assert isinstance(expr, BindableTypes)
             self.declarations[key] = get_declaration(expr)
@@ -132,6 +133,7 @@ class ConditionalTypeBinder:
         self.frames[-1].unreachable = True
 
     def get(self, expr: Expression) -> Optional[Type]:
+        assert expr.literal_hash is not None, 'Internal error: binder tried to get non-literal'
         return self._get(expr.literal_hash)
 
     def is_unreachable(self) -> bool:
@@ -141,6 +143,7 @@ class ConditionalTypeBinder:
 
     def cleanse(self, expr: Expression) -> None:
         """Remove all references to a Node from the binder."""
+        assert expr.literal_hash is not None, 'Internal error: binder tried cleanse non-literal'
         self._cleanse_key(expr.literal_hash)
 
     def _cleanse_key(self, key: Key) -> None:
@@ -230,12 +233,16 @@ class ConditionalTypeBinder:
             # times?
             return
 
-        # If x is Any and y is int, after x = y we do not infer that x is int.
-        # This could be changed.
-
-        if (isinstance(self.most_recent_enclosing_type(expr, type), AnyType)
+        enclosing_type = self.most_recent_enclosing_type(expr, type)
+        if (isinstance(enclosing_type, AnyType)
                 and not restrict_any):
-            pass
+            # If x is Any and y is int, after x = y we do not infer that x is int.
+            # This could be changed.
+            if not isinstance(type, AnyType):
+                # We narrowed type from Any in a recent frame (probably an
+                # isinstance check), but now it is reassigned, so broaden back
+                # to Any (which is the most recent enclosing type)
+                self.put(expr, enclosing_type)
         elif (isinstance(type, AnyType)
               and not (isinstance(declared_type, UnionType)
                        and any(isinstance(item, AnyType) for item in declared_type.items))):
@@ -258,6 +265,7 @@ class ConditionalTypeBinder:
         It is overly conservative: it invalidates globally, including
         in code paths unreachable from here.
         """
+        assert expr.literal_hash is not None
         for dep in self.dependencies.get(expr.literal_hash, set()):
             self._cleanse_key(dep)
 
@@ -265,6 +273,7 @@ class ConditionalTypeBinder:
         if isinstance(type, AnyType):
             return get_declaration(expr)
         key = expr.literal_hash
+        assert key is not None
         enclosers = ([get_declaration(expr)] +
                      [f[key] for f in self.frames
                       if key in f and is_subtype(type, f[key])])

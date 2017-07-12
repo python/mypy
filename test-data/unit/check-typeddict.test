@@ -336,21 +336,6 @@ D = TypedDict('D', {'x': List[int]})
 reveal_type(D(x=[]))  # E: Revealed type is 'TypedDict('__main__.D', {'x': builtins.list[builtins.int]})'
 [builtins fixtures/dict.pyi]
 
--- TODO: Fix mypy stubs so that the following passes in the test suite
---[case testCanConvertTypedDictToAnySuperclassOfMapping]
---from mypy_extensions import TypedDict
---from typing import Sized, Iterable, Container
---Point = TypedDict('Point', {'x': int, 'y': int})
---def as_sized(p: Point) -> Sized:
---    return p
---def as_iterable(p: Point) -> Iterable[str]:
---    return p
---def as_container(p: Point) -> Container[str]:
---    return p
---def as_object(p: Point) -> object:
---    return p
---[builtins fixtures/dict.pyi]
-
 [case testCannotConvertTypedDictToDictOrMutableMapping]
 from mypy_extensions import TypedDict
 from typing import Dict, MutableMapping
@@ -439,18 +424,18 @@ reveal_type(joined1)  # E: Revealed type is 'builtins.list[typing.Mapping*[built
 reveal_type(joined2)  # E: Revealed type is 'builtins.list[typing.Mapping*[builtins.str, builtins.int]]'
 [builtins fixtures/dict.pyi]
 
--- TODO: Fix mypy stubs so that the following passes in the test suite
---[case testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype]
---from mypy_extensions import TypedDict
---from typing import Sized
---Cell = TypedDict('Cell', {'value': int})
---left = Cell(value=42)
---right = {'score': 999}  # type: Sized
---joined1 = [left, right]
---joined2 = [right, left]
---reveal_type(joined1)  # E: Revealed type is 'builtins.list[typing.Sized*]'
---reveal_type(joined2)  # E: Revealed type is 'builtins.list[typing.Sized*]'
---[builtins fixtures/dict.pyi]
+[case testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype]
+from mypy_extensions import TypedDict
+from typing import Sized
+Cell = TypedDict('Cell', {'value': int})
+left = Cell(value=42)
+right = {'score': 999}  # type: Sized
+joined1 = [left, right]
+joined2 = [right, left]
+reveal_type(joined1)  # E: Revealed type is 'builtins.list[typing.Sized*]'
+reveal_type(joined2)  # E: Revealed type is 'builtins.list[typing.Sized*]'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testJoinOfTypedDictWithIncompatibleMappingIsObject]
 from mypy_extensions import TypedDict
@@ -602,26 +587,6 @@ reveal_type(f(a)) # E: Revealed type is 'builtins.str*'
 -- TODO: Figure out some way to trigger the ConstraintBuilderVisitor.visit_typeddict_type() path.
 
 
--- Methods
-
--- TODO: iter() does not accept TypedDictType as an argument type. Figure out why.
---[case testCanCallMappingMethodsOnTypedDict]
---from mypy_extensions import TypedDict
---Cell = TypedDict('Cell', {'value': int})
---c = Cell(value=42)
---c['value']
---iter(c)
---len(c)
---'value' in c
---c.keys()
---c.items()
---c.values()
---c.get('value')
---c == c
---c != c
---[builtins fixtures/dict.pyi]
-
-
 -- Special Method: __getitem__
 
 [case testCanGetItemOfTypedDictWithValidStringLiteralKey]
@@ -707,14 +672,6 @@ def set_coordinate(p: TaggedPoint, key: str, value: int) -> None:
 [builtins fixtures/dict.pyi]
 
 
--- Special Method: get
-
--- TODO: Implement support for these cases:
---[case testGetOfTypedDictWithValidStringLiteralKeyReturnsPreciseType]
---[case testGetOfTypedDictWithInvalidStringLiteralKeyIsError]
---[case testGetOfTypedDictWithNonLiteralKeyReturnsImpreciseType]
-
-
 -- isinstance
 
 [case testTypedDictAndInstance]
@@ -726,7 +683,8 @@ if isinstance(d, D):  # E: Cannot use isinstance() with a TypedDict type
 [builtins fixtures/isinstancelist.pyi]
 
 
--- scoping
+-- Scoping
+
 [case testTypedDictInClassNamespace]
 # https://github.com/python/mypy/pull/2553#issuecomment-266474341
 from mypy_extensions import TypedDict
@@ -889,7 +847,7 @@ class A: pass
 D = TypedDict('D', {'x': List[int], 'y': int})
 d: D
 reveal_type(d.get('x', [])) # E: Revealed type is 'builtins.list[builtins.int]'
-d.get('x', ['x']) # E: List item 0 has incompatible type "str"
+d.get('x', ['x']) # E: List item 0 has incompatible type "str"; expected "int"
 a = ['']
 reveal_type(d.get('x', a)) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str*]]'
 [builtins fixtures/dict.pyi]

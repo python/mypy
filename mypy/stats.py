@@ -3,7 +3,7 @@
 import cgi
 import os.path
 
-from typing import Any, Dict, List, cast, Tuple
+from typing import Dict, List, cast, Tuple, Set, Optional
 
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -12,17 +12,19 @@ from mypy.types import (
 from mypy import nodes
 from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
-    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr
+    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef
 )
 
 
 TYPE_EMPTY = 0
-TYPE_PRECISE = 1
-TYPE_IMPRECISE = 2
-TYPE_ANY = 3
+TYPE_UNANALYZED = 1  # type of non-typechecked code
+TYPE_PRECISE = 2
+TYPE_IMPRECISE = 3
+TYPE_ANY = 4
 
 precision_names = [
     'empty',
+    'unanalyzed',
     'precise',
     'imprecise',
     'any',
@@ -78,6 +80,15 @@ class StatisticsVisitor(TraverserVisitor):
             elif self.all_nodes:
                 self.record_line(self.line, TYPE_ANY)
             super().visit_func_def(o)
+
+    def visit_class_def(self, o: ClassDef) -> None:
+        # Override this method because we don't want to analyze base_type_exprs (base_type_exprs
+        # are base classes in a class declaration).
+        # While base_type_exprs are technically expressions, type analyzer does not visit them and
+        # they are not in the typemap.
+        for d in o.decorators:
+            d.accept(self)
+        o.defs.accept(self)
 
     def visit_type_application(self, o: TypeApplication) -> None:
         self.line = o.line
@@ -155,12 +166,21 @@ class StatisticsVisitor(TraverserVisitor):
     def process_node(self, node: Expression) -> None:
         if self.all_nodes:
             if self.typemap is not None:
-                typ = self.typemap.get(node)
-                if typ:
-                    self.line = node.line
-                    self.type(typ)
+                self.line = node.line
+                self.type(self.typemap.get(node))
 
-    def type(self, t: Type) -> None:
+    def type(self, t: Optional[Type]) -> None:
+        if not t:
+            # If an expression does not have a type, it is often due to dead code.
+            # Don't count these because there can be an unanalyzed value on a line with other
+            # analyzed expressions, which overwrite the TYPE_UNANALYZED.
+            self.record_line(self.line, TYPE_UNANALYZED)
+            return
+
+        if isinstance(t, AnyType) and t.special_form:
+            # This is not a real Any type, so don't collect stats for it.
+            return
+
         if isinstance(t, AnyType):
             self.log('  !! Any type around line %d' % self.line)
             self.num_any += 1
@@ -197,7 +217,7 @@ class StatisticsVisitor(TraverserVisitor):
 
     def record_line(self, line: int, precision: int) -> None:
         self.line_map[line] = max(precision,
-                                  self.line_map.get(line, TYPE_PRECISE))
+                                  self.line_map.get(line, TYPE_EMPTY))
 
 
 def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
