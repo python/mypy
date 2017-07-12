@@ -1,3 +1,6 @@
+cache:
+  - '%LOCALAPPDATA%\pip\Cache'
+
 environment:
   matrix:
 

@@ -2290,6 +2290,8 @@ class SymbolTableNode:
     cross_ref = None  # type: Optional[str]
     # Was this node created by normalіze_type_alias?
     normalized = False  # type: bool
+    # Was this defined by assignment to self attribute?
+    implicit = False  # type: bool
 
     def __init__(self,
                  kind: int,
@@ -2298,7 +2300,8 @@ class SymbolTableNode:
                  typ: 'Optional[mypy.types.Type]' = None,
                  module_public: bool = True,
                  normalized: bool = False,
-                 alias_tvars: Optional[List[str]] = None) -> None:
+                 alias_tvars: Optional[List[str]] = None,
+                 implicit: bool = False) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
@@ -2306,6 +2309,7 @@ class SymbolTableNode:
         self.module_public = module_public
         self.normalized = normalized
         self.alias_tvars = alias_tvars
+        self.implicit = implicit
 
     @property
     def fullname(self) -> Optional[str]:
@@ -2349,6 +2353,10 @@ class SymbolTableNode:
                 }  # type: JsonDict
         if not self.module_public:
             data['module_public'] = False
+        if self.normalized:
+            data['normalized'] = True
+        if self.implicit:
+            data['implicit'] = True
         if self.kind == MODULE_REF:
             assert self.node is not None, "Missing module cross ref in %s for %s" % (prefix, name)
             data['cross_ref'] = self.node.fullname()
@@ -2386,6 +2394,10 @@ class SymbolTableNode:
                 stnode.alias_tvars = data['alias_tvars']
         if 'module_public' in data:
             stnode.module_public = data['module_public']
+        if 'normalized' in data:
+            stnode.normalized = data['normalized']
+        if 'implicit' in data:
+            stnode.implicit = data['implicit']
         return stnode
 
 
