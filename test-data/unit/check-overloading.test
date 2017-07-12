@@ -787,7 +787,27 @@ class D(A):
     def f(self, x: str) -> str: return ''
 [out]
 tmp/foo.pyi:12: error: Signature of "f" incompatible with supertype "A"
+tmp/foo.pyi:12: note:     Method "f" of "A":
+tmp/foo.pyi:12: note:       @overload
+tmp/foo.pyi:12: note:       def f(self, x: builtins.int) -> builtins.int
+tmp/foo.pyi:12: note:       @overload
+tmp/foo.pyi:12: note:       def f(self, x: builtins.str) -> builtins.str
+tmp/foo.pyi:12: note:     Method "f" of "B":
+tmp/foo.pyi:12: note:       @overload
+tmp/foo.pyi:12: note:       def f(self, x: foo.IntSub) -> builtins.int
+tmp/foo.pyi:12: note:       @overload
+tmp/foo.pyi:12: note:       def f(self, x: builtins.str) -> builtins.str
 tmp/foo.pyi:17: error: Signature of "f" incompatible with supertype "A"
+tmp/foo.pyi:17: note:     Method "f" of "A":
+tmp/foo.pyi:17: note:       @overload
+tmp/foo.pyi:17: note:       def f(self, x: builtins.int) -> builtins.int
+tmp/foo.pyi:17: note:       @overload
+tmp/foo.pyi:17: note:       def f(self, x: builtins.str) -> builtins.str
+tmp/foo.pyi:17: note:     Method "f" of "C":
+tmp/foo.pyi:17: note:       @overload
+tmp/foo.pyi:17: note:       def f(self, x: builtins.int) -> builtins.int
+tmp/foo.pyi:17: note:       @overload
+tmp/foo.pyi:17: note:       def f(self, x: foo.StrSub) -> builtins.str
 
 [case testOverloadingAndDucktypeCompatibility]
 from foo import *

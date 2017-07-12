@@ -1096,7 +1096,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not emitted_msg:
                 # Fall back to generic incompatibility message.
                 self.msg.signature_incompatible_with_supertype(
-                    name, name_in_super, supertype, node)
+                    name, name_in_super, supertype, node, original, override)
 
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""

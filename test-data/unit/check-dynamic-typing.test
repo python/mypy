@@ -640,18 +640,28 @@ import typing
 class B:
     def f(self, x, y): pass
 class A(B):
-    def f(self, x: 'A') -> None: # E: Signature of "f" incompatible with supertype "B"
+    def f(self, x: 'A') -> None:
         pass
 [out]
+main:5: error: Signature of "f" incompatible with supertype "B"
+main:5: note:     Method "f":
+main:5: note:       def (x: Any, y: Any) -> Any
+main:5: note:     Method "f" of "A":
+main:5: note:       def f(self, x: __main__.A) -> None
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature3]
 import typing
 class B:
     def f(self, x: A) -> None: pass
 class A(B):
-    def f(self, x, y) -> None: # E: Signature of "f" incompatible with supertype "B"
+    def f(self, x, y) -> None:
         x()
 [out]
+main:5: error: Signature of "f" incompatible with supertype "B"
+main:5: note:     Method "f" of "B":
+main:5: note:       def f(self, x: __main__.A) -> None
+main:5: note:     Method "f" of "A":
+main:5: note:       def f(self, x: Any, y: Any) -> None
 
 
 -- Don't complain about too few/many arguments in dynamic functions

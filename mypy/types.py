@@ -43,6 +43,9 @@ class Type(mypy.nodes.Context):
     def __repr__(self) -> str:
         return self.accept(TypeStrVisitor())
 
+    def pretty_str(self) -> str:
+        return self.accept(PrettyTypeStrVisitor())
+
     def serialize(self) -> Union[JsonDict, str]:
         raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
 
@@ -1432,7 +1435,7 @@ class TypeTranslator(TypeVisitor[Type]):
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
-    """Visitor for pretty-printing types into strings.
+    """Visitor for printing types into human-readable strings.
 
     This is mostly for debugging/testing.
 
@@ -1596,6 +1599,68 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             else:
                 res.append(str(t))
         return ', '.join(res)
+
+
+class PrettyTypeStrVisitor(TypeStrVisitor):
+    """Overloaded Visitor for pretty-printing types into strings.
+
+    Does not preserve original formatting.
+
+    Notes:
+     - Represent unbound types as Foo? or Foo?[...].
+     - Represent the NoneTyp type as None.
+    """
+    def visit_none_type(self, t: NoneTyp) -> str:
+        # Note: This isn't discernable from the None value (for readiblity)
+        return "None"
+
+    def visit_overloaded(self, t: Overloaded) -> str:
+        a = []
+        for i in t.items():
+            a.append('@overload\n' + i.accept(self))
+        return '\n'.join(a)
+
+    def visit_callable_type(self, t: CallableType) -> str:
+        s = ''
+        bare_asterisk = False
+        for i in range(len(t.arg_types)):
+            if len(t.arg_types) > 5:
+                s += '\n'
+            if s != '':
+                s += ', '
+            if t.arg_kinds[i] in (ARG_NAMED, ARG_NAMED_OPT) and not bare_asterisk:
+                s += '*, '
+                bare_asterisk = True
+            if t.arg_kinds[i] == ARG_STAR:
+                s += '*'
+            if t.arg_kinds[i] == ARG_STAR2:
+                s += '**'
+            name = t.arg_names[i]
+            if name:
+                s += name + ': '
+            s += t.arg_types[i].accept(self)
+            if t.arg_kinds[i] in (ARG_OPT, ARG_NAMED_OPT):
+                s += ' ='
+
+        if t.definition is not None and t.definition.name() is not None:
+            # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
+            definition_args = getattr(t.definition, 'arg_names')
+            if definition_args and t.arg_names != definition_args \
+                    and len(definition_args) > 0:
+                special_arg = definition_args[0]
+                if s != '':
+                    s = ', ' + s
+                s = special_arg + s
+            s = '{}({})'.format(t.definition.name(), s)
+        else:
+            s = '({})'.format(s)
+
+        s += ' -> {}'.format(t.ret_type.accept(self))
+
+        if t.variables:
+            s = '{} {}'.format(t.variables, s)
+
+        return 'def {}'.format(s)
 
 
 class TypeQuery(SyntheticTypeVisitor[T]):

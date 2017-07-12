@@ -158,28 +158,34 @@ class MessageBuilder:
         return self.errors.is_errors()
 
     def report(self, msg: str, context: Context, severity: str,
-               file: str = None, origin: Context = None) -> None:
+               file: str = None, origin: Context = None, strip: bool = True,
+               allow_dups: bool = False) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
-                               msg.strip(), severity=severity, file=file,
-                               origin_line=origin.get_line() if origin else None)
+                               msg.strip() if strip else msg,
+                               severity=severity, file=file,
+                               origin_line=origin.get_line() if origin else None,
+                               allow_dups=allow_dups)
 
     def fail(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+             origin: Context = None, strip: bool = True, allow_dups: bool = False) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', file=file, origin=origin)
+        self.report(msg, context, 'error', file=file, origin=origin, strip=strip,
+                    allow_dups=allow_dups)
 
     def note(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+             origin: Context = None, strip: bool = True, allow_dups: bool = False) -> None:
         """Report a note (unless disabled)."""
-        self.report(msg, context, 'note', file=file, origin=origin)
+        self.report(msg, context, 'note', file=file, origin=origin, strip=strip,
+                    allow_dups=allow_dups)
 
     def warn(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+             origin: Context = None, strip: bool = True, allow_dups: bool = False) -> None:
         """Report a warning message (unless disabled)."""
-        self.report(msg, context, 'warning', file=file, origin=origin)
+        self.report(msg, context, 'warning', file=file, origin=origin, strip=strip,
+                    allow_dups=allow_dups)
 
     def format(self, typ: Type, verbosity: int = 0) -> str:
         """Convert a type to a relatively short string that is suitable for error messages.
@@ -360,6 +366,24 @@ class MessageBuilder:
             if str1 != str2:
                 return (str1, str2)
         return (str1, str2)
+
+    def note_signature(self, annotation: str, defn: Optional[FunctionLike], context: Context) -> None:
+        """
+        Given a FunctionLike object, pretty print its signature across multiple lines
+        and truncate it if there are lots of overloads
+        """
+        if defn is not None:
+            max_overload_lines = 6  # Print up to 3 overloads, then truncate
+            pretty_str = defn.pretty_str().split('\n')
+            # TODO: Add filename and line number to method message
+            self.note('     {}:'.format(annotation), context, strip=False)
+            for line in pretty_str[:max_overload_lines]:
+                self.note('         {}'.format(line), context, strip=False, allow_dups=True)
+            if len(pretty_str) > max_overload_lines:
+                # Each overload takes up 2 lines because of "@overload"
+                additional_overrides = int((len(pretty_str) - max_overload_lines) / 2)
+                self.note('      <additional {} overloads omitted>'.format(additional_overrides),
+                          context, strip=False, allow_dups=True)
 
     #
     # Specific operations
@@ -731,10 +755,16 @@ class MessageBuilder:
 
     def signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str,
-            context: Context) -> None:
+            context: Context, original: Optional[FunctionLike] = None,
+            override: Optional[FunctionLike] = None) -> None:
         target = self.override_target(name, name_in_super, supertype)
-        self.fail('Signature of "{}" incompatible with {}'.format(
-            name, target), context)
+
+        # Question: should this be at the top of this file in all caps?
+        self.fail('Signature of "{}" incompatible with {}'.format(name, target), context)
+
+        # Print the original and overridden methods nicely
+        self.note_signature('Superclass', original, context)
+        self.note_signature('Subclass', override, context)
 
     def argument_incompatible_with_supertype(
             self, arg_num: int, name: str, name_in_supertype: str,

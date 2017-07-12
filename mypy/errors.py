@@ -50,6 +50,9 @@ class ErrorInfo:
     # Only report this particular messages once per program.
     only_once = False
 
+    # Do not remove duplicate copies of this message (ignored if only_once is True)
+    allow_dups = False
+
     # Fine-grained incremental target where this was reported
     target = None  # type: Optional[str]
 
@@ -65,6 +68,7 @@ class ErrorInfo:
                  message: str,
                  blocker: bool,
                  only_once: bool,
+                 allow_dups: bool,
                  origin: Tuple[str, int] = None,
                  target: str = None) -> None:
         self.import_ctx = import_ctx
@@ -78,6 +82,7 @@ class ErrorInfo:
         self.message = message
         self.blocker = blocker
         self.only_once = only_once
+        self.allow_dups = allow_dups
         self.origin = origin or (file, line)
         self.target = target
 
@@ -253,7 +258,7 @@ class Errors:
 
     def report(self, line: int, column: int, message: str, blocker: bool = False,
                severity: str = 'error', file: str = None, only_once: bool = False,
-               origin_line: int = None) -> None:
+               origin_line: int = None, allow_dups: bool = False) -> None:
         """Report message at the given line using the current error context.
 
         Args:
@@ -264,6 +269,7 @@ class Errors:
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
             origin_line: if non-None, override current context as origin
+            allow_dups: if True, don't remove duplicate copies of this (ignored if only_once)
         """
         type = self.type_name[-1]  # type: Optional[str]
         if len(self.function_or_member) > 2:
@@ -274,7 +280,7 @@ class Errors:
                          self.function_or_member[-1], line, column, severity, message,
                          blocker, only_once,
                          origin=(self.file, origin_line) if origin_line else None,
-                         target=self.current_target())
+                         target=self.current_target(), allow_dups=allow_dups)
         self.add_error_info(info)
 
     def add_error_info(self, info: ErrorInfo) -> None:
@@ -300,7 +306,7 @@ class Errors:
                     # Don't use report since add_error_info will ignore the error!
                     info = ErrorInfo(self.import_context(), file, self.current_module(), None,
                                      None, line, -1, 'note', "unused 'type: ignore' comment",
-                                     False, False)
+                                     False, False, False)
                     self.error_info.append(info)
 
     def is_typeshed_file(self, file: str) -> bool:
@@ -338,7 +344,7 @@ class Errors:
         a = []  # type: List[str]
         errors = self.render_messages(self.sort_messages(self.error_info))
         errors = self.remove_duplicates(errors)
-        for file, line, column, severity, message in errors:
+        for file, line, column, severity, message, allow_dups in errors:
             s = ''
             if file is not None:
                 if self.show_column_numbers and line is not None and line >= 0 \
@@ -363,7 +369,7 @@ class Errors:
                    if info.target)
 
     def render_messages(self, errors: List[ErrorInfo]) -> List[Tuple[Optional[str], int, int,
-                                                                     str, str]]:
+                                                                     str, str, bool]]:
         """Translate the messages into a sequence of tuples.
 
         Each tuple is of form (path, line, col, message.  The rendered
@@ -371,7 +377,7 @@ class Errors:
         item may be None. If the line item is negative, the line
         number is not defined for the tuple.
         """
-        result = []  # type: List[Tuple[Optional[str], int, int, str, str]]
+        result = []  # type: List[Tuple[Optional[str], int, int, str, str, bool]]
         # (path, line, column, severity, message)
 
         prev_import_context = []  # type: List[Tuple[str, int]]
@@ -397,7 +403,7 @@ class Errors:
                     # Remove prefix to ignore from path (if present) to
                     # simplify path.
                     path = remove_path_prefix(path, self.ignore_prefix)
-                    result.append((None, -1, -1, 'note', fmt.format(path, line)))
+                    result.append((None, -1, -1, 'note', fmt.format(path, line), e.allow_dups))
                     i -= 1
 
             file = self.simplify_path(e.file)
@@ -409,27 +415,27 @@ class Errors:
                     e.type != prev_type):
                 if e.function_or_member is None:
                     if e.type is None:
-                        result.append((file, -1, -1, 'note', 'At top level:'))
+                        result.append((file, -1, -1, 'note', 'At top level:', e.allow_dups))
                     else:
                         result.append((file, -1, -1, 'note', 'In class "{}":'.format(
-                            e.type)))
+                            e.type), e.allow_dups))
                 else:
                     if e.type is None:
                         result.append((file, -1, -1, 'note',
                                        'In function "{}":'.format(
-                                           e.function_or_member)))
+                                           e.function_or_member), e.allow_dups))
                     else:
                         result.append((file, -1, -1, 'note',
                                        'In member "{}" of class "{}":'.format(
-                                           e.function_or_member, e.type)))
+                                           e.function_or_member, e.type), e.allow_dups))
             elif e.type != prev_type:
                 if e.type is None:
-                    result.append((file, -1, -1, 'note', 'At top level:'))
+                    result.append((file, -1, -1, 'note', 'At top level:', e.allow_dups))
                 else:
                     result.append((file, -1, -1, 'note',
-                                   'In class "{}":'.format(e.type)))
+                                   'In class "{}":'.format(e.type), e.allow_dups))
 
-            result.append((file, e.line, e.column, e.severity, e.message))
+            result.append((file, e.line, e.column, e.severity, e.message, e.allow_dups))
 
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member
@@ -460,21 +466,23 @@ class Errors:
             result.extend(a)
         return result
 
-    def remove_duplicates(self, errors: List[Tuple[Optional[str], int, int, str, str]]
-                          ) -> List[Tuple[Optional[str], int, int, str, str]]:
+    def remove_duplicates(self, errors: List[Tuple[Optional[str], int, int, str, str, bool]]
+                          ) -> List[Tuple[Optional[str], int, int, str, str, bool]]:
         """Remove duplicates from a sorted error list."""
-        res = []  # type: List[Tuple[Optional[str], int, int, str, str]]
+        res = []  # type: List[Tuple[Optional[str], int, int, str, str, bool]]
         i = 0
         while i < len(errors):
             dup = False
             j = i - 1
-            while (j >= 0 and errors[j][0] == errors[i][0] and
-                    errors[j][1] == errors[i][1]):
-                if (errors[j][3] == errors[i][3] and
-                        errors[j][4] == errors[i][4]):  # ignore column
-                    dup = True
-                    break
-                j -= 1
+            # Find duplicates for this error (unless we're allowing duplicates)
+            if not errors[i][5]:
+                while (j >= 0 and errors[j][0] == errors[i][0] and
+                        errors[j][1] == errors[i][1]):
+                    if (errors[j][3] == errors[i][3] and
+                            errors[j][4] == errors[i][4]):  # ignore column
+                        dup = True
+                        break
+                    j -= 1
             if not dup:
                 res.append(errors[i])
             i += 1
