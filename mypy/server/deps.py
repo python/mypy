@@ -1,6 +1,6 @@
 """Generate fine-grained dependencies for AST nodes."""
 
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Optional
 
 from mypy.checkmember import bind_self
 from mypy.nodes import (
@@ -151,7 +151,7 @@ class DependencyVisitor(TraverserVisitor):
 
     # Helpers
 
-    def add_dependency(self, trigger: str, target: str = None) -> None:
+    def add_dependency(self, trigger: str, target: Optional[str] = None) -> None:
         if target is None:
             target = self.current()
         self.map.setdefault(trigger, set()).add(target)

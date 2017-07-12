@@ -73,7 +73,9 @@ TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment'
 
 
-def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
+def parse(source: Union[str, bytes],
+          fnam: Optional[str] = None,
+          errors: Optional[Errors] = None,
           options: Options = Options()) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 

@@ -2204,7 +2204,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def accept(self,
                node: Expression,
-               type_context: Type = None,
+               type_context: Optional[Type] = None,
                allow_none_return: bool = False,
                always_allow_any: bool = False,
                ) -> Type:
