@@ -2338,6 +2338,10 @@ class SymbolTableNode:
                 }  # type: JsonDict
         if not self.module_public:
             data['module_public'] = False
+        if self.normalized:
+            data['normalized'] = True
+        if self.implicit:
+            data['implicit'] = True
         if self.kind == MODULE_REF:
             assert self.node is not None, "Missing module cross ref in %s for %s" % (prefix, name)
             data['cross_ref'] = self.node.fullname()
@@ -2375,6 +2379,10 @@ class SymbolTableNode:
                 stnode.alias_tvars = data['alias_tvars']
         if 'module_public' in data:
             stnode.module_public = data['module_public']
+        if 'normalized' in data:
+            stnode.normalized = data['normalized']
+        if 'implicit' in data:
+            stnode.implicit = data['implicit']
         return stnode
 
 

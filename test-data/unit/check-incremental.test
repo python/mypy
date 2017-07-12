@@ -2735,3 +2735,56 @@ class A:
         pass
 a = A()
 [builtins fixtures/property.pyi]
+
+[case testClassNamesResolutionCrashAccess]
+import mod
+
+[file mod.py]
+class C:
+    def __init__(self) -> None:
+        self.int = ''
+
+    def f(self, f: int) -> None:
+        pass
+
+[file mod.py.2]
+class C:
+    def __init__(self) -> None:
+        self.int = ''
+
+    def f(self, f: int) -> None:
+        f.x
+
+[out]
+[out2]
+tmp/mod.py:6: error: "int" has no attribute "x"
+
+[case testClassNamesResolutionCrashReveal]
+import mod
+
+[file mod.py]
+class Foo(object):
+
+    def __init__(self) -> None:
+        self.bytes = b"foo"
+
+    def bar(self, f: bytes):
+        pass
+
+foo = Foo()
+foo.bar(b"test")
+
+[file mod.py.2]
+class Foo(object):
+
+    def __init__(self) -> None:
+        self.bytes = b"foo"
+
+    def bar(self, f: bytes):
+        reveal_type(f)
+
+foo = Foo()
+foo.bar(b"test")
+[out]
+[out2]
+tmp/mod.py:7: error: Revealed type is 'builtins.bytes'
