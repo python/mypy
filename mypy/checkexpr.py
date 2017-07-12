@@ -1519,7 +1519,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif e.right_always:
             left_map = None
 
-        right_type = self.analyze_cond_branch(right_map, e.right, left_type)
+        # If right_map is None then we know mypy considers the right branch
+        # to be unreachable and therefore any errors found in the right branch
+        # should be suppressed.
+        if right_map is None:
+            self.msg.disable_errors()
+        try:
+            right_type = self.analyze_cond_branch(right_map, e.right, left_type)
+        finally:
+            if right_map is None:
+                self.msg.enable_errors()
 
         if right_map is None:
             # The boolean expression is statically known to be the left value
