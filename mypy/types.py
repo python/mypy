@@ -1162,7 +1162,7 @@ class PartialType(Type):
     inner_types = None  # type: List[Type]
 
     def __init__(self,
-                 type: Optional['mypy.nodes.TypeInfo'],
+                 type: 'Optional[mypy.nodes.TypeInfo]',
                  var: 'mypy.nodes.Var',
                  inner_types: List[Type]) -> None:
         self.type = type

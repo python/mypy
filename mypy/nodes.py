@@ -445,7 +445,7 @@ class Argument(Node):
 
     def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
             initializer: Optional[Expression], kind: int,
-            initialization_statement: Optional['AssignmentStmt'] = None) -> None:
+            initialization_statement: 'Optional[AssignmentStmt]' = None) -> None:
         self.variable = variable
 
         self.type_annotation = type_annotation
@@ -457,7 +457,7 @@ class Argument(Node):
 
         self.kind = kind
 
-    def _initialization_statement(self) -> Optional['AssignmentStmt']:
+    def _initialization_statement(self) -> 'Optional[AssignmentStmt]':
         """Convert the initializer into an assignment statement.
         """
         if not self.initializer:
@@ -848,7 +848,7 @@ class AssignmentStmt(Statement):
     new_syntax = False  # type: bool
 
     def __init__(self, lvalues: List[Lvalue], rvalue: Expression,
-                 type: Optional['mypy.types.Type'] = None, new_syntax: bool = False) -> None:
+                 type: 'Optional[mypy.types.Type]' = None, new_syntax: bool = False) -> None:
         self.lvalues = lvalues
         self.rvalue = rvalue
         self.type = type
@@ -905,7 +905,7 @@ class ForStmt(Statement):
                  expr: Expression,
                  body: Block,
                  else_body: Optional[Block],
-                 index_type: Optional['mypy.types.Type'] = None) -> None:
+                 index_type: 'Optional[mypy.types.Type]' = None) -> None:
         self.index = index
         self.index_type = index_type
         self.expr = expr
@@ -1000,7 +1000,7 @@ class TryStmt(Statement):
     else_body = None  # type: Optional[Block]
     finally_body = None  # type: Optional[Block]
 
-    def __init__(self, body: Block, vars: List[Optional['NameExpr']],
+    def __init__(self, body: Block, vars: List['Optional[NameExpr]'],
                  types: List[Optional[Expression]],
                  handlers: List[Block], else_body: Optional[Block],
                  finally_body: Optional[Block]) -> None:
@@ -1024,7 +1024,7 @@ class WithStmt(Statement):
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
     def __init__(self, expr: List[Expression], target: List[Optional[Lvalue]],
-                 body: Block, target_type: Optional['mypy.types.Type'] = None) -> None:
+                 body: Block, target_type: 'Optional[mypy.types.Type]' = None) -> None:
         self.expr = expr
         self.target = target
         self.target_type = target_type
@@ -1824,7 +1824,7 @@ class TypeAliasExpr(Expression):
     in_runtime = False  # type: bool
 
     def __init__(self, type: 'mypy.types.Type', tvars: List[str],
-                 fallback: Optional['mypy.types.Type'] = None, in_runtime: bool = False) -> None:
+                 fallback: 'Optional[mypy.types.Type]' = None, in_runtime: bool = False) -> None:
         self.type = type
         self.fallback = fallback
         self.in_runtime = in_runtime
@@ -2049,14 +2049,14 @@ class TypeInfo(SymbolNode):
         """Is the type generic (i.e. does it have type variables)?"""
         return len(self.type_vars) > 0
 
-    def get(self, name: str) -> Optional['SymbolTableNode']:
+    def get(self, name: str) -> 'Optional[SymbolTableNode]':
         for cls in self.mro:
             n = cls.names.get(name)
             if n:
                 return n
         return None
 
-    def get_containing_type_info(self, name: str) -> Optional['TypeInfo']:
+    def get_containing_type_info(self, name: str) -> 'Optional[TypeInfo]':
         for cls in self.mro:
             if name in cls.names:
                 return cls
@@ -2161,8 +2161,8 @@ class TypeInfo(SymbolNode):
         return self.dump()
 
     def dump(self,
-             str_conv: Optional['mypy.strconv.StrConv'] = None,
-             type_str_conv: Optional['mypy.types.TypeStrVisitor'] = None) -> str:
+             str_conv: 'Optional[mypy.strconv.StrConv]' = None,
+             type_str_conv: 'Optional[mypy.types.TypeStrVisitor]' = None) -> str:
         """Return a string dump of the contents of the TypeInfo."""
         if not str_conv:
             str_conv = mypy.strconv.StrConv()
@@ -2295,7 +2295,7 @@ class SymbolTableNode:
                  kind: int,
                  node: Optional[SymbolNode],
                  mod_id: Optional[str] = None,
-                 typ: Optional['mypy.types.Type'] = None,
+                 typ: 'Optional[mypy.types.Type]' = None,
                  module_public: bool = True,
                  normalized: bool = False,
                  alias_tvars: Optional[List[str]] = None) -> None:
