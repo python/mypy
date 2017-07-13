@@ -172,7 +172,7 @@ class UnboundType(Type):
 
     def __init__(self,
                  name: str,
-                 args: List[Type] = None,
+                 args: Optional[List[Type]] = None,
                  line: int = -1,
                  column: int = -1,
                  optional: bool = False,
@@ -388,7 +388,7 @@ class DeletedType(Type):
 
     source = ''  # type: Optional[str]  # May be None; name that generated this value
 
-    def __init__(self, source: str = None, line: int = -1, column: int = -1) -> None:
+    def __init__(self, source: Optional[str] = None, line: int = -1, column: int = -1) -> None:
         self.source = source
         super().__init__(line, column)
 
@@ -588,9 +588,9 @@ class CallableType(FunctionLike):
                  arg_names: List[Optional[str]],
                  ret_type: Type,
                  fallback: Instance,
-                 name: str = None,
-                 definition: SymbolNode = None,
-                 variables: List[TypeVarDef] = None,
+                 name: Optional[str] = None,
+                 definition: Optional[SymbolNode] = None,
+                 variables: Optional[List[TypeVarDef]] = None,
                  line: int = -1,
                  column: int = -1,
                  is_ellipsis_args: bool = False,
@@ -598,7 +598,7 @@ class CallableType(FunctionLike):
                  is_classmethod_class: bool = False,
                  special_sig: Optional[str] = None,
                  from_type_type: bool = False,
-                 bound_args: List[Optional[Type]] = None,
+                 bound_args: Optional[List[Optional[Type]]] = None,
                  ) -> None:
         if variables is None:
             variables = []
@@ -913,8 +913,8 @@ class TupleType(Type):
                          Instance.deserialize(data['fallback']),
                          implicit=data['implicit'])
 
-    def copy_modified(self, *, fallback: Instance = None,
-                      items: List[Type] = None) -> 'TupleType':
+    def copy_modified(self, *, fallback: Optional[Instance] = None,
+                      items: Optional[List[Type]] = None) -> 'TupleType':
         if fallback is None:
             fallback = self.fallback
         if items is None:
@@ -975,9 +975,9 @@ class TypedDictType(Type):
         assert self.fallback.type.typeddict_type is not None
         return self.fallback.type.typeddict_type.as_anonymous()
 
-    def copy_modified(self, *, fallback: Instance = None,
-                      item_types: List[Type] = None,
-                      required_keys: Set[str] = None) -> 'TypedDictType':
+    def copy_modified(self, *, fallback: Optional[Instance] = None,
+                      item_types: Optional[List[Type]] = None,
+                      required_keys: Optional[Set[str]] = None) -> 'TypedDictType':
         if fallback is None:
             fallback = self.fallback
         if item_types is None:
@@ -1162,7 +1162,7 @@ class PartialType(Type):
     inner_types = None  # type: List[Type]
 
     def __init__(self,
-                 type: Optional['mypy.nodes.TypeInfo'],
+                 type: 'Optional[mypy.nodes.TypeInfo]',
                  var: 'mypy.nodes.Var',
                  inner_types: List[Type]) -> None:
         self.type = type
@@ -1443,7 +1443,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
      - Represent the NoneTyp type as None.
     """
 
-    def __init__(self, id_mapper: IdMapper = None) -> None:
+    def __init__(self, id_mapper: Optional[IdMapper] = None) -> None:
         self.id_mapper = id_mapper
 
     def visit_unbound_type(self, t: UnboundType)-> str:
@@ -1766,7 +1766,7 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
 
 
 def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
-                  ret_type: Type = None) -> CallableType:
+                  ret_type: Optional[Type] = None) -> CallableType:
     name = fdef.name()
     if name:
         name = '"{}"'.format(name)
