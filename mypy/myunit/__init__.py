@@ -19,7 +19,7 @@ times = []  # type: List[Tuple[float, str]]
 
 class AssertionFailure(Exception):
     """Exception used to signal failed test cases."""
-    def __init__(self, s: str = None) -> None:
+    def __init__(self, s: Optional[str] = None) -> None:
         if s:
             super().__init__(s)
         else:
@@ -31,12 +31,12 @@ class SkipTestCaseException(Exception):
     pass
 
 
-def assert_true(b: bool, msg: str = None) -> None:
+def assert_true(b: bool, msg: Optional[str] = None) -> None:
     if not b:
         raise AssertionFailure(msg)
 
 
-def assert_false(b: bool, msg: str = None) -> None:
+def assert_false(b: bool, msg: Optional[str] = None) -> None:
     if b:
         raise AssertionFailure(msg)
 
@@ -106,8 +106,8 @@ def fail() -> None:
 
 
 class TestCase:
-    def __init__(self, name: str, suite: 'Suite' = None,
-                 func: Callable[[], None] = None) -> None:
+    def __init__(self, name: str, suite: 'Optional[Suite]' = None,
+                 func: Optional[Callable[[], None]] = None) -> None:
         self.func = func
         self.name = name
         self.suite = suite
@@ -200,7 +200,7 @@ class ListSuite(Suite):
         super().__init__()
 
 
-def main(args: List[str] = None) -> None:
+def main(args: Optional[List[str]] = None) -> None:
     global patterns, is_verbose, is_quiet
     if not args:
         args = sys.argv[1:]

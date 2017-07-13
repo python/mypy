@@ -24,8 +24,9 @@ class WaiterError(Exception):
 class LazySubprocess:
     """Wrapper around a subprocess that runs a test task."""
 
-    def __init__(self, name: str, args: List[str], *, cwd: str = None,
-                 env: Dict[str, str] = None, passthrough: Optional[int] = None) -> None:
+    def __init__(self, name: str, args: List[str], *, cwd: Optional[str] = None,
+                 env: Optional[Dict[str, str]] = None,
+                 passthrough: Optional[int] = None) -> None:
         self.name = name
         self.args = args
         self.cwd = cwd
