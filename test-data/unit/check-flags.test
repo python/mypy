@@ -880,3 +880,27 @@ Movie = TypedDict('Movie', {'name': str, 'year': int})
 def g(m: Movie) -> Movie:
     return m
 [builtins fixtures/dict.pyi]
+
+[case testDisallowAnyExprAlias]
+# flags: --disallow-any=expr
+from typing import Any
+
+class Foo(BaseException):
+    def __init__(self, f: Any) -> None:
+          pass
+
+F = Foo  # no error
+[builtins fixtures/exception.pyi]
+
+[case testDisallowAnyExprRaise]
+# flags: --disallow-any=expr
+from typing import Any
+
+
+class Foo(BaseException):
+    def __init__(self, f: Any) -> None:
+          pass
+
+def foo() -> int:
+    raise Foo  # no error
+[builtins fixtures/exception.pyi]
