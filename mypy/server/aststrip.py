@@ -76,7 +76,7 @@ class NodeStripVisitor(TraverserVisitor):
     def is_duplicate_attribute_def(self, node: MemberExpr) -> bool:
         if not node.is_def:
             return False
-        assert self.type is not None, "members can't be defined outside a class"
+        assert self.type is not None, "Internal error: Member defined outside class"
         if node.name not in self.type.names:
             return False
         return any(info.get(node.name) is not None for info in self.type.mro[1:])

@@ -63,8 +63,10 @@ class LazySubprocess:
 
     @property
     def elapsed_time(self) -> float:
-        assert self.end_time is not None and self.start_time is not None, "didn't run yet"
-        return self.end_time - self.start_time
+        if self.end_time is None or self.start_time is None:
+            return 0
+        else:
+            return self.end_time - self.start_time
 
 
 class Noter:
