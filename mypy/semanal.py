@@ -181,7 +181,7 @@ SUGGESTED_TEST_FIXTURES = {
 }
 
 
-class SemanticAnalyzer(NodeVisitor):
+class SemanticAnalyzer(NodeVisitor[None]):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a
@@ -2861,7 +2861,7 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_try_stmt(self, s: TryStmt) -> None:
         self.analyze_try_stmt(s, self)
 
-    def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor,
+    def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor[T],
                          add_global: bool = False) -> None:
         s.body.accept(visitor)
         for type, var, handler in zip(s.types, s.vars, s.handlers):
@@ -3641,7 +3641,7 @@ class SemanticAnalyzer(NodeVisitor):
             report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
 
 
-class FirstPass(NodeVisitor):
+class FirstPass(NodeVisitor[None]):
     """First phase of semantic analysis.
 
     See docstring of 'analyze()' below for a description of what this does.
@@ -4253,7 +4253,7 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
             return TRUTH_VALUE_UNKNOWN
     elif isinstance(index, tuple) and isinstance(thing, tuple):
         # Why doesn't mypy see that index can't be None here?
-        lo, hi = cast(tuple, index)
+        lo, hi = cast(Tuple[Optional[int], Optional[int]], index)
         if lo is None:
             lo = 0
         if hi is None:
