@@ -2861,7 +2861,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
     def visit_try_stmt(self, s: TryStmt) -> None:
         self.analyze_try_stmt(s, self)
 
-    def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor[T],
+    def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor[None],
                          add_global: bool = False) -> None:
         s.body.accept(visitor)
         for type, var, handler in zip(s.types, s.vars, s.handlers):
