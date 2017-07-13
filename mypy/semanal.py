@@ -1322,7 +1322,8 @@ class SemanticAnalyzer(NodeVisitor):
                 base = id.split('.')[0]
                 self.add_module_symbol(base, base, module_public=not module_hidden,
                                        context=i, module_hidden=module_hidden)
-                self.add_submodules_to_parent_modules(id, not module_hidden, module_hidden=module_hidden)
+                self.add_submodules_to_parent_modules(id, not module_hidden,
+                                                      module_hidden=module_hidden)
 
     def add_submodules_to_parent_modules(self, id: str, module_public: bool,
                                          module_hidden: bool = False) -> None:
