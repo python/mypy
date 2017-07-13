@@ -130,7 +130,7 @@ class TestCase:
         if self.suite:
             self.suite.tear_down()
         assert self.old_cwd is not None and self.tmpdir is not None, \
-                                            "test was not properly set up"
+            "test was not properly set up"
         os.chdir(self.old_cwd)
         try:
             self.tmpdir.cleanup()
