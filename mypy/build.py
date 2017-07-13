@@ -23,6 +23,7 @@ from os.path import dirname, basename
 
 from typing import (AbstractSet, Dict, Iterable, Iterator, List,
                     NamedTuple, Optional, Set, Tuple, Union, Callable)
+import typeshed
 # Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
 MYPY = False
 if MYPY:
@@ -277,7 +278,9 @@ def default_lib_path(data_dir: str,
         auto = os.path.join(data_dir, 'stubs-auto')
         if os.path.isdir(auto):
             data_dir = auto
-        typeshed_dir = os.path.join(data_dir, "typeshed")
+            typeshed_dir = os.path.join(data_dir, "typeshed")
+        else:
+            typeshed_dir = typeshed.typeshed
     # We allow a module for e.g. version 3.5 to be in 3.4/. The assumption
     # is that a module added with 3.4 will still be present in Python 3.5.
     versions = ["%d.%d" % (pyversion[0], minor)

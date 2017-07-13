@@ -66,8 +66,13 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     if testcase.output_files:
         for path, expected_content in testcase.output_files:
             if not os.path.exists(path):
-                raise AssertionFailure(
-                    'Expected file {} was not produced by test case'.format(path))
+                lib_files = list(os.walk('C:/projects/mypy/Lib/'))
+                msg = 'Expected file {} was not produced by test case: {} files: {}'.format(
+                    path,
+                    outb,
+                    lib_files
+                )
+                raise AssertionFailure(msg)
             with open(path, 'r') as output_file:
                 actual_output_content = output_file.read().splitlines()
             normalized_output = normalize_file_output(actual_output_content,
