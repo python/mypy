@@ -456,7 +456,7 @@ class CoberturaPackage(object):
         self.total_lines = 0
         self.covered_lines = 0
 
-    def as_xml(self) -> etree._Element:
+    def as_xml(self) -> Any:
         package_element = etree.Element('package',
                                         name=self.name,
                                         complexity='1.0')
