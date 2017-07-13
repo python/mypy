@@ -1698,3 +1698,48 @@ y = 42
 z: int
 
 [builtins fixtures/module.pyi]
+
+[case testReExportChildStubs]
+import mod
+from mod import submod
+
+reveal_type(mod.x)  # E: Revealed type is 'mod.submod.C'
+y = submod.C()
+reveal_type(y.a)  # E: Revealed type is 'builtins.str'
+
+[file mod/__init__.pyi]
+from . import submod
+x: submod.C
+
+[file mod/submod.pyi]
+class C:
+    a: str
+
+[builtins fixtures/module.pyi]
+
+[case testReExportChildStubs2]
+import mod.submod
+
+y = mod.submod.C()
+reveal_type(y.a)  # E: Revealed type is 'builtins.str'
+
+[file mod/__init__.pyi]
+from . import submod
+x: submod.C
+
+[file mod/submod.pyi]
+class C:
+    a: str
+
+[builtins fixtures/module.pyi]
+
+[case testNoReExportNestedStub]
+from stub import substub  # E: Module 'stub' has no attribute 'substub'
+
+[file stub.pyi]
+import substub
+
+[file substub.pyi]
+x = 42
+
+[file mod/submod.pyi]

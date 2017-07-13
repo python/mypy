@@ -1322,8 +1322,7 @@ class SemanticAnalyzer(NodeVisitor):
                 base = id.split('.')[0]
                 self.add_module_symbol(base, base, module_public=not module_hidden,
                                        context=i, module_hidden=module_hidden)
-                self.add_submodules_to_parent_modules(id, not module_hidden,
-                                                      module_hidden=module_hidden)
+                self.add_submodules_to_parent_modules(id, True)
 
     def add_submodules_to_parent_modules(self, id: str, module_public: bool,
                                          module_hidden: bool = False) -> None:
@@ -1347,8 +1346,7 @@ class SemanticAnalyzer(NodeVisitor):
                 child_mod = self.modules.get(id)
                 if child_mod:
                     sym = SymbolTableNode(MODULE_REF, child_mod, parent,
-                                          module_public=module_public,
-                                          module_hidden=module_hidden)
+                                          module_public=module_public)
                     parent_mod.names[child] = sym
             id = parent
 
@@ -1369,11 +1367,11 @@ class SemanticAnalyzer(NodeVisitor):
         for id, as_id in imp.names:
             node = module.names.get(id) if module else None
             missing = False
+            possible_module_id = import_id + '.' + id
 
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
             if not node or node.kind == UNBOUND_IMPORTED:
-                possible_module_id = import_id + '.' + id
                 mod = self.modules.get(possible_module_id)
                 if mod is not None:
                     node = SymbolTableNode(MODULE_REF, mod, import_id)
@@ -1393,7 +1391,7 @@ class SemanticAnalyzer(NodeVisitor):
                             imported_id, existing_symbol, node, imp):
                         continue
                 # 'from m import x as x' exports x in a stub file.
-                module_hidden = self.is_stub_file and as_id is None
+                module_hidden = self.is_stub_file and as_id is None and possible_module_id not in self.modules
                 symbol = SymbolTableNode(node.kind, node.node,
                                          self.cur_mod_id,
                                          node.type_override,
