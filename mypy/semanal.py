@@ -1390,7 +1390,8 @@ class SemanticAnalyzer(NodeVisitor):
                             imported_id, existing_symbol, node, imp):
                         continue
                 # 'from m import x as x' exports x in a stub file.
-                module_hidden = self.is_stub_file and as_id is None and possible_module_id not in self.modules
+                module_hidden = (self.is_stub_file and as_id is None and
+                                 possible_module_id not in self.modules)
                 symbol = SymbolTableNode(node.kind, node.node,
                                          self.cur_mod_id,
                                          node.type_override,
