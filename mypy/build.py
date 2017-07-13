@@ -986,6 +986,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
         else:
             # Optimization: update mtime and path (otherwise, this mismatch will reappear).
             meta = meta._replace(mtime=mtime, path=path)
+            # Construct a dict we can pass to json.dumps() (compare to write_cache()).
             meta_dict = {
                 'id': id,
                 'path': path,
