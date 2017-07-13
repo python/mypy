@@ -1324,8 +1324,7 @@ class SemanticAnalyzer(NodeVisitor):
                                        context=i, module_hidden=module_hidden)
                 self.add_submodules_to_parent_modules(id, True)
 
-    def add_submodules_to_parent_modules(self, id: str, module_public: bool,
-                                         module_hidden: bool = False) -> None:
+    def add_submodules_to_parent_modules(self, id: str, module_public: bool) -> None:
         """Recursively adds a reference to a newly loaded submodule to its parent.
 
         When you import a submodule in any way, Python will add a reference to that
