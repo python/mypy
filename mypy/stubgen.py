@@ -185,8 +185,12 @@ def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optiona
     return module_path, module_all
 
 
-def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
-                  target: str = None, add_header: bool = False, module: str = None,
+def generate_stub(path: str,
+                  output_dir: str,
+                  _all_: Optional[List[str]] = None,
+                  target: Optional[str] = None,
+                  add_header: bool = False,
+                  module: Optional[str] = None,
                   pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                   include_private: bool = False
                   ) -> None:

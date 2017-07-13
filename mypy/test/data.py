@@ -21,7 +21,7 @@ def parse_test_cases(
         perform: Optional[Callable[['DataDrivenTestCase'], None]],
         base_path: str = '.',
         optional_out: bool = False,
-        include_path: str = None,
+        include_path: Optional[str] = None,
         native_sep: bool = False) -> List['DataDrivenTestCase']:
     """Parse a file with test case descriptions.
 
