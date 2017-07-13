@@ -14,9 +14,10 @@ python:
   # - "pypy3"
 
 install:
+  - pip install -U pip setuptools wheel
   - pip install -r test-requirements.txt
   - python2 -m pip install --user typing
-  - python setup.py install
+  - pip install .
 
 script:
   - python runtests.py -j16 -x lint
