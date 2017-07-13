@@ -539,7 +539,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
         return a
 
     def named_type(self, fully_qualified_name: str,
-                   args: List[Type] = None,
+                   args: Optional[List[Type]] = None,
                    line: int = -1,
                    column: int = -1) -> Instance:
         node = self.lookup_fqn_func(fully_qualified_name)

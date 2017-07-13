@@ -1813,11 +1813,12 @@ class SemanticAnalyzer(NodeVisitor):
             lval.is_def = True
             v = Var(lval.name)
             v.set_line(lval)
+            v._fullname = self.qualified_name(lval.name)
             v.info = self.type
             v.is_ready = False
             lval.def_var = v
             lval.node = v
-            self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+            self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
@@ -3404,7 +3405,9 @@ class SemanticAnalyzer(NodeVisitor):
                 return None
         # 2. Class attributes (if within class definition)
         if self.is_class_scope() and name in self.type.names:
-            return self.type.names[name]
+            node = self.type.names[name]
+            if not node.implicit:
+                return node
         # 3. Local (function) scopes
         for table in reversed(self.locals):
             if table is not None and name in table:

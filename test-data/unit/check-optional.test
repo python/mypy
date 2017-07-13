@@ -548,6 +548,21 @@ if x is not None:
 
 [builtins fixtures/ops.pyi]
 
+[case testOptionalTypeNarrowedInBooleanStatement]
+from typing import Optional
+
+x: Optional[int] = None
+x is not None and x + 42
+x is not None and x + '42'  # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/isinstance.pyi]
+
+[case testInvalidBooleanBranchIgnored]
+from typing import Optional
+
+x = None
+x is not None and x + 42
+[builtins fixtures/isinstance.pyi]
+
 [case testOptionalLambdaInference]
 from typing import Optional, Callable
 f = None # type: Optional[Callable[[int], None]]
