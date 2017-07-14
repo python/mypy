@@ -3406,6 +3406,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             if not node.implicit:
                 return node
             implicit_name = True
+            implicit_node = node
         # 3. Local (function) scopes
         for table in reversed(self.locals):
             if table is not None and name in table:
@@ -3428,6 +3429,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if not implicit_name:
             self.name_not_defined(name, ctx)
             self.check_for_obsolete_short_name(name, ctx)
+        else:
+            return implicit_node
         return None
 
     def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:

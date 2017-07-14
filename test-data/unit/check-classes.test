@@ -223,6 +223,28 @@ class D(object):
         self.attr = 1
 [out]
 
+[case testClassNamesDefinedOnSelUsedInClassBodyReveal]
+class A(object):
+    def f(self) -> None:
+        self.attr = 1
+    reveal_type(attr)  # E: Revealed type is 'builtins.int'
+
+class B(object):
+    attr = 0
+    def f(self) -> None:
+        reveal_type(self.attr)  # E: Revealed type is 'builtins.int'
+
+class C(object):
+    reveal_type(attr)  # E: Revealed type is 'builtins.int'
+    def f(self) -> None:
+        self.attr = 1
+
+class D(object):
+    def f(self) -> None:
+        reveal_type(self.attr)  # E: Revealed type is 'builtins.int'
+    attr = 0
+[out]
+
 
 -- Method overriding
 -- -----------------
