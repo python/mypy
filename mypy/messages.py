@@ -173,7 +173,7 @@ class MessageBuilder:
         self.report(msg, context, 'error', file=file, origin=origin)
 
     def note(self, msg: str, context: Context, file: Optional[str] = None,
-             origin: Optional[Context] = None offset: int = 0) -> None:
+             origin: Optional[Context] = None, offset: int = 0) -> None:
         """Report a note (unless disabled)."""
         self.report(msg, context, 'note', file=file, origin=origin, offset=offset)
 

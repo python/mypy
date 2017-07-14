@@ -1858,7 +1858,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     v.is_ready = False
                     lval.def_var = v
                     lval.node = v
-                    self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+                    self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
