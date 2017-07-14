@@ -4,7 +4,7 @@ from collections import OrderedDict
 from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
 
 from mypy.errors import report_internal_error
-from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
+from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, set_any_tvars
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
@@ -1542,7 +1542,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif e.right_always:
             left_map = None
 
-        right_type = self.analyze_cond_branch(right_map, e.right, left_type)
+        # If right_map is None then we know mypy considers the right branch
+        # to be unreachable and therefore any errors found in the right branch
+        # should be suppressed.
+        if right_map is None:
+            self.msg.disable_errors()
+        try:
+            right_type = self.analyze_cond_branch(right_map, e.right, left_type)
+        finally:
+            if right_map is None:
+                self.msg.enable_errors()
 
         if right_map is None:
             # The boolean expression is statically known to be the left value
@@ -1760,7 +1769,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         item = alias.type
         if not alias.in_runtime:
             # We don't replace TypeVar's with Any for alias used as Alias[T](42).
-            item = self.replace_tvars_any(item)
+            item = set_any_tvars(item, alias.tvars, alias.line, alias.column)
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor
@@ -1784,26 +1793,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return Overloaded([self.apply_generic_arguments(it, item.args, item)
                                for it in tp.items()])
         return AnyType()
-
-    def replace_tvars_any(self, tp: Type) -> Type:
-        """Replace all type variables of a type alias tp with Any. Basically, this function
-        finishes what could not be done in method TypeAnalyser.visit_unbound_type()
-        from typeanal.py.
-        """
-        typ_args = get_typ_args(tp)
-        new_args = typ_args[:]
-        for i, arg in enumerate(typ_args):
-            if isinstance(arg, UnboundType):
-                sym = None
-                try:
-                    sym = self.chk.lookup_qualified(arg.name)
-                except KeyError:
-                    pass
-                if sym and (sym.kind == TVAR):
-                    new_args[i] = AnyType()
-            else:
-                new_args[i] = self.replace_tvars_any(arg)
-        return set_typ_args(tp, new_args, tp.line, tp.column)
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""
@@ -2238,7 +2227,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def accept(self,
                node: Expression,
-               type_context: Type = None,
+               type_context: Optional[Type] = None,
                allow_none_return: bool = False,
                always_allow_any: bool = False,
                ) -> Type:
@@ -2428,11 +2417,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return e.type
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
-        # TODO: Perhaps return a special type used for type variables only?
-        return AnyType()
+        return AnyType(special_form=True)
 
     def visit_newtype_expr(self, e: NewTypeExpr) -> Type:
-        return AnyType()
+        return AnyType(special_form=True)
 
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
         tuple_type = e.info.tuple_type
@@ -2442,8 +2430,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.msg.unimported_type_becomes_any("NamedTuple type", tuple_type, e)
             check_for_explicit_any(tuple_type, self.chk.options, self.chk.is_typeshed_stub,
                                    self.msg, context=e)
-        # TODO: Perhaps return a type object type?
-        return AnyType()
+        return AnyType(special_form=True)
 
     def visit_enum_call_expr(self, e: EnumCallExpr) -> Type:
         for name, value in zip(e.items, e.values):
@@ -2458,12 +2445,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         # to have type Any in the typeshed stub.)
                         var.type = typ
                         var.is_inferred = True
-        # TODO: Perhaps return a type object type?
-        return AnyType()
+        return AnyType(special_form=True)
 
     def visit_typeddict_expr(self, e: TypedDictExpr) -> Type:
-        # TODO: Perhaps return a type object type?
-        return AnyType()
+        return AnyType(special_form=True)
 
     def visit__promote_expr(self, e: PromoteExpr) -> Type:
         return e.type
@@ -2498,7 +2483,7 @@ class HasAnyType(types.TypeQuery[bool]):
         super().__init__(any)
 
     def visit_any(self, t: AnyType) -> bool:
-        return True
+        return not t.special_form  # special forms are not real Any types
 
 
 def has_coroutine_decorator(t: Type) -> bool:

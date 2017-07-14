@@ -1187,6 +1187,8 @@ if isinstance(x, B) and isinstance(y, int):
     1() # type checking skipped
 if isinstance(y, int) and isinstance(x, B):
     1() # type checking skipped
+if isinstance(y, int) and y > 42:
+    1() # type checking skipped
 [builtins fixtures/isinstancelist.pyi]
 
 [case testReturnWithCallExprAndIsinstance]
@@ -1754,3 +1756,17 @@ if isinstance(x, str, 1): # E: Too many arguments for "isinstance"
     x = 1
     reveal_type(x) # E: Revealed type is 'builtins.int'
 [builtins fixtures/isinstancelist.pyi]
+
+
+[case testIsinstanceNarrowAny]
+from typing import Any
+
+def narrow_any_to_str_then_reassign_to_int() -> None:
+    v = 1 # type: Any
+
+    if isinstance(v, str):
+        reveal_type(v)  # E: Revealed type is 'builtins.str'
+        v = 2
+        reveal_type(v)  # E: Revealed type is 'Any'
+
+[builtins fixtures/isinstance.pyi]

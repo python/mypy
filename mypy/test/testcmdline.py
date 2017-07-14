@@ -22,7 +22,10 @@ from mypy.version import __version__, base_version
 python3_path = sys.executable
 
 # Files containing test case descriptions.
-cmdline_files = ['cmdline.test']
+cmdline_files = [
+    'cmdline.test',
+    'reports.test',
+]
 
 
 class PythonEvaluationSuite(Suite):

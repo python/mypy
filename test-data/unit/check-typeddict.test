@@ -847,7 +847,7 @@ class A: pass
 D = TypedDict('D', {'x': List[int], 'y': int})
 d: D
 reveal_type(d.get('x', [])) # E: Revealed type is 'builtins.list[builtins.int]'
-d.get('x', ['x']) # E: List item 0 has incompatible type "str"
+d.get('x', ['x']) # E: List item 0 has incompatible type "str"; expected "int"
 a = ['']
 reveal_type(d.get('x', a)) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str*]]'
 [builtins fixtures/dict.pyi]

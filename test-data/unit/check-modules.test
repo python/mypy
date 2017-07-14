@@ -1360,7 +1360,7 @@ def do_something(dic: Row) -> None:
 def do_another() -> Row:
     return {}
 
-do_something({'good': 'bad'}) # E: Dict entry 0 has incompatible type "str": "str"
+do_something({'good': 'bad'}) # E: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
 reveal_type(do_another()) # E: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
 
 [file ex2a.py]

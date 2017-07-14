@@ -1,7 +1,7 @@
 Mypy: Optional Static Typing for Python
 =======================================
 
-[![Build Status](https://travis-ci.org/python/mypy.svg)](https://travis-ci.org/python/mypy)
+[![Build Status](https://api.travis-ci.org/python/mypy.svg?branch=master)](https://travis-ci.org/python/mypy)
 [![Chat at https://gitter.im/python/typing](https://badges.gitter.im/python/typing.svg)](https://gitter.im/python/typing?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 
@@ -129,7 +129,7 @@ Or you can jump straight to the documentation:
 Troubleshooting
 ---------------
 
-Depending on your configuration, you may have to run `pip3` like
+Depending on your configuration, you may have to run `pip` like
 this:
 
     $ python3 -m pip install -U mypy
@@ -140,8 +140,8 @@ can install it manually:
 
     $ python3 -m pip install -U typed-ast
 
-If the `mypy` command isn't found after installation: After either
-`pip3 install` or `setup.py install`, the `mypy` script and
+If the `mypy` command isn't found after installation: After
+`python3 -m pip install`, the `mypy` script and
 dependencies, including the `typing` module, will be installed to
 system-dependent locations.  Sometimes the script directory will not
 be in `PATH`, and you have to add the target directory to `PATH`
