@@ -4,7 +4,7 @@ import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.expandtype import expand_type
 from mypy.types import (
-    Type, TypeVarId, TypeVarType, TypeVisitor, CallableType, AnyType, PartialType, 
+    Type, TypeVarId, TypeVarType, TypeVisitor, CallableType, AnyType, PartialType,
     Instance, UnionType
 )
 from mypy.messages import MessageBuilder
@@ -71,13 +71,13 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
 
 
 def get_incompatible_arg_constraints(arg_types: Sequence[Type], type: Type,
-                                     index: int) -> Dict[str, Tuple[str]]:
+                                     index: int) -> Dict[str, Tuple[str, ...]]:
     """Gets incompatible function arguments with the constrained types.
 
     An example of a constrained type is AnyStr which must be all str or all byte.
     """
-    constraints = {}  # type: Dict[str, Tuple[str]]
-    if isinstance(type, Instance) and type.type.name() == 'object':
+    constraints = {}  # type: Dict[str, Tuple[str, ...]]
+    if isinstance(type, Instance) and type.type.fullname() == 'builtins.object':
         if index == len(arg_types):
             # Index is off by one for '*' arguments
             constraints = add_arg_constraints(constraints, arg_types[index - 1])
@@ -86,13 +86,13 @@ def get_incompatible_arg_constraints(arg_types: Sequence[Type], type: Type,
     return constraints
 
 
-def add_arg_constraints(constraints: Dict[str, Tuple[str]],
-                        arg_type: Type) -> Dict[str, Tuple[str]]:
+def add_arg_constraints(constraints: Dict[str, Tuple[str, ...]],
+                        arg_type: Type) -> Dict[str, Tuple[str, ...]]:
     if (isinstance(arg_type, TypeVarType) and
             arg_type.values and
             len(arg_type.values) > 1 and
             arg_type.name not in constraints.keys()):
-        constraints[arg_type.name] = tuple(vals.type.name() for vals in arg_type.values)
+        constraints[arg_type.name] = tuple(val.type.name() for val in arg_type.values)
     elif isinstance(arg_type, UnionType):
         for item in arg_type.items:
             constraints = add_arg_constraints(constraints, item)
