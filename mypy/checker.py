@@ -933,6 +933,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if name == '__getattribute__':
                 self.msg.fail('__getattribute__ is not valid at the module level', context)
                 return
+            elif name == '__getattr__' and not self.is_stub:
+                self.msg.fail('__getattr__ is not valid at the module level outside a stub file',
+                              context)
+                return
             method_type = CallableType([self.named_type('builtins.str')],
                                        [nodes.ARG_POS],
                                        [None],

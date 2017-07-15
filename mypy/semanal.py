@@ -3117,7 +3117,7 @@ class SemanticAnalyzer(NodeVisitor):
                 expr.kind = n.kind
                 expr.fullname = n.fullname
                 expr.node = n.node
-            elif file is not None and '__getattr__' in file.names:
+            elif file is not None and file.is_stub and '__getattr__' in file.names:
                 # If there is a module-level __getattr__, then any attribute on the module is valid
                 # per PEP 484.
                 getattr_defn = file.names['__getattr__']
