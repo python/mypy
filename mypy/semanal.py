@@ -1318,11 +1318,11 @@ class SemanticAnalyzer(NodeVisitor):
                 self.add_module_symbol(id, as_id, module_public=True, context=i)
             else:
                 # Modules imported in a stub file without using 'as x' won't get exported
-                module_hidden = self.is_stub_file
+                module_public = not self.is_stub_file
                 base = id.split('.')[0]
-                self.add_module_symbol(base, base, module_public=not module_hidden,
-                                       context=i, module_hidden=module_hidden)
-                self.add_submodules_to_parent_modules(id, True)
+                self.add_module_symbol(base, base, module_public=module_public,
+                                       context=i, module_hidden=not module_public)
+                self.add_submodules_to_parent_modules(id, module_public)
 
     def add_submodules_to_parent_modules(self, id: str, module_public: bool) -> None:
         """Recursively adds a reference to a newly loaded submodule to its parent.
@@ -1390,8 +1390,8 @@ class SemanticAnalyzer(NodeVisitor):
                             imported_id, existing_symbol, node, imp):
                         continue
                 # 'from m import x as x' exports x in a stub file.
-                module_hidden = (self.is_stub_file and as_id is None and
-                                 possible_module_id not in self.modules)
+                module_public = not self.is_stub_file or as_id is not None
+                module_hidden = not module_public and possible_module_id not in self.modules
                 symbol = SymbolTableNode(node.kind, node.node,
                                          self.cur_mod_id,
                                          node.type_override,
