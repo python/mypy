@@ -254,9 +254,6 @@ class CompleteTypeVisitor(TypeQuery[bool]):
     def __init__(self) -> None:
         super().__init__(all)
 
-    def visit_none_type(self, t: NoneTyp) -> bool:
-        return experiments.STRICT_OPTIONAL
-
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return False
 
@@ -312,6 +309,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         res = []  # type: List[Constraint]
         if isinstance(actual, CallableType) and actual.fallback is not None:
             actual = actual.fallback
+        if isinstance(actual, TypedDictType):
+            actual = actual.as_anonymous().fallback
         if isinstance(actual, Instance):
             instance = actual
             if (self.direction == SUBTYPE_OF and

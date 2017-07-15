@@ -16,12 +16,13 @@ import contextlib
 import hashlib
 import json
 import os.path
+import re
 import sys
 import time
 from os.path import dirname, basename
 
 from typing import (AbstractSet, Dict, Iterable, Iterator, List,
-                    NamedTuple, Optional, Set, Tuple, Union)
+                    NamedTuple, Optional, Set, Tuple, Union, Callable)
 # Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
 MYPY = False
 if MYPY:
@@ -42,7 +43,7 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.plugin import DefaultPlugin
+from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 
 
 # We need to know the location of this file to load data, but
@@ -53,6 +54,10 @@ PYTHON_EXTENSIONS = ['.pyi', '.py']
 
 
 Graph = Dict[str, 'State']
+
+
+def getmtime(name: str) -> int:
+    return int(os.path.getmtime(name))
 
 
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
@@ -171,8 +176,9 @@ def build(sources: List[BuildSource],
         lib_path.insert(0, alt_lib_path)
 
     reports = Reports(data_dir, options.report_dirs)
-
     source_set = BuildSourceSet(sources)
+    errors = Errors(options.show_error_context, options.show_column_numbers)
+    plugin = load_plugins(options, errors)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -183,7 +189,8 @@ def build(sources: List[BuildSource],
                            reports=reports,
                            options=options,
                            version_id=__version__,
-                           )
+                           plugin=plugin,
+                           errors=errors)
 
     try:
         graph = dispatch(sources, manager)
@@ -293,14 +300,15 @@ def default_lib_path(data_dir: str,
 CacheMeta = NamedTuple('CacheMeta',
                        [('id', str),
                         ('path', str),
-                        ('mtime', float),
+                        ('mtime', int),
                         ('size', int),
+                        ('hash', str),
                         ('dependencies', List[str]),  # names of imported modules
-                        ('data_mtime', float),  # mtime of data_json
+                        ('data_mtime', int),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
                         ('child_modules', List[str]),  # all submodules of the given module
-                        ('options', Optional[Dict[str, bool]]),  # build options
+                        ('options', Optional[Dict[str, object]]),  # build options
                         ('dep_prios', List[int]),
                         ('interface_hash', str),  # hash representing the public interface
                         ('version_id', str),  # mypy version for cache invalidation
@@ -333,6 +341,96 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
+def load_plugins(options: Options, errors: Errors) -> Plugin:
+    """Load all configured plugins.
+
+    Return a plugin that encapsulates all plugins chained together. Always
+    at least include the default plugin (it's last in the chain).
+    """
+
+    default_plugin = DefaultPlugin(options)  # type: Plugin
+    if not options.config_file:
+        return default_plugin
+
+    line = find_config_file_line_number(options.config_file, 'mypy', 'plugins')
+    if line == -1:
+        line = 1  # We need to pick some line number that doesn't look too confusing
+
+    def plugin_error(message: str) -> None:
+        errors.report(line, 0, message)
+        errors.raise_error()
+
+    custom_plugins = []  # type: List[Plugin]
+    errors.set_file(options.config_file, None)
+    for plugin_path in options.plugins:
+        # Plugin paths are relative to the config file location.
+        plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
+
+        if not os.path.isfile(plugin_path):
+            plugin_error("Can't find plugin '{}'".format(plugin_path))
+        plugin_dir = os.path.dirname(plugin_path)
+        fnam = os.path.basename(plugin_path)
+        if not fnam.endswith('.py'):
+            plugin_error("Plugin '{}' does not have a .py extension".format(fnam))
+        module_name = fnam[:-3]
+        import importlib
+        sys.path.insert(0, plugin_dir)
+        try:
+            m = importlib.import_module(module_name)
+        except Exception:
+            print('Error importing plugin {}\n'.format(plugin_path))
+            raise  # Propagate to display traceback
+        finally:
+            assert sys.path[0] == plugin_dir
+            del sys.path[0]
+        if not hasattr(m, 'plugin'):
+            plugin_error('Plugin \'{}\' does not define entry point function "plugin"'.format(
+                plugin_path))
+        try:
+            plugin_type = getattr(m, 'plugin')(__version__)
+        except Exception:
+            print('Error calling the plugin(version) entry point of {}\n'.format(plugin_path))
+            raise  # Propagate to display traceback
+        if not isinstance(plugin_type, type):
+            plugin_error(
+                'Type object expected as the return value of "plugin"; got {!r} (in {})'.format(
+                    plugin_type, plugin_path))
+        if not issubclass(plugin_type, Plugin):
+            plugin_error(
+                'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" '
+                '(in {})'.format(plugin_path))
+        try:
+            custom_plugins.append(plugin_type(options))
+        except Exception:
+            print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
+            raise  # Propagate to display traceback
+    # Custom plugins take precedence over the default plugin.
+    return ChainedPlugin(options, custom_plugins + [default_plugin])
+
+
+def find_config_file_line_number(path: str, section: str, setting_name: str) -> int:
+    """Return the approximate location of setting_name within mypy config file.
+
+    Return -1 if can't determine the line unambiguously.
+    """
+    in_desired_section = False
+    try:
+        results = []
+        with open(path) as f:
+            for i, line in enumerate(f):
+                line = line.strip()
+                if line.startswith('[') and line.endswith(']'):
+                    current_section = line[1:-1].strip()
+                    in_desired_section = (current_section == section)
+                elif in_desired_section and re.match(r'{}\s*='.format(setting_name), line):
+                    results.append(i + 1)
+        if len(results) == 1:
+            return results[0]
+    except OSError:
+        pass
+    return -1
+
+
 # TODO: Get rid of all_types.  It's not used except for one log message.
 #       Maybe we could instead publish a map from module ID to its type_map.
 class BuildManager:
@@ -351,11 +449,12 @@ class BuildManager:
       semantic_analyzer_pass3:
                        Semantic analyzer, pass 3
       all_types:       Map {Expression: Type} collected from all modules
-      errors:          Used for reporting all errors
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked
       version_id:      The current mypy version (based on commit id when possible)
+      plugin:          Active mypy plugin(s)
+      errors:          Used for reporting all errors
     """
 
     def __init__(self, data_dir: str,
@@ -364,10 +463,12 @@ class BuildManager:
                  source_set: BuildSourceSet,
                  reports: Reports,
                  options: Options,
-                 version_id: str) -> None:
+                 version_id: str,
+                 plugin: Plugin,
+                 errors: Errors) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
-        self.errors = Errors(options.show_error_context, options.show_column_numbers)
+        self.errors = errors
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = tuple(lib_path)
         self.source_set = source_set
@@ -376,14 +477,16 @@ class BuildManager:
         self.version_id = version_id
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
+        self.plugin = plugin
         self.semantic_analyzer = SemanticAnalyzer(self.modules, self.missing_modules,
-                                                  lib_path, self.errors)
+                                                  lib_path, self.errors, self.plugin)
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
         self.all_types = {}  # type: Dict[Expression, Type]
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
+        self.plugin = plugin
 
     def maybe_swap_for_shadow_path(self, path: str) -> str:
         if (self.options.shadow_file and
@@ -685,8 +788,12 @@ def verify_module(id: str, path: str) -> bool:
     return True
 
 
-def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
-    """Read the Python file with while obeying PEP-263 encoding detection"""
+def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> Tuple[str, str]:
+    """Read the Python file with while obeying PEP-263 encoding detection.
+
+    Returns:
+      A tuple: the source as a string, and the hash calculated from the binary representation.
+    """
     source_bytearray = bytearray()
     encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
 
@@ -694,6 +801,7 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
         # read first two lines and check if PEP-263 coding is present
         source_bytearray.extend(f.readline())
         source_bytearray.extend(f.readline())
+        m = hashlib.md5(source_bytearray)
 
         # check for BOM UTF-8 encoding and strip it out if present
         if source_bytearray.startswith(b'\xef\xbb\xbf'):
@@ -706,16 +814,17 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
             if _encoding != 'mypy':
                 encoding = _encoding
 
-        source_bytearray.extend(f.read())
+        remainder = f.read()
+        m.update(remainder)
+        source_bytearray.extend(remainder)
         try:
-            source_bytearray.decode(encoding)
+            source_text = source_bytearray.decode(encoding)
         except LookupError as lookuperr:
             raise DecodeError(str(lookuperr))
-        return source_bytearray.decode(encoding)
+        return source_text, m.hexdigest()
 
 
-def get_cache_names(id: str, path: str, cache_dir: str,
-                    pyversion: Tuple[int, int]) -> Tuple[str, str]:
+def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str]:
     """Return the file names for the cache files.
 
     Args:
@@ -728,6 +837,8 @@ def get_cache_names(id: str, path: str, cache_dir: str,
       A tuple with the file names to be used for the meta JSON and the
       data JSON, respectively.
     """
+    cache_dir = manager.options.cache_dir
+    pyversion = manager.options.python_version
     prefix = os.path.join(cache_dir, '%d.%d' % pyversion, *id.split('.'))
     is_package = os.path.basename(path).startswith('__init__.py')
     if is_package:
@@ -748,27 +859,27 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
       valid; otherwise None.
     """
     # TODO: May need to take more build options into account
-    meta_json, data_json = get_cache_names(
-        id, path, manager.options.cache_dir, manager.options.python_version)
-    manager.trace('Looking for {} {}'.format(id, data_json))
+    meta_json, data_json = get_cache_names(id, path, manager)
+    manager.trace('Looking for {} at {}'.format(id, meta_json))
     if not os.path.exists(meta_json):
-        manager.trace('Could not load cache for {}: could not find {}'.format(id, meta_json))
+        manager.log('Could not load cache for {}: could not find {}'.format(id, meta_json))
         return None
     with open(meta_json, 'r') as f:
         meta_str = f.read()
         manager.trace('Meta {} {}'.format(id, meta_str.rstrip()))
         meta = json.loads(meta_str)  # TODO: Errors
     if not isinstance(meta, dict):
-        manager.trace('Could not load cache for {}: meta cache is not a dict'.format(id))
+        manager.log('Could not load cache for {}: meta cache is not a dict: {}'
+                    .format(id, repr(meta)))
         return None
-    path = os.path.abspath(path)
     m = CacheMeta(
         meta.get('id'),
         meta.get('path'),
-        meta.get('mtime'),
+        int(meta['mtime']) if 'mtime' in meta else None,
         meta.get('size'),
+        meta.get('hash'),
         meta.get('dependencies', []),
-        meta.get('data_mtime'),
+        int(meta['data_mtime']) if 'data_mtime' in meta else None,
         data_json,
         meta.get('suppressed', []),
         meta.get('child_modules', []),
@@ -777,54 +888,134 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('interface_hash', ''),
         meta.get('version_id'),
     )
-    if (m.id != id or m.path != path or
+    # Don't check for path match, that is dealt with in validate_meta().
+    if (m.id != id or
             m.mtime is None or m.size is None or
             m.dependencies is None or m.data_mtime is None):
-        manager.trace('Metadata abandoned for {}: attributes are missing'.format(id))
+        manager.log('Metadata abandoned for {}: attributes are missing'.format(id))
         return None
 
     # Ignore cache if generated by an older mypy version.
-    if (m.version_id != manager.version_id
+    if ((m.version_id != manager.version_id and not manager.options.skip_version_check)
             or m.options is None
             or len(m.dependencies) != len(m.dep_prios)):
-        manager.trace('Metadata abandoned for {}: new attributes are missing'.format(id))
+        manager.log('Metadata abandoned for {}: new attributes are missing'.format(id))
         return None
 
     # Ignore cache if (relevant) options aren't the same.
+    # Note that it's fine to mutilate cached_options since it's only used here.
     cached_options = m.options
     current_options = manager.options.clone_for_module(id).select_options_affecting_cache()
     if manager.options.quick_and_dirty:
         # In quick_and_dirty mode allow non-quick_and_dirty cache files.
         cached_options['quick_and_dirty'] = True
+    if manager.options.skip_version_check:
+        # When we're lax about version we're also lax about platform.
+        cached_options['platform'] = current_options['platform']
+    if 'debug_cache' in cached_options:
+        # Older versions included debug_cache, but it's silly to compare it.
+        del cached_options['debug_cache']
     if cached_options != current_options:
-        manager.trace('Metadata abandoned for {}: options differ'.format(id))
+        manager.log('Metadata abandoned for {}: options differ'.format(id))
+        if manager.options.verbosity >= 2:
+            for key in sorted(set(cached_options) | set(current_options)):
+                if cached_options.get(key) != current_options.get(key):
+                    manager.trace('    {}: {} != {}'
+                                  .format(key, cached_options.get(key), current_options.get(key)))
         return None
 
     return m
 
 
-def is_meta_fresh(meta: Optional[CacheMeta], id: str, path: str, manager: BuildManager) -> bool:
-    if meta is None:
-        return False
+def random_string() -> str:
+    return binascii.hexlify(os.urandom(8)).decode('ascii')
 
-    # TODO: Share stat() outcome with find_module()
-    st = manager.get_stat(path)  # TODO: Errors
-    if st.st_mtime != meta.mtime or st.st_size != meta.size:
-        manager.log('Metadata abandoned for {}: file {} is modified'.format(id, path))
-        return False
 
-    # It's a match on (id, path, mtime, size).
-    # Check data_json; assume if its mtime matches it's good.
-    # TODO: stat() errors
-    if os.path.getmtime(meta.data_json) != meta.data_mtime:
-        manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
+def atomic_write(filename: str, *lines: str) -> bool:
+    tmp_filename = filename + '.' + random_string()
+    try:
+        with open(tmp_filename, 'w') as f:
+            for line in lines:
+                f.write(line)
+        os.replace(tmp_filename, filename)
+    except os.error as err:
         return False
-    manager.log('Found {} {} (metadata is fresh)'.format(id, meta.data_json))
     return True
 
 
-def random_string() -> str:
-    return binascii.hexlify(os.urandom(8)).decode('ascii')
+def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
+                  manager: BuildManager) -> Optional[CacheMeta]:
+    '''Checks whether the cached AST of this module can be used.
+
+    Return:
+      None, if the cached AST is unusable.
+      Original meta, if mtime/size matched.
+      Meta with mtime updated to match source file, if hash/size matched but mtime/path didn't.
+    '''
+    # This requires two steps. The first one is obvious: we check that the module source file
+    # contents is the same as it was when the cache data file was created. The second one is not
+    # too obvious: we check that the cache data file mtime has not changed; it is needed because
+    # we use cache data file mtime to propagate information about changes in the dependencies.
+
+    if meta is None:
+        manager.log('Metadata not found for {}'.format(id))
+        return None
+
+    # Check data_json; assume if its mtime matches it's good.
+    # TODO: stat() errors
+    data_mtime = getmtime(meta.data_json)
+    if data_mtime != meta.data_mtime:
+        manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
+        return None
+
+    # TODO: Share stat() outcome with find_module()
+    path = os.path.abspath(path)
+    st = manager.get_stat(path)  # TODO: Errors
+    size = st.st_size
+    if size != meta.size:
+        manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
+        return None
+
+    mtime = int(st.st_mtime)
+    if mtime != meta.mtime or path != meta.path:
+        with open(path, 'rb') as f:
+            source_hash = hashlib.md5(f.read()).hexdigest()
+        if source_hash != meta.hash:
+            manager.log('Metadata abandoned for {}: file {} has different hash'.format(id, path))
+            return None
+        else:
+            # Optimization: update mtime and path (otherwise, this mismatch will reappear).
+            meta = meta._replace(mtime=mtime, path=path)
+            # Construct a dict we can pass to json.dumps() (compare to write_cache()).
+            meta_dict = {
+                'id': id,
+                'path': path,
+                'mtime': mtime,
+                'size': size,
+                'hash': source_hash,
+                'data_mtime': data_mtime,
+                'dependencies': meta.dependencies,
+                'suppressed': meta.suppressed,
+                'child_modules': meta.child_modules,
+                'options': (manager.options.clone_for_module(id)
+                            .select_options_affecting_cache()),
+                'dep_prios': meta.dep_prios,
+                'interface_hash': meta.interface_hash,
+                'version_id': manager.version_id,
+            }
+            if manager.options.debug_cache:
+                meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
+            else:
+                meta_str = json.dumps(meta_dict)
+            meta_json, _ = get_cache_names(id, path, manager)
+            manager.log('Updating mtime for {}: file {}, meta {}, mtime {}'
+                        .format(id, path, meta_json, meta.mtime))
+            atomic_write(meta_json, meta_str, '\n')  # Ignore errors, it's just an optimization.
+            return meta
+
+    # It's a match on (id, path, size, hash, mtime).
+    manager.log('Metadata fresh for {}: file {}'.format(id, path))
+    return meta
 
 
 def compute_hash(text: str) -> str:
@@ -837,7 +1028,7 @@ def compute_hash(text: str) -> str:
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
-                old_interface_hash: str, manager: BuildManager) -> str:
+                old_interface_hash: str, source_hash: str, manager: BuildManager) -> str:
     """Write cache files for a module.
 
     Note that this mypy's behavior is still correct when any given
@@ -859,18 +1050,12 @@ def write_cache(id: str, path: str, tree: MypyFile,
     """
     # Obtain file paths
     path = os.path.abspath(path)
-    meta_json, data_json = get_cache_names(
-        id, path, manager.options.cache_dir, manager.options.python_version)
+    meta_json, data_json = get_cache_names(id, path, manager)
     manager.log('Writing {} {} {} {}'.format(id, path, meta_json, data_json))
 
     # Make sure directory for cache files exists
     parent = os.path.dirname(data_json)
     assert os.path.dirname(meta_json) == parent
-
-    # Construct temp file names
-    nonce = '.' + random_string()
-    data_json_tmp = data_json + nonce
-    meta_json_tmp = meta_json + nonce
 
     # Serialize data and analyze interface
     data = tree.serialize()
@@ -900,20 +1085,14 @@ def write_cache(id: str, path: str, tree: MypyFile,
     if old_interface_hash == interface_hash:
         # If the interface is unchanged, the cached data is guaranteed
         # to be equivalent, and we only need to update the metadata.
-        data_mtime = os.path.getmtime(data_json)
+        data_mtime = getmtime(data_json)
         manager.trace("Interface for {} is unchanged".format(id))
     else:
         manager.trace("Interface for {} has changed".format(id))
-        try:
-            with open(data_json_tmp, 'w') as f:
-                f.write(data_str)
-                f.write('\n')
-            os.replace(data_json_tmp, data_json)
-            data_mtime = os.path.getmtime(data_json)
-        except os.error as err:
+        if not atomic_write(data_json, data_str, '\n'):
             # Most likely the error is the replace() call
             # (see https://github.com/python/mypy/issues/3215).
-            manager.log("Error writing data JSON file {}".format(data_json_tmp))
+            manager.log("Error writing data JSON file {}".format(data_json))
             # Let's continue without writing the meta file.  Analysis:
             # If the replace failed, we've changed nothing except left
             # behind an extraneous temporary file; if the replace
@@ -923,14 +1102,17 @@ def write_cache(id: str, path: str, tree: MypyFile,
             # Both have the effect of slowing down the next run a
             # little bit due to an out-of-date cache file.
             return interface_hash
+        data_mtime = getmtime(data_json)
 
-    mtime = st.st_mtime
+    mtime = int(st.st_mtime)
     size = st.st_size
     options = manager.options.clone_for_module(id)
+    assert source_hash is not None
     meta = {'id': id,
             'path': path,
             'mtime': mtime,
             'size': size,
+            'hash': source_hash,
             'data_mtime': data_mtime,
             'dependencies': dependencies,
             'suppressed': suppressed,
@@ -942,18 +1124,15 @@ def write_cache(id: str, path: str, tree: MypyFile,
             }
 
     # Write meta cache file
-    try:
-        with open(meta_json_tmp, 'w') as f:
-            if manager.options.debug_cache:
-                json.dump(meta, f, indent=2, sort_keys=True)
-            else:
-                json.dump(meta, f)
-        os.replace(meta_json_tmp, meta_json)
-    except os.error as err:
+    if manager.options.debug_cache:
+        meta_str = json.dumps(meta, indent=2, sort_keys=True)
+    else:
+        meta_str = json.dumps(meta)
+    if not atomic_write(meta_json, meta_str, '\n'):
         # Most likely the error is the replace() call
         # (see https://github.com/python/mypy/issues/3215).
         # The next run will simply find the cache entry out of date.
-        manager.log("Error writing meta JSON file {}".format(meta_json_tmp))
+        manager.log("Error writing meta JSON file {}".format(meta_json))
 
     return interface_hash
 
@@ -1117,6 +1296,7 @@ class State:
     path = None  # type: Optional[str]  # Path to module source
     xpath = None  # type: str  # Path or '<string>'
     source = None  # type: Optional[str]  # Module source code
+    source_hash = None  # type: str  # Hash calculated based on the source code
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
@@ -1244,7 +1424,8 @@ class State:
             if self.meta is not None:
                 self.interface_hash = self.meta.interface_hash
         self.add_ancestors()
-        if is_meta_fresh(self.meta, self.id, self.path, manager):
+        self.meta = validate_meta(self.meta, self.id, self.path, manager)
+        if self.meta:
             # Make copies, since we may modify these and want to
             # compare them to the originals later.
             self.dependencies = list(self.meta.dependencies)
@@ -1256,7 +1437,6 @@ class State:
             self.dep_line_map = {}
         else:
             # Parse the file (and then some) to get the dependencies.
-            self.meta = None
             self.parse_file()
             self.suppressed = []
             self.child_modules = set()
@@ -1370,6 +1550,24 @@ class State:
         fixup_module_pass_two(self.tree, self.manager.modules,
                               self.manager.options.quick_and_dirty)
 
+    def patch_dependency_parents(self) -> None:
+        """
+        In Python, if a and a.b are both modules, running `import a.b` will
+        modify not only the current module's namespace, but a's namespace as
+        well -- see SemanticAnalyzer.add_submodules_to_parent_modules for more
+        details.
+
+        However, this patching process can occur after `a` has been parsed and
+        serialized during increment mode. Consequently, we need to repeat this
+        patch when deserializing a cached file.
+
+        This function should be called only when processing fresh SCCs -- the
+        semantic analyzer will perform this patch for us when processing stale
+        SCCs.
+        """
+        for dep in self.dependencies:
+            self.manager.semantic_analyzer.add_submodules_to_parent_modules(dep, True)
+
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
 
@@ -1422,7 +1620,8 @@ class State:
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
-                    source = read_with_python_encoding(path, self.options.python_version)
+                    source, self.source_hash = read_with_python_encoding(
+                        path, self.options.python_version)
                 except IOError as ioerr:
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
@@ -1492,8 +1691,10 @@ class State:
         self.check_blockers()
 
     def semantic_analysis(self) -> None:
+        patches = []  # type: List[Callable[[], None]]
         with self.wrap_context():
-            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options)
+            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, patches)
+        self.patches = patches
 
     def semantic_analysis_pass_three(self) -> None:
         with self.wrap_context():
@@ -1501,14 +1702,17 @@ class State:
             if self.options.dump_type_stats:
                 dump_type_stats(self.tree, self.xpath)
 
+    def semantic_analysis_apply_patches(self) -> None:
+        for patch_func in self.patches:
+            patch_func()
+
     def type_check_first_pass(self) -> None:
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            plugin = DefaultPlugin(self.options.python_version)
             self.type_checker = TypeChecker(manager.errors, manager.modules, self.options,
-                                            self.tree, self.xpath, plugin)
+                                            self.tree, self.xpath, manager.plugin)
             self.type_checker.check_first_pass()
 
     def type_check_second_pass(self) -> bool:
@@ -1574,7 +1778,7 @@ class State:
         new_interface_hash = write_cache(
             self.id, self.path, self.tree,
             list(self.dependencies), list(self.suppressed), list(self.child_modules),
-            dep_prios, self.interface_hash,
+            dep_prios, self.interface_hash, self.source_hash,
             self.manager)
         if new_interface_hash == self.interface_hash:
             self.manager.log("Cached module {} has same interface".format(self.id))
@@ -1902,6 +2106,8 @@ def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
         graph[id].fix_cross_refs()
     for id in scc:
         graph[id].calculate_mros()
+    for id in scc:
+        graph[id].patch_dependency_parents()
 
 
 def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
@@ -1935,6 +2141,8 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         graph[id].semantic_analysis_pass_three()
     for id in fresh:
         graph[id].calculate_mros()
+    for id in stale:
+        graph[id].semantic_analysis_apply_patches()
     for id in stale:
         graph[id].type_check_first_pass()
     more = True

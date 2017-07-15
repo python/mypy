@@ -7,7 +7,9 @@ from typing import Dict, List
 from mypy import build
 from mypy.build import BuildSource
 from mypy.myunit import Suite
-from mypy.test.helpers import assert_string_arrays_equal, testfile_pyversion
+from mypy.test.helpers import (
+    assert_string_arrays_equal, testfile_pyversion, normalize_error_messages
+)
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.errors import CompileError
@@ -73,6 +75,7 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
                 a += str(f).split('\n')
     except CompileError as e:
         a = e.messages
+    a = normalize_error_messages(a)
     assert_string_arrays_equal(
         testcase.output, a,
         'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,

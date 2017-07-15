@@ -503,14 +503,13 @@ from typing import TypeVar, List
 class C:
     T = TypeVar('T', bound=int)
     def f(self, x: T) -> T:
-        L = List[C.T] # a valid type alias
-        l: L = []
-        reveal_type(l)  # E: Revealed type is 'builtins.list[T`-1]'
+        L = List[C.T] # this creates a variable, not an alias
+        reveal_type(L)  # E: Revealed type is 'Overload(def () -> builtins.list[T`-1], def (x: typing.Iterable[T`-1]) -> builtins.list[T`-1])'
         y: C.T = x
-        l.append(x)
+        L().append(x)
         C.T  # E: Type variable "C.T" cannot be used as an expression
         A = C.T  # E: Type variable "C.T" cannot be used as an expression
-        return l[0]
+        return L()[0]
 
 [builtins fixtures/list.pyi]
 

@@ -901,7 +901,7 @@ def f(x: int, y: List[int] = None) -> int: pass
 def f(x: int, y: List[str] = None) -> int: pass
 f(y=[1], x=0)() # E: "int" not callable
 f(y=[''], x=0)() # E: "int" not callable
-a = f(y=[['']], x=0) # E: List item 0 has incompatible type List[str]
+a = f(y=[['']], x=0) # E: List item 0 has incompatible type List[str]; expected "int"
 a() # E: "int" not callable
 [builtins fixtures/list.pyi]
 
@@ -1108,7 +1108,7 @@ def f(a: int) -> None: pass
 def f(a: str) -> None: pass
 [out]
 tmp/foo.pyi:2: error: Single overload definition, multiple required
-tmp/foo.pyi:5: error: Name 'f' already defined
+tmp/foo.pyi:5: error: Name 'f' already defined on line 2
 
 [case testOverloadTuple]
 from foo import *

@@ -7,9 +7,9 @@ class TypeVarScope:
     """Scope that holds bindings for type variables. Node fullname -> TypeVarDef."""
 
     def __init__(self,
-                 parent: Optional['TypeVarScope'] = None,
+                 parent: 'Optional[TypeVarScope]' = None,
                  is_class_scope: bool = False,
-                 prohibited: Optional['TypeVarScope'] = None) -> None:
+                 prohibited: 'Optional[TypeVarScope]' = None) -> None:
         """Initializer for TypeVarScope
 
         Parameters:
@@ -28,9 +28,9 @@ class TypeVarScope:
             self.func_id = parent.func_id
             self.class_id = parent.class_id
 
-    def get_function_scope(self) -> Optional['TypeVarScope']:
+    def get_function_scope(self) -> 'Optional[TypeVarScope]':
         """Get the nearest parent that's a function scope, not a class scope"""
-        it = self
+        it = self  # type: Optional[TypeVarScope]
         while it is not None and it.is_class_scope:
             it = it.parent
         return it
@@ -68,6 +68,7 @@ class TypeVarScope:
 
     def get_binding(self, item: Union[str, SymbolTableNode]) -> Optional[TypeVarDef]:
         fullname = item.fullname if isinstance(item, SymbolTableNode) else item
+        assert fullname is not None
         if fullname in self.scope:
             return self.scope[fullname]
         elif self.parent is not None:

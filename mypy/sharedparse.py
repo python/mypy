@@ -1,4 +1,4 @@
-from typing import Union, Tuple
+from typing import Optional
 
 """Shared logic between our three mypy parser files."""
 
@@ -97,5 +97,5 @@ def special_function_elide_names(name: str) -> bool:
     return name in MAGIC_METHODS_POS_ARGS_ONLY
 
 
-def argument_elide_name(name: Union[str, Tuple, None]) -> bool:
-    return isinstance(name, str) and name.startswith("__")
+def argument_elide_name(name: Optional[str]) -> bool:
+    return name is not None and name.startswith("__")

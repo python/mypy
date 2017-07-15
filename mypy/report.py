@@ -1,13 +1,12 @@
 """Classes for producing HTML reports about imprecision."""
 
 from abc import ABCMeta, abstractmethod
-import cgi
 import json
 import os
 import shutil
 import tokenize
 from operator import attrgetter
-
+from urllib.request import pathname2url
 from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
 import time
@@ -131,7 +130,7 @@ class LineCountReporter(AbstractReporter):
 
     def on_finish(self) -> None:
         counts = sorted(((c, p) for p, c in self.counts.items()),
-                        reverse=True)  # type: List[Tuple[tuple, str]]
+                        reverse=True)  # type: List[Tuple[Tuple[int, int, int, int], str]]
         total_counts = tuple(sum(c[i] for c, p in counts)
                              for i in range(4))
         with open(os.path.join(self.output_dir, 'linecount.txt'), 'w') as f:
@@ -157,21 +156,28 @@ class AnyExpressionsReporter(AbstractReporter):
         visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
                                           typemap=type_map, all_nodes=True)
         tree.accept(visitor)
-        num_total = visitor.num_imprecise + visitor.num_precise + visitor.num_any
+        num_unanalyzed_lines = list(visitor.line_map.values()).count(stats.TYPE_UNANALYZED)
+        # count each line of dead code as one expression of type "Any"
+        num_any = visitor.num_any + num_unanalyzed_lines
+        num_total = visitor.num_imprecise + visitor.num_precise + num_any
         if num_total > 0:
-            self.counts[tree.fullname()] = (visitor.num_any, num_total)
+            self.counts[tree.fullname()] = (num_any, num_total)
 
     def on_finish(self) -> None:
         total_any = sum(num_any for num_any, _ in self.counts.values())
         total_expr = sum(total for _, total in self.counts.values())
-        total_coverage = (float(total_expr - total_any) / float(total_expr)) * 100
+        total_coverage = 100.0
+        if total_expr > 0:
+            total_coverage = (float(total_expr - total_any) / float(total_expr)) * 100
 
         any_column_name = "Anys"
         total_column_name = "Exprs"
         file_column_name = "Name"
+        total_row_name = "Total"
         coverage_column_name = "Coverage"
         # find the longest filename all files
-        name_width = max([len(file) for file in self.counts] + [len(file_column_name)])
+        name_width = max([len(file) for file in self.counts] +
+                         [len(file_column_name), len(total_row_name)])
         # totals are the largest numbers in their column - no need to look at others
         min_column_distance = 3  # minimum distance between numbers in two columns
         any_width = max(len(str(total_any)) + min_column_distance, len(any_column_name))
@@ -197,8 +203,8 @@ class AnyExpressionsReporter(AbstractReporter):
                                coverage_width=coverage_width))
             f.write(separator)
             f.write('{:{name_width}} {:{any_width}} {:{total_width}} {:>{coverage_width}.2f}%\n'
-                    .format('Total', total_any, total_expr, total_coverage, name_width=name_width,
-                            any_width=any_width, total_width=exprs_width,
+                    .format(total_row_name, total_any, total_expr, total_coverage,
+                            name_width=name_width, any_width=any_width, total_width=exprs_width,
                             coverage_width=coverage_width))
 
 
@@ -400,7 +406,7 @@ class MemoryXmlReporter(AbstractReporter):
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
-                'type="text/xsl" href="%s"' % cgi.escape(xslt_path, True))
+                'type="text/xsl" href="%s"' % pathname2url(xslt_path))
         root.addprevious(transform_pi)
         self.schema.assertValid(doc)
 
@@ -423,7 +429,7 @@ class MemoryXmlReporter(AbstractReporter):
                              module=file_info.module)
         xslt_path = os.path.relpath('mypy-html.xslt', '.')
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
-                'type="text/xsl" href="%s"' % cgi.escape(xslt_path, True))
+                'type="text/xsl" href="%s"' % pathname2url(xslt_path))
         root.addprevious(transform_pi)
         self.schema.assertValid(doc)
 

@@ -15,7 +15,7 @@ from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars, 
 from mypy import experiments
 
 
-def join_simple(declaration: Type, s: Type, t: Type) -> Type:
+def join_simple(declaration: Optional[Type], s: Type, t: Type) -> Type:
     """Return a simple least upper bound given the declared type."""
 
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
@@ -228,11 +228,15 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             items = OrderedDict([
                 (item_name, s_item_type)
                 for (item_name, s_item_type, t_item_type) in self.s.zip(t)
-                if is_equivalent(s_item_type, t_item_type)
+                if (is_equivalent(s_item_type, t_item_type) and
+                    (item_name in t.required_keys) == (item_name in self.s.required_keys))
             ])
             mapping_value_type = join_type_list(list(items.values()))
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
-            return TypedDictType(items, fallback)
+            # We need to filter by items.keys() since some required keys present in both t and
+            # self.s might be missing from the join if the types are incompatible.
+            required_keys = set(items.keys()) & t.required_keys & self.s.required_keys
+            return TypedDictType(items, required_keys, fallback)
         elif isinstance(self.s, Instance):
             return join_instances(self.s, t.fallback)
         else:
