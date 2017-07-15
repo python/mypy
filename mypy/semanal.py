@@ -3148,7 +3148,7 @@ class SemanticAnalyzer(NodeVisitor):
             # bar in its namespace.  This must be done for all types of bar.
             file = cast(Optional[MypyFile], base.node)  # can't use isinstance due to issue #2999
             n = file.names.get(expr.name, None) if file is not None else None
-            if n and (not n.module_hidden or isinstance(n.node, MypyFile)):
+            if n and not n.module_hidden:
                 n = self.normalize_type_alias(n, expr)
                 if not n:
                     return

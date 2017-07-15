@@ -1733,6 +1733,25 @@ class C:
 
 [builtins fixtures/module.pyi]
 
+[case testNoReExportChildStubs]
+import mod
+from mod import C, D  # E: Module 'mod' has no attribute 'C'
+
+reveal_type(mod.x)  # E: Revealed type is 'mod.submod.C'
+mod.C  # E: Module has no attribute "C"
+y = mod.D()
+reveal_type(y.a)  # E: Revealed type is 'builtins.str'
+
+[file mod/__init__.pyi]
+from .submod import C, D as D
+x: C
+
+[file mod/submod.pyi]
+class C: pass
+class D:
+    a: str
+[builtins fixtures/module.pyi]
+
 [case testNoReExportNestedStub]
 from stub import substub  # E: Module 'stub' has no attribute 'substub'
 
