@@ -1395,7 +1395,7 @@ class SemanticAnalyzer(NodeVisitor):
                 symbol = SymbolTableNode(node.kind, node.node,
                                          self.cur_mod_id,
                                          node.type_override,
-                                         module_public=not module_hidden,
+                                         module_public=module_public,
                                          normalized=node.normalized,
                                          alias_tvars=node.alias_tvars,
                                          module_hidden=module_hidden)
