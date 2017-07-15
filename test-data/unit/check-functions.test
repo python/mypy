@@ -2176,8 +2176,6 @@ def f(x: S, y: S) -> S: return (x + y)
 f('1', '2')
 f('1', 2) # E: Type argument 1 of "f" has incompatible value \
 # N: "S" must be all one type: int or str
-f(1, '2') # E: Type argument 1 of "f" has incompatible value \
-# N: "S" must be all one type: int or str
 
 [case testMultipleConstrainedIncompatibleArguments]
 from typing import TypeVar
@@ -2190,17 +2188,9 @@ f(1, 2, '3', '4')
 f(1, 2, b'3', b'4')
 f(1, '2', '3', '4') # E: Type argument 1 of "f" has incompatible value \
 # N: "S" must be all one type: int or str
-f('1', 2, '3', '4') # E: Type argument 1 of "f" has incompatible value \
-# N: "S" must be all one type: int or str
 f('1', '2', b'3', '4') # E: Type argument 2 of "f" has incompatible value \
 # N: "AnyStr" must be all one type: str or bytes
-f('1', '2', '3', b'4') # E: Type argument 2 of "f" has incompatible value \
-# N: "AnyStr" must be all one type: str or bytes
 f('1', 2, b'3', '4') # E: Type argument 1 of "f" has incompatible value \
-# N: "S" must be all one type: int or str \
-# E: Type argument 2 of "f" has incompatible value \
-# N: "AnyStr" must be all one type: str or bytes
-f(1, '2', '3', b'4') # E: Type argument 1 of "f" has incompatible value \
 # N: "S" must be all one type: int or str \
 # E: Type argument 2 of "f" has incompatible value \
 # N: "AnyStr" must be all one type: str or bytes
