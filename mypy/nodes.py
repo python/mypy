@@ -1988,9 +1988,15 @@ class TypeInfo(SymbolNode):
     assuming = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
     assuming_proper = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
     # Ditto for temporary stack of recursive constraint inference.
+    # We make 'assuming' and 'inferring' attributes here instead of passing they as kwargs,
+    # since this would require to pass them in many dozens of calls. In particular,
+    # there is a dependency infer_constraint -> is_subtype -> is_callable_subtype ->
+    # -> infer_constraints.
     inferring = None  # type: List[mypy.types.Instance]
     cache = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
     cache_proper = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
+    # 'inferring' and 'assumig' can't be also made sets, since we need to use
+    # is_same_type to correctly treat unions.
 
     # Classes inheriting from Enum shadow their true members with a __getattr__, so we
     # have to treat them as a special case.

@@ -362,12 +362,12 @@ class B(A): pass
 x1: Pco[B]
 y1: Pco[A]
 x1 = y1 # E: Incompatible types in assignment (expression has type Pco[A], variable has type Pco[B])
-y1 = x1
+y1 = x1 # E: Incompatible types in assignment (expression has type Pco[B], variable has type Pco[A])
 
 x2: Pcontra[B]
 y2: Pcontra[A]
 y2 = x2 # E: Incompatible types in assignment (expression has type Pcontra[B], variable has type Pcontra[A])
-x2 = y2
+x2 = y2 # E: Incompatible types in assignment (expression has type Pcontra[A], variable has type Pcontra[B])
 
 x3: Pinv[B]
 y3: Pinv[A]

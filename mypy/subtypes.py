@@ -166,7 +166,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                               zip(t.args, right.args, right.type.defn.type_vars))
                 if nominal:
                     right.type.cache.add((left, right))
-                    return True
+                return nominal
             if right.type.is_protocol and is_protocol_implementation(left, right):
                 return True
             return False
@@ -342,7 +342,17 @@ def pop_on_exit(stack: List[Tuple[Instance, Instance]],
 def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool = True) -> bool:
     """Check whether 'left' implements the protocol 'right'. If 'allow_any' is False, then
     check for a proper subtype. Treat recursive protocols by using the 'assuming'
-    structural subtype matrix (in sparse representation), see comment in nodes.TypeInfo.
+    structural subtype matrix (in sparse representation, i.e. as a list of pairs
+    (subtype, supertype)), see also comment in nodes.TypeInfo. When we enter a check for classes
+    (A, P), defined as following::
+
+      class P(Protocol):
+          def f(self) -> P: ...
+      class A:
+          def f(self) -> A: ...
+
+    this results in A being a subtype of P without infinite recursion. On every false result,
+    we pop the assumption, thus avoiding an infinite recursion as well.
     """
     assert right.type.is_protocol
     assuming = right.type.assuming if allow_any else right.type.assuming_proper
@@ -350,13 +360,12 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
         if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):
             return True
     with pop_on_exit(assuming, left, right):
-        if right.type.protocol_members is None:
-            # This type has not been yet analyzed, probably a call from make_simplified_union.
-            return False
         for member in right.type.protocol_members:
             # nominal subtyping currently ignores '__init__' and '__new__' signatures
             if member in ('__init__', '__new__'):
                 continue
+            # The third argiment below indicates to what self type is bound.
+            # We always bind self to the subtype. (Similarly to nominal types).
             supertype = find_member(member, right, left)
             assert supertype is not None
             subtype = find_member(member, left, left)
@@ -489,18 +498,19 @@ def find_var_type(var: Var, itype: Instance, subtype: Type) -> Type:
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
     """
     from mypy.checkmember import bind_self
-    itype = map_instance_to_supertype(itype, var.info)
     typ = var.type
     if typ is None:
         return AnyType()
-    typ = expand_type_by_instance(typ, itype)
     # We don't need to bind 'self' for static methods, since there is no 'self'.
     if isinstance(typ, FunctionLike) and not var.is_staticmethod:
         signature = bind_self(typ, subtype)
         assert isinstance(signature, CallableType)
         if var.is_property:
-            return signature.ret_type
-        return signature
+            typ = signature.ret_type
+        else:
+            typ = signature
+    itype = map_instance_to_supertype(itype, var.info)
+    typ = expand_type_by_instance(typ, itype)
     return typ
 
 
