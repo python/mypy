@@ -712,15 +712,12 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 self.analyze_base_classes(defn)
                 self.analyze_metaclass(defn)
                 defn.info.is_protocol = is_protocol
-                runtime_protocol = False
+                defn.info.runtime_protocol = False
                 for decorator in defn.decorators:
-                    if self.analyze_class_decorator(defn, decorator):
-                        runtime_protocol = True
-
+                    self.analyze_class_decorator(defn, decorator)
                 self.enter_class(defn.info)
                 yield True
                 self.calculate_abstract_status(defn.info)
-                defn.info.runtime_protocol = runtime_protocol
                 self.setup_type_promotion(defn)
 
                 self.leave_class()
@@ -744,10 +741,11 @@ class SemanticAnalyzer(NodeVisitor[None]):
         self.locals.pop()
         self.type = self.type_stack.pop()
 
-    def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> bool:
+    def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
-        return (isinstance(decorator, RefExpr) and
-                decorator.fullname in ('typing.runtime', 'typing_extensions.runtime'))
+        if (isinstance(decorator, RefExpr) and
+                decorator.fullname in ('typing.runtime', 'typing_extensions.runtime')):
+            defn.info.runtime_protocol = True
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.

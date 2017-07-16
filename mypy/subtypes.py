@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Callable, Tuple, Iterator, Set, cast
+from typing import List, Optional, Dict, Callable, Tuple, Iterator, Set, Union, cast
 from contextlib import contextmanager
 
 from mypy.types import (
@@ -416,8 +416,8 @@ def find_member(name: str, itype: Instance, subtype: Type) -> Optional[Type]:
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
-            return find_var_type(dec.var, itype, subtype)
-        return map_method(method, itype, subtype)
+            return find_node_type(dec.var, itype, subtype)
+        return find_node_type(method, itype, subtype)
     else:
         # don't have such method, maybe variable or decorator?
         node = info.get(name)
@@ -428,7 +428,7 @@ def find_member(name: str, itype: Instance, subtype: Type) -> Optional[Type]:
         if isinstance(v, Decorator):
             v = v.var
         if isinstance(v, Var):
-            return find_var_type(v, itype, subtype)
+            return find_node_type(v, itype, subtype)
         if not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
             for method_name in ('__getattribute__', '__getattr__'):
                 # Normally, mypy assumes that instances that define __getattr__ have all
@@ -437,27 +437,12 @@ def find_member(name: str, itype: Instance, subtype: Type) -> Optional[Type]:
                 # structural subtyping.
                 method = info.get_method(method_name)
                 if method and method.info.fullname() != 'builtins.object':
-                    getattr_type = map_method(method, itype, subtype)
+                    getattr_type = find_node_type(method, itype, subtype)
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
         if itype.type.fallback_to_any:
             return AnyType()
     return None
-
-
-def get_all_flags(left: Instance, right: Instance) -> List[Tuple[str, Set[int], Set[int]]]:
-    """Return all attribute flags for members that are present in both
-    'left' and 'right'.
-    """
-    assert right.type.is_protocol
-    all_flags = []  # type: List[Tuple[str, Set[int], Set[int]]]
-    for member in right.type.protocol_members:
-        if find_member(member, left, left):
-            item = (member,
-                    get_member_flags(member, left.type),
-                    get_member_flags(member, right.type))
-            all_flags.append(item)
-    return all_flags
 
 
 def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
@@ -493,44 +478,35 @@ def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
     return set()
 
 
-def find_var_type(var: Var, itype: Instance, subtype: Type) -> Type:
-    """Find type of a variable 'var' (maybe also a decorated method).
+def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -> Type:
+    """Find type of a variable or method 'node' (maybe also a decorated method).
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
     """
     from mypy.checkmember import bind_self
-    typ = var.type
+    if isinstance(node, FuncBase):
+        typ = function_type(node, fallback=Instance(itype.type.mro[-1], []))  # type: Type
+    else:
+        typ = node.type
     if typ is None:
         return AnyType()
     # We don't need to bind 'self' for static methods, since there is no 'self'.
-    if isinstance(typ, FunctionLike) and not var.is_staticmethod:
+    if isinstance(node, FuncBase) or isinstance(typ, FunctionLike) and not node.is_staticmethod:
+        assert isinstance(typ, FunctionLike)
         signature = bind_self(typ, subtype)
-        assert isinstance(signature, CallableType)
-        if var.is_property:
+        if node.is_property:
+            assert isinstance(signature, CallableType)
             typ = signature.ret_type
         else:
             typ = signature
-    itype = map_instance_to_supertype(itype, var.info)
+    itype = map_instance_to_supertype(itype, node.info)
     typ = expand_type_by_instance(typ, itype)
     return typ
 
 
-def map_method(method: FuncBase, itype: Instance, subtype: Type) -> Type:
-    """Map 'method' to the base where it was defined. Apply type arguments
-    from 'itype', and bind 'self' type to 'subtype'.
-    This function should be used only for non-decorated methods. Decorated
-    methods (including @staticmethod and @property) are treated
-    by 'find_var_type'.
-    """
-    from mypy.checkmember import bind_self
-    signature = function_type(method, fallback=Instance(itype.type.mro[-1], []))
-    signature = bind_self(signature, subtype)
-    itype = map_instance_to_supertype(itype, method.info)
-    return expand_type_by_instance(signature, itype)
-
-
 def get_missing_members(left: Instance, right: Instance) -> List[str]:
     """Find all protocol members of 'right' that are not implemented
-    (i.e. completely missing) in 'left'.
+    (i.e. completely missing) in 'left'. This is a helper to collect information
+    for better error reporting.
     """
     assert right.type.is_protocol
     missing = []  # type: List[str]
@@ -542,7 +518,8 @@ def get_missing_members(left: Instance, right: Instance) -> List[str]:
 
 def get_conflict_types(left: Instance, right: Instance) -> List[Tuple[str, Type, Type]]:
     """Find members that are defined in 'left' but have incompatible types.
-    Return them as a list of ('member', 'got', 'expected').
+    Return them as a list of ('member', 'got', 'expected'). This is a helper
+    to collect information for better error reporting.
     """
     assert right.type.is_protocol
     conflicts = []  # type: List[Tuple[str, Type, Type]]
@@ -560,6 +537,21 @@ def get_conflict_types(left: Instance, right: Instance) -> List[Tuple[str, Type,
         if not is_compat:
             conflicts.append((member, subtype, supertype))
     return conflicts
+
+
+def get_all_flags(left: Instance, right: Instance) -> List[Tuple[str, Set[int], Set[int]]]:
+    """Return all attribute flags for members that are present in both
+    'left' and 'right'. This is a helper to collect information for better error reporting.
+    """
+    assert right.type.is_protocol
+    all_flags = []  # type: List[Tuple[str, Set[int], Set[int]]]
+    for member in right.type.protocol_members:
+        if find_member(member, left, left):
+            item = (member,
+                    get_member_flags(member, left.type),
+                    get_member_flags(member, right.type))
+            all_flags.append(item)
+    return all_flags
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,
