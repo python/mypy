@@ -1026,7 +1026,7 @@ class MessageBuilder:
         # note:     method, attr
         MAX_ITEMS = 2  # Maximum number of conflicts, missing members, and overloads shown
         # List of special situations where we don't want to report additional problems
-        exclusions = {TypedDictType: ['typing.Mapping', 'typing.Dict'],
+        exclusions = {TypedDictType: ['typing.Mapping'],
                       TupleType: ['typing.Iterable', 'typing.Sequence'],
                       Instance: []}  # type: Dict[type, List[str]]
         if supertype.type.fullname() in exclusions[type(subtype)]:
