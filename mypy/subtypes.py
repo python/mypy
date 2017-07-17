@@ -484,7 +484,8 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     """
     from mypy.checkmember import bind_self
     if isinstance(node, FuncBase):
-        typ = function_type(node, fallback=Instance(itype.type.mro[-1], []))  # type: Type
+        typ = function_type(node,
+                            fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]
     else:
         typ = node.type
     if typ is None:
