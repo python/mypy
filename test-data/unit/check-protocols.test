@@ -346,7 +346,7 @@ from typing import TypeVar, Protocol
 
 T = TypeVar('T')
 
-# In case of these errors we proceed with inferred variance.
+# In case of these errors we proceed with declared variance.
 class Pco(Protocol[T]): # E: Invariant type variable 'T' used in protocol where covariant one is expected
     def meth(self) -> T:
         pass
