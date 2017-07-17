@@ -1025,6 +1025,10 @@ class MessageBuilder:
         # note: 'Cls' is missing following 'Proto' members:
         # note:     method, attr
         MAX_ITEMS = 2  # Maximum number of conflicts, missing members, and overloads shown
+        # List of special situations where we don't want to report additional problems
+        exclusions = {TypedDictType: ['typing.Mapping', 'typing.Dict']}
+        if supertype.type.fullname() in exclusions[type(subtype)]:
+            return
 
         def pretty_overload(tp: Overloaded) -> None:
             for item in tp.items()[:MAX_ITEMS]:
