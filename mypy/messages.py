@@ -1012,8 +1012,8 @@ class MessageBuilder:
         self.note("'{}.__call__' has type '{}'".format(strip_quotes(self.format(subtype)),
                                                        self.format(call)), context)
 
-    def report_protocol_problems(self, subtype: Union[Instance, TupleType], supertype: Instance,
-                                 context: Context) -> None:
+    def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
+                                 supertype: Instance, context: Context) -> None:
         """Report possible protocol conflicts between 'subtype' and 'supertype'.
         This includes missing members, incompatible types, and incompatible
         attribute flags, such as settable vs read-only or class variable vs
@@ -1031,10 +1031,16 @@ class MessageBuilder:
                 self.note('@overload', context, offset=2 * OFFSET)
                 self.note(self.pretty_callable(item), context, offset=2 * OFFSET)
             if len(tp.items()) > MAX_ITEMS:
-                self.note('<{} more overload(s) not shown>'.format(len(exp.items()) - MAX_ITEMS),
+                self.note('<{} more overload(s) not shown>'.format(len(tp.items()) - MAX_ITEMS),
                           context, offset=2 * OFFSET)
 
-        if isinstance(subtype, TupleType):
+        def print_more(conflicts: Sequence[Any]) -> None:
+            if len(conflicts) > MAX_ITEMS:
+                self.note('<{} more conflict(s) not shown>'
+                          .format(len(conflicts) - MAX_ITEMS),
+                          context, offset=OFFSET)
+
+        if isinstance(subtype, (TupleType, TypedDictType)):
             if not isinstance(subtype.fallback, Instance):
                 return
             subtype = subtype.fallback
@@ -1044,8 +1050,7 @@ class MessageBuilder:
         if (missing and len(missing) < len(supertype.type.protocol_members) and
                 len(missing) <= MAX_ITEMS):
             self.note("'{}' is missing following '{}' protocol member{}:"
-                      .format(subtype.type.name(), supertype.type.name(),
-                              's' if len(missing) > 1 else ''),
+                      .format(subtype.type.name(), supertype.type.name(), plural_s(missing)),
                       context)
             self.note(', '.join(missing), context, offset=OFFSET)
 
@@ -1075,13 +1080,11 @@ class MessageBuilder:
                     else:
                         assert isinstance(got, Overloaded)
                         pretty_overload(got)
-            if len(conflict_types) > MAX_ITEMS:
-                self.note('<{} more conflict(s) not shown>'
-                          .format(len(conflict_types) - MAX_ITEMS),
-                          context, offset=OFFSET)
+            print_more(conflict_types)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
-        for name, subflags, superflags in get_all_flags(subtype, supertype):
+        conflict_flags = get_all_flags(subtype, supertype)
+        for name, subflags, superflags in conflict_flags[:MAX_ITEMS]:
             if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
                 self.note('Protocol member {}.{} expected instance variable,'
                           ' got class variable'.format(supertype.type.name(), name), context)
@@ -1094,6 +1097,7 @@ class MessageBuilder:
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 self.note('Protocol member {}.{} expected class or static method'
                           .format(supertype.type.name(), name), context)
+        print_more(conflict_flags)
 
     def pretty_callable(self, tp: CallableType) -> str:
         """Return a nice easily-readable representation of a callable type.

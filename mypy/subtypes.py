@@ -514,7 +514,7 @@ def get_missing_members(left: Instance, right: Instance) -> List[str]:
     for member in right.type.protocol_members:
         if not find_member(member, left, left):
             missing.append(member)
-    return sorted(missing)
+    return missing
 
 
 def get_conflict_types(left: Instance, right: Instance) -> List[Tuple[str, Type, Type]]:
@@ -876,7 +876,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                               zip(left.args, right.args, right.type.defn.type_vars))
                 if nominal:
                     right.type.cache_proper.add((left, right))
-                    return True
+                return nominal
             if (right.type.is_protocol and
                     is_protocol_implementation(left, right, allow_any=False)):
                 return True

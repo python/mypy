@@ -1025,7 +1025,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return
             messages.incompatible_argument(n, m, callee, original_caller_type,
                                            caller_kind, context)
-            if (isinstance(original_caller_type, (Instance, TupleType)) and
+            if (isinstance(original_caller_type, (Instance, TupleType, TypedDictType)) and
                     isinstance(callee_type, Instance) and callee_type.type.is_protocol):
                 self.msg.report_protocol_problems(original_caller_type, callee_type, context)
             if (isinstance(callee_type, CallableType) and

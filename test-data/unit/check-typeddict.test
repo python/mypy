@@ -372,6 +372,51 @@ ll = [b, c]
 f(ll) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x': int, 'z': str})]; expected "A"
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictWithSimpleProtocol]
+from typing_extensions import Protocol
+from mypy_extensions import TypedDict
+
+class StrIntMap(Protocol):
+    def __getitem__(self, key: str) -> int: ...
+
+A = TypedDict('A', {'x': int, 'y': int})
+B = TypedDict('B', {'x': int, 'y': str})
+
+def fun(arg: StrIntMap) -> None: ...
+a: A
+b: B
+fun(a)
+fun(b)  # Error
+[builtins fixtures/dict.pyi]
+[out]
+main:14: error: Argument 1 to "fun" has incompatible type "B"; expected "StrIntMap"
+main:14: note: Following member(s) of "B" have conflicts:
+main:14: note:     Expected:
+main:14: note:         def __getitem__(self, str) -> int
+main:14: note:     Got:
+main:14: note:         def __getitem__(self, str) -> object
+
+[case testTypedDictWithSimpleProtocolInference]
+from typing_extensions import Protocol, TypeVar
+from mypy_extensions import TypedDict
+
+T_co = TypeVar('T_co', covariant=True)
+T = TypeVar('T')
+
+class StrMap(Protocol[T_co]):
+    def __getitem__(self, key: str) -> T_co: ...
+
+A = TypedDict('A', {'x': int, 'y': int})
+B = TypedDict('B', {'x': int, 'y': str})
+
+def fun(arg: StrMap[T]) -> T:
+    return arg['whatever']
+a: A
+b: B
+reveal_type(fun(a))  # E: Revealed type is 'builtins.int*'
+reveal_type(fun(b))  # E: Revealed type is 'builtins.object*'
+[builtins fixtures/dict.pyi]
+[out]
 
 -- Join
 

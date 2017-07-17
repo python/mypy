@@ -2426,7 +2426,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if note_msg:
                 self.note(note_msg, context)
             if (isinstance(supertype, Instance) and supertype.type.is_protocol and
-                    isinstance(subtype, (Instance, TupleType))):
+                    isinstance(subtype, (Instance, TupleType, TypedDictType))):
                 self.msg.report_protocol_problems(subtype, supertype, context)
             if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
                 call = find_member('__call__', subtype, subtype)
