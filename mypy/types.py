@@ -43,12 +43,6 @@ class Type(mypy.nodes.Context):
     def __repr__(self) -> str:
         return self.accept(TypeStrVisitor())
 
-    def __hash__(self) -> int:
-        return hash(type(self))
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, type(self))
-
     def serialize(self) -> Union[JsonDict, str]:
         raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
 
@@ -258,14 +252,6 @@ class TypeList(Type):
         assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_type_list(self)
 
-    def __hash__(self) -> int:
-        return hash(tuple(self.items))
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, TypeList):
-            return NotImplemented
-        return self.items == other.items
-
     def serialize(self) -> JsonDict:
         assert False, "Sythetic types don't serialize"
 
@@ -325,6 +311,12 @@ class AnyType(Type):
                        special_form=special_form,
                        line=self.line, column=self.column)
 
+    def __hash__(self) -> int:
+        return hash(AnyType)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, AnyType)
+
     def serialize(self) -> JsonDict:
         return {'.class': 'AnyType'}
 
@@ -359,6 +351,12 @@ class UninhabitedType(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_uninhabited_type(self)
 
+    def __hash__(self) -> int:
+        return hash(UninhabitedType)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, UninhabitedType)
+
     def serialize(self) -> JsonDict:
         return {'.class': 'UninhabitedType',
                 'is_noreturn': self.is_noreturn}
@@ -379,6 +377,12 @@ class NoneTyp(Type):
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
+
+    def __hash__(self) -> int:
+        return hash(NoneTyp)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, NoneTyp)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_none_type(self)
@@ -1024,16 +1028,17 @@ class TypedDictType(Type):
         return visitor.visit_typeddict_type(self)
 
     def __hash__(self) -> int:
-        return hash(tuple(self.items.items()))
+        return hash((frozenset(self.items.items()), self.fallback,
+                     frozenset(self.required_keys)))
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, TypedDictType):
-            if self.items.keys() != other.items.keys():
+            if frozenset(self.items.keys()) != frozenset(other.items.keys()):
                 return False
             for (_, left_item_type, right_item_type) in self.zip(other):
                 if not left_item_type == right_item_type:
                     return False
-            return True
+            return self.fallback == other.fallback and self.required_keys == other.required_keys
         else:
             return NotImplemented
 
@@ -1114,14 +1119,6 @@ class StarType(Type):
     def __init__(self, type: Type, line: int = -1, column: int = -1) -> None:
         self.type = type
         super().__init__(line, column)
-
-    def __hash__(self) -> int:
-        return hash(self.type)
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, StarType):
-            return NotImplemented
-        return self.type == other.type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
