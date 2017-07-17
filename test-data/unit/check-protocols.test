@@ -1733,3 +1733,18 @@ main:14: note:         def g(self, x: int) -> None
 main:14: note:     Got:
 main:14: note:         def g(self, x: str) -> None
 main:14: note:     <2 more conflict(s) not shown>
+
+[case testDontShowNotesForTupleAndIterableProtocol]
+from typing import Iterable, Sequence, Protocol, NamedTuple
+
+class N(NamedTuple):
+    x: int
+
+def f1(x: Iterable[str]) -> None: pass
+def f2(x: Sequence[str]) -> None: pass
+
+# The errors below should be short
+f1(N(1))  # E: Argument 1 to "f1" has incompatible type "N"; expected Iterable[str]
+f2(N(2))  # E: Argument 1 to "f2" has incompatible type "N"; expected Sequence[str]
+[builtins fixtures/tuple.pyi]
+[out]
