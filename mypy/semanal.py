@@ -3384,6 +3384,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def lookup(self, name: str, ctx: Context) -> SymbolTableNode:
         """Look up an unqualified name in all active namespaces."""
+        implicit_name = False
         # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
             if name in self.globals:
@@ -3404,6 +3405,8 @@ class SemanticAnalyzer(NodeVisitor):
             node = self.type.names[name]
             if not node.implicit:
                 return node
+            implicit_name = True
+            implicit_node = node
         # 3. Local (function) scopes
         for table in reversed(self.locals):
             if table is not None and name in table:
@@ -3423,8 +3426,11 @@ class SemanticAnalyzer(NodeVisitor):
                 node = table[name]
                 return node
         # Give up.
-        self.name_not_defined(name, ctx)
-        self.check_for_obsolete_short_name(name, ctx)
+        if not implicit_name:
+            self.name_not_defined(name, ctx)
+            self.check_for_obsolete_short_name(name, ctx)
+        else:
+            return implicit_node
         return None
 
     def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
