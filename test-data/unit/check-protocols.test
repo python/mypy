@@ -1748,3 +1748,30 @@ f1(N(1))  # E: Argument 1 to "f1" has incompatible type "N"; expected Iterable[s
 f2(N(2))  # E: Argument 1 to "f2" has incompatible type "N"; expected Sequence[str]
 [builtins fixtures/tuple.pyi]
 [out]
+
+[case testNotManyFlagConflitsShownInProtocols]
+from typing import Protocol
+
+class AllSettable(Protocol):
+    a: int
+    b: int
+    c: int
+    d: int
+
+class AllReadOnly:
+    @property
+    def a(self) -> int: pass
+    @property
+    def b(self) -> int: pass
+    @property
+    def c(self) -> int: pass
+    @property
+    def d(self) -> int: pass
+
+x: AllSettable = AllReadOnly()
+[builtins fixtures/property.pyi]
+[out]
+main:19: error: Incompatible types in assignment (expression has type "AllReadOnly", variable has type "AllSettable")
+main:19: note: Protocol member AllSettable.a expected settable variable, got read-only attribute
+main:19: note: Protocol member AllSettable.b expected settable variable, got read-only attribute
+main:19: note:     <2 more conflict(s) not shown>
