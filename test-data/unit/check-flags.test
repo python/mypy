@@ -488,6 +488,7 @@ import standard, optional
 
 [file standard.py]
 def f(x: int = None) -> None: pass
+
 [file optional.py]
 import standard
 def f(x: int = None) -> None: pass
@@ -498,8 +499,6 @@ standard.f(None)
 strict_optional = False
 [[mypy-optional]
 strict_optional = True
-
-
 
 [case testDisallowImplicitTypesIgnoreMissingTypes]
 # flags: --ignore-missing-imports --disallow-any=unimported
