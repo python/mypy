@@ -42,6 +42,7 @@ class PythonEvaluationSuite(Suite):
 
 
 def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
+    assert testcase.old_cwd is not None, "test was not properly set up"
     # Write the program to a file.
     program = '_program.py'
     program_path = os.path.join(test_temp_dir, program)

@@ -2490,9 +2490,9 @@ def is_async_def(t: Type) -> bool:
 
 
 def map_actuals_to_formals(caller_kinds: List[int],
-                           caller_names: List[str],
+                           caller_names: List[Optional[str]],
                            callee_kinds: List[int],
-                           callee_names: List[str],
+                           callee_names: List[Optional[str]],
                            caller_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
     """Calculate mapping between actual (caller) args and formals.
