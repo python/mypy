@@ -32,7 +32,10 @@ precision_names = [
 
 
 class StatisticsVisitor(TraverserVisitor):
-    def __init__(self, inferred: bool, filename: str, typemap: Dict[Expression, Type] = None,
+    def __init__(self,
+                 inferred: bool,
+                 filename: str,
+                 typemap: Optional[Dict[Expression, Type]] = None,
                  all_nodes: bool = False) -> None:
         self.inferred = inferred
         self.filename = filename
@@ -177,6 +180,10 @@ class StatisticsVisitor(TraverserVisitor):
             self.record_line(self.line, TYPE_UNANALYZED)
             return
 
+        if isinstance(t, AnyType) and t.special_form:
+            # This is not a real Any type, so don't collect stats for it.
+            return
+
         if isinstance(t, AnyType):
             self.log('  !! Any type around line %d' % self.line)
             self.num_any += 1
@@ -217,7 +224,7 @@ class StatisticsVisitor(TraverserVisitor):
 
 
 def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
-                    typemap: Dict[Expression, Type] = None) -> None:
+                    typemap: Optional[Dict[Expression, Type]] = None) -> None:
     if is_special_module(path):
         return
     print(path)

@@ -1159,8 +1159,15 @@ demonstrates how to work with coroutines. One version
 and one
 `uses yield from <https://github.com/python/mypy/blob/master/test-data/samples/crawl.py>`_.
 
+.. _typeddict:
+
 TypedDict
 *********
+
+.. note::
+
+   TypedDict is not yet an officially supported feature.  It may not work reliably,
+   and details of TypedDict may change in future mypy releases.
 
 Python programs often use dictionaries with string keys to represent objects.
 Here is a typical example:
@@ -1254,11 +1261,6 @@ subtyping, as discussed below).
    .. code-block:: text
 
        pip install --upgrade mypy-extensions
-
-.. note::
-
-   TypedDict is experimental.  Details of TypedDict may change in
-   future mypy releases.
 
 Totality
 --------

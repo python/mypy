@@ -312,6 +312,52 @@ cs = C() # type: C[str]
 cs.x = ''
 cs.x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
+[case testAttributeInGenericTypeWithTypevarValues3]
+from typing import TypeVar, Generic
+X = TypeVar('X', int, str)
+class C(Generic[X]):
+    def f(self, x: X) -> None:
+        self.x = x  # type: X
+ci: C[int]
+cs: C[str]
+reveal_type(ci.x) # E: Revealed type is 'builtins.int*'
+reveal_type(cs.x) # E: Revealed type is 'builtins.str*'
+
+[case testAttributeInGenericTypeWithTypevarValuesUsingInference1]
+from typing import TypeVar, Generic
+X = TypeVar('X', int, str)
+class C(Generic[X]):
+    def f(self, x: X) -> None:
+        self.x = x # E: Need type annotation for variable
+ci: C[int]
+cs: C[str]
+reveal_type(ci.x) # E: Revealed type is 'Any'
+reveal_type(cs.x) # E: Revealed type is 'Any'
+
+[case testAttributeInGenericTypeWithTypevarValuesUsingInference2]
+from typing import TypeVar, Generic
+X = TypeVar('X', int, str)
+class C(Generic[X]):
+    def f(self, x: X) -> None:
+        self.x = 1
+        reveal_type(self.x) # E: Revealed type is 'builtins.int'
+ci: C[int]
+cs: C[str]
+reveal_type(ci.x) # E: Revealed type is 'builtins.int'
+reveal_type(cs.x) # E: Revealed type is 'builtins.int'
+
+[case testAttributeInGenericTypeWithTypevarValuesUsingInference3]
+from typing import TypeVar, Generic
+X = TypeVar('X', int, str)
+class C(Generic[X]):
+    x: X
+    def f(self) -> None:
+        self.y = self.x # E: Need type annotation for variable
+ci: C[int]
+cs: C[str]
+reveal_type(ci.y) # E: Revealed type is 'Any'
+reveal_type(cs.y) # E: Revealed type is 'Any'
+
 [case testInferredAttributeInGenericClassBodyWithTypevarValues]
 from typing import TypeVar, Generic
 X = TypeVar('X', int, str)
@@ -402,6 +448,19 @@ c(g(1))
 [out]
 main:6: error: Argument 1 to "c" has incompatible type "str"; expected "ss"
 main:7: error: Argument 1 to "c" has incompatible type "int"; expected "ss"
+
+[case testDefineAttributeInGenericMethodUsingTypeVarWithValues]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+class A:
+    def f(self, x: T) -> None:
+        self.x = x # E: Need type annotation for variable
+        self.y = [x] # E: Need type annotation for variable
+        self.z = 1
+reveal_type(A().x)  # E: Revealed type is 'Any'
+reveal_type(A().y)  # E: Revealed type is 'Any'
+reveal_type(A().z)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/list.pyi]
 
 
 -- Special cases

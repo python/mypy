@@ -38,7 +38,7 @@ def analyze_member_access(name: str,
                           msg: MessageBuilder, *,
                           original_type: Type,
                           chk: 'mypy.checker.TypeChecker',
-                          override_info: TypeInfo = None) -> Type:
+                          override_info: Optional[TypeInfo] = None) -> Type:
     """Return the type of attribute `name` of typ.
 
     This is a general operation that supports various different variations:
@@ -603,7 +603,7 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
 F = TypeVar('F', bound=FunctionLike)
 
 
-def bind_self(method: F, original_type: Type = None, is_classmethod: bool = False) -> F:
+def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: bool = False) -> F:
     """Return a copy of `method`, with the type of its first parameter (usually
     self or cls) bound to original_type.
 

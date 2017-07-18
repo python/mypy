@@ -89,7 +89,7 @@ class ConditionalTypeBinder:
         self.break_frames = []  # type: List[int]
         self.continue_frames = []  # type: List[int]
 
-    def _add_dependencies(self, key: Key, value: Key = None) -> None:
+    def _add_dependencies(self, key: Key, value: Optional[Key] = None) -> None:
         if value is None:
             value = key
         else:
@@ -233,12 +233,16 @@ class ConditionalTypeBinder:
             # times?
             return
 
-        # If x is Any and y is int, after x = y we do not infer that x is int.
-        # This could be changed.
-
-        if (isinstance(self.most_recent_enclosing_type(expr, type), AnyType)
+        enclosing_type = self.most_recent_enclosing_type(expr, type)
+        if (isinstance(enclosing_type, AnyType)
                 and not restrict_any):
-            pass
+            # If x is Any and y is int, after x = y we do not infer that x is int.
+            # This could be changed.
+            if not isinstance(type, AnyType):
+                # We narrowed type from Any in a recent frame (probably an
+                # isinstance check), but now it is reassigned, so broaden back
+                # to Any (which is the most recent enclosing type)
+                self.put(expr, enclosing_type)
         elif (isinstance(type, AnyType)
               and not (isinstance(declared_type, UnionType)
                        and any(isinstance(item, AnyType) for item in declared_type.items))):
