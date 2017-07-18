@@ -1640,3 +1640,9 @@ m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.M
 [file n.py]
 
 [builtins fixtures/module.pyi]
+
+[case testPackageImportInCwd]
+from .m import *
+
+[file __init__.py]
+[file m.py]
