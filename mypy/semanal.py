@@ -181,7 +181,7 @@ SUGGESTED_TEST_FIXTURES = {
 }
 
 
-class SemanticAnalyzer(NodeVisitor):
+class SemanticAnalyzer(NodeVisitor[None]):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a
@@ -2863,7 +2863,7 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_try_stmt(self, s: TryStmt) -> None:
         self.analyze_try_stmt(s, self)
 
-    def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor,
+    def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor[None],
                          add_global: bool = False) -> None:
         s.body.accept(visitor)
         for type, var, handler in zip(s.types, s.vars, s.handlers):
@@ -3155,6 +3155,18 @@ class SemanticAnalyzer(NodeVisitor):
                 expr.kind = n.kind
                 expr.fullname = n.fullname
                 expr.node = n.node
+            elif file is not None and file.is_stub and '__getattr__' in file.names:
+                # If there is a module-level __getattr__, then any attribute on the module is valid
+                # per PEP 484.
+                getattr_defn = file.names['__getattr__']
+                if isinstance(getattr_defn.node, FuncDef):
+                    if isinstance(getattr_defn.node.type, CallableType):
+                        typ = getattr_defn.node.type.ret_type
+                    else:
+                        typ = AnyType()
+                    expr.kind = MDEF
+                    expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
+                    expr.node = Var(expr.name, type=typ)
             else:
                 # We only catch some errors here; the rest will be
                 # caught during type checking.
@@ -3386,6 +3398,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def lookup(self, name: str, ctx: Context) -> SymbolTableNode:
         """Look up an unqualified name in all active namespaces."""
+        implicit_name = False
         # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
             if name in self.globals:
@@ -3406,6 +3419,8 @@ class SemanticAnalyzer(NodeVisitor):
             node = self.type.names[name]
             if not node.implicit:
                 return node
+            implicit_name = True
+            implicit_node = node
         # 3. Local (function) scopes
         for table in reversed(self.locals):
             if table is not None and name in table:
@@ -3425,8 +3440,11 @@ class SemanticAnalyzer(NodeVisitor):
                 node = table[name]
                 return node
         # Give up.
-        self.name_not_defined(name, ctx)
-        self.check_for_obsolete_short_name(name, ctx)
+        if not implicit_name:
+            self.name_not_defined(name, ctx)
+            self.check_for_obsolete_short_name(name, ctx)
+        else:
+            return implicit_node
         return None
 
     def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
@@ -3645,7 +3663,7 @@ class SemanticAnalyzer(NodeVisitor):
             report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
 
 
-class FirstPass(NodeVisitor):
+class FirstPass(NodeVisitor[None]):
     """First phase of semantic analysis.
 
     See docstring of 'analyze()' below for a description of what this does.
@@ -4257,7 +4275,7 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
             return TRUTH_VALUE_UNKNOWN
     elif isinstance(index, tuple) and isinstance(thing, tuple):
         # Why doesn't mypy see that index can't be None here?
-        lo, hi = cast(tuple, index)
+        lo, hi = cast(Tuple[Optional[int], Optional[int]], index)
         if lo is None:
             lo = 0
         if hi is None:

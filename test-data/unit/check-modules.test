@@ -1762,3 +1762,77 @@ import substub
 x = 42
 
 [file mod/submod.pyi]
+
+[case testModuleLevelGetattr]
+import has_getattr
+
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'
+
+[file has_getattr.pyi]
+from typing import Any
+
+def __getattr__(name: str) -> Any: ...
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrReturnType]
+import has_getattr
+
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'builtins.str'
+
+[file has_getattr.pyi]
+def __getattr__(name: str) -> str: ...
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrInvalidSignature]
+import has_getattr
+
+reveal_type(has_getattr.any_attribute)
+
+[file has_getattr.pyi]
+def __getattr__(x: int, y: str) -> str: ...
+
+[out]
+tmp/has_getattr.pyi:1: error: Invalid signature "def (builtins.int, builtins.str) -> builtins.str"
+main:3: error: Revealed type is 'builtins.str'
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrNotCallable]
+import has_getattr
+
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'  # E: Module has no attribute "any_attribute"
+
+[file has_getattr.pyi]
+__getattr__ = 3
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrUntyped]
+import has_getattr
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'
+
+[file has_getattr.pyi]
+def __getattr__(name): ...
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrNotStub]
+
+import has_getattr
+reveal_type(has_getattr.any_attribute)
+
+[file has_getattr.py]
+def __getattr__(name): ...
+
+[out]
+tmp/has_getattr.py:1: error: __getattr__ is not valid at the module level outside a stub file
+main:3: error: Revealed type is 'Any'
+main:3: error: Module has no attribute "any_attribute"
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattribute]
+
+def __getattribute__(): ...  # E: __getattribute__ is not valid at the module level
