@@ -489,7 +489,9 @@ import standard, optional
 [file standard.py]
 def f(x: int = None) -> None: pass
 [file optional.py]
+import standard
 def f(x: int = None) -> None: pass
+standard.f(None)
 
 [file mypy.ini]
 [[mypy]
