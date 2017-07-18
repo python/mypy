@@ -646,7 +646,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if name in nodes.reverse_op_method_set:
                     self.check_reverse_op_method(item, typ, name)
                 elif name in ('__getattr__', '__getattribute__'):
-                    self.check_getattr_method(typ, defn)
+                    self.check_getattr_method(typ, defn, name)
                 elif name == '__setattr__':
                     self.check_setattr_method(typ, defn)
                 # Refuse contravariant return type variable
@@ -939,12 +939,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if fail:
                 self.msg.signatures_incompatible(method, other_method, defn)
 
-    def check_getattr_method(self, typ: CallableType, context: Context) -> None:
-        method_type = CallableType([AnyType(), self.named_type('builtins.str')],
-                                   [nodes.ARG_POS, nodes.ARG_POS],
-                                   [None, None],
-                                   AnyType(),
-                                   self.named_type('builtins.function'))
+    def check_getattr_method(self, typ: CallableType, context: Context, name: str) -> None:
+        if len(self.scope.stack) == 1:
+            # module-level __getattr__
+            if name == '__getattribute__':
+                self.msg.fail('__getattribute__ is not valid at the module level', context)
+                return
+            elif name == '__getattr__' and not self.is_stub:
+                self.msg.fail('__getattr__ is not valid at the module level outside a stub file',
+                              context)
+                return
+            method_type = CallableType([self.named_type('builtins.str')],
+                                       [nodes.ARG_POS],
+                                       [None],
+                                       AnyType(),
+                                       self.named_type('builtins.function'))
+        else:
+            method_type = CallableType([AnyType(), self.named_type('builtins.str')],
+                                       [nodes.ARG_POS, nodes.ARG_POS],
+                                       [None, None],
+                                       AnyType(),
+                                       self.named_type('builtins.function'))
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature(typ, context)
 

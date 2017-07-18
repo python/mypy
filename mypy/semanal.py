@@ -3153,6 +3153,18 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 expr.kind = n.kind
                 expr.fullname = n.fullname
                 expr.node = n.node
+            elif file is not None and file.is_stub and '__getattr__' in file.names:
+                # If there is a module-level __getattr__, then any attribute on the module is valid
+                # per PEP 484.
+                getattr_defn = file.names['__getattr__']
+                if isinstance(getattr_defn.node, FuncDef):
+                    if isinstance(getattr_defn.node.type, CallableType):
+                        typ = getattr_defn.node.type.ret_type
+                    else:
+                        typ = AnyType()
+                    expr.kind = MDEF
+                    expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
+                    expr.node = Var(expr.name, type=typ)
             else:
                 # We only catch some errors here; the rest will be
                 # caught during type checking.
