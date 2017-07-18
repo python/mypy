@@ -802,7 +802,8 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
         # Since runtime type checks will ignore type arguments, erase the types.
         erased_s = erase_type(s)
         new_items = [item for item in t.relevant_items()
-                     if (not is_proper_subtype(erase_type(item), erased_s)
+                     if (not (is_proper_subtype(erase_type(item), erased_s) or
+                              is_proper_subtype(item, erased_s))
                          or isinstance(item, AnyType))]
         return UnionType.make_union(new_items)
     else:

@@ -1289,8 +1289,7 @@ x: Union[C1[int], C2]
 if isinstance(x, P1):
     reveal_type(x) # E: Revealed type is '__main__.C1[builtins.int]'
 else:
-    # This happens because of rules in restrict_subtype_away, maybe we can relax rules for protocols?
-    reveal_type(x) # E: Revealed type is 'Union[__main__.C1[builtins.int], __main__.C2]'
+    reveal_type(x) # E: Revealed type is '__main__.C2'
 
 if isinstance(x, P2):
     reveal_type(x) # E: Revealed type is '__main__.C2'
@@ -1449,7 +1448,7 @@ foo('no way')
 [out]
 main:11: error: Argument 1 to "foo" has incompatible type "str"; expected "SupportsInt"
 
--- Additional test and corner cases for protocols
+-- Additional tests and corner cases for protocols
 -- ----------------------------------------------
 
 [case testAnyWithProtocols]
@@ -1599,7 +1598,7 @@ fun_p(C())  # OK
 from typing import Protocol
 
 class P(Protocol):
-    x = 1  # We could actually prohibit inferred types in protocol declarations
+    x = 1  # E: All protocol members must have explicitly declared types
 
 class C:
     x: int

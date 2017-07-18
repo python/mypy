@@ -1394,3 +1394,8 @@ o: object = p
 it2: Iterable[int] = p
 [out]
 _testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type Iterable[int])
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note: Following member(s) of "Point" have conflicts:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Expected:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[int]
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Got:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[str]

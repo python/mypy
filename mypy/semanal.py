@@ -1604,9 +1604,11 @@ class SemanticAnalyzer(NodeVisitor[None]):
                         if isinstance(lval.node, Var):
                             lval.node.is_abstract_var = True
         else:
-            # Set the type if the rvalue is a simple literal.
-            if (s.type is None and len(s.lvalues) == 1 and
-                    isinstance(s.lvalues[0], NameExpr)):
+            if (any(isinstance(lv, NameExpr) and lv.is_def for lv in s.lvalues) and
+                    self.type and self.type.is_protocol and not self.is_func_scope()):
+                self.fail('All protocol members must have explicitly declared types', s)
+            # Set the type if the rvalue is a simple literal (even if the above error occurred).
+            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr):
                 if s.lvalues[0].is_def:
                     s.type = self.analyze_simple_literal_type(s.rvalue)
         if s.type:
