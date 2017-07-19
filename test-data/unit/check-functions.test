@@ -363,7 +363,7 @@ y = x  # E: Incompatible types in assignment (expression has type Callable[..., 
 
 a, b = None, None # type: (A, B)
 a = f()     # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "A"
+b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "Optional[A]"
 b = f(a, a) # E: Too many arguments for "f"
 
 b = f()

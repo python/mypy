@@ -86,7 +86,7 @@ a = None # type: A
 b = None # type: B
 c = None # type: C
 
-f(a)           # E: Argument 1 to "f" has incompatible type "A"; expected "C"
+f(a)           # E: Argument 1 to "f" has incompatible type "A"; expected "Optional[C]"
 f(c, c)        # E: Argument 2 to "f" has incompatible type "C"; expected "A"
 f(c, a, b, c)  # E: Argument 4 to "f" has incompatible type "C"; expected "A"
 f()
@@ -377,9 +377,10 @@ class B: pass
 [builtins fixtures/list.pyi]
 [out]
 main:3: error: Too few arguments for "f"
+main:4: error: Argument 2 to "f" has incompatible type *List[A]; expected "Optional[B]"
 main:4: error: Argument 2 to "f" has incompatible type *List[A]; expected "B"
 main:5: error: Argument 3 to "f" has incompatible type *List[A]; expected "B"
-main:6: error: Argument 1 to "f" has incompatible type *"Tuple[A, A, B]"; expected "B"
+main:6: error: Argument 1 to "f" has incompatible type *"Tuple[A, A, B]"; expected "Optional[B]"
 
 [case testVarArgsAfterKeywordArgInCall1-skip]
 # see: mypy issue #2729
