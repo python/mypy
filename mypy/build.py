@@ -1377,12 +1377,9 @@ class State:
                 # - skip -> don't analyze, make the type Any
                 follow_imports = self.options.follow_imports
                 if (follow_imports != 'normal'
-                    and not root_source  # Honor top-level modules
-                    and path.endswith('.py')  # Stubs are always normal
-                    and id != 'builtins'  # Builtins is always normal
-                    and not (caller_state and
-                             caller_state.tree and
-                             caller_state.tree.is_stub)):
+                        and not root_source  # Honor top-level modules
+                        and path.endswith('.py')  # Stubs are always normal
+                        and id != 'builtins'):  # Builtins is always normal
                     if follow_imports == 'silent':
                         # Still import it, but silence non-blocker errors.
                         manager.log("Silencing %s (%s)" % (path, id))

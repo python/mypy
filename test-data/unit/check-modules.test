@@ -955,19 +955,24 @@ tmp/foo/bar.py: note: (Using --follow-imports=error, submodule passed on command
 # cmd: mypy -m main
 # flags: --follow-imports=skip
 [file main.py]
-from stub import x # Permitted
-from other import y # Disallowed
-x + '' # Error here
-y + '' # But not here
+from stub import x, z  # Followed
+from other import y  # Not followed
+x + ''  # No error here
+y + ''  # No error here
+z + ''  # Error here
 [file stub.pyi]
-from non_stub import x
+from non_stub import x  # this import is not followed
+
+z = 42
 [file non_stub.py]
 x = 42
+
+x + ''  # no error because file is not analyzed
 [file other.py]
 y = 42
 [builtins fixtures/module.pyi]
 [out]
-tmp/main.py:3: error: Unsupported left operand type for + ("int")
+tmp/main.py:5: error: Unsupported left operand type for + ("int")
 
 [case testSilentSubmoduleImport]
 # cmd: mypy -m foo
