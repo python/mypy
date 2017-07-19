@@ -30,10 +30,10 @@ f(a=A())
 f(b=B())
 f(c=C())
 f(b=B(), c=C())
-f(a=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
-f(b=A()) # E: Argument 1 to "f" has incompatible type "A"; expected "B"
-f(c=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
-f(b=B(), c=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "C"
+f(a=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "Optional[A]"
+f(b=A()) # E: Argument 1 to "f" has incompatible type "A"; expected "Optional[B]"
+f(c=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "Optional[C]"
+f(b=B(), c=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "Optional[C]"
 class A: pass
 class B: pass
 class C: pass
@@ -182,7 +182,7 @@ f(A(), b=B())
 f(A(), A(), b=B())
 f(B())      # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(A(), B()) # E: Argument 2 to "f" has incompatible type "B"; expected "A"
-f(b=A())    # E: Argument 1 to "f" has incompatible type "A"; expected "B"
+f(b=A())    # E: Argument 1 to "f" has incompatible type "A"; expected "Optional[B]"
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -197,8 +197,8 @@ f(b=B())
 f(*a, b=B())
 f(A(), *a, b=B())
 f(A(), B())   # E: Argument 2 to "f" has incompatible type "B"; expected "A"
-f(A(), b=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
-f(*a, b=A())  # E: Argument 2 to "f" has incompatible type "A"; expected "B"
+f(A(), b=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "Optional[B]"
+f(*a, b=A())  # E: Argument 2 to "f" has incompatible type "A"; expected "Optional[B]"
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
