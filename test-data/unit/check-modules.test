@@ -1642,15 +1642,13 @@ m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.M
 [builtins fixtures/module.pyi]
 
 [case testModuleAliasToQualifiedImport]
-import os.path
-
-alias = os.path
+import package.module
+alias = package.module
 reveal_type(alias.whatever('/'))  # E: Revealed type is 'builtins.str*'
-[file os/__init__.py]
+[file package/__init__.py]
 
-[file os/path.py]
+[file package/module.py]
 from typing import TypeVar
-
 T = TypeVar('T')
 def whatever(x: T) -> T: pass
 [builtins fixtures/module.pyi]
@@ -1658,19 +1656,15 @@ def whatever(x: T) -> T: pass
 [case testModuleAliasToQualifiedImport2]
 import mod
 import othermod
-
 alias = mod.submod
 reveal_type(alias.whatever('/'))  # E: Revealed type is 'builtins.str*'
 alias = othermod  # E: Cannot assign multiple modules to name 'alias' without explicit 'types.ModuleType' annotation
 [file mod.py]
 import submod
-
 [file submod.py]
 from typing import TypeVar
-
 T = TypeVar('T')
 def whatever(x: T) -> T: pass
-
 [file othermod.py]
 
 [builtins fixtures/module.pyi]

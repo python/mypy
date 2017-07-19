@@ -3402,7 +3402,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if name in self.global_decls[-1]:
             if name in self.globals:
                 return self.globals[name]
-            elif not suppress_errors:
+            if not suppress_errors:
                 self.name_not_defined(name, ctx)
             return None
         # 1b. Name declared using 'nonlocal x' takes precedence
