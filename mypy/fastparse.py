@@ -60,7 +60,9 @@ TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
 
 
-def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
+def parse(source: Union[str, bytes],
+          fnam: Optional[str] = None,
+          errors: Optional[Errors] = None,
           options: Options = Options()) -> MypyFile:
 
     """Parse a source file, without doing any semantic analysis.
@@ -390,7 +392,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             return func_def
 
     def set_type_optional(self, type: Type, initializer: Expression) -> None:
-        if self.options.no_implicit_optional or not experiments.STRICT_OPTIONAL:
+        if self.options.no_implicit_optional:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
         optional = isinstance(initializer, NameExpr) and initializer.name == 'None'
@@ -467,12 +469,15 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             metaclass = stringify_name(metaclass_arg.value)
             if metaclass is None:
                 metaclass = '<error>'  # To be reported later
+        keywords = [(kw.arg, self.visit(kw.value))
+                    for kw in n.keywords]
 
         cdef = ClassDef(n.name,
                         self.as_block(n.body, n.lineno),
                         None,
                         self.translate_expr_list(n.bases),
-                        metaclass=metaclass)
+                        metaclass=metaclass,
+                        keywords=keywords)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
         self.class_nesting -= 1
         return cdef

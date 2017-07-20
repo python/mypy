@@ -30,10 +30,10 @@ f(a=A())
 f(b=B())
 f(c=C())
 f(b=B(), c=C())
-f(a=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
-f(b=A()) # E: Argument 1 to "f" has incompatible type "A"; expected "B"
-f(c=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
-f(b=B(), c=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "C"
+f(a=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "Optional[A]"
+f(b=A()) # E: Argument 1 to "f" has incompatible type "A"; expected "Optional[B]"
+f(c=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "Optional[C]"
+f(b=B(), c=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "Optional[C]"
 class A: pass
 class B: pass
 class C: pass
@@ -182,7 +182,7 @@ f(A(), b=B())
 f(A(), A(), b=B())
 f(B())      # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(A(), B()) # E: Argument 2 to "f" has incompatible type "B"; expected "A"
-f(b=A())    # E: Argument 1 to "f" has incompatible type "A"; expected "B"
+f(b=A())    # E: Argument 1 to "f" has incompatible type "A"; expected "Optional[B]"
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -197,8 +197,8 @@ f(b=B())
 f(*a, b=B())
 f(A(), *a, b=B())
 f(A(), B())   # E: Argument 2 to "f" has incompatible type "B"; expected "A"
-f(A(), b=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
-f(*a, b=A())  # E: Argument 2 to "f" has incompatible type "A"; expected "B"
+f(A(), b=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "Optional[B]"
+f(*a, b=A())  # E: Argument 2 to "f" has incompatible type "A"; expected "Optional[B]"
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -280,12 +280,33 @@ reveal_type(formatter.__call__)  # E: Revealed type is 'def (message: builtins.s
 [builtins fixtures/bool.pyi]
 [out]
 
+[case testPassingMappingForKeywordVarArg]
+from typing import Mapping
+def f(**kwargs: 'A') -> None: pass
+b = None # type: Mapping
+d = None # type: Mapping[A, A]
+m = None # type: Mapping[str, A]
+f(**d)         # E: Keywords must be strings
+f(**m)
+f(**b)
+class A: pass
+[builtins fixtures/dict.pyi]
+
+[case testPassingMappingSubclassForKeywordVarArg]
+from typing import Mapping
+class MappingSubclass(Mapping[str, str]): pass
+def f(**kwargs: 'A') -> None: pass
+d = None # type: MappingSubclass
+f(**d)
+class A: pass
+[builtins fixtures/dict.pyi]
+
 [case testInvalidTypeForKeywordVarArg]
 from typing import Dict
-def f( **kwargs: 'A') -> None: pass
+def f(**kwargs: 'A') -> None: pass
 d = None # type: Dict[A, A]
 f(**d)         # E: Keywords must be strings
-f(**A())       # E: Argument after ** must be a dictionary
+f(**A())       # E: Argument after ** must be a mapping, not "A"
 class A: pass
 [builtins fixtures/dict.pyi]
 

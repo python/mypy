@@ -1,8 +1,9 @@
+from collections import OrderedDict
 import fnmatch
 import pprint
 import sys
 
-from typing import Mapping, Optional, Tuple, List, Pattern, Dict
+from typing import Mapping, MutableMapping, Optional, Tuple, List, Pattern, Dict
 
 from mypy import defaults
 
@@ -31,10 +32,12 @@ class Options:
         "ignore_errors",
         "strict_boolean",
         "no_implicit_optional",
+        "strict_optional",
         "disallow_untyped_decorators",
     }
 
-    OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional", "quick_and_dirty"}
+    OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS | {"quick_and_dirty", "platform"})
+                               - {"debug_cache"})
 
     def __init__(self) -> None:
         # -- build options --
@@ -116,12 +119,14 @@ class Options:
         self.cache_dir = defaults.CACHE_DIR
         self.debug_cache = False
         self.quick_and_dirty = False
+        self.skip_version_check = False
 
         # Paths of user plugins
         self.plugins = []  # type: List[str]
 
         # Per-module options (raw)
-        self.per_module_options = {}  # type: Dict[Pattern[str], Dict[str, object]]
+        pm_opts = OrderedDict()  # type: OrderedDict[Pattern[str], Dict[str, object]]
+        self.per_module_options = pm_opts
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
