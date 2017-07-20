@@ -1280,7 +1280,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 # Still allow pass or ... (for empty TypedDict's).
                 if (not isinstance(stmt, PassStmt) and
                     not (isinstance(stmt, ExpressionStmt) and
-                         isinstance(stmt.expr, EllipsisExpr))):
+                         isinstance(stmt.expr, (EllipsisExpr, StrExpr)))):
                     self.fail(TPDICT_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
