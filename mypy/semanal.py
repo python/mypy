@@ -306,6 +306,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                             g.module_public_even_with_underscore = True
                     else:
                         g.module_public = False
+
             del self.options
             del self.patches
 
