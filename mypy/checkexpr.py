@@ -1713,6 +1713,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         revealed_type = self.accept(expr.expr, type_context=self.type_context[-1])
         if not self.chk.current_node_deferred:
             self.msg.reveal_type(revealed_type, expr)
+            if not self.chk.in_checked_function():
+                self.msg.note("'reveal_type' always outputs 'Any' in unchecked functions", expr)
         return revealed_type
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
