@@ -32,7 +32,10 @@ precision_names = [
 
 
 class StatisticsVisitor(TraverserVisitor):
-    def __init__(self, inferred: bool, filename: str, typemap: Dict[Expression, Type] = None,
+    def __init__(self,
+                 inferred: bool,
+                 filename: str,
+                 typemap: Optional[Dict[Expression, Type]] = None,
                  all_nodes: bool = False) -> None:
         self.inferred = inferred
         self.filename = filename
@@ -221,7 +224,7 @@ class StatisticsVisitor(TraverserVisitor):
 
 
 def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
-                    typemap: Dict[Expression, Type] = None) -> None:
+                    typemap: Optional[Dict[Expression, Type]] = None) -> None:
     if is_special_module(path):
         return
     print(path)

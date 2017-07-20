@@ -94,16 +94,6 @@ classifiers = [
 
 package_dir = {'mypy': 'mypy'}
 
-
-# These requirements are used when installing by other means than bdist_wheel.
-# E.g. "pip3 install ." or
-# "pip3 install git+git://github.com/python/mypy.git"
-# (as suggested by README.md).
-install_requires = []
-install_requires.append('typed-ast >= 1.0.4, < 1.1.0')
-if sys.version_info < (3, 5):
-    install_requires.append('typing >= 3.5.3')
-
 setup(name='mypy',
       version=version,
       description=description,
@@ -121,5 +111,8 @@ setup(name='mypy',
       data_files=data_files,
       classifiers=classifiers,
       cmdclass={'build_py': CustomPythonBuild},
-      install_requires=install_requires,
+      install_requires = ['typed-ast >= 1.1.0, < 1.2.0'],
+      extras_require = {
+          ':python_version < "3.5"': 'typing >= 3.5.3',
+      },
       )

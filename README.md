@@ -31,7 +31,8 @@ type check them statically. Find bugs in your programs without even
 running them!
 
 The type annotation standard has also been backported to earlier
-Python 3.x versions.  Mypy supports Python 3.3 and later.
+Python 3.x versions.  Mypy supports Python 3.3 and later. 
+XML based reports do not work on Python 3.3 and 3.4 on Windows.
 
 For Python 2.7, you can add annotations as comments (this is also
 specified in [PEP 484](https://www.python.org/dev/peps/pep-0484/)).
@@ -129,7 +130,7 @@ Or you can jump straight to the documentation:
 Troubleshooting
 ---------------
 
-Depending on your configuration, you may have to run `pip3` like
+Depending on your configuration, you may have to run `pip` like
 this:
 
     $ python3 -m pip install -U mypy
@@ -140,8 +141,8 @@ can install it manually:
 
     $ python3 -m pip install -U typed-ast
 
-If the `mypy` command isn't found after installation: After either
-`pip3 install` or `setup.py install`, the `mypy` script and
+If the `mypy` command isn't found after installation: After
+`python3 -m pip install`, the `mypy` script and
 dependencies, including the `typing` module, will be installed to
 system-dependent locations.  Sometimes the script directory will not
 be in `PATH`, and you have to add the target directory to `PATH`
@@ -155,6 +156,9 @@ In Windows, the script is generally installed in
 `\Python34` with your Python installation path):
 
     C:\>\Python34\python \Python34\Scripts\mypy PROGRAM
+
+If you are on Windows using Python 3.3 or 3.4, and would like to use XML reports
+download LXML from [PyPi](https://pypi.python.org/pypi/lxml).
 
 ### Working with `virtualenv`
 
@@ -254,9 +258,8 @@ Help wanted
 Any help in testing, development, documentation and other tasks is
 highly appreciated and useful to the project. There are tasks for
 contributors of all experience levels. If you're just getting started,
-check out the
-[difficulty/easy](https://github.com/python/mypy/labels/difficulty%2Feasy)
-label.
+ask on the [gitter chat](https://gitter.im/python/typing) for ideas of good
+beginner issues.
 
 For more details, see the file [CONTRIBUTING.md](CONTRIBUTING.md).
 

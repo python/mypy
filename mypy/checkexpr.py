@@ -1519,7 +1519,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif e.right_always:
             left_map = None
 
-        right_type = self.analyze_cond_branch(right_map, e.right, left_type)
+        # If right_map is None then we know mypy considers the right branch
+        # to be unreachable and therefore any errors found in the right branch
+        # should be suppressed.
+        if right_map is None:
+            self.msg.disable_errors()
+        try:
+            right_type = self.analyze_cond_branch(right_map, e.right, left_type)
+        finally:
+            if right_map is None:
+                self.msg.enable_errors()
 
         if right_map is None:
             # The boolean expression is statically known to be the left value
@@ -2195,7 +2204,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def accept(self,
                node: Expression,
-               type_context: Type = None,
+               type_context: Optional[Type] = None,
                allow_none_return: bool = False,
                always_allow_any: bool = False,
                ) -> Type:
@@ -2481,9 +2490,9 @@ def is_async_def(t: Type) -> bool:
 
 
 def map_actuals_to_formals(caller_kinds: List[int],
-                           caller_names: List[str],
+                           caller_names: List[Optional[str]],
                            callee_kinds: List[int],
-                           callee_names: List[str],
+                           callee_names: List[Optional[str]],
                            caller_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
     """Calculate mapping between actual (caller) args and formals.

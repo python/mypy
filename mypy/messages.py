@@ -159,7 +159,7 @@ class MessageBuilder:
         return self.errors.is_errors()
 
     def report(self, msg: str, context: Context, severity: str,
-               file: str = None, origin: Context = None) -> None:
+               file: Optional[str] = None, origin: Optional[Context] = None) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
@@ -167,18 +167,18 @@ class MessageBuilder:
                                msg.strip(), severity=severity, file=file,
                                origin_line=origin.get_line() if origin else None)
 
-    def fail(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+    def fail(self, msg: str, context: Context, file: Optional[str] = None,
+             origin: Optional[Context] = None) -> None:
         """Report an error message (unless disabled)."""
         self.report(msg, context, 'error', file=file, origin=origin)
 
-    def note(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+    def note(self, msg: str, context: Context, file: Optional[str] = None,
+             origin: Optional[Context] = None) -> None:
         """Report a note (unless disabled)."""
         self.report(msg, context, 'note', file=file, origin=origin)
 
-    def warn(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+    def warn(self, msg: str, context: Context, file: Optional[str] = None,
+             origin: Optional[Context] = None) -> None:
         """Report a warning message (unless disabled)."""
         self.report(msg, context, 'warning', file=file, origin=origin)
 

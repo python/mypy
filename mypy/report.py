@@ -130,7 +130,7 @@ class LineCountReporter(AbstractReporter):
 
     def on_finish(self) -> None:
         counts = sorted(((c, p) for p, c in self.counts.items()),
-                        reverse=True)  # type: List[Tuple[tuple, str]]
+                        reverse=True)  # type: List[Tuple[Tuple[int, int, int, int], str]]
         total_counts = tuple(sum(c[i] for c, p in counts)
                              for i in range(4))
         with open(os.path.join(self.output_dir, 'linecount.txt'), 'w') as f:
