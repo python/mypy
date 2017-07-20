@@ -46,8 +46,8 @@ def f():
 main:2: error: Function is missing a type annotation
 
 [case testDisallowUntypedDefsUntypedDecorator]
-# flags: --disallow-untyped-defs
-def d(p):  # E: Function is missing a type annotation
+# flags: --disallow-untyped-decorators
+def d(p):
     return p
 
 @d  # E: Untyped decorator makes function "f" untyped
@@ -55,7 +55,7 @@ def f(i: int) -> int:
     return i
 
 [case testDisallowUntypedDefsUnresolvedDecorator]
-# flags: --disallow-untyped-defs --ignore-missing-imports
+# flags: --disallow-untyped-decorators --ignore-missing-imports
 from nonexistent import d
 
 @d  # E: Untyped decorator makes function "f" untyped
@@ -63,7 +63,7 @@ def f(i: int) -> int:
     return i
 
 [case testDisallowUntypedDefsMultipleUntypedDecorators]
-# flags: --disallow-untyped-defs
+# flags: --disallow-untyped-decorators --disallow-untyped-defs
 def d(p):  # E: Function is missing a type annotation
     return p
 
@@ -76,13 +76,13 @@ def f() -> None:
     pass
 
 [case testDisallowUntypedDefsUntypedDecoratorUntypedFunc]
-# flags: --disallow-untyped-defs
+# flags: --disallow-untyped-decorators
 
-def d(p):  # E: Function is missing a type annotation
+def d(p):
     return p
 
 @d  # no error
-def f(): pass  # E: Function is missing a type annotation
+def f(): pass
 
 [case testUntypedDefDisallowUnannotated]
 # flags: --disallow-any=unannotated

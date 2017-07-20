@@ -314,6 +314,9 @@ Here are some more useful flags:
 - ``--disallow-untyped-calls`` reports an error whenever a function
   with type annotations calls a function defined without annotations.
 
+- ``--disallow-untyped-decorators`` reports an error whenever a function
+  with type annotations is decorated with a decorator without annotations.
+
 .. _disallow-subclassing-any:
 
 - ``--disallow-subclassing-any`` reports an error whenever a class

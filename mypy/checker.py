@@ -2280,7 +2280,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     func: FuncDef,
                                     dec_type: Type,
                                     dec_expr: Expression) -> None:
-        if (self.options.disallow_untyped_defs and
+        if (self.options.disallow_untyped_decorators and
                 is_typed_callable(func.type) and
                 is_untyped_decorator(dec_type)):
             self.msg.typed_function_untyped_decorator(func.name(), dec_expr)
