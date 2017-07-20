@@ -57,7 +57,8 @@ def is_similar_node_shallow(n: SymbolTableNode, m: SymbolTableNode) -> bool:
     #   type_override
     if (n.kind != m.kind
             or n.mod_id != m.mod_id
-            or n.module_public != m.module_public):
+            or n.module_public != m.module_public
+            or n.module_public_even_with_underscore != m.module_public_even_with_underscore):
         return False
     if type(n.node) != type(m.node):  # noqa
         return False
