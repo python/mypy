@@ -335,10 +335,10 @@ def f(x: C) -> C: pass
 from typing import Any, Callable, List
 def f(fields: List[Callable[[Any], Any]]): pass
 class C: pass
-f([C])  # E: List item 0 has incompatible type Type[C]
+f([C])  # E: List item 0 has incompatible type Type[C]; expected Callable[[Any], Any]
 class D:
     def __init__(self, a, b): pass
-f([D])  # E: List item 0 has incompatible type Type[D]
+f([D])  # E: List item 0 has incompatible type Type[D]; expected Callable[[Any], Any]
 [builtins fixtures/list.pyi]
 
 [case testSubtypingTypeTypeAsCallable]
@@ -363,7 +363,7 @@ y = x  # E: Incompatible types in assignment (expression has type Callable[..., 
 
 a, b = None, None # type: (A, B)
 a = f()     # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "A"
+b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "Optional[A]"
 b = f(a, a) # E: Too many arguments for "f"
 
 b = f()

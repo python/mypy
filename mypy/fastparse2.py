@@ -73,7 +73,9 @@ TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment'
 
 
-def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
+def parse(source: Union[str, bytes],
+          fnam: Optional[str] = None,
+          errors: Optional[Errors] = None,
           options: Options = Options()) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
@@ -364,7 +366,7 @@ class ASTConverter(ast27.NodeTransformer):
             return func_def
 
     def set_type_optional(self, type: Type, initializer: Expression) -> None:
-        if self.options.no_implicit_optional or not experiments.STRICT_OPTIONAL:
+        if self.options.no_implicit_optional:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
         optional = isinstance(initializer, NameExpr) and initializer.name == 'None'

@@ -416,7 +416,7 @@ class Parameterized(NamedTuple):
     z: List[int] = []
 
 reveal_type(Parameterized(1))  # E: Revealed type is 'Tuple[builtins.int, builtins.list[builtins.int], builtins.list[builtins.int], fallback=__main__.Parameterized]'
-Parameterized(1, ['not an int'])  # E: List item 0 has incompatible type "str"
+Parameterized(1, ['not an int'])  # E: List item 0 has incompatible type "str"; expected "int"
 
 class Default:
     pass

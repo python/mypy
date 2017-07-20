@@ -482,6 +482,24 @@ def f() -> None:
     x = [] # type: Union[List[Optional[str]], str]
 [builtins fixtures/list.pyi]
 
+[case testPerFileStrictOptionalNoneArguments]
+# flags: --config-file tmp/mypy.ini
+import standard, optional
+
+[file standard.py]
+def f(x: int = None) -> None: pass
+
+[file optional.py]
+import standard
+def f(x: int = None) -> None: pass
+standard.f(None)
+
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-optional]
+strict_optional = True
+
 [case testDisallowImplicitTypesIgnoreMissingTypes]
 # flags: --ignore-missing-imports --disallow-any=unimported
 from missing import MyType
@@ -832,3 +850,51 @@ l: List = []
 l.append(1)  # E: Expression type contains "Any" (has type List[Any])
 k = l[0]  # E: Expression type contains "Any" (has type List[Any])  # E: Expression has type "Any"
 [builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprTypeVar]
+# flags: --disallow-any=expr
+from typing import TypeVar
+
+T = TypeVar('T')  # no error
+
+def f(t: T) -> T:
+    return t
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprNamedTuple]
+# flags: --disallow-any=expr
+from typing import NamedTuple
+
+Point = NamedTuple('Point', [('x', int), ('y', int)])  # no error
+
+def origin() -> Point:
+    return Point(x=0, y=0)
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprNewType]
+# flags: --disallow-any=expr
+from typing import NewType
+
+NT = NewType('NT', int)  # no error
+
+def nt() -> NT:
+    return NT(1)
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprEnum]
+# flags: --disallow-any=expr
+from enum import Enum
+E = Enum('E', '1, 2, 3')  # no error
+
+def k(s: E) -> None: pass
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprTypedDict]
+# flags: --disallow-any=expr
+from mypy_extensions import TypedDict
+
+Movie = TypedDict('Movie', {'name': str, 'year': int})
+
+def g(m: Movie) -> Movie:
+    return m
+[builtins fixtures/dict.pyi]
