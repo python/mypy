@@ -124,9 +124,9 @@ def f(a,        # type: A
       **kwargs  # type: F
       ):
     reveal_type(a)      # E: Revealed type is '__main__.A'
-    reveal_type(b)      # E: Revealed type is '__main__.B'
+    reveal_type(b)      # E: Revealed type is 'Union[__main__.B, builtins.None]'
     reveal_type(args)   # E: Revealed type is 'builtins.tuple[__main__.C]'
-    reveal_type(d)      # E: Revealed type is '__main__.D'
+    reveal_type(d)      # E: Revealed type is 'Union[__main__.D, builtins.None]'
     reveal_type(e)      # E: Revealed type is '__main__.E'
     reveal_type(kwargs) # E: Revealed type is 'builtins.dict[builtins.str, __main__.F]'
 [builtins fixtures/dict.pyi]
@@ -149,9 +149,9 @@ def f(a,        # type: A
       ):
       # type: (...) -> int
     reveal_type(a)      # E: Revealed type is '__main__.A'
-    reveal_type(b)      # E: Revealed type is '__main__.B'
+    reveal_type(b)      # E: Revealed type is 'Union[__main__.B, builtins.None]'
     reveal_type(args)   # E: Revealed type is 'builtins.tuple[__main__.C]'
-    reveal_type(d)      # E: Revealed type is '__main__.D'
+    reveal_type(d)      # E: Revealed type is 'Union[__main__.D, builtins.None]'
     reveal_type(e)      # E: Revealed type is '__main__.E'
     reveal_type(kwargs) # E: Revealed type is 'builtins.dict[builtins.str, __main__.F]'
     return "not an int"  # E: Incompatible return value type (got "str", expected "int")
@@ -191,7 +191,7 @@ def f(a,        # type: A
       # kwargs not tested due to lack of 2.7 dict fixtures
       ):
     reveal_type(a)      # E: Revealed type is '__main__.A'
-    reveal_type(b)      # E: Revealed type is '__main__.B'
+    reveal_type(b)      # E: Revealed type is 'Union[__main__.B, builtins.None]'
     reveal_type(args)   # E: Revealed type is 'builtins.tuple[__main__.C]'
 [builtins fixtures/dict.pyi]
 [out]
@@ -209,7 +209,7 @@ def f(a,        # type: A
       ):
       # type: (...) -> int
     reveal_type(a)      # E: Revealed type is '__main__.A'
-    reveal_type(b)      # E: Revealed type is '__main__.B'
+    reveal_type(b)      # E: Revealed type is 'Union[__main__.B, builtins.None]'
     reveal_type(args)   # E: Revealed type is 'builtins.tuple[__main__.C]'
     return "not an int"  # E: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/dict.pyi]

@@ -2707,6 +2707,29 @@ b.x.y
 tmp/c.py:2: error: Revealed type is '<stale cache: consider running mypy without --quick>'
 tmp/c.py:5: error: "<stale cache: consider running mypy without --quick>" has no attribute "y"
 
+[case testNoCrashOnDoubleImportAliasQuick]
+# cmd: mypy -m e
+# cmd2: mypy -m c
+# cmd3: mypy -m e
+# flags: --quick
+[file c.py]
+from typing import List
+Alias = List[int]
+[file c.py.2]
+from typing import List
+Alias = int
+
+[file d.py]
+from c import Alias
+
+[file e.py]
+from d import Alias
+[file e.py.3]
+from d import Alias
+x: Alias
+[out3]
+[builtins fixtures/list.pyi]
+
 [case testSerializeAbstractPropertyIncremental]
 from abc import abstractmethod
 import typing

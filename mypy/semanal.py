@@ -2576,8 +2576,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
             elementwise_assignments = zip(seq_rval.items, *[v.items for v in seq_lvals])
             for rv, *lvs in elementwise_assignments:
                 self.process_module_assignment(lvs, rv, ctx)
-        elif isinstance(rval, NameExpr):
-            rnode = self.lookup(rval.name, ctx)
+        elif isinstance(rval, RefExpr):
+            rnode = self.lookup_type_node(rval)
             if rnode and rnode.kind == MODULE_REF:
                 for lval in lvals:
                     if not isinstance(lval, NameExpr):
@@ -3278,7 +3278,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         except TypeTranslationError:
             return None
         if isinstance(t, UnboundType):
-            n = self.lookup_qualified(t.name, expr)
+            n = self.lookup_qualified(t.name, expr, suppress_errors=True)
             return n
         return None
 
@@ -3396,23 +3396,25 @@ class SemanticAnalyzer(NodeVisitor[None]):
         yield
         self.tvar_scope = old_scope
 
-    def lookup(self, name: str, ctx: Context) -> SymbolTableNode:
+    def lookup(self, name: str, ctx: Context,
+               suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         """Look up an unqualified name in all active namespaces."""
         implicit_name = False
         # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
             if name in self.globals:
                 return self.globals[name]
-            else:
+            if not suppress_errors:
                 self.name_not_defined(name, ctx)
-                return None
+            return None
         # 1b. Name declared using 'nonlocal x' takes precedence
         if name in self.nonlocal_decls[-1]:
             for table in reversed(self.locals[:-1]):
                 if table is not None and name in table:
                     return table[name]
             else:
-                self.name_not_defined(name, ctx)
+                if not suppress_errors:
+                    self.name_not_defined(name, ctx)
                 return None
         # 2. Class attributes (if within class definition)
         if self.is_class_scope() and name in self.type.names:
@@ -3435,16 +3437,18 @@ class SemanticAnalyzer(NodeVisitor[None]):
             table = b.node.names
             if name in table:
                 if name[0] == "_" and name[1] != "_":
-                    self.name_not_defined(name, ctx)
+                    if not suppress_errors:
+                        self.name_not_defined(name, ctx)
                     return None
                 node = table[name]
                 return node
         # Give up.
-        if not implicit_name:
+        if not implicit_name and not suppress_errors:
             self.name_not_defined(name, ctx)
             self.check_for_obsolete_short_name(name, ctx)
         else:
-            return implicit_node
+            if implicit_name:
+                return implicit_node
         return None
 
     def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
@@ -3454,12 +3458,13 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if len(matches) == 1:
             self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
-    def lookup_qualified(self, name: str, ctx: Context) -> SymbolTableNode:
+    def lookup_qualified(self, name: str, ctx: Context,
+                         suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         if '.' not in name:
-            return self.lookup(name, ctx)
+            return self.lookup(name, ctx, suppress_errors=suppress_errors)
         else:
             parts = name.split('.')
-            n = self.lookup(parts[0], ctx)  # type: SymbolTableNode
+            n = self.lookup(parts[0], ctx, suppress_errors=suppress_errors)
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
@@ -3482,7 +3487,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
                         n = n.node.names.get(parts[i], None)
                     # TODO: What if node is Var or FuncDef?
                     if not n:
-                        self.name_not_defined(name, ctx)
+                        if not suppress_errors:
+                            self.name_not_defined(name, ctx)
                         break
                 if n:
                     n = self.normalize_type_alias(n, ctx)
