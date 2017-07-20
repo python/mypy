@@ -2286,10 +2286,6 @@ class SymbolTableNode:
     # If False, this name won't be imported via 'from <module> import *'.
     # This has no effect on names within classes.
     module_public = True
-    # If True, this name will be imported via 'from <module> import *'
-    # even if it starts with an underscore. This has no effect on names
-    # within classes nor names which do not start with an underscore.
-    module_public_even_with_underscore = False
     # For deserialized MODULE_REF nodes, the referenced module name;
     # for other nodes, optionally the name of the referenced object.
     cross_ref = None  # type: Optional[str]
@@ -2306,14 +2302,12 @@ class SymbolTableNode:
                  module_public: bool = True,
                  normalized: bool = False,
                  alias_tvars: Optional[List[str]] = None,
-                 implicit: bool = False,
-                 module_public_even_with_underscore: bool = False) -> None:
+                 implicit: bool = False) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
         self.mod_id = mod_id
         self.module_public = module_public
-        self.module_public_even_with_underscore = module_public_even_with_underscore
         self.normalized = normalized
         self.alias_tvars = alias_tvars
         self.implicit = implicit
@@ -2360,8 +2354,6 @@ class SymbolTableNode:
                 }  # type: JsonDict
         if not self.module_public:
             data['module_public'] = False
-        if self.module_public_even_with_underscore:
-            data['module_public_even_with_underscore'] = True
         if self.normalized:
             data['normalized'] = True
         if self.implicit:
@@ -2403,8 +2395,6 @@ class SymbolTableNode:
                 stnode.alias_tvars = data['alias_tvars']
         if 'module_public' in data:
             stnode.module_public = data['module_public']
-        if 'module_public_even_with_underscore' in data:
-            stnode.module_public_even_with_underscore = data['module_public_even_with_underscore']
         if 'normalized' in data:
             stnode.normalized = data['normalized']
         if 'implicit' in data:

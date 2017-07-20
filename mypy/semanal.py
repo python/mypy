@@ -301,10 +301,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
 
             if '__all__' in self.globals:
                 for name, g in self.globals.items():
-                    if name in self.all_exports:
-                        if name.startswith('_'):
-                            g.module_public_even_with_underscore = True
-                    else:
+                    if name not in self.all_exports:
                         g.module_public = False
 
             del self.options
@@ -1486,8 +1483,9 @@ class SemanticAnalyzer(NodeVisitor[None]):
             self.add_submodules_to_parent_modules(i_id, True)
             for name, node in m.names.items():
                 node = self.normalize_type_alias(node, i)
-                if ((node.module_public_even_with_underscore or not name.startswith('_'))
-                        and node.module_public):
+                # if '__all__' exists, all nodes not included have had module_public set to
+                # False, and we can skip checking '_' because it's been explicitly included.
+                if node.module_public and (not name.startswith('_') or '__all__' in m.names):
                     existing_symbol = self.globals.get(name)
                     if existing_symbol:
                         # Import can redefine a variable. They get special treatment.
