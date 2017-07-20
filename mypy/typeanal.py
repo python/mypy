@@ -648,8 +648,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     class_name = '"{}"'.format(type.name())
                     actual_type_name = '"{}"'.format(actual.type.name())
                     self.fail(messages.INCOMPATIBLE_TYPEVAR_VALUE.format(
-                        arg_number, class_name, arg_name, actual_type_name),
-                        context)
+                        arg_name, class_name, actual_type_name), context)
 
     def visit_callable_type(self, t: CallableType) -> None:
         t.ret_type.accept(self)

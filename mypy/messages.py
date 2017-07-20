@@ -92,7 +92,7 @@ CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'
 CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
 BARE_GENERIC = 'Missing type parameters for generic type'
 IMPLICIT_GENERIC_ANY_BUILTIN = 'Implicit generic "Any". Use \'{}\' and specify generic parameters'
-INCOMPATIBLE_TYPEVAR_VALUE = 'Type argument {} of {} (TypeVar "{}") cannot be {}'
+INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -864,9 +864,8 @@ class MessageBuilder:
                                    callee: CallableType,
                                    typ: Type,
                                    typevar_name: str,
-                                   index: int,
                                    context: Context) -> None:
-        self.fail(INCOMPATIBLE_TYPEVAR_VALUE.format(index, callable_name(callee), typevar_name,
+        self.fail(INCOMPATIBLE_TYPEVAR_VALUE.format(typevar_name, callable_name(callee),
                                                     self.format(typ)), context)
 
     def overloaded_signatures_overlap(self, index1: int, index2: int,
