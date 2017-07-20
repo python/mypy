@@ -1770,3 +1770,13 @@ def narrow_any_to_str_then_reassign_to_int() -> None:
         reveal_type(v)  # E: Revealed type is 'Any'
 
 [builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceWidensWithAnyArg]
+from typing import Any, Union
+class A: ...
+B: Any
+x: Union[A, B]
+reveal_type(x)  # E: Revealed type is 'Union[__main__.A, Any]'
+assert isinstance(x, B)
+reveal_type(x)  # E: Revealed type is 'Any'
+[builtins fixtures/isinstance.pyi]
