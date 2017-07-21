@@ -19,7 +19,7 @@ from mypy.types import (
 from mypy.nodes import (
     TVAR, TYPE_ALIAS, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
-    ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr
+    ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, CallExpr, NameExpr
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.sametypes import is_same_type
@@ -91,6 +91,16 @@ def analyze_type_alias(node: Expression,
                 return None
         else:
             return None
+    elif isinstance(node, CallExpr):
+        if (isinstance(node.callee, NameExpr) and len(node.args) == 1 and
+                isinstance(node.args[0], NameExpr)):
+            call = lookup_func(node.callee.name, node.callee)
+            arg = lookup_func(node.args[0].name, node.args[0])
+            if (call is not None and call.node.fullname() == 'builtins.type' and
+                    arg is not None and arg.node.fullname() == 'builtins.None'):
+                return NoneTyp()
+            return None
+        return None
     else:
         return None
 
