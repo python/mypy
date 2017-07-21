@@ -427,6 +427,25 @@ __all__ = [u'a', u'b', u'c']
 
 [out]
 
+[case testUnderscoreExportedValuesInImportAll]
+import typing
+from m import *
+_ = a
+_ = _b
+_ = __c__
+_ = ___d
+_ = e
+_ = f # E: Name 'f' is not defined
+_ = _g # E: Name '_g' is not defined
+[file m.py]
+__all__ = ['a']
+__all__ += ('_b',)
+__all__.append('__c__')
+__all__.extend(('___d', 'e'))
+
+a = _b = __c__ = ___d = e = f = _g = 1
+[builtins fixtures/module_all.pyi]
+
 [case testEllipsisInitializerInStubFileWithType]
 import m
 m.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
