@@ -121,9 +121,13 @@ Core developers should follow these rules when processing pull requests:
     This way there is a single empty line between commits in `git log`
     output.
   * Split lines as needed so that the maximum line length of the commit
-    message is under 80 characters.
-  * Capitalize the header and each paragraph.
-  * Make sure that the first line has no trailing dot.
+    message is under 80 characters, including the subject line.
+  * Capitalize the subject and each paragraph.
+  * Make sure that the subject of the commit message has no trailing dot.
+  * Use the imperative mood in the subject line (e.g. "Fix typo in README").
+  * If the PR fixes an issue, make sure something like "Fixes #xxx." occurs
+    in the body of the message (not in the subject).
+  * Use Markdown for formatting.
 
 
 Issue-tracker conventions
