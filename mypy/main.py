@@ -97,7 +97,7 @@ def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) 
                        options=options)
 
 
-disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated', 'explicit']
+disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated', 'explicit', 'generics']
 
 
 def disallow_any_argument_type(raw_options: str) -> List[str]:
@@ -289,6 +289,8 @@ def process_options(args: List[str],
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
+    parser.add_argument('--skip-version-check', action='store_true',
+                        help="allow using cache written by older mypy version")
     add_invertible_flag('--strict-optional', default=False, strict_flag=True,
                         help="enable experimental strict Optional checks")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',

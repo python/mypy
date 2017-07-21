@@ -65,8 +65,8 @@ class ErrorInfo:
                  message: str,
                  blocker: bool,
                  only_once: bool,
-                 origin: Tuple[str, int] = None,
-                 target: str = None) -> None:
+                 origin: Optional[Tuple[str, int]] = None,
+                 target: Optional[str] = None) -> None:
         self.import_ctx = import_ctx
         self.file = file
         self.module = module
@@ -175,7 +175,9 @@ class Errors:
         file = os.path.normpath(file)
         return remove_path_prefix(file, self.ignore_prefix)
 
-    def set_file(self, file: str, module: Optional[str], ignored_lines: Set[int] = None) -> None:
+    def set_file(self, file: str,
+                 module: Optional[str],
+                 ignored_lines: Optional[Set[int]] = None) -> None:
         """Set the path and module id of the current file."""
         # The path will be simplified later, in render_messages. That way
         #  * 'file' is always a key that uniquely identifies a source file
@@ -251,9 +253,15 @@ class Errors:
         """Replace the entire import context with a new value."""
         self.import_ctx = ctx[:]
 
-    def report(self, line: int, column: int, message: str, blocker: bool = False,
-               severity: str = 'error', file: str = None, only_once: bool = False,
-               origin_line: int = None) -> None:
+    def report(self,
+               line: int,
+               column: int,
+               message: str,
+               blocker: bool = False,
+               severity: str = 'error',
+               file: Optional[str] = None,
+               only_once: bool = False,
+               origin_line: Optional[int] = None) -> None:
         """Report message at the given line using the current error context.
 
         Args:

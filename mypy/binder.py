@@ -1,4 +1,3 @@
-from typing import Dict, List, Set, Iterator, Union
 from typing import Dict, List, Set, Iterator, Union, Optional, cast
 from contextlib import contextmanager
 
@@ -88,7 +87,7 @@ class ConditionalTypeBinder:
         self.break_frames = []  # type: List[int]
         self.continue_frames = []  # type: List[int]
 
-    def _add_dependencies(self, key: Key, value: Key = None) -> None:
+    def _add_dependencies(self, key: Key, value: Optional[Key] = None) -> None:
         if value is None:
             value = key
         else:
@@ -121,8 +120,8 @@ class ConditionalTypeBinder:
         if not literal(expr):
             return
         key = literal_hash(expr)
+        assert key is not None, 'Internal error: binder tried to put non-literal'
         if key not in self.declarations:
-            assert isinstance(expr, BindableTypes)
             self.declarations[key] = get_declaration(expr)
             self._add_dependencies(key)
         self._put(key, typ)
@@ -131,7 +130,9 @@ class ConditionalTypeBinder:
         self.frames[-1].unreachable = True
 
     def get(self, expr: Expression) -> Optional[Type]:
-        return self._get(literal_hash(expr))
+        key = literal_hash(expr)
+        assert key is not None, 'Internal error: binder tried to get non-literal'
+        return self._get(key)
 
     def is_unreachable(self) -> bool:
         # TODO: Copy the value of unreachable into new frames to avoid
@@ -140,7 +141,9 @@ class ConditionalTypeBinder:
 
     def cleanse(self, expr: Expression) -> None:
         """Remove all references to a Node from the binder."""
-        self._cleanse_key(literal_hash(expr))
+        key = literal_hash(expr)
+        assert key is not None, 'Internal error: binder tried cleanse non-literal'
+        self._cleanse_key(key)
 
     def _cleanse_key(self, key: Key) -> None:
         """Remove all references to a key from the binder."""
@@ -229,12 +232,16 @@ class ConditionalTypeBinder:
             # times?
             return
 
-        # If x is Any and y is int, after x = y we do not infer that x is int.
-        # This could be changed.
-
-        if (isinstance(self.most_recent_enclosing_type(expr, type), AnyType)
+        enclosing_type = self.most_recent_enclosing_type(expr, type)
+        if (isinstance(enclosing_type, AnyType)
                 and not restrict_any):
-            pass
+            # If x is Any and y is int, after x = y we do not infer that x is int.
+            # This could be changed.
+            if not isinstance(type, AnyType):
+                # We narrowed type from Any in a recent frame (probably an
+                # isinstance check), but now it is reassigned, so broaden back
+                # to Any (which is the most recent enclosing type)
+                self.put(expr, enclosing_type)
         elif (isinstance(type, AnyType)
               and not (isinstance(declared_type, UnionType)
                        and any(isinstance(item, AnyType) for item in declared_type.items))):
@@ -257,13 +264,16 @@ class ConditionalTypeBinder:
         It is overly conservative: it invalidates globally, including
         in code paths unreachable from here.
         """
-        for dep in self.dependencies.get(literal_hash(expr), set()):
+        key = literal_hash(expr)
+        assert key is not None
+        for dep in self.dependencies.get(key, set()):
             self._cleanse_key(dep)
 
     def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Optional[Type]:
         if isinstance(type, AnyType):
             return get_declaration(expr)
         key = literal_hash(expr)
+        assert key is not None
         enclosers = ([get_declaration(expr)] +
                      [f[key] for f in self.frames
                       if key in f and is_subtype(type, f[key])])

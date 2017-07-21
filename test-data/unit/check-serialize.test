@@ -124,6 +124,26 @@ def f(x: int,
 [builtins fixtures/dict.pyi]
 [out2]
 
+[case testSerializeCallableWithBoundTypeArguments]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+x = b.f
+[file b.py]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def f(self, x: T) -> None: pass
+
+c: C[int]
+f = c.f
+[out]
+[out2]
+
 [case testSerializePositionalOnlyArgument]
 import a
 [file a.py]
