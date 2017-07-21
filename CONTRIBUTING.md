@@ -112,6 +112,18 @@ Core developers should follow these rules when processing pull requests:
 * Use "[Squash and merge](https://github.com/blog/2141-squash-your-commits)"
   to merge PRs.
 * Delete branches for merged PRs (by core devs pushing to the main repo).
+* Edit the final commit message before merging to conform to the following
+  style (we wish to have a clean `git log` output):
+  * When merging a multi-commit PR make sure that the commit message doesn't
+    contain the local history from the committer and the review history from
+    the PR. Edit the message to only describe the end state of the PR.
+  * Make sure there is a *single* newline at the end of the commit message.
+    This way there is a single empty line between commits in `git log`
+    output.
+  * Split lines as needed so that the maximum line length of the commit
+    message is under 80 characters.
+  * Capitalize the header and each paragraph.
+  * Make sure that the first line has no trailing dot.
 
 
 Issue-tracker conventions
