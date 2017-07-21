@@ -96,8 +96,8 @@ def analyze_type_alias(node: Expression,
                 isinstance(node.args[0], NameExpr)):
             call = lookup_func(node.callee.name, node.callee)
             arg = lookup_func(node.args[0].name, node.args[0])
-            if (call is not None and call.node.fullname() == 'builtins.type' and
-                    arg is not None and arg.node.fullname() == 'builtins.None'):
+            if (call is not None and call.node and call.node.fullname() == 'builtins.type' and
+                    arg is not None and arg.node and arg.node.fullname() == 'builtins.None'):
                 return NoneTyp()
             return None
         return None
