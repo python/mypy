@@ -633,13 +633,15 @@ for x in t:
 [case testForLoopOverEmptyTuple]
 import typing
 t = ()
-for x in t: pass
+for x in t:  # E: Need type annotation for variable
+  pass
 [builtins fixtures/for.pyi]
 
 [case testForLoopOverNoneValuedTuple]
 import typing
 t = ()
-for x in None, None: pass
+for x in None, None:  # E: Need type annotation for variable
+  pass
 [builtins fixtures/for.pyi]
 
 [case testForLoopOverTupleAndSubtyping]

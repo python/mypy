@@ -1,7 +1,7 @@
 -- Tests for strict Optional behavior
 
 [case testImplicitNoneType]
-x = None
+x = None  # E: Need type annotation for variable
 x()  # E: None not callable
 
 [case testExplicitNoneType]
@@ -285,7 +285,7 @@ main:4: error: Incompatible return value type (got "Optional[T]", expected "T")
 
 [case testNoneOrStringIsString]
 def f() -> str:
-    a = None
+    a = None  # type: None
     b = ''
     return a or b
 [out]
@@ -294,7 +294,7 @@ def f() -> str:
 from typing import TypeVar
 T = TypeVar('T')
 def f(b: T) -> T:
-    a = None
+    a = None  # type: None
     return a or b
 [out]
 
@@ -305,7 +305,7 @@ def f() -> Generator[None, None, None]:
 [out]
 
 [case testNoneAndStringIsNone]
-a = None
+a = None  # type: None
 b = "foo"
 reveal_type(a and b)  # E: Revealed type is 'builtins.None'
 
@@ -559,7 +559,7 @@ x is not None and x + '42'  # E: Unsupported operand types for + ("int" and "str
 [case testInvalidBooleanBranchIgnored]
 from typing import Optional
 
-x = None
+x = None  # type: None
 x is not None and x + 42
 [builtins fixtures/isinstance.pyi]
 
