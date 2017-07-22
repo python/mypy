@@ -2502,47 +2502,6 @@ def check_arg_names(names: List[Optional[str]], nodes: List[T], fail: Callable[[
 #   of an index expression, or the operands of an operator expression).
 
 
-def literal_hash(e: Expression) -> Optional[Key]:
-    if isinstance(e, (IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr, UnicodeExpr)):
-        return ('Literal', e.value)
-
-    elif isinstance(e, StarExpr):
-        return ('Star', literal_hash(e.expr))
-
-    elif isinstance(e, NameExpr):
-        return ('Var', e.name)
-
-    elif isinstance(e, MemberExpr):
-        return ('Member', literal_hash(e.expr), e.name)
-
-    elif isinstance(e, IndexExpr):
-        if literal(e.index) == LITERAL_YES:
-            return ('Index', literal_hash(e.base), literal_hash(e.index))
-
-    elif isinstance(e, UnaryExpr):
-        return ('Unary', e.op, literal_hash(e.expr))
-
-    elif isinstance(e, OpExpr):
-        return ('Binary', e.op, literal_hash(e.left), literal_hash(e.right))
-
-    elif isinstance(e, ComparisonExpr):
-        rest = tuple(e.operators)  # type: Any
-        rest += tuple(literal_hash(o) for o in e.operands)
-        return ('Comparison',) + rest
-
-    elif isinstance(e, (ListExpr, TupleExpr, SetExpr)):
-        name = {ListExpr: 'List', TupleExpr: 'Tuple', SetExpr: 'Set'}[type(e)]  # type: Any
-        if all(literal(x) == LITERAL_YES for x in e.items):
-            return (name,) + tuple(literal_hash(x) for x in e.items)
-
-    elif isinstance(e, DictExpr):
-        if all(a and literal(a) == literal(b) == LITERAL_YES for a, b in e.items):
-            rest = tuple((literal_hash(a), literal_hash(b)) for a, b in e.items)
-            return ('Dict',) + rest
-
-    return None
-
-
 def literal(e: Expression) -> int:
     if isinstance(e, ComparisonExpr):
         return min(literal(o) for o in e.operands)
@@ -2567,3 +2526,151 @@ def literal(e: Expression) -> int:
         return LITERAL_YES
 
     return LITERAL_NO
+
+
+def literal_hash(e: Expression) -> Optional[Key]:
+    return e.accept(hasher)
+
+
+class Hasher(ExpressionVisitor[Optional[Key]]):
+    def visit_int_expr(self, e: IntExpr) -> Key:
+        return ('Literal', e.value)
+
+    def visit_str_expr(self, e: StrExpr) -> Key:
+        return ('Literal', e.value)
+
+    def visit_bytes_expr(self, e: BytesExpr) -> Key:
+        return ('Literal', e.value)
+
+    def visit_unicode_expr(self, e: UnicodeExpr) -> Key:
+        return ('Literal', e.value)
+
+    def visit_float_expr(self, e: FloatExpr) -> Key:
+        return ('Literal', e.value)
+
+    def visit_complex_expr(self, e: ComplexExpr) -> Key:
+        return ('Literal', e.value)
+
+    def visit_star_expr(self, e: StarExpr) -> Key:
+        return ('Star', literal_hash(e.expr))
+
+    def visit_name_expr(self, e: NameExpr) -> Key:
+        return ('Var', e.name)
+
+    def visit_member_expr(self, e: MemberExpr) -> Key:
+        return ('Member', literal_hash(e.expr), e.name)
+
+    def visit_op_expr(self, e: OpExpr) -> Key:
+        return ('Binary', e.op, literal_hash(e.left), literal_hash(e.right))
+
+    def visit_comparison_expr(self, e: ComparisonExpr) -> Key:
+        rest = tuple(e.operators)  # type: Any
+        rest += tuple(literal_hash(o) for o in e.operands)
+        return ('Comparison',) + rest
+
+    def visit_unary_expr(self, e: UnaryExpr) -> Key:
+        return ('Unary', e.op, literal_hash(e.expr))
+
+    def seq_expr(self, e: Union[ListExpr, TupleExpr, SetExpr], name: str) -> Optional[Key]:
+        if all(literal(x) == LITERAL_YES for x in e.items):
+            rest = tuple(literal_hash(x) for x in e.items)  # type: Any
+            return (name,) + rest
+        return None
+
+    def visit_list_expr(self, e: ListExpr) -> Optional[Key]:
+        return self.seq_expr(e, 'List')
+
+    def visit_dict_expr(self, e: DictExpr) -> Optional[Key]:
+        if all(a and literal(a) == literal(b) == LITERAL_YES for a, b in e.items):
+            rest = tuple((literal_hash(a), literal_hash(b)) for a, b in e.items)  # type: Any
+            return ('Dict',) + rest
+        return None
+
+    def visit_tuple_expr(self, e: TupleExpr) -> Optional[Key]:
+        return self.seq_expr(e, 'Tuple')
+
+    def visit_set_expr(self, e: SetExpr) -> Optional[Key]:
+        return self.seq_expr(e, 'Set')
+
+    def visit_index_expr(self, e: IndexExpr) -> Optional[Key]:
+        if literal(e.index) == LITERAL_YES:
+            return ('Index', literal_hash(e.base), literal_hash(e.index))
+        return None
+
+    def visit_call_expr(self, e: CallExpr) -> None:
+        return None
+
+    def visit_slice_expr(self, e: SliceExpr) -> None:
+        return None
+
+    def visit_cast_expr(self, e: CastExpr) -> None:
+        return None
+
+    def visit_conditional_expr(self, e: ConditionalExpr) -> None:
+        return None
+
+    def visit_ellipsis(self, e: EllipsisExpr) -> None:
+        return None
+
+    def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
+        return None
+
+    def visit_yield_expr(self, e: YieldExpr) -> None:
+        return None
+
+    def visit_reveal_type_expr(self, e: RevealTypeExpr) -> None:
+        return None
+
+    def visit_super_expr(self, e: SuperExpr) -> None:
+        return None
+
+    def visit_type_application(self, e: TypeApplication) -> None:
+        return None
+
+    def visit_lambda_expr(self, e: LambdaExpr) -> None:
+        return None
+
+    def visit_list_comprehension(self, e: ListComprehension) -> None:
+        return None
+
+    def visit_set_comprehension(self, e: SetComprehension) -> None:
+        return None
+
+    def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> None:
+        return None
+
+    def visit_generator_expr(self, e: GeneratorExpr) -> None:
+        return None
+
+    def visit_backquote_expr(self, e: BackquoteExpr) -> None:
+        return None
+
+    def visit_type_var_expr(self, e: TypeVarExpr) -> None:
+        return None
+
+    def visit_type_alias_expr(self, e: TypeAliasExpr) -> None:
+        return None
+
+    def visit_namedtuple_expr(self, e: NamedTupleExpr) -> None:
+        return None
+
+    def visit_enum_call_expr(self, e: EnumCallExpr) -> None:
+        return None
+
+    def visit_typeddict_expr(self, e: TypedDictExpr) -> None:
+        return None
+
+    def visit_newtype_expr(self, e: NewTypeExpr) -> None:
+        return None
+
+    def visit__promote_expr(self, e: PromoteExpr) -> None:
+        return None
+
+    def visit_await_expr(self, e: AwaitExpr) -> None:
+        return None
+
+    def visit_temp_node(self, e: TempNode) -> None:
+        return None
+
+
+hasher = Hasher()
