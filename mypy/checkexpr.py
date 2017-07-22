@@ -2650,9 +2650,10 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             # NoneTyp matches anything if we're not doing strict Optional checking
             return 2
         else:
-            # NoneType is a subtype of object
+            # NoneType can be promoted to object, but isn't actually a subtype (otherwise you
+            # wouldn't be able to define overloads between object and None).
             if isinstance(formal, Instance) and formal.type.fullname() == "builtins.object":
-                return 2
+                return 1
     if isinstance(actual, UnionType):
         return max(overload_arg_similarity(item, formal)
                    for item in actual.relevant_items())
