@@ -1,0 +1,481 @@
+-- Test cases for reference count  insertion.
+
+[case testReturnLiteral]
+def f() -> int:
+    return 1
+[out]
+L0:
+    r0 = 1
+    return r0
+
+[case testReturnLocal]
+def f() -> int:
+    x = 1
+    return x
+[out]
+L0:
+    x = 1
+    return x
+
+[case testLocalVars]
+def f() -> int:
+    x = 1
+    y = x
+    x = y
+    return x
+[out]
+L0:
+    x = 1
+    y = x
+    x = y
+    return x
+
+[case testLocalVars2]
+def f() -> int:
+    x = 1
+    y = x
+    z = x
+    return y + z
+[out]
+L0:
+    x = 1
+    inc_ref x :: int
+    y = x
+    z = x
+    r0 = y + z :: int
+    dec_ref y :: int
+    dec_ref z :: int
+    return r0
+
+[case testFreeAtReturn]
+def f() -> int:
+    x = 1
+    y = 2
+    if x == 1:
+        return x
+    return y
+[out]
+L0:
+    x = 1
+    y = 2
+    r0 = 1
+    if x == r0 goto L3 else goto L4 :: int
+L1:
+    return x
+L2:
+    return y
+L3:
+    dec_ref y :: int
+    dec_ref r0 :: int
+    goto L1
+L4:
+    dec_ref x :: int
+    dec_ref r0 :: int
+    goto L2
+
+[case testArgumentsInOps]
+def f(a: int, b: int) -> int:
+    x = a + 1
+    y = x + a
+    return y
+[out]
+L0:
+    r0 = 1
+    x = a + r0 :: int
+    dec_ref r0 :: int
+    y = x + a :: int
+    dec_ref x :: int
+    return y
+
+[case testArgumentsInAssign]
+def f(a: int) -> int:
+    x = a
+    y = a
+    x = 1
+    return x + y
+[out]
+L0:
+    inc_ref a :: int
+    x = a
+    dec_ref x :: int
+    inc_ref a :: int
+    y = a
+    x = 1
+    r0 = x + y :: int
+    dec_ref x :: int
+    dec_ref y :: int
+    return r0
+
+[case testAssignToArgument1]
+def f(a: int) -> int:
+    a = 1
+    y = a
+    return y
+[out]
+L0:
+    a = 1
+    y = a
+    return y
+
+[case testAssignToArgument2]
+def f(a: int) -> int:
+    a = 1
+    a = 2
+    a = 3
+    return a
+[out]
+L0:
+    a = 1
+    dec_ref a :: int
+    a = 2
+    dec_ref a :: int
+    a = 3
+    return a
+
+[case testAssignToArgument2]
+def f(a: int) -> int:
+    x = 1
+    a = x
+    y = x
+    return a
+[out]
+L0:
+    x = 1
+    inc_ref x :: int
+    a = x
+    y = x
+    dec_ref y :: int
+    return a
+
+[case testReturnArgument]
+def f(a: int) -> int:
+    return a
+[out]
+L0:
+    inc_ref a :: int
+    return a
+
+[case testConditionalAssignToArgument1]
+def f(a: int) -> int:
+    if a == a:
+        a = 1
+    else:
+        x = 2
+    y = a + 1
+    return y
+[out]
+L0:
+    if a == a goto L1 else goto L2 :: int
+L1:
+    a = 1
+    goto L3
+L2:
+    x = 2
+    dec_ref x :: int
+    goto L4
+L3:
+    r0 = 1
+    y = a + r0 :: int
+    dec_ref a :: int
+    dec_ref r0 :: int
+    return y
+L4:
+    inc_ref a :: int
+    goto L3
+
+[case testConditionalAssignToArgument2]
+def f(a: int) -> int:
+    if a == a:
+        x = 2
+    else:
+        a = 1
+    y = a + 1
+    return y
+[out]
+L0:
+    if a == a goto L1 else goto L2 :: int
+L1:
+    x = 2
+    dec_ref x :: int
+    goto L4
+L2:
+    a = 1
+L3:
+    r0 = 1
+    y = a + r0 :: int
+    dec_ref a :: int
+    dec_ref r0 :: int
+    return y
+L4:
+    inc_ref a :: int
+    goto L3
+
+[case testConditionalAssignToArgument3]
+def f(a: int) -> int:
+    if a == a:
+        a = 1
+    return a
+[out]
+L0:
+    if a == a goto L1 else goto L3 :: int
+L1:
+    a = 1
+L2:
+    return a
+L3:
+    inc_ref a :: int
+    goto L2
+
+[case testAssignRegisterToItself]
+def f(a: int) -> int:
+    a = a
+    x = 1
+    x = x
+    return x + a
+[out]
+-- This is correct but not optimal
+L0:
+    inc_ref a :: int
+    a = a
+    x = 1
+    inc_ref x :: int
+    dec_ref x :: int
+    x = x
+    r0 = x + a :: int
+    dec_ref x :: int
+    dec_ref a :: int
+    return r0
+
+[case testIncrement1]
+def f(a: int) -> int:
+    a = a + 1
+    x = 1
+    x = x + 1
+    return a + x
+[out]
+L0:
+    r0 = 1
+    a = a + r0 :: int
+    dec_ref r0 :: int
+    x = 1
+    r1 = 1
+    r3 = x
+    x = x + r1 :: int
+    dec_ref r1 :: int
+    dec_ref r3 :: int
+    r2 = a + x :: int
+    dec_ref a :: int
+    dec_ref x :: int
+    return r2
+
+[case testIncrement2]
+def f() -> None:
+    x = 1
+    x = x + 1
+[out]
+L0:
+    x = 1
+    r0 = 1
+    r2 = x
+    x = x + r0 :: int
+    dec_ref r0 :: int
+    dec_ref x :: int
+    dec_ref r2 :: int
+    r1 = None
+    return r1
+
+[case testAdd1]
+def f() -> None:
+    y = 1
+    x = y + 1
+[out]
+L0:
+    y = 1
+    r0 = 1
+    x = y + r0 :: int
+    dec_ref y :: int
+    dec_ref r0 :: int
+    dec_ref x :: int
+    r1 = None
+    return r1
+
+[case testAdd2]
+def f(a: int) -> int:
+    a = a + a
+    x = a
+    x = x + x
+    return x
+[out]
+L0:
+    a = a + a :: int
+    x = a
+    r0 = x
+    x = x + x :: int
+    dec_ref r0 :: int
+    return x
+
+[case testAdd3]
+def f(a: int) -> int:
+    x = a + a
+    y = x + x
+    return y
+[out]
+L0:
+    x = a + a :: int
+    y = x + x :: int
+    dec_ref x :: int
+    return y
+
+[case testAdd4]
+def f(a: int) -> None:
+    x = a + a
+    y = 1
+    z = y + y
+[out]
+L0:
+    x = a + a :: int
+    dec_ref x :: int
+    y = 1
+    z = y + y :: int
+    dec_ref y :: int
+    dec_ref z :: int
+    r0 = None
+    return r0
+
+[case testAdd5]
+def f(a: int) -> None:
+    a = a + a
+    x = 1
+    x = x + x
+[out]
+L0:
+    a = a + a :: int
+    dec_ref a :: int
+    x = 1
+    r1 = x
+    x = x + x :: int
+    dec_ref x :: int
+    dec_ref r1 :: int
+    r0 = None
+    return r0
+
+[case testReturnInMiddleOfFunction]
+def f() -> int:
+    x = 1
+    y = 2
+    z = 3
+    if z == z:
+        return z
+    a = 1
+    return x + y - a
+[out]
+L0:
+    x = 1
+    y = 2
+    z = 3
+    if z == z goto L3 else goto L4 :: int
+L1:
+    return z
+L2:
+    a = 1
+    r0 = x + y :: int
+    dec_ref x :: int
+    dec_ref y :: int
+    r1 = r0 - a :: int
+    dec_ref r0 :: int
+    dec_ref a :: int
+    return r1
+L3:
+    dec_ref x :: int
+    dec_ref y :: int
+    goto L1
+L4:
+    dec_ref z :: int
+    goto L2
+
+[case testLoop]
+def f(a: int) -> int:
+    sum = 0
+    i = 0
+    while i <= a:
+        sum = sum + i
+        i = i + 1
+    return sum
+[out]
+L0:
+    sum = 0
+    i = 0
+L1:
+    if i <= a goto L2 else goto L4 :: int
+L2:
+    r1 = sum
+    sum = sum + i :: int
+    dec_ref r1 :: int
+    r0 = 1
+    r2 = i
+    i = i + r0 :: int
+    dec_ref r0 :: int
+    dec_ref r2 :: int
+    goto L1
+L3:
+    return sum
+L4:
+    dec_ref i :: int
+    goto L3
+
+[case testCall]
+def f(a: int) -> int:
+    return f(a + 1)
+[out]
+L0:
+    r1 = 1
+    r2 = a + r1 :: int
+    dec_ref r1 :: int
+    r0 = f(r2)
+    dec_ref r2 :: int
+    return r0
+
+[case testCall]
+def f(a: int) -> int:
+    return f(a + 1)
+[out]
+L0:
+    r1 = 1
+    r2 = a + r1 :: int
+    dec_ref r1 :: int
+    r0 = f(r2)
+    dec_ref r2 :: int
+    return r0
+
+[case testError]
+def f(x: List[int]) -> None: pass # E: Name 'List' is not defined
+
+[case testNewList]
+def f() -> int:
+    a = [0, 1]
+    return 0
+[out]
+L0:
+    r0 = 0
+    r1 = box(int, r0)
+    dec_ref r0 :: int
+    r2 = 1
+    r3 = box(int, r2)
+    dec_ref r2 :: int
+    a = [r1, r3]
+    dec_ref r1
+    dec_ref r3
+    dec_ref a
+    r4 = 0
+    return r4
+
+[case testReturnList]
+from typing import List
+def f(x: int) -> List[int]:
+    return [x]
+[out]
+L0:
+    r1 = box(int, x)
+    r0 = [r1]
+    dec_ref r1
+    return r0

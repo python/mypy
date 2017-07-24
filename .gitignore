@@ -1,0 +1,7 @@
+#*#
+.#*
+__pycache__
+*~
+test_capi
+*.o
+*.a

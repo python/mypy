@@ -1,0 +1,58 @@
+-- Test cases for C generation. Generally it is better to write evaluation test cases
+-- for most things, but these are useful for sanity checking the generated C code.
+
+[case testTrivialFunctionOutput]
+def f(x: int) -> int:
+    return x
+[out]
+#include <Python.h>
+#include <CPy.h>
+
+static CPyTagged CPyDef_f(CPyTagged cpy_r_x);
+static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw);
+
+static PyMethodDef module_methods[] = {
+    {"f", (PyCFunction)CPyPy_f, METH_VARARGS | METH_KEYWORDS, NULL /* docstring */},
+    {NULL, NULL, 0, NULL}
+};
+
+static struct PyModuleDef module = {
+    PyModuleDef_HEAD_INIT,
+    "prog",
+    NULL, /* docstring */
+    -1,       /* size of per-interpreter state of the module,
+                 or -1 if the module keeps state in global variables. */
+    module_methods
+};
+
+PyMODINIT_FUNC PyInit_prog(void)
+{
+    return PyModule_Create(&module);
+}
+
+static CPyTagged CPyDef_f(CPyTagged cpy_r_x) {
+CPyL0:
+    return cpy_r_x;
+}
+
+static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
+    static char *kwlist[] = {"x", 0};
+    PyObject *obj_x;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "O:f", kwlist, &obj_x)) {
+        return NULL;
+    }
+    CPyTagged arg_x = CPyTagged_FromObject(obj_x);
+    if (arg_x == CPY_INT_ERROR_VALUE) {
+        return NULL; // TODO: Add traceback entry?
+    }
+    CPyTagged retval = CPyDef_f(arg_x);
+    if (retval == CPY_INT_ERROR_VALUE && PyErr_Occurred()) {
+        return NULL; // TODO: Add traceback entry?
+    }
+    return CPyTagged_AsObject(retval);
+}
+
+[case testError]
+def f(x: List[int]) -> None: pass
+[out]
+prog.py:1: error: Name 'List' is not defined

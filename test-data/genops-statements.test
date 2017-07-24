@@ -1,0 +1,23 @@
+[case testForInRange]
+def f() -> None:
+    x = 0
+    for i in range(5):
+        x = x + i
+[out]
+def f():
+    x, r0, i, r1 :: int
+    r2 :: None
+L0:
+    x = 0
+    r0 = 5
+    i = 0
+L1:
+    if i < r0 goto L2 else goto L3 :: int
+L2:
+    x = x + i :: int
+    r1 = 1
+    i = i + r1 :: int
+    goto L1
+L3:
+    r2 = None
+    return r2

@@ -1,0 +1,596 @@
+"""Representation of low-level opcodes for compiler intermediate representation (IR).
+
+Opcodes operate on abstract registers in a register machine. Each
+register has a type and a name, specified in an environment. A register
+can hold various things:
+
+- local variables
+- intermediate values of expressions
+- condition flags (true/false)
+- literals (integer literals, True, False, etc.)
+"""
+
+from abc import abstractmethod
+from typing import List, Dict, Generic, TypeVar, Optional, Any, NamedTuple
+
+from mypy.nodes import Var
+
+
+T = TypeVar('T')
+
+Register = int
+Label = int
+
+
+class RTType:
+    """Runtime type (erased, only concrete; no generics).
+
+
+    Valid names:
+      'int'
+      'list'
+      'object'
+      'None'
+      '@flag'
+    """
+
+    def __init__(self, name: str) -> None:
+        assert isinstance(name, str)
+        self.name = name
+
+    @property
+    def supports_unbox(self) -> bool:
+        return self.name == 'int'
+
+    @property
+    def ctype(self) -> str:
+        if self.name == 'int':
+            return 'CPyTagged '
+        else:
+            return 'PyObject *'
+
+    def __repr__(self) -> str:
+        return '<RTType %s>' % self.name
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RTType) and other.name == self.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
+
+
+class Environment:
+    """Keep track of names and types of registers."""
+
+    def __init__(self) -> None:
+        self.names = []  # type: List[str]
+        self.types = []  # type: List[RTType]
+        self.symtable = {}  # type: Dict[Var, int]
+        self.temp_index = 0
+
+    def num_regs(self) -> int:
+        return len(self.names)
+
+    def add_local(self, var: Var, typ: RTType) -> int:
+        assert isinstance(var, Var)
+        self.names.append(var.name())
+        self.types.append(typ)
+        i = len(self.names) - 1
+        self.symtable[var] = i
+        return i
+
+    def lookup(self, var: Var) -> Register:
+        return self.symtable[var]
+
+    def add_temp(self, typ: RTType) -> int:
+        assert isinstance(typ, RTType)
+        self.names.append('r%d' % self.temp_index)
+        self.temp_index += 1
+        self.types.append(typ)
+        return len(self.names) - 1
+
+    def format(self, fmt: str, *args: Any) -> str:
+        result = []
+        i = 0
+        arglist = list(args)
+        while i < len(fmt):
+            n = fmt.find('%', i)
+            if n < 0:
+                n = len(fmt)
+            result.append(fmt[i:n])
+            if n < len(fmt):
+                typespec = fmt[n + 1]
+                arg = arglist.pop(0)
+                if typespec == 'r':
+                    result.append(self.names[arg])
+                elif typespec == 'd':
+                    result.append('%d' % arg)
+                elif typespec == 'l':
+                    result.append('L%d' % arg)
+                elif typespec == 's':
+                    result.append(str(arg))
+                else:
+                    raise ValueError('Invalid format sequence %{}'.format(typespec))
+                i = n + 2
+            else:
+                i = n
+        return ''.join(result)
+
+    def to_lines(self) -> List[str]:
+        result = []
+        i = 0
+        n = len(self.names)
+        while i < n:
+            i0 = i
+            while i + 1 < n and self.types[i + 1] == self.types[i0]:
+                i += 1
+            i += 1
+            result.append('%s :: %s' % (', '.join(self.names[i0:i]), self.types[i0].name))
+        return result
+
+
+class Op:
+    @abstractmethod
+    def to_str(self, env: Environment) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        pass
+
+
+class Goto(Op):
+    """Unconditional jump."""
+
+    def __init__(self, label: int) -> None:
+        self.label = label
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('goto %l', self.label)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_goto(self)
+
+
+class Branch(Op):
+    """if [not] r1 op r2 goto 1 else goto 2"""
+
+    INT_EQ = 10
+    INT_NE = 11
+    INT_LT = 12
+    INT_LE = 13
+    INT_GT = 14
+    INT_GE = 15
+
+    op_names = {
+        INT_EQ:  ('==', 'int'),
+        INT_NE:  ('!=', 'int'),
+        INT_LT:  ('<', 'int'),
+        INT_LE:  ('<=', 'int'),
+        INT_GT:  ('>', 'int'),
+        INT_GE:  ('>=', 'int'),
+    }
+
+    def __init__(self, left: Register, right: Register, true_label: Label,
+                 false_label: Label, op: int) -> None:
+        self.left = left
+        self.right = right
+        self.true = true_label
+        self.false = false_label
+        self.op = op
+        self.negated = False
+
+    def sources(self) -> List[Register]:
+        return [self.left, self.right]
+
+    def to_str(self, env: Environment) -> str:
+        if self.negated:
+            fmt = 'not %r {} %r'
+        else:
+            fmt = '%r {} %r'
+        op, typ = self.op_names[self.op]
+        fmt = fmt.format(op)
+        cond = env.format(fmt, self.left, self.right)
+        fmt = 'if {} goto %l else goto %l :: {}'.format(cond, typ)
+        return env.format(fmt, self.true, self.false)
+
+    def invert(self) -> None:
+        self.true, self.false = self.false, self.true
+        self.negated = not self.negated
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_branch(self)
+
+
+class Return(Op):
+    def __init__(self, reg: Register) -> None:
+        assert isinstance(reg, int)
+        self.reg = reg
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('return %r', self.reg)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_return(self)
+
+
+class RegisterOp(Op):
+    """An operation that can be written as r1 = f(r2, ..., rn).
+
+    Takes some registers, performs an operation and generates an output.
+    The output register can be None for no output.
+    """
+
+    def __init__(self, dest: Optional[Register]) -> None:
+        self.dest = dest
+
+    @abstractmethod
+    def sources(self) -> List[Register]:
+        pass
+
+    def unique_sources(self) -> List[Register]:
+        result = []  # type: List[Register]
+        for reg in self.sources():
+            if reg not in result:
+                result.append(reg)
+        return result
+
+
+class IncRef(RegisterOp):
+    """inc_ref r"""
+
+    def __init__(self, dest: Register, typ: RTType) -> None:
+        super().__init__(dest)
+        self.int_target = (typ.name == 'int')
+
+    def to_str(self, env: Environment) -> str:
+        s = env.format('inc_ref %r', self.dest)
+        if self.int_target:
+            s += ' :: int'
+        return s
+
+    def sources(self) -> List[Register]:
+        return [self.dest]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_inc_ref(self)
+
+
+class DecRef(RegisterOp):
+    """dec_ref r"""
+
+    def __init__(self, dest: Register, typ: RTType) -> None:
+        super().__init__(dest)
+        self.int_target = (typ.name == 'int')
+
+    def to_str(self, env: Environment) -> str:
+        s = env.format('dec_ref %r', self.dest)
+        if self.int_target:
+            s += ' :: int'
+        return s
+
+    def sources(self) -> List[Register]:
+        return [self.dest]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_dec_ref(self)
+
+
+class Call(RegisterOp):
+    """Native call f(arg, ...)"""
+
+    def __init__(self, dest: Optional[Register], fn: str, args: List[Register]) -> None:
+        self.dest = dest
+        self.fn = fn
+        self.args = args
+
+    def to_str(self, env: Environment) -> str:
+        args = ', '.join(env.format('%r', arg) for arg in self.args)
+        s = '%s(%s)' % (self.fn, args)
+        if self.dest is not None:
+            s = env.format('%r = ', self.dest) + s
+        return s
+
+    def sources(self) -> List[Register]:
+        return self.args[:]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_call(self)
+
+
+VAR_ARG = -1
+
+# Primitive op inds
+OP_MISC = 0    # No specific kind
+OP_BINARY = 1  # Regular binary operation such as +
+
+OpDesc = NamedTuple('OpDesc', [('name', str),        # Symbolic name of the operation
+                               ('num_args', int),    # Number of args (or VAR_ARG for any number)
+                               ('type', str),        # Type string, used for disambiguation
+                               ('format_str', str),  # Format string for pretty printing
+                               ('is_void', bool),    # Is this a void op (no value produced)?
+                               ('kind', int)])
+
+
+def make_op(name: str, num_args: int, typ: str, format_str: str = None,
+            is_void: bool = False, kind: int = OP_MISC) -> OpDesc:
+    if format_str is None:
+        # Default format strings for some common things.
+        if name == '[]':
+            format_str = '{dest} = {args[0]}[{args[1]}] :: %s' % typ
+        elif name == '[]=':
+            assert is_void
+            format_str = '{args[0]}[{args[1]}] = {args[2]} :: %s' % typ
+        elif kind == OP_BINARY:
+            format_str = '{dest} = {args[0]} %s {args[1]} :: %s' % (name, typ)
+        elif num_args == 1:
+            if name[-1].isalpha():
+                name += ' '
+            format_str = '{dest} = %s{args[0]} :: %s' % (name, typ)
+        else:
+            assert False, 'format_str must be defined; no default format available'
+    return OpDesc(name, num_args, typ, format_str, is_void, kind)
+
+
+class PrimitiveOp(RegisterOp):
+    """dest = op(reg, ...)
+
+    These are register-based primitive operations that typically work on
+    specific operand types.
+    """
+
+    # Binary
+    INT_ADD = make_op('+', 2, 'int', kind=OP_BINARY)
+    INT_SUB = make_op('-', 2, 'int', kind=OP_BINARY)
+    INT_MUL = make_op('*', 2, 'int', kind=OP_BINARY)
+    INT_DIV = make_op('//', 2, 'int', kind=OP_BINARY)
+    INT_MOD = make_op('%', 2, 'int', kind=OP_BINARY)
+    INT_AND = make_op('&', 2, 'int', kind=OP_BINARY)
+    INT_OR =  make_op('|', 2, 'int', kind=OP_BINARY)
+    INT_XOR = make_op('^', 2, 'int', kind=OP_BINARY)
+    INT_SHL = make_op('<<', 2, 'int', kind=OP_BINARY)
+    INT_SHR = make_op('>>', 2, 'int', kind=OP_BINARY)
+    LIST_GET = make_op('[]', 2, 'list', kind=OP_BINARY)
+    LIST_REPEAT = make_op('*', 2, 'list', kind=OP_BINARY)
+
+    # Unary
+    INT_NEG = make_op('-', 1, 'int')
+    LIST_LEN = make_op('len', 1, 'list')
+
+    # Other
+    NONE = make_op('None', 0, 'None', format_str='{dest} = None')
+    LIST_SET = make_op('[]=', 3, 'list', is_void=True)
+    NEW_LIST = make_op('new', VAR_ARG, 'list', format_str='{dest} = [{comma_args}]')
+    LIST_APPEND = make_op('append', 2, 'list',
+                          is_void=True, format_str='{args[0]}.append({args[1]})')
+
+    def __init__(self, dest: Optional[Register], desc: OpDesc, *args: Register) -> None:
+        """Create a primitive op.
+
+        If desc.is_void is true, dest should be None.
+        """
+        if desc.num_args != VAR_ARG:
+            assert len(args) == desc.num_args
+        self.dest = dest
+        self.desc = desc
+        self.args = args
+
+    def sources(self) -> List[Register]:
+        return list(self.args)
+
+    def to_str(self, env: Environment) -> str:
+        params = {}  # type: Dict[str, Any]
+        if self.dest is not None:
+            params['dest'] = env.format('%r', self.dest)
+        args = [env.format('%r', arg) for arg in self.args]
+        params['args'] = args
+        params['comma_args'] = ', '.join(args)
+        return self.desc.format_str.format(**params)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_primitive_op(self)
+
+
+class Assign(RegisterOp):
+    """dest = int"""
+
+    def __init__(self, dest: Register, src: Register) -> None:
+        self.dest = dest
+        self.src = src
+
+    def sources(self) -> List[Register]:
+        return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = %r', self.dest, self.src)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_assign(self)
+
+
+class LoadInt(RegisterOp):
+    """dest = int"""
+
+    def __init__(self, dest: Register, value: int) -> None:
+        self.dest = dest
+        self.value = value
+
+    def sources(self) -> List[Register]:
+        return []
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = %d', self.dest, self.value)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_load_int(self)
+
+
+class Cast(RegisterOp):
+    """dest = cast(type, src)
+
+    Perform a runtime type check (no representatino or value conversion).
+    """
+    # TODO: Error checking
+
+    def __init__(self, dest: Register, src: Register, typ: RTType) -> None:
+        self.dest = dest
+        self.src = src
+        self.typ = typ
+
+    def sources(self) -> List[Register]:
+        return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = cast(%s, %r)', self.dest, self.typ.name, self.src)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_cast(self)
+
+
+class Box(RegisterOp):
+    """dest = box(type, src)
+
+    This converts from a potentially unboxed representation to a straight Python object.
+    Only supported for types with an unboxed representation.
+    """
+
+    def __init__(self, dest: Register, src: Register, typ: RTType) -> None:
+        self.dest = dest
+        self.src = src
+        self.type = typ
+
+    def sources(self) -> List[Register]:
+        return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = box(%s, %r)', self.dest, self.type.name, self.src)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_box(self)
+
+
+class Unbox(RegisterOp):
+    """dest = unbox(type, src)
+
+    This is similar to a cast, but it also changes to a (potentially) unboxed runtime
+    representation. Only supported for types with an unboxed representation.
+    """
+    # TODO: Error checking
+
+    def __init__(self, dest: Register, src: Register, typ: RTType) -> None:
+        self.dest = dest
+        self.src = src
+        self.type = typ
+
+    def sources(self) -> List[Register]:
+        return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = unbox(%s, %r)', self.dest, self.type.name, self.src)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_unbox(self)
+
+
+class BasicBlock:
+    """Basic IR block.
+
+    Only the last instruction exists the block. Ends with a jump, branch or return.
+    Exceptions are not considered exits.
+    """
+
+    def __init__(self, label: Label) -> None:
+        self.label = label
+        self.ops = []  # type: List[Op]
+
+
+class RuntimeArg:
+    def __init__(self, name: str, typ: RTType) -> None:
+        self.name = name
+        self.type = typ
+
+    def __repr__(self) -> str:
+        return 'RuntimeArg(name=%s, type=%s)' % (self.name, self.type)
+
+
+class FuncIR:
+    """Intermediate representation of a function with contextual information."""
+
+    def __init__(self,
+                 name: str,
+                 args: List[RuntimeArg],
+                 ret_type: RTType,
+                 blocks: List[BasicBlock],
+                 env: Environment) -> None:
+        self.name = name
+        self.args = args
+        self.ret_type = ret_type
+        self.blocks = blocks
+        self.env = env
+        self._next_block_label = 0
+
+
+class OpVisitor(Generic[T]):
+    def visit_goto(self, op: Goto) -> T:
+        pass
+
+    def visit_branch(self, op: Branch) -> T:
+        pass
+
+    def visit_return(self, op: Return) -> T:
+        pass
+
+    def visit_primitive_op(self, op: PrimitiveOp) -> T:
+        pass
+
+    def visit_assign(self, op: Assign) -> T:
+        pass
+
+    def visit_load_int(self, op: LoadInt) -> T:
+        pass
+
+    def visit_inc_ref(self, op: IncRef) -> T:
+        pass
+
+    def visit_dec_ref(self, op: DecRef) -> T:
+        pass
+
+    def visit_call(self, op: Call) -> T:
+        pass
+
+    def visit_cast(self, op: Cast) -> T:
+        pass
+
+    def visit_box(self, op: Box) -> T:
+        pass
+
+    def visit_unbox(self, op: Unbox) -> T:
+        pass
+
+
+def format_blocks(blocks: List[BasicBlock], env: Environment) -> List[str]:
+    lines = []
+    for i, block in enumerate(blocks):
+        lines.append(env.format('%l:', block.label))
+        ops = block.ops
+        if (isinstance(ops[-1], Goto) and i + 1 < len(blocks) and
+                ops[-1].label == blocks[i + 1].label):
+            # Hide the last goto if it just goes to the next basic block.
+            ops = ops[:-1]
+        for op in ops:
+            lines.append('    ' + op.to_str(env))
+        if not isinstance(block.ops[-1], (Goto, Branch, Return)):
+            # Each basic block needs to exit somewhere.
+            lines.append('    [MISSING BLOCK EXIT OPCODE]')
+    return lines
+
+
+def format_func(fn: FuncIR) -> List[str]:
+    lines = []
+    lines.append('def {}({}):'.format(fn.name, ', '.join(arg.name
+                                                         for arg in fn.args)))
+    for line in fn.env.to_lines():
+        lines.append('    ' + line)
+    code = format_blocks(fn.blocks, fn.env)
+    lines.extend(code)
+    return lines

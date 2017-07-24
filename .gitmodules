@@ -1,0 +1,3 @@
+[submodule "mypy"]
+	path = mypy
+	url = https://github.com/python/mypy

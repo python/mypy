@@ -1,0 +1,126 @@
+[case testCallTrivialFunction]
+def f(x: int) -> int:
+    return x
+[file driver.py]
+from native import f
+print(f(3))
+print(f(-157))
+print(f(10**20))
+print(f(-10**20))
+[out]
+3
+-157
+100000000000000000000
+-100000000000000000000
+
+[case testInc]
+def inc(x: int) -> int:
+    return x + 1
+[file driver.py]
+from native import inc
+print(inc(3))
+print(inc(-5))
+print(inc(10**20))
+[out]
+4
+-4
+100000000000000000001
+
+[case testCount]
+def count(n: int) -> int:
+    i = 1
+    while i <= n:
+        i = i + 1
+    return i
+[file driver.py]
+from native import count
+print(count(0))
+print(count(1))
+print(count(5))
+[out]
+1
+2
+6
+
+[case testRecursiveFibonacci]
+def fib(n: int) -> int:
+    if n <= 1:
+        return 1
+    else:
+        return fib(n - 1) + fib(n - 2)
+    return 0  # TODO: This should be unnecessary
+[file driver.py]
+from native import fib
+print(fib(0))
+print(fib(1))
+print(fib(2))
+print(fib(6))
+[out]
+1
+1
+2
+13
+
+[case testListSum]
+from typing import List
+def sum(a: List[int], l: int) -> int:
+    sum = 0
+    i = 0
+    while i < l:
+        sum = sum + a[i]
+        i = i + 1
+    return sum
+[file driver.py]
+from native import sum
+print(sum([], 0))
+print(sum([3], 1))
+print(sum([5, 6, -4], 3))
+print(sum([2**128 + 5, -2**127 - 8], 2))
+[out]
+0
+3
+7
+170141183460469231731687303715884105725
+
+[case testListSet]
+from typing import List
+def copy(a: List[int], b: List[int], l: int) -> int:
+    i = 0
+    while i < l:
+        a[i] = b[i]
+        i = i + 1
+    return 0
+[file driver.py]
+from native import copy
+a = [0, '']
+copy(a, [-1, 5], 2)
+print(1, a)
+copy(a, [2**128 + 5, -2**127 - 8], 2)
+print(2, a)
+[out]
+1 [-1, 5]
+2 [340282366920938463463374607431768211461, -170141183460469231731687303715884105736]
+
+[case testSieve]
+from typing import List
+
+def primes(n: int) -> List[int]:
+    a = [1] * (n + 1)
+    a[0] = 0
+    a[1] = 0
+    i = 0
+    while i < n:
+        if a[i] == 1:
+            j = i * i
+            while j < n:
+                a[j] = 0
+                j = j + i
+        i = i + 1
+    return a
+[file driver.py]
+from native import primes
+print(primes(3))
+print(primes(13))
+[out]
+[[0, 0, 1, 1]
+[[0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1]

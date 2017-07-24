@@ -1,0 +1,308 @@
+[case testTrivialFunction]
+def f() -> int:
+    return 1
+[out]
+def f():
+    r0 :: int
+L0:
+    r0 = 1
+    return r0
+
+[case testFunctionArgument]
+def f(x: int) -> int:
+    return x
+[out]
+def f(x):
+    x :: int
+L0:
+    return x
+
+[case testExplicitNoneReturn]
+def f() -> None:
+    return
+[out]
+def f():
+    r0 :: None
+L0:
+    r0 = None
+    return r0
+
+[case testExplicitNoneReturn2]
+def f() -> None:
+    return None
+[out]
+def f():
+    r0 :: None
+L0:
+    r0 = None
+    return r0
+
+[case testAssignment]
+def f() -> int:
+    x = 1
+    y = x
+    return y
+[out]
+def f():
+    x, y :: int
+L0:
+    x = 1
+    y = x
+    return y
+
+[case testAssignmentTwice]
+def f(x: int) -> None:
+    y = 1
+    y = x
+    return
+[out]
+def f(x):
+    x, y :: int
+    r0 :: None
+L0:
+    y = 1
+    y = x
+    r0 = None
+    return r0
+
+[case testIntArithmetic]
+def f(x: int, y: int) -> int:
+    return x * (y + 1)
+[out]
+def f(x, y):
+    x, y, r0, r1, r2 :: int
+L0:
+    r0 = 1
+    r1 = y + r0 :: int
+    r2 = x * r1 :: int
+    return r2
+
+[case testIf]
+def f(x: int, y: int) -> int:
+    if x < y:
+        x = 1
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+L0:
+    if x < y goto L1 else goto L2 :: int
+L1:
+    x = 1
+L2:
+    return x
+
+[case testIfElse]
+def f(x: int, y: int) -> int:
+    if x < y:
+        x = 1
+    else:
+        x = 2
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+L0:
+    if x < y goto L1 else goto L2 :: int
+L1:
+    x = 1
+    goto L3
+L2:
+    x = 2
+L3:
+    return x
+
+[case testAnd]
+def f(x: int, y: int) -> int:
+    if x < y and x > y:
+        x = 1
+    else:
+        x = 2
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+L0:
+    if x < y goto L1 else goto L3 :: int
+L1:
+    if x > y goto L2 else goto L3 :: int
+L2:
+    x = 1
+    goto L4
+L3:
+    x = 2
+L4:
+    return x
+
+[case testOr]
+def f(x: int, y: int) -> int:
+    if x < y or x > y:
+        x = 1
+    else:
+        x = 2
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+L0:
+    if x < y goto L2 else goto L1 :: int
+L1:
+    if x > y goto L2 else goto L3 :: int
+L2:
+    x = 1
+    goto L4
+L3:
+    x = 2
+L4:
+    return x
+
+[case testSimpleNot]
+def f(x: int, y: int) -> int:
+    if not (x < y):
+        x = 1
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+L0:
+    if not x < y goto L1 else goto L2 :: int
+L1:
+    x = 1
+L2:
+    return x
+
+[case testNotAnd]
+def f(x: int, y: int) -> int:
+    if not (x < y and x > y):
+        x = 1
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+L0:
+    if not x < y goto L2 else goto L1 :: int
+L1:
+    if not x > y goto L2 else goto L3 :: int
+L2:
+    x = 1
+L3:
+    return x
+
+[case testWhile]
+def f(x: int, y: int) -> int:
+    while x > y:
+        x = x - y
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+L0:
+L1:
+    if x > y goto L2 else goto L3 :: int
+L2:
+    x = x - y :: int
+    goto L1
+L3:
+    return x
+
+[case testWhile2]
+def f(x: int, y: int) -> int:
+    x = 1
+    while x > y:
+        x = x - y
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+L0:
+    x = 1
+L1:
+    if x > y goto L2 else goto L3 :: int
+L2:
+    x = x - y :: int
+    goto L1
+L3:
+    return x
+
+[case testImplicitNoneReturn]
+def f() -> None:
+    pass
+[out]
+def f():
+    r0 :: None
+L0:
+    r0 = None
+    return r0
+
+[case testImplicitNoneReturn2]
+def f() -> None:
+    x = 1
+[out]
+def f():
+    x :: int
+    r0 :: None
+L0:
+    x = 1
+    r0 = None
+    return r0
+
+[case testImplicitNoneReturnAndIf]
+def f(x: int, y: int) -> None:
+    if x < y:
+        x = 1
+    else:
+        y = 2
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: None
+L0:
+    if x < y goto L1 else goto L2 :: int
+L1:
+    x = 1
+    goto L3
+L2:
+    y = 2
+L3:
+    r0 = None
+    return r0
+
+[case testRecursion]
+def f(n: int) -> int:
+    if n <= 1:
+        return 1
+    else:
+        return f(n - 1) + f(n - 2)
+[out]
+def f(n):
+    n, r0, r1, r2, r3, r4, r5, r6, r7, r8 :: int
+    r9 :: None
+L0:
+    r0 = 1
+    if n <= r0 goto L1 else goto L2 :: int
+L1:
+    r1 = 1
+    return r1
+L2:
+    r3 = 1
+    r4 = n - r3 :: int
+    r2 = f(r4)
+    r6 = 2
+    r7 = n - r6 :: int
+    r5 = f(r7)
+    r8 = r2 + r5 :: int
+    return r8
+L3:
+    r9 = None
+    return r9
+
+[case testReportTypeCheckError]
+def f() -> None:
+    return 1 # E: No return value expected
+
+[case testReportSemanticaAnalysisError1]
+def f(x: List[int]) -> None: pass # E: Name 'List' is not defined
+
+[case testReportSemanticaAnalysisError2]
+def f() -> None:
+    x # E: Name 'x' is not defined
