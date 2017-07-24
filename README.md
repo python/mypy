@@ -13,8 +13,8 @@ MacOS Requirements
 
 * Xcode command line tools
 
-* Python 3.6 from python.org (other versions likely *won't* work right
-  now)
+* Python 3.6 (64-bit) from python.org (other versions likely *won't*
+  work right now)
 
 Linux Requirements
 ------------------
@@ -23,7 +23,7 @@ Linux Requirements
 
 * A recent enough C/C++ build environment
 
-* Python 3.5+
+* Python 3.5+ (64-bit)
 
 Windows Requirements
 --------------------
