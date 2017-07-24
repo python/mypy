@@ -20,7 +20,7 @@ from mypy.nodes import (
     Node, MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr, IntExpr, NameExpr, LDEF, Var,
     IfStmt, Node, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
-    ContinueStmt, ARG_POS
+    ContinueStmt, ConditionalExpr, ARG_POS
 )
 from mypy.types import Type, Instance, CallableType, NoneTyp
 from mypy.visitor import NodeVisitor
@@ -384,6 +384,28 @@ class IRBuilder(NodeVisitor[int]):
             target = self.alloc_target(RTType('int'))
             args = [self.accept(arg) for arg in expr.args]
             self.add(Call(target, fn, args))
+        return target
+
+    def visit_conditional_expr(self, expr: ConditionalExpr) -> int:
+        branches = self.process_conditional(expr.cond)
+        target = self.alloc_target(type_to_rttype(self.types[expr]))
+
+        if_body = self.new_block()
+        self.set_branches(branches, True, if_body)
+        self.accept(expr.if_expr, target=target)
+        if_goto_next = Goto(-1)
+        self.add(if_goto_next)
+
+        else_body = self.new_block()
+        self.set_branches(branches, False, else_body)
+        self.accept(expr.else_expr, target=target)
+        else_goto_next = Goto(-1)
+        self.add(else_goto_next)
+
+        next = self.new_block()
+        if_goto_next.label = next.label
+        else_goto_next.label = next.label
+
         return target
 
     def translate_special_method_call(self, callee: MemberExpr, expr: CallExpr) -> int:
