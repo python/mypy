@@ -15,7 +15,7 @@ Here's a summary of what should work:
   * `List[...]`.
   * `None` as return type
 * Some integer operations:
-  * Basic integer arithmetic: + - * // %
+  * Basic integer arithmetic: `+` `-` `*` `//` `%` (but no unary `-`)
   * Integer comparisons.
 * Some list operations:
   * `[e, ...]` (construct list)
@@ -29,6 +29,7 @@ Here's a summary of what should work:
 * While statement.
 * Expression statement.
 * Return statement.
+* `and` and `or` in a boolean context.
 * `for x in range(n): ...` (for convenience only).
 
 ## High-level Overview
