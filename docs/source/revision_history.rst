@@ -4,6 +4,8 @@ Revision history
 List of major changes:
 
 - July 2017
+    * Publish ``mypy`` version 0.521 on PyPI.
+
     * Publish ``mypy`` version 0.520 on PyPI.
 
     * Add :ref:`fine-grained control of Any types <disallow-any>`.
