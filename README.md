@@ -32,3 +32,8 @@ Now you can run the tests:
 
 Look at the [issue tracker](https://github.com/JukkaL/mypyc/issues)
 for things to work on.
+
+Documentation
+-------------
+
+We have some [developer documentation](doc/dev-intro.md).
