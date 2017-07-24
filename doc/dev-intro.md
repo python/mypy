@@ -79,9 +79,18 @@ runtime type check, since Python lists can contain arbitrary objects.
 
 ## Other Important Limitations
 
+All of these limitations will likely be fixed in the future:
+
 * There's currently no way to run the compiler other than through
   tests.
 
 * If something goes wrong, we detect the error but instead of
   raising an exception the compiled program just calls `abort()`.
-  (Obviously this will have to change.)
+
+* We don't detect infinite recursion.
+
+* We don't handle Ctrl-C in compiled code.
+
+* We don't detect undefined local variables.
+
+* There's no way to access most stdlib functionality.
