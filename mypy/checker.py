@@ -1413,8 +1413,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if base_type:
                 if not has_no_typevars(base_type):
-                    # TODO: Handle TupleType, don't cast
-                    instance = cast(Instance, self.scope.active_self_type())
+                    self_type = self.scope.active_self_type()
+                    if isinstance(self_type, TupleType):
+                        instance = self_type.fallback
+                    else:
+                        instance = self_type
                     itype = map_instance_to_supertype(instance, base)
                     base_type = expand_type_by_instance(base_type, itype)
 
