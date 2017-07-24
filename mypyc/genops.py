@@ -20,7 +20,7 @@ from mypy.nodes import (
     Node, MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr, IntExpr, NameExpr, LDEF, Var,
     IfStmt, Node, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
-    ContinueStmt, ConditionalExpr, ARG_POS
+    ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, ARG_POS
 )
 from mypy.types import Type, Instance, CallableType, NoneTyp
 from mypy.visitor import NodeVisitor
@@ -47,6 +47,21 @@ def type_to_rttype(typ: Type) -> RTType:
     elif isinstance(typ, NoneTyp):
         return RTType('None')
     assert False, '%s unsupported' % type(typ)
+
+
+class AssignmentTarget(object):
+    pass
+
+
+class AssignmentTargetRegister(AssignmentTarget):
+    def __init__(self, register: Register) -> None:
+        self.register = register
+
+
+class AssignmentTargetIndex(AssignmentTarget):
+    def __init__(self, base_reg: Register, index_reg: Register) -> None:
+        self.base_reg = base_reg
+        self.index_reg = index_reg
 
 
 class IRBuilder(NodeVisitor[int]):
@@ -124,12 +139,19 @@ class IRBuilder(NodeVisitor[int]):
         lvalue = stmt.lvalues[0]
         return self.assign(lvalue, stmt.rvalue, declared_type=stmt.type)
 
-    def assign(self,
-               lvalue: Lvalue,
-               rvalue: Expression,
-               rvalue_type: Optional[RTType] = None,
-               declared_type: Optional[Type] = None) -> int:
-        rvalue_type = rvalue_type or self.node_type(rvalue)
+    def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> int:
+        target = self.get_assignment_target(stmt.lvalue, None)
+
+        if isinstance(target, AssignmentTargetRegister):
+            ltype = self.environment.types[target.register]
+            rtype = type_to_rttype(self.types[stmt.rvalue])
+            rreg = self.accept(stmt.rvalue)
+            return self.binary_op(ltype, target.register, rtype, rreg, stmt.op, target=target.register)
+
+        # NOTE: List index not supported yet for compound assignments.
+        assert False, 'Unsupported lvalue: %r'
+
+    def get_assignment_target(self, lvalue: Lvalue, declared_type: Optional[Type] = None) -> AssignmentTarget:
         if isinstance(lvalue, NameExpr):
             # Assign to local variable.
             assert lvalue.kind == LDEF
@@ -142,8 +164,7 @@ class IRBuilder(NodeVisitor[int]):
                 assert isinstance(lvalue.node, Var)  # TODO: Can this fail?
                 lvalue_num = self.environment.lookup(lvalue.node)
 
-            self.accept(rvalue, target=lvalue_num)
-            return lvalue_num
+            return AssignmentTargetRegister(lvalue_num)
         elif isinstance(lvalue, IndexExpr):
             # Indexed assignment x[y] = e
             base_type = self.node_type(lvalue.base)
@@ -152,12 +173,34 @@ class IRBuilder(NodeVisitor[int]):
                 # Indexed list set
                 base_reg = self.accept(lvalue.base)
                 index_reg = self.accept(lvalue.index)
-                item_reg = self.accept(rvalue)
-                boxed_item_reg = self.box(item_reg, rvalue_type)
-                self.add(PrimitiveOp(None, PrimitiveOp.LIST_SET, base_reg, index_reg,
-                                     boxed_item_reg))
-                return -1
+                return AssignmentTargetIndex(base_reg, index_reg)
+
         assert False, 'Unsupported lvalue: %r' % lvalue
+
+    def assign_to_target(self,
+            target: AssignmentTarget,
+            rvalue: Expression,
+            rvalue_type: Optional[RTType] = None) -> int:
+        rvalue_type = rvalue_type or self.node_type(rvalue)
+
+        if isinstance(target, AssignmentTargetRegister):
+            return self.accept(rvalue, target=target.register)
+        elif isinstance(target, AssignmentTargetIndex):
+            item_reg = self.accept(rvalue)
+            boxed_item_reg = self.box(item_reg, rvalue_type)
+            self.add(PrimitiveOp(None, PrimitiveOp.LIST_SET, target.base_reg, target.index_reg,
+                                 boxed_item_reg))
+            return -1
+
+        assert False, 'Unsupported assignment target'
+
+    def assign(self,
+               lvalue: Lvalue,
+               rvalue: Expression,
+               rvalue_type: Optional[RTType] = None,
+               declared_type: Optional[Type] = None) -> int:
+        target = self.get_assignment_target(lvalue, declared_type)
+        return self.assign_to_target(target, rvalue, rvalue_type)
 
     def visit_if_stmt(self, stmt: IfStmt) -> int:
         # If statements are normalized
@@ -369,23 +412,28 @@ class IRBuilder(NodeVisitor[int]):
     def visit_op_expr(self, expr: OpExpr) -> int:
         ltype = type_to_rttype(self.types[expr.left])
         rtype = type_to_rttype(self.types[expr.right])
-        left_reg = self.accept(expr.left)
-        right_reg = self.accept(expr.right)
+        lreg = self.accept(expr.left)
+        rreg = self.accept(expr.right)
+        return self.binary_op(ltype, lreg, rtype, rreg, expr.op)
+
+    def binary_op(self, ltype: RTType, lreg: Register, rtype: RTType, rreg: Register, expr_op: str, target: Optional[Register] = None) -> Register:
         if ltype.name == 'int' and rtype.name == 'int':
             # Primitive int operation
-            target = self.alloc_target(RTType('int'))
-            op = self.int_binary_ops[expr.op]
+            if target is None:
+                target = self.alloc_target(RTType('int'))
+            op = self.int_binary_ops[expr_op]
         elif ltype.name == 'list' or rtype.name == 'list':
             if rtype.name == 'list':
                 ltype, rtype = rtype, ltype
-                left_reg, right_reg = right_reg, left_reg
+                lreg, rreg = rreg, lreg
             if rtype.name != 'int':
                 assert False, 'Unsupported binary operation'  # TODO: Operator overloading
-            target = self.alloc_target(RTType('list'))
+            if target is None:
+                target = self.alloc_target(RTType('list'))
             op = PrimitiveOp.LIST_REPEAT
         else:
             assert False, 'Unsupported binary operation'
-        self.add(PrimitiveOp(target, op, left_reg, right_reg))
+        self.add(PrimitiveOp(target, op, lreg, rreg))
         return target
 
     def visit_index_expr(self, expr: IndexExpr) -> int:

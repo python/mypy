@@ -365,3 +365,17 @@ L2:
     r1 = 1
 L3:
     return r1
+
+[case testOperatorAssignment]
+def f() -> int:
+    x = 0
+    x += 1
+    return x
+[out]
+def f():
+    x, r0 :: int
+L0:
+    x = 0
+    r0 = 1
+    x = x + r0 :: int
+    return x
