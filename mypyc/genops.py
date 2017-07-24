@@ -157,6 +157,9 @@ class IRBuilder(NodeVisitor[int]):
         assert False, 'Unsupported lvalue: %r' % lvalue
 
     def visit_if_stmt(self, stmt: IfStmt) -> int:
+        # If statements are normalized
+        assert len(stmt.expr) == 1
+
         branches = self.process_conditional(stmt.expr[0])
         if_body = self.new_block()
         self.set_branches(branches, True, if_body)
@@ -179,7 +182,7 @@ class IRBuilder(NodeVisitor[int]):
         return -1
 
     def add_leave(self) -> Optional[Goto]:
-        if self.blocks[-1][-1].ops and not isinstance(self.blocks[-1][-1].ops[-1], Return):
+        if not self.blocks[-1][-1].ops or not isinstance(self.blocks[-1][-1].ops[-1], Return):
             leave = Goto(-1)
             self.add(leave)
             return leave

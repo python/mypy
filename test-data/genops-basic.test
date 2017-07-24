@@ -306,3 +306,33 @@ def f(x: List[int]) -> None: pass # E: Name 'List' is not defined
 [case testReportSemanticaAnalysisError2]
 def f() -> None:
     x # E: Name 'x' is not defined
+
+[case testElif]
+def f(n: int) -> int:
+    if n < 0:
+        x = 1
+    elif n == 0:
+        x = 1
+    else:
+        x = 2
+    return x
+[out]
+def f(n):
+    n, r0, x, r1 :: int
+L0:
+    r0 = 0
+    if n < r0 goto L1 else goto L2 :: int
+L1:
+    x = 1
+    goto L6
+L2:
+    r1 = 0
+    if n == r1 goto L3 else goto L4 :: int
+L3:
+    x = 1
+    goto L5
+L4:
+    x = 2
+L5:
+L6:
+    return x
