@@ -1525,8 +1525,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_multi_assignment(self, lvalues: List[Lvalue],
                                rvalue: Expression,
                                context: Context,
-                               infer_lvalue_type: bool = True,
-                               msg: str = None) -> None:
+                               infer_lvalue_type: bool = True) -> None:
         """Check the assignment of one rvalue to a number of lvalues."""
 
         # Infer the type of an ordinary rvalue expression.
@@ -1547,6 +1546,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(rvalue_type, TupleType):
             self.check_multi_assignment_from_tuple(lvalues, rvalue, rvalue_type,
                                                    context, undefined_rvalue, infer_lvalue_type)
+        elif isinstance(rvalue_type, UnionType):
+            self.check_multi_assignment_from_union(lvalues, rvalue, context, infer_lvalue_type)
         else:
             self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
                                                       context, infer_lvalue_type)
