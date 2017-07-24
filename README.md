@@ -22,6 +22,10 @@ You'll also need a working C/C++ build environment. On macOS, you need
 the Xcode command line tools. Linux and Windows are currently not
 supported as development environments.
 
+You need to have the `mypy` subdirectory in your `PYTHONPATH`:
+
+    $ export PYTHONPATH=`pwd`/mypy
+
 Now you can run the tests:
 
     $ pytest mypyc
