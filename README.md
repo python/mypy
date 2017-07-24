@@ -6,6 +6,30 @@ mypyc: Mypy to Python C Extension Compiler
 Mypyc is a compiler that aims to eventually compile mypy-annotated,
 statically typed Python modules into Python C extensions.
 
+MacOS Requirements
+------------------
+
+* macOS Sierra
+
+* Xcode command line tools
+
+* Python 3.6 from python.org (other versions likely *won't* work right
+  now).
+
+Linux Requirements
+------------------
+
+*Linux is currently not fully supported as a developmet platform.*
+
+* A recent enough C/C++ build environment
+
+* Python 3.5+
+
+Windows Requirements
+--------------------
+
+Windows is currently unsupported.
+
 Quick Start for Contributors
 ----------------------------
 
@@ -17,10 +41,6 @@ Then install the dependencies:
 
     $ cd mypyc
     $ python3 -m pip install -r mypy/test-requirements.txt
-
-You'll also need a working C/C++ build environment. On macOS, you need
-the Xcode command line tools. Linux and Windows are currently not
-supported as development environments.
 
 You need to have the `mypy` subdirectory in your `PYTHONPATH`:
 
