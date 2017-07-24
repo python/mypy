@@ -14,12 +14,12 @@ MacOS Requirements
 * Xcode command line tools
 
 * Python 3.6 from python.org (other versions likely *won't* work right
-  now).
+  now)
 
 Linux Requirements
 ------------------
 
-*Linux is currently not fully supported as a developmet platform.*
+*Linux is currently not fully supported as a development platform.*
 
 * A recent enough C/C++ build environment
 
@@ -33,7 +33,7 @@ Windows is currently unsupported.
 Quick Start for Contributors
 ----------------------------
 
-First clone the mypyc git repository:
+First clone the mypyc git repository *and git submodules*:
 
     $ git clone --recurse-submodules https://github.com/JukkaL/mypyc.git
 
