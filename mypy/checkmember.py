@@ -373,7 +373,7 @@ def check_method_type(functype: FunctionLike, original_type: Type, is_classmetho
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
-            msg.fail('Attribute function of type %s does not accept self argument'
+            msg.fail('Attribute function with type %s does not accept self argument'
                      % msg.format(item), context)
         else:
             # Check that self argument has type 'Any' or valid instance/class type.

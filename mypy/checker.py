@@ -828,7 +828,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif isinstance(arg_type, UnionType):
                 if not arg_type.has_readable_member(other_method):
                     return
-                arg_types = list(arg_type.iter_deep())
+                arg_types = list(union_items(arg_type))
             else:
                 return
             # We check that each method is fine when dispatched on a proper self argument

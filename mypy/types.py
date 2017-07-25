@@ -1130,13 +1130,6 @@ class UnionType(Type):
         else:
             return [i for i in self.items if not isinstance(i, NoneTyp)]
 
-    def iter_deep(self) -> Iterator[Type]:
-        for x in self.items:
-            if isinstance(x, UnionType):
-                yield from x.iter_deep()
-            else:
-                yield x
-
     def serialize(self) -> JsonDict:
         return {'.class': 'UnionType',
                 'items': [t.serialize() for t in self.items],
