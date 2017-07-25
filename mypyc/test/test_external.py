@@ -15,15 +15,19 @@ class TestExternal(unittest.TestCase):
         # Build Google Test, the C++ framework we use for testing C code.
         # The source code for Google Test is copied to this repository.
         #
-        # TODO: Get this to work on Linux and Windows.
-        env = {
-            'CPPFLAGS': '-mmacosx-version-min=10.10'
-        }
+        # TODO: Get this to work on Windows.
+        if sys.platform == 'darwin':
+            env = {'CPPFLAGS': '-mmacosx-version-min=10.10'}
+        else:
+            env = os.environ.copy()
         subprocess.check_call(['make', 'gtest_main.a'],
                               env=env,
                               cwd=os.path.join(base_dir, 'googletest', 'make'))
         # Build and run C unit tests.
-        env = {}
+        if sys.platform == 'darwin':
+            env = {}
+        else:
+            env = os.environ.copy()
         if 'GTEST_COLOR' not in os.environ:
             env['GTEST_COLOR'] = 'yes'  # Use fancy colors
         status = subprocess.call(['make', 'test'],
