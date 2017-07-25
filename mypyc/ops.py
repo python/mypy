@@ -167,6 +167,9 @@ class Branch(Op):
     INT_GT = 14
     INT_GE = 15
 
+    # Unlike the above, a unary operation so it only uses the "left" register.
+    BOOL_EXPR = 16
+
     op_names = {
         INT_EQ:  ('==', 'int'),
         INT_NE:  ('!=', 'int'),
@@ -189,12 +192,22 @@ class Branch(Op):
         return [self.left, self.right]
 
     def to_str(self, env: Environment) -> str:
-        if self.negated:
-            fmt = 'not %r {} %r'
+        # Right not used for BOOL_EXPR
+        if self.op != Branch.BOOL_EXPR:
+            if self.negated:
+                fmt = 'not %r {} %r'
+            else:
+                fmt = '%r {} %r'
+            op, typ = self.op_names[self.op]
+            fmt = fmt.format(op)
+
         else:
-            fmt = '%r {} %r'
-        op, typ = self.op_names[self.op]
-        fmt = fmt.format(op)
+            if self.negated:
+                fmt = 'not %r'
+            else:
+                fmt = '%r'
+            typ = 'bool'
+
         cond = env.format(fmt, self.left, self.right)
         fmt = 'if {} goto %l else goto %l :: {}'.format(cond, typ)
         return env.format(fmt, self.true, self.false)

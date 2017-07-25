@@ -59,14 +59,22 @@ class EmitterVisitor(OpVisitor):
     }
 
     def visit_branch(self, op: Branch) -> None:
-        left = self.reg(op.left)
-        right = self.reg(op.right)
-        fn = EmitterVisitor.BRANCH_OP_MAP[op.op]
         neg = '!' if op.negated else ''
-        self.emit_lines('if (%s%s(%s, %s))' % (neg, fn, left, right),
-                        '    goto %s;' % self.label(op.true),
-                        'else',
-                        '    goto %s;' % self.label(op.false))
+
+        if op.op == Branch.BOOL_EXPR:
+            expr_result = self.reg(op.left) # right isn't used
+            self.emit_line('if ({}({}))'.format(neg, expr_result))
+        else:
+            left = self.reg(op.left)
+            right = self.reg(op.right)
+            fn = EmitterVisitor.BRANCH_OP_MAP[op.op]
+            self.emit_line('if (%s%s(%s, %s))' % (neg, fn, left, right))
+
+        self.emit_lines(
+            '    goto %s;' % self.label(op.true),
+            'else',
+            '    goto %s;' % self.label(op.false),
+        )
 
     def visit_return(self, op: Return) -> None:
         typ = self.type(op.reg)

@@ -399,3 +399,25 @@ def f():
 L0:
     r0 = False
     return r0
+
+[case testBoolCond]
+def f(x: bool) -> bool:
+    if x:
+        return False
+    else:
+        return True
+[out]
+def f(x):
+    x, r0, r1 :: bool
+    r2 :: None
+L0:
+    if x goto L1 else goto L2 :: bool
+L1:
+    r0 = False
+    return r0
+L2:
+    r1 = True
+    return r1
+L3:
+    r2 = None
+    return r2

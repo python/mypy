@@ -568,7 +568,8 @@ class IRBuilder(NodeVisitor[int]):
                 branch = Branch(left, right, -1, -1, opcode)
                 self.add(branch)
                 return [branch]
-        if isinstance(e, OpExpr):
+            assert False, "unsupported comparison epxression"
+        elif isinstance(e, OpExpr) and e.op in ['and', 'or']:
             if e.op == 'and':
                 # Short circuit 'and' in a conditional context.
                 lbranches = self.process_conditional(e.left)
@@ -576,21 +577,24 @@ class IRBuilder(NodeVisitor[int]):
                 self.set_branches(lbranches, True, new)
                 rbranches = self.process_conditional(e.right)
                 return lbranches + rbranches
-            elif e.op == 'or':
+            else:
                 # Short circuit 'or' in a conditional context.
                 lbranches = self.process_conditional(e.left)
                 new = self.new_block()
                 self.set_branches(lbranches, False, new)
                 rbranches = self.process_conditional(e.right)
                 return lbranches + rbranches
-        elif isinstance(e, UnaryExpr):
-            if e.op == 'not':
-                branches = self.process_conditional(e.expr)
-                for b in branches:
-                    b.invert()
-                return branches
+        elif isinstance(e, UnaryExpr) and e.op == 'not':
+            branches = self.process_conditional(e.expr)
+            for b in branches:
+                b.invert()
+            return branches
         # Catch-all for arbitrary expressions.
-        assert False, 'general conditional exression not implemented: %s' % type(e)
+        else:
+            reg = self.accept(e)
+            branch = Branch(reg, -1, -1, -1, Branch.BOOL_EXPR)
+            self.add(branch)
+            return [branch]
 
     def set_branches(self, branches: List[Branch], condition: bool,
                      target: BasicBlock) -> None:

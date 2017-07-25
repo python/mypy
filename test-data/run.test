@@ -133,3 +133,18 @@ from native import f
 print(f())
 [out]
 True
+
+[case testBoolIf]
+def f(x: bool) -> bool:
+    if x:
+        return False
+    else:
+        return True
+    return False
+[file driver.py]
+from native import f
+print(f(True))
+print(f(False))
+[out]
+False
+True
