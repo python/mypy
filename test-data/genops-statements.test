@@ -170,3 +170,33 @@ L5:
 L6:
     r2 = None
     return r2
+
+[case testForList]
+from typing import List
+
+def f(ls: List[int]) -> int:
+    y = 0
+    for x in ls:
+        y = y + x
+    return y
+[out]
+def f(ls):
+    ls :: list
+    y, r0, r1, x, r2 :: int
+    r3 :: object
+L0:
+    y = 0
+    r0 = 0
+    r1 = 1
+L1:
+    r2 = len ls :: list
+    if r0 < r2 goto L2 else goto L4 :: int
+L2:
+    r3 = ls[r0] :: list
+    x = unbox(int, r3)
+    y = y + x :: int
+L3:
+    r0 = r0 + r1 :: int
+    goto L1
+L4:
+    return y

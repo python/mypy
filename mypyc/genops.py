@@ -269,6 +269,58 @@ class IRBuilder(NodeVisitor[int]):
 
             self.pop_loop_stack(end_block, next)
             return -1
+
+        if self.node_type(s.expr).name == 'list':
+            self.push_loop_stack()
+
+            expr_reg = self.accept(s.expr)
+
+            index_reg = self.alloc_temp(RTType('int'))
+            self.add(LoadInt(index_reg, 0))
+
+            one_reg = self.alloc_temp(RTType('int'))
+            self.add(LoadInt(one_reg, 1))
+            
+            assert isinstance(s.index, NameExpr)
+            assert isinstance(s.index.node, Var)
+            lvalue_reg = self.environment.add_local(s.index.node, self.node_type(s.index))
+
+
+            condition_block = self.goto_new_block()
+
+            # For compatibility with python semantics we recalculate the length
+            # at every iteration.
+            len_reg = self.alloc_temp(RTType('int'))
+            self.add(PrimitiveOp(len_reg, PrimitiveOp.LIST_LEN, expr_reg))
+            
+            branch = Branch(index_reg, len_reg, -1, -1, Branch.INT_LT)
+            self.add(branch)
+            branches = [branch]
+            
+            body_block = self.new_block()
+            self.set_branches(branches, True, body_block)
+
+            target_list_type = self.types[s.expr]
+            assert isinstance(target_list_type, Instance)
+            target_type = type_to_rttype(target_list_type.args[0])
+            value_box = self.alloc_temp(RTType('object'))
+            self.add(PrimitiveOp(value_box, PrimitiveOp.LIST_GET, expr_reg, index_reg))
+
+            self.unbox(value_box, target_type, target=lvalue_reg)
+
+            s.body.accept(self)
+
+            end_block = self.goto_new_block()
+            self.add(PrimitiveOp(index_reg, PrimitiveOp.INT_ADD, index_reg, one_reg))
+            self.add(Goto(condition_block.label))
+
+            next_block = self.new_block()
+            self.set_branches(branches, False, next_block)
+
+            self.pop_loop_stack(end_block, next_block)
+
+            return -1
+            
         assert False, 'for not supported'
 
     def visit_break_stmt(self, node: BreakStmt) -> int:
@@ -508,6 +560,13 @@ class IRBuilder(NodeVisitor[int]):
         self.blocks[-1].append(new)
         return new
 
+    def goto_new_block(self) -> BasicBlock:
+        goto = Goto(-1)
+        self.add(goto)
+        block = self.new_block()
+        goto.label = block.label
+        return block
+
     def leave(self) -> Tuple[List[BasicBlock], Environment]:
         blocks = self.blocks.pop()
         env = self.environments.pop()
@@ -541,8 +600,10 @@ class IRBuilder(NodeVisitor[int]):
             # Already boxed
             return src
 
-    def unbox(self, src: Register, target_type: RTType) -> Register:
-        target = self.alloc_temp(target_type)
+    def unbox(self, src: Register, target_type: RTType, target: Optional[Register] = None) -> Register:
+        if target is None:
+            target = self.alloc_temp(target_type)
+
         if target_type.supports_unbox:
             self.add(Unbox(target, src, target_type))
         else:

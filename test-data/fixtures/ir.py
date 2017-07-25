@@ -1,7 +1,7 @@
 # These builtins stubs are used implicitly in AST to IR generation
 # test cases.
 
-from typing import TypeVar, Generic, List, Iterator
+from typing import TypeVar, Generic, List, Iterator, Iterable
 
 T = TypeVar('T')
 
@@ -33,11 +33,12 @@ class bool: pass
 class tuple: pass
 class function: pass
 
-class list(Generic[T]):
+class list(Generic[T], Iterable[T]):
     def __getitem__(self, i: int) -> T: pass
     def __setitem__(self, i: int, o: T) -> None: pass
     def __mul__(self, i: int) -> List[T]: pass
     def __rmul__(self, i: int) -> List[T]: pass
+    def __iter__(self) -> Iterator[T]: pass
     def append(self, x: T) -> None: pass
 
 def len(o: list) -> int: pass
