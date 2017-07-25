@@ -8,7 +8,7 @@ class object:
     def __init__(self) -> None: pass
 
 class type: pass
-class tuple: pass
+class tuple(Generic[T]): pass
 class function: pass
 
 class int: pass

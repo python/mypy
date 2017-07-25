@@ -1,4 +1,6 @@
 # builtins stub with non-generic primitive types
+from typing import Generic, TypeVar
+T = TypeVar('T')
 
 class object:
     def __init__(self) -> None: pass
@@ -17,5 +19,5 @@ class str:
     def format(self, *args) -> str: pass
 class bytes: pass
 class bytearray: pass
-class tuple: pass
+class tuple(Generic[T]): pass
 class function: pass

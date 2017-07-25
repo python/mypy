@@ -425,6 +425,7 @@ class Instance(Type):
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
+        # TODO: assert(typ is NOT_READY or typ.fullname() != 'builtins.tuple' or len(args) == 1)
         assert(typ is NOT_READY or typ.fullname() not in ["builtins.Any", "typing.Any"])
         self.type = typ
         self.args = args
@@ -888,6 +889,8 @@ class TupleType(Type):
                  column: int = -1, implicit: bool = False) -> None:
         self.items = items
         self.fallback = fallback
+        # TODO: assert not (isinstance(fallback, Instance) and fallback.type and
+        #            fallback.type.fullname() == 'builtins.tuple' and not fallback.args)
         self.implicit = implicit
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.items) == 0
@@ -922,7 +925,10 @@ class TupleType(Type):
         return TupleType(items, fallback, self.line, self.column)
 
     def slice(self, begin: int, stride: int, end: int) -> 'TupleType':
-        return TupleType(self.items[begin:end:stride], self.fallback,
+        new_items = self.items[begin:end:stride]
+        fallback_args = [UnionType.make_simplified_union(new_items)]
+        new_fallback = self.fallback.copy_modified(args=fallback_args)
+        return TupleType(new_items, new_fallback,
                          self.line, self.column, self.implicit)
 
 

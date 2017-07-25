@@ -23,6 +23,7 @@ class list(Iterable[T], Generic[T]):
     def extend(self, x: Iterable[T]) -> None: pass
 
 class tuple(Generic[T]): pass
+
 class function: pass
 class int: pass
 class float: pass

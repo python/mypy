@@ -1624,7 +1624,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         append_types_for_inference(right_lvs, right_rv_types)
 
-        return TupleType(type_parameters, self.named_type('builtins.tuple'))
+        return TupleType(type_parameters, self.named_generic_type('builtins.tuple', [AnyType()]))
 
     def split_around_star(self, items: List[T], star_index: int,
                           length: int) -> Tuple[List[T], List[T], List[T]]:
@@ -1689,7 +1689,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             types = [self.check_lvalue(sub_expr)[0] for sub_expr in lvalue.items]
-            lvalue_type = TupleType(types, self.named_type('builtins.tuple'))
+            lvalue_type = TupleType(types, self.named_generic_type('builtins.tuple', [AnyType()]))
         else:
             lvalue_type = self.expr_checker.accept(lvalue)
 

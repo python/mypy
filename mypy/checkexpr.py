@@ -1858,7 +1858,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     tt = self.accept(item, type_context_items[j])
                     j += 1
                 items.append(tt)
-        fallback_item = join.join_type_list(items)
+        fallback_item = UnionType.make_simplified_union(items)
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
@@ -1898,7 +1898,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #
             #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
             constructor = CallableType(
-                [TupleType([kt, vt], self.named_type('builtins.tuple'))],
+                [TupleType([kt, vt], self.chk.named_generic_type('builtins.tuple', [AnyType()]))],
                 [nodes.ARG_STAR],
                 [None],
                 self.chk.named_generic_type('builtins.dict', [kt, vt]),
@@ -2325,8 +2325,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Also used by `async for` and `async with`.
         """
-        if not self.chk.check_subtype(t, self.named_type('typing.Awaitable'), ctx,
-                                      msg, 'actual type', 'expected type'):
+        if not self.chk.check_subtype(
+                t, self.chk.named_generic_type('typing.Awaitable', [AnyType()]), ctx, msg,
+                'actual type', 'expected type'):
             return AnyType()
         else:
             method = self.analyze_external_member_access('__await__', t, ctx)
