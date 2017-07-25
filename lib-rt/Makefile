@@ -3,6 +3,7 @@
 .PHONY: clean test
 
 OS := $(shell uname)
+PYTHONCONFIG ?= python3-config
 
 CFLAGS += -I ../googletest -I ../googletest/include -std=c++11
 
@@ -10,7 +11,7 @@ ifeq ($(OS),Darwin)
     CFLAGS += -I /Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m
     CFLAGS += -mmacosx-version-min=10.10
 else
-    CFLAGS += $(shell python3-config --cflags)
+    CFLAGS += $(shell $(PYTHONCONFIG) --cflags)
 endif
 
 ifeq ($(OS),Darwin)
@@ -18,7 +19,7 @@ ifeq ($(OS),Darwin)
     LDFLAGS += -L/Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/config-3.6m-darwin
     LDFLAGS += -lpython3.6m -lcrt1.o -mmacosx-version-min=10.10
 else
-    LDFLAGS += $(shell python3-config --ldflags)
+    LDFLAGS += $(shell $(PYTHONCONFIG) --ldflags)
 endif
 
 test_capi.o: test_capi.cc CPy.h

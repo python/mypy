@@ -1,0 +1,18 @@
+sudo: false
+language: python
+cache: pip
+
+python:
+  - "3.5"
+  - "3.6"
+
+install:
+  - pip install -U pip setuptools wheel
+  - pip install -r mypy/test-requirements.txt
+
+script:
+  - export PYTHONPATH=`pwd`/mypy
+  - export PYTHONVERSION=`python --version | awk '{ print $2 }'`
+  - export PYTHONCONFIG="/opt/python/$PYTHONVERSION/bin/python-config"
+  - export LD_LIBRARY_PATH="/opt/python/$PYTHONVERSION/lib"
+  - pytest -n4 mypyc
