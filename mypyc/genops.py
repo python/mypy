@@ -19,7 +19,8 @@ from typing import Dict, List, Tuple, Optional
 from mypy.nodes import (
     Node, MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr, IntExpr, NameExpr, LDEF, Var,
     IfStmt, Node, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
-    Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, ARG_POS
+    Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
+    ContinueStmt, ARG_POS
 )
 from mypy.types import Type, Instance, CallableType, NoneTyp
 from mypy.visitor import NodeVisitor
@@ -56,6 +57,8 @@ class IRBuilder(NodeVisitor[int]):
         self.blocks = []  # type: List[List[BasicBlock]]
         self.generated = []  # type: List[FuncIR]
         self.targets = []  # type: List[int]
+        self.break_gotos = []  # type: List[List[Goto]]
+        self.continue_gotos = []  # type: List[List[Goto]]
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> int:
         if mypyfile.fullname() in ('typing', 'abc'):
@@ -188,13 +191,27 @@ class IRBuilder(NodeVisitor[int]):
             return leave
         return None
 
+    def push_loop_stack(self) -> None:
+        self.break_gotos.append([])
+        self.continue_gotos.append([])
+
+    def pop_loop_stack(self, continue_block: BasicBlock, break_block: BasicBlock) -> None:
+        for continue_goto in self.continue_gotos.pop():
+            continue_goto.label = continue_block.label
+
+        for break_goto in self.break_gotos.pop():
+            break_goto.label = break_block.label
+        
     def visit_while_stmt(self, s: WhileStmt) -> int:
+        self.push_loop_stack()
+
         # Split block so that we get a handle to the top of the loop.
         goto = Goto(-1)
         self.add(goto)
         top = self.new_block()
         goto.label = top.label
         branches = self.process_conditional(s.expr)
+
         body = self.new_block()
         # Bind "true" branches to the body block.
         self.set_branches(branches, True, body)
@@ -204,39 +221,65 @@ class IRBuilder(NodeVisitor[int]):
         next = self.new_block()
         # Bind "false" branches to the new block.
         self.set_branches(branches, False, next)
+
+        self.pop_loop_stack(top, next)
         return -1
 
     def visit_for_stmt(self, s: ForStmt) -> int:
         if (isinstance(s.expr, CallExpr)
                 and isinstance(s.expr.callee, RefExpr)
                 and s.expr.callee.fullname == 'builtins.range'):
+            self.push_loop_stack()
+
             # Special case for x in range(...)
             # TODO: Check argument counts and kinds; check the lvalue
             end = s.expr.args[0]
             end_reg = self.accept(end)
+
             # Initialize loop index to 0.
             index_reg = self.assign(s.index, IntExpr(0), RTType('int'))
             goto = Goto(-1)
             self.add(goto)
+
             # Add loop condition check.
             top = self.new_block()
             goto.label = top.label
             branch = Branch(index_reg, end_reg, -1, -1, Branch.INT_LT)
             self.add(branch)
             branches = [branch]
+
             body = self.new_block()
             self.set_branches(branches, True, body)
             s.body.accept(self)
+            
+            end_goto = Goto(-1)
+            self.add(end_goto)
+            end_block = self.new_block()
+            end_goto.label = end_block.label
+
             # Increment index register.
             one_reg = self.alloc_temp(RTType('int'))
             self.add(LoadInt(one_reg, 1))
             self.add(PrimitiveOp(index_reg, PrimitiveOp.INT_ADD, index_reg, one_reg))
+
             # Go back to loop condition check.
             self.add(Goto(top.label))
             next = self.new_block()
             self.set_branches(branches, False, next)
+
+            self.pop_loop_stack(end_block, next)
             return -1
         assert False, 'for not supported'
+
+    def visit_break_stmt(self, node: BreakStmt) -> int:
+        self.break_gotos[-1].append(Goto(-1))
+        self.add(self.break_gotos[-1][-1])
+        return -1
+
+    def visit_continue_stmt(self, node: ContinueStmt) -> int:
+        self.continue_gotos[-1].append(Goto(-1))
+        self.add(self.continue_gotos[-1][-1])
+        return -1
 
     def node_type(self, node: Expression) -> RTType:
         mypy_type = self.types[node]

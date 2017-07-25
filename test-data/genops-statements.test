@@ -12,12 +12,161 @@ L0:
     r0 = 5
     i = 0
 L1:
-    if i < r0 goto L2 else goto L3 :: int
+    if i < r0 goto L2 else goto L4 :: int
 L2:
     x = x + i :: int
+L3:
     r1 = 1
     i = i + r1 :: int
     goto L1
+L4:
+    r2 = None
+    return r2
+
+[case testBreak]
+def f() -> None:
+  n = 0
+  while n < 5:
+      break
+[out]
+def f():
+    n, r0 :: int
+    r1 :: None
+L0:
+    n = 0
+L1:
+    r0 = 5
+    if n < r0 goto L2 else goto L3 :: int
+L2:
+    goto L3
+    goto L1
 L3:
+    r1 = None
+    return r1
+
+[case testBreakFor]
+def f() -> None:
+    for n in range(5):
+        break
+[out]
+def f():
+    r0, n, r1 :: int
+    r2 :: None
+L0:
+    r0 = 5
+    n = 0
+L1:
+    if n < r0 goto L2 else goto L4 :: int
+L2:
+    goto L4
+L3:
+    r1 = 1
+    n = n + r1 :: int
+    goto L1
+L4:
+    r2 = None
+    return r2
+
+[case testBreakNested]
+def f() -> None:
+    n = 0
+    while n < 5:
+        while n < 4:
+            break
+        break
+[out]
+def f():
+    n, r0, r1 :: int
+    r2 :: None
+L0:
+    n = 0
+L1:
+    r0 = 5
+    if n < r0 goto L2 else goto L6 :: int
+L2:
+L3:
+    r1 = 4
+    if n < r1 goto L4 else goto L5 :: int
+L4:
+    goto L5
+    goto L3
+L5:
+    goto L6
+    goto L1
+L6:
+    r2 = None
+    return r2
+
+[case testContinue]
+def f() -> None:
+  n = 0
+  while n < 5:
+      continue
+[out]
+def f():
+    n, r0 :: int
+    r1 :: None
+L0:
+    n = 0
+L1:
+    r0 = 5
+    if n < r0 goto L2 else goto L3 :: int
+L2:
+    goto L1
+    goto L1
+L3:
+    r1 = None
+    return r1
+
+[case testContinueFor]
+def f() -> None:
+    for n in range(5):
+        continue
+[out]
+def f():
+    r0, n, r1 :: int
+    r2 :: None
+L0:
+    r0 = 5
+    n = 0
+L1:
+    if n < r0 goto L2 else goto L4 :: int
+L2:
+    goto L3
+L3:
+    r1 = 1
+    n = n + r1 :: int
+    goto L1
+L4:
+    r2 = None
+    return r2
+
+[case testContinueNested]
+def f() -> None:
+    n = 0
+    while n < 5:
+        while n < 4:
+            continue
+        continue
+[out]
+def f():
+    n, r0, r1 :: int
+    r2 :: None
+L0:
+    n = 0
+L1:
+    r0 = 5
+    if n < r0 goto L2 else goto L6 :: int
+L2:
+L3:
+    r1 = 4
+    if n < r1 goto L4 else goto L5 :: int
+L4:
+    goto L3
+    goto L3
+L5:
+    goto L1
+    goto L1
+L6:
     r2 = None
     return r2
