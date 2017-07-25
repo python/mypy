@@ -19,8 +19,6 @@ MacOS Requirements
 Linux Requirements
 ------------------
 
-*Linux is currently not fully supported as a development platform.*
-
 * A recent enough C/C++ build environment
 
 * Python 3.5+ (64-bit)
