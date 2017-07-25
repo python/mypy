@@ -3,7 +3,7 @@
 It contains class TypeInfos and Type objects.
 """
 
-from typing import List
+from typing import List, Optional
 
 from mypy.types import (
     Type, TypeVarType, AnyType, NoneTyp,
@@ -192,12 +192,12 @@ class TypeFixture:
                             a[-1], self.function)
 
     def make_type_info(self, name: str,
-                       module_name: str = None,
+                       module_name: Optional[str] = None,
                        is_abstract: bool = False,
-                       mro: List[TypeInfo] = None,
-                       bases: List[Instance] = None,
-                       typevars: List[str] = None,
-                       variances: List[int] = None) -> TypeInfo:
+                       mro: Optional[List[TypeInfo]] = None,
+                       bases: Optional[List[Instance]] = None,
+                       typevars: Optional[List[str]] = None,
+                       variances: Optional[List[int]] = None) -> TypeInfo:
         """Make a TypeInfo suitable for use in unit tests."""
 
         class_def = ClassDef(name, Block([]), None, [])

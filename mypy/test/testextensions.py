@@ -84,11 +84,11 @@ class TypedDictTests(BaseTestCase):
         self.assertEqual(TypedDict.__module__, 'mypy_extensions')
         jim = Emp(name='Jim', id=1)
         with self.assertRaises(TypeError):
-            isinstance({}, Emp)
+            isinstance({}, Emp)  # type: ignore
         with self.assertRaises(TypeError):
-            isinstance(jim, Emp)
+            isinstance(jim, Emp)  # type: ignore
         with self.assertRaises(TypeError):
-            issubclass(dict, Emp)
+            issubclass(dict, Emp)  # type: ignore
         with self.assertRaises(TypeError):
             TypedDict('Hi', x=1)
         with self.assertRaises(TypeError):

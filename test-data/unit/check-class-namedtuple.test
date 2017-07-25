@@ -408,7 +408,7 @@ class HasNone(NamedTuple):
     x: int
     y: Optional[int] = None
 
-reveal_type(HasNone(1))  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.HasNone]'
+reveal_type(HasNone(1))  # E: Revealed type is 'Tuple[builtins.int, Union[builtins.int, builtins.None], fallback=__main__.HasNone]'
 
 class Parameterized(NamedTuple):
     x: int
@@ -416,7 +416,7 @@ class Parameterized(NamedTuple):
     z: List[int] = []
 
 reveal_type(Parameterized(1))  # E: Revealed type is 'Tuple[builtins.int, builtins.list[builtins.int], builtins.list[builtins.int], fallback=__main__.Parameterized]'
-Parameterized(1, ['not an int'])  # E: List item 0 has incompatible type "str"
+Parameterized(1, ['not an int'])  # E: List item 0 has incompatible type "str"; expected "int"
 
 class Default:
     pass

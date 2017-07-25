@@ -37,7 +37,7 @@ def compare_symbol_tables(name_prefix: str, table1: SymbolTable, table2: SymbolT
             node1 = table1[name].node
             node2 = table2[name].node
 
-            if node1.fullname() and get_prefix(node1.fullname()) != name_prefix:
+            if node1 and node1.fullname() and get_prefix(node1.fullname()) != name_prefix:
                 # Only look inside things defined in the current module.
                 # TODO: This probably doesn't work generally...
                 continue
@@ -61,7 +61,7 @@ def is_similar_node_shallow(n: SymbolTableNode, m: SymbolTableNode) -> bool:
         return False
     if type(n.node) != type(m.node):  # noqa
         return False
-    if n.node.fullname() != m.node.fullname():
+    if n.node and m.node and n.node.fullname() != m.node.fullname():
         return False
     if isinstance(n.node, FuncBase) and isinstance(m.node, FuncBase):
         # TODO: info
@@ -83,7 +83,10 @@ def is_similar_node_shallow(n: SymbolTableNode, m: SymbolTableNode) -> bool:
                 nn.is_newtype == mn.is_newtype and
                 is_same_mro(nn.mro, mn.mro))
     if isinstance(n.node, Var) and isinstance(m.node, Var):
-        return is_identical_type(n.node.type, m.node.type)
+        if n.node.type is None and m.node.type is None:
+            return True
+        return (n.node.type is not None and m.node.type is not None and
+                is_identical_type(n.node.type, m.node.type))
     return True
 
 

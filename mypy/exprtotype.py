@@ -34,6 +34,7 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
     """
     # The `parent` paremeter is used in recursive calls to provide context for
     # understanding whether an CallableArgument is ok.
+    name = None  # type: Optional[str]
     if isinstance(expr, NameExpr):
         name = expr.name
         return UnboundType(name, line=expr.line, column=expr.column)

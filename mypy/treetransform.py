@@ -340,7 +340,9 @@ class TransformVisitor(NodeVisitor[Node]):
         member = MemberExpr(self.expr(node.expr),
                             node.name)
         if node.def_var:
-            member.def_var = self.visit_var(node.def_var)
+            # This refers to an attribute and we don't transform attributes by default,
+            # just normal variables.
+            member.def_var = node.def_var
         self.copy_ref(member, node)
         return member
 
@@ -477,7 +479,8 @@ class TransformVisitor(NodeVisitor[Node]):
                            self.type(node.upper_bound), variance=node.variance)
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
-        return TypeAliasExpr(node.type)
+        return TypeAliasExpr(node.type, node.tvars,
+                             fallback=node.fallback, in_runtime=node.in_runtime)
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> NewTypeExpr:
         res = NewTypeExpr(node.name, node.old_type, line=node.line)

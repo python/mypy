@@ -383,6 +383,123 @@ if z:  # E: Condition must be a boolean
   pass
 [builtins fixtures/bool.pyi]
 
+
+[case testPerFileStrictOptionalBasic]
+# flags: --config-file tmp/mypy.ini
+import standard, optional
+
+[file standard.py]
+x = 0
+x = None
+[file optional.py]
+x = 0
+x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-optional]
+strict_optional = True
+
+
+[case testPerFileStrictOptionalBasicImportStandard]
+# flags: --config-file tmp/mypy.ini
+import standard, optional
+
+[file standard.py]
+from typing import Optional
+def f(x: int) -> None: pass
+an_int = 0  # type: int
+optional_int = None  # type: Optional[int]
+f(an_int)  # ints can be used as ints
+f(optional_int)  # optional ints can be used as ints in this file
+
+[file optional.py]
+import standard
+def f(x: int) -> None: pass
+standard.an_int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+standard.optional_int = None  # OK -- explicitly declared as optional
+f(standard.an_int)  # ints can be used as ints
+f(standard.optional_int)  # E: Argument 1 to "f" has incompatible type None; expected "int"
+
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-optional]
+strict_optional = True
+
+
+[case testPerFileStrictOptionalBasicImportOptional]
+# flags: --config-file tmp/mypy.ini
+import standard, optional
+
+[file standard.py]
+import optional
+def f(x: int) -> None: pass
+f(optional.x)  # OK -- in non-strict Optional context
+f(optional.y)  # OK -- in non-strict Optional context
+
+[file optional.py]
+from typing import Optional
+def f(x: int) -> None: pass
+x = 0  # type: Optional[int]
+y = None  # type: None
+
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-optional]
+strict_optional = True
+
+[case testPerFileStrictOptionalListItemImportOptional]
+# flags: --config-file tmp/mypy.ini
+import standard, optional
+
+[file standard.py]
+import optional
+from typing import List
+def f(x: List[int]) -> None: pass
+f(optional.x)  # OK -- in non-strict Optional context
+f(optional.y)  # OK -- in non-strict Optional context
+
+[file optional.py]
+from typing import Optional, List
+def f(x: List[int]) -> None: pass
+x = []  # type: List[Optional[int]]
+y = []  # type: List[int]
+
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-optional]
+strict_optional = True
+[builtins fixtures/list.pyi]
+
+[case testPerFileStrictOptionalComplicatedList]
+from typing import Union, Optional, List
+
+def f() -> None:
+    x = [] # type: Union[List[Optional[str]], str]
+[builtins fixtures/list.pyi]
+
+[case testPerFileStrictOptionalNoneArguments]
+# flags: --config-file tmp/mypy.ini
+import standard, optional
+
+[file standard.py]
+def f(x: int = None) -> None: pass
+
+[file optional.py]
+import standard
+def f(x: int = None) -> None: pass
+standard.f(None)
+
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-optional]
+strict_optional = True
+
 [case testDisallowImplicitTypesIgnoreMissingTypes]
 # flags: --ignore-missing-imports --disallow-any=unimported
 from missing import MyType
@@ -516,6 +633,28 @@ x, y = 1, 2  # type: Unchecked, Unchecked
 [out]
 main:4: error: Type of variable becomes "Any" due to an unfollowed import
 main:6: error: A type on this line becomes "Any" due to an unfollowed import
+
+[case testDisallowUnimportedAnyTypedDictSimple]
+# flags: --ignore-missing-imports --disallow-any=unimported
+from mypy_extensions import TypedDict
+from x import Unchecked
+
+M = TypedDict('M', {'x': str, 'y': Unchecked})  # E: Type of a TypedDict key becomes "Any" due to an unfollowed import
+
+def f(m: M) -> M: pass  # no error
+[builtins fixtures/dict.pyi]
+
+[case testDisallowUnimportedAnyTypedDictGeneric]
+# flags: --ignore-missing-imports --disallow-any=unimported
+
+from mypy_extensions import TypedDict
+from typing import List
+from x import Unchecked
+
+M = TypedDict('M', {'x': str, 'y': List[Unchecked]})  # E: Type of a TypedDict key becomes List[Any] due to an unfollowed import
+
+def f(m: M) -> M: pass  # no error
+[builtins fixtures/dict.pyi]
 
 [case testDisallowAnyDecoratedUnannotatedDecorator]
 # flags: --disallow-any=decorated
@@ -711,3 +850,51 @@ l: List = []
 l.append(1)  # E: Expression type contains "Any" (has type List[Any])
 k = l[0]  # E: Expression type contains "Any" (has type List[Any])  # E: Expression has type "Any"
 [builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprTypeVar]
+# flags: --disallow-any=expr
+from typing import TypeVar
+
+T = TypeVar('T')  # no error
+
+def f(t: T) -> T:
+    return t
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprNamedTuple]
+# flags: --disallow-any=expr
+from typing import NamedTuple
+
+Point = NamedTuple('Point', [('x', int), ('y', int)])  # no error
+
+def origin() -> Point:
+    return Point(x=0, y=0)
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprNewType]
+# flags: --disallow-any=expr
+from typing import NewType
+
+NT = NewType('NT', int)  # no error
+
+def nt() -> NT:
+    return NT(1)
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprEnum]
+# flags: --disallow-any=expr
+from enum import Enum
+E = Enum('E', '1, 2, 3')  # no error
+
+def k(s: E) -> None: pass
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExprTypedDict]
+# flags: --disallow-any=expr
+from mypy_extensions import TypedDict
+
+Movie = TypedDict('Movie', {'name': str, 'year': int})
+
+def g(m: Movie) -> Movie:
+    return m
+[builtins fixtures/dict.pyi]

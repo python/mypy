@@ -55,7 +55,7 @@ from typing import NewType, List
 UserId = NewType('UserId', int)
 IdList = NewType('IdList', List[UserId])
 
-bad1 = IdList([1])  # E: List item 0 has incompatible type "int"
+bad1 = IdList([1])  # E: List item 0 has incompatible type "int"; expected "UserId"
 
 foo = IdList([])
 foo.append(3)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "UserId"
@@ -336,3 +336,11 @@ class C(B): pass  # E: Cannot subclass NewType
 from typing import NewType
 Any = NewType('Any', int)
 Any(5)
+
+[case testNewTypeAndIsInstance]
+from typing import NewType
+T = NewType('T', int)
+d: object
+if isinstance(d, T):  # E: Cannot use isinstance() with a NewType type
+    reveal_type(d) # E: Revealed type is '__main__.T'
+[builtins fixtures/isinstancelist.pyi]

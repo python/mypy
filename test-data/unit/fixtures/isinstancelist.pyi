@@ -12,6 +12,7 @@ class tuple(Sequence[Tco], Generic[Tco]):
     def __getitem__(self, x: int) -> Tco: pass
 
 class function: pass
+class ellipsis: pass
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
 def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass

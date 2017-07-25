@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Optional
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -82,12 +82,16 @@ KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \
 ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'
 INVALID_TYPEDDICT_ARGS = \
     'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
-TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
+TYPEDDICT_KEY_MUST_BE_STRING_LITERAL = \
     'Expected TypedDict key to be string literal'
 MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
+CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'
+CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
+BARE_GENERIC = 'Missing type parameters for generic type'
+IMPLICIT_GENERIC_ANY_BUILTIN = 'Implicit generic "Any". Use \'{}\' and specify generic parameters'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -154,7 +158,7 @@ class MessageBuilder:
         return self.errors.is_errors()
 
     def report(self, msg: str, context: Context, severity: str,
-               file: str = None, origin: Context = None) -> None:
+               file: Optional[str] = None, origin: Optional[Context] = None) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
@@ -162,18 +166,18 @@ class MessageBuilder:
                                msg.strip(), severity=severity, file=file,
                                origin_line=origin.get_line() if origin else None)
 
-    def fail(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+    def fail(self, msg: str, context: Context, file: Optional[str] = None,
+             origin: Optional[Context] = None) -> None:
         """Report an error message (unless disabled)."""
         self.report(msg, context, 'error', file=file, origin=origin)
 
-    def note(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+    def note(self, msg: str, context: Context, file: Optional[str] = None,
+             origin: Optional[Context] = None) -> None:
         """Report a note (unless disabled)."""
         self.report(msg, context, 'note', file=file, origin=origin)
 
-    def warn(self, msg: str, context: Context, file: str = None,
-             origin: Context = None) -> None:
+    def warn(self, msg: str, context: Context, file: Optional[str] = None,
+             origin: Optional[Context] = None) -> None:
         """Report a warning message (unless disabled)."""
         self.report(msg, context, 'warning', file=file, origin=origin)
 
@@ -299,12 +303,15 @@ class MessageBuilder:
                 return 'tuple(length {})'.format(len(items))
         elif isinstance(typ, TypedDictType):
             # If the TypedDictType is named, return the name
-            if typ.fallback.type.fullname() != 'typing.Mapping':
+            if not typ.is_anonymous():
                 return self.format_simple(typ.fallback)
             items = []
             for (item_name, item_type) in typ.items.items():
-                items.append('{}={}'.format(item_name, strip_quotes(self.format(item_type))))
-            s = '"TypedDict({})"'.format(', '.join(items))
+                modifier = '' if item_name in typ.required_keys else '?'
+                items.append('{!r}{}: {}'.format(item_name,
+                                                 modifier,
+                                                 strip_quotes(self.format(item_type))))
+            s = '"TypedDict({{{}}})"'.format(', '.join(items))
             return s
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
@@ -539,29 +546,59 @@ class MessageBuilder:
         if callee.name == '<list>':
             name = callee.name[1:-1]
             n -= 1
-            msg = '{} item {} has incompatible type {}'.format(
-                name.title(), n, self.format_simple(arg_type))
+            actual_type_str, expected_type_str = self.format_distinctly(arg_type,
+                                                                        callee.arg_types[0])
+            msg = '{} item {} has incompatible type {}; expected {}'.format(
+                name.title(), n, actual_type_str, expected_type_str)
         elif callee.name == '<dict>':
             name = callee.name[1:-1]
             n -= 1
             key_type, value_type = cast(TupleType, arg_type).items
-            msg = '{} entry {} has incompatible type {}: {}'.format(
-                name.title(), n, self.format_simple(key_type), self.format_simple(value_type))
+            expected_key_type, expected_value_type = cast(TupleType, callee.arg_types[0]).items
+
+            # don't increase verbosity unless there is need to do so
+            from mypy.subtypes import is_subtype
+            if is_subtype(key_type, expected_key_type):
+                key_type_str = self.format(key_type)
+                expected_key_type_str = self.format(expected_key_type)
+            else:
+                key_type_str, expected_key_type_str = self.format_distinctly(
+                    key_type, expected_key_type)
+            if is_subtype(value_type, expected_value_type):
+                value_type_str = self.format(value_type)
+                expected_value_type_str = self.format(expected_value_type)
+            else:
+                value_type_str, expected_value_type_str = self.format_distinctly(
+                    value_type, expected_value_type)
+
+            msg = '{} entry {} has incompatible type {}: {}; expected {}: {}'.format(
+                name.title(), n, key_type_str, value_type_str,
+                expected_key_type_str, expected_value_type_str)
         elif callee.name == '<list-comprehension>':
-            msg = 'List comprehension has incompatible type List[{}]'.format(
-                strip_quotes(self.format(arg_type)))
+            actual_type_str, expected_type_str = map(strip_quotes,
+                                                     self.format_distinctly(arg_type,
+                                                                            callee.arg_types[0]))
+            msg = 'List comprehension has incompatible type List[{}]; expected List[{}]'.format(
+                actual_type_str, expected_type_str)
         elif callee.name == '<set-comprehension>':
-            msg = 'Set comprehension has incompatible type Set[{}]'.format(
-                strip_quotes(self.format(arg_type)))
+            actual_type_str, expected_type_str = map(strip_quotes,
+                                                     self.format_distinctly(arg_type,
+                                                                            callee.arg_types[0]))
+            msg = 'Set comprehension has incompatible type Set[{}]; expected Set[{}]'.format(
+                actual_type_str, expected_type_str)
         elif callee.name == '<dictionary-comprehension>':
+            actual_type_str, expected_type_str = self.format_distinctly(arg_type,
+                                                                        callee.arg_types[n - 1])
             msg = ('{} expression in dictionary comprehension has incompatible type {}; '
                    'expected type {}').format(
                 'Key' if n == 1 else 'Value',
-                self.format(arg_type),
-                self.format(callee.arg_types[n - 1]))
+                actual_type_str,
+                expected_type_str)
         elif callee.name == '<generator>':
-            msg = 'Generator has incompatible item type {}'.format(
-                self.format_simple(arg_type))
+            actual_type_str, expected_type_str = self.format_distinctly(arg_type,
+                                                                        callee.arg_types[0])
+            msg = 'Generator has incompatible item type {}; expected {}'.format(
+                actual_type_str, expected_type_str)
         else:
             try:
                 expected_type = callee.arg_types[m - 1]
@@ -591,7 +628,8 @@ class MessageBuilder:
             else:
                 msg = 'Missing positional arguments'
             if callee.name and diff and all(d is not None for d in diff):
-                msg += ' "{}" in call to {}'.format('", "'.join(diff), callee.name)
+                msg += ' "{}" in call to {}'.format('", "'.join(cast(List[str], diff)),
+                                                    callee.name)
         else:
             msg = 'Too few arguments'
             if callee.name:
@@ -625,6 +663,7 @@ class MessageBuilder:
         self.fail(msg, context)
         module = find_defining_module(self.modules, callee)
         if module:
+            assert callee.definition is not None
             self.note('{} defined here'.format(callee.name), callee.definition,
                       file=module.path, origin=context)
 
@@ -636,9 +675,11 @@ class MessageBuilder:
 
     def does_not_return_value(self, callee_type: Type, context: Context) -> None:
         """Report an error about use of an unusable type."""
-        if isinstance(callee_type, FunctionLike) and callee_type.get_name() is not None:
-            self.fail('{} does not return a value'.format(
-                capitalize(callee_type.get_name())), context)
+        name = None  # type: Optional[str]
+        if isinstance(callee_type, FunctionLike):
+            name = callee_type.get_name()
+        if name is not None:
+            self.fail('{} does not return a value'.format(capitalize(name)), context)
         else:
             self.fail('Function does not return a value', context)
 
@@ -743,12 +784,16 @@ class MessageBuilder:
     def invalid_var_arg(self, typ: Type, context: Context) -> None:
         self.fail('List or tuple expected as variable arguments', context)
 
-    def invalid_keyword_var_arg(self, typ: Type, context: Context) -> None:
-        if isinstance(typ, Instance) and (typ.type.fullname() == 'builtins.dict'):
+    def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
+        if isinstance(typ, Instance) and is_mapping:
             self.fail('Keywords must be strings', context)
         else:
-            self.fail('Argument after ** must be a dictionary',
-                      context)
+            suffix = ''
+            if isinstance(typ, Instance):
+                suffix = ', not {}'.format(self.format(typ))
+            self.fail(
+                'Argument after ** must be a mapping{}'.format(suffix),
+                context)
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
@@ -875,34 +920,62 @@ class MessageBuilder:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
                   ctx)
 
-    def typeddict_instantiated_with_unexpected_items(self,
-                                                     expected_item_names: List[str],
-                                                     actual_item_names: List[str],
-                                                     context: Context) -> None:
-        if not expected_item_names:
+    def explicit_any(self, ctx: Context) -> None:
+        self.fail('Explicit "Any" is not allowed', ctx)
+
+    def unexpected_typeddict_keys(
+            self,
+            typ: TypedDictType,
+            expected_keys: List[str],
+            actual_keys: List[str],
+            context: Context) -> None:
+        actual_set = set(actual_keys)
+        expected_set = set(expected_keys)
+        if not typ.is_anonymous():
+            # Generate simpler messages for some common special cases.
+            if actual_set < expected_set:
+                # Use list comprehension instead of set operations to preserve order.
+                missing = [key for key in expected_keys if key not in actual_set]
+                self.fail('{} missing for TypedDict {}'.format(
+                    format_key_list(missing, short=True).capitalize(), self.format(typ)),
+                    context)
+                return
+            else:
+                extra = [key for key in actual_keys if key not in expected_set]
+                if extra:
+                    # If there are both extra and missing keys, only report extra ones for
+                    # simplicity.
+                    self.fail('Extra {} for TypedDict {}'.format(
+                        format_key_list(extra, short=True), self.format(typ)),
+                        context)
+                    return
+        if not expected_keys:
             expected = '(no keys)'
         else:
-            expected = format_key_list(expected_item_names)
-        found = format_key_list(actual_item_names, short=True)
-        if actual_item_names and set(actual_item_names) < set(expected_item_names):
+            expected = format_key_list(expected_keys)
+        found = format_key_list(actual_keys, short=True)
+        if actual_keys and actual_set < expected_set:
             found = 'only {}'.format(found)
         self.fail('Expected {} but found {}'.format(expected, found), context)
 
-    def typeddict_item_name_must_be_string_literal(self,
-                                                   typ: TypedDictType,
-                                                   context: Context,
-                                                   ) -> None:
+    def typeddict_key_must_be_string_literal(
+            self,
+            typ: TypedDictType,
+            context: Context) -> None:
         self.fail(
             'TypedDict key must be a string literal; expected one of {}'.format(
                 format_item_name_list(typ.items.keys())), context)
 
-    def typeddict_item_name_not_found(self,
-                                      typ: TypedDictType,
-                                      item_name: str,
-                                      context: Context,
-                                      ) -> None:
-        self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
-            item_name, format_item_name_list(typ.items.keys())), context)
+    def typeddict_key_not_found(
+            self,
+            typ: TypedDictType,
+            item_name: str,
+            context: Context) -> None:
+        if typ.is_anonymous():
+            self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
+                item_name, format_item_name_list(typ.items.keys())), context)
+        else:
+            self.fail("TypedDict {} has no key '{}'".format(self.format(typ), item_name), context)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
@@ -979,7 +1052,7 @@ def callable_name(type: CallableType) -> str:
         return 'function'
 
 
-def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> MypyFile:
+def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> Optional[MypyFile]:
     if not typ.definition:
         return None
     fullname = typ.definition.fullname()
