@@ -465,6 +465,15 @@ class IRBuilder(NodeVisitor[int]):
             target = self.alloc_target(RTType('None'))
             self.add(PrimitiveOp(target, PrimitiveOp.NONE))
             return target
+        elif expr.node.fullname() == 'builtins.True':
+            target = self.alloc_target(RTType('bool'))
+            self.add(PrimitiveOp(target, PrimitiveOp.TRUE))
+            return target
+        elif expr.node.fullname() == 'builtins.False':
+            target = self.alloc_target(RTType('bool'))
+            self.add(PrimitiveOp(target, PrimitiveOp.FALSE))
+            return target
+
         reg = self.environment.lookup(expr.node)
         if self.targets[-1] < 0:
             return reg

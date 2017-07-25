@@ -379,3 +379,23 @@ L0:
     r0 = 1
     x = x + r0 :: int
     return x
+
+[case testTrue]
+def f() -> bool:
+    return True
+[out]
+def f():
+    r0 :: bool
+L0:
+    r0 = True
+    return r0
+
+[case testFalse]
+def f() -> bool:
+    return False
+[out]
+def f():
+    r0 :: bool
+L0:
+    r0 = False
+    return r0

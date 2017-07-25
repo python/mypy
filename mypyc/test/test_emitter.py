@@ -71,6 +71,12 @@ class TestEmitterVisitor(unittest.TestCase):
                             Py_INCREF(cpy_r_m);
                          """)
 
+    def test_load_True(self):
+        self.assert_emit(PrimitiveOp(self.m, PrimitiveOp.TRUE), "cpy_r_m = 1;")
+
+    def test_load_False(self):
+        self.assert_emit(PrimitiveOp(self.m, PrimitiveOp.FALSE), "cpy_r_m = 0;")
+
     def test_assign_int(self):
         self.assert_emit(Assign(self.m, self.n),
                          "cpy_r_m = cpy_r_n;")

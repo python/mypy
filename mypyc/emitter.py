@@ -88,6 +88,7 @@ class EmitterVisitor(OpVisitor):
 
     def visit_primitive_op(self, op: PrimitiveOp) -> None:
         dest = self.reg(op.dest) if op.dest is not None else None
+
         if op.desc.kind == OP_BINARY:
             assert dest is not None
             left = self.reg(op.args[0])
@@ -111,15 +112,25 @@ class EmitterVisitor(OpVisitor):
                     '    abort();')
             else:
                 assert False, op.desc
+
         elif op.desc is PrimitiveOp.LIST_SET:
             assert dest is None
             self.emit_lines('if (!CPyList_SetItem(%s, %s, %s))' % (self.reg(op.args[0]),
                                                                    self.reg(op.args[1]),
                                                                    self.reg(op.args[2])),
                             '    abort();')
+
         elif op.desc is PrimitiveOp.NONE:
-            self.emit_lines('%s = Py_None;' % dest,
-                            'Py_INCREF(%s);' % dest)
+            self.emit_lines(
+                '{} = Py_None;'.format(dest),
+                'Py_INCREF({});'.format(dest),
+            )
+
+        elif op.desc is PrimitiveOp.TRUE:
+            self.emit_line('{} = 1;'.format(dest))
+
+        elif op.desc is PrimitiveOp.FALSE:
+            self.emit_line('{} = 0;'.format(dest))
 
         elif op.desc is PrimitiveOp.NEW_LIST:
             self.emit_line('%s = PyList_New(%d); ' % (dest, len(op.args)))
@@ -127,6 +138,7 @@ class EmitterVisitor(OpVisitor):
                 reg = self.reg(arg)
                 self.emit_line('Py_INCREF(%s);' % reg)
                 self.emit_line('PyList_SET_ITEM(%s, %s, %s);' % (dest, i, reg))
+
         elif op.desc is PrimitiveOp.LIST_APPEND:
             self.emit_lines(
                 'if (PyList_Append(%s, %s) == -1)' % (self.reg(op.args[0]), self.reg(op.args[1])),

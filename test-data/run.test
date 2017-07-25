@@ -124,3 +124,12 @@ print(primes(13))
 [out]
 [[0, 0, 1, 1]
 [[0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1]
+
+[case testTrue]
+def f() -> bool:
+    return True
+[file driver.py]
+from native import f
+print(f())
+[out]
+True

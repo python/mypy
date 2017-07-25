@@ -364,6 +364,8 @@ class PrimitiveOp(RegisterOp):
 
     # Other
     NONE = make_op('None', 0, 'None', format_str='{dest} = None')
+    TRUE = make_op('True', 0, 'True', format_str='{dest} = True')
+    FALSE = make_op('False', 0, 'False', format_str='{dest} = False')
     LIST_SET = make_op('[]=', 3, 'list', is_void=True)
     NEW_LIST = make_op('new', VAR_ARG, 'list', format_str='{dest} = [{comma_args}]')
     LIST_APPEND = make_op('append', 2, 'list',
