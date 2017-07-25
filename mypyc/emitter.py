@@ -70,7 +70,7 @@ class EmitterVisitor(OpVisitor):
 
     def visit_return(self, op: Return) -> None:
         typ = self.type(op.reg)
-        assert typ.name in ('int', 'list', 'None')
+        assert typ.name in ('bool', 'int', 'list', 'None')
         regstr = self.reg(op.reg)
         self.emit_line('return %s;' % regstr)
 
@@ -164,33 +164,51 @@ class EmitterVisitor(OpVisitor):
 
     def visit_inc_ref(self, op: IncRef) -> None:
         dest = self.reg(op.dest)
-        if op.int_target:
+        if op.target_type.name == 'int':
             self.emit_line('CPyTagged_IncRef(%s);' % dest)
+        elif op.target_type.name == 'bool':
+            return
         else:
             self.emit_line('Py_INCREF(%s);' % dest)
 
     def visit_dec_ref(self, op: DecRef) -> None:
         dest = self.reg(op.dest)
-        if op.int_target:
+        if op.target_type.name == 'int':
             self.emit_line('CPyTagged_DecRef(%s);' % dest)
+        elif op.target_type.name == 'bool':
+            return
         else:
             self.emit_line('Py_DECREF(%s);' % dest)
 
     def visit_box(self, op: Box) -> None:
-        assert op.type.name == 'int'
+        src = self.reg(op.src)
         dest = self.reg(op.dest)
-        self.emit_lines('%s = CPyTagged_AsObject(%s);' % (dest, self.reg(op.src)),
-                        'if (%s == NULL)' % dest,
-                        '    abort();')
+        if op.type.name == 'int':
+            self.emit_lines('%s = CPyTagged_AsObject(%s);' % (dest, src),
+                            'if (%s == NULL)' % dest,
+                            '    abort();')
+        elif op.type.name == 'bool':
+            self.emit_line('%s = PyBool_FromLong(%s);' % (dest, src))
+        else:
+            assert False, "invalid box"
 
     def visit_unbox(self, op: Unbox) -> None:
         src = self.reg(op.src)
         dest = self.reg(op.dest)
-        assert op.type.name == 'int'
-        self.emit_lines('if (PyLong_Check(%s))' % src,
-                        '    %s = CPyTagged_FromObject(%s);' % (dest, src),
-                        'else',
-                        '    abort();')
+        if op.type.name == 'int':
+            self.emit_lines('if (PyLong_Check(%s))' % src,
+                            '    %s = CPyTagged_FromObject(%s);' % (dest, src),
+                            'else',
+                            '    abort();')
+        elif op.type.name == 'bool':
+            self.emit_lines(
+                'if (PyBool_Check(%s))' % src,
+                '    %s = CPyObject_IsTrue(%s);' % (dest, src),
+                'else'
+                '    abort();'
+            )
+        else:
+            assert False, "invalid unbox"
 
     # Helpers
 
@@ -240,10 +258,7 @@ def generate_c_for_function(fn: FuncIR) -> List[str]:
     emitter.emit_declaration('{} {{'.format(native_function_header(fn)), indent=0)
 
     for i in range(len(fn.args), fn.env.num_regs()):
-        if fn.env.types[i].name == 'int':
-            ctype = 'CPyTagged'
-        else:
-            ctype = 'PyObject *'
+        ctype = rttype_to_ctype(fn.env.types[i])
         emitter.emit_declaration('{ctype} {prefix}{name};'.format(ctype=ctype,
                                                                   prefix=REG_PREFIX,
                                                                   name=fn.env.names[i]))
@@ -265,6 +280,11 @@ def wrapper_function_header(fn: FuncIR) -> str:
 
 
 def generate_wrapper_function(fn: FuncIR) -> List[str]:
+    """Generates a CPython-compatible wrapper function for a native function.
+    
+    In particular, this handles unboxing the arguments, calling the native function, and
+    then boxing the return value.
+    """
     result = []
     result.append('{} {{'.format(wrapper_function_header(fn)))
     arg_names = ''.join('"{}", '.format(arg.name) for arg in fn.args)
@@ -287,6 +307,13 @@ def generate_wrapper_function(fn: FuncIR) -> List[str]:
         result.append('        return NULL; // TODO: Add traceback entry?')
         result.append('    }')
         result.append('    return CPyTagged_AsObject(retval);')
+    elif fn.ret_type.name == 'bool':
+        # The Py_RETURN macros return the correct PyObject * with reference count handling.
+        result.append('    char retval = {}{}({});'.format(NATIVE_PREFIX, fn.name, native_args))
+        result.append('    if(retval)')
+        result.append('        Py_RETURN_TRUE;')
+        result.append('    else')
+        result.append('        Py_RETURN_FALSE;')
     else:
         result.append('     return CPyDef_{}({});'.format(fn.name, native_args))
         # TODO: Tracebacks?
@@ -295,12 +322,24 @@ def generate_wrapper_function(fn: FuncIR) -> List[str]:
 
 
 def generate_arg_check(name: str, typ: RTType) -> List[str]:
+    """Insert a runtime check for argument and unbox if necessary.
+
+    The object is named PyObject *obj_{}. This is expected to generate
+    a value of name arg_{} (unboxed if necessary). For each primitive a runtime
+    check ensures the correct type.
+    """
     if typ.name == 'int':
         return [
             '    CPyTagged arg_{} = CPyTagged_FromObject(obj_{});'.format(name, name),
             '    if (arg_{} == CPY_INT_ERROR_VALUE) {{'.format(name),
             '        return NULL; // TODO: Add traceback entry?',
             '    }',
+        ]
+    elif typ.name == 'bool':
+        return [
+            '    if(!PyBool_Check(obj_{}))'.format(name),
+            '        return NULL; // TODO: Add traceback entry?',
+            '    char arg_{} = PyObject_IsTrue(obj_{});'.format(name, name)
         ]
     elif typ.name == 'list':
         return [
@@ -317,5 +356,7 @@ def generate_arg_check(name: str, typ: RTType) -> List[str]:
 def rttype_to_ctype(typ: RTType) -> str:
     if typ.name == 'int':
         return 'CPyTagged'
+    elif typ.name == 'bool':
+        return 'char'
     else:
         return 'PyObject *'

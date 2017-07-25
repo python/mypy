@@ -199,9 +199,6 @@ Here are some hints about how to add support for a new primitive type
 
 * Update `myypc.genops.type_to_rttype()`.
 
-* Update `box()` in `mypyc.genops` if your type is unboxed (TODO:
-  refactor).
-
 The above may be enough to allow you to declare variables with the
 type and pass values around. You likely also want to add support for
 some primitive operations for the type (see Built-in Operation for an

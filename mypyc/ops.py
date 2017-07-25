@@ -27,6 +27,7 @@ class RTType:
 
 
     Valid names:
+      'bool'
       'int'
       'list'
       'object'
@@ -40,12 +41,16 @@ class RTType:
 
     @property
     def supports_unbox(self) -> bool:
-        return self.name == 'int'
+        return self.name in ['bool', 'int']
 
     @property
     def ctype(self) -> str:
+        # Note: be careful about spacing! This includes the space after the type
+        # (presumably so that pointers don't look ugly)
         if self.name == 'int':
             return 'CPyTagged '
+        elif self.name == 'bool':
+            return 'char '
         else:
             return 'PyObject *'
 
@@ -241,12 +246,12 @@ class IncRef(RegisterOp):
 
     def __init__(self, dest: Register, typ: RTType) -> None:
         super().__init__(dest)
-        self.int_target = (typ.name == 'int')
+        self.target_type = typ
 
     def to_str(self, env: Environment) -> str:
         s = env.format('inc_ref %r', self.dest)
-        if self.int_target:
-            s += ' :: int'
+        if self.target_type.name in ['bool', 'int']:
+            s += ' :: {}'.format(self.target_type.name)
         return s
 
     def sources(self) -> List[Register]:
@@ -261,12 +266,12 @@ class DecRef(RegisterOp):
 
     def __init__(self, dest: Register, typ: RTType) -> None:
         super().__init__(dest)
-        self.int_target = (typ.name == 'int')
+        self.target_type = typ
 
     def to_str(self, env: Environment) -> str:
         s = env.format('dec_ref %r', self.dest)
-        if self.int_target:
-            s += ' :: int'
+        if self.target_type.name in ['bool', 'int']:
+            s += ' :: {}'.format(self.target_type.name)
         return s
 
     def sources(self) -> List[Register]:

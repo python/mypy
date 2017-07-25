@@ -42,6 +42,8 @@ def type_to_rttype(typ: Type) -> RTType:
     if isinstance(typ, Instance):
         if typ.type.fullname() == 'builtins.int':
             return RTType('int')
+        elif typ.type.fullname() == 'builtins.bool':
+            return RTType('bool')
         elif typ.type.fullname() == 'builtins.list':
             return RTType('list')
     elif isinstance(typ, NoneTyp):
@@ -640,9 +642,9 @@ class IRBuilder(NodeVisitor[int]):
         return self.environment.add_temp(type)
 
     def box(self, src: Register, typ: RTType) -> Register:
-        if typ.name == 'int':
+        if typ.supports_unbox:
             target = self.alloc_temp(RTType('object'))
-            self.add(Box(target, src, RTType('int')))
+            self.add(Box(target, src, typ))
             return target
         else:
             # Already boxed
