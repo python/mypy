@@ -336,3 +336,15 @@ L4:
 L5:
 L6:
     return x
+
+[case testUnaryMinus]
+def f(n: int) -> int:
+    return -1
+[out]
+def f(n):
+    n, r0, r1, r2 :: int
+L0:
+    r0 = 1
+    r2 = 0
+    r1 = r2 - r0 :: int
+    return r1

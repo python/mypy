@@ -299,6 +299,21 @@ class IRBuilder(NodeVisitor[int]):
         '>>': PrimitiveOp.INT_SHR,
     }
 
+    def visit_unary_expr(self, expr: UnaryExpr) -> int:
+        if expr.op != '-':
+            assert False, 'Unsupported unary operation'
+
+        etype = type_to_rttype(self.types[expr.expr])
+        reg = self.accept(expr.expr)
+        if etype.name != 'int':
+            assert False, 'Unsupported unary operation'
+        
+        target = self.alloc_target(RTType('int'))
+        zero = self.accept(IntExpr(0))
+        self.add(PrimitiveOp(target, PrimitiveOp.INT_SUB, zero, reg))
+
+        return target
+
     def visit_op_expr(self, expr: OpExpr) -> int:
         ltype = type_to_rttype(self.types[expr.left])
         rtype = type_to_rttype(self.types[expr.right])
