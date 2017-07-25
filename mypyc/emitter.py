@@ -259,13 +259,12 @@ class EmitterVisitor(OpVisitor):
 
 
 def native_function_header(fn: FuncIR) -> str:
-    # TODO: Don't hard code argument and return value types
     args = []
     for arg in fn.args:
-        args.append('{}{}{}'.format(arg.type.ctype, REG_PREFIX, arg.name))
+        args.append('{}{}{}'.format(arg.type.ctype_spaced, REG_PREFIX, arg.name))
 
     return 'static {ret_type} {prefix}{name}({args})'.format(
-        ret_type=rttype_to_ctype(fn.ret_type),
+        ret_type=fn.ret_type.ctype,
         prefix=NATIVE_PREFIX,
         name=fn.name,
         args=', '.join(args) or 'void')
@@ -278,7 +277,7 @@ def generate_c_for_function(fn: FuncIR) -> List[str]:
     emitter.emit_declaration('{} {{'.format(native_function_header(fn)), indent=0)
 
     for i in range(len(fn.args), fn.env.num_regs()):
-        ctype = rttype_to_ctype(fn.env.types[i])
+        ctype = fn.env.types[i].ctype
         emitter.emit_declaration('{ctype} {prefix}{name};'.format(ctype=ctype,
                                                                   prefix=REG_PREFIX,
                                                                   name=fn.env.names[i]))
@@ -371,12 +370,3 @@ def generate_arg_check(name: str, typ: RTType) -> List[str]:
         ]
     else:
         assert False, typ
-
-
-def rttype_to_ctype(typ: RTType) -> str:
-    if typ.name == 'int':
-        return 'CPyTagged'
-    elif typ.name == 'bool':
-        return 'char'
-    else:
-        return 'PyObject *'

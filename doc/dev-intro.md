@@ -183,11 +183,6 @@ Here are some hints about how to add support for a new primitive type
 * Add return value boxing to `generate_wrapper_function` for unboxed
   types (TODO: refactor).
 
-* Make sure `generate_c_for_function` generates correct local variable
-  declarations for the type (TODO: refactor).
-
-* Update `rttype_to_ctype` (TODO: refactor).
-
 * Update `visit_return` in `mypyc.emitter` (TODO: refactor).
 
 * Update `visit_box` and `visit_unbox` in `mypyc.emitter` if the type

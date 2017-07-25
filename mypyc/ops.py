@@ -44,13 +44,20 @@ class RTType:
         return self.name in ['bool', 'int']
 
     @property
+    def ctype_spaced(self) -> str:
+        """Adds a space after ctype for non-pointers.
+        """
+        if self.ctype[-1] == '*':
+            return self.ctype
+        else:
+            return self.ctype + ' '
+
+    @property
     def ctype(self) -> str:
-        # Note: be careful about spacing! This includes the space after the type
-        # (presumably so that pointers don't look ugly)
         if self.name == 'int':
-            return 'CPyTagged '
+            return 'CPyTagged'
         elif self.name == 'bool':
-            return 'char '
+            return 'char'
         else:
             return 'PyObject *'
 
