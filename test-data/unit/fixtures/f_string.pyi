@@ -5,8 +5,6 @@ from typing import TypeVar, Generic, Iterable, Iterator, List, overload
 
 T = TypeVar('T')
 
-T_co = TypeVar('T_co', covariant=True)
-
 class object:
     def __init__(self): pass
 
@@ -22,7 +20,7 @@ class list(Iterable[T], Generic[T]):
     def __init__(self, x: Iterable[T]) -> None: pass
     def append(self, x: T) -> None: pass
 
-class tuple(Generic[T_co]): pass
+class tuple(Generic[T]): pass
 
 class function: pass
 class int:

@@ -1,6 +1,6 @@
 from typing import Tuple, TypeVar, Generic, Union
 
-T_co = TypeVar('T_co', covariant=True)
+T = TypeVar('T')
 
 class object:
     def __init__(self) -> None: pass
@@ -8,7 +8,7 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
-class tuple(Generic[T_co]): pass
+class tuple(Generic[T]): pass
 
 class function: pass
 

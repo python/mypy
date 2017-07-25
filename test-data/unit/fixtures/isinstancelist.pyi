@@ -6,11 +6,6 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
-Tco = TypeVar('Tco', covariant=True)
-class tuple(Sequence[Tco], Generic[Tco]):
-    def __iter__(self) -> Iterator[Tco]: pass
-    def __getitem__(self, x: int) -> Tco: pass
-
 class function: pass
 class ellipsis: pass
 
@@ -27,6 +22,10 @@ class str:
 T = TypeVar('T')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
+
+class tuple(Sequence[T], Generic[T]):
+    def __iter__(self) -> Iterator[T]: pass
+    def __getitem__(self, x: int) -> T: pass
 
 class list(Iterable[T]):
     def __iter__(self) -> Iterator[T]: pass
