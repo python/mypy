@@ -382,7 +382,7 @@ def check_method_type(functype: FunctionLike, original_type: Type, is_classmetho
             # but probably needs to be revisited when we implement Type[C]
             # or advanced variants of it like Type[<args>, C].)
             if is_classmethod:
-                original_type = TypeType(original_type)
+                original_type = TypeType.make_normalized(original_type)
             if not subtypes.is_subtype(original_type, erase_to_bound(selfarg)):
                 msg.invalid_method_type(original_type, item, is_classmethod, context)
 
