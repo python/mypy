@@ -260,7 +260,7 @@ def native_function_header(fn: FuncIR) -> str:
         ret_type=rttype_to_ctype(fn.ret_type),
         prefix=NATIVE_PREFIX,
         name=fn.name,
-        args=', '.join(args))
+        args=', '.join(args) or 'void')
 
 
 def generate_c_for_function(fn: FuncIR) -> List[str]:
