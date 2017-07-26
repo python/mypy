@@ -437,6 +437,7 @@ class PrimitiveOp(RegisterOp):
     # Unary
     INT_NEG = make_op('-', 1, 'int')
     LIST_LEN = make_op('len', 1, 'list')
+    HOMOGENOUS_TUPLE_LEN = make_op('len', 1, 'homogenous_tuple')
     LIST_TO_HOMOGENOUS_TUPLE = make_op('tuple', 1, 'list')
 
     # Other

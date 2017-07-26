@@ -188,3 +188,13 @@ from native import f
 print(f([1,2,3,4]))
 [out]
 2
+
+[case testHomogenousTupleLen]
+from typing import List
+def f(x: List[int]) -> int:
+    return len(tuple(x))
+[file driver.py]
+from native import f
+print(f([1,2,3,4]))
+[out]
+4

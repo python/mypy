@@ -394,6 +394,11 @@ class EmitterVisitor(OpVisitor):
                 self.emit_declaration('long long %s;' % temp)
                 self.emit_line('%s = PyList_GET_SIZE(%s);' % (temp, src))
                 self.emit_line('%s = CPyTagged_ShortFromLongLong(%s);' % (dest, temp))
+            elif op.desc is PrimitiveOp.HOMOGENOUS_TUPLE_LEN:
+                temp = self.temp_name()
+                self.emit_declaration('long long %s;' % temp)
+                self.emit_line('%s = PyTuple_GET_SIZE(%s);' % (temp, src))
+                self.emit_line('%s = CPyTagged_ShortFromLongLong(%s);' % (dest, temp))
             elif op.desc is PrimitiveOp.LIST_TO_HOMOGENOUS_TUPLE:
                 self.emit_line('%s = PyList_AsTuple(%s);' % (dest, src))
             else:

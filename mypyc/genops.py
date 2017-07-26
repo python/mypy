@@ -529,6 +529,8 @@ class IRBuilder(NodeVisitor[int]):
             expr_rttype = type_to_rttype(self.types[expr.args[0]])
             if expr_rttype.name == 'list':
                 self.add(PrimitiveOp(target, PrimitiveOp.LIST_LEN, arg))
+            elif expr_rttype.name == 'homogenous_tuple':
+                self.add(PrimitiveOp(target, PrimitiveOp.HOMOGENOUS_TUPLE_LEN, arg))
             elif isinstance(expr_rttype, TupleRTType):
                 self.add(LoadInt(target, len(expr_rttype.types)))
             else:
