@@ -12,7 +12,7 @@ class CodeGenerator:
         self.temp_counter = 0
         self.declared_structs = set() # type: Set[str]
         self.struct_declarations = [] # type: List[str]
-        
+
     def declare_struct(self, name: str, declaration: List[str]):
         if name not in self.declared_structs:
             self.declared_structs.add(name)
@@ -50,9 +50,6 @@ class CodeGenerator:
     def generate_box(self, src: str, dest: str, typ: RTType, failure: str) -> List[str]:
         result = []
         if typ.name == 'int':
-            result.append('    if ({} == CPY_INT_ERROR_VALUE && PyErr_Occurred()) {{'.format(src))
-            result.append(failure)
-            result.append('    }')
             result.append('    PyObject *{} = CPyTagged_AsObject({});'.format(dest, src))
         elif typ.name == 'bool':
             # The Py_RETURN macros return the correct PyObject * with reference count handling.
@@ -61,6 +58,7 @@ class CodeGenerator:
             assert isinstance(typ, TupleRTType)
             self.declare_tuple_struct(typ)
             result.append('    PyObject *{} = PyTuple_New({});'.format(dest, len(typ.types)))
+            # TODO: Fail if dest is None
             for i in range(0, len(typ.types)):
                 if not typ.supports_unbox:
                     result.append('    PyTuple_SetItem({}, {}, {}.f{}'.format(dest, i, src, i))
@@ -68,13 +66,13 @@ class CodeGenerator:
                     inner_name = self.temp_name()
                     result += self.generate_box('{}.f{}'.format(src, i), inner_name, typ.types[i], failure)
                     result.append('    PyTuple_SetItem({}, {}, {});'.format(dest, i, inner_name, i))
-                     
+
         return result
 
 
     def generate_wrapper_function(self, fn: FuncIR) -> List[str]:
         """Generates a CPython-compatible wrapper function for a native function.
-        
+
         In particular, this handles unboxing the arguments, calling the native function, and
         then boxing the return value.
         """
@@ -94,11 +92,15 @@ class CodeGenerator:
             check = self.generate_arg_check(arg.name, arg.type)
             result.extend(check)
         native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
-        
+
         if fn.ret_type.supports_unbox:
             if fn.ret_type.name == 'int':
                 result.append('    CPyTagged retval = CPyDef_{}({});'.format(fn.name, native_args))
+                result.append('    if (retval == CPY_INT_ERROR_VALUE && PyErr_Occurred()) {')
+                result.append('        return NULL; // TODO: Add traceback entry?')
+                result.append('    }')
                 result += self.generate_box('retval', 'retbox', fn.ret_type, 'return NULL;')
+                # TODO: Decrease reference count of retval?
                 result.append('    return retbox;')
             elif fn.ret_type.name == 'bool':
                 # The Py_RETURN macros return the correct PyObject * with reference count handling.
@@ -122,10 +124,11 @@ class CodeGenerator:
     def generate_unbox(self, src: str, dest: str, typ: RTType, failure: str) -> List[str]:
         if typ.name == 'int':
             return [
-                '    CPyTagged {} = CPyTagged_FromObject({});'.format(dest, src),
-                '    if ({} == CPY_INT_ERROR_VALUE) {{'.format(dest),
+                '    CPyTagged {};'.format(dest),
+                '    if (PyLong_Check({}))'.format(src),
+                '        {} = CPyTagged_FromObject({});'.format(dest, src),
+                '    else',
                 failure,
-                '    }',
             ]
         elif typ.name == 'bool':
             return [
@@ -155,7 +158,7 @@ class CodeGenerator:
 
                 temp2 = self.temp_name()
                 # Unbox and check the sub-argument
-                result += self.generate_unbox('{}'.format(temp), temp2, 
+                result += self.generate_unbox('{}'.format(temp), temp2,
                     typ.types[i], failure)
 
                 result.append('    {}.f{} = {};'.format(dest, i, temp2))
@@ -437,4 +440,3 @@ def wrapper_function_header(fn: FuncIR) -> str:
     return 'static PyObject *{prefix}{name}(PyObject *self, PyObject *args, PyObject *kw)'.format(
             prefix=PREFIX,
             name=fn.name)
-

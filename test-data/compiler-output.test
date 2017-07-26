@@ -41,15 +41,17 @@ static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
     if (!PyArg_ParseTupleAndKeywords(args, kw, "O:f", kwlist, &obj_x)) {
         return NULL;
     }
-    CPyTagged arg_x = CPyTagged_FromObject(obj_x);
-    if (arg_x == CPY_INT_ERROR_VALUE) {
-        return NULL; // TODO: Add traceback entry?
-    }
+    CPyTagged arg_x;
+    if (PyLong_Check(obj_x))
+        arg_x = CPyTagged_FromObject(obj_x);
+    else
+        return NULL;
     CPyTagged retval = CPyDef_f(arg_x);
     if (retval == CPY_INT_ERROR_VALUE && PyErr_Occurred()) {
         return NULL; // TODO: Add traceback entry?
     }
-    return CPyTagged_AsObject(retval);
+    PyObject *retbox = CPyTagged_AsObject(retval);
+    return retbox;
 }
 
 [case testError]

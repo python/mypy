@@ -161,17 +161,18 @@ class TestEmitterVisitor(unittest.TestCase):
 
     def test_box(self):
         self.assert_emit(Box(self.o, self.n, RTType('int')),
-                         """cpy_r_o = CPyTagged_AsObject(cpy_r_n);
-                            if (cpy_r_o == NULL)
-                                abort();
+                         """PyObject *__tmp1 = CPyTagged_AsObject(cpy_r_n);
+                            cpy_r_o = __tmp1;
                          """)
 
     def test_unbox(self):
         self.assert_emit(Unbox(self.n, self.m, RTType('int')),
-                         """if (PyLong_Check(cpy_r_m))
-                                cpy_r_n = CPyTagged_FromObject(cpy_r_m);
+                         """CPyTagged __tmp1;
+                            if (PyLong_Check(cpy_r_m))
+                                __tmp1 = CPyTagged_FromObject(cpy_r_m);
                             else
                                 abort();
+                            cpy_r_n = __tmp1;
                          """)
 
     def test_new_list(self):
