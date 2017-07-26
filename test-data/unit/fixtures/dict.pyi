@@ -35,7 +35,7 @@ class list(Iterable[T], Generic[T]): # needed by some test cases
     def __iter__(self) -> Iterator[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
 
-class tuple: pass
+class tuple(Generic[T]): pass
 class function: pass
 class float: pass
 class bool: pass
