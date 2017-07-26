@@ -10,8 +10,7 @@ from mypyc.ops import (
 from mypyc.emitter import (
     EmitterVisitor,
     Emitter,
-    generate_arg_check,
-    generate_c_for_function,
+    CodeGenerator,
 )
 
 
@@ -19,7 +18,7 @@ class TestEmitter(unittest.TestCase):
     def setUp(self):
         self.env = Environment()
         self.n = self.env.add_local(Var('n'), RTType('int'))
-        self.emitter = Emitter(self.env)
+        self.emitter = Emitter(CodeGenerator(), self.env)
 
     def test_label(self):
         assert self.emitter.label(4) == 'CPyL4'
@@ -50,7 +49,7 @@ class TestEmitterVisitor(unittest.TestCase):
         self.l = self.env.add_local(Var('l'), RTType('list'))
         self.ll = self.env.add_local(Var('ll'), RTType('list'))
         self.o = self.env.add_local(Var('o'), RTType('object'))
-        self.emitter = Emitter(self.env)
+        self.emitter = Emitter(CodeGenerator(), self.env)
         self.visitor = EmitterVisitor(self.emitter)
 
     def test_goto(self):
@@ -210,11 +209,12 @@ class TestGenerateFunction(unittest.TestCase):
         self.env = Environment()
         self.id = self.env.add_local(self.var, RTType('int'))
         self.block = BasicBlock(0)
+        self.code_generator = CodeGenerator()
 
     def test_simple(self):
         self.block.ops.append(Return(self.id))
         fn = FuncIR('myfunc', [self.arg], RTType('int'), [self.block], self.env)
-        result = generate_c_for_function(fn)
+        result = self.code_generator.generate_c_for_function(fn)
         assert_string_arrays_equal(
             [
                 'static CPyTagged CPyDef_myfunc(CPyTagged cpy_r_arg) {\n',
@@ -228,7 +228,7 @@ class TestGenerateFunction(unittest.TestCase):
         self.temp = self.env.add_temp(RTType('int'))
         self.block.ops.append(LoadInt(self.temp, 5))
         fn = FuncIR('myfunc', [self.arg], RTType('list'), [self.block], self.env)
-        result = generate_c_for_function(fn)
+        result = self.code_generator.generate_c_for_function(fn)
         assert_string_arrays_equal(
             [
                 'static PyObject * CPyDef_myfunc(CPyTagged cpy_r_arg) {\n',
@@ -241,12 +241,15 @@ class TestGenerateFunction(unittest.TestCase):
 
 
 class TestArgCheck(unittest.TestCase):
+    def setUp(self):
+        self.code_generator = CodeGenerator()
+
     def test_check_list(self):
-        lines = generate_arg_check('x', RTType('list'))
+        lines = self.code_generator.generate_arg_check('x', RTType('list'))
         assert lines == [
             '    PyObject *arg_x;',
             '    if (PyList_Check(obj_x))',
             '        arg_x = obj_x;',
             '    else',
-            '        return NULL; // TODO: Add traceback entry?',
+            '        return NULL;',
         ]

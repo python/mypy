@@ -148,3 +148,13 @@ print(f(False))
 [out]
 False
 True
+
+[case testTuple]
+from typing import Tuple
+def f(x: Tuple[int, int]) -> Tuple[int,int]:
+    return x
+[file driver.py]
+from native import f
+print(f((1,2)))
+[out]
+(1, 2)

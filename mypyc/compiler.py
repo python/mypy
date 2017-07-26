@@ -5,9 +5,8 @@ from typing import List
 
 from mypyc.emitter import (
     native_function_header,
-    generate_c_for_function,
     wrapper_function_header,
-    generate_wrapper_function
+    CodeGenerator,
 )
 from mypyc.common import PREFIX
 from mypyc.ops import FuncIR
@@ -15,9 +14,6 @@ from mypyc.ops import FuncIR
 
 def generate_c_module(name: str, fns: List[FuncIR]) -> str:
     result = []
-    result.append('#include <Python.h>')
-    result.append('#include <CPy.h>')
-    result.append('')
 
     for fn in fns:
         fragments = generate_function_declaration(fn)
@@ -25,18 +21,29 @@ def generate_c_module(name: str, fns: List[FuncIR]) -> str:
 
     result.append('')
 
+    code_generator = CodeGenerator()
+
     fragments = generate_module_def(name, fns)
     result.extend(fragments)
 
     for fn in fns:
         result.append('')
-        fragments = generate_c_for_function(fn)
+        fragments = code_generator.generate_c_for_function(fn)
         result.extend([frag.rstrip() for frag in fragments])
         result.append('')
-        fragments = generate_wrapper_function(fn)
+        fragments = code_generator.generate_wrapper_function(fn)
         result.extend(fragments)
 
-    return '\n'.join(result)
+    fresult = []
+    fresult.append('#include <Python.h>')
+    fresult.append('#include <CPy.h>')
+    fresult.append('')
+
+    fresult += code_generator.struct_declarations
+
+    fresult += result
+
+    return '\n'.join(fresult)
 
 
 def generate_function_declaration(fn: FuncIR) -> List[str]:

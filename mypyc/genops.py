@@ -22,13 +22,13 @@ from mypy.nodes import (
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
     ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, ARG_POS
 )
-from mypy.types import Type, Instance, CallableType, NoneTyp
+from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType
 from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
 
 from mypyc.ops import (
     BasicBlock, Environment, Op, LoadInt, RTType, Register, Return, FuncIR, Assign,
-    PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast
+    PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRTType
 )
 
 
@@ -46,6 +46,8 @@ def type_to_rttype(typ: Type) -> RTType:
             return RTType('bool')
         elif typ.type.fullname() == 'builtins.list':
             return RTType('list')
+    elif isinstance(typ, TupleType):
+        return TupleRTType([type_to_rttype(t) for t in typ.items])
     elif isinstance(typ, NoneTyp):
         return RTType('None')
     assert False, '%s unsupported' % type(typ)
@@ -442,14 +444,22 @@ class IRBuilder(NodeVisitor[int]):
         base_type = self.types[expr.base]
         index_type = self.types[expr.index]
         result_type = self.types[expr]
-        if (is_named_instance(base_type, 'builtins.list') and
-                is_named_instance(index_type, 'builtins.int')):
+        allows_index = is_named_instance(base_type, 'builtins.list') or type_to_rttype(base_type).name == 'tuple'
+        if allows_index and is_named_instance(index_type, 'builtins.int'):
+
             # List indexing
             base_reg = self.accept(expr.base)
             index_reg = self.accept(expr.index)
             target_type = self.node_type(expr)
             tmp = self.alloc_temp(RTType('object'))
-            self.add(PrimitiveOp(tmp, PrimitiveOp.LIST_GET, base_reg, index_reg))
+
+            if is_named_instance(base_type, 'builtins.list'):
+                op = PrimitiveOp.LIST_GET
+            else:
+                assert is_named_instance(base_type, 'builtins.tuple')
+                op = PrimitiveOp.TUPLE_GET
+
+            self.add(PrimitiveOp(tmp, op, base_reg, index_reg))
             return self.unbox(tmp, target_type)
         assert False, 'Unsupported indexing operation'
 

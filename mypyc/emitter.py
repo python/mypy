@@ -1,17 +1,186 @@
-from typing import List
+from typing import List, Set
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.ops import (
     OpVisitor, Environment, Label, Register, RTType, FuncIR, Goto, Branch, Return, PrimitiveOp,
-    Assign, LoadInt, IncRef, DecRef, Call, Box, Unbox, OP_BINARY
+    Assign, LoadInt, IncRef, DecRef, Call, Box, Unbox, TupleRTType, OP_BINARY
 )
 
 
+class CodeGenerator:
+    def __init__(self):
+        self.temp_counter = 0
+        self.declared_structs = set() # type: Set[str]
+        self.struct_declarations = [] # type: List[str]
+        
+    def declare_struct(self, name: str, declaration: List[str]):
+        if name not in self.declared_structs:
+            self.declared_structs.add(name)
+            for line in declaration:
+                self.struct_declarations.append(line)
+
+    def declare_tuple_struct(self, tuple_type: TupleRTType):
+        self.declare_struct(tuple_type.struct_name, tuple_type.get_c_declaration())
+
+    def temp_name(self) -> str:
+        self.temp_counter += 1
+        return '__tmp%d' % self.temp_counter
+
+    def generate_c_for_function(self, fn: FuncIR) -> List[str]:
+        emitter = Emitter(self, fn.env)
+        visitor = EmitterVisitor(emitter)
+
+        emitter.emit_declaration('{} {{'.format(native_function_header(fn)), indent=0)
+
+        for i in range(len(fn.args), fn.env.num_regs()):
+            ctype = fn.env.types[i].ctype
+            emitter.emit_declaration('{ctype} {prefix}{name};'.format(ctype=ctype,
+                                                                      prefix=REG_PREFIX,
+                                                                      name=fn.env.names[i]))
+
+        for block in fn.blocks:
+            emitter.emit_label(block.label)
+            for op in block.ops:
+                op.accept(visitor)
+
+        emitter.emit_line('}', indent=0);
+
+        return emitter.all_fragments()
+
+    def generate_box(self, src: str, dest: str, typ: RTType, failure: str) -> List[str]:
+        result = []
+        if typ.name == 'int':
+            result.append('    if ({} == CPY_INT_ERROR_VALUE && PyErr_Occurred()) {{'.format(src))
+            result.append(failure)
+            result.append('    }')
+            result.append('    PyObject *{} = CPyTagged_AsObject({});'.format(dest, src))
+        elif typ.name == 'bool':
+            # The Py_RETURN macros return the correct PyObject * with reference count handling.
+            result.append('    PyObject *{} = PyBool_FromLong({});'.format(dest, src))
+        elif typ.name == 'tuple':
+            assert isinstance(typ, TupleRTType)
+            self.declare_tuple_struct(typ)
+            result.append('    PyObject *{} = PyTuple_New({});'.format(dest, len(typ.types)))
+            for i in range(0, len(typ.types)):
+                if not typ.supports_unbox:
+                    result.append('    PyTuple_SetItem({}, {}, {}.f{}'.format(dest, i, src, i))
+                else:
+                    inner_name = self.temp_name()
+                    result += self.generate_box('{}.f{}'.format(src, i), inner_name, typ.types[i], failure)
+                    result.append('    PyTuple_SetItem({}, {}, {});'.format(dest, i, inner_name, i))
+                     
+        return result
+
+
+    def generate_wrapper_function(self, fn: FuncIR) -> List[str]:
+        """Generates a CPython-compatible wrapper function for a native function.
+        
+        In particular, this handles unboxing the arguments, calling the native function, and
+        then boxing the return value.
+        """
+        result = []
+        result.append('{} {{'.format(wrapper_function_header(fn)))
+        arg_names = ''.join('"{}", '.format(arg.name) for arg in fn.args)
+        result.append('    static char *kwlist[] = {{{}0}};'.format(arg_names))
+        for arg in fn.args:
+            result.append('    PyObject *obj_{};'.format(arg.name))
+        arg_spec = 'O' * len(fn.args)
+        arg_ptrs = ''.join(', &obj_{}'.format(arg.name) for arg in fn.args)
+        result.append('    if (!PyArg_ParseTupleAndKeywords(args, kw, "{}:f", kwlist{})) {{'.format(
+            arg_spec, arg_ptrs))
+        result.append('        return NULL;')
+        result.append('    }')
+        for arg in fn.args:
+            check = self.generate_arg_check(arg.name, arg.type)
+            result.extend(check)
+        native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
+        
+        if fn.ret_type.supports_unbox:
+            if fn.ret_type.name == 'int':
+                result.append('    CPyTagged retval = CPyDef_{}({});'.format(fn.name, native_args))
+                result += self.generate_box('retval', 'retbox', fn.ret_type, 'return NULL;')
+                result.append('    return retbox;')
+            elif fn.ret_type.name == 'bool':
+                # The Py_RETURN macros return the correct PyObject * with reference count handling.
+                result.append('    char retval = {}{}({});'.format(NATIVE_PREFIX, fn.name, native_args))
+                result += self.generate_box('retval', 'retbox', fn.ret_type, 'return NULL;')
+                result.append('    return retbox;')
+            elif fn.ret_type.name == 'tuple':
+                result.append('    {}retval = {}{}({});'.format(fn.ret_type.ctype_spaced, NATIVE_PREFIX, fn.name, native_args))
+                result += self.generate_box('retval', 'retbox', fn.ret_type, 'return NULL;')
+                result.append('    return retbox;')
+        else:
+            # Any type that needs to be unboxed should be special cased, so fail if
+            # we failed to do so.
+            assert not fn.ret_type.supports_unbox
+            result.append('     return CPyDef_{}({});'.format(fn.name, native_args))
+            # TODO: Tracebacks?
+        result.append('}')
+        return result
+
+
+    def generate_unbox(self, src: str, dest: str, typ: RTType, failure: str) -> List[str]:
+        if typ.name == 'int':
+            return [
+                '    CPyTagged {} = CPyTagged_FromObject({});'.format(dest, src),
+                '    if ({} == CPY_INT_ERROR_VALUE) {{'.format(dest),
+                failure,
+                '    }',
+            ]
+        elif typ.name == 'bool':
+            return [
+                '    if(!PyBool_Check({}))'.format(src),
+                failure,
+                '    char {} = PyObject_IsTrue({});'.format(dest, src)
+            ]
+        elif typ.name == 'list':
+            return [
+                '    PyObject *{};'.format(dest),
+                '    if (PyList_Check({}))'.format(src),
+                '        {} = {};'.format(dest, src),
+                '    else',
+                failure,
+            ]
+        elif typ.name == 'tuple':
+            assert isinstance(typ, TupleRTType)
+            self.declare_tuple_struct(typ)
+            result = [
+                '    if (!PyTuple_Check({}))'.format(src),
+                failure,
+                '    {} {};'.format(typ.ctype, dest)
+            ]
+            for i in range(0, len(typ.types)):
+                temp = self.temp_name()
+                result.append('    PyObject *{} = PyTuple_GetItem({}, {});'.format(temp, src, i))
+
+                temp2 = self.temp_name()
+                # Unbox and check the sub-argument
+                result += self.generate_unbox('{}'.format(temp), temp2, 
+                    typ.types[i], failure)
+
+                result.append('    {}.f{} = {};'.format(dest, i, temp2))
+            return result
+        else:
+            assert False, typ
+
+
+    def generate_arg_check(self, name: str, typ: RTType) -> List[str]:
+        """Insert a runtime check for argument and unbox if necessary.
+
+        The object is named PyObject *obj_{}. This is expected to generate
+        a value of name arg_{} (unboxed if necessary). For each primitive a runtime
+        check ensures the correct type.
+        """
+        return self.generate_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ, '        return NULL;')
+
+
+
 class Emitter:
-    def __init__(self, env: Environment) -> None:
+    def __init__(self, code_generator: CodeGenerator, env: Environment) -> None:
         self.env = env
         self.declarations = []  # type: List[str]
         self.fragments = []  # type: List[str]
+        self.code_generator = code_generator
 
     def all_fragments(self) -> List[str]:
         return self.declarations + self.fragments
@@ -43,8 +212,11 @@ class Emitter:
 class EmitterVisitor(OpVisitor):
     def __init__(self, emitter: Emitter) -> None:
         self.emitter = emitter
+        self.code_generator = self.emitter.code_generator
         self.env = self.emitter.env
-        self.temp_counter = 0
+
+    def temp_name(self) -> str:
+        return self.code_generator.temp_name()
 
     def visit_goto(self, op: Goto) -> None:
         self.emit_line('goto %s;' % self.label(op.label))
@@ -78,7 +250,7 @@ class EmitterVisitor(OpVisitor):
 
     def visit_return(self, op: Return) -> None:
         typ = self.type(op.reg)
-        assert typ.name in ('bool', 'int', 'list', 'None')
+        assert typ.name in ('bool', 'int', 'list', 'tuple', 'None')
         regstr = self.reg(op.reg)
         self.emit_line('return %s;' % regstr)
 
@@ -106,6 +278,10 @@ class EmitterVisitor(OpVisitor):
                 self.emit_line('%s = %s(%s, %s);' % (dest, fn, left, right))
             elif op.desc is PrimitiveOp.LIST_GET:
                 self.emit_lines('%s = CPyList_GetItem(%s, %s);' % (dest, left, right),
+                                'if (!%s)' % dest,
+                                '    abort();')
+            elif op.desc is PrimitiveOp.TUPLE_GET:
+                self.emit_lines('%s = CPyTuple_GetItem(%s, %s);' % (dest, left, right),
                                 'if (!%s)' % dest,
                                 '    abort();')
             elif op.desc is PrimitiveOp.LIST_REPEAT:
@@ -147,6 +323,13 @@ class EmitterVisitor(OpVisitor):
                 self.emit_line('Py_INCREF(%s);' % reg)
                 self.emit_line('PyList_SET_ITEM(%s, %s, %s);' % (dest, i, reg))
 
+        elif op.desc is PrimitiveOp.NEW_TUPLE:
+            self.emit_line('{} = PyTuple_New({}); '.format(dest, len(op.args)))
+            for i, arg in enumerate(op.args):
+                reg = self.reg(arg)
+                self.emit_line('Py_INCREF(%s);' % reg)
+                self.emit_line('PyTuple_SET_ITEM(%s, %s, %s);' % (dest, i, reg))
+
         elif op.desc is PrimitiveOp.LIST_APPEND:
             self.emit_lines(
                 'if (PyList_Append(%s, %s) == -1)' % (self.reg(op.args[0]), self.reg(op.args[1])),
@@ -186,49 +369,33 @@ class EmitterVisitor(OpVisitor):
         dest = self.reg(op.dest)
         if op.target_type.name == 'int':
             self.emit_line('CPyTagged_IncRef(%s);' % dest)
-        elif op.target_type.name == 'bool':
-            return
         else:
-            self.emit_line('Py_INCREF(%s);' % dest)
+            if not op.target_type.supports_unbox:
+                self.emit_line('Py_INCREF(%s);' % dest)
 
     def visit_dec_ref(self, op: DecRef) -> None:
         dest = self.reg(op.dest)
         if op.target_type.name == 'int':
             self.emit_line('CPyTagged_DecRef(%s);' % dest)
-        elif op.target_type.name == 'bool':
-            return
         else:
-            self.emit_line('Py_DECREF(%s);' % dest)
+            if not op.target_type.supports_unbox:
+                self.emit_line('Py_DECREF(%s);' % dest)
 
     def visit_box(self, op: Box) -> None:
+        # dest is already declared but generate_box will declare, so indirection is needed.
         src = self.reg(op.src)
         dest = self.reg(op.dest)
-        if op.type.name == 'int':
-            self.emit_lines('%s = CPyTagged_AsObject(%s);' % (dest, src),
-                            'if (%s == NULL)' % dest,
-                            '    abort();')
-        elif op.type.name == 'bool':
-            self.emit_line('%s = PyBool_FromLong(%s);' % (dest, src))
-        else:
-            assert False, "invalid box"
+        temp = self.temp_name()
+        self.emit_lines(*self.code_generator.generate_box(src, temp, op.type, 'abort();'))
+        self.emit_line('{} = {};'.format(dest, temp))
 
     def visit_unbox(self, op: Unbox) -> None:
+        # dest is already declared but generate_unbox will declare, so indirection is needed.
         src = self.reg(op.src)
         dest = self.reg(op.dest)
-        if op.type.name == 'int':
-            self.emit_lines('if (PyLong_Check(%s))' % src,
-                            '    %s = CPyTagged_FromObject(%s);' % (dest, src),
-                            'else',
-                            '    abort();')
-        elif op.type.name == 'bool':
-            self.emit_lines(
-                'if (PyBool_Check(%s))' % src,
-                '    %s = CPyObject_IsTrue(%s);' % (dest, src),
-                'else'
-                '    abort();'
-            )
-        else:
-            assert False, "invalid unbox"
+        temp = self.temp_name()
+        self.emit_lines(*self.code_generator.generate_unbox(src, temp, op.type, 'abort();'))
+        self.emit_line('{} = {};'.format(dest, temp))
 
     # Helpers
 
@@ -253,10 +420,6 @@ class EmitterVisitor(OpVisitor):
     def emit_declaration(self, line: str, indent: int = 4) -> None:
         self.emitter.emit_declaration(line, indent)
 
-    def temp_name(self) -> str:
-        self.temp_counter += 1
-        return '__tmp%d' % self.temp_counter
-
 
 def native_function_header(fn: FuncIR) -> str:
     args = []
@@ -270,103 +433,8 @@ def native_function_header(fn: FuncIR) -> str:
         args=', '.join(args) or 'void')
 
 
-def generate_c_for_function(fn: FuncIR) -> List[str]:
-    emitter = Emitter(fn.env)
-    visitor = EmitterVisitor(emitter)
-
-    emitter.emit_declaration('{} {{'.format(native_function_header(fn)), indent=0)
-
-    for i in range(len(fn.args), fn.env.num_regs()):
-        ctype = fn.env.types[i].ctype
-        emitter.emit_declaration('{ctype} {prefix}{name};'.format(ctype=ctype,
-                                                                  prefix=REG_PREFIX,
-                                                                  name=fn.env.names[i]))
-
-    for block in fn.blocks:
-        emitter.emit_label(block.label)
-        for op in block.ops:
-            op.accept(visitor)
-
-    emitter.emit_line('}', indent=0);
-
-    return emitter.all_fragments()
-
-
 def wrapper_function_header(fn: FuncIR) -> str:
     return 'static PyObject *{prefix}{name}(PyObject *self, PyObject *args, PyObject *kw)'.format(
             prefix=PREFIX,
             name=fn.name)
 
-
-def generate_wrapper_function(fn: FuncIR) -> List[str]:
-    """Generates a CPython-compatible wrapper function for a native function.
-    
-    In particular, this handles unboxing the arguments, calling the native function, and
-    then boxing the return value.
-    """
-    result = []
-    result.append('{} {{'.format(wrapper_function_header(fn)))
-    arg_names = ''.join('"{}", '.format(arg.name) for arg in fn.args)
-    result.append('    static char *kwlist[] = {{{}0}};'.format(arg_names))
-    for arg in fn.args:
-        result.append('    PyObject *obj_{};'.format(arg.name))
-    arg_spec = 'O' * len(fn.args)
-    arg_ptrs = ''.join(', &obj_{}'.format(arg.name) for arg in fn.args)
-    result.append('    if (!PyArg_ParseTupleAndKeywords(args, kw, "{}:f", kwlist{})) {{'.format(
-        arg_spec, arg_ptrs))
-    result.append('        return NULL;')
-    result.append('    }')
-    for arg in fn.args:
-        check = generate_arg_check(arg.name, arg.type)
-        result.extend(check)
-    native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
-    if fn.ret_type.name == 'int':
-        result.append('    CPyTagged retval = CPyDef_{}({});'.format(fn.name, native_args))
-        result.append('    if (retval == CPY_INT_ERROR_VALUE && PyErr_Occurred()) {')
-        result.append('        return NULL; // TODO: Add traceback entry?')
-        result.append('    }')
-        result.append('    return CPyTagged_AsObject(retval);')
-    elif fn.ret_type.name == 'bool':
-        # The Py_RETURN macros return the correct PyObject * with reference count handling.
-        result.append('    char retval = {}{}({});'.format(NATIVE_PREFIX, fn.name, native_args))
-        result.append('    if(retval)')
-        result.append('        Py_RETURN_TRUE;')
-        result.append('    else')
-        result.append('        Py_RETURN_FALSE;')
-    else:
-        result.append('     return CPyDef_{}({});'.format(fn.name, native_args))
-        # TODO: Tracebacks?
-    result.append('}')
-    return result
-
-
-def generate_arg_check(name: str, typ: RTType) -> List[str]:
-    """Insert a runtime check for argument and unbox if necessary.
-
-    The object is named PyObject *obj_{}. This is expected to generate
-    a value of name arg_{} (unboxed if necessary). For each primitive a runtime
-    check ensures the correct type.
-    """
-    if typ.name == 'int':
-        return [
-            '    CPyTagged arg_{} = CPyTagged_FromObject(obj_{});'.format(name, name),
-            '    if (arg_{} == CPY_INT_ERROR_VALUE) {{'.format(name),
-            '        return NULL; // TODO: Add traceback entry?',
-            '    }',
-        ]
-    elif typ.name == 'bool':
-        return [
-            '    if(!PyBool_Check(obj_{}))'.format(name),
-            '        return NULL; // TODO: Add traceback entry?',
-            '    char arg_{} = PyObject_IsTrue(obj_{});'.format(name, name)
-        ]
-    elif typ.name == 'list':
-        return [
-            '    PyObject *arg_{};'.format(name),
-            '    if (PyList_Check(obj_{}))'.format(name),
-            '        arg_{} = obj_{};'.format(name, name),
-            '    else',
-            '        return NULL; // TODO: Add traceback entry?',
-        ]
-    else:
-        assert False, typ

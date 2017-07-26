@@ -11,7 +11,7 @@ can hold various things:
 """
 
 from abc import abstractmethod
-from typing import List, Dict, Generic, TypeVar, Optional, Any, NamedTuple
+from typing import List, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple
 
 from mypy.nodes import Var
 
@@ -31,6 +31,7 @@ class RTType:
       'int'
       'list'
       'object'
+      'tuple'
       'None'
       '@flag'
     """
@@ -41,7 +42,7 @@ class RTType:
 
     @property
     def supports_unbox(self) -> bool:
-        return self.name in ['bool', 'int']
+        return self.name in ['bool', 'int', 'tuple']
 
     @property
     def ctype_spaced(self) -> str:
@@ -70,6 +71,39 @@ class RTType:
     def __hash__(self) -> int:
         return hash(self.name)
 
+
+class TupleRTType(RTType):
+    def __init__(self, types: List[RTType]) -> None:
+        super().__init__('tuple')
+        self.types = tuple(types)
+
+    @property
+    def struct_name(self) -> str:
+        # max c length is 31 charas, this should be enough entropy to be unique.
+        #
+        # note we may want to switch to a more complicated hash later.
+        return 'tuple_def_' + str(abs(hash(self)))[0:15]
+
+    @property
+    def ctype(self) -> str:
+        return 'struct {}'.format(self.struct_name)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, TupleRTType) and self.types == other.types
+
+    def __hash__(self) -> int:
+        return hash((self.name, self.types))
+
+    def get_c_declaration(self) -> List[str]:
+        result = ['struct {} {{'.format(self.struct_name)]
+        i = 0
+        for typ in self.types:
+            result.append('    {}f{};\n'.format(typ.ctype_spaced, i))
+            i += 1
+        result.append('};')
+        result.append('')
+
+        return result
 
 class Environment:
     """Keep track of names and types of registers."""
@@ -375,8 +409,6 @@ class PrimitiveOp(RegisterOp):
     INT_XOR = make_op('^', 2, 'int', kind=OP_BINARY)
     INT_SHL = make_op('<<', 2, 'int', kind=OP_BINARY)
     INT_SHR = make_op('>>', 2, 'int', kind=OP_BINARY)
-    LIST_GET = make_op('[]', 2, 'list', kind=OP_BINARY)
-    LIST_REPEAT = make_op('*', 2, 'list', kind=OP_BINARY)
 
     # Unary
     INT_NEG = make_op('-', 1, 'int')
@@ -386,10 +418,18 @@ class PrimitiveOp(RegisterOp):
     NONE = make_op('None', 0, 'None', format_str='{dest} = None')
     TRUE = make_op('True', 0, 'True', format_str='{dest} = True')
     FALSE = make_op('False', 0, 'False', format_str='{dest} = False')
+
+    # List
+    LIST_GET = make_op('[]', 2, 'list', kind=OP_BINARY)
+    LIST_REPEAT = make_op('*', 2, 'list', kind=OP_BINARY)
     LIST_SET = make_op('[]=', 3, 'list', is_void=True)
     NEW_LIST = make_op('new', VAR_ARG, 'list', format_str='{dest} = [{comma_args}]')
     LIST_APPEND = make_op('append', 2, 'list',
                           is_void=True, format_str='{args[0]}.append({args[1]})')
+
+    # Tuple
+    NEW_TUPLE = make_op('new', VAR_ARG, 'tuple', format_str='{dest} = ({comma_args})')
+    TUPLE_GET = make_op('[]', 2, 'tuple', kind=OP_BINARY)
 
     def __init__(self, dest: Optional[Register], desc: OpDesc, *args: Register) -> None:
         """Create a primitive op.
