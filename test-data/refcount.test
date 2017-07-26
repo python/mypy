@@ -479,3 +479,23 @@ L0:
     r0 = [r1]
     dec_ref r1
     return r0
+
+[case testListSet]
+from typing import List
+def f(a: List[int], b: List[int]) -> None:
+    a[0] = b[0]
+[out]
+L0:
+    r0 = 0
+    r1 = 0
+    r2 = b[r1] :: list
+    dec_ref r1 :: int
+    r3 = unbox(int, r2)
+    dec_ref r2
+    r4 = box(int, r3)
+    dec_ref r3 :: int
+    a[r0] = r4 :: list
+    dec_ref r0 :: int
+    dec_ref r4
+    r5 = None
+    return r5

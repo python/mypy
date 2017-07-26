@@ -14,6 +14,7 @@ from mypy.options import Options
 from mypyc import genops
 from mypyc import compiler
 from mypyc import buildc
+from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.test.testutil import ICODE_GEN_BUILTINS, use_custom_builtins
 from mypyc.test.config import test_data_prefix
 
@@ -58,6 +59,8 @@ class TestRun(DataSuite):
                 assert False, 'Compile error'
 
             ir = genops.build_ir(result.files['native'], result.types)
+            for fn in ir:
+                insert_ref_count_opcodes(fn)
             ctext = compiler.generate_c_module('native', ir)
             cpath = os.path.join(test_temp_dir, 'native.c')
             with open(cpath, 'w') as f:

@@ -86,7 +86,7 @@ def transform_block(block: BasicBlock,
                 if src not in post_live[key] and src not in pre_borrow[key]:
                     if src != op.dest:
                         ops.append(DecRef(src, env.types[src]))
-            if op.dest not in post_live[key]:
+            if op.dest is not None and op.dest not in post_live[key]:
                 ops.append(DecRef(op.dest, env.types[op.dest]))
             if tmp_reg is not None:
                 ops.append(DecRef(tmp_reg, env.types[tmp_reg]))
