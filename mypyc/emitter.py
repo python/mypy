@@ -58,6 +58,9 @@ class CodeGenerator:
             assert isinstance(typ, TupleRTType)
             self.declare_tuple_struct(typ)
             result.append('    PyObject *{} = PyTuple_New({});'.format(dest, len(typ.types)))
+            result.append('    if ({} == NULL) {{'.format(dest))
+            result.append('    {}'.format(failure))
+            result.append('    }')
             # TODO: Fail if dest is None
             for i in range(0, len(typ.types)):
                 if not typ.supports_unbox:
@@ -148,7 +151,7 @@ class CodeGenerator:
             assert isinstance(typ, TupleRTType)
             self.declare_tuple_struct(typ)
             result = [
-                '    if (!PyTuple_Check({}))'.format(src),
+                '    if (!PyTuple_Check({}) || PyTuple_Size({}) != {})'.format(src, src, len(typ.types)),
                 failure,
                 '    {} {};'.format(typ.ctype, dest)
             ]
