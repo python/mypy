@@ -20,7 +20,7 @@ from mypy.nodes import (
     Node, MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr, IntExpr, NameExpr, LDEF, Var,
     IfStmt, Node, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
-    ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, ARG_POS
+    ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ARG_POS
 )
 from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType
 from mypy.visitor import NodeVisitor
@@ -571,6 +571,15 @@ class IRBuilder(NodeVisitor[int]):
             boxed = self.box(item_reg, item_type)
             items.append(boxed)
         self.add(PrimitiveOp(target, PrimitiveOp.NEW_LIST, *items))
+        return target
+
+    def visit_tuple_expr(self, expr: TupleExpr) -> int:
+        tuple_type = self.types[expr]
+        assert isinstance(tuple_type, TupleType)
+
+        target = self.alloc_target(type_to_rttype(tuple_type))
+        items = [self.accept(i) for i in expr.items]
+        self.add(PrimitiveOp(target, PrimitiveOp.NEW_TUPLE, *items))
         return target
 
     # Conditional expressions

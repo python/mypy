@@ -363,6 +363,14 @@ class EmitterVisitor(OpVisitor):
                 self.emit_line('Py_INCREF(%s);' % reg)
                 self.emit_line('PyList_SET_ITEM(%s, %s, %s);' % (dest, i, reg))
 
+        elif op.desc is PrimitiveOp.NEW_TUPLE:
+            tuple_type = self.env.types[op.dest]
+            assert isinstance(tuple_type, TupleRTType)
+            self.code_generator.declare_tuple_struct(tuple_type)
+            for i, arg in enumerate(op.args):
+                self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(arg)))
+            self._inc_ref(dest, tuple_type)
+
         elif op.desc is PrimitiveOp.LIST_APPEND:
             self.emit_lines(
                 'if (PyList_Append(%s, %s) == -1)' % (self.reg(op.args[0]), self.reg(op.args[1])),

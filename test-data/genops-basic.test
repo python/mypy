@@ -432,3 +432,21 @@ L0:
     r0 = x[0]
     r1 = r0[0]
     return r1
+
+[case testTupleNew]
+from typing import Tuple
+
+def f() -> int:
+    t = (True, 1)
+    return t[1]
+[out]
+def f():
+    t :: tuple
+    r0 :: bool
+    r1, r2 :: int
+L0:
+    r0 = True
+    r1 = 1
+    t = (r0, r1)
+    r2 = t[1]
+    return r2

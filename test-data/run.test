@@ -168,3 +168,13 @@ from native import f
 print(f(((1,True),2)))
 [out]
 1
+
+[case testNewTuple]
+def f() -> int:
+    x = (False, 1)
+    return x[1]
+[file driver.py]
+from native import f
+print(f())
+[out]
+1
