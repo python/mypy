@@ -1,6 +1,7 @@
 import typing
 
 T = typing.TypeVar('T')
+U = typing.TypeVar('U')
 class list(typing.Sequence[T]): pass
 
 class object:
@@ -9,8 +10,8 @@ class type: pass
 class function: pass
 class int: pass
 class str: pass
-class dict: pass
-class set: pass
+class dict(typing.Generic[T, U]): pass
+class set(typing.Generic[T]): pass
 class tuple(typing.Generic[T]): pass
 class BaseException: pass
 class StopIteration(BaseException): pass
