@@ -326,6 +326,28 @@ static bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
     }
 }
 
+static PyObject *CPyHomogenousTuple_GetItem(PyObject *tuple, CPyTagged index) {
+    if (CPyTagged_CheckShort(index)) {
+        long long n = CPyTagged_ShortAsLongLong(index);
+        Py_ssize_t size = PyTuple_GET_SIZE(tuple);
+        if (n >= 0) {
+            if (n >= size) {
+                abort();
+            }
+        } else {
+            n += size;
+            if (n < 0) {
+                abort();
+            }
+        }
+        PyObject *result = PyTuple_GET_ITEM(tuple, n);
+        Py_INCREF(result);
+        return result;
+    } else {
+        abort(); // TODO: Generate exception
+    }
+}
+
 #define CPY_INT_ERROR_VALUE 0x1234abc
 
 #ifdef __cplusplus

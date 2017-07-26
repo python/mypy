@@ -462,3 +462,21 @@ def f(x):
 L0:
     r0 = 3
     return r0
+
+[case testHomogenousTuple]
+from typing import List
+def f(x: List[bool]) -> bool:
+    return tuple(x)[1]
+[out]
+def f(x):
+    x :: list
+    r0 :: homogenous_tuple
+    r1 :: int
+    r2 :: object
+    r3 :: bool
+L0:
+    r0 = tuple x :: list
+    r1 = 1
+    r2 = r0[r1] :: homogenous_tuple
+    r3 = unbox(bool, r2)
+    return r3

@@ -190,7 +190,8 @@ Here are some hints about how to add support for a new primitive type
 
 * Update `visit_inc_ref` and `visit_dec_ref` in `mypypc.emitter` if
   needed. If the unboxed representation does not need reference
-  counting, these can be no-ops.
+  counting, these can be no-ops. If the representation is not unboxed
+  these will already work.
 
 * Update `myypc.genops.type_to_rttype()`.
 

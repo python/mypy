@@ -47,6 +47,8 @@ def type_to_rttype(typ: Type) -> RTType:
             return RTType('bool')
         elif typ.type.fullname() == 'builtins.list':
             return RTType('list')
+        elif typ.type.fullname() == 'builtins.tuple':
+            return RTType('homogenous_tuple')
     elif isinstance(typ, TupleType):
         return TupleRTType([type_to_rttype(t) for t in typ.items])
     elif isinstance(typ, NoneTyp):
@@ -456,7 +458,7 @@ class IRBuilder(NodeVisitor[int]):
 
         base_rttype = type_to_rttype(base_type)
 
-        if is_named_instance(base_type, 'builtins.list'):
+        if is_named_instance(base_type, 'builtins.list') or base_rttype.name == 'homogenous_tuple':
             index_type = self.types[expr.index]
             if not is_named_instance(index_type, 'builtins.int'):
                 assert False, 'Unsupported indexing operation'
@@ -465,7 +467,11 @@ class IRBuilder(NodeVisitor[int]):
             index_reg = self.accept(expr.index)
             target_type = self.node_type(expr)
             tmp = self.alloc_temp(RTType('object'))
-            op = PrimitiveOp.LIST_GET
+
+            if is_named_instance(base_type, 'builtins.list'):
+                op = PrimitiveOp.LIST_GET
+            else:
+                op = PrimitiveOp.HOMOGENOUS_TUPLE_GET
 
             self.add(PrimitiveOp(tmp, op, base_reg, index_reg))
             return self.unbox(tmp, target_type)
@@ -527,6 +533,13 @@ class IRBuilder(NodeVisitor[int]):
                 self.add(LoadInt(target, len(expr_rttype.types)))
             else:
                 assert False, "unsupported use of len"
+
+        # Handle conversion to homogenous tuple
+        elif fn == 'tuple' and len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+            target = self.alloc_target(RTType('homogenous_tuple'))
+            arg = self.accept(expr.args[0])
+
+            self.add(PrimitiveOp(target, PrimitiveOp.LIST_TO_HOMOGENOUS_TUPLE, arg))
         else:
             target = self.alloc_target(RTType('int'))
             args = [self.accept(arg) for arg in expr.args]

@@ -185,6 +185,12 @@ class CodeGenerator:
                 '    else',
                 failure,
             ]
+        elif typ.name == 'homogenous_tuple':
+            return [
+                '    if (!PyTuple_Check({}))'.format(src),
+                failure,
+                '    {} {} = {};'.format(typ.ctype, dest, src)
+            ]
         elif typ.name == 'tuple':
             assert isinstance(typ, TupleRTType)
             self.declare_tuple_struct(typ)
@@ -294,7 +300,7 @@ class EmitterVisitor(OpVisitor):
 
     def visit_return(self, op: Return) -> None:
         typ = self.type(op.reg)
-        assert typ.name in ('bool', 'int', 'list', 'tuple', 'None')
+        assert typ.name in ('bool', 'int', 'list', 'homogenous_tuple', 'tuple', 'None')
         regstr = self.reg(op.reg)
         self.emit_line('return %s;' % regstr)
 
@@ -334,6 +340,10 @@ class EmitterVisitor(OpVisitor):
                     '%s = PySequence_Repeat(%s, %s);' % (dest, left, temp),
                     'if (!%s)' % dest,
                     '    abort();')
+            elif op.desc is PrimitiveOp.HOMOGENOUS_TUPLE_GET:
+                self.emit_lines('%s = CPyHomogenousTuple_GetItem(%s, %s);' % (dest, left, right),
+                                'if (!%s)' % dest,
+                                '    abort();')
             else:
                 assert False, op.desc
 
@@ -384,6 +394,8 @@ class EmitterVisitor(OpVisitor):
                 self.emit_declaration('long long %s;' % temp)
                 self.emit_line('%s = PyList_GET_SIZE(%s);' % (temp, src))
                 self.emit_line('%s = CPyTagged_ShortFromLongLong(%s);' % (dest, temp))
+            elif op.desc is PrimitiveOp.LIST_TO_HOMOGENOUS_TUPLE:
+                self.emit_line('%s = PyList_AsTuple(%s);' % (dest, src))
             else:
                 # Simple unary op
                 fn = EmitterVisitor.UNARY_OP_MAP[op.desc]

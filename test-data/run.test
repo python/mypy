@@ -178,3 +178,13 @@ from native import f
 print(f())
 [out]
 1
+
+[case testHomogenousTuple]
+from typing import List
+def f(x: List[int]) -> int:
+    return tuple(x)[1]
+[file driver.py]
+from native import f
+print(f([1,2,3,4]))
+[out]
+2
