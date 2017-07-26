@@ -450,3 +450,15 @@ L0:
     t = (r0, r1)
     r2 = t[1]
     return r2
+
+[case testTupleLen]
+from typing import Tuple
+def f(x: Tuple[bool, bool, int]) -> int:
+    return len(x)
+[out]
+def f(x):
+    x :: tuple
+    r0 :: int
+L0:
+    r0 = 3
+    return r0

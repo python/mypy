@@ -519,7 +519,14 @@ class IRBuilder(NodeVisitor[int]):
         if fn == 'len' and len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
             target = self.alloc_target(RTType('int'))
             arg = self.accept(expr.args[0])
-            self.add(PrimitiveOp(target, PrimitiveOp.LIST_LEN, arg))
+
+            expr_rttype = type_to_rttype(self.types[expr.args[0]])
+            if expr_rttype.name == 'list':
+                self.add(PrimitiveOp(target, PrimitiveOp.LIST_LEN, arg))
+            elif isinstance(expr_rttype, TupleRTType):
+                self.add(LoadInt(target, len(expr_rttype.types)))
+            else:
+                assert False, "unsupported use of len"
         else:
             target = self.alloc_target(RTType('int'))
             args = [self.accept(arg) for arg in expr.args]
