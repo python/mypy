@@ -22,7 +22,10 @@ from mypy.version import __version__, base_version
 python3_path = sys.executable
 
 # Files containing test case descriptions.
-cmdline_files = ['cmdline.test']
+cmdline_files = [
+    'cmdline.test',
+    'reports.test',
+]
 
 
 class PythonEvaluationSuite(Suite):
@@ -39,6 +42,7 @@ class PythonEvaluationSuite(Suite):
 
 
 def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
+    assert testcase.old_cwd is not None, "test was not properly set up"
     # Write the program to a file.
     program = '_program.py'
     program_path = os.path.join(test_temp_dir, program)

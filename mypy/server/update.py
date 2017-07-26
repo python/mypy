@@ -46,7 +46,7 @@ Major todo items:
 - Support multiple type checking passes
 """
 
-from typing import Dict, List, Set, Tuple, Iterable, Union
+from typing import Dict, List, Set, Tuple, Iterable, Union, Optional
 
 from mypy.build import BuildManager, State
 from mypy.checker import DeferredNode
@@ -154,6 +154,7 @@ def build_incremental_step(manager: BuildManager,
     # TODO: state.write_cache()?
     # TODO: state.mark_as_rechecked()?
 
+    assert state.tree is not None, "file must be at least parsed"
     return {id: state.tree}, {id: state.type_checker.type_map}
 
 
@@ -350,7 +351,7 @@ def get_enclosing_namespace_types(nodes: List[DeferredNode]) -> Dict[NamespaceNo
     for deferred in nodes:
         info = deferred.active_typeinfo
         if info:
-            target = info  # type: NamespaceNode
+            target = info  # type: Optional[NamespaceNode]
         elif isinstance(deferred.node, MypyFile):
             target = deferred.node
         else:
@@ -358,7 +359,7 @@ def get_enclosing_namespace_types(nodes: List[DeferredNode]) -> Dict[NamespaceNo
         if target and target not in types:
             local_types = {name: node.node.type
                          for name, node in target.names.items()
-                         if isinstance(node.node, Var)}
+                         if isinstance(node.node, Var) and node.node.type}
             types[target] = local_types
     return types
 
@@ -369,7 +370,7 @@ def get_triggered_namespace_items(old_types_map: Dict[NamespaceNode, Dict[str, T
         for name, node in namespace_node.names.items():
             if (name in old_types and
                     (not isinstance(node.node, Var) or
-                     not is_identical_type(node.node.type, old_types[name]))):
+                     node.node.type and not is_identical_type(node.node.type, old_types[name]))):
                 # Type checking a method changed an attribute type.
                 new_triggered.add(make_trigger('{}.{}'.format(namespace_node.fullname(), name)))
     return new_triggered
@@ -397,8 +398,8 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
         components = rest.split('.')
     else:
         components = []
-    node = modules[module]  # type: SymbolNode
-    file = None  # type: MypyFile
+    node = modules[module]  # type: Optional[SymbolNode]
+    file = None  # type: Optional[MypyFile]
     active_class = None
     active_class_name = None
     for c in components:
@@ -415,6 +416,7 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
         # within it.  To get the body we include the entire surrounding target,
         # typically a module top-level, since we don't support processing class
         # bodies as separate entitites for simplicity.
+        assert file is not None
         result = [DeferredNode(file, None, None)]
         for name, symnode in node.names.items():
             node = symnode.node

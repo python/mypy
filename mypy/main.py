@@ -28,7 +28,7 @@ class InvalidPackageName(Exception):
     """Exception indicating that a package name was invalid."""
 
 
-def main(script_path: str, args: List[str] = None) -> None:
+def main(script_path: Optional[str], args: List[str] = None) -> None:
     """Main entry point to the type checker.
 
     Args:
@@ -97,7 +97,7 @@ def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) 
                        options=options)
 
 
-disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated']
+disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated', 'explicit', 'generics']
 
 
 def disallow_any_argument_type(raw_options: str) -> List[str]:
@@ -289,6 +289,8 @@ def process_options(args: List[str],
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
+    parser.add_argument('--skip-version-check', action='store_true',
+                        help="allow using cache written by older mypy version")
     add_invertible_flag('--strict-optional', default=False, strict_flag=True,
                         help="enable experimental strict Optional checks")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
@@ -321,13 +323,10 @@ def process_options(args: List[str],
         ", ".join(strict_flag_names))
     parser.add_argument('--strict', action='store_true', dest='special-opts:strict',
                         help=strict_help)
+    parser.add_argument('--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
+                        dest='shadow_file',
+                        help='Typecheck SHADOW_FILE in place of SOURCE_FILE.')
     # hidden options
-    # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
-    # Useful for tools to make transformations to a file to get more
-    # information from a mypy run without having to change the file in-place
-    # (e.g. by adding a call to reveal_type).
-    parser.add_argument('--shadow-file', metavar='PATH', nargs=2, dest='shadow_file',
-                        help=argparse.SUPPRESS)
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
