@@ -521,14 +521,14 @@ def pytest_addoption(parser: Any) -> None:
 
 # This function name is special to pytest.  See
 # https://docs.pytest.org/en/latest/writing_plugins.html?#_pytest.hookspec.pytest_collect_file
-def pytest_collect_file(parent: pytest.Collector, path: Any) -> pytest.Item:
+def pytest_collect_file(parent: pytest.Collector, path: Any) -> pytest.Item:  # type: ignore
     if path.ext != '.test':
         return
     return DataTestCollector(path=path, parent=parent)
 
 
 class DataTestCollector(pytest.File):  # type: ignore
-    def __init__(self, path: Any, parent: pytest.Collector) -> None:
+    def __init__(self, path: Any, parent: pytest.Collector) -> None:  # type: ignore
         super().__init__(path, parent)
 
     def collect(self) -> Iterator['MypyDataCase']:
@@ -548,8 +548,8 @@ class DataTestCollector(pytest.File):  # type: ignore
 # An instance of this class wraps an individual test case as a pytest.Item.
 # Node is a node in collection tree; its subclasses: Collection = an internal node, Item = a leaf.
 class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
-    def __init__(self, name: str, parent: pytest.Collector, case: DataDrivenTestCase,
-                 test_handler: Callable[..., Any]) -> None:
+    def __init__(self, name: str, parent: pytest.Collector,  # type: ignore
+                 case: DataDrivenTestCase, test_handler: Callable[..., Any]) -> None:
         self.skip = False
         if name.endswith('-skip'):
             self.skip = True
