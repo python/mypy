@@ -158,3 +158,13 @@ from native import f
 print(f((1,2)))
 [out]
 (1, 2)
+
+[case testTupleGet]
+from typing import Tuple
+def f(x: Tuple[Tuple[int, bool], int]) -> int:
+    return x[0][0]
+[file driver.py]
+from native import f
+print(f(((1,True),2)))
+[out]
+1

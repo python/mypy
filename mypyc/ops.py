@@ -78,11 +78,15 @@ class TupleRTType(RTType):
         self.types = tuple(types)
 
     @property
+    def unique_id(self) -> str:
+        return str(abs(hash(self)))[0:15]
+
+    @property
     def struct_name(self) -> str:
         # max c length is 31 charas, this should be enough entropy to be unique.
         #
         # note we may want to switch to a more complicated hash later.
-        return 'tuple_def_' + str(abs(hash(self)))[0:15]
+        return 'tuple_def_' + self.unique_id
 
     @property
     def ctype(self) -> str:
@@ -98,7 +102,7 @@ class TupleRTType(RTType):
         result = ['struct {} {{'.format(self.struct_name)]
         i = 0
         for typ in self.types:
-            result.append('    {}f{};\n'.format(typ.ctype_spaced, i))
+            result.append('    {}f{};'.format(typ.ctype_spaced, i))
             i += 1
         result.append('};')
         result.append('')
@@ -448,7 +452,6 @@ class PrimitiveOp(RegisterOp):
 
     # Tuple
     NEW_TUPLE = make_op('new', VAR_ARG, 'tuple', format_str='{dest} = ({comma_args})')
-    TUPLE_GET = make_op('[]', 2, 'tuple', kind=OP_BINARY)
 
     def __init__(self, dest: Optional[Register], desc: OpDesc, *args: Register) -> None:
         """Create a primitive op.
@@ -509,6 +512,25 @@ class LoadInt(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_int(self)
+
+
+class TupleGet(RegisterOp):
+    """dest = src[int]
+    """
+    def __init__(self, dest: Register, src: Register, index: int, target_type: RTType) -> None:
+        self.dest = dest
+        self.src = src
+        self.index = index
+        self.target_type = target_type
+
+    def sources(self) -> List[Register]:
+        return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = %r[%d]', self.dest, self.src, self.index)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_tuple_get(self)
 
 
 class Cast(RegisterOp):
@@ -636,6 +658,9 @@ class OpVisitor(Generic[T]):
         pass
 
     def visit_load_int(self, op: LoadInt) -> T:
+        pass
+
+    def visit_tuple_get(self, op: TupleGet) -> T:
         pass
 
     def visit_inc_ref(self, op: IncRef) -> T:

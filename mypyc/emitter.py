@@ -1,26 +1,64 @@
-from typing import List, Set
+from typing import List, Set, Dict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.ops import (
     OpVisitor, Environment, Label, Register, RTType, FuncIR, Goto, Branch, Return, PrimitiveOp,
-    Assign, LoadInt, IncRef, DecRef, Call, Box, Unbox, TupleRTType, OP_BINARY
+    Assign, LoadInt, IncRef, DecRef, Call, Box, Unbox, TupleRTType, TupleGet, OP_BINARY
 )
 
 
+class HeaderDeclaration:
+    def __init__(self, dependencies: Set[str], body: List[str]) -> None:
+        self.dependencies = dependencies
+        self.body = body
+
+
+class MarkedDeclaration:
+    """Add a mark, useful for topological sort.
+    """
+    def __init__(self, declaration: HeaderDeclaration, mark: bool) -> None:
+        self.declaration = declaration
+        self.mark = False
+
+
 class CodeGenerator:
-    def __init__(self):
+    def __init__(self) -> None:
         self.temp_counter = 0
-        self.declared_structs = set() # type: Set[str]
-        self.struct_declarations = [] # type: List[str]
+        self.declarations = {} # type: Dict[str, HeaderDeclaration]
+        self.header_declarations = [] # type: List[str]
 
-    def declare_struct(self, name: str, declaration: List[str]):
-        if name not in self.declared_structs:
-            self.declared_structs.add(name)
-            for line in declaration:
-                self.struct_declarations.append(line)
+    def toposort_declarations(self) -> List[HeaderDeclaration]:
+        result = []
+        marked_declarations = { k: MarkedDeclaration(v, False) for k, v in self.declarations.items() }
 
-    def declare_tuple_struct(self, tuple_type: TupleRTType):
-        self.declare_struct(tuple_type.struct_name, tuple_type.get_c_declaration())
+        def _toposort_visit(name):
+            decl = marked_declarations[name]
+            if decl.mark:
+                return
+
+            for child in decl.declaration.dependencies:
+                _toposort_visit(child)
+
+            result.append(decl.declaration)
+            decl.mark = True
+
+        for name, marked_declaration in marked_declarations.items():
+           _toposort_visit(name)
+
+        return result
+
+    def declare_tuple_struct(self, tuple_type: TupleRTType) -> None:
+        if tuple_type.struct_name not in self.declarations:
+            dependencies = set()
+            for typ in tuple_type.types:
+                # XXX other types might eventually need similar behavior
+                if isinstance(typ, TupleRTType):
+                    dependencies.add(typ.struct_name)
+
+            self.declarations[tuple_type.struct_name] = HeaderDeclaration(
+                dependencies,
+                tuple_type.get_c_declaration(),
+            )
 
     def temp_name(self) -> str:
         self.temp_counter += 1
@@ -286,10 +324,6 @@ class EmitterVisitor(OpVisitor):
                 self.emit_lines('%s = CPyList_GetItem(%s, %s);' % (dest, left, right),
                                 'if (!%s)' % dest,
                                 '    abort();')
-            elif op.desc is PrimitiveOp.TUPLE_GET:
-                self.emit_lines('%s = CPyTuple_GetItem(%s, %s);' % (dest, left, right),
-                                'if (!%s)' % dest,
-                                '    abort();')
             elif op.desc is PrimitiveOp.LIST_REPEAT:
                 temp = self.temp_name()
                 self.emit_declaration('long long %s;' % temp)
@@ -329,13 +363,6 @@ class EmitterVisitor(OpVisitor):
                 self.emit_line('Py_INCREF(%s);' % reg)
                 self.emit_line('PyList_SET_ITEM(%s, %s, %s);' % (dest, i, reg))
 
-        elif op.desc is PrimitiveOp.NEW_TUPLE:
-            self.emit_line('{} = PyTuple_New({}); '.format(dest, len(op.args)))
-            for i, arg in enumerate(op.args):
-                reg = self.reg(arg)
-                self.emit_line('Py_INCREF(%s);' % reg)
-                self.emit_line('PyTuple_SET_ITEM(%s, %s, %s);' % (dest, i, reg))
-
         elif op.desc is PrimitiveOp.LIST_APPEND:
             self.emit_lines(
                 'if (PyList_Append(%s, %s) == -1)' % (self.reg(op.args[0]), self.reg(op.args[1])),
@@ -363,6 +390,12 @@ class EmitterVisitor(OpVisitor):
         dest = self.reg(op.dest)
         self.emit_line('%s = %d;' % (dest, op.value * 2))
 
+    def visit_tuple_get(self, op: TupleGet) -> None:
+        dest = self.reg(op.dest)
+        src = self.reg(op.src)
+        self.emit_line('{} = {}.f{};'.format(dest, src, op.index))
+        self._inc_ref(dest, op.target_type)
+
     def visit_call(self, op: Call) -> None:
         if op.dest is not None:
             dest = self.reg(op.dest) + ' = '
@@ -373,18 +406,42 @@ class EmitterVisitor(OpVisitor):
 
     def visit_inc_ref(self, op: IncRef) -> None:
         dest = self.reg(op.dest)
-        if op.target_type.name == 'int':
+        self._inc_ref(dest, op.target_type)
+
+    def _inc_ref(self, dest: str, target_type: RTType) -> None:
+        """Increment a reference to dest (which is confusingly an rvalue).
+
+        For unpacked structures (e.g. tuples) recursively increment references inside.
+        """
+        if target_type.name == 'int':
             self.emit_line('CPyTagged_IncRef(%s);' % dest)
+        elif isinstance(target_type, TupleRTType):
+            i = 0
+            for typ in target_type.types:
+                self._inc_ref('{}.f{}'.format(dest, i), typ)
+                i += 1
         else:
-            if not op.target_type.supports_unbox:
+            if not target_type.supports_unbox:
                 self.emit_line('Py_INCREF(%s);' % dest)
 
     def visit_dec_ref(self, op: DecRef) -> None:
         dest = self.reg(op.dest)
-        if op.target_type.name == 'int':
+        self._dec_ref(dest, op.target_type)
+
+    def _dec_ref(self, dest: str, target_type: RTType) -> None:
+        """Decrement a reference to dest (which is confusingly an rvalue).
+
+        For unpacked structures (e.g. tuples) recursively decrement references inside.
+        """
+        if target_type.name == 'int':
             self.emit_line('CPyTagged_DecRef(%s);' % dest)
+        elif isinstance(target_type, TupleRTType):
+            i = 0
+            for typ in target_type.types:
+                self._dec_ref('{}.f{}'.format(dest, i), typ)
+                i += 1
         else:
-            if not op.target_type.supports_unbox:
+            if not target_type.supports_unbox:
                 self.emit_line('Py_DECREF(%s);' % dest)
 
     def visit_box(self, op: Box) -> None:

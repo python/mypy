@@ -39,7 +39,8 @@ def generate_c_module(name: str, fns: List[FuncIR]) -> str:
     fresult.append('#include <CPy.h>')
     fresult.append('')
 
-    fresult += code_generator.struct_declarations
+    for declaration in code_generator.toposort_declarations():
+        fresult += declaration.body
 
     fresult += result
 

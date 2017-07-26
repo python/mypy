@@ -29,7 +29,7 @@ from mypy.subtypes import is_named_instance
 from mypyc.ops import (
     BasicBlock, Environment, Op, LoadInt, RTType, Register, Return, FuncIR, Assign,
     PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRTType,
-    Unreachable
+    Unreachable, TupleGet
 )
 
 
@@ -452,25 +452,34 @@ class IRBuilder(NodeVisitor[int]):
 
     def visit_index_expr(self, expr: IndexExpr) -> int:
         base_type = self.types[expr.base]
-        index_type = self.types[expr.index]
         result_type = self.types[expr]
-        allows_index = is_named_instance(base_type, 'builtins.list') or type_to_rttype(base_type).name == 'tuple'
-        if allows_index and is_named_instance(index_type, 'builtins.int'):
 
-            # List indexing
+        base_rttype = type_to_rttype(base_type)
+
+        if is_named_instance(base_type, 'builtins.list'):
+            index_type = self.types[expr.index]
+            if not is_named_instance(index_type, 'builtins.int'):
+                assert False, 'Unsupported indexing operation'
+
             base_reg = self.accept(expr.base)
             index_reg = self.accept(expr.index)
             target_type = self.node_type(expr)
             tmp = self.alloc_temp(RTType('object'))
-
-            if is_named_instance(base_type, 'builtins.list'):
-                op = PrimitiveOp.LIST_GET
-            else:
-                assert is_named_instance(base_type, 'builtins.tuple')
-                op = PrimitiveOp.TUPLE_GET
+            op = PrimitiveOp.LIST_GET
 
             self.add(PrimitiveOp(tmp, op, base_reg, index_reg))
             return self.unbox(tmp, target_type)
+
+        elif isinstance(base_rttype, TupleRTType):
+            base_reg = self.accept(expr.base)
+            target_type = self.node_type(expr)
+
+            assert isinstance(expr.index, IntExpr)
+
+            target = self.alloc_target(target_type)
+            self.add(TupleGet(target, base_reg, expr.index.value, base_rttype.types[expr.index.value]))
+            return target
+
         assert False, 'Unsupported indexing operation'
 
     def visit_int_expr(self, expr: IntExpr) -> int:

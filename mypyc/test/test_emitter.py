@@ -5,7 +5,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ops import (
     Environment, BasicBlock, FuncIR, RuntimeArg, RTType, Goto, Return, LoadInt, Assign,
-    PrimitiveOp, IncRef, DecRef, Branch, Call, Unbox, Box
+    PrimitiveOp, IncRef, DecRef, Branch, Call, Unbox, Box, TupleRTType
 )
 from mypyc.emitter import (
     EmitterVisitor,
@@ -145,6 +145,14 @@ class TestEmitterVisitor(unittest.TestCase):
     def test_dec_ref(self):
         self.assert_emit(DecRef(self.m, RTType('int')),
                          "CPyTagged_DecRef(cpy_r_m);")
+
+    def test_dec_ref_tuple(self):
+        tuple_type = TupleRTType([RTType('int'), RTType('bool')])
+        self.assert_emit(DecRef(self.m, tuple_type), 'CPyTagged_DecRef(cpy_r_m.f0);')
+
+    def test_dec_ref_tuple_nested(self):
+        tuple_type = TupleRTType([TupleRTType([RTType('int'), RTType('bool')]), RTType('bool')])
+        self.assert_emit(DecRef(self.m, tuple_type), 'CPyTagged_DecRef(cpy_r_m.f0.f0);')
 
     def test_list_get_item(self):
         self.assert_emit(PrimitiveOp(self.n, PrimitiveOp.LIST_GET, self.m, self.k),
