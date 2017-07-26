@@ -45,17 +45,15 @@ class TestCompiler(DataSuite):
             source = build.BuildSource('prog.py', 'prog', text)
 
             try:
-                result = build.build(sources=[source],
-                                     options=options,
-                                     alt_lib_path=test_temp_dir)
-                if result.errors:
-                    raise CompileError(result.errors)
+                ctext = compiler.compile_module_to_c(
+                    sources=[source],
+                    module='prog',
+                    options=options,
+                    alt_lib_path=test_temp_dir)
+                out = ctext.splitlines()
             except CompileError as e:
                 out = e.messages
-            else:
-                ir = genops.build_ir(result.files['prog'], result.types)
-                ctext = compiler.generate_c_module('prog', ir)
-                out = ctext.splitlines()
+
             # Verify output.
             assert_string_arrays_equal_wildcards(testcase.output, out,
                                                  'Invalid output ({}, line {})'.format(

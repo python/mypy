@@ -1,9 +1,11 @@
+import textwrap
 from typing import List, Set, Dict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.ops import (
     OpVisitor, Environment, Label, Register, RTType, FuncIR, Goto, Branch, Return, PrimitiveOp,
-    Assign, LoadInt, IncRef, DecRef, Call, Box, Unbox, TupleRTType, TupleGet, OP_BINARY
+    Assign, LoadInt, IncRef, DecRef, Call, Box, Unbox, TupleRTType, TupleGet, UserRTType, ClassIR,
+    OP_BINARY, type_struct_name
 )
 
 
@@ -18,6 +20,22 @@ class MarkedDeclaration:
     def __init__(self, declaration: HeaderDeclaration, mark: bool) -> None:
         self.declaration = declaration
         self.mark = False
+
+
+def getter_name(cl: str, attribute: str) -> str:
+    return '{}_get{}'.format(cl, attribute)
+
+
+def setter_name(cl: str, attribute: str) -> str:
+    return '{}_set{}'.format(cl, attribute)
+
+
+def native_getter_name(cl: str, attribute: str) -> str:
+    return 'native_{}_get{}'.format(cl, attribute)
+
+
+def native_setter_name(cl: str, attribute: str) -> str:
+    return 'native_{}_set{}'.format(cl, attribute)
 
 
 class CodeGenerator:
@@ -121,7 +139,6 @@ class CodeGenerator:
 
         return result
 
-
     def generate_wrapper_function(self, fn: FuncIR) -> List[str]:
         """Generates a CPython-compatible wrapper function for a native function.
 
@@ -172,7 +189,6 @@ class CodeGenerator:
         result.append('}')
         return result
 
-
     def generate_unbox(self, src: str, dest: str, typ: RTType, failure: str) -> List[str]:
         if typ.name == 'int':
             return [
@@ -221,9 +237,16 @@ class CodeGenerator:
 
                 result.append('    {}.f{} = {};'.format(dest, i, temp2))
             return result
+        elif isinstance(typ, UserRTType):
+            return [
+                '    PyObject *{};'.format(dest),
+                '    if (PyObject_TypeCheck({}, &{}))'.format(src, type_struct_name(typ.name)),
+                '        {} = {};'.format(dest, src),
+                '    else',
+                failure
+            ]
         else:
             assert False, typ
-
 
     def generate_arg_check(self, name: str, typ: RTType) -> List[str]:
         """Insert a runtime check for argument and unbox if necessary.
@@ -234,6 +257,199 @@ class CodeGenerator:
         """
         return self.generate_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ, '        return NULL;')
 
+    def generate_class_declaration(self,
+                                   cl: ClassIR,
+                                   module: str) -> List[str]:
+        name = cl.name
+        fullname = '{}.{}'.format(module, name)
+        new_name = '{}_new'.format(name)
+        getseters_name = '{}_getseters'.format(name)
+        vtable_name = '{}_vtable'.format(name)
+
+        result = []  # type: List[str]
+        result.extend(self.generate_object_struct(cl))
+        result.append('')
+        result.extend(self.generate_native_getters_and_setters(cl))
+        result.extend(self.generate_vtable(cl, vtable_name))
+        result.append('')
+        result.extend(self.generate_new_for_class(cl, new_name, vtable_name))
+        result.append('')
+        result.extend(self.generate_getseters(cl, getseters_name))
+        result.append('')
+
+        result.append(textwrap.dedent("""\
+            static PyTypeObject {type_struct} = {{
+                PyVarObject_HEAD_INIT(NULL, 0)
+                "{fullname}",              /* tp_name */
+                sizeof({struct_name}),     /* tp_basicsize */
+                0,                         /* tp_itemsize */
+                0,                         /* tp_dealloc */
+                0,                         /* tp_print */
+                0,                         /* tp_getattr */
+                0,                         /* tp_setattr */
+                0,                         /* tp_reserved */
+                0,                         /* tp_repr */
+                0,                         /* tp_as_number */
+                0,                         /* tp_as_sequence */
+                0,                         /* tp_as_mapping */
+                0,                         /* tp_hash  */
+                0,                         /* tp_call */
+                0,                         /* tp_str */
+                0,                         /* tp_getattro */
+                0,                         /* tp_setattro */
+                0,                         /* tp_as_buffer */
+                Py_TPFLAGS_DEFAULT,        /* tp_flags */
+                0,                         /* tp_doc */
+                0,                         /* tp_traverse */
+                0,                         /* tp_clear */
+                0,                         /* tp_richcompare */
+                0,                         /* tp_weaklistoffset */
+                0,                         /* tp_iter */
+                0,                         /* tp_iternext */
+                0,                         /* tp_methods */
+                0,                         /* tp_members */
+                {getseters_name},          /* tp_getset */
+                0,                         /* tp_base */
+                0,                         /* tp_dict */
+                0,                         /* tp_descr_get */
+                0,                         /* tp_descr_set */
+                0,                         /* tp_dictoffset */
+                0,                         /* tp_init */
+                0,                         /* tp_alloc */
+                {new_name},                /* tp_new */
+            }};\
+            """).format(type_struct=type_struct_name(cl.name),
+                        struct_name=cl.struct_name,
+                        fullname=fullname,
+                        new_name=new_name,
+                        getseters_name=getseters_name))
+        return result
+
+    def generate_object_struct(self, cl: ClassIR) -> List[str]:
+        result = []
+        result.append('typedef struct {')
+        result.append('    PyObject_HEAD')
+        result.append('    CPyVTableItem *vtable;')
+        for attr, rtype in cl.attributes:
+            result.append('    {}{};'.format(rtype.ctype_spaced, attr))
+        result.append('}} {};'.format(cl.struct_name))
+        return result
+
+    def generate_native_getters_and_setters(self,
+                                            cl: ClassIR) -> List[str]:
+        result = []
+        for attr, rtype in cl.attributes:
+            result.append('{}{}({} *self)'.format(rtype.ctype_spaced,
+                                                   native_getter_name(cl.name, attr),
+                                                   cl.struct_name))
+            result.append('{')
+            result.append('    if (self->{} != {})'.format(attr, rtype.c_undefined_value))
+            result.append('        CPyTagged_IncRef(self->{});'.format(attr))  # TODO: Type-specific incref
+            result.append('    return self->{};'.format(attr))
+            result.append('}')
+            result.append('')
+            result.append('void {}({} *self, {}value)'.format(native_setter_name(cl.name, attr),
+                                                              cl.struct_name,
+                                                              rtype.ctype_spaced))
+            result.append('{')
+            result.append('    if (self->{} != {})'.format(attr, rtype.c_undefined_value))
+            result.append('        CPyTagged_DecRef(self->{});'.format(attr))  # TODO: Type-specific decref
+            result.append('    CPyTagged_IncRef(value);')  # TODO: Type-specific incref
+            result.append('    self->{} = value;'.format(attr))
+            result.append('}')
+            result.append('')
+        return result
+
+    def generate_vtable(self,
+                        cl: ClassIR,
+                        vtable_name: str) -> List[str]:
+        result = []
+        result.append('static CPyVTableItem {}[] = {{'.format(vtable_name))
+        for attr, rtype in cl.attributes:
+            result.append('    (CPyVTableItem){},'.format(native_getter_name(cl.name, attr)))
+            result.append('    (CPyVTableItem){},'.format(native_setter_name(cl.name, attr)))
+        result.append('};')
+        return result
+
+    def generate_new_for_class(self, cl: ClassIR, func_name: str, vtable_name: str) -> List[str]:
+        result = []
+        result.append('static PyObject *')
+        result.append('{}(PyTypeObject *type, PyObject *args, PyObject *kwds)'.format(func_name))
+        result.append('{')
+        result.append('    {} *self;'.format(cl.struct_name))
+        result.append('    self = ({} *)type->tp_alloc(type, 0);'.format(cl.struct_name))
+        result.append('    if (self == NULL)')
+        result.append('        return NULL;')
+        result.append('    self->vtable = {};'.format(vtable_name))
+        for attr, rtype in cl.attributes:
+            result.append('    self->{} = {};'.format(attr, rtype.c_undefined_value))
+        result.append('    return (PyObject *)self;')
+        result.append('}')
+        return result
+
+    def generate_getseters(self,
+                           cl: ClassIR,
+                           name: str) -> List[str]:
+        funcs = []
+
+        struct = []
+        struct.append('static PyGetSetDef {}[] = {{'.format(name))
+        for attr, rtype in cl.attributes:
+            funcs.extend(self.generate_getter(cl, attr, rtype))
+            funcs.append('')
+            funcs.extend(self.generate_setter(cl, attr, rtype))
+            funcs.append('')
+            struct.append('    {{"{}",'.format(attr))
+            struct.append('     (getter){}, (setter){},'.format(getter_name(cl.name, attr),
+                                                                setter_name(cl.name, attr)))
+            struct.append('     NULL, NULL},')
+        struct.append('    {NULL}  /* Sentinel */')
+        struct.append('};')
+        return funcs + struct
+
+    def generate_getter(self,
+                        cl: ClassIR,
+                        attr: str,
+                        rtype: RTType) -> List[str]:
+        result = []
+        result.append('static PyObject *')
+        result.append('{}({} *self, void *closure)'.format(getter_name(cl.name, attr),
+                                                                            cl.struct_name))
+        result.append('{')
+        result.append('    if (self->{} == {}) {{'.format(attr, rtype.c_undefined_value))
+        result.append('        PyErr_SetString(PyExc_AttributeError,')
+        result.append('            "attribute {} of {} undefined");'.format(repr(attr),
+                                                                            repr(cl.name)))
+        result.append('        return NULL;')
+        result.append('    }')
+        result.extend(self.generate_box('self->{}'.format(attr),
+                                        'retval', rtype, 'abort();'))
+        result.append('    return retval;')
+        result.append('}')
+        return result
+
+    def generate_setter(self,
+                        cl: ClassIR,
+                        attr: str,
+                        rtype: RTType) -> List[str]:
+        result = []
+        result.append('static int')
+        result.append('{}({} *self, PyObject *value, void *closure)'.format(
+            setter_name(cl.name, attr),
+            cl.struct_name))
+        result.append('{')
+        result.append('    if (self->{} != {})'.format(attr, rtype.c_undefined_value))
+        result.append('        CPyTagged_DecRef(self->{});'.format(attr))
+        result.append('    if (value != NULL) {')
+        result.append('        if (PyLong_Check(value))')
+        result.append('            self->{} = CPyTagged_FromObject(value);'.format(attr))
+        result.append('        else')
+        result.append('            abort();')
+        result.append('    } else')
+        result.append('        self->{} = {};'.format(attr, rtype.c_undefined_value))
+        result.append('    return 0;')
+        result.append('}')
+        return result
 
 
 class Emitter:
@@ -311,7 +527,7 @@ class EmitterVisitor(OpVisitor):
 
     def visit_return(self, op: Return) -> None:
         typ = self.type(op.reg)
-        assert typ.name in ('bool', 'int', 'list', 'sequence_tuple', 'tuple', 'None')
+        assert typ.name != 'object'
         regstr = self.reg(op.reg)
         self.emit_line('return %s;' % regstr)
 

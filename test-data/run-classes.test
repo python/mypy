@@ -1,0 +1,53 @@
+[case testEmptyClass]
+class Empty: pass
+
+def f(e: Empty) -> Empty:
+    return e
+[file driver.py]
+from native import Empty, f
+
+print(isinstance(Empty, type))
+print(Empty)
+print(str(Empty())[:20])
+
+e = Empty()
+print(f(e) is e)
+[out]
+True
+<class 'native.Empty'>
+<native.Empty object
+True
+
+[case testClassWithFields]
+class C:
+    x: int
+    y: int
+[file driver.py]
+from native import C
+
+c = C()
+c.x = 1
+c.y = 2
+print(c.x)
+print(c.y)
+c.x = 10**30
+print(c.x)
+c.x = 10**30+1
+print(c.x)
+assert hasattr(c, 'x')
+assert hasattr(c, 'y')
+assert not hasattr(c, 'z')
+del c.x
+assert not hasattr(c, 'x')
+assert hasattr(c, 'y')
+del c.y
+assert not hasattr(c, 'y')
+c.x = 10**30+2
+print(c.x)
+assert hasattr(c, 'x')
+[out]
+1
+2
+1000000000000000000000000000000
+1000000000000000000000000000001
+1000000000000000000000000000002

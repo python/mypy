@@ -34,7 +34,6 @@ class RTType:
       'tuple'
       'sequence_tuple'
       'None'
-      '@flag'
     """
 
     def __init__(self, name: str) -> None:
@@ -62,6 +61,15 @@ class RTType:
             return 'char'
         else:
             return 'PyObject *'
+
+    @property
+    def c_undefined_value(self) -> str:
+        if self.name == 'int':
+            return 'CPY_INT_TAG'
+        elif self.name == 'bool':
+            return '2'
+        else:
+            return 'NULL'
 
     def __repr__(self) -> str:
         return '<RTType %s>' % self.name
@@ -114,6 +122,17 @@ class TupleRTType(RTType):
         result.append('')
 
         return result
+
+
+class UserRTType(RTType):
+    """Instance of user-defined class."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(name)
+
+    def __repr__(self) -> str:
+        return '<UserRTType %s>' % self.name
+
 
 class Environment:
     """Keep track of names and types of registers."""
@@ -646,6 +665,24 @@ class FuncIR:
         self.blocks = blocks
         self.env = env
         self._next_block_label = 0
+
+
+class ClassIR:
+    """Intermediate representation of a class."""
+
+    def __init__(self,
+                 name: str,
+                 attributes: List[Tuple[str, RTType]]) -> None:
+        self.name = name
+        self.attributes = attributes
+
+    @property
+    def struct_name(self) -> str:
+        return '{}Object'.format(self.name)
+
+
+def type_struct_name(class_name: str) -> str:
+    return '{}Type'.format(class_name)
 
 
 class OpVisitor(Generic[T]):

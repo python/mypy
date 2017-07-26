@@ -20,7 +20,7 @@ from mypy.nodes import (
     Node, MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr, IntExpr, NameExpr, LDEF, Var,
     IfStmt, Node, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
-    ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ARG_POS
+    ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef, ARG_POS
 )
 from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType
 from mypy.visitor import NodeVisitor
@@ -29,14 +29,16 @@ from mypy.subtypes import is_named_instance
 from mypyc.ops import (
     BasicBlock, Environment, Op, LoadInt, RTType, Register, Return, FuncIR, Assign,
     PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRTType,
-    Unreachable, TupleGet
+    Unreachable, TupleGet, ClassIR, UserRTType
 )
 
 
-def build_ir(module: MypyFile, types: Dict[Expression, Type]) -> List[FuncIR]:
+def build_ir(module: MypyFile,
+             types: Dict[Expression, Type]) -> Tuple[List[FuncIR],
+                                                     List[ClassIR]]:
     builder = IRBuilder(types)
     module.accept(builder)
-    return builder.generated
+    return builder.functions, builder.classes
 
 
 def type_to_rttype(typ: Type) -> RTType:
@@ -49,6 +51,9 @@ def type_to_rttype(typ: Type) -> RTType:
             return RTType('list')
         elif typ.type.fullname() == 'builtins.tuple':
             return RTType('sequence_tuple')
+        elif not typ.type.fullname().startswith('builtins.'):
+            # TODO: Better check for whether a type has been compiled.
+            return UserRTType(typ.type.name())
     elif isinstance(typ, TupleType):
         return TupleRTType([type_to_rttype(t) for t in typ.items])
     elif isinstance(typ, NoneTyp):
@@ -77,7 +82,8 @@ class IRBuilder(NodeVisitor[int]):
         self.environment = Environment()
         self.environments = [self.environment]
         self.blocks = []  # type: List[List[BasicBlock]]
-        self.generated = []  # type: List[FuncIR]
+        self.functions = []  # type: List[FuncIR]
+        self.classes = []  # type: List[ClassIR]
         self.targets = []  # type: List[int]
         self.break_gotos = []  # type: List[List[Goto]]
         self.continue_gotos = []  # type: List[List[Goto]]
@@ -107,7 +113,15 @@ class IRBuilder(NodeVisitor[int]):
         blocks, env = self.leave()
         args = self.convert_args(fdef)
         func = FuncIR(fdef.name(), args, ret_type, blocks, env)
-        self.generated.append(func)
+        self.functions.append(func)
+        return -1
+
+    def visit_class_def(self, cdef: ClassDef) -> int:
+        attributes = []
+        for name, node in cdef.info.names.items():
+            if isinstance(node.node, Var):
+                attributes.append((name, type_to_rttype(node.node.type)))
+        self.classes.append(ClassIR(cdef.name, attributes))
         return -1
 
     def convert_args(self, fdef: FuncDef) -> List[RuntimeArg]:
@@ -131,7 +145,7 @@ class IRBuilder(NodeVisitor[int]):
         block = self.blocks[-1][-1]
         if not block.ops or not isinstance(block.ops[-1], Return):
             self.add(Unreachable())
-        
+
     def visit_block(self, block: Block) -> int:
         for stmt in block.body:
             stmt.accept(self)
@@ -260,7 +274,7 @@ class IRBuilder(NodeVisitor[int]):
 
         for break_goto in self.break_gotos.pop():
             break_goto.label = break_block.label
-        
+
     def visit_while_stmt(self, s: WhileStmt) -> int:
         self.push_loop_stack()
 
@@ -310,7 +324,7 @@ class IRBuilder(NodeVisitor[int]):
             body = self.new_block()
             self.set_branches(branches, True, body)
             s.body.accept(self)
-            
+
             end_goto = Goto(-1)
             self.add(end_goto)
             end_block = self.new_block()
@@ -339,7 +353,7 @@ class IRBuilder(NodeVisitor[int]):
 
             one_reg = self.alloc_temp(RTType('int'))
             self.add(LoadInt(one_reg, 1))
-            
+
             assert isinstance(s.index, NameExpr)
             assert isinstance(s.index.node, Var)
             lvalue_reg = self.environment.add_local(s.index.node, self.node_type(s.index))
@@ -351,11 +365,11 @@ class IRBuilder(NodeVisitor[int]):
             # at every iteration.
             len_reg = self.alloc_temp(RTType('int'))
             self.add(PrimitiveOp(len_reg, PrimitiveOp.LIST_LEN, expr_reg))
-            
+
             branch = Branch(index_reg, len_reg, -1, -1, Branch.INT_LT)
             self.add(branch)
             branches = [branch]
-            
+
             body_block = self.new_block()
             self.set_branches(branches, True, body_block)
 
@@ -379,7 +393,7 @@ class IRBuilder(NodeVisitor[int]):
             self.pop_loop_stack(end_block, next_block)
 
             return -1
-            
+
         assert False, 'for not supported'
 
     def visit_break_stmt(self, node: BreakStmt) -> int:
@@ -418,7 +432,7 @@ class IRBuilder(NodeVisitor[int]):
         reg = self.accept(expr.expr)
         if etype.name != 'int':
             assert False, 'Unsupported unary operation'
-        
+
         target = self.alloc_target(RTType('int'))
         zero = self.accept(IntExpr(0))
         self.add(PrimitiveOp(target, PrimitiveOp.INT_SUB, zero, reg))

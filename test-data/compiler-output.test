@@ -27,11 +27,18 @@ static struct PyModuleDef module = {
 
 PyMODINIT_FUNC PyInit_prog(void)
 {
-    return PyModule_Create(&module);
+    PyObject *m;
+
+    m = PyModule_Create(&module);
+    if (m == NULL)
+        return NULL;
+
+    return m;
 }
 
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x) {
 CPyL0:
+    CPyTagged_IncRef(cpy_r_x);
     return cpy_r_x;
 }
 

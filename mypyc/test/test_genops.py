@@ -64,7 +64,7 @@ class TestGenOps(DataSuite):
                 if result.errors:
                     actual = result.errors
                 else:
-                    ir = genops.build_ir(result.files['__main__'], result.types)
+                    ir, _ = genops.build_ir(result.files['__main__'], result.types)
                     actual = []
                     for fn in ir:
                         actual.extend(format_func(fn))

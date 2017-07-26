@@ -3,6 +3,7 @@
 import contextlib
 import os.path
 import shutil
+from typing import List
 
 from mypy import build
 from mypy.errors import CompileError
@@ -10,6 +11,7 @@ from mypy.options import Options
 from mypy.test.config import test_temp_dir
 
 from mypyc import genops
+from mypyc.ops import FuncIR
 from mypyc.test.config import test_data_prefix
 
 # The builtins stub used during icode generation test cases.
@@ -63,7 +65,7 @@ def perform_test(func, builtins_path, testcase):
         os.remove(builtins)
 
 
-def build_ir_for_single_file(input_lines):
+def build_ir_for_single_file(input_lines: List[str]) -> List[FuncIR]:
     program_text = '\n'.join(input_lines)
 
     options = Options()
@@ -78,4 +80,5 @@ def build_ir_for_single_file(input_lines):
                          alt_lib_path=test_temp_dir)
     if result.errors:
         raise CompileError(result.errors)
-    return genops.build_ir(result.files['__main__'], result.types)
+    functions, classes = genops.build_ir(result.files['__main__'], result.types)
+    return functions

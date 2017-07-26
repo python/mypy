@@ -14,12 +14,12 @@ from mypy.options import Options
 from mypyc import genops
 from mypyc import compiler
 from mypyc import buildc
-from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.test.testutil import ICODE_GEN_BUILTINS, use_custom_builtins
 from mypyc.test.config import test_data_prefix
 
 
-files = ['run.test']
+files = ['run.test',
+         'run-classes.test']
 
 
 class TestRun(DataSuite):
@@ -48,20 +48,16 @@ class TestRun(DataSuite):
             source = build.BuildSource('native.py', 'native', text)
 
             try:
-                result = build.build(sources=[source],
-                                     options=options,
-                                     alt_lib_path=test_temp_dir)
-                if result.errors:
-                    raise CompileError(result.errors)
+                ctext = compiler.compile_module_to_c(
+                    sources=[source],
+                    module='native',
+                    options=options,
+                    alt_lib_path=test_temp_dir)
             except CompileError as e:
                 for line in e.messages:
                     print(line)
                 assert False, 'Compile error'
 
-            ir = genops.build_ir(result.files['native'], result.types)
-            for fn in ir:
-                insert_ref_count_opcodes(fn)
-            ctext = compiler.generate_c_module('native', ir)
             cpath = os.path.join(test_temp_dir, 'native.c')
             with open(cpath, 'w') as f:
                 f.write(ctext)

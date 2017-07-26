@@ -10,16 +10,28 @@ extern "C" {
 
 // Naming conventions:
 //
-// LongInt: tagged long int
-// ShortInt: tagged short int
-// CInt: C 'int' value
-// Int: tagged int (long or short)
-// Obj: CPython object (PyObject *)
+// Tagged: tagged int
+// Long: tagged long int (pointer)
+// Short: tagged short int (unboxed)
+// LongLong: C long long (64 bit)
+// Int: C int
+// Object: CPython object (PyObject *)
 
 typedef unsigned long long CPyTagged;
 typedef long long CPySignedInt;
 
 #define CPY_INT_TAG 1
+
+typedef void (*CPyVTableItem)(void);
+
+// Get attribute value using vtable (may return an undefined value)
+#define CPY_GET_ATTR(obj, vtable_index, object_type, attr_type) \
+    (attr_type (*)(object_type *)((object_type *)obj)->vtable[vtable_index])((object_type *)obj)
+
+// Set attribute value using vtable
+#define CPY_SET_ATTR(obj, vtable_index, value, object_type, attr_type) \
+    (void (*)(object_type *, attr_type)((object_type *)obj)->vtable[vtable_index])( \
+        (object_type *)obj, value);
 
 inline int CPyTagged_CheckLong(CPyTagged x) {
     return x & CPY_INT_TAG;
