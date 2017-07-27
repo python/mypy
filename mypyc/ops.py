@@ -681,6 +681,19 @@ class ClassIR:
         return '{}Object'.format(self.name)
 
 
+class ModuleIR:
+    """Intermediate representation of a module.
+    """
+
+    def __init__(self, imports: List[str], functions: List[FuncIR], classes: List[ClassIR]) -> None:
+        self.imports = imports[:]
+        self.functions = functions
+        self.classes = classes
+
+        if 'builtins' not in self.imports:
+            self.imports.insert(0, 'builtins')
+
+
 def type_struct_name(class_name: str) -> str:
     return '{}Type'.format(class_name)
 

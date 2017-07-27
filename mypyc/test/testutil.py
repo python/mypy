@@ -80,5 +80,5 @@ def build_ir_for_single_file(input_lines: List[str]) -> List[FuncIR]:
                          alt_lib_path=test_temp_dir)
     if result.errors:
         raise CompileError(result.errors)
-    functions, classes = genops.build_ir(result.files['__main__'], result.types)
-    return functions
+    module = genops.build_ir(result.files['__main__'], result.types)
+    return module.functions

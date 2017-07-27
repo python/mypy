@@ -29,16 +29,17 @@ from mypy.subtypes import is_named_instance
 from mypyc.ops import (
     BasicBlock, Environment, Op, LoadInt, RTType, Register, Return, FuncIR, Assign,
     PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRTType,
-    Unreachable, TupleGet, ClassIR, UserRTType
+    Unreachable, TupleGet, ClassIR, UserRTType, ModuleIR
 )
 
 
 def build_ir(module: MypyFile,
-             types: Dict[Expression, Type]) -> Tuple[List[FuncIR],
-                                                     List[ClassIR]]:
+             types: Dict[Expression, Type]) -> ModuleIR:
     builder = IRBuilder(types)
     module.accept(builder)
-    return builder.functions, builder.classes
+
+    # Imports not yet implemented
+    return ModuleIR([], builder.functions, builder.classes)
 
 
 def type_to_rttype(typ: Type) -> RTType:

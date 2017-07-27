@@ -61,9 +61,9 @@ class TestAnalysis(DataSuite):
                 if result.errors:
                     actual = result.errors
                 else:
-                    ir, _ = genops.build_ir(result.files['__main__'], result.types)
-                    assert len(ir) == 1, "Only 1 function definition expected per test case"
-                    fn = ir[0]
+                    module = genops.build_ir(result.files['__main__'], result.types)
+                    assert len(module.functions) == 1, "Only 1 function definition expected per test case"
+                    fn = module.functions[0]
                     actual = format_func(fn)
                     actual = actual[actual.index('L0:'):]
                     cfg = analysis.get_cfg(fn.blocks)

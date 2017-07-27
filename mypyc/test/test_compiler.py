@@ -47,7 +47,7 @@ class TestCompiler(DataSuite):
             try:
                 ctext = compiler.compile_module_to_c(
                     sources=[source],
-                    module='prog',
+                    module_name='prog',
                     options=options,
                     alt_lib_path=test_temp_dir)
                 out = ctext.splitlines()

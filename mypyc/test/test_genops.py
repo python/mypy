@@ -64,9 +64,9 @@ class TestGenOps(DataSuite):
                 if result.errors:
                     actual = result.errors
                 else:
-                    ir, _ = genops.build_ir(result.files['__main__'], result.types)
+                    module = genops.build_ir(result.files['__main__'], result.types)
                     actual = []
-                    for fn in ir:
+                    for fn in module.functions:
                         actual.extend(format_func(fn))
             assert_string_arrays_equal_wildcards(
                 expected_output, actual,

@@ -50,7 +50,7 @@ class TestRun(DataSuite):
             try:
                 ctext = compiler.compile_module_to_c(
                     sources=[source],
-                    module='native',
+                    module_name='native',
                     options=options,
                     alt_lib_path=test_temp_dir)
             except CompileError as e:
