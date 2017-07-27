@@ -55,3 +55,27 @@ Documentation
 -------------
 
 We have some [developer documentation](doc/dev-intro.md).
+
+Development Roadmap
+-------------------
+
+These are the current major objectives:
+
+1. Support a smallish but useful Python subset (exact details to be
+   decided). Focus on compiling single modules, while the rest of the
+   program is interpreted and does not need to be type checked.
+   Generate useful errors for code that uses unsupported Python
+   features.
+
+2. Support compiling multiple modules as a single compilation unit (or
+   dynamic linking of compiled modules).  Without this inter-module
+   calls will use slower Python-level objects, wrapper functions and
+   Python namespaces.
+
+3. Self-compilation (both mypy and mypyc).
+
+Future
+------
+
+We have some ideas for
+[future improvements and optimizations](doc/future.md).
