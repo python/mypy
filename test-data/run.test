@@ -169,6 +169,17 @@ print(f(((1,True),2)))
 [out]
 1
 
+[case testTupleGetBoxedInt]
+from typing import Tuple
+def f(x: Tuple[Tuple[int, bool], int]) -> int:
+    return x[0][0]
+[file driver.py]
+from native import f
+big_number = pow(2, 80)
+print(f(((big_number,True),2)))
+[out]
+1208925819614629174706176
+
 [case testNewTuple]
 def f() -> int:
     x = (False, 1)
@@ -178,6 +189,17 @@ from native import f
 print(f())
 [out]
 1
+
+[case testNewTupleBoxedInt]
+def f(y: int) -> int:
+    x = (False, y)
+    return x[1]
+[file driver.py]
+from native import f
+big_number = pow(2, 80)
+print(f(big_number))
+[out]
+1208925819614629174706176
 
 [case testHomogenousTuple]
 from typing import List

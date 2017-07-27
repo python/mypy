@@ -5,7 +5,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ops import (
     Environment, BasicBlock, FuncIR, RuntimeArg, RTType, Goto, Return, LoadInt, Assign,
-    PrimitiveOp, IncRef, DecRef, Branch, Call, Unbox, Box, TupleRTType
+    PrimitiveOp, IncRef, DecRef, Branch, Call, Unbox, Box, TupleRTType, TupleGet
 )
 from mypyc.emitter import (
     EmitterVisitor,
@@ -63,6 +63,9 @@ class TestEmitterVisitor(unittest.TestCase):
     def test_load_int(self):
         self.assert_emit(LoadInt(self.m, 5),
                          "cpy_r_m = 10;")
+
+    def test_tuple_get(self):
+        self.assert_emit(TupleGet(self.m, self.n, 1, RTType('bool')), 'cpy_r_m = cpy_r_n.f1;')
 
     def test_load_None(self):
         self.assert_emit(PrimitiveOp(self.m, PrimitiveOp.NONE),

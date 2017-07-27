@@ -14,8 +14,7 @@ class HeaderDeclaration:
 
 
 class MarkedDeclaration:
-    """Add a mark, useful for topological sort.
-    """
+    """Add a mark, useful for topological sort."""
     def __init__(self, declaration: HeaderDeclaration, mark: bool) -> None:
         self.declaration = declaration
         self.mark = False
@@ -24,10 +23,22 @@ class MarkedDeclaration:
 class CodeGenerator:
     def __init__(self) -> None:
         self.temp_counter = 0
+
+        # A map of a C identifier to whatever the C identifier declares. Currently this is
+        # used for declaring structsm and the key corresponds to the name of the struct.
+        # The declaration contains the body of the struct.
         self.declarations = {} # type: Dict[str, HeaderDeclaration]
         self.header_declarations = [] # type: List[str]
 
     def toposort_declarations(self) -> List[HeaderDeclaration]:
+        """Topologically sort the declaration dict by dependencies.
+
+        Declarations can require other declarations to come prior in C (such as declaring structs).
+        In order to guarantee that the C output will compile the declarations will thus need to
+        be properly ordered. This simple DFS guarantees that we have a proper ordering.
+
+        This runs in O(V + E).
+        """
         result = []
         marked_declarations = { k: MarkedDeclaration(v, False) for k, v in self.declarations.items() }
 

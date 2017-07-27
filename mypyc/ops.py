@@ -80,13 +80,18 @@ class TupleRTType(RTType):
 
     @property
     def unique_id(self) -> str:
+        """Generate a unique id which is used in naming corresponding C identifiers.
+
+        This is necessary since C does not have anonymous structural type equivalence
+        in the same way python can just assign a Tuple[int, bool] to a Tuple[int, bool].
+
+        TODO: a better unique id. (#38)
+        """
         return str(abs(hash(self)))[0:15]
 
     @property
     def struct_name(self) -> str:
         # max c length is 31 charas, this should be enough entropy to be unique.
-        #
-        # note we may want to switch to a more complicated hash later.
         return 'tuple_def_' + self.unique_id
 
     @property
@@ -521,8 +526,7 @@ class LoadInt(RegisterOp):
 
 
 class TupleGet(RegisterOp):
-    """dest = src[int]
-    """
+    """dest = src[int]"""
     def __init__(self, dest: Register, src: Register, index: int, target_type: RTType) -> None:
         self.dest = dest
         self.src = src
