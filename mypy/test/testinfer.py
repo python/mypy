@@ -6,6 +6,7 @@ from mypy.myunit import Suite, assert_equal, assert_true
 from mypy.checkexpr import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED
 from mypy.types import AnyType, TupleType, Type
+from mypy.typefixture import TypeFixture
 
 
 class MapActualsToFormalsSuite(Suite):
@@ -87,7 +88,7 @@ class MapActualsToFormalsSuite(Suite):
             self.tuple(AnyType(), AnyType()))
 
     def tuple(self, *args: Type) -> TupleType:
-        return TupleType(list(args), None)
+        return TupleType(list(args), TypeFixture().std_tuple)
 
     def test_named_args(self) -> None:
         self.assert_map(
@@ -198,7 +199,7 @@ class MapActualsToFormalsSuite(Suite):
 def expand_caller_kinds(kinds_or_names: List[Union[int, str]]
                         ) -> Tuple[List[int], List[Optional[str]]]:
     kinds = []
-    names = []
+    names = []  # type: List[Optional[str]]
     for k in kinds_or_names:
         if isinstance(k, str):
             kinds.append(ARG_NAMED)
@@ -212,7 +213,7 @@ def expand_caller_kinds(kinds_or_names: List[Union[int, str]]
 def expand_callee_kinds(kinds_and_names: List[Union[int, Tuple[int, str]]]
                         ) -> Tuple[List[int], List[Optional[str]]]:
     kinds = []
-    names = []
+    names = []  # type: List[Optional[str]]
     for v in kinds_and_names:
         if isinstance(v, tuple):
             kinds.append(v[0])

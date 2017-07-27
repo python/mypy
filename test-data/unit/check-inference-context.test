@@ -350,8 +350,8 @@ ao = None # type: List[object]
 a = None # type: A
 b = None # type: B
 
-aa = [b] # E: List item 0 has incompatible type "B"
-ab = [a] # E: List item 0 has incompatible type "A"
+aa = [b] # E: List item 0 has incompatible type "B"; expected "A"
+ab = [a] # E: List item 0 has incompatible type "A"; expected "B"
 
 aa = [a]
 ab = [b]
@@ -371,8 +371,8 @@ ao = None # type: List[object]
 a = None # type: A
 b = None # type: B
 
-ab = [b, a] # E: List item 1 has incompatible type "A"
-ab = [a, b] # E: List item 0 has incompatible type "A"
+ab = [b, a] # E: List item 1 has incompatible type "A"; expected "B"
+ab = [a, b] # E: List item 0 has incompatible type "A"; expected "B"
 
 aa = [a, b, a]
 ao = [a, b]
@@ -387,7 +387,7 @@ def f() -> None:
     a = []     # E: Need type annotation for variable
     b = [None]
     c = [B()]
-    c = [object()] # E: List item 0 has incompatible type "object"
+    c = [object()] # E: List item 0 has incompatible type "object"; expected "B"
     c = [B()]
 class B: pass
 [builtins fixtures/list.pyi]
@@ -401,8 +401,8 @@ ab = None # type: List[B]
 b = None # type: B
 o = None # type: object
 
-aao = [[o], ab] # E: List item 1 has incompatible type List[B]
-aab = [[], [o]] # E: List item 0 has incompatible type "object"
+aao = [[o], ab] # E: List item 1 has incompatible type List[B]; expected List[object]
+aab = [[], [o]] # E: List item 0 has incompatible type "object"; expected "B"
 
 aao = [[None], [b], [], [o]]
 aab = [[None], [b], []]
@@ -529,7 +529,7 @@ class set(Generic[t]):
     def __init__(self, iterable: Iterable[t]) -> None: pass
 b = bool()
 l = set([b])
-l = set([object()]) # E: List item 0 has incompatible type "object"
+l = set([object()]) # E: List item 0 has incompatible type "object"; expected "bool"
 [builtins fixtures/for.pyi]
 
 
@@ -564,7 +564,7 @@ class B:
 from typing import List, Callable
 f = None # type: Callable[[], List[A]]
 f = lambda: []
-f = lambda: [B()]  # E: List item 0 has incompatible type "B"
+f = lambda: [B()]  # E: List item 0 has incompatible type "B"; expected "A"
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -749,14 +749,14 @@ class A:
 a = A()
 a.x = []
 a.x = [1]
-a.x = [''] # E: List item 0 has incompatible type "str"
+a.x = [''] # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
 [case testListMultiplyInContext]
 from typing import List
 a = None  # type: List[int]
 a = [None] * 3
-a = [''] * 3 # E: List item 0 has incompatible type "str"
+a = [''] * 3 # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
 [case testUnionTypeContext]

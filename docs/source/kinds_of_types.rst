@@ -1027,6 +1027,11 @@ value of type ``Awaitable[T]``:
    my_coroutine = countdown_1("Millennium Falcon", 5)
    reveal_type(my_coroutine)  # has type 'Awaitable[str]'
 
+.. note::
+
+    :ref:`reveal_type() <reveal-type>` displays the inferred static type of
+    an expression.
+
 If you want to use coroutines in older versions of Python that do not support
 the ``async def`` syntax, you can instead use the ``@asyncio.coroutine``
 decorator to convert a generator into a coroutine.
@@ -1154,8 +1159,15 @@ demonstrates how to work with coroutines. One version
 and one
 `uses yield from <https://github.com/python/mypy/blob/master/test-data/samples/crawl.py>`_.
 
+.. _typeddict:
+
 TypedDict
 *********
+
+.. note::
+
+   TypedDict is not yet an officially supported feature.  It may not work reliably,
+   and details of TypedDict may change in future mypy releases.
 
 Python programs often use dictionaries with string keys to represent objects.
 Here is a typical example:
@@ -1250,11 +1262,6 @@ subtyping, as discussed below).
 
        pip install --upgrade mypy-extensions
 
-.. note::
-
-   TypedDict is experimental.  Details of TypedDict may change in
-   future mypy releases.
-
 Totality
 --------
 
@@ -1283,6 +1290,14 @@ However, mypy still lets use ``[]`` with a partial TypedDict -- you
 just need to be careful with it, as it could result in a ``KeyError``.
 Requiring ``get()`` everywhere would be too cumbersome. (Note that you
 are free to use ``get()`` with total TypedDicts as well.)
+
+Keys that aren't required are shown with a ``?`` in error messages:
+
+.. code-block:: python
+
+   # Revealed type is 'TypedDict('GuiOptions', {'language'?: builtins.str,
+   #                                            'color'?: builtins.str})'
+   reveal_type(options)
 
 Totality also affects structural compatibility. You can't use a partial
 TypedDict when a total one is expected. Also, a total typed dict is not
