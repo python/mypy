@@ -213,7 +213,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.msg.fail(messages.CANNOT_ISINSTANCE_NEWTYPE, e)
         self.try_infer_partial_type(e)
         if isinstance(e.callee, LambdaExpr):
-            type_context = CallableType([self.accept(a) for a in e.args], e.arg_kinds, e.arg_names,
+            formal_to_actual = map_actuals_to_formals(
+                e.arg_kinds, e.arg_names,
+                e.callee.arg_kinds, e.callee.arg_names,
+                lambda i: self.accept(e.args[i]))
+
+            arg_types = [join.join_type_list([self.accept(e.args[j]) for j in formal_to_actual[i]])
+                         for i in range(len(e.callee.arg_kinds))]
+            type_context = CallableType(arg_types, e.callee.arg_kinds, e.callee.arg_names,
                                         ret_type=self.object_type(),
                                         fallback=self.named_type('builtins.function'))
         else:
