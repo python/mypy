@@ -20,7 +20,8 @@ from mypy.nodes import (
     Node, MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr, IntExpr, NameExpr, LDEF, Var,
     IfStmt, Node, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
-    ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef, TypeInfo, ARG_POS
+    ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef, TypeInfo,
+    Import, ImportFrom, ImportAll, ARG_POS
 )
 from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType
 from mypy.visitor import NodeVisitor
@@ -40,7 +41,7 @@ def build_ir(module: MypyFile,
     module.accept(builder)
 
     # Imports not yet implemented
-    return ModuleIR([], builder.functions, builder.classes)
+    return ModuleIR(builder.imports, builder.functions, builder.classes)
 
 
 class Mapper:
@@ -102,6 +103,7 @@ class IRBuilder(NodeVisitor[int]):
         self.break_gotos = []  # type: List[List[Goto]]
         self.continue_gotos = []  # type: List[List[Goto]]
         self.mapper = mapper
+        self.imports = [] # type: List[str]
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> int:
         if mypyfile.fullname() in ('typing', 'abc'):
@@ -132,6 +134,37 @@ class IRBuilder(NodeVisitor[int]):
                 attributes.append((name, self.type_to_rttype(node.node.type)))
         ir = self.mapper.type_to_ir[cdef.info]
         ir.attributes = attributes
+        return -1
+
+    def visit_import(self, node: Import) -> int:
+        if node.is_unreachable or node.is_mypy_only:
+            pass
+        if not node.is_top_level:
+            assert False, "non-toplevel imports not supported"
+
+        for node_id, _ in node.ids:
+            self.imports.append(node_id)
+
+        return -1
+
+    def visit_import_from(self, node: ImportFrom) -> int:
+        if node.is_unreachable or node.is_mypy_only:
+            pass
+        if not node.is_top_level:
+            assert False, "non-toplevel imports not supported"
+
+        self.imports.append(node.id)
+
+        return -1
+
+    def visit_import_all(self, node: ImportAll) -> int:
+        if node.is_unreachable or node.is_mypy_only:
+            pass
+        if not node.is_top_level:
+            assert False, "non-toplevel imports not supported"
+
+        self.imports.append(node.id)
+
         return -1
 
     def visit_func_def(self, fdef: FuncDef) -> int:
