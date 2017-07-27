@@ -87,6 +87,11 @@ class TestRun(DataSuite):
             output = output.decode('utf8')
             outlines = output.splitlines()
 
+            heading('Generated C')
+            with open(cpath) as f:
+                print(f.read().rstrip())
+            heading('End C')
+
             # Verify output.
             assert_string_arrays_equal_wildcards(testcase.output, outlines,
                                                  'Invalid output ({}, line {})'.format(

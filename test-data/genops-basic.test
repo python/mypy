@@ -463,20 +463,52 @@ L0:
     r0 = 3
     return r0
 
-[case testHomogenousTuple]
+[case testSequenceTuple]
 from typing import List
 def f(x: List[bool]) -> bool:
     return tuple(x)[1]
 [out]
 def f(x):
     x :: list
-    r0 :: homogenous_tuple
+    r0 :: sequence_tuple
     r1 :: int
     r2 :: object
     r3 :: bool
 L0:
     r0 = tuple x :: list
     r1 = 1
-    r2 = r0[r1] :: homogenous_tuple
+    r2 = r0[r1] :: sequence_tuple
     r3 = unbox(bool, r2)
     return r3
+
+[case testSequenceTupleLen]
+from typing import Tuple
+def f(x: Tuple[int, ...]) -> int:
+  return len(x)
+[out]
+def f(x):
+    x :: sequence_tuple
+    r0 :: int
+L0:
+    r0 = len x :: sequence_tuple
+    return r0
+
+[case testSequenceTupleForced]
+from typing import Tuple
+def f() -> int:
+    t = (1, 2) # type: Tuple[int, ...]
+    return t[1]
+[out]
+def f():
+    t :: sequence_tuple
+    r0, r1, r2 :: int
+    r3 :: object
+    r4 :: int
+L0:
+    r0 = 1
+    r1 = 2
+    t = (r0, r1)
+    r2 = 1
+    r3 = t[r2] :: sequence_tuple
+    r4 = unbox(int, r3)
+    return r4

@@ -48,7 +48,7 @@ def type_to_rttype(typ: Type) -> RTType:
         elif typ.type.fullname() == 'builtins.list':
             return RTType('list')
         elif typ.type.fullname() == 'builtins.tuple':
-            return RTType('homogenous_tuple')
+            return RTType('sequence_tuple')
     elif isinstance(typ, TupleType):
         return TupleRTType([type_to_rttype(t) for t in typ.items])
     elif isinstance(typ, NoneTyp):
@@ -458,7 +458,7 @@ class IRBuilder(NodeVisitor[int]):
 
         base_rttype = type_to_rttype(base_type)
 
-        if is_named_instance(base_type, 'builtins.list') or base_rttype.name == 'homogenous_tuple':
+        if is_named_instance(base_type, 'builtins.list') or base_rttype.name == 'sequence_tuple':
             index_type = self.types[expr.index]
             if not is_named_instance(index_type, 'builtins.int'):
                 assert False, 'Unsupported indexing operation'
@@ -529,16 +529,16 @@ class IRBuilder(NodeVisitor[int]):
             expr_rttype = type_to_rttype(self.types[expr.args[0]])
             if expr_rttype.name == 'list':
                 self.add(PrimitiveOp(target, PrimitiveOp.LIST_LEN, arg))
-            elif expr_rttype.name == 'homogenous_tuple':
+            elif expr_rttype.name == 'sequence_tuple':
                 self.add(PrimitiveOp(target, PrimitiveOp.HOMOGENOUS_TUPLE_LEN, arg))
             elif isinstance(expr_rttype, TupleRTType):
                 self.add(LoadInt(target, len(expr_rttype.types)))
             else:
                 assert False, "unsupported use of len"
 
-        # Handle conversion to homogenous tuple
+        # Handle conversion to sequence tuple
         elif fn == 'tuple' and len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
-            target = self.alloc_target(RTType('homogenous_tuple'))
+            target = self.alloc_target(RTType('sequence_tuple'))
             arg = self.accept(expr.args[0])
 
             self.add(PrimitiveOp(target, PrimitiveOp.LIST_TO_HOMOGENOUS_TUPLE, arg))

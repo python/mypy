@@ -196,7 +196,7 @@ class CodeGenerator:
                 '    else',
                 failure,
             ]
-        elif typ.name == 'homogenous_tuple':
+        elif typ.name == 'sequence_tuple':
             return [
                 '    if (!PyTuple_Check({}))'.format(src),
                 failure,
@@ -311,7 +311,7 @@ class EmitterVisitor(OpVisitor):
 
     def visit_return(self, op: Return) -> None:
         typ = self.type(op.reg)
-        assert typ.name in ('bool', 'int', 'list', 'homogenous_tuple', 'tuple', 'None')
+        assert typ.name in ('bool', 'int', 'list', 'sequence_tuple', 'tuple', 'None')
         regstr = self.reg(op.reg)
         self.emit_line('return %s;' % regstr)
 
@@ -352,7 +352,7 @@ class EmitterVisitor(OpVisitor):
                     'if (!%s)' % dest,
                     '    abort();')
             elif op.desc is PrimitiveOp.HOMOGENOUS_TUPLE_GET:
-                self.emit_lines('%s = CPyHomogenousTuple_GetItem(%s, %s);' % (dest, left, right),
+                self.emit_lines('%s = CPySequenceTuple_GetItem(%s, %s);' % (dest, left, right),
                                 'if (!%s)' % dest,
                                 '    abort();')
             else:

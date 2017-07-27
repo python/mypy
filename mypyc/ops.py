@@ -32,7 +32,7 @@ class RTType:
       'list'
       'object'
       'tuple'
-      'homogenous_tuple'
+      'sequence_tuple'
       'None'
       '@flag'
     """
@@ -442,7 +442,7 @@ class PrimitiveOp(RegisterOp):
     # Unary
     INT_NEG = make_op('-', 1, 'int')
     LIST_LEN = make_op('len', 1, 'list')
-    HOMOGENOUS_TUPLE_LEN = make_op('len', 1, 'homogenous_tuple')
+    HOMOGENOUS_TUPLE_LEN = make_op('len', 1, 'sequence_tuple')
     LIST_TO_HOMOGENOUS_TUPLE = make_op('tuple', 1, 'list')
 
     # Other
@@ -458,8 +458,8 @@ class PrimitiveOp(RegisterOp):
     LIST_APPEND = make_op('append', 2, 'list',
                           is_void=True, format_str='{args[0]}.append({args[1]})')
 
-    # Homogenous Tuple
-    HOMOGENOUS_TUPLE_GET = make_op('[]', 2, 'homogenous_tuple', kind=OP_BINARY)
+    # Sequence Tuple
+    HOMOGENOUS_TUPLE_GET = make_op('[]', 2, 'sequence_tuple', kind=OP_BINARY)
 
     # Tuple
     NEW_TUPLE = make_op('new', VAR_ARG, 'tuple', format_str='{dest} = ({comma_args})')

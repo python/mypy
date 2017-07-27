@@ -326,7 +326,7 @@ static bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
     }
 }
 
-static PyObject *CPyHomogenousTuple_GetItem(PyObject *tuple, CPyTagged index) {
+static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
     if (CPyTagged_CheckShort(index)) {
         long long n = CPyTagged_ShortAsLongLong(index);
         Py_ssize_t size = PyTuple_GET_SIZE(tuple);
