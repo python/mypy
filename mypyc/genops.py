@@ -28,7 +28,8 @@ from mypy.subtypes import is_named_instance
 
 from mypyc.ops import (
     BasicBlock, Environment, Op, LoadInt, RTType, Register, Return, FuncIR, Assign,
-    PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRTType
+    PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRTType,
+    Unreachable
 )
 
 
@@ -94,11 +95,15 @@ class IRBuilder(NodeVisitor[int]):
         for arg in fdef.arguments:
             self.environment.add_local(arg.variable, type_to_rttype(arg.variable.type))
         fdef.body.accept(self)
-        self.add_implicit_return()
+
+        ret_type = self.convert_return_type(fdef)
+        if ret_type.name == 'None':
+            self.add_implicit_return()
+        else:
+            self.add_implicit_unreachable()
 
         blocks, env = self.leave()
         args = self.convert_args(fdef)
-        ret_type = self.convert_return_type(fdef)
         func = FuncIR(fdef.name(), args, ret_type, blocks, env)
         self.generated.append(func)
         return -1
@@ -120,6 +125,11 @@ class IRBuilder(NodeVisitor[int]):
             self.add(PrimitiveOp(retval, PrimitiveOp.NONE))
             self.add(Return(retval))
 
+    def add_implicit_unreachable(self) -> None:
+        block = self.blocks[-1][-1]
+        if not block.ops or not isinstance(block.ops[-1], Return):
+            self.add(Unreachable())
+        
     def visit_block(self, block: Block) -> int:
         for stmt in block.body:
             stmt.accept(self)

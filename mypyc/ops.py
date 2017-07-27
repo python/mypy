@@ -273,6 +273,25 @@ class Return(Op):
         return visitor.visit_return(self)
 
 
+class Unreachable(Op):
+    """Added to the end of non-None returning functions.
+    
+    Mypy statically guarantees that the end of the function is not unreachable
+    if there is not a return statement.
+    
+    This prevents the block formatter from being confused due to lack of a leave
+    and also leaves a nifty note in the IR. It is not generally processed by visitors.
+    """
+    def __init__(self) -> None:
+        pass
+
+    def to_str(self, env: Environment) -> str:
+        return "unreachable"
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_unreachable(self)
+
+
 class RegisterOp(Op):
     """An operation that can be written as r1 = f(r2, ..., rn).
 
@@ -607,6 +626,9 @@ class OpVisitor(Generic[T]):
     def visit_return(self, op: Return) -> T:
         pass
 
+    def visit_unreachable(self, op: Unreachable) -> T:
+        pass
+
     def visit_primitive_op(self, op: PrimitiveOp) -> T:
         pass
 
@@ -638,6 +660,8 @@ class OpVisitor(Generic[T]):
 def format_blocks(blocks: List[BasicBlock], env: Environment) -> List[str]:
     lines = []
     for i, block in enumerate(blocks):
+        last = i == len(blocks) - 1
+
         lines.append(env.format('%l:', block.label))
         ops = block.ops
         if (isinstance(ops[-1], Goto) and i + 1 < len(blocks) and
@@ -646,7 +670,8 @@ def format_blocks(blocks: List[BasicBlock], env: Environment) -> List[str]:
             ops = ops[:-1]
         for op in ops:
             lines.append('    ' + op.to_str(env))
-        if not isinstance(block.ops[-1], (Goto, Branch, Return)):
+
+        if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
             # Each basic block needs to exit somewhere.
             lines.append('    [MISSING BLOCK EXIT OPCODE]')
     return lines

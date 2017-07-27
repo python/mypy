@@ -6,7 +6,7 @@ from typing import Dict, Tuple, List, Set, TypeVar, Iterator
 
 from mypyc.ops import (
     BasicBlock, OpVisitor, PrimitiveOp, Assign, LoadInt, RegisterOp, Goto,
-    Branch, Return, Call, Environment, Box, Unbox, Cast, Op
+    Branch, Return, Call, Environment, Box, Unbox, Cast, Op, Unreachable
 )
 
 
@@ -97,6 +97,9 @@ class MaybeDefinedVisitor(BaseAnalysisVisitor):
     def visit_return(self, op: Return) -> GenAndKill:
         return set(), set()
 
+    def visit_unreachable(self, op: Unreachable) -> GenAndKill:
+        return set(), set()
+
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
         if op.dest is not None:
             return {op.dest}, set()
@@ -127,6 +130,9 @@ class MustDefinedVisitor(BaseAnalysisVisitor):
         return set(), set()
 
     def visit_return(self, op: Return) -> GenAndKill:
+        return set(), set()
+
+    def visit_unreachable(self, op: Unreachable) -> GenAndKill:
         return set(), set()
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
@@ -165,6 +171,9 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor):
     def visit_return(self, op: Return) -> GenAndKill:
         return set(), set()
 
+    def visit_unreachable(self, op: Unreachable) -> GenAndKill:
+        return set(), set()
+
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
         if op.dest in self.args:
             return set(), {op.dest}
@@ -196,6 +205,9 @@ class UndefinedVisitor(BaseAnalysisVisitor):
     def visit_return(self, op: Return) -> GenAndKill:
         return set(), set()
 
+    def visit_unreachable(self, op: Unreachable) -> GenAndKill:
+        return set(), set()
+
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
         return set(), {op.dest}
 
@@ -225,6 +237,9 @@ class LivenessVisitor(BaseAnalysisVisitor):
 
     def visit_return(self, op: Return) -> GenAndKill:
         return {op.reg}, set()
+
+    def visit_unreachable(self, op: Unreachable) -> GenAndKill:
+        return set(), set()
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
         gen = set(op.sources())

@@ -276,7 +276,6 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n, r0, r1, r2, r3, r4, r5, r6, r7, r8 :: int
-    r9 :: None
 L0:
     r0 = 1
     if n <= r0 goto L1 else goto L2 :: int
@@ -293,8 +292,7 @@ L2:
     r8 = r2 + r5 :: int
     return r8
 L3:
-    r9 = None
-    return r9
+    unreachable
 
 [case testReportTypeCheckError]
 def f() -> None:
@@ -409,7 +407,6 @@ def f(x: bool) -> bool:
 [out]
 def f(x):
     x, r0, r1 :: bool
-    r2 :: None
 L0:
     if x goto L1 else goto L2 :: bool
 L1:
@@ -419,5 +416,4 @@ L2:
     r1 = True
     return r1
 L3:
-    r2 = None
-    return r2
+    unreachable

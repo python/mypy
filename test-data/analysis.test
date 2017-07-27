@@ -46,16 +46,14 @@ L1:
 L2:
     return x
 L3:
-    r1 = None
-    return r1
+    unreachable
 
 (0, 0)   {a}                     {a, x}
 (0, 1)   {a, x}                  {a, x, r0}
 (0, 2)   {a, x, r0}              {a, x}
 (1, 0)   {a}                     {}
 (2, 0)   {x}                     {}
-(3, 0)   {}                      {r1}
-(3, 1)   {r1}                    {}
+(3, 0)   {}                      {}
 
 [case testSpecial_Liveness]
 def f() -> int:
