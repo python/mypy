@@ -153,24 +153,10 @@ class IRBuilder(NodeVisitor[int]):
         return -1
 
     def visit_import_from(self, node: ImportFrom) -> int:
-        if node.is_unreachable or node.is_mypy_only:
-            pass
-        if not node.is_top_level:
-            assert False, "non-toplevel imports not supported"
-
-        self.imports.append(node.id)
-
-        return -1
+        assert False, "Import from not supported"
 
     def visit_import_all(self, node: ImportAll) -> int:
-        if node.is_unreachable or node.is_mypy_only:
-            pass
-        if not node.is_top_level:
-            assert False, "non-toplevel imports not supported"
-
-        self.imports.append(node.id)
-
-        return -1
+        assert False, "Import all not supported"
 
     def visit_func_def(self, fdef: FuncDef) -> int:
         self.enter()
