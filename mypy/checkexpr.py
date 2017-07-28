@@ -1736,6 +1736,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         revealed_type = self.accept(expr.expr, type_context=self.type_context[-1])
         if not self.chk.current_node_deferred:
             self.msg.reveal_type(revealed_type, expr)
+            if not self.chk.in_checked_function():
+                self.msg.note("'reveal_type' always outputs 'Any' in unchecked functions", expr)
         return revealed_type
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
@@ -2513,9 +2515,9 @@ def is_async_def(t: Type) -> bool:
 
 
 def map_actuals_to_formals(caller_kinds: List[int],
-                           caller_names: List[str],
+                           caller_names: List[Optional[str]],
                            callee_kinds: List[int],
-                           callee_names: List[str],
+                           callee_names: List[Optional[str]],
                            caller_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
     """Calculate mapping between actual (caller) args and formals.

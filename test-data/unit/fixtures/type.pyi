@@ -13,7 +13,7 @@ class list(Generic[T]): pass
 class type:
     def mro(self) -> List['type']: pass
 
-class tuple: pass
+class tuple(Generic[T]): pass
 class function: pass
 class bool: pass
 class int: pass

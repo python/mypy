@@ -1680,6 +1680,29 @@ x = 1 + 1
 [out]
 main:2: error: Revealed type is 'builtins.int'
 
+[case testRevealUncheckedFunction]
+def f():
+    x = 42
+    reveal_type(x)
+[out]
+main:3: error: Revealed type is 'Any'
+main:3: note: 'reveal_type' always outputs 'Any' in unchecked functions
+
+[case testRevealCheckUntypedDefs]
+# flags: --check-untyped-defs
+def f():
+    x = 42
+    reveal_type(x)
+[out]
+main:4: error: Revealed type is 'builtins.int'
+
+[case testRevealTypedDef]
+def f() -> None:
+    x = 42
+    reveal_type(x)
+[out]
+main:3: error: Revealed type is 'builtins.int'
+
 [case testEqNone]
 None == None
 [builtins fixtures/ops.pyi]

@@ -1,4 +1,4 @@
-from typing import Iterable, Iterator, TypeVar, List, Mapping, overload, Tuple, Set, Union, Generic, Any
+from typing import Iterable, Iterator, TypeVar, List, Mapping, overload, Tuple, Set, Union, Generic
 
 class object:
     def __init__(self) -> None: pass
@@ -6,12 +6,6 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
-T = TypeVar('T')
-KT = TypeVar('KT')
-VT = TypeVar('VT')
-
-class tuple(Generic[T]):
-    def __len__(self) -> int: pass
 class function: pass
 class ellipsis: pass
 
@@ -24,6 +18,13 @@ class bool(int): pass
 class str:
     def __add__(self, x: str) -> str: pass
     def __getitem__(self, x: int) -> str: pass
+
+T = TypeVar('T')
+KT = TypeVar('KT')
+VT = TypeVar('VT')
+
+class tuple(Generic[T]): pass
+    def __len__(self) -> int: pass
 
 class list(Generic[T]):
     def __iter__(self) -> Iterator[T]: pass

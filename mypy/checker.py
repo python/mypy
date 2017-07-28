@@ -124,6 +124,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Should strict Optional-related errors be suppressed in this file?
     suppress_none_errors = False  # TODO: Get it from options instead
     options = None  # type: Options
+    # Used for collecting inferred attribute types so that they can be checked
+    # for consistency.
+    inferred_attribute_types = None  # type: Optional[Dict[Var, Type]]
 
     # The set of all dependencies (suppressed or not) that this module accesses, either
     # directly or indirectly.
@@ -160,6 +163,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.current_node_deferred = False
         self.is_stub = tree.is_stub
         self.is_typeshed_stub = errors.is_typeshed_file(path)
+        self.inferred_attribute_types = None
         if options.strict_optional_whitelist is None:
             self.suppress_none_errors = not options.show_none_errors
         else:
@@ -575,12 +579,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if type_override:
                     typ = type_override
                 if isinstance(typ, CallableType):
-                    self.check_func_def(defn, typ, name)
+                    with self.enter_attribute_inference_context():
+                        self.check_func_def(defn, typ, name)
                 else:
                     raise RuntimeError('Not supported')
 
         self.dynamic_funcs.pop()
         self.current_node_deferred = False
+
+    @contextmanager
+    def enter_attribute_inference_context(self) -> Iterator[None]:
+        old_types = self.inferred_attribute_types
+        self.inferred_attribute_types = {}
+        yield None
+        self.inferred_attribute_types = old_types
 
     def check_func_def(self, defn: FuncItem, typ: CallableType, name: str) -> None:
         """Type check a function definition."""
@@ -634,7 +646,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if name in nodes.reverse_op_method_set:
                     self.check_reverse_op_method(item, typ, name)
                 elif name in ('__getattr__', '__getattribute__'):
-                    self.check_getattr_method(typ, defn)
+                    self.check_getattr_method(typ, defn, name)
                 elif name == '__setattr__':
                     self.check_setattr_method(typ, defn)
                 # Refuse contravariant return type variable
@@ -927,12 +939,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if fail:
                 self.msg.signatures_incompatible(method, other_method, defn)
 
-    def check_getattr_method(self, typ: CallableType, context: Context) -> None:
-        method_type = CallableType([AnyType(), self.named_type('builtins.str')],
-                                   [nodes.ARG_POS, nodes.ARG_POS],
-                                   [None, None],
-                                   AnyType(),
-                                   self.named_type('builtins.function'))
+    def check_getattr_method(self, typ: CallableType, context: Context, name: str) -> None:
+        if len(self.scope.stack) == 1:
+            # module-level __getattr__
+            if name == '__getattribute__':
+                self.msg.fail('__getattribute__ is not valid at the module level', context)
+                return
+            elif name == '__getattr__' and not self.is_stub:
+                self.msg.fail('__getattr__ is not valid at the module level outside a stub file',
+                              context)
+                return
+            method_type = CallableType([self.named_type('builtins.str')],
+                                       [nodes.ARG_POS],
+                                       [None],
+                                       AnyType(),
+                                       self.named_type('builtins.function'))
+        else:
+            method_type = CallableType([AnyType(), self.named_type('builtins.str')],
+                                       [nodes.ARG_POS, nodes.ARG_POS],
+                                       [None, None],
+                                       AnyType(),
+                                       self.named_type('builtins.function'))
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature(typ, context)
 
@@ -1441,8 +1468,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if base_type:
                 if not has_no_typevars(base_type):
-                    # TODO: Handle TupleType, don't cast
-                    instance = cast(Instance, self.scope.active_self_type())
+                    self_type = self.scope.active_self_type()
+                    if isinstance(self_type, TupleType):
+                        instance = self_type.fallback
+                    else:
+                        instance = self_type
                     itype = map_instance_to_supertype(instance, base)
                     base_type = expand_type_by_instance(base_type, itype)
 
@@ -1722,6 +1752,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not self.infer_partial_type(name, lvalue, init_type):
                 self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
                 self.set_inference_error_fallback_type(name, lvalue, init_type, context)
+        elif (isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None
+              and lvalue.def_var in self.inferred_attribute_types
+              and not is_same_type(self.inferred_attribute_types[lvalue.def_var], init_type)):
+            # Multiple, inconsistent types inferred for an attribute.
+            self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+            name.type = AnyType()
         else:
             # Infer type of the target.
 
@@ -1758,6 +1794,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if var and not self.current_node_deferred:
             var.type = type
             var.is_inferred = True
+            if isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None:
+                # Store inferred attribute type so that we can check consistency afterwards.
+                self.inferred_attribute_types[lvalue.def_var] = type
             self.store_type(lvalue, type)
 
     def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type,

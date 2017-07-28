@@ -58,6 +58,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     If this passes without errors, executes the script again with a given Python
     version.
     """
+    assert testcase.old_cwd is not None, "test was not properly set up"
     mypy_cmdline = [
         python3_path,
         os.path.join(testcase.old_cwd, 'scripts', 'mypy'),
