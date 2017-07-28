@@ -22,6 +22,10 @@ Register = int
 Label = int
 
 
+def c_module_name(module_name: str):
+    return 'module_{}'.format(module_name.replace('.', '__dot__'))
+
+
 class RTType:
     """Runtime type (erased, only concrete; no generics).
 
@@ -425,6 +429,49 @@ class Call(RegisterOp):
         return visitor.visit_call(self)
 
 
+# Python-interopability operations are prefixed with Py. Typically these act as a replacement
+# for native operations (without the Py prefix) which call into Python rather than compiled
+# native code. For example, this is needed to call builtins.
+class PyCall(RegisterOp):
+    """Python call f(arg, ...).
+    
+    All registers must be unboxed.
+    """
+    def __init__(self, dest: Optional[Register], function: Register, args: List[Register]) -> None:
+        self.dest = dest
+        self.function = function
+        self.args = args
+
+    def to_str(self, env: Environment) -> str:
+        args = ', '.join(env.format('%r', arg) for arg in self.args)
+        s = env.format('%r(%s)', self.function, args)
+        if self.dest is not None:
+            s = env.format('%r = ', self.dest) + s
+        return s + ' :: py'
+
+    def sources(self) -> List[Register]:
+        return self.args[:] + [self.function]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_py_call(self)
+
+
+class PyGetAttr(RegisterOp):
+    """dest = left.right :: py"""
+    def __init__(self, dest: Register, left: Register, right: str) -> None:
+        self.dest = dest
+        self.left = left
+        self.right = right
+
+    def sources(self) -> List[Register]:
+        return [self.left]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = %r.%s', self.dest, self.left, self.right)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_py_get_attr(self)
+
 VAR_ARG = -1
 
 # Primitive op inds
@@ -601,6 +648,23 @@ class SetAttr(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_set_attr(self)
+
+
+class LoadStatic(RegisterOp):
+    """dest = name :: static
+    """
+    def __init__(self, dest: Register, identifier: str) -> None:
+        self.dest = dest
+        self.identifier = identifier
+
+    def sources(self) -> List[Register]:
+        return []
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = %s :: static', self.dest, self.identifier)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_load_static(self)
 
 
 class TupleGet(RegisterOp):
@@ -791,6 +855,12 @@ class OpVisitor(Generic[T]):
     def visit_set_attr(self, op: SetAttr) -> T:
         pass
 
+    def visit_load_static(self, op: LoadStatic) -> T:
+        pass
+
+    def visit_py_get_attr(self, op: PyGetAttr) -> T:
+        pass
+
     def visit_tuple_get(self, op: TupleGet) -> T:
         pass
 
@@ -801,6 +871,9 @@ class OpVisitor(Generic[T]):
         pass
 
     def visit_call(self, op: Call) -> T:
+        pass
+
+    def visit_py_call(self, op: PyCall) -> T:
         pass
 
     def visit_cast(self, op: Cast) -> T:

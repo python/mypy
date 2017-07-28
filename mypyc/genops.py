@@ -21,7 +21,7 @@ from mypy.nodes import (
     IfStmt, Node, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
     ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef, TypeInfo,
-    Import, ImportFrom, ImportAll, ARG_POS
+    Import, ImportFrom, ImportAll, ARG_POS, MODULE_REF
 )
 from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType
 from mypy.visitor import NodeVisitor
@@ -30,7 +30,8 @@ from mypy.subtypes import is_named_instance
 from mypyc.ops import (
     BasicBlock, Environment, Op, LoadInt, RTType, Register, Return, FuncIR, Assign,
     PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRTType,
-    Unreachable, TupleGet, ClassIR, UserRTType, ModuleIR, GetAttr, SetAttr
+    Unreachable, TupleGet, ClassIR, UserRTType, ModuleIR, GetAttr, SetAttr, LoadStatic,
+    PyGetAttr, PyCall, c_module_name,
 )
 
 
@@ -40,7 +41,6 @@ def build_ir(module: MypyFile,
     builder = IRBuilder(types, mapper)
     module.accept(builder)
 
-    # Imports not yet implemented
     return ModuleIR(builder.imports, builder.functions, builder.classes)
 
 
@@ -64,6 +64,8 @@ class Mapper:
                 return UserRTType(self.type_to_ir[typ.type])
         elif isinstance(typ, TupleType):
             return TupleRTType([self.type_to_rttype(t) for t in typ.items])
+        elif isinstance(typ, CallableType):
+            return RTType('object')
         elif isinstance(typ, NoneTyp):
             return RTType('None')
         assert False, '%s unsupported' % type(typ)
@@ -105,6 +107,8 @@ class IRBuilder(NodeVisitor[int]):
         self.mapper = mapper
         self.imports = [] # type: List[str]
 
+        self.current_module_name = None # type: Optional[str]
+
     def visit_mypy_file(self, mypyfile: MypyFile) -> int:
         if mypyfile.fullname() in ('typing', 'abc'):
             # These module are special; their contents are currently all
@@ -117,6 +121,7 @@ class IRBuilder(NodeVisitor[int]):
                 self.prepare_class_def(node)
 
         # Second pass: Generate ops.
+        self.current_module_name = mypyfile.fullname()
         for node in mypyfile.defs:
             node.accept(self)
 
@@ -572,9 +577,15 @@ class IRBuilder(NodeVisitor[int]):
         self.add(LoadInt(reg, expr.value))
         return reg
 
+    def is_native_name_expr(self, expr: NameExpr) -> bool:
+        # TODO later we want to support cross-module native calls too
+        if '.' in expr.node.fullname():
+            module_name = '.'.join(expr.node.fullname().split('.')[:-1])
+            return module_name == self.current_module_name
+
+        return True
+
     def visit_name_expr(self, expr: NameExpr) -> int:
-        # TODO: We assume that this is a Var node, which is very limited
-        assert isinstance(expr.node, Var)
         if expr.node.fullname() == 'builtins.None':
             target = self.alloc_target(RTType('None'))
             self.add(PrimitiveOp(target, PrimitiveOp.NONE))
@@ -588,6 +599,12 @@ class IRBuilder(NodeVisitor[int]):
             self.add(PrimitiveOp(target, PrimitiveOp.FALSE))
             return target
 
+        if not self.is_native_name_expr(expr):
+            return self.load_static_module_attr(expr)
+
+        # TODO: We assume that this is a Var node, which is very limited
+        assert isinstance(expr.node, Var)
+
         reg = self.environment.lookup(expr.node)
         if self.targets[-1] < 0:
             return reg
@@ -595,19 +612,58 @@ class IRBuilder(NodeVisitor[int]):
             target = self.targets[-1]
             self.add(Assign(target, reg))
             return target
-
+        
+    def is_module_member_expr(self, expr: MemberExpr):
+        return isinstance(expr.expr, RefExpr) and expr.expr.kind == MODULE_REF
+        
     def visit_member_expr(self, expr: MemberExpr) -> int:
-        obj_reg = self.accept(expr.expr)
-        attr_type = self.node_type(expr)
-        target = self.alloc_target(attr_type)
-        obj_type = self.node_type(expr.expr)
-        assert isinstance(obj_type, UserRTType), 'Attribute access not supported: %s' % obj_type
-        self.add(GetAttr(target, obj_reg, expr.name, obj_type))
+        if self.is_module_member_expr(expr):
+            return self.load_static_module_attr(expr)
+
+        else:
+            obj_reg = self.accept(expr.expr)
+            attr_type = self.node_type(expr)
+            target = self.alloc_target(attr_type)
+            obj_type = self.node_type(expr.expr)
+            assert isinstance(obj_type, UserRTType), 'Attribute access not supported: %s' % obj_type
+            self.add(GetAttr(target, obj_reg, expr.name, obj_type))
+            return target
+
+    def load_static_module_attr(self, expr: RefExpr) -> int:
+        target = self.alloc_target(self.node_type(expr))
+        module = '.'.join(expr.node.fullname().split('.')[:-1])
+        right = expr.node.fullname().split('.')[-1]
+        left = self.alloc_temp(RTType('object'))
+        self.add(LoadStatic(left, c_module_name(module)))
+        self.add(PyGetAttr(target, left, right))
+
         return target
+        
+    def py_call(self, function: Register, args: List[Expression], target_type: RTType) -> int:
+        target_box = self.alloc_temp(RTType('object'))
+
+        arg_boxes = [] # type: List[Register]
+        for arg_expr in args:
+            arg_reg = self.accept(arg_expr)
+            arg_boxes.append(self.box(arg_reg, self.node_type(arg_expr)))
+        
+        self.add(PyCall(target_box, function, arg_boxes))
+        return self.unbox(target_box, target_type)
 
     def visit_call_expr(self, expr: CallExpr) -> int:
         if isinstance(expr.callee, MemberExpr):
-            return self.translate_special_method_call(expr.callee, expr)
+            is_module_call = self.is_module_member_expr(expr.callee)
+            if expr.callee.expr in self.types and not is_module_call:
+                target = self.translate_special_method_call(expr.callee, expr)
+                if target:
+                    return target
+
+            # Either its a module call or translating to a special method call failed, so we have
+            # to fallback to a PyCall
+            function = self.accept(expr.callee)
+            return self.py_call(function, expr.args, self.node_type(expr))
+                
+        
         assert isinstance(expr.callee, NameExpr)
         fn = expr.callee.name  # TODO: fullname
         if fn == 'len' and len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
@@ -631,6 +687,10 @@ class IRBuilder(NodeVisitor[int]):
 
             self.add(PrimitiveOp(target, PrimitiveOp.LIST_TO_HOMOGENOUS_TUPLE, arg))
         else:
+            if not(self.is_native_name_expr(expr.callee)):
+                function = self.accept(expr.callee)
+                return self.py_call(function, expr.args, self.node_type(expr))
+
             target = self.alloc_target(RTType('int'))
             args = [self.accept(arg) for arg in expr.args]
             self.add(Call(target, fn, args))

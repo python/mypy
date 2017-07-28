@@ -19,6 +19,7 @@ extern "C" {
 
 typedef unsigned long long CPyTagged;
 typedef long long CPySignedInt;
+typedef PyObject CPyModule;
 
 #define CPY_INT_TAG 1
 
@@ -358,6 +359,12 @@ static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
     } else {
         abort(); // TODO: Generate exception
     }
+}
+
+static inline PyObject *CPyObject_GetAttrString(PyObject *obj, const char *attr_name) {
+    PyObject *result = PyObject_GetAttrString(obj, attr_name);
+    if(result == NULL) abort();
+    return result;
 }
 
 #define CPY_INT_ERROR_VALUE 0x1234abc

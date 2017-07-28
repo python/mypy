@@ -5,7 +5,7 @@ from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.ops import (
     OpVisitor, Environment, Label, Register, RTType, FuncIR, Goto, Branch, Return, PrimitiveOp,
     Assign, LoadInt, IncRef, DecRef, Call, Box, Unbox, TupleRTType, TupleGet, UserRTType, ClassIR,
-    GetAttr, SetAttr, OP_BINARY, type_struct_name
+    GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Cast, OP_BINARY, type_struct_name, c_module_name
 )
 
 
@@ -46,7 +46,6 @@ class CodeGenerator:
         # used for declaring structsm and the key corresponds to the name of the struct.
         # The declaration contains the body of the struct.
         self.declarations = {} # type: Dict[str, HeaderDeclaration]
-        self.header_declarations = [] # type: List[str]
 
     def toposort_declarations(self) -> List[HeaderDeclaration]:
         """Topologically sort the declaration dict by dependencies.
@@ -89,9 +88,35 @@ class CodeGenerator:
                 tuple_type.get_c_declaration(),
             )
 
+    def declare_global(self, type_spaced, name, static=True) -> None:
+        static_str = 'static ' if static else ''
+        if name not in self.declarations:
+            self.declarations[name] = HeaderDeclaration(
+                set(),
+                ['{}{}{};'.format(static_str, type_spaced, name)],
+            )
+
+    def declare_import(self, imp: str) -> None:
+        self.declare_global('CPyModule *', c_module_name(imp))
+
+    def declare_imports(self, imps) -> None:
+        for imp in imps:
+            self.declare_import(imp)
+
     def temp_name(self) -> str:
         self.temp_counter += 1
         return '__tmp%d' % self.temp_counter
+
+    def generate_imports_init_section(self, imps: List[str]) -> List[str]:
+        result = []
+
+        for imp in imps:
+            result.append('    /* import {} */'.format(imp))
+            result.append('    {} = PyImport_ImportModule("{}");'.format(c_module_name(imp), imp))
+            result.append('    if ({} == NULL)'.format(c_module_name(imp)))
+            result.append('        return NULL;')
+
+        return result
 
     def generate_c_for_function(self, fn: FuncIR) -> List[str]:
         emitter = Emitter(self, fn.env)
@@ -545,7 +570,8 @@ class Emitter:
             self.emit_line(line, indent=indent)
 
     def emit_label(self, label: Label) -> None:
-        self.emit_line('{}:'.format(self.label(label)), indent=0)
+        # Extra semicolon prevents an error when the next line declares a tempvar
+        self.emit_line('{}: ;'.format(self.label(label)), indent=0)
 
 
 class EmitterVisitor(OpVisitor):
@@ -725,6 +751,15 @@ class EmitterVisitor(OpVisitor):
             rtype.struct_name,
             rtype.attr_type(op.attr).ctype))
 
+    def visit_load_static(self, op: LoadStatic) -> None:
+        dest = self.reg(op.dest)
+        self.emit_line('%s = %s;' % (dest, op.identifier))
+
+    def visit_py_get_attr(self, op: PyGetAttr) -> None:
+        dest = self.reg(op.dest)
+        left = self.reg(op.left)
+        self.emit_line('{} = CPyObject_GetAttrString({}, "{}");'.format(dest, left, op.right))
+
     def visit_tuple_get(self, op: TupleGet) -> None:
         dest = self.reg(op.dest)
         src = self.reg(op.src)
@@ -739,6 +774,16 @@ class EmitterVisitor(OpVisitor):
         args = ', '.join(self.reg(arg) for arg in op.args)
         self.emit_line('%s%s%s(%s);' % (dest, NATIVE_PREFIX, op.fn, args))
 
+    def visit_py_call(self, op: PyCall) -> None:
+        if op.dest is not None:
+            dest = self.reg(op.dest) + ' = '
+        else:
+            dest = ''
+
+        function = self.reg(op.function)
+        args = ', '.join(self.reg(arg) for arg in op.args)
+        self.emit_line('{}PyObject_CallFunctionObjArgs({}, {}, NULL);'.format(dest, function, args))
+        
     def visit_inc_ref(self, op: IncRef) -> None:
         dest = self.reg(op.dest)
         self.emit_inc_ref(dest, op.target_type)
@@ -754,6 +799,12 @@ class EmitterVisitor(OpVisitor):
         temp = self.temp_name()
         self.emit_lines(*self.code_generator.generate_box(src, temp, op.type, 'abort();'))
         self.emit_line('{} = {};'.format(dest, temp))
+
+    def visit_cast(self, op: Cast) -> None:
+        # TODO Actually cast things (runtime check). (#43)
+        src = self.reg(op.src)
+        dest = self.reg(op.dest)
+        self.emit_line('{} = {};'.format(dest, src))
 
     def visit_unbox(self, op: Unbox) -> None:
         # dest is already declared but generate_unbox will declare, so indirection is needed.

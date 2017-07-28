@@ -7,7 +7,7 @@ from typing import Dict, Tuple, List, Set, TypeVar, Iterator
 from mypyc.ops import (
     BasicBlock, OpVisitor, PrimitiveOp, Assign, LoadInt, RegisterOp, Goto,
     Branch, Return, Call, Environment, Box, Unbox, Cast, Op, Unreachable,
-    TupleGet, GetAttr, SetAttr
+    TupleGet, GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr
 )
 
 
@@ -72,6 +72,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
     def visit_call(self, op: Call) -> GenAndKill:
         return self.visit_register_op(op)
 
+    def visit_py_call(self, op: PyCall) -> GenAndKill:
+        return self.visit_register_op(op)
+
     def visit_primitive_op(self, op: PrimitiveOp) -> GenAndKill:
         return self.visit_register_op(op)
 
@@ -85,6 +88,12 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
         return self.visit_register_op(op)
 
     def visit_set_attr(self, op: SetAttr) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_load_static(self, op: LoadStatic) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_py_get_attr(self, op: PyGetAttr) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_tuple_get(self, op: TupleGet) -> GenAndKill:

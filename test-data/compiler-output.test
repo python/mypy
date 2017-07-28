@@ -8,6 +8,7 @@ def f(x: int) -> int:
 #include <Python.h>
 #include <CPy.h>
 
+static CPyModule *module_builtins;
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x);
 static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw);
 
@@ -32,12 +33,16 @@ PyMODINIT_FUNC PyInit_prog(void)
     m = PyModule_Create(&module);
     if (m == NULL)
         return NULL;
+    /* import builtins */
+    module_builtins = PyImport_ImportModule("builtins");
+    if (module_builtins == NULL)
+        return NULL;
 
     return m;
 }
 
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x) {
-CPyL0:
+CPyL0: ;
     CPyTagged_IncRef(cpy_r_x);
     return cpy_r_x;
 }

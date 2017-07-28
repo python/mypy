@@ -230,3 +230,30 @@ from native import f
 print(f((1,2,3,4)))
 [out]
 2
+
+[case testPycall]
+import testmodule
+
+def f(x: int) -> int:
+    return testmodule.factorial(5)
+[file testmodule.py]
+def factorial(x: int) -> int:
+    if x == 0:
+        return 1
+    else:
+        return x * factorial(x-1)
+[file driver.py]
+from native import f
+print(f(5))
+[out]
+120
+
+[case testPrint]
+import builtins
+def f(x: int) -> None:
+    builtins.print(5)
+[file driver.py]
+from native import f
+f(5)
+[out]
+5

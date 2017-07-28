@@ -35,6 +35,7 @@ INIT_FUNC_FORMAT = textwrap.dedent("""\
         m = PyModule_Create(&module);
         if (m == NULL)
             return NULL;
+    {init_modules}
         {namespace_setup}
         return m;
     }}
@@ -74,6 +75,7 @@ class ModuleCompiler:
         result = []
 
         code_generator = CodeGenerator()
+        code_generator.declare_imports(self.module.imports)
 
         for cl in self.module.classes:
             fragments = code_generator.generate_class_declaration(cl, self.module_name)
@@ -137,5 +139,8 @@ class ModuleCompiler:
             INIT_FUNC_FORMAT.format(
                 name=self.module_name,
                 init_classes='\n'.join(init_classes),
+                init_modules='\n'.join(
+                    self.code_generator.generate_imports_init_section(self.module.imports)
+                ),
                 namespace_setup='\n'.join(namespace_setup)).splitlines())
         return lines
