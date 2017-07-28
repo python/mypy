@@ -329,8 +329,8 @@ Using ``isinstance()`` with protocols
 *************************************
 
 To use a protocol class with ``isinstance()``, one needs to decorate it with
-a special ``typing.runtime`` decorator. It will add support for basic runtime
-structural checks:
+a special ``typing_extensions.runtime`` decorator. It will add support for
+basic runtime structural checks:
 
 .. code-block:: python
 
