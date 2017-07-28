@@ -5,7 +5,8 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ops import (
     Environment, BasicBlock, FuncIR, RuntimeArg, RTType, Goto, Return, LoadInt, Assign,
-    PrimitiveOp, IncRef, DecRef, Branch, Call, Unbox, Box, TupleRTType, TupleGet
+    PrimitiveOp, IncRef, DecRef, Branch, Call, Unbox, Box, TupleRTType, TupleGet, GetAttr,
+    ClassIR, UserRTType, SetAttr
 )
 from mypyc.emitter import (
     EmitterVisitor,
@@ -200,6 +201,20 @@ class TestEmitterVisitor(unittest.TestCase):
                          """if (PyList_Append(cpy_r_l, cpy_r_o) == -1)
                                 abort();
                          """)
+
+    def test_get_attr(self):
+        ir = ClassIR('A', [('x', RTType('bool')),
+                           ('y', RTType('int'))])
+        rtype = UserRTType(ir)
+        self.assert_emit(GetAttr(self.n, self.m, 'y', rtype),
+                         """cpy_r_n = CPY_GET_ATTR(cpy_r_m, 2, AObject, CPyTagged);""")
+
+    def test_set_attr(self):
+        ir = ClassIR('A', [('x', RTType('bool')),
+                           ('y', RTType('int'))])
+        rtype = UserRTType(ir)
+        self.assert_emit(SetAttr(self.n, 'y', self.m, rtype),
+                         """CPY_SET_ATTR(cpy_r_n, 3, cpy_r_m, AObject, CPyTagged);""")
 
     def assert_emit(self, op, expected):
         self.emitter.declarations = []

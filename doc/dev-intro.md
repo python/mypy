@@ -193,7 +193,7 @@ Here are some hints about how to add support for a new primitive type
   counting, these can be no-ops. If the representation is not unboxed
   these will already work.
 
-* Update `myypc.genops.type_to_rttype()`.
+* Update `myypc.genops.Mapper.type_to_rttype()`.
 
 The above may be enough to allow you to declare variables with the
 type and pass values around. You likely also want to add support for

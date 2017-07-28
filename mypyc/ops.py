@@ -31,8 +31,8 @@ class RTType:
       'int'
       'list'
       'object'
-      'tuple'
-      'sequence_tuple'
+      'tuple' (e.g. Tuple[int, str])
+      'sequence_tuple' (e.g. Tuple[int, ...])
       'None'
     """
 
@@ -127,8 +127,28 @@ class TupleRTType(RTType):
 class UserRTType(RTType):
     """Instance of user-defined class."""
 
-    def __init__(self, name: str) -> None:
-        super().__init__(name)
+    def __init__(self, class_ir: 'ClassIR') -> None:
+        super().__init__(class_ir.name)
+        self.class_ir = class_ir
+
+    @property
+    def struct_name(self) -> str:
+        return self.class_ir.struct_name
+
+    def getter_index(self, name: str) -> int:
+        for i, (attr, _) in enumerate(self.class_ir.attributes):
+            if attr == name:
+                return i * 2
+        assert False, '%r has no attribute %r' % (self.name, name)
+
+    def setter_index(self, name: str) -> int:
+        return self.getter_index(name) + 1
+
+    def attr_type(self, name: str) -> RTType:
+        for i, (attr, rtype) in enumerate(self.class_ir.attributes):
+            if attr == name:
+                return rtype
+        assert False, '%r has no attribute %r' % (self.name, name)
 
     def __repr__(self) -> str:
         return '<UserRTType %s>' % self.name
@@ -292,7 +312,7 @@ class Branch(Op):
 
 class Return(Op):
     def __init__(self, reg: Register) -> None:
-        assert isinstance(reg, int)
+        assert isinstance(reg, int), 'Invalid register: %r' % reg
         self.reg = reg
 
     def to_str(self, env: Environment) -> str:
@@ -304,10 +324,10 @@ class Return(Op):
 
 class Unreachable(Op):
     """Added to the end of non-None returning functions.
-    
+
     Mypy statically guarantees that the end of the function is not unreachable
     if there is not a return statement.
-    
+
     This prevents the block formatter from being confused due to lack of a leave
     and also leaves a nifty note in the IR. It is not generally processed by visitors.
     """
@@ -544,8 +564,48 @@ class LoadInt(RegisterOp):
         return visitor.visit_load_int(self)
 
 
+class GetAttr(RegisterOp):
+    """dest = obj.attr (for a native object)"""
+
+    def __init__(self, dest: Register, obj: Register, attr: str, rtype: UserRTType) -> None:
+        self.dest = dest
+        self.obj = obj
+        self.attr = attr
+        self.rtype = rtype
+
+    def sources(self) -> List[Register]:
+        return [self.obj]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = %r.%s', self.dest, self.obj, self.attr)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_get_attr(self)
+
+
+class SetAttr(RegisterOp):
+    """obj.attr = src (for a native object)"""
+
+    def __init__(self, obj: Register, attr: str, src: Register, rtype: UserRTType) -> None:
+        self.dest = None
+        self.obj = obj
+        self.attr = attr
+        self.src = src
+        self.rtype = rtype
+
+    def sources(self) -> List[Register]:
+        return [self.obj, self.src]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r.%s = %r', self.obj, self.attr, self.src)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_set_attr(self)
+
+
 class TupleGet(RegisterOp):
-    """dest = src[int]"""
+    """dest = src[n]"""
+
     def __init__(self, dest: Register, src: Register, index: int, target_type: RTType) -> None:
         self.dest = dest
         self.src = src
@@ -668,7 +728,12 @@ class FuncIR:
 
 
 class ClassIR:
-    """Intermediate representation of a class."""
+    """Intermediate representation of a class.
+
+    This also describes the runtime structure of native instances.
+    """
+
+    # TODO: Use dictionary for attributes in addition to (or instead of) list.
 
     def __init__(self,
                  name: str,
@@ -718,6 +783,12 @@ class OpVisitor(Generic[T]):
         pass
 
     def visit_load_int(self, op: LoadInt) -> T:
+        pass
+
+    def visit_get_attr(self, op: GetAttr) -> T:
+        pass
+
+    def visit_set_attr(self, op: SetAttr) -> T:
         pass
 
     def visit_tuple_get(self, op: TupleGet) -> T:

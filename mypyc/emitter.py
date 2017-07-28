@@ -5,7 +5,7 @@ from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.ops import (
     OpVisitor, Environment, Label, Register, RTType, FuncIR, Goto, Branch, Return, PrimitiveOp,
     Assign, LoadInt, IncRef, DecRef, Call, Box, Unbox, TupleRTType, TupleGet, UserRTType, ClassIR,
-    OP_BINARY, type_struct_name
+    GetAttr, SetAttr, OP_BINARY, type_struct_name
 )
 
 
@@ -115,15 +115,19 @@ class CodeGenerator:
         return emitter.all_fragments()
 
     def generate_box(self, src: str, dest: str, typ: RTType, failure: str) -> List[str]:
-        result = []
+        """Generate code for boxing a value of give type.
+
+        Generate a simple assignment if no boxing is needed.
+        """
         if typ.name == 'int':
-            result.append('    PyObject *{} = CPyTagged_AsObject({});'.format(dest, src))
+            return ['    PyObject *{} = CPyTagged_AsObject({});'.format(dest, src)]
         elif typ.name == 'bool':
             # The Py_RETURN macros return the correct PyObject * with reference count handling.
-            result.append('    PyObject *{} = PyBool_FromLong({});'.format(dest, src))
+            return ['    PyObject *{} = PyBool_FromLong({});'.format(dest, src)]
         elif typ.name == 'tuple':
             assert isinstance(typ, TupleRTType)
             self.declare_tuple_struct(typ)
+            result = []
             result.append('    PyObject *{} = PyTuple_New({});'.format(dest, len(typ.types)))
             result.append('    if ({} == NULL) {{'.format(dest))
             result.append('    {}'.format(failure))
@@ -134,10 +138,13 @@ class CodeGenerator:
                     result.append('    PyTuple_SetItem({}, {}, {}.f{}'.format(dest, i, src, i))
                 else:
                     inner_name = self.temp_name()
-                    result += self.generate_box('{}.f{}'.format(src, i), inner_name, typ.types[i], failure)
+                    result += self.generate_box('{}.f{}'.format(src, i), inner_name, typ.types[i],
+                                                failure)
                     result.append('    PyTuple_SetItem({}, {}, {});'.format(dest, i, inner_name, i))
-
-        return result
+            return result
+        else:
+            # Type is boxed -- trivially just assign.
+            return ['    PyObject *{} = {};'.format(dest, src)]
 
     def generate_wrapper_function(self, fn: FuncIR) -> List[str]:
         """Generates a CPython-compatible wrapper function for a native function.
@@ -222,7 +229,8 @@ class CodeGenerator:
             assert isinstance(typ, TupleRTType)
             self.declare_tuple_struct(typ)
             result = [
-                '    if (!PyTuple_Check({}) || PyTuple_Size({}) != {})'.format(src, src, len(typ.types)),
+                '    if (!PyTuple_Check({}) || PyTuple_Size({}) != {})'.format(src, src,
+                                                                               len(typ.types)),
                 failure,
                 '    {} {};'.format(typ.ctype, dest)
             ]
@@ -245,8 +253,7 @@ class CodeGenerator:
                 '    else',
                 failure
             ]
-        else:
-            assert False, typ
+        assert False, 'Unboxing not implemented: %s' % typ
 
     def generate_arg_check(self, name: str, typ: RTType) -> List[str]:
         """Insert a runtime check for argument and unbox if necessary.
@@ -256,6 +263,42 @@ class CodeGenerator:
         check ensures the correct type.
         """
         return self.generate_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ, '        return NULL;')
+
+    def generate_inc_ref(self, dest: str, rtype: RTType) -> List[str]:
+        """Increment reference count of C expression `dest`.
+
+        For composite unboxed structures (e.g. tuples) recursively
+        increment reference counts for each component.
+        """
+        if rtype.name == 'int':
+            return ['CPyTagged_IncRef(%s);' % dest]
+        elif isinstance(rtype, TupleRTType):
+            result = []
+            for i, item_type in enumerate(rtype.types):
+                result.extend(self.generate_inc_ref('{}.f{}'.format(dest, i), item_type))
+            return result
+        elif not rtype.supports_unbox:
+            return ['Py_INCREF(%s);' % dest]
+        # Otherwise assume it's an unboxed, pointerless value.
+        return []
+
+    def generate_dec_ref(self, dest: str, rtype: RTType) -> List[str]:
+        """Decrement reference count of C expression `dest`.
+
+        For composite unboxed structures (e.g. tuples) recursively
+        decrement reference counts for each component.
+        """
+        if rtype.name == 'int':
+            return ['CPyTagged_DecRef(%s);' % dest]
+        elif isinstance(rtype, TupleRTType):
+            result = []
+            for i, item_type in enumerate(rtype.types):
+                result.extend(self.generate_dec_ref('{}.f{}'.format(dest, i), item_type))
+            return result
+        elif not rtype.supports_unbox:
+            return ['Py_DECREF(%s);' % dest]
+        # Otherwise assume it's an unboxed, pointerless value.
+        return []
 
     def generate_class_declaration(self,
                                    cl: ClassIR,
@@ -274,7 +317,8 @@ class CodeGenerator:
         result.append('')
         result.extend(self.generate_new_for_class(cl, new_name, vtable_name))
         result.append('')
-        result.extend(self.generate_getseters(cl, getseters_name))
+        result.extend(self.generate_getseter_declarations(cl))
+        result.extend(self.generate_getseters_table(cl, getseters_name))
         result.append('')
 
         result.append(textwrap.dedent("""\
@@ -323,6 +367,7 @@ class CodeGenerator:
                         fullname=fullname,
                         new_name=new_name,
                         getseters_name=getseters_name))
+        result.extend(self.generate_getseters(cl))
         return result
 
     def generate_object_struct(self, cl: ClassIR) -> List[str]:
@@ -343,8 +388,9 @@ class CodeGenerator:
                                                    native_getter_name(cl.name, attr),
                                                    cl.struct_name))
             result.append('{')
-            result.append('    if (self->{} != {})'.format(attr, rtype.c_undefined_value))
-            result.append('        CPyTagged_IncRef(self->{});'.format(attr))  # TODO: Type-specific incref
+            result.append('    if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
+            result.extend(self.generate_inc_ref('self->{}'.format(attr), rtype))
+            result.append('    }')
             result.append('    return self->{};'.format(attr))
             result.append('}')
             result.append('')
@@ -352,9 +398,10 @@ class CodeGenerator:
                                                               cl.struct_name,
                                                               rtype.ctype_spaced))
             result.append('{')
-            result.append('    if (self->{} != {})'.format(attr, rtype.c_undefined_value))
-            result.append('        CPyTagged_DecRef(self->{});'.format(attr))  # TODO: Type-specific decref
-            result.append('    CPyTagged_IncRef(value);')  # TODO: Type-specific incref
+            result.append('    if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
+            result.extend(self.generate_dec_ref('self->{}'.format(attr), rtype))
+            result.append('    }')
+            result.extend(self.generate_inc_ref('value'.format(attr), rtype))
             result.append('    self->{} = value;'.format(attr))
             result.append('}')
             result.append('')
@@ -387,25 +434,41 @@ class CodeGenerator:
         result.append('}')
         return result
 
-    def generate_getseters(self,
-                           cl: ClassIR,
-                           name: str) -> List[str]:
-        funcs = []
-
-        struct = []
-        struct.append('static PyGetSetDef {}[] = {{'.format(name))
+    def generate_getseter_declarations(self, cl: ClassIR) -> List[str]:
+        result = []
         for attr, rtype in cl.attributes:
-            funcs.extend(self.generate_getter(cl, attr, rtype))
-            funcs.append('')
-            funcs.extend(self.generate_setter(cl, attr, rtype))
-            funcs.append('')
-            struct.append('    {{"{}",'.format(attr))
-            struct.append('     (getter){}, (setter){},'.format(getter_name(cl.name, attr),
+            result.append('static PyObject *')
+            result.append('{}({} *self, void *closure);'.format(getter_name(cl.name, attr),
+                                                                cl.struct_name))
+            result.append('static int')
+            result.append('{}({} *self, PyObject *value, void *closure);'.format(
+                setter_name(cl.name, attr),
+                cl.struct_name))
+        return result
+
+    def generate_getseters_table(self,
+                                 cl: ClassIR,
+                                 name: str) -> List[str]:
+
+        result = []
+        result.append('static PyGetSetDef {}[] = {{'.format(name))
+        for attr, rtype in cl.attributes:
+            result.append('    {{"{}",'.format(attr))
+            result.append('     (getter){}, (setter){},'.format(getter_name(cl.name, attr),
                                                                 setter_name(cl.name, attr)))
-            struct.append('     NULL, NULL},')
-        struct.append('    {NULL}  /* Sentinel */')
-        struct.append('};')
-        return funcs + struct
+            result.append('     NULL, NULL},')
+        result.append('    {NULL}  /* Sentinel */')
+        result.append('};')
+        return result
+
+    def generate_getseters(self, cl: ClassIR) -> List[str]:
+        result = []  # type: List[str]
+        for attr, rtype in cl.attributes:
+            result.extend(self.generate_getter(cl, attr, rtype))
+            result.append('')
+            result.extend(self.generate_setter(cl, attr, rtype))
+            result.append('')
+        return result
 
     def generate_getter(self,
                         cl: ClassIR,
@@ -438,13 +501,12 @@ class CodeGenerator:
             setter_name(cl.name, attr),
             cl.struct_name))
         result.append('{')
-        result.append('    if (self->{} != {})'.format(attr, rtype.c_undefined_value))
-        result.append('        CPyTagged_DecRef(self->{});'.format(attr))
+        result.append('    if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
+        result.extend(self.generate_dec_ref('self->{}'.format(attr), rtype))
+        result.append('    }')
         result.append('    if (value != NULL) {')
-        result.append('        if (PyLong_Check(value))')
-        result.append('            self->{} = CPyTagged_FromObject(value);'.format(attr))
-        result.append('        else')
-        result.append('            abort();')
+        result.extend(self.generate_unbox('value', 'tmp', rtype, 'abort();'))
+        result.append('        self->{} = tmp;'.format(attr))
         result.append('    } else')
         result.append('        self->{} = {};'.format(attr, rtype.c_undefined_value))
         result.append('    return 0;')
@@ -606,7 +668,7 @@ class EmitterVisitor(OpVisitor):
             self.code_generator.declare_tuple_struct(tuple_type)
             for i, arg in enumerate(op.args):
                 self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(arg)))
-            self._inc_ref(dest, tuple_type)
+            self.emit_inc_ref(dest, tuple_type)
 
         elif op.desc is PrimitiveOp.LIST_APPEND:
             self.emit_lines(
@@ -642,11 +704,32 @@ class EmitterVisitor(OpVisitor):
         dest = self.reg(op.dest)
         self.emit_line('%s = %d;' % (dest, op.value * 2))
 
+    def visit_get_attr(self, op: GetAttr) -> None:
+        dest = self.reg(op.dest)
+        obj = self.reg(op.obj)
+        rtype = op.rtype
+        self.emit_line('%s = CPY_GET_ATTR(%s, %d, %s, %s);' % (
+            dest, obj,
+            rtype.getter_index(op.attr),
+            rtype.struct_name,
+            rtype.attr_type(op.attr).ctype))
+
+    def visit_set_attr(self, op: SetAttr) -> None:
+        obj = self.reg(op.obj)
+        src = self.reg(op.src)
+        rtype = op.rtype
+        self.emit_line('CPY_SET_ATTR(%s, %d, %s, %s, %s);' % (
+            obj,
+            rtype.setter_index(op.attr),
+            src,
+            rtype.struct_name,
+            rtype.attr_type(op.attr).ctype))
+
     def visit_tuple_get(self, op: TupleGet) -> None:
         dest = self.reg(op.dest)
         src = self.reg(op.src)
         self.emit_line('{} = {}.f{};'.format(dest, src, op.index))
-        self._inc_ref(dest, op.target_type)
+        self.emit_inc_ref(dest, op.target_type)
 
     def visit_call(self, op: Call) -> None:
         if op.dest is not None:
@@ -658,43 +741,11 @@ class EmitterVisitor(OpVisitor):
 
     def visit_inc_ref(self, op: IncRef) -> None:
         dest = self.reg(op.dest)
-        self._inc_ref(dest, op.target_type)
-
-    def _inc_ref(self, dest: str, target_type: RTType) -> None:
-        """Increment a reference to dest (which is confusingly an rvalue).
-
-        For unpacked structures (e.g. tuples) recursively increment references inside.
-        """
-        if target_type.name == 'int':
-            self.emit_line('CPyTagged_IncRef(%s);' % dest)
-        elif isinstance(target_type, TupleRTType):
-            i = 0
-            for typ in target_type.types:
-                self._inc_ref('{}.f{}'.format(dest, i), typ)
-                i += 1
-        else:
-            if not target_type.supports_unbox:
-                self.emit_line('Py_INCREF(%s);' % dest)
+        self.emit_inc_ref(dest, op.target_type)
 
     def visit_dec_ref(self, op: DecRef) -> None:
         dest = self.reg(op.dest)
-        self._dec_ref(dest, op.target_type)
-
-    def _dec_ref(self, dest: str, target_type: RTType) -> None:
-        """Decrement a reference to dest (which is confusingly an rvalue).
-
-        For unpacked structures (e.g. tuples) recursively decrement references inside.
-        """
-        if target_type.name == 'int':
-            self.emit_line('CPyTagged_DecRef(%s);' % dest)
-        elif isinstance(target_type, TupleRTType):
-            i = 0
-            for typ in target_type.types:
-                self._dec_ref('{}.f{}'.format(dest, i), typ)
-                i += 1
-        else:
-            if not target_type.supports_unbox:
-                self.emit_line('Py_DECREF(%s);' % dest)
+        self.emit_dec_ref(dest, op.target_type)
 
     def visit_box(self, op: Box) -> None:
         # dest is already declared but generate_box will declare, so indirection is needed.
@@ -734,6 +785,20 @@ class EmitterVisitor(OpVisitor):
 
     def emit_declaration(self, line: str, indent: int = 4) -> None:
         self.emitter.emit_declaration(line, indent)
+
+    def emit_print(self, args: str) -> None:
+        """Emit printf call (for debugging mypyc)."""
+        self.emit_line(r'printf(%s);' % args)
+        self.emit_line(r'printf("\n");')
+        self.emit_line(r'fflush(stdout);')
+
+    def emit_inc_ref(self, dest: str, rtype: RTType) -> None:
+        lines = self.code_generator.generate_inc_ref(dest, rtype)
+        self.emit_lines(*lines)
+
+    def emit_dec_ref(self, dest: str, rtype: RTType) -> None:
+        lines = self.code_generator.generate_dec_ref(dest, rtype)
+        self.emit_lines(*lines)
 
 
 def native_function_header(fn: FuncIR) -> str:

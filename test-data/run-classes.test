@@ -26,6 +26,8 @@ class C:
 from native import C
 
 c = C()
+assert not hasattr(c, 'x')
+assert not hasattr(c, 'y')
 c.x = 1
 c.y = 2
 print(c.x)
@@ -51,3 +53,80 @@ assert hasattr(c, 'x')
 1000000000000000000000000000000
 1000000000000000000000000000001
 1000000000000000000000000000002
+
+[case testGetAttribute]
+class C:
+    x: int
+    y: int
+
+def getx(c: C) -> int:
+    return c.x
+
+def gety(c: C) -> int:
+    return c.y
+[file driver.py]
+from native import C, getx, gety
+c = C()
+c.x = 10**30
+c.y = 10**30 + 1
+print(getx(c))
+print(gety(c))
+[out]
+1000000000000000000000000000000
+1000000000000000000000000000001
+
+[case testSetAttribute]
+class C:
+    x: int
+    y: int
+
+def setx(c: C, v: int) -> None:
+    c.x = v
+
+def sety(c: C, v: int) -> None:
+    c.y = v
+[file driver.py]
+from native import C, setx, sety
+c = C()
+setx(c, 10**30)
+sety(c, 10**30 + 1)
+print(c.x)
+print(c.y)
+setx(c, 4)
+sety(c, 5)
+print(c.x, c.y)
+setx(c, 10**30 + 2)
+sety(c, 10**30 + 3)
+print(c.x)
+print(c.y)
+[out]
+1000000000000000000000000000000
+1000000000000000000000000000001
+4 5
+1000000000000000000000000000002
+1000000000000000000000000000003
+
+[case testAttributeTypes]
+from typing import List, Tuple
+class C:
+    a: List[int]
+    b: bool
+    c: C
+
+def setattrs(o: C, a: List[int], b: bool, c: C) -> None:
+    o.a = a
+    o.b = b
+    o.c = c
+
+def getattrs(o: C) -> Tuple[List[int], bool, C]:
+    return o.a, o.b, o.c
+[file driver.py]
+from native import C, setattrs, getattrs
+c1 = C()
+c2 = C()
+aa = [2]
+setattrs(c1, aa, True, c2)
+a, b, c = getattrs(c1)
+assert a is aa
+assert b is True
+assert c is c2

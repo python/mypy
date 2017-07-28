@@ -26,11 +26,11 @@ typedef void (*CPyVTableItem)(void);
 
 // Get attribute value using vtable (may return an undefined value)
 #define CPY_GET_ATTR(obj, vtable_index, object_type, attr_type) \
-    (attr_type (*)(object_type *)((object_type *)obj)->vtable[vtable_index])((object_type *)obj)
+    ((attr_type (*)(object_type *))((object_type *)obj)->vtable[vtable_index])((object_type *)obj)
 
 // Set attribute value using vtable
 #define CPY_SET_ATTR(obj, vtable_index, value, object_type, attr_type) \
-    (void (*)(object_type *, attr_type)((object_type *)obj)->vtable[vtable_index])( \
+    ((void (*)(object_type *, attr_type))((object_type *)obj)->vtable[vtable_index])( \
         (object_type *)obj, value);
 
 inline int CPyTagged_CheckLong(CPyTagged x) {

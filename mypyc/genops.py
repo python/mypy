@@ -20,7 +20,7 @@ from mypy.nodes import (
     Node, MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr, IntExpr, NameExpr, LDEF, Var,
     IfStmt, Node, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
-    ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef, ARG_POS
+    ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef, TypeInfo, ARG_POS
 )
 from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType
 from mypy.visitor import NodeVisitor
@@ -29,37 +29,43 @@ from mypy.subtypes import is_named_instance
 from mypyc.ops import (
     BasicBlock, Environment, Op, LoadInt, RTType, Register, Return, FuncIR, Assign,
     PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRTType,
-    Unreachable, TupleGet, ClassIR, UserRTType, ModuleIR
+    Unreachable, TupleGet, ClassIR, UserRTType, ModuleIR, GetAttr, SetAttr
 )
 
 
 def build_ir(module: MypyFile,
              types: Dict[Expression, Type]) -> ModuleIR:
-    builder = IRBuilder(types)
+    mapper = Mapper()
+    builder = IRBuilder(types, mapper)
     module.accept(builder)
 
     # Imports not yet implemented
     return ModuleIR([], builder.functions, builder.classes)
 
 
-def type_to_rttype(typ: Type) -> RTType:
-    if isinstance(typ, Instance):
-        if typ.type.fullname() == 'builtins.int':
-            return RTType('int')
-        elif typ.type.fullname() == 'builtins.bool':
-            return RTType('bool')
-        elif typ.type.fullname() == 'builtins.list':
-            return RTType('list')
-        elif typ.type.fullname() == 'builtins.tuple':
-            return RTType('sequence_tuple')
-        elif not typ.type.fullname().startswith('builtins.'):
-            # TODO: Better check for whether a type has been compiled.
-            return UserRTType(typ.type.name())
-    elif isinstance(typ, TupleType):
-        return TupleRTType([type_to_rttype(t) for t in typ.items])
-    elif isinstance(typ, NoneTyp):
-        return RTType('None')
-    assert False, '%s unsupported' % type(typ)
+class Mapper:
+    """Keep track of mappings from mypy AST to the IR."""
+
+    def __init__(self) -> None:
+        self.type_to_ir = {}  # type: Dict[TypeInfo, ClassIR]
+
+    def type_to_rttype(self, typ: Type) -> RTType:
+        if isinstance(typ, Instance):
+            if typ.type.fullname() == 'builtins.int':
+                return RTType('int')
+            elif typ.type.fullname() == 'builtins.bool':
+                return RTType('bool')
+            elif typ.type.fullname() == 'builtins.list':
+                return RTType('list')
+            elif typ.type.fullname() == 'builtins.tuple':
+                return RTType('sequence_tuple')
+            elif typ.type in self.type_to_ir:
+                return UserRTType(self.type_to_ir[typ.type])
+        elif isinstance(typ, TupleType):
+            return TupleRTType([self.type_to_rttype(t) for t in typ.items])
+        elif isinstance(typ, NoneTyp):
+            return RTType('None')
+        assert False, '%s unsupported' % type(typ)
 
 
 class AssignmentTarget(object):
@@ -77,8 +83,15 @@ class AssignmentTargetIndex(AssignmentTarget):
         self.index_reg = index_reg
 
 
+class AssignmentTargetAttr(AssignmentTarget):
+    def __init__(self, obj_reg: Register, attr: str, obj_type: UserRTType) -> None:
+        self.obj_reg = obj_reg
+        self.attr = attr
+        self.obj_type = obj_type
+
+
 class IRBuilder(NodeVisitor[int]):
-    def __init__(self, types: Dict[Expression, Type]) -> None:
+    def __init__(self, types: Dict[Expression, Type], mapper: Mapper) -> None:
         self.types = types
         self.environment = Environment()
         self.environments = [self.environment]
@@ -88,21 +101,44 @@ class IRBuilder(NodeVisitor[int]):
         self.targets = []  # type: List[int]
         self.break_gotos = []  # type: List[List[Goto]]
         self.continue_gotos = []  # type: List[List[Goto]]
+        self.mapper = mapper
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> int:
         if mypyfile.fullname() in ('typing', 'abc'):
             # These module are special; their contents are currently all
             # built-in primitives.
             return -1
+
+        # First pass: Build ClassIRs and TypeInfo-to-ClassIR mapping.
+        for node in mypyfile.defs:
+            if isinstance(node, ClassDef):
+                self.prepare_class_def(node)
+
+        # Second pass: Generate ops.
         for node in mypyfile.defs:
             node.accept(self)
+
+        return -1
+
+    def prepare_class_def(self, cdef: ClassDef) -> None:
+        ir = ClassIR(cdef.name, [])  # Populate attributes later in visit_class_def
+        self.classes.append(ir)
+        self.mapper.type_to_ir[cdef.info] = ir
+
+    def visit_class_def(self, cdef: ClassDef) -> int:
+        attributes = []
+        for name, node in cdef.info.names.items():
+            if isinstance(node.node, Var):
+                attributes.append((name, self.type_to_rttype(node.node.type)))
+        ir = self.mapper.type_to_ir[cdef.info]
+        ir.attributes = attributes
         return -1
 
     def visit_func_def(self, fdef: FuncDef) -> int:
         self.enter()
 
         for arg in fdef.arguments:
-            self.environment.add_local(arg.variable, type_to_rttype(arg.variable.type))
+            self.environment.add_local(arg.variable, self.type_to_rttype(arg.variable.type))
         fdef.body.accept(self)
 
         ret_type = self.convert_return_type(fdef)
@@ -117,23 +153,15 @@ class IRBuilder(NodeVisitor[int]):
         self.functions.append(func)
         return -1
 
-    def visit_class_def(self, cdef: ClassDef) -> int:
-        attributes = []
-        for name, node in cdef.info.names.items():
-            if isinstance(node.node, Var):
-                attributes.append((name, type_to_rttype(node.node.type)))
-        self.classes.append(ClassIR(cdef.name, attributes))
-        return -1
-
     def convert_args(self, fdef: FuncDef) -> List[RuntimeArg]:
         assert isinstance(fdef.type, CallableType)
         ann = fdef.type
-        return [RuntimeArg(arg.variable.name(), type_to_rttype(ann.arg_types[i]))
+        return [RuntimeArg(arg.variable.name(), self.type_to_rttype(ann.arg_types[i]))
                 for i, arg in enumerate(fdef.arguments)]
 
     def convert_return_type(self, fdef: FuncDef) -> RTType:
         assert isinstance(fdef.type, CallableType)
-        return type_to_rttype(fdef.type.ret_type)
+        return self.type_to_rttype(fdef.type.ret_type)
 
     def add_implicit_return(self) -> None:
         block = self.blocks[-1][-1]
@@ -175,7 +203,7 @@ class IRBuilder(NodeVisitor[int]):
 
         if isinstance(target, AssignmentTargetRegister):
             ltype = self.environment.types[target.register]
-            rtype = type_to_rttype(self.types[stmt.rvalue])
+            rtype = self.node_type(stmt.rvalue)
             rreg = self.accept(stmt.rvalue)
             return self.binary_op(ltype, target.register, rtype, rreg, stmt.op, target=target.register)
 
@@ -205,6 +233,12 @@ class IRBuilder(NodeVisitor[int]):
                 base_reg = self.accept(lvalue.base)
                 index_reg = self.accept(lvalue.index)
                 return AssignmentTargetIndex(base_reg, index_reg)
+        elif isinstance(lvalue, MemberExpr):
+            # Attribute assignment x.y = e
+            obj_type = self.node_type(lvalue.expr)
+            assert isinstance(obj_type, UserRTType), 'Attribute set only supported for user types'
+            obj_reg = self.accept(lvalue.expr)
+            return AssignmentTargetAttr(obj_reg, lvalue.name, obj_type)
 
         assert False, 'Unsupported lvalue: %r' % lvalue
 
@@ -216,6 +250,10 @@ class IRBuilder(NodeVisitor[int]):
 
         if isinstance(target, AssignmentTargetRegister):
             return self.accept(rvalue, target=target.register)
+        elif isinstance(target, AssignmentTargetAttr):
+            rvalue_reg = self.accept(rvalue)
+            self.add(SetAttr(target.obj_reg, target.attr, rvalue_reg, target.obj_type))
+            return -1
         elif isinstance(target, AssignmentTargetIndex):
             item_reg = self.accept(rvalue)
             boxed_item_reg = self.box(item_reg, rvalue_type)
@@ -376,7 +414,7 @@ class IRBuilder(NodeVisitor[int]):
 
             target_list_type = self.types[s.expr]
             assert isinstance(target_list_type, Instance)
-            target_type = type_to_rttype(target_list_type.args[0])
+            target_type = self.type_to_rttype(target_list_type.args[0])
             value_box = self.alloc_temp(RTType('object'))
             self.add(PrimitiveOp(value_box, PrimitiveOp.LIST_GET, expr_reg, index_reg))
 
@@ -407,10 +445,6 @@ class IRBuilder(NodeVisitor[int]):
         self.add(self.continue_gotos[-1][-1])
         return -1
 
-    def node_type(self, node: Expression) -> RTType:
-        mypy_type = self.types[node]
-        return type_to_rttype(mypy_type)
-
     int_binary_ops = {
         '+': PrimitiveOp.INT_ADD,
         '-': PrimitiveOp.INT_SUB,
@@ -429,7 +463,7 @@ class IRBuilder(NodeVisitor[int]):
         if expr.op != '-':
             assert False, 'Unsupported unary operation'
 
-        etype = type_to_rttype(self.types[expr.expr])
+        etype = self.node_type(expr.expr)
         reg = self.accept(expr.expr)
         if etype.name != 'int':
             assert False, 'Unsupported unary operation'
@@ -441,8 +475,8 @@ class IRBuilder(NodeVisitor[int]):
         return target
 
     def visit_op_expr(self, expr: OpExpr) -> int:
-        ltype = type_to_rttype(self.types[expr.left])
-        rtype = type_to_rttype(self.types[expr.right])
+        ltype = self.node_type(expr.left)
+        rtype = self.node_type(expr.right)
         lreg = self.accept(expr.left)
         rreg = self.accept(expr.right)
         return self.binary_op(ltype, lreg, rtype, rreg, expr.op)
@@ -468,12 +502,9 @@ class IRBuilder(NodeVisitor[int]):
         return target
 
     def visit_index_expr(self, expr: IndexExpr) -> int:
-        base_type = self.types[expr.base]
-        result_type = self.types[expr]
+        base_rttype = self.node_type(expr.base)
 
-        base_rttype = type_to_rttype(base_type)
-
-        if is_named_instance(base_type, 'builtins.list') or base_rttype.name == 'sequence_tuple':
+        if base_rttype.name == 'list' or base_rttype.name == 'sequence_tuple':
             index_type = self.types[expr.index]
             if not is_named_instance(index_type, 'builtins.int'):
                 assert False, 'Unsupported indexing operation'
@@ -483,7 +514,7 @@ class IRBuilder(NodeVisitor[int]):
             target_type = self.node_type(expr)
             tmp = self.alloc_temp(RTType('object'))
 
-            if is_named_instance(base_type, 'builtins.list'):
+            if base_rttype.name == 'list':
                 op = PrimitiveOp.LIST_GET
             else:
                 op = PrimitiveOp.HOMOGENOUS_TUPLE_GET
@@ -532,6 +563,15 @@ class IRBuilder(NodeVisitor[int]):
             self.add(Assign(target, reg))
             return target
 
+    def visit_member_expr(self, expr: MemberExpr) -> int:
+        obj_reg = self.accept(expr.expr)
+        attr_type = self.node_type(expr)
+        target = self.alloc_target(attr_type)
+        obj_type = self.node_type(expr.expr)
+        assert isinstance(obj_type, UserRTType), 'Attribute access not supported: %s' % obj_type
+        self.add(GetAttr(target, obj_reg, expr.name, obj_type))
+        return target
+
     def visit_call_expr(self, expr: CallExpr) -> int:
         if isinstance(expr.callee, MemberExpr):
             return self.translate_special_method_call(expr.callee, expr)
@@ -541,7 +581,7 @@ class IRBuilder(NodeVisitor[int]):
             target = self.alloc_target(RTType('int'))
             arg = self.accept(expr.args[0])
 
-            expr_rttype = type_to_rttype(self.types[expr.args[0]])
+            expr_rttype = self.node_type(expr.args[0])
             if expr_rttype.name == 'list':
                 self.add(PrimitiveOp(target, PrimitiveOp.LIST_LEN, arg))
             elif expr_rttype.name == 'sequence_tuple':
@@ -565,7 +605,7 @@ class IRBuilder(NodeVisitor[int]):
 
     def visit_conditional_expr(self, expr: ConditionalExpr) -> int:
         branches = self.process_conditional(expr.cond)
-        target = self.alloc_target(type_to_rttype(self.types[expr]))
+        target = self.alloc_target(self.node_type(expr))
 
         if_body = self.new_block()
         self.set_branches(branches, True, if_body)
@@ -600,7 +640,7 @@ class IRBuilder(NodeVisitor[int]):
     def visit_list_expr(self, expr: ListExpr) -> int:
         list_type = self.types[expr]
         assert isinstance(list_type, Instance)
-        item_type = type_to_rttype(list_type.args[0])
+        item_type = self.type_to_rttype(list_type.args[0])
         target = self.alloc_target(RTType('list'))
         items = []
         for item in expr.items:
@@ -614,7 +654,7 @@ class IRBuilder(NodeVisitor[int]):
         tuple_type = self.types[expr]
         assert isinstance(tuple_type, TupleType)
 
-        target = self.alloc_target(type_to_rttype(tuple_type))
+        target = self.alloc_target(self.type_to_rttype(tuple_type))
         items = [self.accept(i) for i in expr.items]
         self.add(PrimitiveOp(target, PrimitiveOp.NEW_TUPLE, *items))
         return target
@@ -728,6 +768,13 @@ class IRBuilder(NodeVisitor[int]):
 
     def alloc_temp(self, type: RTType) -> int:
         return self.environment.add_temp(type)
+
+    def type_to_rttype(self, typ: Type) -> RTType:
+        return self.mapper.type_to_rttype(typ)
+
+    def node_type(self, node: Expression) -> RTType:
+        mypy_type = self.types[node]
+        return self.type_to_rttype(mypy_type)
 
     def box(self, src: Register, typ: RTType) -> Register:
         if typ.supports_unbox:

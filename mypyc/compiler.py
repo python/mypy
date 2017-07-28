@@ -127,8 +127,7 @@ class ModuleCompiler:
         for cl in self.module.classes:
             name = cl.name
             type_struct = '{}Type'.format(name)
-            init_classes.extend(['{}.tp_new = PyType_GenericNew;'.format(type_struct),
-                                 '    if (PyType_Ready(&{}) < 0)'.format(type_struct),
+            init_classes.extend(['    if (PyType_Ready(&{}) < 0)'.format(type_struct),
                                  '        return NULL;'])
             namespace_setup.extend(
                 ['Py_INCREF(&{});'.format(type_struct),

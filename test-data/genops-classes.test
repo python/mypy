@@ -1,0 +1,30 @@
+[case testGetAttribute]
+class A:
+    x: int
+
+def f(a: A) -> int:
+    return a.x
+[out]
+def f(a):
+    a :: A
+    r0 :: int
+L0:
+    r0 = a.x
+    return r0
+
+[case testSetAttribute]
+class A:
+    x: int
+
+def f(a: A) -> None:
+    a.x = 1
+[out]
+def f(a):
+    a :: A
+    r0 :: int
+    r1 :: None
+L0:
+    r0 = 1
+    a.x = r0
+    r1 = None
+    return r1

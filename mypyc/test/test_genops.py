@@ -23,6 +23,7 @@ files = [
     'genops-basic.test',
     'genops-lists.test',
     'genops-statements.test',
+    'genops-classes.test',
 ]
 
 
