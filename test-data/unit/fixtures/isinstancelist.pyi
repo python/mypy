@@ -23,7 +23,7 @@ T = TypeVar('T')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
 
-class tuple(Generic[T]): pass
+class tuple(Generic[T]):
     def __len__(self) -> int: pass
 
 class list(Generic[T]):
