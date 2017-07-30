@@ -1280,7 +1280,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 # Still allow pass or ... (for empty TypedDict's).
                 if (not isinstance(stmt, PassStmt) and
                     not (isinstance(stmt, ExpressionStmt) and
-                         isinstance(stmt.expr, EllipsisExpr))):
+                         isinstance(stmt.expr, (EllipsisExpr, StrExpr)))):
                     self.fail(TPDICT_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
@@ -1377,7 +1377,23 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     self.add_submodules_to_parent_modules(possible_module_id, True)
                 elif possible_module_id in self.missing_modules:
                     missing = True
-
+            # If it is still not resolved, and the module is a stub
+            # check for a module level __getattr__
+            if module and not node and module.is_stub and '__getattr__' in module.names:
+                getattr_defn = module.names['__getattr__']
+                if isinstance(getattr_defn.node, FuncDef):
+                    if isinstance(getattr_defn.node.type, CallableType):
+                        typ = getattr_defn.node.type.ret_type
+                    else:
+                        typ = AnyType()
+                    if as_id:
+                        name = as_id
+                    else:
+                        name = id
+                    ast_node = Var(name, type=typ)
+                    symbol = SymbolTableNode(GDEF, ast_node, name)
+                    self.add_symbol(name, symbol, imp)
+                    return
             if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
                 node = self.normalize_type_alias(node, imp)
                 if not node:
@@ -1485,7 +1501,9 @@ class SemanticAnalyzer(NodeVisitor[None]):
             self.add_submodules_to_parent_modules(i_id, True)
             for name, node in m.names.items():
                 node = self.normalize_type_alias(node, i)
-                if not name.startswith('_') and node.module_public:
+                # if '__all__' exists, all nodes not included have had module_public set to
+                # False, and we can skip checking '_' because it's been explicitly included.
+                if node.module_public and (not name.startswith('_') or '__all__' in m.names):
                     existing_symbol = self.globals.get(name)
                     if existing_symbol:
                         # Import can redefine a variable. They get special treatment.

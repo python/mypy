@@ -31,7 +31,7 @@ type check them statically. Find bugs in your programs without even
 running them!
 
 The type annotation standard has also been backported to earlier
-Python 3.x versions.  Mypy supports Python 3.3 and later. 
+Python 3.x versions.  Mypy supports Python 3.3 and later.
 XML based reports do not work on Python 3.3 and 3.4 on Windows.
 
 For Python 2.7, you can add annotations as comments (this is also
@@ -225,20 +225,11 @@ See [Test README.md](test-data/unit/README.md)
 Development status
 ------------------
 
-Mypy is work in progress and is not yet production quality, though
-mypy development has been done using mypy for a while!
+Mypy is alpha software, but it has already been used in production
+for well over a year at Dropbox, and it has an extensive test suite.
 
-Here are some of the more significant Python features not supported
-right now (but all of these will improve):
-
- - properties with setters not supported
- - limited metaclass support
- - only a subset of Python standard library modules are supported, and some
-   only partially
- - 3rd party module support is limited
-
-The current development focus is to have a good coverage of Python
-features and the standard library (both 3.x and 2.7).
+See [the roadmap](ROADMAP.md) if you are interested in plans for the
+future.
 
 
 Issue tracker
