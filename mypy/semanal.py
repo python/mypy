@@ -3512,7 +3512,9 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     n = self.normalize_type_alias(n, ctx)
                     if n and n.module_hidden:
                         self.name_not_defined(name, ctx)
-            return n if n and not n.module_hidden else None
+            if n and not n.module_hidden:
+                return n
+            return None
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
         sym = self.lookup_fully_qualified(fully_qualified_name)
