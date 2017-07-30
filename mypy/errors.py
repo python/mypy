@@ -286,7 +286,7 @@ class Errors:
         self.add_error_info(info)
 
     def add_error_info(self, info: ErrorInfo) -> None:
-        (file, line) = info.origin
+        (file, line) = cast(Tuple[str, int], info.origin)  # see issue 1855
         if not info.blocker:  # Blockers cannot be ignored
             if file in self.ignored_lines and line in self.ignored_lines[file]:
                 # Annotation requests us to ignore all errors on this line.
