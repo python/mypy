@@ -4294,8 +4294,7 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
         else:
             return TRUTH_VALUE_UNKNOWN
     elif isinstance(index, tuple) and isinstance(thing, tuple):
-        # Why doesn't mypy see that index can't be None here?
-        lo, hi = cast(Tuple[Optional[int], Optional[int]], index)
+        lo, hi = index
         if lo is None:
             lo = 0
         if hi is None:
