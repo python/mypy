@@ -1514,8 +1514,8 @@ from typing import Any
 def deco(f: Any) -> Any: return f
 class C:
     @deco
-    def __add__(self, other: C) -> C: return C()
-    def __radd__(self, other: C) -> C: return C()
+    def __add__(self, other: 'C') -> 'C': return C()
+    def __radd__(self, other: 'C') -> 'C': return C()
 [out]
 
 [case testReverseOperatorMethodForwardIsAny2]
@@ -1523,7 +1523,7 @@ from typing import Any
 def deco(f: Any) -> Any: return f
 class C:
     __add__ = None  # type: Any
-    def __radd__(self, other: C) -> C: return C()
+    def __radd__(self, other: 'C') -> 'C': return C()
 [out]
 
 [case testReverseOperatorMethodForwardIsAny3]
@@ -1531,7 +1531,7 @@ from typing import Any
 def deco(f: Any) -> Any: return f
 class C:
     __add__ = 42
-    def __radd__(self, other: C) -> C: return C()
+    def __radd__(self, other: 'C') -> 'C': return C()
 [out]
 main:5: error: Forward operator "__add__" is not callable
 
@@ -1668,7 +1668,7 @@ main:8: error: Signatures of "__iadd__" and "__add__" are incompatible
 
 a, b = None, None # type: A, B
 class A:
-    def __getattribute__(self, x: str) -> A:
+    def __getattribute__(self, x: str) -> 'A':
         return A()
 class B: pass
 
@@ -1679,11 +1679,11 @@ main:9: error: Incompatible types in assignment (expression has type "A", variab
 
 [case testGetAttributeSignature]
 class A:
-    def __getattribute__(self, x: str) -> A: pass
+    def __getattribute__(self, x: str) -> 'A': pass
 class B:
-    def __getattribute__(self, x: A) -> B: pass
+    def __getattribute__(self, x: A) -> 'B': pass
 class C:
-    def __getattribute__(self, x: str, y: str) -> C: pass
+    def __getattribute__(self, x: str, y: str) -> 'C': pass
 class D:
     def __getattribute__(self, x: str) -> None: pass
 [out]
@@ -1694,7 +1694,7 @@ main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -
 
 a, b = None, None # type: A, B
 class A:
-    def __getattr__(self, x: str) -> A:
+    def __getattr__(self, x: str) -> 'A':
         return A()
 class B: pass
 
@@ -1705,11 +1705,11 @@ main:9: error: Incompatible types in assignment (expression has type "A", variab
 
 [case testGetAttrSignature]
 class A:
-    def __getattr__(self, x: str) -> A: pass
+    def __getattr__(self, x: str) -> 'A': pass
 class B:
-    def __getattr__(self, x: A) -> B: pass
+    def __getattr__(self, x: A) -> 'B': pass
 class C:
-    def __getattr__(self, x: str, y: str) -> C: pass
+    def __getattr__(self, x: str, y: str) -> 'C': pass
 class D:
     def __getattr__(self, x: str) -> None: pass
 [out]
@@ -1813,7 +1813,7 @@ a = a(b)  # E: Argument 1 to "__call__" of "A" has incompatible type "B"; expect
 b = a(a)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 class A:
-    def __call__(self, x: A) -> A:
+    def __call__(self, x: 'A') -> 'A':
         pass
 class B: pass
 
@@ -3317,7 +3317,7 @@ def r(ta: Type[TA], tta: TTA) -> None:
 
 class Class(metaclass=M):
     @classmethod
-    def f1(cls: Type[Class]) -> None: pass
+    def f1(cls: Type['Class']) -> None: pass
     @classmethod
     def f2(cls: M) -> None: pass
 cl: Type[Class] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[Class])

@@ -181,7 +181,7 @@ class A:
         pass
 
 class C(A):
-    def copy(self: C) -> C:
+    def copy(self: 'C') -> 'C':
         pass
 
 class D(A):
@@ -276,10 +276,10 @@ class B:
         return cls()
 
 class C:
-    def foo(self: C) -> C: return self
+    def foo(self: 'C') -> 'C': return self
 
     @classmethod
-    def cfoo(cls: Type[C]) -> C:
+    def cfoo(cls: Type['C']) -> 'C':
         return cls()
 
 class D:
@@ -330,21 +330,21 @@ class B:
         pass
 
 class C:
-    def __new__(cls: Type[C]) -> C:
+    def __new__(cls: Type['C']) -> 'C':
         return cls()
 
-    def __init_subclass__(cls: Type[C]) -> None:
+    def __init_subclass__(cls: Type['C']) -> None:
         pass
 
 class D:
-    def __new__(cls: D) -> D:  # E: The erased type of self '__main__.D' is not a supertype of its class 'Type[__main__.D]'
+    def __new__(cls: 'D') -> 'D':  # E: The erased type of self '__main__.D' is not a supertype of its class 'Type[__main__.D]'
         return cls
 
-    def __init_subclass__(cls: D) -> None:  # E: The erased type of self '__main__.D' is not a supertype of its class 'Type[__main__.D]'
+    def __init_subclass__(cls: 'D') -> None:  # E: The erased type of self '__main__.D' is not a supertype of its class 'Type[__main__.D]'
         pass
 
 class E:
-    def __new__(cls) -> E:
+    def __new__(cls) -> 'E':
         reveal_type(cls)  # E: Revealed type is 'def () -> __main__.E'
         return cls()
 

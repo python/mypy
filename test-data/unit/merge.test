@@ -442,12 +442,12 @@ NameExpr:6: target.A<0>
 import target
 [file target.py]
 class A:
-    def f(self) -> A:
+    def f(self) -> 'A':
         return self.f()
 [file target.py.next]
 class A:
     # Extra line to change line numbers
-    def f(self) -> A:
+    def f(self) -> 'A':
         return self.f()
 [out]
 ## target

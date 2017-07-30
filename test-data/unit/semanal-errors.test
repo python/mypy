@@ -1401,3 +1401,40 @@ class A: ... # E: Name 'A' already defined on line 2
 
 [builtins fixtures/list.pyi]
 [out]
+
+[case testReferringToClassInDefinition]
+class A:
+    def foo(self) -> A:  # E: class 'A' is not fully defined; use a forward reference
+        pass
+
+[out]
+
+[case testReferringToClassInClassVar]
+class A:
+    x: A  # E: class 'A' is not fully defined; use a forward reference
+
+[out]
+
+[case testReferringToClassInNestedStructures]
+class A:
+    class B:
+        def foo(self, arg: A) -> int:  # E: class 'A' is not fully defined; use a forward reference
+            return 3
+
+        def bar(self, arg: B) -> int:   # E: class 'B' is not fully defined; use a forward reference
+            return 4
+
+    def baz(self) -> int:
+        x: A
+
+        class C:
+            def qux(self, arg: A) -> int:
+                return 3
+
+            def qix(self, arg: C) -> int:  # E: class 'C' is not fully defined; use a forward reference
+                return 3
+
+        return 3
+
+[out]
+

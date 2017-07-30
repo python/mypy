@@ -108,7 +108,7 @@ a = 1 + 2
 1.2 * 3
 2.2 - 3
 1 / 2
-[file builtins.py]
+[file builtins.pyi]
 class object:
     def __init__(self) -> None: pass
 class function: pass
@@ -135,7 +135,7 @@ import typing
 1 < 2 < 3
 8 > 3
 4 < 6 > 2
-[file builtins.py]
+[file builtins.pyi]
 class object:
     def __init__(self) -> None: pass
 class int:

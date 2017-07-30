@@ -47,9 +47,9 @@ f(S())
 [case testCheckGenericFunctionBodyWithTypeVarValues]
 from typing import TypeVar
 class A:
-    def f(self, x: int) -> A: return self
+    def f(self, x: int) -> 'A': return self
 class B:
-    def f(self, x: int) -> B: return self
+    def f(self, x: int) -> 'B': return self
 AB = TypeVar('AB', A, B)
 def f(x: AB) -> AB:
     x = x.f(1)
@@ -58,11 +58,11 @@ def f(x: AB) -> AB:
 [case testCheckGenericFunctionBodyWithTypeVarValues2]
 from typing import TypeVar
 class A:
-    def f(self) -> A: return A()
-    def g(self) -> B: return B()
+    def f(self) -> 'A': return A()
+    def g(self) -> 'B': return B()
 class B:
     def f(self) -> A: return A()
-    def g(self) -> B: return B()
+    def g(self) -> 'B': return B()
 AB = TypeVar('AB', A, B)
 def f(x: AB) -> AB:
     return x.f() # Error
@@ -75,11 +75,11 @@ main:12: error: Incompatible return value type (got "B", expected "A")
 [case testTypeInferenceAndTypeVarValues]
 from typing import TypeVar
 class A:
-    def f(self) -> A: return self
-    def g(self) -> B: return B()
+    def f(self) -> 'A': return self
+    def g(self) -> 'B': return B()
 class B:
-    def f(self) -> B: return self
-    def g(self) -> B: return B()
+    def f(self) -> 'B': return self
+    def g(self) -> 'B': return B()
 AB = TypeVar('AB', A, B)
 def f(x: AB) -> AB:
     y = x

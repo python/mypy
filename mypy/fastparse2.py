@@ -282,7 +282,7 @@ class ASTConverter(ast27.NodeTransformer):
     #              arg? kwarg, expr* defaults)
     @with_line
     def visit_FunctionDef(self, n: ast27.FunctionDef) -> Statement:
-        converter = TypeConverter(self.errors, line=n.lineno)
+        converter = TypeConverter(self.errors, set(), line=n.lineno)
         args, decompose_stmts = self.transform_args(n.args, n.lineno)
 
         arg_kinds = [arg.kind for arg in args]
@@ -380,7 +380,7 @@ class ASTConverter(ast27.NodeTransformer):
         # TODO: remove the cast once https://github.com/python/typeshed/pull/522
         # is accepted and synced
         type_comments = cast(List[str], n.type_comments)  # type: ignore
-        converter = TypeConverter(self.errors, line=line)
+        converter = TypeConverter(self.errors, set(), line=line)
         decompose_stmts = []  # type: List[Statement]
 
         def extract_names(arg: ast27.expr) -> List[str]:

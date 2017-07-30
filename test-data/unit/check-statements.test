@@ -357,7 +357,7 @@ class A(object):
         self.a = 0
 
     def __iadd__(self, a):
-        # type: (int) -> A
+        # type: (int) -> 'A'
         self.a += 1
         return self
 
