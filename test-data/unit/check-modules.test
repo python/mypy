@@ -1766,3 +1766,64 @@ main:3: error: Module has no attribute "any_attribute"
 [case testModuleLevelGetattribute]
 
 def __getattribute__(): ...  # E: __getattribute__ is not valid at the module level
+
+[case testModuleLevelGetattrImportFrom]
+
+from has_attr import name
+reveal_type(name)  # E: Revealed type is 'Any'
+
+[file has_attr.pyi]
+from typing import Any
+
+def __getattr__(name: str) -> Any: ...
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrImportFromRetType]
+
+from has_attr import int_attr
+
+reveal_type(int_attr)  # E: Revealed type is 'builtins.int'
+
+[file has_attr.pyi]
+
+def __getattr__(name: str) -> int: ...
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrImportFromNotStub]
+
+from non_stub import name
+
+reveal_type(name)
+
+[file non_stub.py]
+from typing import Any
+
+def __getattr__(name: str) -> Any: ...
+
+[out]
+tmp/non_stub.py:3: error: __getattr__ is not valid at the module level outside a stub file
+main:2: error: Module 'non_stub' has no attribute 'name'
+main:4: error: Revealed type is 'Any'
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrImportFromAs]
+
+from has_attr import name as n
+
+reveal_type(name)
+reveal_type(n)
+
+[file has_attr.pyi]
+from typing import Any
+
+def __getattr__(name: str) -> Any: ...
+
+[out]
+main:4: error: Revealed type is 'Any'
+main:4: error: Name 'name' is not defined
+main:5: error: Revealed type is 'Any'
+
+[builtins fixtures/module.pyi]
