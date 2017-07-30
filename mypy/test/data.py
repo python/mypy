@@ -510,13 +510,13 @@ def pytest_pycollect_makeitem(collector: Any, name: str, obj: Any) -> Any:
     return MypyDataSuite(name, parent=collector)
 
 
-class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
+class MypyDataSuite(pytest.Class):
     def collect(self) -> Iterator['MypyDataCase']:
         for case in self.obj.cases():
             yield MypyDataCase(case.name, self, case)
 
 
-class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
+class MypyDataCase(pytest.Item):
     def __init__(self, name: str, parent: MypyDataSuite, obj: DataDrivenTestCase) -> None:
         self.skip = False
         if name.endswith('-skip'):

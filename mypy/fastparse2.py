@@ -377,9 +377,7 @@ class ASTConverter(ast27.NodeTransformer):
                        n: ast27.arguments,
                        line: int,
                        ) -> Tuple[List[Argument], List[Statement]]:
-        # TODO: remove the cast once https://github.com/python/typeshed/pull/522
-        # is accepted and synced
-        type_comments = cast(List[str], n.type_comments)  # type: ignore
+        type_comments = n.type_comments
         converter = TypeConverter(self.errors, line=line)
         decompose_stmts = []  # type: List[Statement]
 
@@ -826,7 +824,7 @@ class ASTConverter(ast27.NodeTransformer):
         return CallExpr(self.visit(n.func),
                         self.translate_expr_list(arg_types),
                         arg_kinds,
-                        cast("List[str]", signature))
+                        signature)
 
     # Num(object n) -- a number as a PyObject.
     @with_line

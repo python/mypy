@@ -139,7 +139,7 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
     return False
 
 
-class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
+class ASTConverter(ast3.NodeTransformer):
     def __init__(self,
                  options: Options,
                  is_stub: bool,
@@ -962,7 +962,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         return self.visit(n.value)
 
 
-class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
+class TypeConverter(ast3.NodeTransformer):
     def __init__(self, errors: Errors, line: int = -1) -> None:
         self.errors = errors
         self.line = line
