@@ -1795,9 +1795,9 @@ from typing import Any
 def __getattr__(name: str) -> Any: ...
 
 [out]
-tmp/non_stub.py:3: error: __getattr__ is not valid at the module level outside a stub file
-main:2: error: Module 'non_stub' has no attribute 'name'
-main:4: error: Revealed type is 'Any'
+tmp/non_stub.py:2: error: __getattr__ is not valid at the module level outside a stub file
+main:1: error: Module 'non_stub' has no attribute 'name'
+main:2: error: Revealed type is 'Any'
 
 [builtins fixtures/module.pyi]
 
@@ -1811,8 +1811,8 @@ from typing import Any
 def __getattr__(name: str) -> Any: ...
 
 [out]
-main:4: error: Revealed type is 'Any'
-main:4: error: Name 'name' is not defined
-main:5: error: Revealed type is 'Any'
+main:2: error: Revealed type is 'Any'
+main:2: error: Name 'name' is not defined
+main:3: error: Revealed type is 'Any'
 
 [builtins fixtures/module.pyi]
