@@ -492,6 +492,16 @@ class MessageBuilder:
         self.fail('Call to untyped function {} in typed context'.format(name), context)
         return AnyType()
 
+    def incompatible_default_argument(self, name: str, lvalue: Type, rvalue: Type,
+                                      context: Context) -> None:
+        if name.startswith('__tuple_arg_'):
+            fmt = "Incompatible default for tuple argument no' {}".format(name[12:])
+        else:
+            fmt = 'Incompatible default for argument "{}"'.format(name)
+        fmt += ' (argument has type {}, default has type {})'
+        lvalt, rvalt = self.format_distinctly(lvalue, rvalue)
+        self.fail(fmt.format(lvalt, rvalt), context)
+
     def incompatible_argument(self, n: int, m: int, callee: CallableType, arg_type: Type,
                               arg_kind: int, context: Context) -> None:
         """Report an error about an incompatible argument type.
