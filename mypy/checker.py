@@ -740,9 +740,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 # Type check initialization expressions.
                 for arg in item.arguments:
-                    init = arg.initialization_statement
-                    if init:
-                        self.accept(init)
+                    if arg.initializer is not None:
+                        name = arg.variable.name()
+                        msg = 'Incompatible default for '
+                        if name.startswith('__tuple_arg_'):
+                            msg += "tuple argument {}".format(name[12:])
+                        else:
+                            msg += 'argument "{}"'.format(name)
+                        self.check_simple_assignment(arg.variable.type, arg.initializer,
+                            context=arg, msg=msg, lvalue_name='argument', rvalue_name='default')
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
