@@ -2286,6 +2286,8 @@ class SymbolTableNode:
     # If False, this name won't be imported via 'from <module> import *'.
     # This has no effect on names within classes.
     module_public = True
+    # If True, the name will be never exported (needed for stub files)
+    module_hidden = False
     # For deserialized MODULE_REF nodes, the referenced module name;
     # for other nodes, optionally the name of the referenced object.
     cross_ref = None  # type: Optional[str]
@@ -2302,11 +2304,13 @@ class SymbolTableNode:
                  module_public: bool = True,
                  normalized: bool = False,
                  alias_tvars: Optional[List[str]] = None,
-                 implicit: bool = False) -> None:
+                 implicit: bool = False,
+                 module_hidden: bool = False) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
         self.mod_id = mod_id
+        self.module_hidden = module_hidden
         self.module_public = module_public
         self.normalized = normalized
         self.alias_tvars = alias_tvars
@@ -2352,6 +2356,8 @@ class SymbolTableNode:
         data = {'.class': 'SymbolTableNode',
                 'kind': node_kinds[self.kind],
                 }  # type: JsonDict
+        if self.module_hidden:
+            data['module_hidden'] = True
         if not self.module_public:
             data['module_public'] = False
         if self.normalized:
@@ -2393,6 +2399,8 @@ class SymbolTableNode:
             stnode = SymbolTableNode(kind, node, typ=typ)
             if 'alias_tvars' in data:
                 stnode.alias_tvars = data['alias_tvars']
+        if 'module_hidden' in data:
+            stnode.module_hidden = data['module_hidden']
         if 'module_public' in data:
             stnode.module_public = data['module_public']
         if 'normalized' in data:
