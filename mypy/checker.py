@@ -744,7 +744,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         name = arg.variable.name()
                         msg = 'Incompatible default for '
                         if name.startswith('__tuple_arg_'):
-                            msg += "tuple argument no' {}".format(name[12:])
+                            msg += "tuple argument {}".format(name[12:])
                         else:
                             msg += 'argument "{}"'.format(name)
                         self.check_simple_assignment(arg.variable.type, arg.initializer,

@@ -419,14 +419,14 @@ class A: pass
 [case testDefaultTupleArgumentExpressionsPython2]
 # flags: --python-version 2.7
 from typing import Tuple
-def f((x, y) = (A(), B())): # E: Incompatible default for tuple argument no' 1 (default has type "Tuple[A, B]", argument has type "Tuple[B, B]")
+def f((x, y) = (A(), B())): # E: Incompatible default for tuple argument 1 (default has type "Tuple[A, B]", argument has type "Tuple[B, B]")
     # type: (Tuple[B, B]) -> None
     b = x # type: B
     a = x # type: A      # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-def g(a, (x, y) = (A(),)): # E: Incompatible default for tuple argument no' 2 (default has type "Tuple[A]", argument has type "Tuple[B, B]")
+def g(a, (x, y) = (A(),)): # E: Incompatible default for tuple argument 2 (default has type "Tuple[A]", argument has type "Tuple[B, B]")
     # type: (int, Tuple[B, B]) -> None
     pass
-def h((x, y) = (A(), B(), A())): # E: Incompatible default for tuple argument no' 1 (default has type "Tuple[A, B, A]", argument has type "Tuple[B, B]")
+def h((x, y) = (A(), B(), A())): # E: Incompatible default for tuple argument 1 (default has type "Tuple[A, B, A]", argument has type "Tuple[B, B]")
     # type: (Tuple[B, B]) -> None
     pass
 
