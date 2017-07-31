@@ -2282,7 +2282,6 @@ class SemanticAnalyzer(NodeVisitor[None]):
     def build_namedtuple_typeinfo(self, name: str, items: List[str], types: List[Type],
                                   default_items: Dict[str, Expression]) -> TypeInfo:
         strtype = self.str_type()
-        # todo: generics
         implicit_any = AnyType(TypeOfAny.special_form)
         basetuple_type = self.named_type('__builtins__.tuple', [implicit_any])
         dictype = (self.named_type_or_none('builtins.dict', [strtype, implicit_any])
@@ -4133,7 +4132,6 @@ class ThirdPass(TraverserVisitor):
         if args:
             # TODO: assert len(args) == len(node.defn.type_vars)
             return Instance(node, args)
-        # todo: omitted generics
         any_type = AnyType(TypeOfAny.special_form)
         return Instance(node, [any_type] * len(node.defn.type_vars))
 

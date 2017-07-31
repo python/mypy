@@ -2475,7 +2475,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         sym = self.lookup_qualified(name)
         node = sym.node
         assert isinstance(node, TypeInfo)
-        # todo: generics
         any_type = AnyType(TypeOfAny.special_form)
         return Instance(node, [any_type] * len(node.defn.type_vars))
 

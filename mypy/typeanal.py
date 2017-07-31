@@ -210,7 +210,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 if self.nesting_level > 0:
                     self.fail('Invalid type: ClassVar nested inside other type', t)
                 if len(t.args) == 0:
-                    return AnyType(TypeOfAny.from_omitted_generics, line=t.line)
+                    return AnyType(TypeOfAny.from_omitted_generics, line=t.line, column=t.column)
                 if len(t.args) != 1:
                     self.fail('ClassVar[...] must have at most one type argument', t)
                     return AnyType(TypeOfAny.from_error)
@@ -261,7 +261,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 return t
             info = sym.node  # type: TypeInfo
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
-                # todo: omitted generics
                 fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
                 return TupleType(self.anal_array(t.args), fallback, t.line)
             else:
@@ -549,13 +548,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                    column: int = -1) -> Instance:
         node = self.lookup_fqn_func(fully_qualified_name)
         assert isinstance(node.node, TypeInfo)
-        # todo: from omitted generics
         any_type = AnyType(TypeOfAny.special_form)
         return Instance(node.node, args or [any_type] * len(node.node.defn.type_vars),
                         line=line, column=column)
 
     def tuple_type(self, items: List[Type]) -> TupleType:
-        # todo: generics?
         any_type = AnyType(TypeOfAny.special_form)
         return TupleType(items, fallback=self.named_type('builtins.tuple', [any_type]))
 
@@ -743,7 +740,8 @@ def set_any_tvars(tp: Type, vars: List[str],
         type_of_any = TypeOfAny.from_omitted_generics
     else:
         type_of_any = TypeOfAny.special_form
-    return replace_alias_tvars(tp, vars, [AnyType(type_of_any)] * len(vars), newline, newcolumn)
+    any_type = AnyType(type_of_any, line=newline, column=newcolumn)
+    return replace_alias_tvars(tp, vars, [any_type] * len(vars), newline, newcolumn)
 
 
 def remove_dups(tvars: Iterable[T]) -> List[T]:
