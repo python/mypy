@@ -332,7 +332,8 @@ def generate_html_report(tree: MypyFile, path: str, type_map: Dict[Expression, T
             status = visitor.line_map.get(lineno, TYPE_PRECISE)
             style_map = {TYPE_PRECISE: 'white',
                          TYPE_IMPRECISE: 'yellow',
-                         TYPE_ANY: 'red'}
+                         TYPE_ANY: 'red',
+                         TYPE_UNANALYZED: 'red'}
             style = style_map[status]
             append('<span class="lineno">%4d</span>   ' % lineno +
                    '<span class="%s">%s</span>' % (style,
