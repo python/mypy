@@ -740,9 +740,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 # Type check initialization expressions.
                 for arg in item.arguments:
-                    init = arg.initialization_statement
-                    if init:
-                        self.accept(init)
+                    self.expr_checker.check_default_arg(arg)
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():

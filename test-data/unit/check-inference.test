@@ -1119,7 +1119,7 @@ from typing import Callable
 def f(a: Callable[..., None] = lambda *a, **k: None):
     pass
 
-def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible types in assignment (expression has type Callable[[VarArg(Any), KwArg(Any)], int], variable has type Callable[..., None])
+def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible default for argument "a" (argument has type Callable[..., None], default has type Callable[[VarArg(Any), KwArg(Any)], int])
     pass
 [builtins fixtures/dict.pyi]
 

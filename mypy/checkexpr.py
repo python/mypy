@@ -3,7 +3,7 @@
 from collections import OrderedDict
 from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
 
-from mypy.errors import report_internal_error
+from mypy.errors import Errors, report_internal_error
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, set_any_tvars
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
@@ -1010,6 +1010,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return
             messages.incompatible_argument(n, m, callee, original_caller_type,
                                            caller_kind, context)
+
+    def check_default_arg(self, arg: mypy.nodes.Argument) -> None:
+        rvalue = arg.initializer
+        lval_type = arg.variable.type
+        if rvalue and lval_type and not (self.chk.is_stub and isinstance(rvalue, EllipsisExpr)):
+            single = CallableType([lval_type], [ARG_POS], [None],
+                                  AnyType(), self.named_type('builtins.function'))
+            msg = MessageBuilder(Errors(), self.chk.modules)
+            self.check_call(single, [rvalue], [ARG_POS], arg, arg_messages=msg)
+            if msg.is_errors():
+                rval_type = self.accept(rvalue, lval_type)
+                varname = arg.variable.name()
+                self.msg.incompatible_default_argument(
+                    varname, lval_type, rval_type, arg)
 
     def overload_call_target(self, arg_types: List[Type], arg_kinds: List[int],
                              arg_names: List[str],

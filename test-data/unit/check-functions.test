@@ -388,17 +388,42 @@ class A: pass
 
 [case testDefaultArgumentExpressions2]
 import typing
-def f(x: 'A' = B()) -> None: # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+def f(x: 'A' = B()) -> None: # E: Incompatible default for argument "x" (argument has type "A", default has type "B")
     b = x # type: B      # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x # type: A
 
 class B: pass
 class A: pass
-[out]
+
+[case testDefaultArgumentExpressionsGeneric]
+from typing import TypeVar
+T = TypeVar('T', bound='A')
+def f(x: T = B()) -> None: # E: Incompatible default for argument "x" (argument has type "T", default has type "B")
+    b = x # type: B      # E: Incompatible types in assignment (expression has type "T", variable has type "B")
+    a = x # type: A
+
+class B: pass
+class A: pass
+
+[case testDefaultArgumentExpressionsPython2]
+# flags: --python-version 2.7
+from typing import Tuple
+def f(x = B()): # E: Incompatible default for argument "x" (argument has type "A", default has type "B")
+    # type: (A) -> None
+    b = x # type: B      # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    a = x # type: A
+
+def g((x, y) = (A(), B())): # E: Incompatible default for tuple argument no' 1 (argument has type "Tuple[B, B]", default has type "Tuple[A, B]")
+    # type: ( Tuple[B, B] ) -> None
+    b = x # type: B
+    a = x # type: A      # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+
+class B: pass
+class A: pass
 
 [case testDefaultArgumentsWithSubtypes]
 import typing
-def f(x: 'B' = A()) -> None: # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+def f(x: 'B' = A()) -> None: # E: Incompatible default for argument "x" (argument has type "B", default has type "A")
     pass
 def g(x: 'A' = B()) -> None:
     pass
@@ -409,7 +434,7 @@ class B(A): pass
 
 [case testMultipleDefaultArgumentExpressions]
 import typing
-def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible default for argument "x" (argument has type "A", default has type "B")
     pass
 def h(x: 'A' = A(), y: 'B' = B()) -> None:
     pass
@@ -420,7 +445,7 @@ class B: pass
 
 [case testMultipleDefaultArgumentExpressions2]
 import typing
-def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible default for argument "y" (argument has type "B", default has type "A")
     pass
 
 class A: pass
