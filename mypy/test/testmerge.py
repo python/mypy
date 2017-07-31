@@ -18,14 +18,9 @@ from mypy.strconv import StrConv, indent
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
-from mypy.test.testtypegen import ignore_node
+from mypy.test.myunit.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type, IdMapper
-
-
-files = [
-    'merge.test'
-]
 
 
 # Which data structures to dump in a test case?
@@ -41,14 +36,6 @@ class ASTMergeSuite(DataSuite):
         assert self.str_conv.id_mapper is not None
         self.id_mapper = self.str_conv.id_mapper  # type: IdMapper
         self.type_str_conv = TypeStrVisitor(self.id_mapper)
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         name = testcase.name
@@ -206,3 +193,6 @@ class ASTMergeSuite(DataSuite):
                                                 expr.line,
                                                 typ.accept(self.type_str_conv)))
         return a
+
+
+test_handler = ASTMergeSuite

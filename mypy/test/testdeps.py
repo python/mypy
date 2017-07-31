@@ -14,22 +14,10 @@ from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.types import Type
 
-files = [
-    'deps.test'
-]
-
 
 class GetDependenciesSuite(DataSuite):
     def __init__(self, *, update_data: bool) -> None:
         pass
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)
@@ -65,3 +53,6 @@ class GetDependenciesSuite(DataSuite):
             # TODO: Should perhaps not return None here.
             return e.messages, None, None
         return result.errors, result.files, result.types
+
+
+test_handler = GetDependenciesSuite

@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Set, Iterable
 from mypy.waiter import Waiter, LazySubprocess
 from mypy import util
 from mypy.test.config import test_data_prefix
-from mypy.test.testpythoneval import python_eval_files, python_34_eval_files
+from mypy.test.myunit.testpythoneval import python_eval_files, python_34_eval_files
 
 import itertools
 import os
@@ -197,30 +197,20 @@ def add_imports(driver: Driver) -> None:
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
 
 
-PYTEST_FILES = [os.path.join('mypy', 'test', '{}.py'.format(name)) for name in [
-    'testcheck',
-    'testextensions',
-    'testdeps',
-    'testdiff',
-    'testfinegrained',
-    'testmerge',
-]]
-
-
 def add_pytest(driver: Driver) -> None:
-    driver.add_pytest('pytest', PYTEST_FILES + driver.arglist + driver.pyt_arglist, True)
+    driver.add_pytest('.', driver.arglist + driver.pyt_arglist, True)
 
 
 def add_myunit(driver: Driver) -> None:
     for f in find_files('mypy', prefix='test', suffix='.py'):
+        if 'myunit' not in f:
+            # Only modules in myunit/ subfolder are intended to be run by myunit.
+            continue
         mod = file_to_module(f)
-        if mod in ('mypy.test.testpythoneval', 'mypy.test.testcmdline'):
+        if mod in ('mypy.test.myunit.testpythoneval', 'mypy.test.myunit.testcmdline'):
             # Run Python evaluation integration tests and command-line
             # parsing tests separately since they are much slower than
             # proper unit tests.
-            pass
-        elif f in PYTEST_FILES:
-            # This module has been converted to pytest; don't try to use myunit.
             pass
         else:
             driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod,
@@ -244,7 +234,7 @@ def add_pythoneval(driver: Driver) -> None:
             'eval-test-' + prefix,
             'mypy.myunit',
             '-m',
-            'mypy.test.testpythoneval',
+            'mypy.test.myunit.testpythoneval',
             'test_testpythoneval_PythonEvaluationSuite.test' + prefix + '*',
             *driver.arglist,
             coverage=True
@@ -253,7 +243,7 @@ def add_pythoneval(driver: Driver) -> None:
 
 def add_cmdline(driver: Driver) -> None:
     driver.add_python_mod('cmdline-test', 'mypy.myunit',
-                          '-m', 'mypy.test.testcmdline', *driver.arglist,
+                          '-m', 'mypy.test.myunit.testcmdline', *driver.arglist,
                          coverage=True)
 
 

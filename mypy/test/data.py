@@ -6,18 +6,20 @@ import posixpath
 import re
 from os import remove, rmdir
 import shutil
-
-import pytest  # type: ignore  # no pytest in typeshed
+from importlib import import_module
 from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict
 
+import pytest  # type: ignore  # no pytest in typeshed
+
 from mypy.myunit import TestCase, SkipTestCaseException
+from mypy.test.config import test_data_prefix, test_temp_dir
 
 
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 
 def parse_test_cases(
-        path: str,
+        path: Any,  # str if called by myunit, py._path.local.LocalPath if called from pytest.
         perform: Optional[Callable[['DataDrivenTestCase'], None]],
         base_path: str = '.',
         optional_out: bool = False,
@@ -35,9 +37,23 @@ def parse_test_cases(
         join = os.path.join
     else:
         join = posixpath.join  # type: ignore
+
+    # These 2 functions won't be necessary after we move entirely away from myunit to pytest.
+    def _dirname(path: Any) -> str:
+        if isinstance(path, str):
+            return os.path.dirname(path)
+        else:
+            return path.dirname
+
+    def _open(path: Any, *args: Any, **kwargs: Any) -> Any:
+        if isinstance(path, str):
+            return open(path, *args, **kwargs)
+        else:
+            return path.open(*args, **kwargs)
+
     if not include_path:
-        include_path = os.path.dirname(path)
-    with open(path, encoding='utf-8') as f:
+        include_path = _dirname(path)
+    with _open(path, encoding='utf-8') as f:
         l = f.readlines()
     for i in range(len(l)):
         l[i] = l[i].rstrip('\n')
@@ -76,20 +92,22 @@ def parse_test_cases(
                     # Use an alternative stub file for the builtins module.
                     arg = p[i].arg
                     assert arg is not None
-                    mpath = join(os.path.dirname(path), arg)
+                    # Make the path work for both unit/ and legacy-unit/
+                    mpath = join(_dirname(path), '..', 'unit', arg)
                     if p[i].id == 'builtins':
                         fnam = 'builtins.pyi'
                     else:
                         # Python 2
                         fnam = '__builtin__.pyi'
-                    with open(mpath) as f:
+                    with _open(mpath) as f:
                         files.append((join(base_path, fnam), f.read()))
                 elif p[i].id == 'typing':
                     # Use an alternative stub file for the typing module.
                     arg = p[i].arg
                     assert arg is not None
-                    src_path = join(os.path.dirname(path), arg)
-                    with open(src_path) as f:
+                    # Make the path work for both unit/ and legacy-unit/
+                    src_path = join(_dirname(path), '..', 'unit', arg)
+                    with _open(src_path) as f:
                         files.append((join(base_path, 'typing.pyi'), f.read()))
                 elif re.match(r'stale[0-9]*$', p[i].id):
                     if p[i].id == 'stale':
@@ -184,7 +202,6 @@ class DataDrivenTestCase(TestCase):
     output = None  # type: List[str]  # Output for the first pass
     output2 = None  # type: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
 
-    file = ''
     line = 0
 
     # (file path, file content) tuples
@@ -199,7 +216,7 @@ class DataDrivenTestCase(TestCase):
                  input: List[str],
                  output: List[str],
                  output2: Dict[int, List[str]],
-                 file: str,
+                 file: Any,  # py._path.local.LocalPath
                  line: int,
                  lastline: int,
                  perform: Optional[Callable[['DataDrivenTestCase'], None]],
@@ -503,43 +520,59 @@ def pytest_addoption(parser: Any) -> None:
 
 
 # This function name is special to pytest.  See
-# http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
-def pytest_pycollect_makeitem(collector: Any, name: str, obj: Any) -> Any:
-    if not isinstance(obj, type) or not issubclass(obj, DataSuite):
-        return None
-    return MypyDataSuite(name, parent=collector)
+# https://docs.pytest.org/en/latest/writing_plugins.html?#_pytest.hookspec.pytest_collect_file
+def pytest_collect_file(parent: pytest.Collector, path: Any) -> pytest.Item:  # type: ignore
+    if path.ext != '.test':
+        return
+    return DataTestCollector(path=path, parent=parent)
 
 
-class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
+class DataTestCollector(pytest.File):  # type: ignore
+    def __init__(self, path: Any, parent: pytest.Collector) -> None:  # type: ignore
+        super().__init__(path, parent)
+
     def collect(self) -> Iterator['MypyDataCase']:
-        for case in self.obj.cases():
-            yield MypyDataCase(case.name, self, case)
+        test_root, _ = os.path.splitext(self.fspath.basename)
+        test_handler_mod_name = 'mypy.test.test' + test_root.split('-')[0]
+        test_handler_mod = import_module(test_handler_mod_name)
+        test_handler = test_handler_mod.test_handler  # type: ignore
+        for case in parse_test_cases(
+            path=self.fspath,
+            perform=None,
+            base_path=test_temp_dir,
+            optional_out=True,
+        ):
+            yield MypyDataCase(name=case.name, parent=self, case=case, test_handler=test_handler)
 
 
+# An instance of this class wraps an individual test case as a pytest.Item.
+# Node is a node in collection tree; its subclasses: Collection = an internal node, Item = a leaf.
 class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
-    def __init__(self, name: str, parent: MypyDataSuite, obj: DataDrivenTestCase) -> None:
+    def __init__(self, name: str, parent: pytest.Collector,  # type: ignore
+                 case: DataDrivenTestCase, test_handler: Callable[..., Any]) -> None:
         self.skip = False
         if name.endswith('-skip'):
             self.skip = True
             name = name[:-len('-skip')]
 
         super().__init__(name, parent)
-        self.obj = obj
+        self.case = case
+        self.test_handler = test_handler
 
     def runtest(self) -> None:
         if self.skip:
             pytest.skip()
         update_data = self.config.getoption('--update-data', False)
-        self.parent.obj(update_data=update_data).run_case(self.obj)
+        self.test_handler(update_data=update_data).run_case(self.case)
 
     def setup(self) -> None:
-        self.obj.set_up()
+        self.case.set_up()
 
     def teardown(self) -> None:
-        self.obj.tear_down()
+        self.case.tear_down()
 
     def reportinfo(self) -> Tuple[str, int, str]:
-        return self.obj.file, self.obj.line, self.obj.name
+        return self.case.file, self.case.line, self.case.name
 
     def repr_failure(self, excinfo: Any) -> str:
         if excinfo.errisinstance(SystemExit):
@@ -552,13 +585,11 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
             self.parent._prunetraceback(excinfo)
             excrepr = excinfo.getrepr(style='short')
 
-        return "data: {}:{}:\n{}".format(self.obj.file, self.obj.line, excrepr)
+        return "data: {}:{}:\n{}".format(self.case.file, self.case.line, excrepr)
 
 
 class DataSuite:
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        return []
+    case_files = []  # type: List[str]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         raise NotImplementedError

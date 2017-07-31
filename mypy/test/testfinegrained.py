@@ -24,27 +24,14 @@ from mypy.strconv import StrConv, indent
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
-from mypy.test.testtypegen import ignore_node
+from mypy.test.myunit.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type
-
-
-files = [
-    'fine-grained.test'
-]
 
 
 class FineGrainedSuite(DataSuite):
     def __init__(self, *, update_data: bool) -> None:
         pass
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         main_src = '\n'.join(testcase.input)
@@ -118,3 +105,6 @@ def find_steps() -> List[List[Tuple[str, str]]]:
                 steps.setdefault(num, []).append((module, path))
     max_step = max(steps)
     return [steps[num] for num in range(2, max_step + 1)]
+
+
+test_handler = FineGrainedSuite
