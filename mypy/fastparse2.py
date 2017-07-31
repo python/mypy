@@ -36,7 +36,7 @@ from mypy.nodes import (
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart, check_arg_names,
 )
 from mypy.types import (
-    Type, CallableType, AnyType, UnboundType, EllipsisType
+    Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny
 )
 from mypy import experiments
 from mypy import messages
@@ -302,23 +302,25 @@ class ASTConverter(ast27.NodeTransformer):
                 # for ellipsis arg
                 if (len(func_type_ast.argtypes) == 1 and
                         isinstance(func_type_ast.argtypes[0], ast3.Ellipsis)):
-                    arg_types = [a.type_annotation if a.type_annotation is not None else AnyType()
-                                for a in args]
+                    arg_types = [a.type_annotation
+                                 if a.type_annotation is not None
+                                 else AnyType(TypeOfAny.implicit)
+                                 for a in args]
                 else:
                     # PEP 484 disallows both type annotations and type comments
                     if any(a.type_annotation is not None for a in args):
                         self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
-                    arg_types = [a if a is not None else AnyType() for
+                    arg_types = [a if a is not None else AnyType(TypeOfAny.implicit) for
                                 a in converter.translate_expr_list(func_type_ast.argtypes)]
                 return_type = converter.visit(func_type_ast.returns)
 
                 # add implicit self type
                 if self.in_class() and len(arg_types) < len(args):
-                    arg_types.insert(0, AnyType())
+                    arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
-                arg_types = [AnyType()] * len(args)
-                return_type = AnyType()
+                arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
+                return_type = AnyType(TypeOfAny.from_error)
         else:
             arg_types = [a.type_annotation for a in args]
             return_type = converter.visit(None)
@@ -336,10 +338,11 @@ class ASTConverter(ast27.NodeTransformer):
             elif len(arg_types) < len(arg_kinds):
                 self.fail('Type signature has too few arguments', n.lineno, 0)
             else:
-                func_type = CallableType([a if a is not None else AnyType() for a in arg_types],
+                any_type = AnyType(TypeOfAny.implicit)
+                func_type = CallableType([a if a is not None else any_type for a in arg_types],
                                         arg_kinds,
                                         arg_names,
-                                        return_type if return_type is not None else AnyType(),
+                                        return_type if return_type is not None else any_type,
                                         None)
 
         body = self.as_block(n.body, n.lineno)

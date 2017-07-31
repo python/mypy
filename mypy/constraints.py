@@ -4,9 +4,9 @@ from typing import Iterable, List, Optional
 
 from mypy import experiments
 from mypy.types import (
-    CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarType,
-    Instance, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
-    DeletedType, UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance
+    CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarType, Instance,
+    TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
+    UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
@@ -82,19 +82,19 @@ def get_actual_type(arg_type: Type, kind: int,
                 # TODO try to map type arguments to Iterable
                 return arg_type.args[0]
             else:
-                return AnyType()
+                return AnyType(TypeOfAny.from_error)
         elif isinstance(arg_type, TupleType):
             # Get the next tuple item of a tuple *arg.
             tuple_counter[0] += 1
             return arg_type.items[tuple_counter[0] - 1]
         else:
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
     elif kind == nodes.ARG_STAR2:
         if isinstance(arg_type, Instance) and (arg_type.type.fullname() == 'builtins.dict'):
             # Dict **arg. TODO more general (Mapping)
             return arg_type.args[1]
         else:
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
     else:
         # No translation for other kinds.
         return arg_type
@@ -338,7 +338,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 return res
         if isinstance(actual, AnyType):
             # IDEA: Include both ways, i.e. add negation as well?
-            return self.infer_against_any(template.args)
+            return self.infer_against_any(template.args, actual)
         if (isinstance(actual, TupleType) and
             (is_named_instance(template, 'typing.Iterable') or
              is_named_instance(template, 'typing.Container') or
@@ -371,9 +371,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return res
         elif isinstance(self.actual, AnyType):
             # FIX what if generic
-            res = self.infer_against_any(template.arg_types)
-            res.extend(infer_constraints(template.ret_type, AnyType(),
-                                         self.direction))
+            res = self.infer_against_any(template.arg_types, self.actual)
+            any_type = AnyType(TypeOfAny.from_another_any, source_any=self.actual)
+            res.extend(infer_constraints(template.ret_type, any_type, self.direction))
             return res
         elif isinstance(self.actual, Overloaded):
             return self.infer_against_overloaded(self.actual, template)
@@ -403,7 +403,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                              self.direction))
             return res
         elif isinstance(actual, AnyType):
-            return self.infer_against_any(template.items)
+            return self.infer_against_any(template.items, actual)
         else:
             return []
 
@@ -419,7 +419,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                              self.direction))
             return res
         elif isinstance(actual, AnyType):
-            return self.infer_against_any(template.items.values())
+            return self.infer_against_any(template.items.values(), actual)
         else:
             return []
 
@@ -427,10 +427,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         assert False, ("Unexpected UnionType in ConstraintBuilderVisitor"
                        " (should have been handled in infer_constraints)")
 
-    def infer_against_any(self, types: Iterable[Type]) -> List[Constraint]:
+    def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> List[Constraint]:
         res = []  # type: List[Constraint]
         for t in types:
-            res.extend(infer_constraints(t, AnyType(), self.direction))
+            res.extend(infer_constraints(t, any_type, self.direction))
         return res
 
     def visit_overloaded(self, template: Overloaded) -> List[Constraint]:

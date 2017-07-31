@@ -7,7 +7,8 @@ from typing import Dict, List, cast, Tuple, Set, Optional
 
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, AnyType, Instance, FunctionLike, TupleType, TypeVarType, TypeQuery, CallableType
+    Type, AnyType, Instance, FunctionLike, TupleType, TypeVarType, TypeQuery, CallableType,
+    TypeOfAny
 )
 from mypy import nodes
 from mypy.nodes import (
@@ -180,7 +181,7 @@ class StatisticsVisitor(TraverserVisitor):
             self.record_line(self.line, TYPE_UNANALYZED)
             return
 
-        if isinstance(t, AnyType) and t.special_form:
+        if isinstance(t, AnyType) and t.type_of_any == TypeOfAny.special_form:
             # This is not a real Any type, so don't collect stats for it.
             return
 

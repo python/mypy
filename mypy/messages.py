@@ -13,7 +13,7 @@ from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
     UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
-    UninhabitedType
+    UninhabitedType, TypeOfAny
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
@@ -447,7 +447,7 @@ class MessageBuilder:
                     typ_format = '"None"'
                 self.fail('Item {} of {} has no attribute "{}"'.format(
                     typ_format, self.format(original_type), member), context)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self, op: str, left_type: Any,
                                   right_type: Any, context: Context) -> None:
@@ -485,12 +485,12 @@ class MessageBuilder:
 
     def not_callable(self, typ: Type, context: Context) -> Type:
         self.fail('{} not callable'.format(self.format(typ)), context)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     def untyped_function_call(self, callee: CallableType, context: Context) -> Type:
         name = callee.name if callee.name is not None else '(unknown)'
         self.fail('Call to untyped function {} in typed context'.format(name), context)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     def incompatible_argument(self, n: int, m: int, callee: CallableType, arg_type: Type,
                               arg_kind: int, context: Context) -> None:
@@ -899,7 +899,7 @@ class MessageBuilder:
     def yield_from_invalid_operand_type(self, expr: Type, context: Context) -> Type:
         text = self.format(expr) if self.format(expr) != 'object' else expr
         self.fail('"yield from" can\'t be applied to {}'.format(text), context)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     def invalid_signature(self, func_type: Type, context: Context) -> None:
         self.fail('Invalid signature "{}"'.format(func_type), context)

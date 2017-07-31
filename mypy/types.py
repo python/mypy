@@ -5,7 +5,7 @@ from abc import abstractmethod
 from collections import OrderedDict
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable,
+    Callable
 )
 
 import mypy.nodes
@@ -250,65 +250,67 @@ class TypeList(Type):
 _dummy = object()  # type: Any
 
 
+class TypeOfAny(int):
+    """
+    This class describes different types of Any. Each 'Any' can be of only one type at a time.
+
+    TODO: this class should be made an Enum once we drop support for python 3.3.
+    """
+    # Was this Any type was inferred without a type annotation?
+    implicit = 0  # type: Any
+    # Does this Any come from an explicit type annotation?
+    explicit = 1  # type: Any
+    # Does this come from an unfollowed import? See --disallow-any=unimported option
+    from_unimported_type = 2  # type: Any
+    # Does this Any type come from omitted generics?
+    from_omitted_generics = 4  # type: Any
+    # Does this Any come from an error?
+    from_error = 5  # type: Any
+    # Is this a type that can't be represented in mypy's type system? For instance, type of
+    # call to NewType(...)). Even though these types aren't real Anys, we treat them as such.
+    special_form = 6  # type: Any
+    # Does this Any come from interaction with another Any?
+    from_another_any = 7  # type: Any
+
+
 class AnyType(Type):
     """The type 'Any'."""
 
     def __init__(self,
-                 implicit: bool = False,
-                 from_unimported_type: bool = False,
-                 explicit: bool = False,
-                 from_omitted_generics: bool = False,
-                 special_form: bool = False,
+                 type_of_any: TypeOfAny,
+                 source_any: Optional['AnyType'] = None,
                  line: int = -1,
                  column: int = -1) -> None:
         super().__init__(line, column)
-        # Was this Any type was inferred without a type annotation?
-        # Note that this is not always the opposite of explicit.
-        # For instance, if "Any" comes from an unimported type,
-        # both explicit and implicit will be False
-        self.implicit = implicit
-        # Does this come from an unfollowed import? See --disallow-any=unimported option
-        self.from_unimported_type = from_unimported_type
-        # Does this Any come from an explicit type annotation?
-        self.explicit = explicit
-        # Does this type come from omitted generics?
-        self.from_omitted_generics = from_omitted_generics
-        # Is this a type that can't be represented in mypy's type system? For instance, type of
-        # call to NewType(...)). Even though these types aren't real Anys, we treat them as such.
-        self.special_form = special_form
+        self.type_of_any = type_of_any
+        # If this Any was created from interaction with another 'Any', record the source
+        # and use it in reports.  TODO: re-read this comment
+        self.source_any = source_any
+        if source_any and source_any.source_any:
+            self.source_any = source_any.source_any
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
 
     def copy_modified(self,
-                      implicit: bool = _dummy,
-                      from_unimported_type: bool = _dummy,
-                      explicit: bool = _dummy,
-                      from_omitted_generics: bool = _dummy,
-                      special_form: bool = _dummy,
+                      type_of_any: TypeOfAny = _dummy,
+                      original_any: Optional['AnyType'] = _dummy,
                       ) -> 'AnyType':
-        if implicit is _dummy:
-            implicit = self.implicit
-        if from_unimported_type is _dummy:
-            from_unimported_type = self.from_unimported_type
-        if explicit is _dummy:
-            explicit = self.explicit
-        if from_omitted_generics is _dummy:
-            from_omitted_generics = self.from_omitted_generics
-        if special_form is _dummy:
-            special_form = self.special_form
-        return AnyType(implicit=implicit, from_unimported_type=from_unimported_type,
-                       explicit=explicit, from_omitted_generics=from_omitted_generics,
-                       special_form=special_form,
+        if type_of_any is _dummy:
+            type_of_any = self.type_of_any
+        if original_any is _dummy:
+            original_any = self.source_any
+        return AnyType(type_of_any=type_of_any, source_any=original_any,
                        line=self.line, column=self.column)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'AnyType'}
+        return {'.class': 'AnyType',
+                'type_of_any': self.type_of_any}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'AnyType':
         assert data['.class'] == 'AnyType'
-        return AnyType()
+        return AnyType(TypeOfAny(data['type_of_any']))
 
 
 class UninhabitedType(Type):
@@ -1772,10 +1774,10 @@ def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
         name = '"{}"'.format(name)
 
     return CallableType(
-        [AnyType()] * len(fdef.arg_names),
+        [AnyType(TypeOfAny.implicit)] * len(fdef.arg_names),
         fdef.arg_kinds,
         [None if argument_elide_name(n) else n for n in fdef.arg_names],
-        ret_type or AnyType(),
+        ret_type or AnyType(TypeOfAny.implicit),
         fallback,
         name,
         implicit=True,

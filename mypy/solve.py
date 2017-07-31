@@ -3,7 +3,7 @@
 from typing import List, Dict, Optional
 from collections import defaultdict
 
-from mypy.types import Type, NoneTyp, AnyType, UninhabitedType, TypeVarId
+from mypy.types import Type, NoneTyp, AnyType, UninhabitedType, TypeVarId, TypeOfAny
 from mypy.constraints import Constraint, SUPERTYPE_OF
 from mypy.join import join_types
 from mypy.meet import meet_types
@@ -52,7 +52,9 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
                     top = meet_types(top, c.target)
 
         if isinstance(top, AnyType) or isinstance(bottom, AnyType):
-            res.append(AnyType())
+            source_any = top if isinstance(top, AnyType) else bottom
+            assert isinstance(source_any, AnyType)
+            res.append(AnyType(TypeOfAny.from_another_any, source_any=source_any))
             continue
         elif bottom is None:
             if top:
@@ -62,7 +64,7 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
                 if strict:
                     candidate = UninhabitedType()
                 else:
-                    candidate = AnyType()
+                    candidate = AnyType(TypeOfAny.special_form)
         elif top is None:
             candidate = bottom
         elif is_subtype(bottom, top):
