@@ -2461,6 +2461,13 @@ class HasAnyType(types.TypeQuery[bool]):
     def __init__(self) -> None:
         super().__init__(any)
 
+    def visit_callable_type(self, t: CallableType) -> bool:
+        if t.is_type_obj():
+            # Do not complain about Any's in Type objects because signature of their __init__s
+            # can contain Any and should be allowed.
+            return False
+        return super().visit_callable_type(t)
+
     def visit_any(self, t: AnyType) -> bool:
         return not t.special_form  # special forms are not real Any types
 
