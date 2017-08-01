@@ -625,6 +625,7 @@ config_types = {
     'silent_imports': bool,
     'almost_silent': bool,
     'plugins': lambda s: [p.strip() for p in s.split(',')],
+    'skip': bool,
 }
 
 SHARED_CONFIG_FILES = ('setup.cfg',)
