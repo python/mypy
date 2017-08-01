@@ -162,8 +162,8 @@ class AnyExpressionsReporter(AbstractReporter):
         self.any_types_counter[tree.fullname()] = visitor.type_of_any_counter
         num_unanalyzed_lines = list(visitor.line_map.values()).count(stats.TYPE_UNANALYZED)
         # count each line of dead code as one expression of type "Any"
-        num_any = visitor.num_any + num_unanalyzed_lines
-        num_total = visitor.num_imprecise + visitor.num_precise + num_any
+        num_any = visitor.num_any_exprs + num_unanalyzed_lines
+        num_total = visitor.num_imprecise_exprs + visitor.num_precise_exprs + num_any
         if num_total > 0:
             self.counts[tree.fullname()] = (num_any, num_total)
 

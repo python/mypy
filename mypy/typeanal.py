@@ -6,6 +6,8 @@ from itertools import chain
 
 from contextlib import contextmanager
 
+import itertools
+
 from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.types import (
@@ -869,6 +871,25 @@ class CollectAnyTypesQuery(TypeQuery[List[AnyType]]):
         for l in it:
             result.extend(l)
         return result
+
+
+def collect_all_inner_types(t: Type) -> List[Type]:
+    """
+    Return all types that `t` contains
+    """
+    return t.accept(CollectAllInnerTypesQuery())
+
+
+class CollectAllInnerTypesQuery(TypeQuery[List[Type]]):
+    def __init__(self) -> None:
+        super().__init__(self.combine_lists_strategy)
+
+    def query_types(self, types: Iterable[Type]) -> List[Type]:
+        return self.strategy(t.accept(self) for t in types) + list(types)
+
+    @classmethod
+    def combine_lists_strategy(cls, it: Iterable[List[Type]]) -> List[Type]:
+        return list(itertools.chain.from_iterable(it))
 
 
 def make_optional_type(t: Type) -> Type:

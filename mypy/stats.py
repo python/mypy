@@ -6,6 +6,7 @@ import os.path
 from typing import Dict, List, cast, Tuple, Optional, Counter
 
 from mypy.traverser import TraverserVisitor
+from mypy.typeanal import collect_all_inner_types
 from mypy.types import (
     Type, AnyType, Instance, FunctionLike, TupleType, TypeVarType, TypeQuery, CallableType,
     TypeOfAny
@@ -43,16 +44,17 @@ class StatisticsVisitor(TraverserVisitor):
         self.typemap = typemap
         self.all_nodes = all_nodes
 
-        self.num_precise = 0
-        self.num_imprecise = 0
-        self.num_any = 0
+        self.num_precise_exprs = 0
+        self.num_imprecise_exprs = 0
+        self.num_any_exprs = 0
 
-        self.num_simple = 0
-        self.num_generic = 0
-        self.num_tuple = 0
-        self.num_function = 0
-        self.num_typevar = 0
-        self.num_complex = 0
+        self.num_simple_types = 0
+        self.num_generic_types = 0
+        self.num_tuple_types = 0
+        self.num_function_types = 0
+        self.num_typevar_types = 0
+        self.num_complex_types = 0
+        self.num_any_types = 0
 
         self.line = -1
 
@@ -189,35 +191,38 @@ class StatisticsVisitor(TraverserVisitor):
 
         if isinstance(t, AnyType):
             self.log('  !! Any type around line %d' % self.line)
-            self.num_any += 1
+            self.num_any_exprs += 1
             self.record_line(self.line, TYPE_ANY)
-            self.type_of_any_counter[t.type_of_any] += 1
         elif ((not self.all_nodes and is_imprecise(t)) or
               (self.all_nodes and is_imprecise2(t))):
             self.log('  !! Imprecise type around line %d' % self.line)
-            self.num_imprecise += 1
+            self.num_imprecise_exprs += 1
             self.record_line(self.line, TYPE_IMPRECISE)
         else:
-            self.num_precise += 1
+            self.num_precise_exprs += 1
             self.record_line(self.line, TYPE_PRECISE)
 
-        if isinstance(t, Instance):
-            if t.args:
-                if any(is_complex(arg) for arg in t.args):
-                    self.num_complex += 1
+        for typ in collect_all_inner_types(t) + [t]:
+            if isinstance(typ, AnyType):
+                self.type_of_any_counter[typ.type_of_any] += 1
+                self.num_any_types += 1
+            elif isinstance(typ, Instance):
+                if typ.args:
+                    if any(is_complex(arg) for arg in typ.args):
+                        self.num_complex_types += 1
+                    else:
+                        self.num_generic_types += 1
                 else:
-                    self.num_generic += 1
-            else:
-                self.num_simple += 1
-        elif isinstance(t, FunctionLike):
-            self.num_function += 1
-        elif isinstance(t, TupleType):
-            if any(is_complex(item) for item in t.items):
-                self.num_complex += 1
-            else:
-                self.num_tuple += 1
-        elif isinstance(t, TypeVarType):
-            self.num_typevar += 1
+                    self.num_simple_types += 1
+            elif isinstance(typ, FunctionLike):
+                self.num_function_types += 1
+            elif isinstance(typ, TupleType):
+                if any(is_complex(item) for item in typ.items):
+                    self.num_complex_types += 1
+                else:
+                    self.num_tuple_types += 1
+            elif isinstance(typ, TypeVarType):
+                self.num_typevar_types += 1
 
     def log(self, string: str) -> None:
         self.output.append(string)
@@ -237,17 +242,17 @@ def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
     for line in visitor.output:
         print(line)
     print('  ** precision **')
-    print('  precise  ', visitor.num_precise)
-    print('  imprecise', visitor.num_imprecise)
-    print('  any      ', visitor.num_any)
+    print('  precise  ', visitor.num_precise_exprs)
+    print('  imprecise', visitor.num_imprecise_exprs)
+    print('  any      ', visitor.num_any_exprs)
     print('  ** kinds **')
-    print('  simple   ', visitor.num_simple)
-    print('  generic  ', visitor.num_generic)
-    print('  function ', visitor.num_function)
-    print('  tuple    ', visitor.num_tuple)
-    print('  TypeVar  ', visitor.num_typevar)
-    print('  complex  ', visitor.num_complex)
-    print('  any      ', visitor.num_any)
+    print('  simple   ', visitor.num_simple_types)
+    print('  generic  ', visitor.num_generic_types)
+    print('  function ', visitor.num_function_types)
+    print('  tuple    ', visitor.num_tuple_types)
+    print('  TypeVar  ', visitor.num_typevar_types)
+    print('  complex  ', visitor.num_complex_types)
+    print('  any      ', visitor.num_any_types)
 
 
 def is_special_module(path: str) -> bool:
