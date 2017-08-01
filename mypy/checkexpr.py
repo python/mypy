@@ -565,8 +565,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return (AnyType(TypeOfAny.from_another_any, source_any=callee),
                         AnyType(TypeOfAny.from_another_any, source_any=callee))
             else:
-                # todo: how to mark unchecked functions???
-                return AnyType(TypeOfAny.implicit), AnyType(TypeOfAny.implicit)
+                return AnyType(TypeOfAny.special_form), AnyType(TypeOfAny.special_form)
         elif isinstance(callee, UnionType):
             self.msg.disable_type_names += 1
             results = [self.check_call(subtype, args, arg_kinds, context, arg_names,
