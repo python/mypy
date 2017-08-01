@@ -7,17 +7,19 @@ import shutil
 import tokenize
 from operator import attrgetter
 from urllib.request import pathname2url
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast, Counter
 
 import time
 
 import sys
 
+import itertools
+
 from mypy.nodes import MypyFile, Expression, FuncDef
 from mypy import stats
 from mypy.options import Options
 from mypy.traverser import TraverserVisitor
-from mypy.types import Type
+from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
@@ -147,6 +149,7 @@ class AnyExpressionsReporter(AbstractReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
         self.counts = {}  # type: Dict[str, Tuple[int, int]]
+        self.any_types_counter = {}  # type: Dict[str, Counter[TypeOfAny]]
         stats.ensure_dir_exists(output_dir)
 
     def on_file(self,
@@ -156,6 +159,7 @@ class AnyExpressionsReporter(AbstractReporter):
         visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
                                           typemap=type_map, all_nodes=True)
         tree.accept(visitor)
+        self.any_types_counter[tree.fullname()] = visitor.type_of_any_counter
         num_unanalyzed_lines = list(visitor.line_map.values()).count(stats.TYPE_UNANALYZED)
         # count each line of dead code as one expression of type "Any"
         num_any = visitor.num_any + num_unanalyzed_lines
@@ -164,6 +168,56 @@ class AnyExpressionsReporter(AbstractReporter):
             self.counts[tree.fullname()] = (num_any, num_total)
 
     def on_finish(self) -> None:
+        self._report_any_exprs()
+        self._report_types_of_anys()
+
+    def _report_types_of_anys(self) -> None:
+        total_counter = Counter[TypeOfAny]()
+        for counter in self.any_types_counter.values():
+            for any_type, value in counter.items():
+                total_counter[any_type] += value
+        # types_of_any = ['unannotated', 'explicit', 'unimported', 'omitted generics', 'error',
+        #                 'special form', 'another Any']
+        any_types_column_names = {
+            TypeOfAny.implicit: "Unannotated",
+            TypeOfAny.explicit: "Explicit",
+            TypeOfAny.from_unimported_type: "Unimported",
+            TypeOfAny.from_omitted_generics: "Omitted Generics",
+            TypeOfAny.from_error: "Error",
+            TypeOfAny.special_form: "Special Form",
+            TypeOfAny.from_another_any: "From Another Any",
+        }
+        file_column_name = "Name"
+        total_row_name = "Total"
+        min_column_distance = 3  # minimum distance between numbers in two columns
+        filename_width = max([len(file) for file in self.any_types_counter.keys()] +
+                             [len(file_column_name), len(total_row_name)])
+        widths = []  # type: List[int]
+        for type_of_any, column_name in any_types_column_names.items():
+            max_value = total_counter[type_of_any]
+            width = max(len(str(max_value)), len(column_name)) + min_column_distance
+            widths.append(width)
+        header = ("{:>{}} " * len(widths)).format(
+            *itertools.chain(*zip(any_types_column_names.values(), widths)))
+        header = "{:{}} ".format(file_column_name, filename_width) + header
+        separator = '-' * len(header) + '\n'
+        with open(os.path.join(self.output_dir, 'types-of-anys.txt'), 'w') as f:
+            f.write(header + '\n')
+            f.write(separator)
+
+            for filename, counter in self.any_types_counter.items():
+                line = '{:{filename_width}} '.format(filename, filename_width=filename_width)
+                values = [counter[typ] for typ in any_types_column_names]
+                line += ('{:>{}} ' * len(widths)).format(*itertools.chain(*zip(values, widths)))
+                f.write(line + '\n')
+
+            f.write(separator)
+            line = '{:{filename_width}} '.format(total_row_name, filename_width=filename_width)
+            values = [total_counter[typ] for typ in any_types_column_names]
+            line += ('{:>{}} ' * len(widths)).format(*itertools.chain(*zip(values, widths)))
+            f.write(line + '\n')
+
+    def _report_any_exprs(self) -> None:
         total_any = sum(num_any for num_any, _ in self.counts.values())
         total_expr = sum(total for _, total in self.counts.values())
         total_coverage = 100.0

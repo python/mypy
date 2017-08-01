@@ -250,27 +250,27 @@ class TypeList(Type):
 _dummy = object()  # type: Any
 
 
-class TypeOfAny(int):
+class TypeOfAny(str):
     """
     This class describes different types of Any. Each 'Any' can be of only one type at a time.
 
     TODO: this class should be made an Enum once we drop support for python 3.3.
     """
     # Was this Any type was inferred without a type annotation?
-    implicit = 0  # type: Any
+    implicit = 'implicit'  # type: Any
     # Does this Any come from an explicit type annotation?
-    explicit = 1  # type: Any
+    explicit = 'explicit'  # type: Any
     # Does this come from an unfollowed import? See --disallow-any=unimported option
-    from_unimported_type = 2  # type: Any
+    from_unimported_type = 'from_unimported_type'  # type: Any
     # Does this Any type come from omitted generics?
-    from_omitted_generics = 4  # type: Any
+    from_omitted_generics = 'from_omitted_generics'  # type: Any
     # Does this Any come from an error?
-    from_error = 5  # type: Any
+    from_error = 'from_error'  # type: Any
     # Is this a type that can't be represented in mypy's type system? For instance, type of
     # call to NewType(...)). Even though these types aren't real Anys, we treat them as such.
-    special_form = 6  # type: Any
+    special_form = 'special_form'  # type: Any
     # Does this Any come from interaction with another Any?
-    from_another_any = 7  # type: Any
+    from_another_any = 'from_another_any'  # type: Any
 
 
 class AnyType(Type):
@@ -304,13 +304,12 @@ class AnyType(Type):
                        line=self.line, column=self.column)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'AnyType',
-                'type_of_any': self.type_of_any}
+        return {'.class': 'AnyType'}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'AnyType':
         assert data['.class'] == 'AnyType'
-        return AnyType(TypeOfAny(data['type_of_any']))
+        return AnyType(TypeOfAny.special_form)
 
 
 class UninhabitedType(Type):

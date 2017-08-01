@@ -3,7 +3,7 @@
 import cgi
 import os.path
 
-from typing import Dict, List, cast, Tuple, Set, Optional
+from typing import Dict, List, cast, Tuple, Optional, Counter
 
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -57,6 +57,8 @@ class StatisticsVisitor(TraverserVisitor):
         self.line = -1
 
         self.line_map = {}  # type: Dict[int, int]
+
+        self.type_of_any_counter = Counter()  # type: Counter[TypeOfAny]
 
         self.output = []  # type: List[str]
 
@@ -189,6 +191,7 @@ class StatisticsVisitor(TraverserVisitor):
             self.log('  !! Any type around line %d' % self.line)
             self.num_any += 1
             self.record_line(self.line, TYPE_ANY)
+            self.type_of_any_counter[t.type_of_any] += 1
         elif ((not self.all_nodes and is_imprecise(t)) or
               (self.all_nodes and is_imprecise2(t))):
             self.log('  !! Imprecise type around line %d' % self.line)

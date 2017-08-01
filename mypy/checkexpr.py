@@ -169,7 +169,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
-            result = AnyType(TypeOfAny.from_error)
+            result = AnyType(TypeOfAny.special_form)
         assert result is not None
         return result
 
@@ -251,7 +251,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.binder.unreachable()
         if not allow_none_return and isinstance(ret_type, NoneTyp):
             self.chk.msg.does_not_return_value(callee_type, e)
-            return AnyType(TypeOfAny.implicit)
+            return AnyType(TypeOfAny.from_error)
         return ret_type
 
     def check_typeddict_call(self, callee: TypedDictType,
