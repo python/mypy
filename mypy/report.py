@@ -180,15 +180,15 @@ class AnyExpressionsReporter(AbstractReporter):
         for counter in self.any_types_counter.values():
             for any_type, value in counter.items():
                 total_counter[any_type] += value
-        any_types_column_names = {
-            TypeOfAny.implicit: "Unannotated",
-            TypeOfAny.explicit: "Explicit",
-            TypeOfAny.from_unimported_type: "Unimported",
-            TypeOfAny.from_omitted_generics: "Omitted Generics",
-            TypeOfAny.from_error: "Error",
-            TypeOfAny.special_form: "Special Form",
-            TypeOfAny.from_another_any: "From Another Any",
-        }
+        any_types_column_names = collections.OrderedDict([
+            (TypeOfAny.implicit, "Unannotated"),
+            (TypeOfAny.explicit, "Explicit"),
+            (TypeOfAny.from_unimported_type, "Unimported"),
+            (TypeOfAny.from_omitted_generics, "Omitted Generics"),
+            (TypeOfAny.from_error, "Error"),
+            (TypeOfAny.special_form, "Special Form"),
+            (TypeOfAny.from_another_any, "From Another Any"),
+        ])  # type: collections.OrderedDict[TypeOfAny, str]
         file_column_name = "Name"
         total_row_name = "Total"
         min_column_distance = 3  # minimum distance between numbers in two columns
