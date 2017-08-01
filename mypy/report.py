@@ -1,13 +1,14 @@
 """Classes for producing HTML reports about imprecision."""
 
 from abc import ABCMeta, abstractmethod
+import collections
 import json
 import os
 import shutil
 import tokenize
 from operator import attrgetter
 from urllib.request import pathname2url
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast, Counter
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
 import time
 
@@ -149,7 +150,7 @@ class AnyExpressionsReporter(AbstractReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
         self.counts = {}  # type: Dict[str, Tuple[int, int]]
-        self.any_types_counter = {}  # type: Dict[str, Counter[TypeOfAny]]
+        self.any_types_counter = {}  # type: Dict[str, Any]
         stats.ensure_dir_exists(output_dir)
 
     def on_file(self,
@@ -172,12 +173,13 @@ class AnyExpressionsReporter(AbstractReporter):
         self._report_types_of_anys()
 
     def _report_types_of_anys(self) -> None:
-        total_counter = Counter[TypeOfAny]()
+        # On the following line, mypy complains about implicit generic Any and wants us to use
+        # typing.Counter() instead of collections.Counter().
+        # We cannot use typing.Counter() because it doesn't work with python 3.5 and older.
+        total_counter = collections.Counter()  # type: ignore
         for counter in self.any_types_counter.values():
             for any_type, value in counter.items():
                 total_counter[any_type] += value
-        # types_of_any = ['unannotated', 'explicit', 'unimported', 'omitted generics', 'error',
-        #                 'special form', 'another Any']
         any_types_column_names = {
             TypeOfAny.implicit: "Unannotated",
             TypeOfAny.explicit: "Explicit",

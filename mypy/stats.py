@@ -1,9 +1,10 @@
 """Utilities for calculating and reporting statistics about types."""
 
 import cgi
+import collections
 import os.path
 
-from typing import Dict, List, cast, Tuple, Optional, Counter
+from typing import Dict, List, cast, Tuple, Optional
 
 from mypy.traverser import TraverserVisitor
 from mypy.typeanal import collect_all_inner_types
@@ -60,7 +61,10 @@ class StatisticsVisitor(TraverserVisitor):
 
         self.line_map = {}  # type: Dict[int, int]
 
-        self.type_of_any_counter = Counter()  # type: Counter[TypeOfAny]
+        # On the following line, mypy complains about implicit generic Any and wants us to use
+        # typing.Counter() instead of collections.Counter().
+        # We cannot use typing.Counter() because it doesn't work with python 3.5 and older.
+        self.type_of_any_counter = collections.Counter()  # type: ignore
 
         self.output = []  # type: List[str]
 
