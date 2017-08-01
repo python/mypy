@@ -283,8 +283,8 @@ class AnyType(Type):
                  column: int = -1) -> None:
         super().__init__(line, column)
         self.type_of_any = type_of_any
-        # If this Any was created from interaction with another 'Any', record the source
-        # and use it in reports.  TODO: re-read this comment
+        # If this Any was created as a result of interacting with another 'Any', record the source
+        # and use it in reports.
         self.source_any = source_any
         if source_any and source_any.source_any:
             self.source_any = source_any.source_any
