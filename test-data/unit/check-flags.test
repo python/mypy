@@ -899,7 +899,7 @@ def g(m: Movie) -> Movie:
     return m
 [builtins fixtures/dict.pyi]
 
-[case testDisallowPartiallyAnnotatedDefs]
+[case testDisallowIncompleteDefs]
 # flags: --disallow-incomplete-defs
 
 def f(i: int):  # E: Function is missing a return type annotation
@@ -911,7 +911,19 @@ def h(i: int) -> int:  # no error
 def i() -> None:  # no error
     pass
 
-[case testDisallowPartiallyAnnotatedDefsUntypedDefs]
+[case testDisallowIncompleteDefsUntypedDefs]
+# flags: --disallow-incomplete-defs --disallow-untyped-defs
+
+def f(i: int):  # E: Function is missing a return type annotation
+    pass
+
+[case testDisallowIncompleteDefsSelf]
+# flags: --disallow-incomplete-defs
+class C:
+    def foo(self) -> None:  # no error
+        pass
+
+[case testDisallowIncompleteDefsUntypedDefs]
 # flags: --disallow-incomplete-defs --disallow-untyped-defs
 
 def f(i: int):  # E: Function is missing a return type annotation
@@ -919,6 +931,10 @@ def f(i: int):  # E: Function is missing a return type annotation
 
 [case testDisallowPartiallyAnnotatedDefsSelf]
 # flags: --disallow-incomplete-defs
-class C:
-    def foo(self) -> None:  # no error
-        pass
+
+def f(i: int, s):
+    pass
+
+[out]
+main:3: error: Function is missing a return type annotation
+main:3: error: Function is missing a type annotation for one or more arguments
