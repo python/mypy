@@ -766,14 +766,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         def is_implicit_any(t: Type) -> bool:
             return isinstance(t, AnyType) and t.implicit
 
-        if isinstance(fdef.type, CallableType):
-            has_an_explicit_annotation = any(not is_implicit_any(t)
-                                             for t in fdef.type.arg_types + [fdef.type.ret_type])
-        else:
-            has_an_explicit_annotation = False
+        has_explicit_annotation = (isinstance(fdef.type, CallableType)
+                                   and any(not is_implicit_any(t)
+                                           for t in fdef.type.arg_types + [fdef.type.ret_type]))
+
         show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
-        check_incomplete_defs = (self.options.disallow_incomplete_defs
-                                        and has_an_explicit_annotation)
+        check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
         if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
             if fdef.type is None and self.options.disallow_untyped_defs:
                 self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
