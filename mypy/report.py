@@ -187,7 +187,6 @@ class AnyExpressionsReporter(AbstractReporter):
             (TypeOfAny.from_omitted_generics, "Omitted Generics"),
             (TypeOfAny.from_error, "Error"),
             (TypeOfAny.special_form, "Special Form"),
-            (TypeOfAny.from_another_any, "From Another Any"),
         ])  # type: collections.OrderedDict[TypeOfAny, str]
         file_column_name = "Name"
         total_row_name = "Total"

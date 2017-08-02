@@ -300,8 +300,8 @@ z = g.does_not_exist()  # type: ignore  # Error
 
 [file report/any-exprs.txt]
 [outfile report/types-of-anys.txt]
-Name     Unannotated    Explicit    Unimported    Omitted Generics    Error    Special Form    From Another Any
-------------------------------------------------------------------------------------------------------------------
-n                  2           3             2                   1        1               0                   3
-------------------------------------------------------------------------------------------------------------------
-Total              2           3             2                   1        1               0                   3
+Name     Unannotated    Explicit    Unimported    Omitted Generics    Error    Special Form
+----------------------------------------------------------------------------------------------
+n                  2           3             2                   1        4               0
+----------------------------------------------------------------------------------------------
+Total              2           3             2                   1        4               0

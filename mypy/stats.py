@@ -208,6 +208,10 @@ class StatisticsVisitor(TraverserVisitor):
 
         for typ in collect_all_inner_types(t) + [t]:
             if isinstance(typ, AnyType):
+                if typ.type_of_any == TypeOfAny.from_another_any:
+                    assert typ.source_any
+                    assert typ.source_any.type_of_any != TypeOfAny.from_another_any
+                    typ = typ.source_any
                 self.type_of_any_counter[typ.type_of_any] += 1
                 self.num_any_types += 1
             elif isinstance(typ, Instance):

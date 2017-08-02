@@ -289,6 +289,11 @@ class AnyType(Type):
         if source_any and source_any.source_any:
             self.source_any = source_any.source_any
 
+        # Only Anys that come from another Any can have source_any.
+        assert type_of_any != TypeOfAny.from_another_any or source_any is not None
+        # We should not have chains of Anys.
+        assert not self.source_any or self.source_any.type_of_any != TypeOfAny.from_another_any
+
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
 
