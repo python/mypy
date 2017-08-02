@@ -141,6 +141,9 @@ class Options:
         # Use stub builtins fixtures to speed up tests
         self.use_builtins_fixtures = False
 
+        # -- report options --
+        self.linecount_report_breakdowns = []  # type: List[str]
+
         # -- experimental options --
         self.shadow_file = None  # type: Optional[Tuple[str, str]]
         self.show_column_numbers = False  # type: bool

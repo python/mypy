@@ -364,6 +364,11 @@ def process_options(args: List[str],
                                   metavar='DIR',
                                   dest='special-opts:%s_report' % report_type)
 
+    parser.add_argument('--linecount-breakdown', action='append', metavar='OPTION',
+                        dest='linecount_report_breakdowns',
+                        help='Generate an additional linecount report which '
+                        'tracks only files with OPTION enabled.')
+
     code_group = parser.add_argument_group(title='How to specify the code to type check')
     code_group.add_argument('-m', '--module', action='append', metavar='MODULE',
                             dest='special-opts:modules',

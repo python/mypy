@@ -27,19 +27,22 @@ except ImportError:
     LXML_INSTALLED = False
 
 
-reporter_classes = {}  # type: Dict[str, Tuple[Callable[[Reports, str], AbstractReporter], bool]]
+reporter_classes = {}  # type: Dict[str, Tuple[Callable[[Reports, str, Options], AbstractReporter], bool]]
 
 
 class Reports:
-    def __init__(self, data_dir: str, report_dirs: Dict[str, str]) -> None:
+    def __init__(self, data_dir: str, report_dirs: Dict[str, str], options: Options) -> None:
         self.data_dir = data_dir
         self.reporters = []  # type: List[AbstractReporter]
         self.named_reporters = {}  # type: Dict[str, AbstractReporter]
 
         for report_type, report_dir in sorted(report_dirs.items()):
-            self.add_report(report_type, report_dir)
+            self.add_report(report_type, report_dir, options)
 
-    def add_report(self, report_type: str, report_dir: str) -> 'AbstractReporter':
+    def add_report(self,
+                   report_type: str,
+                   report_dir: str,
+                   options: Options) -> 'AbstractReporter':
         try:
             return self.named_reporters[report_type]
         except KeyError:
@@ -51,7 +54,7 @@ class Reports:
                    'You can do this with `python3 -m pip install lxml`.').format(report_type),
                   file=sys.stderr)
             raise ImportError
-        reporter = reporter_cls(self, report_dir)
+        reporter = reporter_cls(self, report_dir, options)
         self.reporters.append(reporter)
         self.named_reporters[report_type] = reporter
         return reporter
@@ -66,7 +69,7 @@ class Reports:
 
 
 class AbstractReporter(metaclass=ABCMeta):
-    def __init__(self, reports: Reports, output_dir: str) -> None:
+    def __init__(self, reports: Reports, output_dir: str, options: Options) -> None:
         self.output_dir = output_dir
 
     @abstractmethod
@@ -79,7 +82,7 @@ class AbstractReporter(metaclass=ABCMeta):
 
 
 def register_reporter(report_name: str,
-                      reporter: Callable[[Reports, str], AbstractReporter],
+                      reporter: Callable[[Reports, str, Options], AbstractReporter],
                       needs_lxml: bool = False) -> None:
     reporter_classes[report_name] = (reporter, needs_lxml)
 
@@ -98,9 +101,18 @@ class FuncCounterVisitor(TraverserVisitor):
 
 
 class LineCountReporter(AbstractReporter):
-    def __init__(self, reports: Reports, output_dir: str) -> None:
-        super().__init__(reports, output_dir)
+    def __init__(self,
+                 reports: Reports,
+                 output_dir: str,
+                 options: Options) -> None:
+        super().__init__(reports, output_dir, options)
         self.counts = {}  # type: Dict[str, Tuple[int, int, int, int]]
+
+        linecount_breakdowns = options.linecount_report_breakdowns
+        self.linecount_breakdowns = linecount_breakdowns if linecount_breakdowns is not None else []
+        self.breakdown_counts = {
+            option: {} for option in self.linecount_breakdowns
+        }  # type: Dict[str, Dict[str, Tuple[int, int, int, int]]]
 
         stats.ensure_dir_exists(output_dir)
 
@@ -127,15 +139,24 @@ class LineCountReporter(AbstractReporter):
 
         self.counts[tree._fullname] = (imputed_annotated_lines, physical_lines,
                                        annotated_funcs, total_funcs)
+        for option in self.linecount_breakdowns:
+            if getattr(options, option):
+                self.breakdown_counts[option][tree._fullname] = (imputed_annotated_lines, physical_lines,
+                                                          annotated_funcs, total_funcs)
 
     def on_finish(self) -> None:
-        counts = sorted(((c, p) for p, c in self.counts.items()),
+        self._print_counts(self.counts, 'linecount.txt')
+        for option, counts in self.breakdown_counts.items():
+            self._print_counts(counts, '{}-linecount.txt'.format(option))
+
+    def _print_counts(self, counts: Dict[str, Tuple[int, int, int, int]], filename: str) -> None:
+        sorted_counts = sorted(((c, p) for p, c in counts.items()),
                         reverse=True)  # type: List[Tuple[Tuple[int, int, int, int], str]]
-        total_counts = tuple(sum(c[i] for c, p in counts)
+        total_counts = tuple(sum(c[i] for c, p in sorted_counts)
                              for i in range(4))
-        with open(os.path.join(self.output_dir, 'linecount.txt'), 'w') as f:
+        with open(os.path.join(self.output_dir, filename), 'w') as f:
             f.write('{:7} {:7} {:6} {:6} total\n'.format(*total_counts))
-            for c, p in counts:
+            for c, p in sorted_counts:
                 f.write('{:7} {:7} {:6} {:6} {}\n'.format(
                     c[0], c[1], c[2], c[3], p))
 
@@ -144,8 +165,8 @@ register_reporter('linecount', LineCountReporter)
 
 
 class AnyExpressionsReporter(AbstractReporter):
-    def __init__(self, reports: Reports, output_dir: str) -> None:
-        super().__init__(reports, output_dir)
+    def __init__(self, reports: Reports, output_dir: str, options: Options) -> None:
+        super().__init__(reports, output_dir, options)
         self.counts = {}  # type: Dict[str, Tuple[int, int]]
         stats.ensure_dir_exists(output_dir)
 
@@ -294,8 +315,8 @@ class LineCoverageReporter(AbstractReporter):
     source file's absolute pathname the list of line numbers that
     belong to typed functions in that file.
     """
-    def __init__(self, reports: Reports, output_dir: str) -> None:
-        super().__init__(reports, output_dir)
+    def __init__(self, reports: Reports, output_dir: str, options: Options) -> None:
+        super().__init__(reports, output_dir, options)
         self.lines_covered = {}  # type: Dict[str, List[int]]
 
         stats.ensure_dir_exists(output_dir)
@@ -363,8 +384,8 @@ class MemoryXmlReporter(AbstractReporter):
     This is used by all other XML-based reporters to avoid duplication.
     """
 
-    def __init__(self, reports: Reports, output_dir: str) -> None:
-        super().__init__(reports, output_dir)
+    def __init__(self, reports: Reports, output_dir: str, options: Options) -> None:
+        super().__init__(reports, output_dir, options)
 
         self.xslt_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.xslt')
         self.xslt_txt_path = os.path.join(reports.data_dir, 'xml', 'mypy-txt.xslt')
@@ -479,8 +500,8 @@ class CoberturaXmlReporter(AbstractReporter):
     """Reporter for generating Cobertura compliant XML.
     """
 
-    def __init__(self, reports: Reports, output_dir: str) -> None:
-        super().__init__(reports, output_dir)
+    def __init__(self, reports: Reports, output_dir: str, options: Options) -> None:
+        super().__init__(reports, output_dir, options)
 
         self.root = etree.Element('coverage',
                                   timestamp=str(int(time.time())),
@@ -567,10 +588,10 @@ register_reporter('cobertura-xml', CoberturaXmlReporter, needs_lxml=True)
 class AbstractXmlReporter(AbstractReporter):
     """Internal abstract class for reporters that work via XML."""
 
-    def __init__(self, reports: Reports, output_dir: str) -> None:
-        super().__init__(reports, output_dir)
+    def __init__(self, reports: Reports, output_dir: str, options: Options) -> None:
+        super().__init__(reports, output_dir, options)
 
-        memory_reporter = reports.add_report('memory-xml', '<memory>')
+        memory_reporter = reports.add_report('memory-xml', '<memory>', options)
         # The dependency will be called first.
         self.memory_xml = cast(MemoryXmlReporter, memory_reporter)
 
@@ -621,8 +642,8 @@ class XsltHtmlReporter(AbstractXmlReporter):
     because it passes a parameter to rewrite the links.
     """
 
-    def __init__(self, reports: Reports, output_dir: str) -> None:
-        super().__init__(reports, output_dir)
+    def __init__(self, reports: Reports, output_dir: str, options: Options) -> None:
+        super().__init__(reports, output_dir, options)
 
         self.xslt_html = etree.XSLT(etree.parse(self.memory_xml.xslt_html_path))
         self.param_html = etree.XSLT.strparam('html')
@@ -664,8 +685,8 @@ class XsltTxtReporter(AbstractXmlReporter):
     Currently this only does the summary, not the individual reports.
     """
 
-    def __init__(self, reports: Reports, output_dir: str) -> None:
-        super().__init__(reports, output_dir)
+    def __init__(self, reports: Reports, output_dir: str, options: Options) -> None:
+        super().__init__(reports, output_dir, options)
 
         self.xslt_txt = etree.XSLT(etree.parse(self.memory_xml.xslt_txt_path))
 

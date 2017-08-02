@@ -44,7 +44,7 @@ class GraphSuite(Suite):
             lib_path=[],
             ignore_prefix='',
             source_set=BuildSourceSet([]),
-            reports=Reports('', {}),
+            reports=Reports('', {}, Options()),
             options=options,
             version_id=__version__,
             plugin=Plugin(options),
