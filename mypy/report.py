@@ -26,8 +26,8 @@ try:
 except ImportError:
     LXML_INSTALLED = False
 
-
-reporter_classes = {}  # type: Dict[str, Tuple[Callable[[Reports, str, Options], AbstractReporter], bool]]
+ReportConstructor = Callable[["Reports", str, Options], "AbstractReporter"]
+reporter_classes = {}  # type: Dict[str, Tuple[ReportConstructor, bool]]
 
 
 class Reports:
@@ -108,10 +108,10 @@ class LineCountReporter(AbstractReporter):
         super().__init__(reports, output_dir, options)
         self.counts = {}  # type: Dict[str, Tuple[int, int, int, int]]
 
-        linecount_breakdowns = options.linecount_report_breakdowns
-        self.linecount_breakdowns = linecount_breakdowns if linecount_breakdowns is not None else []
+        breakdowns = options.linecount_report_breakdowns
+        self.breakdowns = breakdowns if breakdowns is not None else []
         self.breakdown_counts = {
-            option: {} for option in self.linecount_breakdowns
+            option: {} for option in self.breakdowns
         }  # type: Dict[str, Dict[str, Tuple[int, int, int, int]]]
 
         stats.ensure_dir_exists(output_dir)
@@ -139,10 +139,11 @@ class LineCountReporter(AbstractReporter):
 
         self.counts[tree._fullname] = (imputed_annotated_lines, physical_lines,
                                        annotated_funcs, total_funcs)
-        for option in self.linecount_breakdowns:
+        for option in self.breakdowns:
             if getattr(options, option):
-                self.breakdown_counts[option][tree._fullname] = (imputed_annotated_lines, physical_lines,
-                                                          annotated_funcs, total_funcs)
+                self.breakdown_counts[option][tree._fullname] = (
+                    imputed_annotated_lines, physical_lines, annotated_funcs, total_funcs
+                )
 
     def on_finish(self) -> None:
         self._print_counts(self.counts, 'linecount.txt')
