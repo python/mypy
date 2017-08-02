@@ -911,7 +911,7 @@ def h(i: int) -> int:  # no error
 def i() -> None:  # no error
     pass
 
-[case testDisallowIncompleteDefsUntypedDefs]
+[case testDisallowIncompleteDefsNoReturn]
 # flags: --disallow-incomplete-defs --disallow-untyped-defs
 
 def f(i: int):  # E: Function is missing a return type annotation
@@ -923,13 +923,7 @@ class C:
     def foo(self) -> None:  # no error
         pass
 
-[case testDisallowIncompleteDefsUntypedDefs]
-# flags: --disallow-incomplete-defs --disallow-untyped-defs
-
-def f(i: int):  # E: Function is missing a return type annotation
-    pass
-
-[case testDisallowPartiallyAnnotatedDefsSelf]
+[case testDisallowIncompleteDefsPartiallyAnnotatedParams]
 # flags: --disallow-incomplete-defs
 
 def f(i: int, s):
