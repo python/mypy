@@ -619,19 +619,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail(messages.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
                                   item)
 
-                    show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
-                    if self.options.disallow_untyped_defs and show_untyped:
-                        # Check for functions with unspecified/not fully specified types.
-                        def is_implicit_any(t: Type) -> bool:
-                            return isinstance(t, AnyType) and t.implicit
-
-                        if fdef.type is None:
-                            self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
-                        elif isinstance(fdef.type, CallableType):
-                            if is_implicit_any(fdef.type.ret_type):
-                                self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
-                            if any(is_implicit_any(t) for t in fdef.type.arg_types):
-                                self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
+                    self.check_for_missing_annotations(fdef)
                     if 'unimported' in self.options.disallow_any:
                         if fdef.type and isinstance(fdef.type, CallableType):
                             ret_type = fdef.type.ret_type
@@ -778,6 +766,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.return_types.pop()
 
             self.binder = old_binder
+
+    def check_for_missing_annotations(self, fdef: FuncItem) -> None:
+        # Check for functions with unspecified/not fully specified types.
+        def is_implicit_any(t: Type) -> bool:
+            return isinstance(t, AnyType) and t.implicit
+
+        has_explicit_annotation = (isinstance(fdef.type, CallableType)
+                                   and any(not is_implicit_any(t)
+                                           for t in fdef.type.arg_types + [fdef.type.ret_type]))
+
+        show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
+        check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
+        if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
+            if fdef.type is None and self.options.disallow_untyped_defs:
+                self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
+            elif isinstance(fdef.type, CallableType):
+                if is_implicit_any(fdef.type.ret_type):
+                    self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
+                if any(is_implicit_any(t) for t in fdef.type.arg_types):
+                    self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
 
     def is_trivial_body(self, block: Block) -> bool:
         body = block.body
