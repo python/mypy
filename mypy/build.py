@@ -313,6 +313,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('dep_prios', List[int]),
                         ('interface_hash', str),  # hash representing the public interface
                         ('version_id', str),  # mypy version for cache invalidation
+                        ('ignore_all', bool),  # if errors were ignored
                         ])
 # NOTE: dependencies + suppressed == all reachable imports;
 # suppressed contains those reachable imports that were prevented by
@@ -888,6 +889,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('dep_prios', []),
         meta.get('interface_hash', ''),
         meta.get('version_id'),
+        meta.get('ignore_all', True),
     )
     # Don't check for path match, that is dealt with in validate_meta().
     if (m.id != id or
@@ -945,7 +947,7 @@ def atomic_write(filename: str, *lines: str) -> bool:
 
 
 def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
-                  manager: BuildManager) -> Optional[CacheMeta]:
+                  ignore_all: bool, manager: BuildManager) -> Optional[CacheMeta]:
     '''Checks whether the cached AST of this module can be used.
 
     Return:
@@ -960,6 +962,10 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
 
     if meta is None:
         manager.log('Metadata not found for {}'.format(id))
+        return None
+
+    if meta.ignore_all and not ignore_all:
+        manager.log('Metadata abandoned for {}: errors were previously ignored'.format(id))
         return None
 
     # Check data_json; assume if its mtime matches it's good.
@@ -1003,6 +1009,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
                 'dep_prios': meta.dep_prios,
                 'interface_hash': meta.interface_hash,
                 'version_id': manager.version_id,
+                'ignore_all': meta.ignore_all,
             }
             if manager.options.debug_cache:
                 meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
@@ -1029,7 +1036,8 @@ def compute_hash(text: str) -> str:
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
-                old_interface_hash: str, source_hash: str, manager: BuildManager) -> str:
+                old_interface_hash: str, source_hash: str,
+                ignore_all: bool, manager: BuildManager) -> str:
     """Write cache files for a module.
 
     Note that this mypy's behavior is still correct when any given
@@ -1122,6 +1130,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'dep_prios': dep_prios,
             'interface_hash': interface_hash,
             'version_id': manager.version_id,
+            'ignore_all': ignore_all,
             }
 
     # Write meta cache file
@@ -1422,7 +1431,7 @@ class State:
             if self.meta is not None:
                 self.interface_hash = self.meta.interface_hash
         self.add_ancestors()
-        self.meta = validate_meta(self.meta, self.id, self.path, manager)
+        self.meta = validate_meta(self.meta, self.id, self.path, self.ignore_all, manager)
         if self.meta:
             # Make copies, since we may modify these and want to
             # compare them to the originals later.
@@ -1776,7 +1785,7 @@ class State:
         new_interface_hash = write_cache(
             self.id, self.path, self.tree,
             list(self.dependencies), list(self.suppressed), list(self.child_modules),
-            dep_prios, self.interface_hash, self.source_hash,
+            dep_prios, self.interface_hash, self.source_hash, self.ignore_all,
             self.manager)
         if new_interface_hash == self.interface_hash:
             self.manager.log("Cached module {} has same interface".format(self.id))
