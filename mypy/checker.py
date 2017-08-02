@@ -772,9 +772,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             has_an_explicit_annotation = False
         show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
-        check_incompletely_annotated = (self.options.disallow_incompletely_annotated_defs
+        check_incomplete_defs = (self.options.disallow_incomplete_defs
                                         and has_an_explicit_annotation)
-        if show_untyped and (self.options.disallow_untyped_defs or check_incompletely_annotated):
+        if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
             if fdef.type is None and self.options.disallow_untyped_defs:
                 self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):

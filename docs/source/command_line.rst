@@ -322,7 +322,7 @@ Here are some more useful flags:
   annotations are not type checked.)  It will assume all arguments
   have type ``Any`` and always infer ``Any`` as the return type.
 
-- ``--disallow-incompletely-annotated-defs`` reports an error whenever it
+- ``--disallow-incomplete-defs`` reports an error whenever it
   encounters a partly annotated function definition.
 
 - ``--disallow-untyped-calls`` reports an error whenever a function

@@ -900,7 +900,7 @@ def g(m: Movie) -> Movie:
 [builtins fixtures/dict.pyi]
 
 [case testDisallowPartiallyAnnotatedDefs]
-# flags: --disallow-incompletely-annotated-defs
+# flags: --disallow-incomplete-defs
 
 def f(i: int):  # E: Function is missing a return type annotation
     pass
@@ -912,13 +912,13 @@ def i() -> None:  # no error
     pass
 
 [case testDisallowPartiallyAnnotatedDefsUntypedDefs]
-# flags: --disallow-incompletely-annotated-defs --disallow-untyped-defs
+# flags: --disallow-incomplete-defs --disallow-untyped-defs
 
 def f(i: int):  # E: Function is missing a return type annotation
     pass
 
 [case testDisallowPartiallyAnnotatedDefsSelf]
-# flags: --disallow-incompletely-annotated-defs
+# flags: --disallow-incomplete-defs
 class C:
     def foo(self) -> None:  # no error
         pass
