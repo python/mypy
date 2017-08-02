@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import tokenize
+import typing
 from operator import attrgetter
 from urllib.request import pathname2url
 from typing import Any, Callable, Dict, List, Optional, Tuple, cast
@@ -150,7 +151,7 @@ class AnyExpressionsReporter(AbstractReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
         self.counts = {}  # type: Dict[str, Tuple[int, int]]
-        self.any_types_counter = {}  # type: Dict[str, Any]
+        self.any_types_counter = {}  # type: Dict[str, typing.Counter[TypeOfAny]]
         stats.ensure_dir_exists(output_dir)
 
     def on_file(self,
@@ -176,7 +177,7 @@ class AnyExpressionsReporter(AbstractReporter):
         # On the following line, mypy complains about implicit generic Any and wants us to use
         # typing.Counter() instead of collections.Counter().
         # We cannot use typing.Counter() because it doesn't work with python 3.5 and older.
-        total_counter = collections.Counter()  # type: ignore
+        total_counter = collections.Counter()  # type: typing.Counter[TypeOfAny]
         for counter in self.any_types_counter.values():
             for any_type, value in counter.items():
                 total_counter[any_type] += value
