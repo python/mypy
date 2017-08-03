@@ -187,6 +187,8 @@ overridden by the pattern sections matching the module name.
 - ``no_implicit_optional`` (Boolean, default false) changes the treatment of
   arguments with a default value of None by not implicitly making their type Optional
 
+- ``skip`` (Boolean, default False) skip typechecking in given package.
+
 Example
 *******
 
