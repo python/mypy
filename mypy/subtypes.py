@@ -203,8 +203,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if right.args:
                     iter_type = right.args[0]
                 else:
-                    # todo: is type of this Any correct?
-                    iter_type = AnyType(TypeOfAny.from_error)
+                    iter_type = AnyType(TypeOfAny.special_form)
                 return all(is_subtype(li, iter_type) for li in left.items)
             elif is_subtype(left.fallback, right, self.check_type_parameter):
                 return True

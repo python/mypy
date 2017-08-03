@@ -2294,7 +2294,6 @@ class SemanticAnalyzer(NodeVisitor[None]):
         # TODO: The corresponding type argument in the fallback instance should be a join of
         #       all item types, but we can't do joins during this pass of semantic analysis
         #       and we are using Any as a workaround.
-        # todo: is type of this Any correct?
         fallback = self.named_type('__builtins__.tuple', [implicit_any])
         # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
         # but it can't be expressed. 'new' and 'len' should be callable types.

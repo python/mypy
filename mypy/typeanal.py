@@ -294,7 +294,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                                             fallback=instance)
                 return instance
         else:
-            # todo: is type of this Any correct?
             return AnyType(TypeOfAny.special_form)
 
     def visit_any(self, t: AnyType) -> Type:
@@ -351,7 +350,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                                  t.line)
             else:
                 return AnyType(TypeOfAny.from_error)
-            # todo: is type of this Any correct?
         any_type = AnyType(TypeOfAny.special_form)
         fallback = t.fallback if t.fallback else self.named_type('builtins.tuple', [any_type])
         return TupleType(self.anal_array(t.items), fallback, t.line)

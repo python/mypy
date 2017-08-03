@@ -145,7 +145,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if partial_types is not None and not self.chk.current_node_deferred:
                         context = partial_types[node]
                         self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-                    # todo: is type of this Any correct?
                     result = AnyType(TypeOfAny.special_form)
         elif isinstance(node, FuncDef):
             # Reference to a global function.
@@ -180,7 +179,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if not var.is_ready and self.chk.in_checked_function():
                 self.chk.handle_cannot_determine_type(var.name(), context)
             # Implicit 'Any' type.
-            # todo: is type of this Any correct?
             return AnyType(TypeOfAny.special_form)
 
     def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:
@@ -2043,7 +2041,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if e.info.fallback_to_any and base == e.info.mro[-1]:
                         # There's an undefined base class, and we're
                         # at the end of the chain.  That's not an error.
-                        # todo: is type of this Any correct?
                         return AnyType(TypeOfAny.special_form)
                     if not self.chk.in_checked_function():
                         return AnyType(TypeOfAny.implicit)
@@ -2338,7 +2335,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if not self.chk.check_subtype(t, self.named_type('typing.Awaitable'), ctx,
                                       msg, 'actual type', 'expected type'):
-            # todo: is type of this Any correct?
             return AnyType(TypeOfAny.special_form)
         else:
             method = self.analyze_external_member_access('__await__', t, ctx)
@@ -2367,7 +2363,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 subexpr_type,
                 AnyType(TypeOfAny.special_form))
 
-            # todo: is type of this Any correct?
             any_type = AnyType(TypeOfAny.special_form)
             generic_generator_type = self.chk.named_generic_type('typing.Generator',
                                                                  [any_type, any_type, any_type])

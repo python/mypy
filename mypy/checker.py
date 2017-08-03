@@ -422,12 +422,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         if is_coroutine:
             # This means we're in Python 3.5 or later.
-            # todo: is type of this Any correct?
             at = self.named_generic_type('typing.Awaitable', [AnyType(TypeOfAny.special_form)])
             if is_subtype(at, typ):
                 return True
         else:
-            # todo: is type of this Any correct?
             any_type = AnyType(TypeOfAny.special_form)
             gt = self.named_generic_type('typing.Generator', [any_type, any_type, any_type])
             if is_subtype(gt, typ):
@@ -440,7 +438,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         True if `typ` is a supertype of AsyncGenerator.
         """
         try:
-            # todo: is type of this Any correct?
             any_type = AnyType(TypeOfAny.special_form)
             agt = self.named_generic_type('typing.AsyncGenerator', [any_type, any_type])
         except KeyError:
@@ -462,7 +459,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return AnyType(TypeOfAny.from_error)
         elif return_type.type.fullname() == 'typing.Awaitable':
             # Awaitable: ty is Any.
-            # todo: is type of this Any correct?
             return AnyType(TypeOfAny.special_form)
         elif return_type.args:
             # AwaitableGenerator, Generator, AsyncGenerator, Iterator, or Iterable; ty is args[0].
@@ -474,7 +470,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # parameters (i.e. is `object`), then the yielded values can't
             # be accessed so any type is acceptable.  IOW, ty is Any.
             # (However, see https://github.com/python/mypy/issues/1933)
-            # todo: is type of this Any correct?
             return AnyType(TypeOfAny.special_form)
 
     def get_generator_receive_type(self, return_type: Type, is_coroutine: bool) -> Type:
@@ -491,7 +486,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return AnyType(TypeOfAny.from_error)
         elif return_type.type.fullname() == 'typing.Awaitable':
             # Awaitable, AwaitableGenerator: tc is Any.
-            # todo: is type of this Any correct?
             return AnyType(TypeOfAny.special_form)
         elif (return_type.type.fullname() in ('typing.Generator', 'typing.AwaitableGenerator')
               and len(return_type.args) >= 3):
@@ -524,7 +518,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return return_type.args[2]
         else:
             # Supertype of Generator (Iterator, Iterable, object): tr is any.
-            # todo: is type of this Any correct?
             return AnyType(TypeOfAny.special_form)
 
     def visit_func_def(self, defn: FuncDef) -> None:
@@ -2322,7 +2315,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for d in e.decorators:
             if isinstance(d, RefExpr):
                 if d.fullname == 'typing.no_type_check':
-                    # todo: is type of this Any correct?
                     e.var.type = AnyType(TypeOfAny.special_form)
                     e.var.is_ready = True
                     return

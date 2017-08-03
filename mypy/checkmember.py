@@ -325,7 +325,6 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
         if not var.is_ready:
             not_ready_callback(var.name(), node)
         # Implicit 'Any' type.
-        # todo: is type of this Any correct?
         result = AnyType(TypeOfAny.special_form)
     fullname = '{}.{}'.format(var.info.fullname(), name)
     hook = chk.plugin.get_attribute_hook(fullname)
@@ -410,7 +409,6 @@ def analyze_class_attribute_access(itype: Instance,
     node = itype.type.get(name)
     if not node:
         if itype.type.fallback_to_any:
-            # todo: is type of this Any correct?
             return AnyType(TypeOfAny.special_form)
         return None
 
@@ -437,7 +435,6 @@ def analyze_class_attribute_access(itype: Instance,
         return add_class_tvars(t, itype, is_classmethod, builtin_type, original_type)
     elif isinstance(node.node, Var):
         not_ready_callback(name, context)
-        # todo: is type of this Any correct?
         return AnyType(TypeOfAny.special_form)
 
     if isinstance(node.node, TypeVarExpr):
@@ -517,7 +514,6 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
             # base class, we can't know for sure, so check for that.
             if info.fallback_to_any:
                 # Construct a universal callable as the prototype.
-                # todo: is type of this Any correct?
                 any_type = AnyType(TypeOfAny.special_form)
                 sig = CallableType(arg_types=[any_type, any_type],
                                    arg_kinds=[ARG_STAR, ARG_STAR2],
