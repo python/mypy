@@ -33,6 +33,7 @@ class Options:
         "strict_boolean",
         "no_implicit_optional",
         "strict_optional",
+        "disallow_untyped_decorators",
     }
 
     OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS | {"quick_and_dirty", "platform"})
@@ -62,6 +63,9 @@ class Options:
 
         # Type check unannotated functions
         self.check_untyped_defs = False
+
+        # Disallow decorating typed functions with untyped decorators
+        self.disallow_untyped_decorators = False
 
         # Disallow subclassing values of type 'Any'
         self.disallow_subclassing_any = False

@@ -44,6 +44,75 @@ def f():
     1 + "str"
 [out]
 main:2: error: Function is missing a type annotation
+
+[case testDisallowUntypedDefsUntypedDecorator]
+# flags: --disallow-untyped-decorators
+def d(p):
+    return p
+
+@d  # E: Untyped decorator makes function "f" untyped
+def f(i: int) -> int:
+    return i
+
+[case testDisallowUntypedDecoratorsUnresolvedDecorator]
+# flags: --disallow-untyped-decorators --ignore-missing-imports
+from nonexistent import d
+
+@d  # E: Untyped decorator makes function "f" untyped
+def f(i: int) -> int:
+    return i
+
+[case testDisallowUntypedDecoratorUntypedDef]
+# flags: --disallow-untyped-decorators
+
+def d(p):
+    return p
+
+@d  # no error
+def f(): pass
+
+[case testDisallowUntypedDecoratorsPartialFunction]
+# flags: --disallow-untyped-decorators
+
+def d(p):
+    return p
+
+@d  # E: Untyped decorator makes function "f" untyped
+def f(x) -> None: pass
+
+@d  # E: Untyped decorator makes function "g" untyped
+def g(x, y: int): pass
+
+@d  # E: Untyped decorator makes function "h" untyped
+def h(x: int): pass
+
+[case testDisallowUntypedDecoratorsImpreciseDecorator]
+# flags: --disallow-untyped-decorators
+from typing import Any
+
+def d(p) -> Any:
+    return p
+
+@d  # no error
+def f() -> None: pass
+
+[case testDisallowUntypedDecoratorsMultipleDecorators]
+# flags: --disallow-untyped-decorators
+from typing import Any
+
+def d1(p):
+    return p
+def d2(p):
+    return p
+def d3(p) -> Any:
+    return p
+
+@d1  # E: Untyped decorator makes function "f" untyped
+@d2  # E: Untyped decorator makes function "f" untyped
+@d3  # no error
+@d1  # E: Untyped decorator makes function "f" untyped
+def f() -> None: pass
+
 [case testUntypedDefDisallowUnannotated]
 # flags: --disallow-any=unannotated
 def f():

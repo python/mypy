@@ -995,6 +995,9 @@ class MessageBuilder:
             self.fail('Type of decorated function contains type "Any" ({})'.format(
                 self.format(typ)), context)
 
+    def typed_function_untyped_decorator(self, func_name: str, context: Context) -> None:
+        self.fail('Untyped decorator makes function "{}" untyped'.format(func_name), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""
