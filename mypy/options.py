@@ -58,6 +58,9 @@ class Options:
         # Disallow defining untyped (or incompletely typed) functions
         self.disallow_untyped_defs = False
 
+        # Disallow defining incompletely typed functions
+        self.disallow_incomplete_defs = False
+
         # Type check unannotated functions
         self.check_untyped_defs = False
 

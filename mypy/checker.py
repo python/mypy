@@ -619,19 +619,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail(messages.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
                                   item)
 
-                    show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
-                    if self.options.disallow_untyped_defs and show_untyped:
-                        # Check for functions with unspecified/not fully specified types.
-                        def is_implicit_any(t: Type) -> bool:
-                            return isinstance(t, AnyType) and t.implicit
-
-                        if fdef.type is None:
-                            self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
-                        elif isinstance(fdef.type, CallableType):
-                            if is_implicit_any(fdef.type.ret_type):
-                                self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
-                            if any(is_implicit_any(t) for t in fdef.type.arg_types):
-                                self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
+                    self.check_for_missing_annotations(fdef)
                     if 'unimported' in self.options.disallow_any:
                         if fdef.type and isinstance(fdef.type, CallableType):
                             ret_type = fdef.type.ret_type
@@ -740,9 +728,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 # Type check initialization expressions.
                 for arg in item.arguments:
-                    init = arg.initialization_statement
-                    if init:
-                        self.accept(init)
+                    if arg.initializer is not None:
+                        name = arg.variable.name()
+                        msg = 'Incompatible default for '
+                        if name.startswith('__tuple_arg_'):
+                            msg += "tuple argument {}".format(name[12:])
+                        else:
+                            msg += 'argument "{}"'.format(name)
+                        self.check_simple_assignment(arg.variable.type, arg.initializer,
+                            context=arg, msg=msg, lvalue_name='argument', rvalue_name='default')
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
@@ -772,6 +766,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.return_types.pop()
 
             self.binder = old_binder
+
+    def check_for_missing_annotations(self, fdef: FuncItem) -> None:
+        # Check for functions with unspecified/not fully specified types.
+        def is_implicit_any(t: Type) -> bool:
+            return isinstance(t, AnyType) and t.implicit
+
+        has_explicit_annotation = (isinstance(fdef.type, CallableType)
+                                   and any(not is_implicit_any(t)
+                                           for t in fdef.type.arg_types + [fdef.type.ret_type]))
+
+        show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
+        check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
+        if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
+            if fdef.type is None and self.options.disallow_untyped_defs:
+                self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
+            elif isinstance(fdef.type, CallableType):
+                if is_implicit_any(fdef.type.ret_type):
+                    self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
+                if any(is_implicit_any(t) for t in fdef.type.arg_types):
+                    self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
 
     def is_trivial_body(self, block: Block) -> bool:
         body = block.body
@@ -1440,8 +1454,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if base_type:
                 if not has_no_typevars(base_type):
-                    # TODO: Handle TupleType, don't cast
-                    instance = cast(Instance, self.scope.active_self_type())
+                    self_type = self.scope.active_self_type()
+                    if isinstance(self_type, TupleType):
+                        instance = self_type.fallback
+                    else:
+                        instance = self_type
                     itype = map_instance_to_supertype(instance, base)
                     base_type = expand_type_by_instance(base_type, itype)
 

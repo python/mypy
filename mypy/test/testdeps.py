@@ -20,8 +20,6 @@ files = [
 
 
 class GetDependenciesSuite(DataSuite):
-    def __init__(self, *, update_data: bool) -> None:
-        pass
 
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
