@@ -475,11 +475,11 @@ def f(x: int = ...) -> None: pass
 [file m.pyi]
 def g(x: int = '') -> None: pass
 [out]
-tmp/m.pyi:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:2: error: Incompatible types in assignment (expression has type "ellipsis", variable has type "int")
+tmp/m.pyi:1: error: Incompatible default for argument "x" (default has type "str", argument has type "int")
+main:2: error: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
 
 [case testEllipsisDefaultArgValueInNonStub]
-def f(x: int = ...) -> None: pass # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "int")
+def f(x: int = ...) -> None: pass # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
 [out]
 
 [case testStarImportOverlapping]
@@ -980,7 +980,7 @@ x + ''  # No error here
 y + ''  # No error here
 z + ''  # Error here
 [file stub.pyi]
-from non_stub import x  # this import is not followed
+from non_stub import x as x  # this import is not followed
 
 z = 42
 [file non_stub.py]
@@ -1664,6 +1664,128 @@ m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.M
 [file n.py]
 
 [builtins fixtures/module.pyi]
+
+[case testNoReExportFromStubs]
+from stub import Iterable  # E: Module 'stub' has no attribute 'Iterable'
+from stub import C
+
+c = C()
+reveal_type(c.x)  # E: Revealed type is 'builtins.int'
+it: Iterable[int]
+reveal_type(it)  # E: Revealed type is 'Any'
+
+[file stub.pyi]
+from typing import Iterable
+from substub import C as C
+
+def fun(x: Iterable[str]) -> Iterable[int]: pass
+
+[file substub.pyi]
+class C:
+    x: int
+
+[builtins fixtures/module.pyi]
+
+[case testNoReExportFromStubsMemberType]
+import stub
+
+c = stub.C()
+reveal_type(c.x)  # E: Revealed type is 'builtins.int'
+it: stub.Iterable[int]  # E: Name 'stub.Iterable' is not defined
+reveal_type(it)  # E: Revealed type is 'Any'
+
+[file stub.pyi]
+from typing import Iterable
+from substub import C as C
+
+def fun(x: Iterable[str]) -> Iterable[int]: pass
+
+[file substub.pyi]
+class C:
+    x: int
+
+[builtins fixtures/module.pyi]
+
+[case testNoReExportFromStubsMemberVar]
+import stub
+
+reveal_type(stub.y)  # E: Revealed type is 'builtins.int'
+reveal_type(stub.z)  # E: Revealed type is 'Any' \
+                     # E: Module has no attribute "z"
+
+[file stub.pyi]
+from substub import y as y
+from substub import z
+
+[file substub.pyi]
+y = 42
+z: int
+
+[builtins fixtures/module.pyi]
+
+[case testReExportChildStubs]
+import mod
+from mod import submod
+
+reveal_type(mod.x)  # E: Revealed type is 'mod.submod.C'
+y = submod.C()
+reveal_type(y.a)  # E: Revealed type is 'builtins.str'
+
+[file mod/__init__.pyi]
+from . import submod
+x: submod.C
+
+[file mod/submod.pyi]
+class C:
+    a: str
+
+[builtins fixtures/module.pyi]
+
+[case testReExportChildStubs2]
+import mod.submod
+
+y = mod.submod.C()
+reveal_type(y.a)  # E: Revealed type is 'builtins.str'
+
+[file mod/__init__.pyi]
+from . import submod
+x: submod.C
+
+[file mod/submod.pyi]
+class C:
+    a: str
+
+[builtins fixtures/module.pyi]
+
+[case testNoReExportChildStubs]
+import mod
+from mod import C, D  # E: Module 'mod' has no attribute 'C'
+
+reveal_type(mod.x)  # E: Revealed type is 'mod.submod.C'
+mod.C  # E: Module has no attribute "C"
+y = mod.D()
+reveal_type(y.a)  # E: Revealed type is 'builtins.str'
+
+[file mod/__init__.pyi]
+from .submod import C, D as D
+x: C
+
+[file mod/submod.pyi]
+class C: pass
+class D:
+    a: str
+[builtins fixtures/module.pyi]
+
+[case testNoReExportNestedStub]
+from stub import substub  # E: Module 'stub' has no attribute 'substub'
+
+[file stub.pyi]
+import substub
+
+[file substub.pyi]
+x = 42
+
+[file mod/submod.pyi]
 
 [case testModuleAliasToQualifiedImport]
 import package.module

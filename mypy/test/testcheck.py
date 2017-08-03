@@ -82,8 +82,6 @@ files = [
 
 
 class TypeCheckSuite(DataSuite):
-    def __init__(self, *, update_data: bool = False) -> None:
-        self.update_data = update_data
 
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
