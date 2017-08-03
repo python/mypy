@@ -3255,8 +3255,8 @@ def nothing() -> Iterator[None]:
 def is_typed_callable(c: Optional[Type]) -> bool:
     if not c or not isinstance(c, CallableType):
         return False
-    return any(not isinstance(t, AnyType) or not t.implicit
-               for t in c.arg_types + [c.ret_type])
+    return not all(isinstance(t, AnyType) and t.implicit
+                   for t in c.arg_types + [c.ret_type])
 
 
 def is_untyped_decorator(typ: Optional[Type]) -> bool:
