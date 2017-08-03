@@ -3,6 +3,7 @@
 import cgi
 import collections
 import os.path
+import typing
 
 from typing import Dict, List, cast, Tuple, Optional
 
@@ -61,10 +62,7 @@ class StatisticsVisitor(TraverserVisitor):
 
         self.line_map = {}  # type: Dict[int, int]
 
-        # On the following line, mypy complains about implicit generic Any and wants us to use
-        # typing.Counter() instead of collections.Counter().
-        # We cannot use typing.Counter() because it doesn't work with python 3.5 and older.
-        self.type_of_any_counter = collections.Counter()  # type: ignore
+        self.type_of_any_counter = collections.Counter()  # type: typing.Counter[TypeOfAny]
 
         self.output = []  # type: List[str]
 

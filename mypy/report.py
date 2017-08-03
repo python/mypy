@@ -173,10 +173,53 @@ class AnyExpressionsReporter(AbstractReporter):
         self._report_any_exprs()
         self._report_types_of_anys()
 
+    def _write_out_report(self,
+                          filename: str,
+                          header: List[str],
+                          rows: List[List[str]],
+                          footer: List[str],
+                          ) -> None:
+        row_len = len(header)
+        assert all(len(row) == row_len for row in rows + [header, footer])
+        min_column_distance = 3  # minimum distance between numbers in two columns
+        widths = [-1] * row_len
+        for row in rows + [header, footer]:
+            for i, value in enumerate(row):
+                widths[i] = max(widths[i], len(value))
+        for i, w in enumerate(widths):
+            # Do not add min_column_distance to the first column.
+            if i > 0:
+                widths[i] = w + min_column_distance
+        with open(os.path.join(self.output_dir, filename), 'w') as f:
+            header_str = ("{:>{}}" * len(widths)).format(*itertools.chain(*zip(header, widths)))
+            separator = '-' * len(header_str)
+            f.write(header_str + '\n')
+            f.write(separator + '\n')
+            for row_values in rows:
+                r = ("{:>{}}" * len(widths)).format(*itertools.chain(*zip(row_values, widths)))
+                f.writelines(r + '\n')
+            f.write(separator + '\n')
+            footer_str = ("{:>{}}" * len(widths)).format(*itertools.chain(*zip(footer, widths)))
+            f.writelines(footer_str + '\n')
+
+    def _report_any_exprs(self) -> None:
+        total_any = sum(num_any for num_any, _ in self.counts.values())
+        total_expr = sum(total for _, total in self.counts.values())
+        total_coverage = 100.0
+        if total_expr > 0:
+            total_coverage = (float(total_expr - total_any) / float(total_expr)) * 100
+
+        column_names = ["Name", "Anys", "Exprs", "Coverage"]
+        rows = []  # type: List[List[str]]
+        for filename in sorted(self.counts):
+            (num_any, num_total) = self.counts[filename]
+            coverage = (float(num_total - num_any) / float(num_total)) * 100
+            coverage_str = '{:.2f}%'.format(coverage)
+            rows.append([filename, str(num_any), str(num_total), coverage_str])
+        total_row = ["Total", str(total_any), str(total_expr), '{:.2f}%'.format(total_coverage)]
+        self._write_out_report('any-exprs.txt', column_names, rows, total_row)
+
     def _report_types_of_anys(self) -> None:
-        # On the following line, mypy complains about implicit generic Any and wants us to use
-        # typing.Counter() instead of collections.Counter().
-        # We cannot use typing.Counter() because it doesn't work with python 3.5 and older.
         total_counter = collections.Counter()  # type: typing.Counter[TypeOfAny]
         for counter in self.any_types_counter.values():
             for any_type, value in counter.items():
@@ -191,77 +234,12 @@ class AnyExpressionsReporter(AbstractReporter):
         ])  # type: collections.OrderedDict[TypeOfAny, str]
         file_column_name = "Name"
         total_row_name = "Total"
-        min_column_distance = 3  # minimum distance between numbers in two columns
-        filename_width = max([len(file) for file in self.any_types_counter.keys()] +
-                             [len(file_column_name), len(total_row_name)])
-        widths = []  # type: List[int]
-        for type_of_any, column_name in any_types_column_names.items():
-            max_value = total_counter[type_of_any]
-            width = max(len(str(max_value)), len(column_name)) + min_column_distance
-            widths.append(width)
-        header = ("{:>{}} " * len(widths)).format(
-            *itertools.chain(*zip(any_types_column_names.values(), widths)))
-        header = "{:{}} ".format(file_column_name, filename_width) + header
-        separator = '-' * len(header) + '\n'
-        with open(os.path.join(self.output_dir, 'types-of-anys.txt'), 'w') as f:
-            f.write(header + '\n')
-            f.write(separator)
-
-            for filename, counter in self.any_types_counter.items():
-                line = '{:{filename_width}} '.format(filename, filename_width=filename_width)
-                values = [counter[typ] for typ in any_types_column_names]
-                line += ('{:>{}} ' * len(widths)).format(*itertools.chain(*zip(values, widths)))
-                f.write(line + '\n')
-
-            f.write(separator)
-            line = '{:{filename_width}} '.format(total_row_name, filename_width=filename_width)
-            values = [total_counter[typ] for typ in any_types_column_names]
-            line += ('{:>{}} ' * len(widths)).format(*itertools.chain(*zip(values, widths)))
-            f.write(line + '\n')
-
-    def _report_any_exprs(self) -> None:
-        total_any = sum(num_any for num_any, _ in self.counts.values())
-        total_expr = sum(total for _, total in self.counts.values())
-        total_coverage = 100.0
-        if total_expr > 0:
-            total_coverage = (float(total_expr - total_any) / float(total_expr)) * 100
-
-        any_column_name = "Anys"
-        total_column_name = "Exprs"
-        file_column_name = "Name"
-        total_row_name = "Total"
-        coverage_column_name = "Coverage"
-        # find the longest filename all files
-        name_width = max([len(file) for file in self.counts] +
-                         [len(file_column_name), len(total_row_name)])
-        # totals are the largest numbers in their column - no need to look at others
-        min_column_distance = 3  # minimum distance between numbers in two columns
-        any_width = max(len(str(total_any)) + min_column_distance, len(any_column_name))
-        exprs_width = max(len(str(total_expr)) + min_column_distance, len(total_column_name))
-        coverage_width = len(coverage_column_name) + min_column_distance
-        header = '{:{name_width}} {:>{any_width}} {:>{total_width}} {:>{coverage_width}}'.format(
-            file_column_name, any_column_name, total_column_name, coverage_column_name,
-            name_width=name_width, any_width=any_width, total_width=exprs_width,
-            coverage_width=coverage_width)
-
-        with open(os.path.join(self.output_dir, 'any-exprs.txt'), 'w') as f:
-            f.write(header + '\n')
-            separator = '-' * len(header) + '\n'
-            f.write(separator)
-            coverage_width -= 1  # subtract one for '%'
-            for file in sorted(self.counts):
-                (num_any, num_total) = self.counts[file]
-                coverage = (float(num_total - num_any) / float(num_total)) * 100
-                f.write('{:{name_width}} {:{any_width}} {:{total_width}} '
-                        '{:>{coverage_width}.2f}%\n'.
-                        format(file, num_any, num_total, coverage, name_width=name_width,
-                               any_width=any_width, total_width=exprs_width,
-                               coverage_width=coverage_width))
-            f.write(separator)
-            f.write('{:{name_width}} {:{any_width}} {:{total_width}} {:>{coverage_width}.2f}%\n'
-                    .format(total_row_name, total_any, total_expr, total_coverage,
-                            name_width=name_width, any_width=any_width, total_width=exprs_width,
-                            coverage_width=coverage_width))
+        column_names = [file_column_name] + list(any_types_column_names.values())
+        rows = []  # type: List[List[str]]
+        for filename, counter in self.any_types_counter.items():
+            rows.append([filename] + [str(counter[typ]) for typ in any_types_column_names])
+        total_row = [total_row_name] + [str(total_counter[typ]) for typ in any_types_column_names]
+        self._write_out_report('types-of-anys.txt', column_names, rows, total_row)
 
 
 register_reporter('any-exprs', AnyExpressionsReporter)
