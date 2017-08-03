@@ -290,17 +290,6 @@ def f(a): pass
 z.py:1: error: Function is missing a type annotation
 x.py:1: error: Function is missing a type annotation
 
-[case testDisallowUntypedDefsUntypedFunc]
-# cmd: mypy m.py --disallow-untyped-decorators
-[file m.py]
-from typing import Any
-
-def d(p) -> Any:
-    return p
-
-@d  # no error
-def f() -> None: pass
-
 [case testConfigErrorNoSection]
 # cmd: mypy -c pass
 [file mypy.ini]

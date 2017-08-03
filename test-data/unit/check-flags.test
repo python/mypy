@@ -54,7 +54,7 @@ def d(p):
 def f(i: int) -> int:
     return i
 
-[case testDisallowUntypedDefsUnresolvedDecorator]
+[case testDisallowUntypedDecoratorsUnresolvedDecorator]
 # flags: --disallow-untyped-decorators --ignore-missing-imports
 from nonexistent import d
 
@@ -62,7 +62,7 @@ from nonexistent import d
 def f(i: int) -> int:
     return i
 
-[case testDisallowUntypedDefsUntypedDecoratorUntypedFunc]
+[case testDisallowUntypedDecoratorUntypedDef]
 # flags: --disallow-untyped-decorators
 
 def d(p):
@@ -71,7 +71,7 @@ def d(p):
 @d  # no error
 def f(): pass
 
-[case disallowUntypedDecoratorsPartialFunction]
+[case testDisallowUntypedDecoratorsPartialFunction]
 # flags: --disallow-untyped-decorators
 
 def d(p):
@@ -85,6 +85,33 @@ def g(x, y: int): pass
 
 @d  # E: Untyped decorator makes function "h" untyped
 def h(x: int): pass
+
+[case testDisallowUntypedDecoratorsImpreciseDecorator]
+# flags: --disallow-untyped-decorators
+from typing import Any
+
+def d(p) -> Any:
+    return p
+
+@d  # no error
+def f() -> None: pass
+
+[case testDisallowUntypedDecoratorsMultipleDecorators]
+# flags: --disallow-untyped-decorators
+from typing import Any
+
+def d1(p):
+    return p
+def d2(p):
+    return p
+def d3(p) -> Any:
+    return p
+
+@d1  # E: Untyped decorator makes function "f" untyped
+@d2  # E: Untyped decorator makes function "f" untyped
+@d3  # no error
+@d1  # E: Untyped decorator makes function "f" untyped
+def f() -> None: pass
 
 [case testUntypedDefDisallowUnannotated]
 # flags: --disallow-any=unannotated
