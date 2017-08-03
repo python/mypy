@@ -62,19 +62,6 @@ from nonexistent import d
 def f(i: int) -> int:
     return i
 
-[case testDisallowUntypedDefsMultipleUntypedDecorators]
-# flags: --disallow-untyped-decorators --disallow-untyped-defs
-def d(p):  # E: Function is missing a type annotation
-    return p
-
-def d2(p): # E: Function is missing a type annotation
-    return p
-
-@d2  # E: Untyped decorator makes function "f" untyped
-@d  # E: Untyped decorator makes function "f" untyped
-def f() -> None:
-    pass
-
 [case testDisallowUntypedDefsUntypedDecoratorUntypedFunc]
 # flags: --disallow-untyped-decorators
 
@@ -83,6 +70,21 @@ def d(p):
 
 @d  # no error
 def f(): pass
+
+[case disallowUntypedDecoratorsPartialFunction]
+# flags: --disallow-untyped-decorators
+
+def d(p):
+    return p
+
+@d  # E: Untyped decorator makes function "f" untyped
+def f(x) -> None: pass
+
+@d  # E: Untyped decorator makes function "g" untyped
+def g(x, y: int): pass
+
+@d  # E: Untyped decorator makes function "h" untyped
+def h(x: int): pass
 
 [case testUntypedDefDisallowUnannotated]
 # flags: --disallow-any=unannotated
