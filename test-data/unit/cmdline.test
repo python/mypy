@@ -502,6 +502,21 @@ ignore_missing_imports = True
 [out]
 main.py:2: error: Revealed type is 'Any'
 
+[case testConfigIgnoreImports]
+# cmd: mypy main.py
+[file main.py]
+import ignored  # No error here
+import missing  # But error here
+reveal_type(missing.x)  # Expect Any
+[file mypy.ini]
+[[mypy]
+ignore_imports =
+    ignored
+[out]
+main.py:2: error: Cannot find module named 'missing'
+main.py:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main.py:3: error: Revealed type is 'Any'
+
 [case testDotInFilenameOKScript]
 # cmd: mypy a.b.py c.d.pyi
 [file a.b.py]
