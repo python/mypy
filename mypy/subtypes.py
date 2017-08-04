@@ -1,10 +1,9 @@
 from typing import List, Optional, Dict, Callable, cast
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp,
-    Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
-    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType,
-    is_named_instance
+    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp, Instance, TypeVarType,
+    CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, TypeList,
+    PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance, TypeOfAny
 )
 import mypy.applytype
 import mypy.constraints
@@ -154,7 +153,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if isinstance(item, TupleType):
                 item = item.fallback
             if is_named_instance(left, 'builtins.type'):
-                return is_subtype(TypeType(AnyType()), right)
+                return is_subtype(TypeType(AnyType(TypeOfAny.special_form)), right)
             if left.type.is_metaclass():
                 if isinstance(item, AnyType):
                     return True
@@ -204,7 +203,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if right.args:
                     iter_type = right.args[0]
                 else:
-                    iter_type = AnyType()
+                    iter_type = AnyType(TypeOfAny.special_form)
                 return all(is_subtype(li, iter_type) for li in left.items)
             elif is_subtype(left.fallback, right, self.check_type_parameter):
                 return True

@@ -32,7 +32,7 @@ from mypy import nodes
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
-    Instance, NoneTyp, strip_type, TypeType,
+    Instance, NoneTyp, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance, union_items
 )
@@ -422,11 +422,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         if is_coroutine:
             # This means we're in Python 3.5 or later.
-            at = self.named_generic_type('typing.Awaitable', [AnyType()])
+            at = self.named_generic_type('typing.Awaitable', [AnyType(TypeOfAny.special_form)])
             if is_subtype(at, typ):
                 return True
         else:
-            gt = self.named_generic_type('typing.Generator', [AnyType(), AnyType(), AnyType()])
+            any_type = AnyType(TypeOfAny.special_form)
+            gt = self.named_generic_type('typing.Generator', [any_type, any_type, any_type])
             if is_subtype(gt, typ):
                 return True
         return isinstance(typ, Instance) and typ.type.fullname() == 'typing.AwaitableGenerator'
@@ -437,7 +438,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         True if `typ` is a supertype of AsyncGenerator.
         """
         try:
-            agt = self.named_generic_type('typing.AsyncGenerator', [AnyType(), AnyType()])
+            any_type = AnyType(TypeOfAny.special_form)
+            agt = self.named_generic_type('typing.AsyncGenerator', [any_type, any_type])
         except KeyError:
             # we're running on a version of typing that doesn't have AsyncGenerator yet
             return False
@@ -446,18 +448,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def get_generator_yield_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it yields (ty)."""
         if isinstance(return_type, AnyType):
-            return AnyType()
+            return AnyType(TypeOfAny.from_another_any, source_any=return_type)
         elif (not self.is_generator_return_type(return_type, is_coroutine)
                 and not self.is_async_generator_return_type(return_type)):
             # If the function doesn't have a proper Generator (or
             # Awaitable) return type, anything is permissible.
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
         elif not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
         elif return_type.type.fullname() == 'typing.Awaitable':
             # Awaitable: ty is Any.
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
         elif return_type.args:
             # AwaitableGenerator, Generator, AsyncGenerator, Iterator, or Iterable; ty is args[0].
             ret_type = return_type.args[0]
@@ -468,23 +470,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # parameters (i.e. is `object`), then the yielded values can't
             # be accessed so any type is acceptable.  IOW, ty is Any.
             # (However, see https://github.com/python/mypy/issues/1933)
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
 
     def get_generator_receive_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given a declared generator return type (t), return the type its yield receives (tc)."""
         if isinstance(return_type, AnyType):
-            return AnyType()
+            return AnyType(TypeOfAny.from_another_any, source_any=return_type)
         elif (not self.is_generator_return_type(return_type, is_coroutine)
                 and not self.is_async_generator_return_type(return_type)):
             # If the function doesn't have a proper Generator (or
             # Awaitable) return type, anything is permissible.
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
         elif not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
         elif return_type.type.fullname() == 'typing.Awaitable':
             # Awaitable, AwaitableGenerator: tc is Any.
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
         elif (return_type.type.fullname() in ('typing.Generator', 'typing.AwaitableGenerator')
               and len(return_type.args) >= 3):
             # Generator: tc is args[1].
@@ -499,14 +501,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def get_generator_return_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it returns (tr)."""
         if isinstance(return_type, AnyType):
-            return AnyType()
+            return AnyType(TypeOfAny.from_another_any, source_any=return_type)
         elif not self.is_generator_return_type(return_type, is_coroutine):
             # If the function doesn't have a proper Generator (or
             # Awaitable) return type, anything is permissible.
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
         elif not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
         elif return_type.type.fullname() == 'typing.Awaitable' and len(return_type.args) == 1:
             # Awaitable: tr is args[0].
             return return_type.args[0]
@@ -516,7 +518,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return return_type.args[2]
         else:
             # Supertype of Generator (Iterator, Iterable, object): tr is any.
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
 
     def visit_func_def(self, defn: FuncDef) -> None:
         """Type check a function definition."""
@@ -770,7 +772,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_for_missing_annotations(self, fdef: FuncItem) -> None:
         # Check for functions with unspecified/not fully specified types.
         def is_implicit_any(t: Type) -> bool:
-            return isinstance(t, AnyType) and t.implicit
+            return isinstance(t, AnyType) and t.type_of_any == TypeOfAny.implicit
 
         has_explicit_annotation = (isinstance(fdef.type, CallableType)
                                    and any(not is_implicit_any(t)
@@ -966,19 +968,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             method_type = CallableType([self.named_type('builtins.str')],
                                        [nodes.ARG_POS],
                                        [None],
-                                       AnyType(),
+                                       AnyType(TypeOfAny.special_form),
                                        self.named_type('builtins.function'))
         else:
-            method_type = CallableType([AnyType(), self.named_type('builtins.str')],
+            method_type = CallableType([AnyType(TypeOfAny.special_form),
+                                        self.named_type('builtins.str')],
                                        [nodes.ARG_POS, nodes.ARG_POS],
                                        [None, None],
-                                       AnyType(),
+                                       AnyType(TypeOfAny.special_form),
                                        self.named_type('builtins.function'))
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature(typ, context)
 
     def check_setattr_method(self, typ: CallableType, context: Context) -> None:
-        method_type = CallableType([AnyType(), self.named_type('builtins.str'), AnyType()],
+        method_type = CallableType([AnyType(TypeOfAny.special_form),
+                                    self.named_type('builtins.str'),
+                                    AnyType(TypeOfAny.special_form)],
                                    [nodes.ARG_POS, nodes.ARG_POS, nodes.ARG_POS],
                                    [None, None, None],
                                    NoneTyp(),
@@ -1222,7 +1227,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             lvalue_type, _, __ = self.check_lvalue(lvalue)
             if lvalue_type is None:
                 # TODO: This is broken.
-                lvalue_type = AnyType()
+                lvalue_type = AnyType(TypeOfAny.special_form)
             message = '{} "{}"'.format(messages.INCOMPATIBLE_IMPORT_OF,
                                        cast(NameExpr, assign.rvalue).name)
             self.check_simple_assignment(lvalue_type, assign.rvalue, node,
@@ -1255,7 +1260,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(s.lvalues[-1], TupleExpr):
                 # This is a multiple assignment. Instead of figuring out which type is problematic,
                 # give a generic error message.
-                self.msg.unimported_type_becomes_any("A type on this line", AnyType(), s)
+                self.msg.unimported_type_becomes_any("A type on this line",
+                                                     AnyType(TypeOfAny.special_form), s)
             else:
                 self.msg.unimported_type_becomes_any("Type of variable", s.type, s)
         check_for_explicit_any(s.type, self.options, self.is_typeshed_stub, self.msg, context=s)
@@ -1557,7 +1563,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
                     lv = lv.expr
-                self.check_assignment(lv, self.temp_node(AnyType(), context), infer_lvalue_type)
+                temp_node = self.temp_node(AnyType(TypeOfAny.from_another_any,
+                                                   source_any=rvalue_type), context)
+                self.check_assignment(lv, temp_node, infer_lvalue_type)
         elif isinstance(rvalue_type, TupleType):
             self.check_multi_assignment_from_tuple(lvalues, rvalue, rvalue_type,
                                                    context, undefined_rvalue, infer_lvalue_type)
@@ -1659,7 +1667,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(type, CallableType) and type.is_type_obj():
             type = type.fallback
         return (is_subtype(type, self.named_generic_type('typing.Iterable',
-                                                        [AnyType()])) and
+                                                         [AnyType(TypeOfAny.special_form)])) and
                 isinstance(type, Instance))
 
     def check_multi_assignment_from_iterable(self, lvalues: List[Lvalue], rvalue_type: Type,
@@ -1743,7 +1751,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
               and not is_same_type(self.inferred_attribute_types[lvalue.def_var], init_type)):
             # Multiple, inconsistent types inferred for an attribute.
             self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-            name.type = AnyType()
+            name.type = AnyType(TypeOfAny.from_error)
         else:
             # Infer type of the target.
 
@@ -1798,7 +1806,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         We implement this here by giving x a valid type (Any).
         """
         if context.get_line() in self.errors.ignored_lines[self.errors.file]:
-            self.set_inferred_type(var, lvalue, AnyType())
+            self.set_inferred_type(var, lvalue, AnyType(TypeOfAny.from_error))
 
     def check_simple_assignment(self, lvalue_type: Type, rvalue: Expression,
                                 context: Context,
@@ -1807,7 +1815,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 rvalue_name: str = 'expression') -> Type:
         if self.is_stub and isinstance(rvalue, EllipsisExpr):
             # '...' is always a valid initializer in a stub.
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
         else:
             always_allow_any = lvalue_type is not None and not isinstance(lvalue_type, AnyType)
             rvalue_type = self.expr_checker.accept(rvalue, lvalue_type,
@@ -1855,7 +1863,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         dunder_set = attribute_type.type.get_method('__set__')
         if dunder_set is None:
             self.msg.fail("{}.__set__ is not callable".format(attribute_type), context)
-            return AnyType(), False
+            return AnyType(TypeOfAny.from_error), False
 
         function = function_type(dunder_set, self.named_type('builtins.function'))
         bound_method = bind_self(function, attribute_type)
@@ -1868,11 +1876,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if not isinstance(inferred_dunder_set_type, CallableType):
             self.fail("__set__ is not callable", context)
-            return AnyType(), True
+            return AnyType(TypeOfAny.from_error), True
 
         if len(inferred_dunder_set_type.arg_types) < 2:
             # A message already will have been recorded in check_call
-            return AnyType(), False
+            return AnyType(TypeOfAny.from_error), False
 
         return inferred_dunder_set_type.arg_types[1], False
 
@@ -1975,7 +1983,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # (Unless you asked to be warned in that case, and the
                     # function is not declared to return Any)
                     if (self.options.warn_return_any and
-                            not is_proper_subtype(AnyType(), return_type)):
+                            not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)):
                         self.warn(messages.RETURN_ANY.format(return_type), s)
                     return
 
@@ -2211,17 +2219,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 item = ttype.items()[0]
                 if not item.is_type_obj():
                     self.fail(messages.INVALID_EXCEPTION_TYPE, n)
-                    return AnyType()
+                    return AnyType(TypeOfAny.from_error)
                 exc_type = item.ret_type
             elif isinstance(ttype, TypeType):
                 exc_type = ttype.item
             else:
                 self.fail(messages.INVALID_EXCEPTION_TYPE, n)
-                return AnyType()
+                return AnyType(TypeOfAny.from_error)
 
             if not is_subtype(exc_type, self.named_type('builtins.BaseException')):
                 self.fail(messages.INVALID_EXCEPTION_TYPE, n)
-                return AnyType()
+                return AnyType(TypeOfAny.from_error)
 
             all_types.append(exc_type)
 
@@ -2259,7 +2267,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         self.check_subtype(iterable,
                            self.named_generic_type('typing.AsyncIterable',
-                                                   [AnyType()]),
+                                                   [AnyType(TypeOfAny.special_form)]),
                            expr, messages.ASYNC_ITERABLE_EXPECTED)
 
         method = echk.analyze_external_member_access('__aiter__', iterable, expr)
@@ -2283,7 +2291,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Non-tuple iterable.
             self.check_subtype(iterable,
                                self.named_generic_type('typing.Iterable',
-                                                       [AnyType()]),
+                                                       [AnyType(TypeOfAny.special_form)]),
                                expr, messages.ITERABLE_EXPECTED)
 
             method = echk.analyze_external_member_access('__iter__', iterable,
@@ -2321,7 +2329,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for d in e.decorators:
             if isinstance(d, RefExpr):
                 if d.fullname == 'typing.no_type_check':
-                    e.var.type = AnyType()
+                    e.var.type = AnyType(TypeOfAny.special_form)
                     e.var.is_ready = True
                     return
 
@@ -2397,7 +2405,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if target:
             self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
         exit = echk.analyze_external_member_access('__aexit__', ctx, expr)
-        arg = self.temp_node(AnyType(), expr)
+        arg = self.temp_node(AnyType(TypeOfAny.special_form), expr)
         res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
         echk.check_awaitable_expr(
             res, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT)
@@ -2411,7 +2419,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if target:
             self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
         exit = echk.analyze_external_member_access('__exit__', ctx, expr)
-        arg = self.temp_node(AnyType(), expr)
+        arg = self.temp_node(AnyType(TypeOfAny.special_form), expr)
         echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
 
     def visit_print_stmt(self, s: PrintStmt) -> None:
@@ -2483,7 +2491,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         sym = self.lookup_qualified(name)
         node = sym.node
         assert isinstance(node, TypeInfo)
-        return Instance(node, [AnyType()] * len(node.defn.type_vars))
+        any_type = AnyType(TypeOfAny.from_omitted_generics)
+        return Instance(node, [any_type] * len(node.defn.type_vars))
 
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
         """Return an instance with the given name and type arguments.
@@ -2577,7 +2586,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     var.type = NoneTyp()
                 else:
                     self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-                    var.type = AnyType()
+                    var.type = AnyType(TypeOfAny.from_error)
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
         for partial_types in reversed(self.partial_types):
@@ -3255,7 +3264,7 @@ def nothing() -> Iterator[None]:
 def is_typed_callable(c: Optional[Type]) -> bool:
     if not c or not isinstance(c, CallableType):
         return False
-    return not all(isinstance(t, AnyType) and t.implicit
+    return not all(isinstance(t, AnyType) and t.type_of_any == TypeOfAny.implicit
                    for t in c.arg_types + [c.ret_type])
 
 
