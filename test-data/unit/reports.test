@@ -282,7 +282,7 @@ Total      0      16    100.00%
 # cmd: mypy --any-exprs-report report n.py
 
 [file n.py]
-from typing import Any, Optional, List
+from typing import Any, List
 from nonexistent import C  # type: ignore
 
 def a(x) -> None:  # Unannotated
@@ -302,6 +302,6 @@ z = g.does_not_exist()  # type: ignore  # Error
 [outfile report/types-of-anys.txt]
  Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form
 ---------------------------------------------------------------------------------------
-    n             2          3            2                  1       4              0
+    n             2          3            2                  1       3              0
 ---------------------------------------------------------------------------------------
-Total             2          3            2                  1       4              0
+Total             2          3            2                  1       3              0
