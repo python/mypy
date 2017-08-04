@@ -168,7 +168,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
-            result = AnyType(TypeOfAny.special_form)
+            result = AnyType(TypeOfAny.from_error)
         assert result is not None
         return result
 

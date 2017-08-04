@@ -305,3 +305,17 @@ z = g.does_not_exist()  # type: ignore  # Error
     n             2          3            2                  1       3              0
 ---------------------------------------------------------------------------------------
 Total             2          3            2                  1       3              0
+
+[case testAnyExpressionsReportUnqualifiedError]
+# cmd: mypy --any-exprs-report report n.py
+
+[file n.py]
+z = does_not_exist()  # type: ignore  # Error
+
+[file report/any-exprs.txt]
+[outfile report/types-of-anys.txt]
+ Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form
+---------------------------------------------------------------------------------------
+    n             0          0            0                  0       3              0
+---------------------------------------------------------------------------------------
+Total             0          0            0                  0       3              0
