@@ -1,7 +1,7 @@
 from typing import Optional, Callable
 
 from mypy.plugin import Plugin, AnalyzeTypeContext
-from mypy.types import Type, UnboundType, TypeList, AnyType, NoneTyp, CallableType
+from mypy.types import Type, UnboundType, TypeList, AnyType, NoneTyp, CallableType, TypeOfAny
 
 
 class TypeAnalyzePlugin(Plugin):
@@ -16,13 +16,13 @@ def signal_type_analyze_callback(ctx: AnalyzeTypeContext) -> Type:
     if (len(ctx.type.args) != 1
             or not isinstance(ctx.type.args[0], TypeList)):
         ctx.api.fail('Invalid "Signal" type (expected "Signal[[t, ...]]")', ctx.context)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     args = ctx.type.args[0]
     assert isinstance(args, TypeList)
     analyzed = ctx.api.analyze_callable_args(args)
     if analyzed is None:
-        return AnyType()  # Error generated elsewhere
+        return AnyType(TypeOfAny.from_error)  # Error generated elsewhere
     arg_types, arg_kinds, arg_names = analyzed
     arg_types = [ctx.api.analyze_type(arg) for arg in arg_types]
     type_arg = CallableType(arg_types,
