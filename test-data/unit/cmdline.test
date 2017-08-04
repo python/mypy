@@ -1032,6 +1032,30 @@ m.py:5: error: Missing type parameters for generic type
 m.py:6: error: Missing type parameters for generic type
 m.py:7: error: Missing type parameters for generic type
 
+[case testDisallowSubclassingAny]
+# cmd: mypy m.py y.py
+[file mypy.ini]
+[[mypy]
+disallow_subclassing_any = True
+[[mypy-m]
+disallow_subclassing_any = False
+
+[file m.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldBeFine(x): ...
+
+[file y.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldNotBeFine(x): ...
+[out]
+y.py:5: error: Class cannot subclass 'x' (has type 'Any')
+
 [case testDeterministicSectionOrdering]
 # cmd: mypy a
 [file a/__init__.py]
