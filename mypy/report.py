@@ -151,7 +151,7 @@ class AnyExpressionsReporter(AbstractReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
         self.counts = {}  # type: Dict[str, Tuple[int, int]]
-        self.any_types_counter = {}  # type: Dict[str, typing.Counter[TypeOfAny]]
+        self.any_types_counter = {}  # type: Dict[str, typing.Counter[TypeOfAny.TypeOfAny]]
         stats.ensure_dir_exists(output_dir)
 
     def on_file(self,
@@ -221,7 +221,7 @@ class AnyExpressionsReporter(AbstractReporter):
         self._write_out_report('any-exprs.txt', column_names, rows, total_row)
 
     def _report_types_of_anys(self) -> None:
-        total_counter = collections.Counter()  # type: typing.Counter[TypeOfAny]
+        total_counter = collections.Counter()  # type: typing.Counter[TypeOfAny.TypeOfAny]
         for counter in self.any_types_counter.values():
             for any_type, value in counter.items():
                 total_counter[any_type] += value
@@ -232,7 +232,7 @@ class AnyExpressionsReporter(AbstractReporter):
             (TypeOfAny.from_omitted_generics, "Omitted Generics"),
             (TypeOfAny.from_error, "Error"),
             (TypeOfAny.special_form, "Special Form"),
-        ])  # type: collections.OrderedDict[TypeOfAny, str]
+        ])  # type: collections.OrderedDict[TypeOfAny.TypeOfAny, str]
         file_column_name = "Name"
         total_row_name = "Total"
         column_names = [file_column_name] + list(any_types_column_names.values())
