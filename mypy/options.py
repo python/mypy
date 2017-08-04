@@ -21,6 +21,7 @@ class Options:
         "ignore_missing_imports",
         "follow_imports",
         "disallow_any",
+        "disallow_subclassing_any",
         "disallow_untyped_calls",
         "disallow_untyped_defs",
         "check_untyped_defs",
