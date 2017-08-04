@@ -261,7 +261,8 @@ class TypeOfAny:
         from typing import NewType
         TypeOfAny = NewType('TypeOfAny', str)
     else:
-        TypeOfAny = lambda x: x
+        def TypeOfAny(x: str) -> str:
+            return x
 
     # Was this Any type was inferred without a type annotation?
     implicit = TypeOfAny('implicit')
