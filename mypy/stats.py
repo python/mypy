@@ -40,11 +40,13 @@ class StatisticsVisitor(TraverserVisitor):
                  inferred: bool,
                  filename: str,
                  typemap: Optional[Dict[Expression, Type]] = None,
-                 all_nodes: bool = False) -> None:
+                 all_nodes: bool = False,
+                 visit_untyped_defs: bool = True) -> None:
         self.inferred = inferred
         self.filename = filename
         self.typemap = typemap
         self.all_nodes = all_nodes
+        self.visit_untyped_defs: bool = visit_untyped_defs
 
         self.num_precise_exprs = 0
         self.num_imprecise_exprs = 0
@@ -63,6 +65,7 @@ class StatisticsVisitor(TraverserVisitor):
         self.line_map = {}  # type: Dict[int, int]
 
         self.type_of_any_counter = collections.Counter()  # type: typing.Counter[TypeOfAny]
+        self.any_line_map = {}  # type: Dict[int, List[AnyType]]
 
         self.output = []  # type: List[str]
 
@@ -89,7 +92,8 @@ class StatisticsVisitor(TraverserVisitor):
                 self.type(sig.ret_type)
             elif self.all_nodes:
                 self.record_line(self.line, TYPE_ANY)
-            super().visit_func_def(o)
+            if not o.is_dynamic() or self.visit_untyped_defs:
+                super().visit_func_def(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
         # Override this method because we don't want to analyze base_type_exprs (base_type_exprs

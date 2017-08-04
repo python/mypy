@@ -159,7 +159,8 @@ class AnyExpressionsReporter(AbstractReporter):
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
-                                          typemap=type_map, all_nodes=True)
+                                          typemap=type_map, all_nodes=True,
+                                          visit_untyped_defs=False)
         tree.accept(visitor)
         self.any_types_counter[tree.fullname()] = visitor.type_of_any_counter
         num_unanalyzed_lines = list(visitor.line_map.values()).count(stats.TYPE_UNANALYZED)

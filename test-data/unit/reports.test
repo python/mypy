@@ -319,3 +319,19 @@ z = does_not_exist()  # type: ignore  # Error
     n             0          0            0                  0       3              0
 ---------------------------------------------------------------------------------------
 Total             0          0            0                  0       3              0
+
+[case testAnyExpressionsReportUntypedDef]
+# cmd: mypy --any-exprs-report report n.py
+
+[file n.py]
+def foo():
+    x = 0
+    f = 0
+
+[file report/any-exprs.txt]
+[outfile report/types-of-anys.txt]
+ Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form
+---------------------------------------------------------------------------------------
+    n             0          0            0                  0       0              0
+---------------------------------------------------------------------------------------
+Total             0          0            0                  0       0              0
