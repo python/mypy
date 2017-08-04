@@ -209,6 +209,10 @@ class StatisticsVisitor(TraverserVisitor):
                     typ = typ.source_any
                 self.type_of_any_counter[typ.type_of_any] += 1
                 self.num_any_types += 1
+                if self.line in self.any_line_map:
+                    self.any_line_map[self.line].append(typ)
+                else:
+                    self.any_line_map[self.line] = [typ]
             elif isinstance(typ, Instance):
                 if typ.args:
                     if any(is_complex(arg) for arg in typ.args):
