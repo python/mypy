@@ -2572,12 +2572,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         partial_types = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                if isinstance(var.type, PartialType) and var.type.type is None:
-                    # None partial type: assume variable is intended to have type None
-                    var.type = NoneTyp()
-                else:
-                    self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-                    var.type = AnyType()
+                self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                var.type = AnyType()
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
         for partial_types in reversed(self.partial_types):
@@ -3171,10 +3167,6 @@ def is_valid_inferred_type(typ: Type) -> bool:
     incompletely defined (i.e. contain UninhabitedType) are invalid.
     """
     if is_same_type(typ, NoneTyp()):
-        # With strict Optional checking, we *may* eventually infer NoneTyp, but
-        # we only do that if we can't infer a specific Optional type.  This
-        # resolution happens in leave_partial_types when we pop a partial types
-        # scope.
         return False
     return is_valid_inferred_type_component(typ)
 

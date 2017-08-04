@@ -246,8 +246,8 @@ class C: pass
 [case testInferringLvarTypesInMultiDefWithNoneTypes]
 import typing
 def f() -> None:
-    a, b = A(), None
-    c, d = None, A()
+    a, b = A(), None  # E: Need type annotation for variable
+    c, d = None, A()  # E: Need type annotation for variable
 
 class A: pass
 [out]
@@ -255,7 +255,7 @@ class A: pass
 [case testInferringLvarTypesInNestedTupleAssignmentWithNoneTypes]
 import typing
 def f() -> None:
-    a1, (a2, b) = A(), (A(), None)
+    a1, (a2, b) = A(), (A(), None)  # E: Need type annotation for variable
 
 class A: pass
 [out]
@@ -874,7 +874,7 @@ for x in [A()]:
     b = x # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x
 
-for y in []:
+for y in []:  # E: Need type annotation for variable
     a = y
     reveal_type(y)  # E: Revealed type is 'builtins.None'
 
@@ -896,7 +896,7 @@ for xx, yy, zz in [(A(), B())]: # Fail
     pass
 for xx, (yy, zz) in [(A(), B())]: # Fail
     pass
-for xxx, yyy in [(None, None)]:
+for xxx, yyy in [(None, None)]: # Needs type annotation
     pass
 
 class A: pass
@@ -909,6 +909,7 @@ main:5: error: Incompatible types in assignment (expression has type "B", variab
 main:6: error: Incompatible types in assignment (expression has type "C", variable has type "A")
 main:10: error: Need more than 2 values to unpack (3 expected)
 main:12: error: '__main__.B' object is not iterable
+main:14: error: Need type annotation for variable
 
 [case testInferenceOfFor3]
 
@@ -920,7 +921,7 @@ for x, y in [[A()]]:
     a = x
     a = y
 
-for e, f in [[]]:
+for e, f in [[]]:  # E: Need type annotation for variable
     reveal_type(e)  # E: Revealed type is 'builtins.None'
     reveal_type(f)  # E: Revealed type is 'builtins.None'
 
@@ -1446,7 +1447,7 @@ def f() -> None:
 [case testLvarInitializedToNoneWithoutType]
 import typing
 def f() -> None:
-    a = None
+    a = None  # E: Need type annotation for variable
     a.x() # E: None has no attribute "x"
 [out]
 
@@ -1494,13 +1495,13 @@ if object():
 
 [case testPartiallyInitializedVariableDoesNotEscapeScope1]
 def f() -> None:
-    x = None
+    x = None  # E: Need type annotation for variable
     reveal_type(x)  # E: Revealed type is 'builtins.None'
 x = 1
 [out]
 
 [case testPartiallyInitializedVariableDoesNotEscapeScope2]
-x = None
+x = None  # E: Need type annotation for variable
 def f() -> None:
     x = None
     x = 1
@@ -1523,8 +1524,8 @@ class A:
         self.x = 1
         self.x()
 [out]
-main:6: error: Incompatible types in assignment (expression has type "int", variable has type None)
-main:7: error: None not callable
+main:3: error: Need type annotation for variable
+main:7: error: "int" not callable
 
 [case testGlobalInitializedToNoneSetFromFunction]
 a = None
@@ -1553,6 +1554,7 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
+main:3: error: Need type annotation for variable
 main:5: error: None has no attribute "__iter__"
 
 [case testPartialTypeErrorSpecialCase2]
@@ -1574,6 +1576,7 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
+main:2: error: Need type annotation for variable
 main:4: error: None has no attribute "__iter__"
 
 

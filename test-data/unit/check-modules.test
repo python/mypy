@@ -511,7 +511,7 @@ x = 1
 
 [case testAssignToFuncDefViaImport]
 from m import *  # E: Incompatible import of "x" (imported name has type "int", local name has type "str")
-f = None
+f = None  # E: Need type annotation for variable
 x = ''
 [file m.py]
 def f(): pass
