@@ -30,6 +30,14 @@ try:
 except ImportError:
     LXML_INSTALLED = False
 
+type_of_any_presentable_names = collections.OrderedDict([
+    (TypeOfAny.implicit, "Unannotated"),
+    (TypeOfAny.explicit, "Explicit"),
+    (TypeOfAny.from_unimported_type, "Unimported"),
+    (TypeOfAny.from_omitted_generics, "Omitted Generics"),
+    (TypeOfAny.from_error, "Error"),
+    (TypeOfAny.special_form, "Special Form"),
+])  # type: collections.OrderedDict[TypeOfAny.TypeOfAny, str]
 
 reporter_classes = {}  # type: Dict[str, Tuple[Callable[[Reports, str], AbstractReporter], bool]]
 
@@ -225,21 +233,14 @@ class AnyExpressionsReporter(AbstractReporter):
         for counter in self.any_types_counter.values():
             for any_type, value in counter.items():
                 total_counter[any_type] += value
-        any_types_column_names = collections.OrderedDict([
-            (TypeOfAny.implicit, "Unannotated"),
-            (TypeOfAny.explicit, "Explicit"),
-            (TypeOfAny.from_unimported_type, "Unimported"),
-            (TypeOfAny.from_omitted_generics, "Omitted Generics"),
-            (TypeOfAny.from_error, "Error"),
-            (TypeOfAny.special_form, "Special Form"),
-        ])  # type: collections.OrderedDict[TypeOfAny.TypeOfAny, str]
         file_column_name = "Name"
         total_row_name = "Total"
-        column_names = [file_column_name] + list(any_types_column_names.values())
+        column_names = [file_column_name] + list(type_of_any_presentable_names.values())
         rows = []  # type: List[List[str]]
         for filename, counter in self.any_types_counter.items():
-            rows.append([filename] + [str(counter[typ]) for typ in any_types_column_names])
-        total_row = [total_row_name] + [str(total_counter[typ]) for typ in any_types_column_names]
+            rows.append([filename] + [str(counter[typ]) for typ in type_of_any_presentable_names])
+        total_row = [total_row_name] + [str(total_counter[typ])
+                                        for typ in type_of_any_presentable_names]
         self._write_out_report('types-of-anys.txt', column_names, rows, total_row)
 
 
@@ -437,7 +438,8 @@ class MemoryXmlReporter(AbstractReporter):
                 etree.SubElement(root, 'line',
                                  number=str(lineno),
                                  precision=stats.precision_names[status],
-                                 content=line_text.rstrip('\n'))
+                                 content=line_text.rstrip('\n'),
+                                 any_info=self._get_any_info_for_line(visitor, lineno))
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
@@ -447,6 +449,19 @@ class MemoryXmlReporter(AbstractReporter):
 
         self.last_xml = doc
         self.files.append(file_info)
+
+    @staticmethod
+    def _get_any_info_for_line(visitor: stats.StatisticsVisitor, lineno: int) -> str:
+        if lineno in visitor.any_line_map:
+            result = "Any Types on this line: "
+            counter = collections.Counter()  # type: typing.Counter[TypeOfAny.TypeOfAny]
+            for typ in visitor.any_line_map[lineno]:
+                counter[typ.type_of_any] += 1
+            for any_type, occurrences in counter.items():
+                result += "\n{} (x{})".format(type_of_any_presentable_names[any_type], occurrences)
+            return result
+        else:
+            return "No Anys on this line!"
 
     def on_finish(self) -> None:
         self.last_xml = None
