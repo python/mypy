@@ -46,7 +46,7 @@ class StatisticsVisitor(TraverserVisitor):
         self.filename = filename
         self.typemap = typemap
         self.all_nodes = all_nodes
-        self.visit_untyped_defs: bool = visit_untyped_defs
+        self.visit_untyped_defs = visit_untyped_defs
 
         self.num_precise_exprs = 0
         self.num_imprecise_exprs = 0
