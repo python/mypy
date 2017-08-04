@@ -30,7 +30,7 @@ try:
 except ImportError:
     LXML_INSTALLED = False
 
-type_of_any_presentable_names = collections.OrderedDict([
+type_of_any_name_map = collections.OrderedDict([
     (TypeOfAny.implicit, "Unannotated"),
     (TypeOfAny.explicit, "Explicit"),
     (TypeOfAny.from_unimported_type, "Unimported"),
@@ -235,12 +235,12 @@ class AnyExpressionsReporter(AbstractReporter):
                 total_counter[any_type] += value
         file_column_name = "Name"
         total_row_name = "Total"
-        column_names = [file_column_name] + list(type_of_any_presentable_names.values())
+        column_names = [file_column_name] + list(type_of_any_name_map.values())
         rows = []  # type: List[List[str]]
         for filename, counter in self.any_types_counter.items():
-            rows.append([filename] + [str(counter[typ]) for typ in type_of_any_presentable_names])
+            rows.append([filename] + [str(counter[typ]) for typ in type_of_any_name_map])
         total_row = [total_row_name] + [str(total_counter[typ])
-                                        for typ in type_of_any_presentable_names]
+                                        for typ in type_of_any_name_map]
         self._write_out_report('types-of-anys.txt', column_names, rows, total_row)
 
 
@@ -458,7 +458,7 @@ class MemoryXmlReporter(AbstractReporter):
             for typ in visitor.any_line_map[lineno]:
                 counter[typ.type_of_any] += 1
             for any_type, occurrences in counter.items():
-                result += "\n{} (x{})".format(type_of_any_presentable_names[any_type], occurrences)
+                result += "\n{} (x{})".format(type_of_any_name_map[any_type], occurrences)
             return result
         else:
             return "No Anys on this line!"
