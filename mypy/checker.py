@@ -3264,7 +3264,7 @@ def nothing() -> Iterator[None]:
 def is_typed_callable(c: Optional[Type]) -> bool:
     if not c or not isinstance(c, CallableType):
         return False
-    return not all(isinstance(t, AnyType) and t.implicit
+    return not all(isinstance(t, AnyType) and t.type_of_any == TypeOfAny.implicit
                    for t in c.arg_types + [c.ret_type])
 
 
