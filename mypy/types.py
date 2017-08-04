@@ -1778,10 +1778,10 @@ def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
         name = '"{}"'.format(name)
 
     return CallableType(
-        [AnyType(TypeOfAny.special_form)] * len(fdef.arg_names),
+        [AnyType(TypeOfAny.implicit)] * len(fdef.arg_names),
         fdef.arg_kinds,
         [None if argument_elide_name(n) else n for n in fdef.arg_names],
-        ret_type or AnyType(TypeOfAny.special_form),
+        ret_type or AnyType(TypeOfAny.implicit),
         fallback,
         name,
         implicit=True,
