@@ -1194,7 +1194,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if args:
             # TODO: assert len(args) == len(node.defn.type_vars)
             return Instance(node, args)
-        return Instance(node, [AnyType(TypeOfAny.implicit)] * len(node.defn.type_vars))
+        return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
     def named_type_or_none(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
@@ -3531,7 +3531,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         sym = self.lookup_fully_qualified(fully_qualified_name)
         node = sym.node
         assert isinstance(node, TypeInfo)
-        return Instance(node, [AnyType(TypeOfAny.implicit)] * len(node.defn.type_vars))
+        return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.
