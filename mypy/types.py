@@ -5,7 +5,7 @@ from abc import abstractmethod
 from collections import OrderedDict
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable, NewType
+    Callable
 )
 
 import mypy.nodes
@@ -256,23 +256,24 @@ class TypeOfAny:
 
     TODO: this class should be made an Enum once we drop support for python 3.3.
     """
-    TypeOfAny = NewType('TypeOfAny', str)
+    class TypeOfAny:
+        """Base class for types of Any."""
 
     # Was this Any type was inferred without a type annotation?
-    implicit = TypeOfAny('implicit')
+    implicit = TypeOfAny()
     # Does this Any come from an explicit type annotation?
-    explicit = TypeOfAny('explicit')
+    explicit = TypeOfAny()
     # Does this come from an unfollowed import? See --disallow-any=unimported option
-    from_unimported_type = TypeOfAny('from_unimported_type')
+    from_unimported_type = TypeOfAny()
     # Does this Any type come from omitted generics?
-    from_omitted_generics = TypeOfAny('from_omitted_generics')
+    from_omitted_generics = TypeOfAny()
     # Does this Any come from an error?
-    from_error = TypeOfAny('from_error')
+    from_error = TypeOfAny()
     # Is this a type that can't be represented in mypy's type system? For instance, type of
     # call to NewType(...)). Even though these types aren't real Anys, we treat them as such.
-    special_form = TypeOfAny('special_form')
+    special_form = TypeOfAny()
     # Does this Any come from interaction with another Any?
-    from_another_any = TypeOfAny('from_another_any')
+    from_another_any = TypeOfAny()
 
 
 class AnyType(Type):
