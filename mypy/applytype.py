@@ -41,9 +41,12 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
                     types[i] = value
                     break
             else:
-                constraints = get_incompatible_arg_constraints(msg, callable.arg_types, type, i + 1)
+                constraints = get_inferred_object_constraints(msg, callable.arg_types, type, i + 1)
                 if constraints:
-                    msg.incompatible_constrained_arguments(callable, i + 1, constraints, context)
+                    constrained_indeces = get_inferred_object_arg_indeces(
+                        msg, constraints, callable.arg_types)
+                    msg.incompatible_inferred_object_arguments(
+                        callable, constrained_indeces, constraints, context)
                 else:
                     msg.incompatible_typevar_value(callable, i + 1, type, context)
         upper_bound = callable.variables[i].upper_bound
@@ -70,28 +73,30 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
     )
 
 
-def get_incompatible_arg_constraints(msg: MessageBuilder,
-                                     arg_types: Sequence[Type],
-                                     type: Type,
-                                     index: int) -> Dict[str, Tuple[str, ...]]:
-    """Gets incompatible function arguments with the constrained types.
+def get_inferred_object_constraints(msg: MessageBuilder,
+                                    arg_types: Sequence[Type],
+                                    type: Type,
+                                    index: int) -> Dict[str, Tuple[str, ...]]:
+    """Gets incompatible function arguments that are inferred as object based on the type
+    constraints.
 
-    An example of a constrained type is AnyStr which must be all str or all byte.
+    An example of a constrained type is AnyStr which must be all str or all byte. When there is a
+    mismatch of arguments with a constrained type like AnyStr, then the inferred type is object.
     """
     constraints = {}  # type: Dict[str, Tuple[str, ...]]
-    print(index)
     if isinstance(type, Instance) and type.type.fullname() == 'builtins.object':
         if index == len(arg_types):
             # Index is off by one for '*' arguments
-            constraints = add_arg_constraints(msg, constraints, arg_types[index - 1])
+            constraints = add_inferred_object_arg_constraints(
+                msg, constraints, arg_types[index - 1])
         else:
-            constraints = add_arg_constraints(msg, constraints, arg_types[index])
+            constraints = add_inferred_object_arg_constraints(msg, constraints, arg_types[index])
     return constraints
 
 
-def add_arg_constraints(msg: MessageBuilder,
-                        constraints: Dict[str, Tuple[str, ...]],
-                        arg_type: Type) -> Dict[str, Tuple[str, ...]]:
+def add_inferred_object_arg_constraints(msg: MessageBuilder,
+                                        constraints: Dict[str, Tuple[str, ...]],
+                                        arg_type: Type) -> Dict[str, Tuple[str, ...]]:
     if (isinstance(arg_type, TypeVarType) and
             arg_type.values and
             len(arg_type.values) > 1 and
@@ -99,5 +104,19 @@ def add_arg_constraints(msg: MessageBuilder,
         constraints[arg_type.name] = tuple(msg.format(val) for val in arg_type.values)
     elif isinstance(arg_type, UnionType):
         for item in arg_type.items:
-            constraints = add_arg_constraints(constraints, item)
+            constraints = add_inferred_object_arg_constraints(msg, constraints, item)
     return constraints
+
+
+def get_inferred_object_arg_indeces(msg: MessageBuilder,
+                                    constraints: Dict[str, Tuple[str, ...]],
+                                    arg_types: List[Type]) -> Dict[str, List[str]]:
+    """Get the indeces of all arguments with inferred type of object and the same constraint.
+    """
+    indeces = {}  # type: Dict[str, List[str]]
+    for constrained_type in constraints.keys():
+        indeces[constrained_type] = []
+        for i, type in enumerate(arg_types):
+            if constrained_type in msg.format(type):
+                indeces[constrained_type].append(str(i + 1))
+    return indeces

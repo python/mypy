@@ -864,14 +864,26 @@ class MessageBuilder:
         self.fail('Type argument {} of {} has incompatible value {}'.format(
             index, callable_name(callee), self.format(type)), context)
 
-    def incompatible_constrained_arguments(self,
-                                           callee: CallableType,
-                                           index: int,
-                                           constraints: Mapping[str, Sequence[str]],
-                                           context: Context) -> None:
+    def incompatible_inferred_object_arguments(self,
+                                               callee: CallableType,
+                                               indeces: Mapping[str, List[str]],
+                                               constraints: Mapping[str, Sequence[str]],
+                                               context: Context) -> None:
         for key, values in constraints.items():
-            self.fail('Type argument {} of {} has incompatible value'.format(
-                index, callable_name(callee)), context)
+            if len(indeces[key]) == 1:
+                index_str = str(indeces[key][0])
+            elif len(indeces[key]) == 2:
+                index_str = ' and '.join(indeces[key])
+            elif len(indeces[key]) > 2:
+                for i, index in enumerate(indeces[key]):
+                    if i == 0:
+                        index_str = index
+                    elif i == len(indeces[key]) - 1:
+                        index_str += ', and ' + index
+                    else:
+                        index_str += ', ' + index
+            self.fail('Type arguments {} of {} have incompatible values'.format(
+                index_str, callable_name(callee)), context)
             if len(values) == 2:
                 constraint_str = '{} or {}'.format(values[0], values[1])
             elif len(values) > 3:
