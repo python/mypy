@@ -2197,7 +2197,7 @@ def g(x: int, *y: AnyStr) -> None: pass
 def h(*x: AnyStr, y: int) -> None: pass
 f('a')
 f('a', 'b')
-f('a', b'b') # E: Arguments 1 and 2 of "f" have incompatible values \
+f('a', b'b') # E: Arguments 1 of "f" have incompatible values \
 # N: "AnyStr" must be all one type: "str" or "bytes"
 g(1, 'a')
 g(1, 'a', b'b') # E: Arguments 2 of "g" have incompatible values \
