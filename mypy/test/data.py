@@ -556,6 +556,9 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
 
 
 class DataSuite:
+    def __init__(self, *, update_data: bool) -> None:
+        self.update_data = update_data
+
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
         return []

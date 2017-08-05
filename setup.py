@@ -78,7 +78,7 @@ data_files += find_data_files('typeshed', ['*.py', '*.pyi'])
 data_files += find_data_files('xml', ['*.xsd', '*.xslt', '*.css'])
 
 classifiers = [
-    'Development Status :: 2 - Pre-Alpha',
+    'Development Status :: 3 - Alpha',
     'Environment :: Console',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
@@ -111,7 +111,7 @@ setup(name='mypy',
       data_files=data_files,
       classifiers=classifiers,
       cmdclass={'build_py': CustomPythonBuild},
-      install_requires = ['typed-ast >= 1.0.4, < 1.1.0'],
+      install_requires = ['typed-ast >= 1.1.0, < 1.2.0'],
       extras_require = {
           ':python_version < "3.5"': 'typing >= 3.5.3',
       },

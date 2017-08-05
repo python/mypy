@@ -23,8 +23,8 @@ from mypy.nodes import (
     check_arg_names,
 )
 from mypy.types import (
-    Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
-    CallableArgument,
+    Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
+    TypeOfAny
 )
 from mypy import defaults
 from mypy import experiments
@@ -139,7 +139,7 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
     return False
 
 
-class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
+class ASTConverter(ast3.NodeTransformer):
     def __init__(self,
                  options: Options,
                  is_stub: bool,
@@ -322,7 +322,9 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                     if n.returns:
                         # PEP 484 disallows both type annotations and type comments
                         self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
-                    arg_types = [a.type_annotation if a.type_annotation is not None else AnyType()
+                    arg_types = [a.type_annotation
+                                 if a.type_annotation is not None
+                                 else AnyType(TypeOfAny.implicit)
                                  for a in args]
                 else:
                     # PEP 484 disallows both type annotations and type comments
@@ -330,18 +332,18 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                         self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
                     translated_args = (TypeConverter(self.errors, line=n.lineno)
                                        .translate_expr_list(func_type_ast.argtypes))
-                    arg_types = [a if a is not None else AnyType()
+                    arg_types = [a if a is not None else AnyType(TypeOfAny.implicit)
                                 for a in translated_args]
                 return_type = TypeConverter(self.errors,
                                             line=n.lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
                 if self.in_class() and len(arg_types) < len(args):
-                    arg_types.insert(0, AnyType())
+                    arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
-                arg_types = [AnyType()] * len(args)
-                return_type = AnyType()
+                arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
+                return_type = AnyType(TypeOfAny.from_error)
         else:
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(self.errors, line=n.returns.lineno
@@ -361,11 +363,11 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                 self.fail('Type signature has too few arguments', n.lineno, 0)
             else:
                 func_type = CallableType([a if a is not None else
-                                          AnyType(implicit=True) for a in arg_types],
+                                          AnyType(TypeOfAny.implicit) for a in arg_types],
                                          arg_kinds,
                                          arg_names,
                                          return_type if return_type is not None else
-                                         AnyType(implicit=True),
+                                         AnyType(TypeOfAny.implicit),
                                          None)
 
         func_def = FuncDef(n.name,
@@ -392,7 +394,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             return func_def
 
     def set_type_optional(self, type: Type, initializer: Expression) -> None:
-        if self.options.no_implicit_optional or not experiments.STRICT_OPTIONAL:
+        if self.options.no_implicit_optional:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
         optional = isinstance(initializer, NameExpr) and initializer.name == 'None'
@@ -512,7 +514,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     @with_line
     def visit_AnnAssign(self, n: ast3.AnnAssign) -> AssignmentStmt:
         if n.value is None:  # always allow 'x: int'
-            rvalue = TempNode(AnyType())  # type: Expression
+            rvalue = TempNode(AnyType(TypeOfAny.special_form))  # type: Expression
         else:
             rvalue = self.visit(n.value)
         typ = TypeConverter(self.errors, line=n.lineno).visit(n.annotation)
@@ -962,7 +964,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         return self.visit(n.value)
 
 
-class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
+class TypeConverter(ast3.NodeTransformer):
     def __init__(self, errors: Errors, line: int = -1) -> None:
         self.errors = errors
         self.line = line
@@ -989,11 +991,12 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         # An escape hatch that allows the AST walker in fastparse2 to
         # directly hook into the Python 3.5 type converter in some cases
         # without needing to create an intermediary `ast3.Str` object.
-        return parse_type_comment(s.strip(), self.line, self.errors) or AnyType()
+        return (parse_type_comment(s.strip(), self.line, self.errors) or
+                AnyType(TypeOfAny.from_error))
 
     def generic_visit(self, node: ast3.AST) -> Type:  # type: ignore
         self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(node, 'col_offset', -1))
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     def visit_NoneType(self, n: Any) -> Type:
         return None
@@ -1010,7 +1013,7 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
         name = None  # type: Optional[str]
-        default_type = AnyType(implicit=True)
+        default_type = AnyType(TypeOfAny.special_form)
         typ = default_type  # type: Type
         for i, arg in enumerate(e.args):
             if i == 0:
@@ -1058,13 +1061,14 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
 
     # Str(string s)
     def visit_Str(self, n: ast3.Str) -> Type:
-        return parse_type_comment(n.s.strip(), self.line, self.errors) or AnyType()
+        return (parse_type_comment(n.s.strip(), self.line, self.errors) or
+                AnyType(TypeOfAny.from_error))
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
         if not isinstance(n.slice, ast3.Index):
             self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
 
         empty_tuple_index = False
         if isinstance(n.slice.value, ast3.Tuple):
@@ -1080,7 +1084,7 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                                empty_tuple_index=empty_tuple_index)
         else:
             self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
 
     def visit_Tuple(self, n: ast3.Tuple) -> Type:
         return TupleType(self.translate_expr_list(n.elts), None, implicit=True, line=self.line)
@@ -1093,7 +1097,7 @@ class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             return UnboundType("{}.{}".format(before_dot.name, n.attr), line=self.line)
         else:
             self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast3.Ellipsis) -> Type:

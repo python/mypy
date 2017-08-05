@@ -1749,7 +1749,7 @@ if isinstance(x): # E: Too few arguments for "isinstance"
 
 [case testIsInstanceTooManyArgs]
 isinstance(1, 1, 1) # E: Too many arguments for "isinstance" \
-         # E: Argument 2 to "isinstance" has incompatible type "int"; expected "Union[type, tuple]"
+         # E: Argument 2 to "isinstance" has incompatible type "int"; expected "Union[type, Tuple[Any, ...]]"
 x: object
 if isinstance(x, str, 1): # E: Too many arguments for "isinstance"
     reveal_type(x) # E: Revealed type is 'builtins.object'

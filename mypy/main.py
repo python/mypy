@@ -258,6 +258,8 @@ def process_options(args: List[str],
     add_invertible_flag('--disallow-untyped-defs', default=False, strict_flag=True,
                         help="disallow defining functions without type annotations"
                         " or with incomplete type annotations")
+    add_invertible_flag('--disallow-incomplete-defs', default=False, strict_flag=True,
+                        help="disallow defining functions with incomplete type annotations")
     add_invertible_flag('--check-untyped-defs', default=False, strict_flag=True,
                         help="type check the interior of functions without type annotations")
     add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
@@ -265,6 +267,8 @@ def process_options(args: List[str],
     add_invertible_flag('--warn-incomplete-stub', default=False,
                         help="warn if missing type annotation in typeshed, only relevant with"
                         " --check-untyped-defs enabled")
+    add_invertible_flag('--disallow-untyped-decorators', default=False, strict_flag=True,
+                        help="disallow decorating typed functions with untyped decorators")
     add_invertible_flag('--warn-redundant-casts', default=False, strict_flag=True,
                         help="warn about casting an expression to its inferred type")
     add_invertible_flag('--no-warn-no-return', dest='warn_no_return', default=True,

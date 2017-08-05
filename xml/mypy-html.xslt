@@ -68,7 +68,7 @@
               <td class="table-code">
                 <pre>
                   <xsl:for-each select="line">
-                    <span class="line-{@precision}"><xsl:value-of select="@content"/></span><xsl:text>&#10;</xsl:text>
+                    <span class="line-{@precision}" title="{@any_info}"><xsl:value-of select="@content"/></span><xsl:text>&#10;</xsl:text>
                   </xsl:for-each>
                 </pre>
               </td>

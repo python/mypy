@@ -198,6 +198,43 @@ class A:
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:8: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
+[case testClassNamesDefinedOnSelUsedInClassBody]
+class A(object):
+    def f(self):
+        self.attr = 1
+    attr = 0
+
+class B(object):
+    attr = 0
+    def f(self):
+        self.attr = 1
+
+class C(object):
+    attr = 0
+    def f(self):
+        self.attr = 1
+    attr = 0
+
+class D(object):
+    def g(self):
+        self.attr = 1
+    attr = 0
+    def f(self):
+        self.attr = 1
+[out]
+
+[case testClassNamesDefinedOnSelUsedInClassBodyReveal]
+class A(object):
+    def f(self) -> None:
+        self.attr = 1
+    reveal_type(attr)  # E: Revealed type is 'builtins.int'
+
+class B(object):
+    attr = 0
+    def f(self) -> None:
+        reveal_type(self.attr)  # E: Revealed type is 'builtins.int'
+[out]
+
 
 -- Method overriding
 -- -----------------
@@ -2081,7 +2118,7 @@ def error(u_c: Type[U]) -> P:
 [out]
 main:11: error: Revealed type is '__main__.WizUser*'
 main:13: error: Incompatible return value type (got "U", expected "P")
-main:13: error: Type argument 1 of "new_pro" has incompatible value "U"
+main:13: error: Value of type variable "P" of "new_pro" cannot be "U"
 
 [case testTypeUsingTypeCCovariance]
 from typing import Type, TypeVar
@@ -3386,9 +3423,7 @@ NT([])
 [builtins fixtures/dict.pyi]
 [out]
 
--- The two tests below will not crash after
--- https://github.com/python/mypy/issues/3319 is fixed
-[case testCrashForwardSyntheticClassSyntax-skip]
+[case testCrashForwardSyntheticClassSyntax]
 from typing import NamedTuple
 from mypy_extensions import TypedDict
 class A1(NamedTuple):
@@ -3406,7 +3441,7 @@ reveal_type(y['b']) # E: Revealed type is '__main__.B'
 [builtins fixtures/dict.pyi]
 [out]
 
-[case testCrashForwardSyntheticFunctionSyntax-skip]
+[case testCrashForwardSyntheticFunctionSyntax]
 from typing import NamedTuple
 from mypy_extensions import TypedDict
 A1 = NamedTuple('A1', [('b', 'B'), ('x', int)])

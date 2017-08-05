@@ -1,4 +1,4 @@
-from typing import Iterable, Iterator, TypeVar, List, Mapping, overload, Tuple, Set, Union
+from typing import Iterable, Iterator, TypeVar, List, Mapping, overload, Tuple, Set, Union, Generic
 
 class object:
     def __init__(self) -> None: pass
@@ -6,7 +6,6 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
-class tuple: pass
 class function: pass
 class ellipsis: pass
 
@@ -23,6 +22,8 @@ class str:
 T = TypeVar('T')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
+
+class tuple(Generic[T]): pass
 
 class list(Iterable[T]):
     def __iter__(self) -> Iterator[T]: pass
