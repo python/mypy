@@ -886,7 +886,7 @@ class MessageBuilder:
                         index_str += ', and ' + index
                     else:
                         index_str += ', ' + index
-            self.fail('Type arguments {} of {} have incompatible values'.format(
+            self.fail('Arguments {} of {} have incompatible values'.format(
                 index_str, callable_name(callee)), context)
             if len(values) == 2:
                 constraint_str = '{} or {}'.format(values[0], values[1])

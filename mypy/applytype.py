@@ -48,7 +48,8 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
                     msg.incompatible_inferred_object_arguments(
                         callable, constrained_indeces, constraints, context)
                 else:
-                    msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
+                    msg.incompatible_typevar_value(
+                        callable, type, callable.variables[i].name, context)
         upper_bound = callable.variables[i].upper_bound
         if (type and not isinstance(type, PartialType) and
                 not mypy.subtypes.is_subtype(type, upper_bound)):
