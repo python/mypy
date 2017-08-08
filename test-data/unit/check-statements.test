@@ -1136,9 +1136,8 @@ def f() -> Iterator[None]:
 
 -- Yield from statement
 -- --------------------
-
--- Iterables
--- ----------
+--
+-- (It's not really a statement, but don't want to move the tests.)
 
 [case testSimpleYieldFromWithIterator]
 from typing import Iterator
@@ -1215,6 +1214,15 @@ def f(a):
     b = yield from a
     return b
 [out]
+
+[case testYieldFromGenericCall]
+from typing import Generator, TypeVar
+T = TypeVar('T')
+def f(a: T) -> Generator[int, str, T]: pass
+def g() -> Generator[int, str, float]:
+    r = yield from f('')
+    reveal_type(r)  # E: Revealed type is 'builtins.str*'
+    return 3.14
 
 -- With statement
 -- --------------
