@@ -399,8 +399,9 @@ main:14: note:     Got:
 main:14: note:         def __getitem__(self, str) -> object
 
 [case testTypedDictWithSimpleProtocolInference]
-from typing_extensions import Protocol, TypeVar
+from typing_extensions import Protocol
 from mypy_extensions import TypedDict
+from typing import TypeVar
 
 T_co = TypeVar('T_co', covariant=True)
 T = TypeVar('T')

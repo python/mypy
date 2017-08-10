@@ -3828,7 +3828,7 @@ class FirstPass(NodeVisitor[None]):
                     # We are running tests without 'bool' in builtins.
                     # TODO: Find a permanent solution to this problem.
                     # Maybe add 'bool' to all fixtures?
-                    literal_types.append(('True', AnyType()))
+                    literal_types.append(('True', AnyType(TypeOfAny.special_form)))
 
                 for name, typ in literal_types:
                     v = Var(name, typ)

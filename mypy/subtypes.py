@@ -441,7 +441,7 @@ def find_member(name: str, itype: Instance, subtype: Type) -> Optional[Type]:
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
         if itype.type.fallback_to_any:
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
     return None
 
 
@@ -489,7 +489,7 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     else:
         typ = node.type
     if typ is None:
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
     # We don't need to bind 'self' for static methods, since there is no 'self'.
     if isinstance(node, FuncBase) or isinstance(typ, FunctionLike) and not node.is_staticmethod:
         assert isinstance(typ, FunctionLike)
