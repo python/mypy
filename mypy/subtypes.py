@@ -540,8 +540,8 @@ def get_conflict_types(left: Instance, right: Instance) -> List[Tuple[str, Type,
     return conflicts
 
 
-def get_all_flags(left: Instance, right: Instance) -> List[Tuple[str, Set[int], Set[int]]]:
-    """Return all attribute flags for members that are present in both
+def get_bad_flags(left: Instance, right: Instance) -> List[Tuple[str, Set[int], Set[int]]]:
+    """Return all incompatible attribute flags for members that are present in both
     'left' and 'right'. This is a helper to collect information for better error reporting.
     """
     assert right.type.is_protocol
@@ -552,7 +552,14 @@ def get_all_flags(left: Instance, right: Instance) -> List[Tuple[str, Set[int], 
                     get_member_flags(member, left.type),
                     get_member_flags(member, right.type))
             all_flags.append(item)
-    return all_flags
+    bad_flags = []
+    for name, subflags, superflags in all_flags:
+        if (IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags or
+                IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags or
+                IS_SETTABLE in superflags and IS_SETTABLE not in subflags or
+                IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags):
+            bad_flags.append((name, subflags, superflags))
+    return bad_flags
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,

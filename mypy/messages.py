@@ -1026,7 +1026,7 @@ class MessageBuilder:
         attribute flags, such as settable vs read-only or class variable vs
         instance variable.
         """
-        from mypy.subtypes import (get_missing_members, get_conflict_types, get_all_flags,
+        from mypy.subtypes import (get_missing_members, get_conflict_types, get_bad_flags,
                                    is_subtype, IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC)
         OFFSET = 4  # Four spaces, so that notes will look like this:
         # note: 'Cls' is missing following 'Proto' members:
@@ -1066,6 +1066,9 @@ class MessageBuilder:
                       .format(subtype.type.name(), supertype.type.name(), plural_s(missing)),
                       context)
             self.note(', '.join(missing), context, offset=OFFSET)
+        elif len(missing) > MAX_ITEMS or len(missing) == len(supertype.type.protocol_members):
+            # this is an obviously wrong type: too many missing members
+            return
 
         # Report member type conflicts
         conflict_types = get_conflict_types(subtype, supertype)
@@ -1096,7 +1099,7 @@ class MessageBuilder:
             print_more(conflict_types)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
-        conflict_flags = get_all_flags(subtype, supertype)
+        conflict_flags = get_bad_flags(subtype, supertype)
         for name, subflags, superflags in conflict_flags[:MAX_ITEMS]:
             if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
                 self.note('Protocol member {}.{} expected instance variable,'

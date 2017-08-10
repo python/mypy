@@ -1774,3 +1774,25 @@ main:19: error: Incompatible types in assignment (expression has type "AllReadOn
 main:19: note: Protocol member AllSettable.a expected settable variable, got read-only attribute
 main:19: note: Protocol member AllSettable.b expected settable variable, got read-only attribute
 main:19: note:     <2 more conflict(s) not shown>
+
+[case testProtocolsMoreConflictsNotShown]
+from typing_extensions import Protocol
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class MockMapping(Protocol[T]):
+    def a(self, x: T) -> int: pass
+    def b(self, x: T) -> int: pass
+    def c(self, x: T) -> int: pass
+    d: T
+    e: T
+    f: T
+
+class MockDict(MockMapping[T]):
+    more: int
+
+def f(x: MockMapping[int]) -> None: pass
+x: MockDict[str]
+f(x)  # E: Argument 1 to "f" has incompatible type MockDict[str]; expected MockMapping[int]
+[out]
