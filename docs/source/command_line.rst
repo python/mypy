@@ -322,8 +322,14 @@ Here are some more useful flags:
   annotations are not type checked.)  It will assume all arguments
   have type ``Any`` and always infer ``Any`` as the return type.
 
+- ``--disallow-incomplete-defs`` reports an error whenever it
+  encounters a partly annotated function definition.
+
 - ``--disallow-untyped-calls`` reports an error whenever a function
   with type annotations calls a function defined without annotations.
+
+- ``--disallow-untyped-decorators`` reports an error whenever a function
+  with type annotations is decorated with a decorator without annotations.
 
 .. _disallow-subclassing-any:
 

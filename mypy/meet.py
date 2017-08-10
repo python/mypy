@@ -3,9 +3,9 @@ from typing import List, Optional, cast, Tuple
 
 from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
-    Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType,
-    Instance, CallableType, TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType,
-    DeletedType, UninhabitedType, TypeType
+    Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType, Instance, CallableType,
+    TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType, DeletedType,
+    UninhabitedType, TypeType, TypeOfAny
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_protocol_implementation
 
@@ -142,13 +142,13 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if isinstance(self.s, NoneTyp):
             if experiments.STRICT_OPTIONAL:
-                return AnyType()
+                return AnyType(TypeOfAny.special_form)
             else:
                 return self.s
         elif isinstance(self.s, UninhabitedType):
             return self.s
         else:
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
 
     def visit_any(self, t: AnyType) -> Type:
         return self.s
@@ -303,7 +303,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def default(self, typ: Type) -> Type:
         if isinstance(typ, UnboundType):
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
         else:
             if experiments.STRICT_OPTIONAL:
                 return UninhabitedType()

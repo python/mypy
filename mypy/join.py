@@ -4,10 +4,9 @@ from collections import OrderedDict
 from typing import cast, List, Optional
 
 from mypy.types import (
-    Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType,
-    TypeVarType, CallableType, TupleType, TypedDictType, ErasedType, TypeList,
-    UnionType, FunctionLike, Overloaded, PartialType, DeletedType,
-    UninhabitedType, TypeType, true_or_false
+    Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
+    TupleType, TypedDictType, ErasedType, TypeList, UnionType, FunctionLike, Overloaded,
+    PartialType, DeletedType, UninhabitedType, TypeType, true_or_false, TypeOfAny
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
@@ -102,7 +101,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         self.s = s
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        return AnyType()
+        return AnyType(TypeOfAny.special_form)
 
     def visit_union_type(self, t: UnionType) -> Type:
         if is_subtype(self.s, t):
@@ -118,7 +117,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             if isinstance(self.s, (NoneTyp, UninhabitedType)):
                 return t
             elif isinstance(self.s, UnboundType):
-                return AnyType()
+                return AnyType(TypeOfAny.special_form)
             else:
                 return UnionType.make_simplified_union([self.s, t])
         else:
@@ -274,7 +273,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         if isinstance(typ, Instance):
             return object_from_instance(typ)
         elif isinstance(typ, UnboundType):
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
         elif isinstance(typ, TupleType):
             return self.default(typ.fallback)
         elif isinstance(typ, TypedDictType):
@@ -284,7 +283,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         elif isinstance(typ, TypeVarType):
             return self.default(typ.upper_bound)
         else:
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
 
 
 def join_instances(t: Instance, s: Instance) -> Type:

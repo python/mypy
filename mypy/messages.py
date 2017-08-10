@@ -13,7 +13,7 @@ from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
     UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
-    UninhabitedType
+    UninhabitedType, TypeOfAny
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
@@ -92,6 +92,7 @@ CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'
 CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
 BARE_GENERIC = 'Missing type parameters for generic type'
 IMPLICIT_GENERIC_ANY_BUILTIN = 'Implicit generic "Any". Use \'{}\' and specify generic parameters'
+INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -448,7 +449,7 @@ class MessageBuilder:
                     typ_format = '"None"'
                 self.fail('Item {} of {} has no attribute "{}"'.format(
                     typ_format, self.format(original_type), member), context)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self, op: str, left_type: Any,
                                   right_type: Any, context: Context) -> None:
@@ -486,12 +487,12 @@ class MessageBuilder:
 
     def not_callable(self, typ: Type, context: Context) -> Type:
         self.fail('{} not callable'.format(self.format(typ)), context)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     def untyped_function_call(self, callee: CallableType, context: Context) -> Type:
         name = callee.name if callee.name is not None else '(unknown)'
         self.fail('Call to untyped function {} in typed context'.format(name), context)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     def incompatible_argument(self, n: int, m: int, callee: CallableType, arg_type: Type,
                               arg_kind: int, context: Context) -> None:
@@ -860,10 +861,13 @@ class MessageBuilder:
         self.fail('Property "{}" defined in "{}" is read-only'.format(
             name, type.name()), context)
 
-    def incompatible_typevar_value(self, callee: CallableType, index: int,
-                                   type: Type, context: Context) -> None:
-        self.fail('Type argument {} of {} has incompatible value {}'.format(
-            index, callable_name(callee), self.format(type)), context)
+    def incompatible_typevar_value(self,
+                                   callee: CallableType,
+                                   typ: Type,
+                                   typevar_name: str,
+                                   context: Context) -> None:
+        self.fail(INCOMPATIBLE_TYPEVAR_VALUE.format(typevar_name, callable_name(callee),
+                                                    self.format(typ)), context)
 
     def overloaded_signatures_overlap(self, index1: int, index2: int,
                                       context: Context) -> None:
@@ -900,7 +904,7 @@ class MessageBuilder:
     def yield_from_invalid_operand_type(self, expr: Type, context: Context) -> Type:
         text = self.format(expr) if self.format(expr) != 'object' else expr
         self.fail('"yield from" can\'t be applied to {}'.format(text), context)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     def invalid_signature(self, func_type: Type, context: Context) -> None:
         self.fail('Invalid signature "{}"'.format(func_type), context)
@@ -991,6 +995,9 @@ class MessageBuilder:
         else:
             self.fail('Type of decorated function contains type "Any" ({})'.format(
                 self.format(typ)), context)
+
+    def typed_function_untyped_decorator(self, func_name: str, context: Context) -> None:
+        self.fail('Untyped decorator makes function "{}" untyped'.format(func_name), context)
 
     def bad_proto_variance(self, actual: int, tvar_name: str, expected: int,
                            context: Context) -> None:
