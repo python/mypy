@@ -153,6 +153,10 @@ overridden by the pattern sections matching the module name.
   ``unannotated``, ``expr``, ``decorated``, ``explicit``, ``generics``.
   For explanations see the discussion for the :ref:`--disallow-any <disallow-any>` option.
 
+- ``disallow_subclassing_any`` (Boolean, default False) disallows
+  subclassing a value of type ``Any``.  See
+  :ref:`--disallow-subclassing-any <disallow-subclassing-any>` option.
+
 - ``disallow_untyped_calls`` (Boolean, default False) disallows
   calling functions without type annotations from functions with type
   annotations.

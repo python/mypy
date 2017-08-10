@@ -78,7 +78,7 @@ data_files += find_data_files('typeshed', ['*.py', '*.pyi'])
 data_files += find_data_files('xml', ['*.xsd', '*.xslt', '*.css'])
 
 classifiers = [
-    'Development Status :: 2 - Pre-Alpha',
+    'Development Status :: 3 - Alpha',
     'Environment :: Console',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',

@@ -1,7 +1,7 @@
 from typing import Dict, List, Set, Iterator, Union, Optional, cast
 from contextlib import contextmanager
 
-from mypy.types import Type, AnyType, PartialType, UnionType
+from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
@@ -174,10 +174,11 @@ class ConditionalTypeBinder:
 
             type = resulting_values[0]
             assert type is not None
-            if isinstance(self.declarations.get(key), AnyType):
+            declaration_type = self.declarations.get(key)
+            if isinstance(declaration_type, AnyType):
                 # At this point resulting values can't contain None, see continue above
                 if not all(is_same_type(type, cast(Type, t)) for t in resulting_values[1:]):
-                    type = AnyType()
+                    type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
                 for other in resulting_values[1:]:
                     assert other is not None
