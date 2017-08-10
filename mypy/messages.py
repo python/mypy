@@ -1031,22 +1031,23 @@ def plural_s(s: Sequence[Any]) -> str:
 
 
 def format_string_list(s: Iterable[str]) -> str:
-    l = list(s)
-    assert len(l) > 0
-    if len(l) == 1:
-        return l[0]
-    elif len(l) <= 5:
-        return '%s and %s' % (', '.join(l[:-1]), l[-1])
+    lst = list(s)
+    assert len(lst) > 0
+    if len(lst) == 1:
+        return lst[0]
+    elif len(lst) <= 5:
+        return '%s and %s' % (', '.join(lst[:-1]), lst[-1])
     else:
-        return '%s, ... and %s (%i methods suppressed)' % (', '.join(l[:2]), l[-1], len(l) - 3)
+        return '%s, ... and %s (%i methods suppressed)' % (
+            ', '.join(lst[:2]), lst[-1], len(lst) - 3)
 
 
 def format_item_name_list(s: Iterable[str]) -> str:
-    l = list(s)
-    if len(l) <= 5:
-        return '(' + ', '.join(["'%s'" % name for name in l]) + ')'
+    lst = list(s)
+    if len(lst) <= 5:
+        return '(' + ', '.join(["'%s'" % name for name in lst]) + ')'
     else:
-        return '(' + ', '.join(["'%s'" % name for name in l[:5]]) + ', ...)'
+        return '(' + ', '.join(["'%s'" % name for name in lst[:5]]) + ', ...)'
 
 
 def callable_name(type: CallableType) -> str:
