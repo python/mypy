@@ -175,12 +175,12 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_var(self, o: 'mypy.nodes.Var') -> str:
-        l = ''
+        lst = ''
         # Add :nil line number tag if no line number is specified to remain
         # compatible with old test case descriptions that assume this.
         if o.line < 0:
-            l = ':nil'
-        return 'Var' + l + '(' + o.name() + ')'
+            lst = ':nil'
+        return 'Var' + lst + '(' + o.name() + ')'
 
     def visit_global_decl(self, o: 'mypy.nodes.GlobalDecl') -> str:
         return self.dump([o.names], o)
