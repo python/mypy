@@ -23,14 +23,14 @@ from mypyc.analysis import (
     analyze_must_defined_regs,
     analyze_live_regs,
     analyze_borrowed_arguments,
+    AnalysisDict
 )
 from mypyc.ops import (
     FuncIR, BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
-    Return, Op, Register
+    Return, Op, Register, Label
 )
 
 
-AnalysisDict = Dict[Tuple[int, int], Set[int]]
 
 
 def insert_ref_count_opcodes(ir: FuncIR) -> None:
@@ -39,24 +39,24 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     This is the entry point to this module.
     """
     cfg = get_cfg(ir.blocks)
-    args = set(range(len(ir.args)))
-    pre_live, post_live = analyze_live_regs(ir.blocks, cfg)
-    pre_borrow, post_borrow = analyze_borrowed_arguments(ir.blocks, cfg, args)
+    args = set([Register(i) for i in range(len(ir.args))])
+    live = analyze_live_regs(ir.blocks, cfg)
+    borrow = analyze_borrowed_arguments(ir.blocks, cfg, args)
     for block in ir.blocks[:]:
         if isinstance(block.ops[-1], (Branch, Goto)):
             insert_branch_inc_and_decrefs(block,
                                           ir.blocks,
-                                          pre_live,
-                                          pre_borrow,
-                                          post_borrow,
+                                          live.before,
+                                          borrow.before,
+                                          borrow.after,
                                           ir.env)
-        transform_block(block, pre_live, post_live, pre_borrow, ir.env)
+        transform_block(block, live.before, live.after, borrow.before, ir.env)
 
 
 def transform_block(block: BasicBlock,
-                    pre_live: AnalysisDict,
-                    post_live: AnalysisDict,
-                    pre_borrow: AnalysisDict,
+                    pre_live: AnalysisDict[Register],
+                    post_live: AnalysisDict[Register],
+                    pre_borrow: AnalysisDict[Register],
                     env: Environment) -> None:
     old_ops = block.ops
     ops = []  # type: List[Op]
@@ -150,10 +150,10 @@ def insert_branch_inc_and_decrefs(
             goto.label = add_block(new_opcodes, blocks, goto.label)
 
 
-def after_branch_decrefs(label: int,
+def after_branch_decrefs(label: Label,
                          pre_live: AnalysisDict,
-                         source_borrowed: Set[int],
-                         source_live_regs: Set[int],
+                         source_borrowed: Set[Register],
+                         source_live_regs: Set[Register],
                          env: Environment) -> List[Op]:
     target_pre_live = pre_live[label, 0]
     decref = source_live_regs - target_pre_live - source_borrowed
@@ -162,9 +162,9 @@ def after_branch_decrefs(label: int,
     return []
 
 
-def after_branch_increfs(label: int,
+def after_branch_increfs(label: Label,
                          pre_borrow: AnalysisDict,
-                         source_borrowed: Set[int],
+                         source_borrowed: Set[Register],
                          env: Environment) -> List[Op]:
     target_borrowed = pre_borrow[label, 0]
     incref = source_borrowed - target_borrowed
@@ -173,8 +173,8 @@ def after_branch_increfs(label: int,
     return []
 
 
-def add_block(ops: Iterable[Op], blocks: List[BasicBlock], label: int) -> int:
-    block = BasicBlock(len(blocks))
+def add_block(ops: Iterable[Op], blocks: List[BasicBlock], label: Label) -> Label:
+    block = BasicBlock(Label(len(blocks)))
     block.ops.extend(ops)
     block.ops.append(Goto(label))
     blocks.append(block)

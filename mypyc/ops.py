@@ -11,15 +11,30 @@ can hold various things:
 """
 
 from abc import abstractmethod
-from typing import List, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple
+from typing import List, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, NewType
 
 from mypy.nodes import Var
 
 
 T = TypeVar('T')
 
-Register = int
-Label = int
+Register = NewType('Register', int)
+Label = NewType('Label', int)
+
+
+# Unfortunately we have visitors which are statement-like rather than expression-like.
+# It doesn't make sense to have the visitor return Optional[Register] because every
+# method either always returns no register or returns a register.
+#
+# Eventually we may want to separate expression visitors and statement-like visitors at
+# the type level but until then returning INVALID_REGISTER from a statement-like visitor
+# seems acceptable.
+INVALID_REGISTER = Register(-1)
+
+
+# Similarly this is used for placeholder labels which aren't assigned yet (but will
+# be eventually. Its kind of a hack.
+INVALID_LABEL = Label(-1)
 
 
 def c_module_name(module_name: str):
@@ -164,29 +179,32 @@ class Environment:
     def __init__(self) -> None:
         self.names = []  # type: List[str]
         self.types = []  # type: List[RTType]
-        self.symtable = {}  # type: Dict[Var, int]
+        self.symtable = {}  # type: Dict[Var, Register]
         self.temp_index = 0
 
     def num_regs(self) -> int:
         return len(self.names)
 
-    def add_local(self, var: Var, typ: RTType) -> int:
+    def add_local(self, var: Var, typ: RTType) -> Register:
         assert isinstance(var, Var)
         self.names.append(var.name())
         self.types.append(typ)
+
         i = len(self.names) - 1
-        self.symtable[var] = i
-        return i
+
+        reg = Register(i)
+        self.symtable[var] = reg
+        return reg
 
     def lookup(self, var: Var) -> Register:
         return self.symtable[var]
 
-    def add_temp(self, typ: RTType) -> int:
+    def add_temp(self, typ: RTType) -> Register:
         assert isinstance(typ, RTType)
         self.names.append('r%d' % self.temp_index)
         self.temp_index += 1
         self.types.append(typ)
-        return len(self.names) - 1
+        return Register(len(self.names) - 1)
 
     def format(self, fmt: str, *args: Any) -> str:
         result = []
@@ -241,7 +259,7 @@ class Op:
 class Goto(Op):
     """Unconditional jump."""
 
-    def __init__(self, label: int) -> None:
+    def __init__(self, label: Label) -> None:
         self.label = label
 
     def to_str(self, env: Environment) -> str:

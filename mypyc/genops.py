@@ -28,10 +28,10 @@ from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
 
 from mypyc.ops import (
-    BasicBlock, Environment, Op, LoadInt, RTType, Register, Return, FuncIR, Assign,
+    BasicBlock, Environment, Op, LoadInt, RTType, Register, Label, Return, FuncIR, Assign,
     PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRTType,
     Unreachable, TupleGet, ClassIR, UserRTType, ModuleIR, GetAttr, SetAttr, LoadStatic,
-    PyGetAttr, PyCall, c_module_name,
+    PyGetAttr, PyCall, c_module_name, INVALID_REGISTER, INVALID_LABEL
 )
 
 
@@ -93,7 +93,7 @@ class AssignmentTargetAttr(AssignmentTarget):
         self.obj_type = obj_type
 
 
-class IRBuilder(NodeVisitor[int]):
+class IRBuilder(NodeVisitor[Register]):
     def __init__(self, types: Dict[Expression, Type], mapper: Mapper) -> None:
         self.types = types
         self.environment = Environment()
@@ -101,19 +101,25 @@ class IRBuilder(NodeVisitor[int]):
         self.blocks = []  # type: List[List[BasicBlock]]
         self.functions = []  # type: List[FuncIR]
         self.classes = []  # type: List[ClassIR]
-        self.targets = []  # type: List[int]
+        self.targets = []  # type: List[Register]
+
+        # These lists operate as stack frames for loops. Each loop adds a new frame (i.e. adds a new
+        # empty list [] to the outermost list). Each break or continue is inserted within that frame
+        # as they are visited and at the end of the loop the stack is popped and any break/continue
+        # gotos have their targets rewritten to the next basic block.
         self.break_gotos = []  # type: List[List[Goto]]
         self.continue_gotos = []  # type: List[List[Goto]]
+
         self.mapper = mapper
         self.imports = [] # type: List[str]
 
         self.current_module_name = None # type: Optional[str]
 
-    def visit_mypy_file(self, mypyfile: MypyFile) -> int:
+    def visit_mypy_file(self, mypyfile: MypyFile) -> Register:
         if mypyfile.fullname() in ('typing', 'abc'):
             # These module are special; their contents are currently all
             # built-in primitives.
-            return -1
+            return INVALID_REGISTER
 
         # First pass: Build ClassIRs and TypeInfo-to-ClassIR mapping.
         for node in mypyfile.defs:
@@ -125,23 +131,23 @@ class IRBuilder(NodeVisitor[int]):
         for node in mypyfile.defs:
             node.accept(self)
 
-        return -1
+        return INVALID_REGISTER
 
     def prepare_class_def(self, cdef: ClassDef) -> None:
         ir = ClassIR(cdef.name, [])  # Populate attributes later in visit_class_def
         self.classes.append(ir)
         self.mapper.type_to_ir[cdef.info] = ir
 
-    def visit_class_def(self, cdef: ClassDef) -> int:
+    def visit_class_def(self, cdef: ClassDef) -> Register:
         attributes = []
         for name, node in cdef.info.names.items():
             if isinstance(node.node, Var):
                 attributes.append((name, self.type_to_rttype(node.node.type)))
         ir = self.mapper.type_to_ir[cdef.info]
         ir.attributes = attributes
-        return -1
+        return INVALID_REGISTER
 
-    def visit_import(self, node: Import) -> int:
+    def visit_import(self, node: Import) -> Register:
         if node.is_unreachable or node.is_mypy_only:
             pass
         if not node.is_top_level:
@@ -150,9 +156,9 @@ class IRBuilder(NodeVisitor[int]):
         for node_id, _ in node.ids:
             self.imports.append(node_id)
 
-        return -1
+        return INVALID_REGISTER
 
-    def visit_import_from(self, node: ImportFrom) -> int:
+    def visit_import_from(self, node: ImportFrom) -> Register:
         if node.is_unreachable or node.is_mypy_only:
             pass
         if not node.is_top_level:
@@ -160,9 +166,9 @@ class IRBuilder(NodeVisitor[int]):
 
         self.imports.append(node.id)
 
-        return -1
+        return INVALID_REGISTER
 
-    def visit_import_all(self, node: ImportAll) -> int:
+    def visit_import_all(self, node: ImportAll) -> Register:
         if node.is_unreachable or node.is_mypy_only:
             pass
         if not node.is_top_level:
@@ -170,9 +176,9 @@ class IRBuilder(NodeVisitor[int]):
 
         self.imports.append(node.id)
 
-        return -1
+        return INVALID_REGISTER
 
-    def visit_func_def(self, fdef: FuncDef) -> int:
+    def visit_func_def(self, fdef: FuncDef) -> Register:
         self.enter()
 
         for arg in fdef.arguments:
@@ -189,7 +195,7 @@ class IRBuilder(NodeVisitor[int]):
         args = self.convert_args(fdef)
         func = FuncIR(fdef.name(), args, ret_type, blocks, env)
         self.functions.append(func)
-        return -1
+        return INVALID_REGISTER
 
     def convert_args(self, fdef: FuncDef) -> List[RuntimeArg]:
         assert isinstance(fdef.type, CallableType)
@@ -213,30 +219,30 @@ class IRBuilder(NodeVisitor[int]):
         if not block.ops or not isinstance(block.ops[-1], Return):
             self.add(Unreachable())
 
-    def visit_block(self, block: Block) -> int:
+    def visit_block(self, block: Block) -> Register:
         for stmt in block.body:
             stmt.accept(self)
-        return -1
+        return INVALID_REGISTER
 
-    def visit_expression_stmt(self, stmt: ExpressionStmt) -> int:
+    def visit_expression_stmt(self, stmt: ExpressionStmt) -> Register:
         self.accept(stmt.expr)
-        return -1
+        return INVALID_REGISTER
 
-    def visit_return_stmt(self, stmt: ReturnStmt) -> int:
+    def visit_return_stmt(self, stmt: ReturnStmt) -> Register:
         if stmt.expr:
             retval = self.accept(stmt.expr)
         else:
             retval = self.environment.add_temp(RTType('None'))
             self.add(PrimitiveOp(retval, PrimitiveOp.NONE))
         self.add(Return(retval))
-        return -1
+        return INVALID_REGISTER
 
-    def visit_assignment_stmt(self, stmt: AssignmentStmt) -> int:
+    def visit_assignment_stmt(self, stmt: AssignmentStmt) -> Register:
         assert len(stmt.lvalues) == 1
         lvalue = stmt.lvalues[0]
         return self.assign(lvalue, stmt.rvalue, declared_type=stmt.type)
 
-    def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> int:
+    def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> Register:
         target = self.get_assignment_target(stmt.lvalue, None)
 
         if isinstance(target, AssignmentTargetRegister):
@@ -283,7 +289,7 @@ class IRBuilder(NodeVisitor[int]):
     def assign_to_target(self,
             target: AssignmentTarget,
             rvalue: Expression,
-            rvalue_type: Optional[RTType] = None) -> int:
+            rvalue_type: Optional[RTType] = None) -> Register:
         rvalue_type = rvalue_type or self.node_type(rvalue)
 
         if isinstance(target, AssignmentTargetRegister):
@@ -291,13 +297,13 @@ class IRBuilder(NodeVisitor[int]):
         elif isinstance(target, AssignmentTargetAttr):
             rvalue_reg = self.accept(rvalue)
             self.add(SetAttr(target.obj_reg, target.attr, rvalue_reg, target.obj_type))
-            return -1
+            return INVALID_REGISTER
         elif isinstance(target, AssignmentTargetIndex):
             item_reg = self.accept(rvalue)
             boxed_item_reg = self.box(item_reg, rvalue_type)
             self.add(PrimitiveOp(None, PrimitiveOp.LIST_SET, target.base_reg, target.index_reg,
                                  boxed_item_reg))
-            return -1
+            return INVALID_REGISTER
 
         assert False, 'Unsupported assignment target'
 
@@ -305,11 +311,11 @@ class IRBuilder(NodeVisitor[int]):
                lvalue: Lvalue,
                rvalue: Expression,
                rvalue_type: Optional[RTType] = None,
-               declared_type: Optional[Type] = None) -> int:
+               declared_type: Optional[Type] = None) -> Register:
         target = self.get_assignment_target(lvalue, declared_type)
         return self.assign_to_target(target, rvalue, rvalue_type)
 
-    def visit_if_stmt(self, stmt: IfStmt) -> int:
+    def visit_if_stmt(self, stmt: IfStmt) -> Register:
         # If statements are normalized
         assert len(stmt.expr) == 1
 
@@ -332,11 +338,11 @@ class IRBuilder(NodeVisitor[int]):
             self.set_branches(branches, False, next)
         if if_leave:
             if_leave.label = next.label
-        return -1
+        return INVALID_REGISTER
 
     def add_leave(self) -> Optional[Goto]:
         if not self.blocks[-1][-1].ops or not isinstance(self.blocks[-1][-1].ops[-1], Return):
-            leave = Goto(-1)
+            leave = Goto(INVALID_LABEL)
             self.add(leave)
             return leave
         return None
@@ -352,11 +358,11 @@ class IRBuilder(NodeVisitor[int]):
         for break_goto in self.break_gotos.pop():
             break_goto.label = break_block.label
 
-    def visit_while_stmt(self, s: WhileStmt) -> int:
+    def visit_while_stmt(self, s: WhileStmt) -> Register:
         self.push_loop_stack()
 
         # Split block so that we get a handle to the top of the loop.
-        goto = Goto(-1)
+        goto = Goto(INVALID_LABEL)
         self.add(goto)
         top = self.new_block()
         goto.label = top.label
@@ -373,9 +379,9 @@ class IRBuilder(NodeVisitor[int]):
         self.set_branches(branches, False, next)
 
         self.pop_loop_stack(top, next)
-        return -1
+        return INVALID_REGISTER
 
-    def visit_for_stmt(self, s: ForStmt) -> int:
+    def visit_for_stmt(self, s: ForStmt) -> Register:
         if (isinstance(s.expr, CallExpr)
                 and isinstance(s.expr.callee, RefExpr)
                 and s.expr.callee.fullname == 'builtins.range'):
@@ -388,13 +394,13 @@ class IRBuilder(NodeVisitor[int]):
 
             # Initialize loop index to 0.
             index_reg = self.assign(s.index, IntExpr(0), RTType('int'))
-            goto = Goto(-1)
+            goto = Goto(INVALID_LABEL)
             self.add(goto)
 
             # Add loop condition check.
             top = self.new_block()
             goto.label = top.label
-            branch = Branch(index_reg, end_reg, -1, -1, Branch.INT_LT)
+            branch = Branch(index_reg, end_reg, INVALID_LABEL, INVALID_LABEL, Branch.INT_LT)
             self.add(branch)
             branches = [branch]
 
@@ -402,7 +408,7 @@ class IRBuilder(NodeVisitor[int]):
             self.set_branches(branches, True, body)
             s.body.accept(self)
 
-            end_goto = Goto(-1)
+            end_goto = Goto(INVALID_LABEL)
             self.add(end_goto)
             end_block = self.new_block()
             end_goto.label = end_block.label
@@ -418,7 +424,7 @@ class IRBuilder(NodeVisitor[int]):
             self.set_branches(branches, False, next)
 
             self.pop_loop_stack(end_block, next)
-            return -1
+            return INVALID_REGISTER
 
         if self.node_type(s.expr).name == 'list':
             self.push_loop_stack()
@@ -443,7 +449,7 @@ class IRBuilder(NodeVisitor[int]):
             len_reg = self.alloc_temp(RTType('int'))
             self.add(PrimitiveOp(len_reg, PrimitiveOp.LIST_LEN, expr_reg))
 
-            branch = Branch(index_reg, len_reg, -1, -1, Branch.INT_LT)
+            branch = Branch(index_reg, len_reg, INVALID_LABEL, INVALID_LABEL, Branch.INT_LT)
             self.add(branch)
             branches = [branch]
 
@@ -469,19 +475,19 @@ class IRBuilder(NodeVisitor[int]):
 
             self.pop_loop_stack(end_block, next_block)
 
-            return -1
+            return INVALID_REGISTER
 
         assert False, 'for not supported'
 
-    def visit_break_stmt(self, node: BreakStmt) -> int:
-        self.break_gotos[-1].append(Goto(-1))
+    def visit_break_stmt(self, node: BreakStmt) -> Register:
+        self.break_gotos[-1].append(Goto(INVALID_LABEL))
         self.add(self.break_gotos[-1][-1])
-        return -1
+        return INVALID_REGISTER
 
-    def visit_continue_stmt(self, node: ContinueStmt) -> int:
-        self.continue_gotos[-1].append(Goto(-1))
+    def visit_continue_stmt(self, node: ContinueStmt) -> Register:
+        self.continue_gotos[-1].append(Goto(INVALID_LABEL))
         self.add(self.continue_gotos[-1][-1])
-        return -1
+        return INVALID_REGISTER
 
     int_binary_ops = {
         '+': PrimitiveOp.INT_ADD,
@@ -497,7 +503,7 @@ class IRBuilder(NodeVisitor[int]):
         '>>': PrimitiveOp.INT_SHR,
     }
 
-    def visit_unary_expr(self, expr: UnaryExpr) -> int:
+    def visit_unary_expr(self, expr: UnaryExpr) -> Register:
         if expr.op != '-':
             assert False, 'Unsupported unary operation'
 
@@ -512,7 +518,7 @@ class IRBuilder(NodeVisitor[int]):
 
         return target
 
-    def visit_op_expr(self, expr: OpExpr) -> int:
+    def visit_op_expr(self, expr: OpExpr) -> Register:
         ltype = self.node_type(expr.left)
         rtype = self.node_type(expr.right)
         lreg = self.accept(expr.left)
@@ -520,6 +526,8 @@ class IRBuilder(NodeVisitor[int]):
         return self.binary_op(ltype, lreg, rtype, rreg, expr.op)
 
     def binary_op(self, ltype: RTType, lreg: Register, rtype: RTType, rreg: Register, expr_op: str, target: Optional[Register] = None) -> Register:
+        print(ltype.name)
+        print(rtype.name)
         if ltype.name == 'int' and rtype.name == 'int':
             # Primitive int operation
             if target is None:
@@ -539,7 +547,7 @@ class IRBuilder(NodeVisitor[int]):
         self.add(PrimitiveOp(target, op, lreg, rreg))
         return target
 
-    def visit_index_expr(self, expr: IndexExpr) -> int:
+    def visit_index_expr(self, expr: IndexExpr) -> Register:
         base_rttype = self.node_type(expr.base)
 
         if base_rttype.name == 'list' or base_rttype.name == 'sequence_tuple':
@@ -572,7 +580,7 @@ class IRBuilder(NodeVisitor[int]):
 
         assert False, 'Unsupported indexing operation'
 
-    def visit_int_expr(self, expr: IntExpr) -> int:
+    def visit_int_expr(self, expr: IntExpr) -> Register:
         reg = self.alloc_target(RTType('int'))
         self.add(LoadInt(reg, expr.value))
         return reg
@@ -585,7 +593,7 @@ class IRBuilder(NodeVisitor[int]):
 
         return True
 
-    def visit_name_expr(self, expr: NameExpr) -> int:
+    def visit_name_expr(self, expr: NameExpr) -> Register:
         if expr.node.fullname() == 'builtins.None':
             target = self.alloc_target(RTType('None'))
             self.add(PrimitiveOp(target, PrimitiveOp.NONE))
@@ -616,7 +624,7 @@ class IRBuilder(NodeVisitor[int]):
     def is_module_member_expr(self, expr: MemberExpr):
         return isinstance(expr.expr, RefExpr) and expr.expr.kind == MODULE_REF
         
-    def visit_member_expr(self, expr: MemberExpr) -> int:
+    def visit_member_expr(self, expr: MemberExpr) -> Register:
         if self.is_module_member_expr(expr):
             return self.load_static_module_attr(expr)
 
@@ -629,7 +637,7 @@ class IRBuilder(NodeVisitor[int]):
             self.add(GetAttr(target, obj_reg, expr.name, obj_type))
             return target
 
-    def load_static_module_attr(self, expr: RefExpr) -> int:
+    def load_static_module_attr(self, expr: RefExpr) -> Register:
         target = self.alloc_target(self.node_type(expr))
         module = '.'.join(expr.node.fullname().split('.')[:-1])
         right = expr.node.fullname().split('.')[-1]
@@ -639,7 +647,7 @@ class IRBuilder(NodeVisitor[int]):
 
         return target
         
-    def py_call(self, function: Register, args: List[Expression], target_type: RTType) -> int:
+    def py_call(self, function: Register, args: List[Expression], target_type: RTType) -> Register:
         target_box = self.alloc_temp(RTType('object'))
 
         arg_boxes = [] # type: List[Register]
@@ -650,7 +658,7 @@ class IRBuilder(NodeVisitor[int]):
         self.add(PyCall(target_box, function, arg_boxes))
         return self.unbox(target_box, target_type)
 
-    def visit_call_expr(self, expr: CallExpr) -> int:
+    def visit_call_expr(self, expr: CallExpr) -> Register:
         if isinstance(expr.callee, MemberExpr):
             is_module_call = self.is_module_member_expr(expr.callee)
             if expr.callee.expr in self.types and not is_module_call:
@@ -696,20 +704,20 @@ class IRBuilder(NodeVisitor[int]):
             self.add(Call(target, fn, args))
         return target
 
-    def visit_conditional_expr(self, expr: ConditionalExpr) -> int:
+    def visit_conditional_expr(self, expr: ConditionalExpr) -> Register:
         branches = self.process_conditional(expr.cond)
         target = self.alloc_target(self.node_type(expr))
 
         if_body = self.new_block()
         self.set_branches(branches, True, if_body)
         self.accept(expr.if_expr, target=target)
-        if_goto_next = Goto(-1)
+        if_goto_next = Goto(INVALID_LABEL)
         self.add(if_goto_next)
 
         else_body = self.new_block()
         self.set_branches(branches, False, else_body)
         self.accept(expr.else_expr, target=target)
-        else_goto_next = Goto(-1)
+        else_goto_next = Goto(INVALID_LABEL)
         self.add(else_goto_next)
 
         next = self.new_block()
@@ -718,19 +726,19 @@ class IRBuilder(NodeVisitor[int]):
 
         return target
 
-    def translate_special_method_call(self, callee: MemberExpr, expr: CallExpr) -> int:
+    def translate_special_method_call(self, callee: MemberExpr, expr: CallExpr) -> Register:
         base_type = self.node_type(callee.expr)
         result_type = self.node_type(expr)
         base = self.accept(callee.expr)
         if callee.name == 'append' and base_type.name == 'list':
-            target = -1  # TODO: Do we sometimes need to allocate a register?
+            target = INVALID_REGISTER  # TODO: Do we sometimes need to allocate a register?
             arg = self.box_expr(expr.args[0])
             self.add(PrimitiveOp(target, PrimitiveOp.LIST_APPEND, base, arg))
         else:
             assert False, 'Unsupported method call: %s.%s' % (base_type.name, callee.name)
         return target
 
-    def visit_list_expr(self, expr: ListExpr) -> int:
+    def visit_list_expr(self, expr: ListExpr) -> Register:
         list_type = self.types[expr]
         assert isinstance(list_type, Instance)
         item_type = self.type_to_rttype(list_type.args[0])
@@ -743,7 +751,7 @@ class IRBuilder(NodeVisitor[int]):
         self.add(PrimitiveOp(target, PrimitiveOp.NEW_LIST, *items))
         return target
 
-    def visit_tuple_expr(self, expr: TupleExpr) -> int:
+    def visit_tuple_expr(self, expr: TupleExpr) -> Register:
         tuple_type = self.types[expr]
         assert isinstance(tuple_type, TupleType)
 
@@ -773,7 +781,7 @@ class IRBuilder(NodeVisitor[int]):
                 left = self.accept(e.operands[0])
                 right = self.accept(e.operands[1])
                 opcode = self.int_relative_ops[op]
-                branch = Branch(left, right, -1, -1, opcode)
+                branch = Branch(left, right, INVALID_LABEL, INVALID_LABEL, opcode)
                 self.add(branch)
                 return [branch]
             assert False, "unsupported comparison epxression"
@@ -800,7 +808,7 @@ class IRBuilder(NodeVisitor[int]):
         # Catch-all for arbitrary expressions.
         else:
             reg = self.accept(e)
-            branch = Branch(reg, -1, -1, -1, Branch.BOOL_EXPR)
+            branch = Branch(reg, INVALID_REGISTER, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
             self.add(branch)
             return [branch]
 
@@ -827,12 +835,12 @@ class IRBuilder(NodeVisitor[int]):
         self.new_block()
 
     def new_block(self) -> BasicBlock:
-        new = BasicBlock(len(self.blocks[-1]))
+        new = BasicBlock(Label(len(self.blocks[-1])))
         self.blocks[-1].append(new)
         return new
 
     def goto_new_block(self) -> BasicBlock:
-        goto = Goto(-1)
+        goto = Goto(INVALID_LABEL)
         self.add(goto)
         block = self.new_block()
         goto.label = block.label
@@ -847,19 +855,19 @@ class IRBuilder(NodeVisitor[int]):
     def add(self, op: Op) -> None:
         self.blocks[-1][-1].ops.append(op)
 
-    def accept(self, node: Node, target: Register = -1) -> Register:
+    def accept(self, node: Node, target: Register = INVALID_REGISTER) -> Register:
         self.targets.append(target)
         actual = node.accept(self)
         self.targets.pop()
         return actual
 
-    def alloc_target(self, type: RTType) -> int:
+    def alloc_target(self, type: RTType) -> Register:
         if self.targets[-1] < 0:
             return self.environment.add_temp(type)
         else:
             return self.targets[-1]
 
-    def alloc_temp(self, type: RTType) -> int:
+    def alloc_temp(self, type: RTType) -> Register:
         return self.environment.add_temp(type)
 
     def type_to_rttype(self, typ: Type) -> RTType:

@@ -15,7 +15,7 @@ from mypy import experiments
 
 from mypyc import analysis
 from mypyc import genops
-from mypyc.ops import format_func
+from mypyc.ops import format_func, Register
 from mypyc.test.config import test_data_prefix
 from mypyc.test.testutil import ICODE_GEN_BUILTINS, use_custom_builtins
 
@@ -68,29 +68,29 @@ class TestAnalysis(DataSuite):
                     actual = actual[actual.index('L0:'):]
                     cfg = analysis.get_cfg(fn.blocks)
 
-                    args = set(range(len(fn.args)))
+                    args = set([Register(i) for i in range(len(fn.args))])
                     name = testcase.name
                     if name.endswith('_MaybeDefined'):
                         # Forward, maybe
-                        before, after = analysis.analyze_maybe_defined_regs(fn.blocks, cfg, args)
+                        analysis_result = analysis.analyze_maybe_defined_regs(fn.blocks, cfg, args)
                     elif name.endswith('_Liveness'):
                         # Backward, maybe
-                        before, after = analysis.analyze_live_regs(fn.blocks, cfg)
+                        analysis_result = analysis.analyze_live_regs(fn.blocks, cfg)
                     elif name.endswith('_MustDefined'):
                         # Forward, must
-                        before, after = analysis.analyze_must_defined_regs(
+                        analysis_result = analysis.analyze_must_defined_regs(
                             fn.blocks, cfg, args,
                             num_regs=fn.env.num_regs())
                     elif name.endswith('_BorrowedArgument'):
                         # Forward, must
-                        before, after = analysis.analyze_borrowed_arguments(fn.blocks, cfg, args)
+                        analysis_result = analysis.analyze_borrowed_arguments(fn.blocks, cfg, args)
                     else:
                         assert False, 'No recognized _AnalysisName suffix in test case'
 
                     actual.append('')
-                    for key in sorted(before.keys()):
-                        pre = ', '.join(fn.env.names[reg] for reg in before[key])
-                        post = ', '.join(fn.env.names[reg] for reg in after[key])
+                    for key in sorted(analysis_result.before.keys()):
+                        pre = ', '.join(fn.env.names[reg] for reg in analysis_result.before[key])
+                        post = ', '.join(fn.env.names[reg] for reg in analysis_result.after[key])
                         actual.append('%-8s %-23s %s' % (key, '{%s}' % pre, '{%s}' % post))
             assert_string_arrays_equal_wildcards(
                 expected_output, actual,

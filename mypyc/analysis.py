@@ -2,12 +2,12 @@
 
 from abc import abstractmethod
 
-from typing import Dict, Tuple, List, Set, TypeVar, Iterator
+from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic
 
 from mypyc.ops import (
     BasicBlock, OpVisitor, PrimitiveOp, Assign, LoadInt, RegisterOp, Goto,
     Branch, Return, Call, Environment, Box, Unbox, Cast, Op, Unreachable,
-    TupleGet, GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr
+    TupleGet, GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Label, Register
 )
 
 
@@ -18,8 +18,8 @@ class CFG:
     non-empty set of exits.
     """
 
-    def __init__(self, succ: Dict[int, List[int]], pred: Dict[int, List[int]],
-                 exits: Set[int]) -> None:
+    def __init__(self, succ: Dict[Label, List[Label]], pred: Dict[Label, List[Label]],
+                 exits: Set[Label]) -> None:
         assert exits
         self.succ = succ
         self.pred = pred
@@ -34,7 +34,7 @@ def get_cfg(blocks: List[BasicBlock]) -> CFG:
          basic block index -> (successors blocks, predecesssor blocks)
     """
     succ_map = {}
-    pred_map = {}  # type: Dict[int, List[int]]
+    pred_map = {}  # type: Dict[Label, List[Label]]
     exits = set()
     for block in blocks:
         label = block.label
@@ -57,8 +57,14 @@ def get_cfg(blocks: List[BasicBlock]) -> CFG:
 
 T = TypeVar('T')
 
+AnalysisDict = Dict[Tuple[Label, int], Set[T]]
 
-GenAndKill = Tuple[Set[int], Set[int]]
+class AnalysisResult(Generic[T]):
+    def __init__(self, before: AnalysisDict[T], after: AnalysisDict[T]) -> None:
+        self.before = before
+        self.after = after
+
+GenAndKill = Tuple[Set[Register], Set[Register]]
 
 
 class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
@@ -128,8 +134,7 @@ class MaybeDefinedVisitor(BaseAnalysisVisitor):
 
 def analyze_maybe_defined_regs(blocks: List[BasicBlock],
                                cfg: CFG,
-                               initial_defined: Set[int]) -> Tuple[Dict[Tuple[int, int], Set[int]],
-                                                                   Dict[Tuple[int, int], Set[int]]]:
+                               initial_defined: Set[Register]) -> AnalysisResult[Register]:
     """Calculate potentially defined registers at each CFG location.
 
     A register is defined if it has a value along some path from the initial location.
@@ -164,9 +169,8 @@ class MustDefinedVisitor(BaseAnalysisVisitor):
 def analyze_must_defined_regs(
         blocks: List[BasicBlock],
         cfg: CFG,
-        initial_defined: Set[int],
-        num_regs: int) -> Tuple[Dict[Tuple[int, int], Set[int]],
-                                Dict[Tuple[int, int], Set[int]]]:
+        initial_defined: Set[Register],
+        num_regs: int) -> AnalysisResult[Register]:
     """Calculate always defined registers at each CFG location.
 
     A register is defined if it has a value along all paths from the initial location.
@@ -177,11 +181,11 @@ def analyze_must_defined_regs(
                         initial=initial_defined,
                         backward=False,
                         kind=MUST_ANALYSIS,
-                        universe=set(range(num_regs)))
+                        universe=set([Register(r) for r in range(num_regs)]))
 
 
 class BorrowedArgumentsVisitor(BaseAnalysisVisitor):
-    def __init__(self, args: Set[int]) -> None:
+    def __init__(self, args: Set[Register]) -> None:
         self.args = args
 
     def visit_branch(self, op: Branch) -> GenAndKill:
@@ -202,8 +206,7 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor):
 def analyze_borrowed_arguments(
         blocks: List[BasicBlock],
         cfg: CFG,
-        args: Set[int]) -> Tuple[Dict[Tuple[int, int], Set[int]],
-                                 Dict[Tuple[int, int], Set[int]]]:
+        args: Set[Register]) -> AnalysisResult[Register]:
     """Calculate arguments that can use references borrowed from the caller.
 
     When assigning to an argument, it no longer is borrowed.
@@ -234,14 +237,13 @@ class UndefinedVisitor(BaseAnalysisVisitor):
 def analyze_undefined_regs(blocks: List[BasicBlock],
                            cfg: CFG,
                            env: Environment,
-                           initial_defined: Set[int]) -> Tuple[Dict[Tuple[int, int], Set[int]],
-                                                               Dict[Tuple[int, int], Set[int]]]:
+                           initial_defined: Set[Register]) -> AnalysisResult[Register]:
     """Calculate potentially undefined registers at each CFG location.
 
     A register is undefined if there is some path from initial block
     where it has an undefined value.
     """
-    initial_undefined = {reg for reg in range(len(env.names)) if reg not in initial_defined}
+    initial_undefined = {Register(reg) for reg in range(len(env.names)) if Register(reg) not in initial_defined}
     return run_analysis(blocks=blocks,
                         cfg=cfg,
                         gen_and_kill=UndefinedVisitor(),
@@ -269,8 +271,7 @@ class LivenessVisitor(BaseAnalysisVisitor):
 
 
 def analyze_live_regs(blocks: List[BasicBlock],
-                      cfg: CFG) -> Tuple[Dict[Tuple[int, int], Set[int]],
-                                         Dict[Tuple[int, int], Set[int]]]:
+                      cfg: CFG) -> AnalysisResult[Register]:
     """Calculate live registers at each CFG location.
 
     A register is live at a location if it can be read along some CFG path starting
@@ -289,14 +290,16 @@ MUST_ANALYSIS = 0
 MAYBE_ANALYSIS = 1
 
 
+# TODO the return type of this function is too complicated. Abtract it into its
+# own class.
+
 def run_analysis(blocks: List[BasicBlock],
                  cfg: CFG,
                  gen_and_kill: OpVisitor[Tuple[Set[T], Set[T]]],
                  initial: Set[T],
                  kind: int,
                  backward: bool,
-                 universe: Set[T] = None) -> Tuple[Dict[Tuple[int, int], Set[T]],
-                                                   Dict[Tuple[int, int], Set[T]]]:
+                 universe: Set[T] = None) -> AnalysisResult[T]:
     """Run a general set-based data flow analysis.
 
     Args:
@@ -339,8 +342,8 @@ def run_analysis(blocks: List[BasicBlock],
     if not backward:
         worklist = worklist[::-1]  # Reverse for a small performance improvement
     workset = set(worklist)
-    before = {}  # type: Dict[int, Set[T]]
-    after = {}  # type: Dict[int, Set[T]]
+    before = {}  # type: Dict[Label, Set[T]]
+    after = {}  # type: Dict[Label, Set[T]]
     for block in blocks:
         if kind == MAYBE_ANALYSIS:
             before[block.label] = set()
@@ -381,8 +384,8 @@ def run_analysis(blocks: List[BasicBlock],
         after[label] = new_after
 
     # Run algorithm for each basic block to generate opcode-level sets.
-    op_before = {}
-    op_after = {}
+    op_before = {} # type: Dict[Tuple[Label, int], Set[T]]
+    op_after = {} # type: Dict[Tuple[Label, int], Set[T]]
     for block in blocks:
         label = block.label
         cur = before[label]
@@ -396,4 +399,5 @@ def run_analysis(blocks: List[BasicBlock],
             op_after[label, idx] = cur
     if backward:
         op_after, op_before = op_before, op_after
-    return op_before, op_after
+
+    return AnalysisResult(op_before, op_after)
