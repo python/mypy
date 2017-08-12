@@ -42,7 +42,7 @@ Then install the dependencies:
 
 You need to have the `mypy` subdirectory in your `PYTHONPATH`:
 
-    $ export PYTHONPATH=`pwd`/mypy
+    $ export PYTHONPATH=`pwd`/external/mypy
 
 Now you can run the tests:
 

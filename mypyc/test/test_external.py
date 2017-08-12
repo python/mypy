@@ -22,7 +22,7 @@ class TestExternal(unittest.TestCase):
             env = os.environ.copy()
         subprocess.check_call(['make', 'gtest_main.a'],
                               env=env,
-                              cwd=os.path.join(base_dir, 'googletest', 'make'))
+                              cwd=os.path.join(base_dir, 'external', 'googletest', 'make'))
         # Build and run C unit tests.
         if sys.platform == 'darwin':
             env = {}
@@ -38,14 +38,14 @@ class TestExternal(unittest.TestCase):
 
     def test_self_type_check(self):
         """Use the bundled mypy (in git submodule) to type check mypyc."""
-        mypy_dir = os.path.join(base_dir, 'mypy')
+        mypy_dir = os.path.join(base_dir, 'external', 'mypy')
         if not os.path.exists(os.path.join(mypy_dir, 'typeshed', 'stdlib')):
             raise AssertionError('Submodule mypy/typeshed not ready')
         env = {'PYTHONPATH': mypy_dir,
                'MYPYPATH': '%s:%s' % (mypy_dir, base_dir)}
         status = subprocess.call(
                 [sys.executable,
-                 os.path.join(base_dir, 'mypy', 'scripts', 'mypy'),
+                 os.path.join(mypy_dir, 'scripts', 'mypy'),
                  '-i', '-p', 'mypyc'],
                 cwd=mypy_dir,
                 env=env)
