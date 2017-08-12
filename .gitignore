@@ -5,3 +5,7 @@ __pycache__
 test_capi
 *.o
 *.a
+
+/env
+/.mypy_cache
+/.cache
