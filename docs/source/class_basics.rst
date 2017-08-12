@@ -170,21 +170,7 @@ to produce clear and concise error messages, and since Python provides native
 ``isinstance()`` checks based on class hierarchy. The *structural* subtyping
 however has its own advantages. In this system class ``D`` is a subtype
 of class ``C`` if the former has all attributes of the latter with
-compatible types. For example:
-
-.. code-block:: python
-
-   from typing import Sized
-
-   def my_len(obj: Sized) -> int:
-       ...
-
-   class MyCollection:
-       ...
-       def __len__(self) -> int:
-           return 42
-
-   my_len(MyCollection())  # OK, since 'MyCollection' is a subtype of 'Sized'
+compatible types.
 
 This type system is a static equivalent of duck typing, well known by Python
 programmers. Mypy provides an opt-in support for structural subtyping via
@@ -221,10 +207,11 @@ To define a protocol class, one must inherit the special
 .. note::
 
    The ``Protocol`` base class is currently provided in ``typing_extensions``
-   package. Stub files are however allowed to use
-   ``from typing import Protocol``. When structural subtyping is mature and
+   package. When structural subtyping is mature and
    `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ is accepted,
-   ``Protocol`` will be included in the ``typing`` module.
+   ``Protocol`` will be included in the ``typing`` module. As well, several
+   types such as ``typing.Sized``, ``typing.Iterable`` etc. will be made
+   protocols.
 
 Defining subprotocols
 *********************
@@ -236,16 +223,20 @@ and merged using multiple inheritance. For example:
 
    # continuing from previous example
 
-   class SizedLabeledResource(SupportsClose, Sized, Protocol):
+   class SupportsRead(Protocol):
+       def read(self, amount: int) -> bytes: ...
+
+   class TaggedReadableResource(SupportsClose, SupportsRead, Protocol):
        label: str
 
    class AdvancedResource(Resource):
        def __init__(self, label: str) -> None:
            self.label = label
-       def __len__(self) -> int:
+       def read(self, amount: int) -> bytes:
+           # some implementation
            ...
 
-   resource = None  # type: SizedLabeledResource
+   resource = None  # type: TaggedReadableResource
 
    # some code
 
@@ -258,12 +249,12 @@ be explicitly present:
 
 .. code-block:: python
 
-   class NewProtocol(Sized):  # This is NOT a protocol
+   class NewProtocol(SupportsClose):  # This is NOT a protocol
        new_attr: int
 
    class Concrete:
       new_attr = None  # type: int
-      def __len__(self) -> int:
+      def close(self) -> None:
           ...
    # Below is an error, since nominal subtyping is used by default
    x = Concrete()  # type: NewProtocol  # Error!
@@ -297,33 +288,10 @@ declaring abstract recursive collections such as trees and linked lists:
    class SimpleTree:
        def __init__(self, value: int) -> None:
            self.value = value
-           self.left = self.right = None
+           self.left: Optional['SimpleTree'] = None
+           self.right: Optional['SimpleTree'] = None
 
    root = SimpleTree(0)  # type: TreeLike  # OK
-
-Predefined protocols in ``typing`` module
-*****************************************
-
-Most ABCs in ``typing`` module are protocol classes describing
-common Python protocols such as ``Iterator``, ``Awaitable``, ``Mapping``, etc.
-(see `Python Docs <https://docs.python.org/3/library/typing.html>`_
-for an exhaustive list)
-For example, the following class will be considered a subtype of
-``typing.Sized`` and ``typing.Iterable[int]``:
-
-.. code-block:: python
-
-   from typing import Iterator, Iterable
-
-   class Bucket:
-       ...
-       def __len__(self) -> int:
-           return 22
-       def __iter__(self) -> Iterator[int]:
-           yield 22
-
-   def collect(items: Iterable[int]) -> int: ...
-   result: int = collect(Bucket())  # Passes type check
 
 Using ``isinstance()`` with protocols
 *************************************
