@@ -5,7 +5,7 @@
 OS := $(shell uname)
 PYTHONCONFIG ?= python3-config
 
-CFLAGS += -I ../googletest -I ../googletest/include -std=c++11
+CFLAGS += -I ../external/googletest -I ../external/googletest/include -std=c++11
 
 ifeq ($(OS),Darwin)
     CFLAGS += -I /Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m
@@ -26,7 +26,7 @@ test_capi.o: test_capi.cc CPy.h
 	c++ -c -o test_capi.o $(CFLAGS) test_capi.cc
 
 test_capi: test_capi.o
-	c++ -o test_capi test_capi.o ../googletest/make/gtest-all.o $(LDFLAGS)
+	c++ -o test_capi test_capi.o ../external/googletest/make/gtest-all.o $(LDFLAGS)
 
 test: test_capi
 	./test_capi --gtest_print_time=0
