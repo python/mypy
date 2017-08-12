@@ -34,11 +34,16 @@ Quick Start for Contributors
 First clone the mypyc git repository *and git submodules*:
 
     $ git clone --recurse-submodules https://github.com/JukkaL/mypyc.git
+    $ cd mypyc
+
+Optional (recommended) create a virtualenv:
+
+    $ virtualenv env -p python 3
+    $ source env/bin/activate
 
 Then install the dependencies:
 
-    $ cd mypyc
-    $ python3 -m pip install -r mypy/test-requirements.txt
+    $ python3 -m pip install -r external/mypy/test-requirements.txt
 
 You need to have the `mypy` subdirectory in your `PYTHONPATH`:
 

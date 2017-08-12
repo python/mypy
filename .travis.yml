@@ -8,10 +8,10 @@ python:
 
 install:
   - pip install -U pip setuptools wheel
-  - pip install -r mypy/test-requirements.txt
+  - pip install -r external/mypy/test-requirements.txt
 
 script:
-  - export PYTHONPATH=`pwd`/mypy
+  - export PYTHONPATH=`pwd`/external/mypy
   - export PYTHONVERSION=`python --version | awk '{ print $2 }'`
   - export PYTHONCONFIG="/opt/python/$PYTHONVERSION/bin/python-config"
   - export LD_LIBRARY_PATH="/opt/python/$PYTHONVERSION/lib"
