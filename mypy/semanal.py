@@ -746,7 +746,10 @@ class SemanticAnalyzer(NodeVisitor[None]):
         decorator.accept(self)
         if (isinstance(decorator, RefExpr) and
                 decorator.fullname in ('typing.runtime', 'typing_extensions.runtime')):
-            defn.info.runtime_protocol = True
+            if defn.info.is_protocol:
+                defn.info.runtime_protocol = True
+            else:
+                self.fail('@runtime should be only used with protocol classes', defn)
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.

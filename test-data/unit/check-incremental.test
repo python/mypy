@@ -1502,7 +1502,9 @@ class MyClass:
 [stale]
 
 [case testIncrementalWorksWithBasicProtocols]
-from a import P
+import a
+[file a.py]
+from b import P
 
 x: int
 y: P[int]
@@ -1511,9 +1513,20 @@ x = y.meth()
 class C:
     def meth(self) -> int:
         pass
-
 y = C()
-[file a.py]
+
+[file a.py.2]
+from b import P
+
+x: str
+y: P[str]
+x = y.meth()
+
+class C:
+    def meth(self) -> str:
+        pass
+y = C()
+[file b.py]
 from typing import Protocol, TypeVar
 
 T = TypeVar('T', covariant=True)
@@ -1531,6 +1544,7 @@ class C(B):
 fun(C())
 
 [file b.py]
+from typing import Protocol
 class B:
     def x(self) -> float: pass
 def fun(arg: B) -> None:
@@ -1570,6 +1584,7 @@ def fun(arg: B) -> None:
     arg.x()
 
 [file b.py.2]
+from typing import Protocol
 class B:
     def x(self) -> float: pass
 def fun(arg: B) -> None:

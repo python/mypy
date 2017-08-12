@@ -343,6 +343,9 @@ class D:
 C = NewType('C', P)  # E: NewType cannot be used with protocol classes
 
 x: C = C(D())  # We still accept this, treating 'C' as non-protocol subclass.
+reveal_type(x.attr)  # E: Revealed type is 'builtins.int'
+x.bad_attr  # E: "C" has no attribute "bad_attr"
+C(1)  # E: Argument 1 to "C" has incompatible type "int"; expected "P"
 [out]
 
 [case testNewTypeAny]
