@@ -279,7 +279,8 @@ class Branch(Op):
     INT_GT = 14
     INT_GE = 15
 
-    # Unlike the above, a unary operation so it only uses the "left" register.
+    # Unlike the above, a unary operation so it only uses the "left" register
+    # ("right" should be INVALID_REGISTER).
     BOOL_EXPR = 16
 
     op_names = {
@@ -478,6 +479,7 @@ class PyCall(RegisterOp):
 
 class PyGetAttr(RegisterOp):
     """dest = left.right :: py"""
+
     def __init__(self, dest: Register, left: Register, right: str) -> None:
         self.dest = dest
         self.left = left
@@ -832,8 +834,7 @@ class ClassIR:
 
 
 class ModuleIR:
-    """Intermediate representation of a module.
-    """
+    """Intermediate representation of a module."""
 
     def __init__(self, imports: List[str], functions: List[FuncIR], classes: List[ClassIR]) -> None:
         self.imports = imports[:]
