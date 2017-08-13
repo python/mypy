@@ -162,3 +162,17 @@ from native import f
 print(f())
 [out]
 6
+
+[case testListOfUserDefinedClass2]
+class C:
+    x: int
+
+def f() -> int:
+    a = [C()]
+    a[0].x = 3
+    return a[0].x + 2
+[file driver.py]
+from native import f
+print(f())
+[out]
+5

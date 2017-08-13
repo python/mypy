@@ -699,11 +699,12 @@ class IRBuilder(NodeVisitor[Register]):
 
             self.add(PrimitiveOp(target, PrimitiveOp.LIST_TO_HOMOGENOUS_TUPLE, arg))
         else:
+            target_type = self.node_type(expr)
             if not(self.is_native_name_expr(expr.callee)):
                 function = self.accept(expr.callee)
-                return self.py_call(function, expr.args, self.node_type(expr))
+                return self.py_call(function, expr.args, target_type)
 
-            target = self.alloc_target(RTType('int'))
+            target = self.alloc_target(target_type)
             args = [self.accept(arg) for arg in expr.args]
             self.add(Call(target, fn, args))
         return target

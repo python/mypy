@@ -523,6 +523,6 @@ L0:
     r0 = C()
     c.x = r0
     dec_ref c
-    dec_ref r0 :: int
+    dec_ref r0
     r1 = None
     return r1
