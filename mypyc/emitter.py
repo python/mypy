@@ -341,12 +341,15 @@ class CodeGenerator:
         vtable_name = '{}_vtable'.format(name)
 
         result = []  # type: List[str]
+        # Use dummy empty __init__ for now.
+        init = FuncIR(cl.name, [], RTType(cl.name), [], Environment())
+        result.append(native_function_header(init) + ';')
         result.extend(self.generate_object_struct(cl))
+        result.append('')
+        result.extend(self.generate_new_for_class(cl, new_name, vtable_name))
         result.append('')
         result.extend(self.generate_native_getters_and_setters(cl))
         result.extend(self.generate_vtable(cl, vtable_name))
-        result.append('')
-        result.extend(self.generate_new_for_class(cl, new_name, vtable_name))
         result.append('')
         result.extend(self.generate_getseter_declarations(cl))
         result.extend(self.generate_getseters_table(cl, getseters_name))
@@ -398,6 +401,8 @@ class CodeGenerator:
                         fullname=fullname,
                         new_name=new_name,
                         getseters_name=getseters_name))
+        result.append('')
+        result.extend(self.generate_constructor_for_class(cl, new_name, vtable_name))
         result.extend(self.generate_getseters(cl))
         return result
 
@@ -449,19 +454,33 @@ class CodeGenerator:
         result.append('};')
         return result
 
+    def generate_constructor_for_class(self, cl: ClassIR, func_name: str,
+                                       vtable_name: str) -> List[str]:
+        """Generate a native function that constructs an instance of a class."""
+        result = []
+        result.append('static PyObject *')
+        result.append('CPyDef_{}(void)'.format(cl.name))
+        result.append('{')
+        result.append('    {} *self;'.format(cl.struct_name))
+        result.append('    self = ({} *){}.tp_alloc(&{}, 0);'.format(cl.struct_name,
+                                                                     cl.type_struct,
+                                                                     cl.type_struct))
+        result.append('    if (self == NULL)')
+        result.append('        abort(); // TODO')
+        result.append('    self->vtable = {};'.format(vtable_name))
+        for attr, rtype in cl.attributes:
+            result.append('    self->{} = {};'.format(attr, rtype.c_undefined_value))
+        result.append('    return (PyObject *)self;')
+        result.append('}')
+        return result
+
     def generate_new_for_class(self, cl: ClassIR, func_name: str, vtable_name: str) -> List[str]:
         result = []
         result.append('static PyObject *')
         result.append('{}(PyTypeObject *type, PyObject *args, PyObject *kwds)'.format(func_name))
         result.append('{')
-        result.append('    {} *self;'.format(cl.struct_name))
-        result.append('    self = ({} *)type->tp_alloc(type, 0);'.format(cl.struct_name))
-        result.append('    if (self == NULL)')
-        result.append('        return NULL;')
-        result.append('    self->vtable = {};'.format(vtable_name))
-        for attr, rtype in cl.attributes:
-            result.append('    self->{} = {};'.format(attr, rtype.c_undefined_value))
-        result.append('    return (PyObject *)self;')
+        # TODO: Check and unbox arguments
+        result.append('    return CPyDef_{}();'.format(cl.name))
         result.append('}')
         return result
 

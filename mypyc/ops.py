@@ -427,7 +427,10 @@ class DecRef(RegisterOp):
 
 
 class Call(RegisterOp):
-    """Native call f(arg, ...)"""
+    """Native call f(arg, ...)
+
+    The call target can be a module-level function or a class.
+    """
 
     def __init__(self, dest: Optional[Register], fn: str, args: List[Register]) -> None:
         self.dest = dest
@@ -831,6 +834,10 @@ class ClassIR:
     @property
     def struct_name(self) -> str:
         return '{}Object'.format(self.name)
+
+    @property
+    def type_struct(self) -> str:
+        return '{}Type'.format(self.name)
 
 
 class ModuleIR:

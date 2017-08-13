@@ -130,3 +130,19 @@ a, b, c = getattrs(c1)
 assert a is aa
 assert b is True
 assert c is c2
+
+[case testConstructClassWithDefaultConstructor]
+class C:
+    a: int
+    b: int
+
+def f() -> C:
+    c = C()
+    c.a = 13
+    return c
+[file driver.py]
+from native import f, C
+c = f()
+assert c.a == 13
+assert type(c) == C
+assert not hasattr(c, 'b')
