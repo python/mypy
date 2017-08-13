@@ -510,3 +510,19 @@ L0:
     r1 = r0[0]
     dec_ref r0
     return r1
+
+[case testUserClassRefCount]
+class C:
+    x: 'C'
+def f() -> None:
+    c = C()
+    c.x = C()
+[out]
+L0:
+    c = C()
+    r0 = C()
+    c.x = r0
+    dec_ref c
+    dec_ref r0 :: int
+    r1 = None
+    return r1
