@@ -715,7 +715,9 @@ class TupleGet(RegisterOp):
 class Cast(RegisterOp):
     """dest = cast(type, src)
 
-    Perform a runtime type check (no representatino or value conversion).
+    Perform a runtime type check (no representation or value conversion).
+
+    DO NOT increment reference counts."
     """
     # TODO: Error checking
 

@@ -27,10 +27,8 @@ from mypyc.analysis import (
 )
 from mypyc.ops import (
     FuncIR, BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
-    Return, Op, Register, Label
+    Return, Op, Register, Label, Cast
 )
-
-
 
 
 def insert_ref_count_opcodes(ir: FuncIR) -> None:
@@ -62,7 +60,9 @@ def transform_block(block: BasicBlock,
     ops = []  # type: List[Op]
     for i, op in enumerate(old_ops):
         key = (block.label, i)
-        if isinstance(op, Assign):
+        if isinstance(op, (Assign, Cast)):
+            # These operations just copy a reference and don't touch reference
+            # counts.
             if op.src in post_live[key] or op.src in pre_borrow[key]:
                 ops.append(IncRef(op.src, env.types[op.src]))
                 if (op.dest not in pre_borrow[key] and
@@ -72,6 +72,7 @@ def transform_block(block: BasicBlock,
             if op.dest not in post_live[key]:
                 ops.append(DecRef(op.dest, env.types[op.dest]))
         elif isinstance(op, RegisterOp):
+            # These operations construct a new reference.
             tmp_reg = None  # type: Optional[Register]
             if (op.dest not in pre_borrow[key] and
                     op.dest in pre_live[key]):
@@ -91,6 +92,7 @@ def transform_block(block: BasicBlock,
             if tmp_reg is not None:
                 ops.append(DecRef(tmp_reg, env.types[tmp_reg]))
         elif isinstance(op, Return) and op.reg in pre_borrow[key]:
+            # The return op returns a new reference.
             ops.append(IncRef(op.reg, env.types[op.reg]))
             ops.append(op)
         else:

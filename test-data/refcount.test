@@ -526,3 +526,23 @@ L0:
     dec_ref r0
     r1 = None
     return r1
+
+[case testCastRefCount]
+class C: pass
+
+def f() -> None:
+    a = [C()]
+    d = a[0]
+[out]
+L0:
+    r0 = C()
+    a = [r0]
+    dec_ref r0
+    r1 = 0
+    r2 = a[r1] :: list
+    dec_ref a
+    dec_ref r1 :: int
+    d = cast(C, r2)
+    dec_ref d
+    r3 = None
+    return r3
