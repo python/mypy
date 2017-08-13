@@ -87,11 +87,16 @@ class TestRun(DataSuite):
             with open(cpath) as f:
                 print(f.read().rstrip())
             heading('End C')
+            if proc.returncode != 0:
+                print()
+                print('*** Exit status: %d' % proc.returncode)
 
             # Verify output.
             assert_string_arrays_equal_wildcards(testcase.output, outlines,
                                                  'Invalid output ({}, line {})'.format(
                                                      testcase.file, testcase.line))
+
+            assert proc.returncode == 0
 
 
 def heading(text):
