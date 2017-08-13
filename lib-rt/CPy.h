@@ -25,6 +25,11 @@ typedef PyObject CPyModule;
 
 typedef void (*CPyVTableItem)(void);
 
+static void CPyDebug_Print(const char *msg) {
+    printf("%s\n", msg);
+    fflush(stdout);
+}
+
 // Get attribute value using vtable (may return an undefined value)
 #define CPY_GET_ATTR(obj, vtable_index, object_type, attr_type) \
     ((attr_type (*)(object_type *))((object_type *)obj)->vtable[vtable_index])((object_type *)obj)
