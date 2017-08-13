@@ -337,6 +337,7 @@ class CodeGenerator:
         name = cl.name
         fullname = '{}.{}'.format(module, name)
         new_name = '{}_new'.format(name)
+        dealloc_name = '{}_dealloc'.format(name)
         getseters_name = '{}_getseters'.format(name)
         vtable_name = '{}_vtable'.format(name)
 
@@ -347,6 +348,8 @@ class CodeGenerator:
         result.extend(self.generate_object_struct(cl))
         result.append('')
         result.extend(self.generate_new_for_class(cl, new_name, vtable_name))
+        result.append('')
+        result.extend(self.generate_dealloc_for_class(cl, dealloc_name))
         result.append('')
         result.extend(self.generate_native_getters_and_setters(cl))
         result.extend(self.generate_vtable(cl, vtable_name))
@@ -361,7 +364,7 @@ class CodeGenerator:
                 "{fullname}",              /* tp_name */
                 sizeof({struct_name}),     /* tp_basicsize */
                 0,                         /* tp_itemsize */
-                0,                         /* tp_dealloc */
+                (destructor){dealloc_name},  /* tp_dealloc */
                 0,                         /* tp_print */
                 0,                         /* tp_getattr */
                 0,                         /* tp_setattr */
@@ -399,6 +402,7 @@ class CodeGenerator:
             """).format(type_struct=type_struct_name(cl.name),
                         struct_name=cl.struct_name,
                         fullname=fullname,
+                        dealloc_name=dealloc_name,
                         new_name=new_name,
                         getseters_name=getseters_name))
         result.append('')
@@ -481,6 +485,19 @@ class CodeGenerator:
         result.append('{')
         # TODO: Check and unbox arguments
         result.append('    return CPyDef_{}();'.format(cl.name))
+        result.append('}')
+        return result
+
+    def generate_dealloc_for_class(self, cl: ClassIR, func_name: str) -> List[str]:
+        result = []
+        result.append('static void')
+        result.append('{}({} *self)'.format(func_name, cl.struct_name))
+        result.append('{')
+        for attr, rtype in cl.attributes:
+            result.append('    if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
+            result.extend(self.generate_dec_ref('self->{}'.format(attr), rtype))
+            result.append('    }')
+        result.append('    Py_TYPE(self)->tp_free((PyObject *)self);')
         result.append('}')
         return result
 
