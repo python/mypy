@@ -5,7 +5,8 @@ from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.ops import (
     OpVisitor, Environment, Label, Register, RTType, FuncIR, Goto, Branch, Return, PrimitiveOp,
     Assign, LoadInt, IncRef, DecRef, Call, Box, Unbox, TupleRTType, TupleGet, UserRTType, ClassIR,
-    GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Cast, OP_BINARY, type_struct_name, c_module_name
+    GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Cast, OP_BINARY, type_struct_name,
+    c_module_name
 )
 
 
@@ -57,7 +58,8 @@ class CodeGenerator:
         This runs in O(V + E).
         """
         result = []
-        marked_declarations = { k: MarkedDeclaration(v, False) for k, v in self.declarations.items() }
+        marked_declarations = {k: MarkedDeclaration(v, False)
+                               for k, v in self.declarations.items()}
 
         def _toposort_visit(name):
             decl = marked_declarations[name]
@@ -205,11 +207,14 @@ class CodeGenerator:
                 result.append('    return retbox;')
             elif fn.ret_type.name == 'bool':
                 # The Py_RETURN macros return the correct PyObject * with reference count handling.
-                result.append('    char retval = {}{}({});'.format(NATIVE_PREFIX, fn.name, native_args))
+                result.append('    char retval = {}{}({});'.format(NATIVE_PREFIX, fn.name,
+                                                                   native_args))
                 result += self.generate_box('retval', 'retbox', fn.ret_type, 'return NULL;')
                 result.append('    return retbox;')
             elif fn.ret_type.name == 'tuple':
-                result.append('    {}retval = {}{}({});'.format(fn.ret_type.ctype_spaced, NATIVE_PREFIX, fn.name, native_args))
+                result.append('    {}retval = {}{}({});'.format(fn.ret_type.ctype_spaced,
+                                                                NATIVE_PREFIX, fn.name,
+                                                                native_args))
                 result += self.generate_box('retval', 'retbox', fn.ret_type, 'return NULL;')
                 result.append('    return retbox;')
         else:
@@ -287,7 +292,8 @@ class CodeGenerator:
         a value of name arg_{} (unboxed if necessary). For each primitive a runtime
         check ensures the correct type.
         """
-        return self.generate_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ, '        return NULL;')
+        return self.generate_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ,
+                                   '        return NULL;')
 
     def generate_inc_ref(self, dest: str, rtype: RTType) -> List[str]:
         """Increment reference count of C expression `dest`.
@@ -783,7 +789,7 @@ class EmitterVisitor(OpVisitor):
         function = self.reg(op.function)
         args = ', '.join(self.reg(arg) for arg in op.args)
         self.emit_line('{}PyObject_CallFunctionObjArgs({}, {}, NULL);'.format(dest, function, args))
-        
+
     def visit_inc_ref(self, op: IncRef) -> None:
         dest = self.reg(op.dest)
         self.emit_inc_ref(dest, op.target_type)

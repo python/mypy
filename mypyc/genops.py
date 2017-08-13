@@ -103,9 +103,10 @@ class IRBuilder(NodeVisitor[Register]):
         self.classes = []  # type: List[ClassIR]
         self.targets = []  # type: List[Register]
 
-        # These lists operate as stack frames for loops. Each loop adds a new frame (i.e. adds a new
-        # empty list [] to the outermost list). Each break or continue is inserted within that frame
-        # as they are visited and at the end of the loop the stack is popped and any break/continue
+        # These lists operate as stack frames for loops. Each loop adds a new
+        # frame (i.e. adds a new empty list [] to the outermost list). Each
+        # break or continue is inserted within that frame as they are visited
+        # and at the end of the loop the stack is popped and any break/continue
         # gotos have their targets rewritten to the next basic block.
         self.break_gotos = []  # type: List[List[Goto]]
         self.continue_gotos = []  # type: List[List[Goto]]
@@ -249,12 +250,14 @@ class IRBuilder(NodeVisitor[Register]):
             ltype = self.environment.types[target.register]
             rtype = self.node_type(stmt.rvalue)
             rreg = self.accept(stmt.rvalue)
-            return self.binary_op(ltype, target.register, rtype, rreg, stmt.op, target=target.register)
+            return self.binary_op(ltype, target.register, rtype, rreg, stmt.op,
+                                  target=target.register)
 
         # NOTE: List index not supported yet for compound assignments.
         assert False, 'Unsupported lvalue: %r'
 
-    def get_assignment_target(self, lvalue: Lvalue, declared_type: Optional[Type] = None) -> AssignmentTarget:
+    def get_assignment_target(self, lvalue: Lvalue,
+                              declared_type: Optional[Type] = None) -> AssignmentTarget:
         if isinstance(lvalue, NameExpr):
             # Assign to local variable.
             assert lvalue.kind == LDEF
@@ -525,9 +528,8 @@ class IRBuilder(NodeVisitor[Register]):
         rreg = self.accept(expr.right)
         return self.binary_op(ltype, lreg, rtype, rreg, expr.op)
 
-    def binary_op(self, ltype: RTType, lreg: Register, rtype: RTType, rreg: Register, expr_op: str, target: Optional[Register] = None) -> Register:
-        print(ltype.name)
-        print(rtype.name)
+    def binary_op(self, ltype: RTType, lreg: Register, rtype: RTType, rreg: Register, expr_op: str,
+                  target: Optional[Register] = None) -> Register:
         if ltype.name == 'int' and rtype.name == 'int':
             # Primitive int operation
             if target is None:
@@ -575,7 +577,8 @@ class IRBuilder(NodeVisitor[Register]):
             assert isinstance(expr.index, IntExpr)
 
             target = self.alloc_target(target_type)
-            self.add(TupleGet(target, base_reg, expr.index.value, base_rttype.types[expr.index.value]))
+            self.add(TupleGet(target, base_reg, expr.index.value,
+                              base_rttype.types[expr.index.value]))
             return target
 
         assert False, 'Unsupported indexing operation'
@@ -620,10 +623,10 @@ class IRBuilder(NodeVisitor[Register]):
             target = self.targets[-1]
             self.add(Assign(target, reg))
             return target
-        
+
     def is_module_member_expr(self, expr: MemberExpr):
         return isinstance(expr.expr, RefExpr) and expr.expr.kind == MODULE_REF
-        
+
     def visit_member_expr(self, expr: MemberExpr) -> Register:
         if self.is_module_member_expr(expr):
             return self.load_static_module_attr(expr)
@@ -633,7 +636,8 @@ class IRBuilder(NodeVisitor[Register]):
             attr_type = self.node_type(expr)
             target = self.alloc_target(attr_type)
             obj_type = self.node_type(expr.expr)
-            assert isinstance(obj_type, UserRTType), 'Attribute access not supported: %s' % obj_type
+            assert isinstance(obj_type,
+                              UserRTType), 'Attribute access not supported: %s' % obj_type
             self.add(GetAttr(target, obj_reg, expr.name, obj_type))
             return target
 
@@ -646,7 +650,7 @@ class IRBuilder(NodeVisitor[Register]):
         self.add(PyGetAttr(target, left, right))
 
         return target
-        
+
     def py_call(self, function: Register, args: List[Expression], target_type: RTType) -> Register:
         target_box = self.alloc_temp(RTType('object'))
 
@@ -654,7 +658,7 @@ class IRBuilder(NodeVisitor[Register]):
         for arg_expr in args:
             arg_reg = self.accept(arg_expr)
             arg_boxes.append(self.box(arg_reg, self.node_type(arg_expr)))
-        
+
         self.add(PyCall(target_box, function, arg_boxes))
         return self.unbox(target_box, target_type)
 
@@ -670,8 +674,7 @@ class IRBuilder(NodeVisitor[Register]):
             # to fallback to a PyCall
             function = self.accept(expr.callee)
             return self.py_call(function, expr.args, self.node_type(expr))
-                
-        
+
         assert isinstance(expr.callee, NameExpr)
         fn = expr.callee.name  # TODO: fullname
         if fn == 'len' and len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
@@ -886,7 +889,8 @@ class IRBuilder(NodeVisitor[Register]):
             # Already boxed
             return src
 
-    def unbox(self, src: Register, target_type: RTType, target: Optional[Register] = None) -> Register:
+    def unbox(self, src: Register, target_type: RTType,
+              target: Optional[Register] = None) -> Register:
         if target is None:
             target = self.alloc_temp(target_type)
 

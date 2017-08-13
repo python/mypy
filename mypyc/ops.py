@@ -450,9 +450,11 @@ class Call(RegisterOp):
 # Python-interopability operations are prefixed with Py. Typically these act as a replacement
 # for native operations (without the Py prefix) which call into Python rather than compiled
 # native code. For example, this is needed to call builtins.
+
+
 class PyCall(RegisterOp):
     """Python call f(arg, ...).
-    
+
     All registers must be unboxed.
     """
     def __init__(self, dest: Optional[Register], function: Register, args: List[Register]) -> None:
@@ -489,6 +491,7 @@ class PyGetAttr(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_py_get_attr(self)
+
 
 VAR_ARG = -1
 
@@ -669,8 +672,8 @@ class SetAttr(RegisterOp):
 
 
 class LoadStatic(RegisterOp):
-    """dest = name :: static
-    """
+    """dest = name :: static"""
+
     def __init__(self, dest: Register, identifier: str) -> None:
         self.dest = dest
         self.identifier = identifier

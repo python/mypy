@@ -110,7 +110,6 @@ class ModuleCompiler:
 
         return '\n'.join(fresult)
 
-
     def generate_module_def(self) -> List[str]:
         lines = []
         lines.append('static PyMethodDef module_methods[] = {')
