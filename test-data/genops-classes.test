@@ -28,3 +28,35 @@ L0:
     a.x = r0
     r1 = None
     return r1
+
+[case testUserClassInList]
+class C:
+    x: int
+
+def f() -> int:
+    c = C()
+    c.x = 5
+    a = [c]
+    d = a[0]
+    return d.x + 1
+[out]
+def f():
+    c :: C
+    r0 :: int
+    a :: list
+    d :: C
+    r1 :: int
+    r2 :: object
+    r3, r4, r5 :: int
+L0:
+    c = C()
+    r0 = 5
+    c.x = r0
+    a = [c]
+    r1 = 0
+    r2 = a[r1] :: list
+    d = cast(C, r2)
+    r3 = d.x
+    r4 = 1
+    r5 = r3 + r4 :: int
+    return r5

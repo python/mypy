@@ -568,7 +568,8 @@ class IRBuilder(NodeVisitor[Register]):
                 op = PrimitiveOp.HOMOGENOUS_TUPLE_GET
 
             self.add(PrimitiveOp(tmp, op, base_reg, index_reg))
-            return self.unbox(tmp, target_type)
+            target = self.alloc_target(target_type)
+            return self.unbox(tmp, target_type, target)
 
         elif isinstance(base_rttype, TupleRTType):
             base_reg = self.accept(expr.base)

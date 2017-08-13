@@ -146,3 +146,19 @@ c = f()
 assert c.a == 13
 assert type(c) == C
 assert not hasattr(c, 'b')
+
+[case testListOfUserDefinedClass]
+class C:
+    x: int
+
+def f() -> int:
+    c = C()
+    c.x = 5
+    a = [c]
+    d = a[0]
+    return d.x + 1
+[file driver.py]
+from native import f
+print(f())
+[out]
+6
