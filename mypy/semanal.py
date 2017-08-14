@@ -543,12 +543,17 @@ class SemanticAnalyzer(NodeVisitor[None]):
             if defn.impl is not None:
                 assert defn.impl is defn.items[-1]
                 defn.items = defn.items[:-1]
-
-            elif (not self.is_stub_file and not non_overload_indexes and
-                    not (self.type and self.type.is_protocol)):
-                self.fail(
-                    "An overloaded function outside a stub file must have an implementation",
-                    defn)
+            elif not self.is_stub_file and not non_overload_indexes:
+                if not (self.is_class_scope() and self.type.is_protocol):
+                    self.fail(
+                        "An overloaded function outside a stub file must have an implementation",
+                        defn)
+                else:
+                    for item in defn.items:
+                        if isinstance(item, Decorator):
+                            item.func.is_abstract = True
+                        else:
+                            item.is_abstract = True
 
         if types:
             defn.type = Overloaded(types)
@@ -749,7 +754,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             if defn.info.is_protocol:
                 defn.info.runtime_protocol = True
             else:
-                self.fail('@runtime should be only used with protocol classes', defn)
+                self.fail('@runtime can only be used with protocol classes', defn)
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.

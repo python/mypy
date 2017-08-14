@@ -1017,7 +1017,7 @@ class MessageBuilder:
 
     def note_call(self, subtype: Type, call: Type, context: Context) -> None:
         self.note("'{}.__call__' has type '{}'".format(strip_quotes(self.format(subtype)),
-                                                       self.format(call)), context)
+                                                       self.format(call, verbosity=1)), context)
 
     def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
                                  supertype: Instance, context: Context) -> None:
@@ -1037,6 +1037,10 @@ class MessageBuilder:
                       TupleType: ['typing.Iterable', 'typing.Sequence'],
                       Instance: []}  # type: Dict[type, List[str]]
         if supertype.type.fullname() in exclusions[type(subtype)]:
+            return
+        if any(isinstance(tp, UninhabitedType) for tp in supertype.args):
+            # We don't want to add notes for failed inference (e.g. Iterable[<nothing>]).
+            # This will be only confusing a user even more.
             return
 
         def pretty_overload(tp: Overloaded) -> None:
@@ -1079,7 +1083,7 @@ class MessageBuilder:
                       'conflicts:'.format(self.format(subtype)), context)
             for name, got, exp in conflict_types[:MAX_ITEMS]:
                 if (not isinstance(exp, (CallableType, Overloaded)) or
-                        not isinstance(exp, (CallableType, Overloaded))):
+                        not isinstance(got, (CallableType, Overloaded))):
                     self.note('{}: expected {}, got {}'.format(name,
                                                                *self.format_distinctly(exp, got)),
                               context, offset=OFFSET)

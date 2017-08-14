@@ -187,6 +187,33 @@ x = Cbad() # E: Incompatible types in assignment (expression has type "Cbad", va
     # N: 'Cbad' is missing following 'P2' protocol member: \
     # N:     meth2
 
+[case testProtocolMethodVsAttributeErrors]
+from typing import Protocol
+
+class P(Protocol):
+    def meth(self) -> int:
+        pass
+class C:
+    meth: int
+x: P = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P") \
+           # N: Following member(s) of "C" have conflicts: \
+           # N:     meth: expected Callable[[], int], got "int"
+
+[case testProtocolMethodVsAttributeErrors2]
+from typing import Protocol
+
+class P(Protocol):
+    @property
+    def meth(self) -> int:
+        pass
+class C:
+    def meth(self) -> int:
+        pass
+x: P = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P") \
+           # N: Following member(s) of "C" have conflicts: \
+           # N:     meth: expected "int", got Callable[[], int]
+[builtins fixtures/property.pyi]
+
 [case testCannotAssignNormalToProtocol]
 from typing import Protocol
 
@@ -361,6 +388,39 @@ reveal_type(p.attr) # E: Revealed type is 'builtins.int'
 
 -- Generic protocol types
 -- ----------------------
+
+[case testGenericMethodWithProtocol]
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+
+class P(Protocol):
+    def meth(self, x: int) -> int:
+        return x
+class C:
+    def meth(self, x: T) -> T:
+        return x
+
+x: P = C()
+
+[case testGenericMethodWithProtocol2]
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+
+class P(Protocol):
+    def meth(self, x: T) -> T:
+        return x
+class C:
+    def meth(self, x: int) -> int:
+        return x
+
+x: P = C()
+[out]
+main:11: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+main:11: note: Following member(s) of "C" have conflicts:
+main:11: note:     Expected:
+main:11: note:         def [T] meth(self, x: T) -> T
+main:11: note:     Got:
+main:11: note:         def meth(self, x: int) -> int
 
 [case testAutomaticProtocolVariance]
 from typing import TypeVar, Protocol
@@ -726,22 +786,34 @@ def last(seq: Linked[T]) -> T:
 reveal_type(last(L())) # E: Revealed type is 'builtins.int*'
 [builtins fixtures/list.pyi]
 
+[case testRecursiveProtocolSubtleMismatch]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T')
+class Linked(Protocol[T]):
+    val: T
+    def next(self) -> Linked[T]: pass
+class L:
+    val: int
+    def next(self) -> int: pass
+
+def last(seq: Linked[T]) -> T:
+    pass
+last(L()) # E: Argument 1 to "last" has incompatible type "L"; expected Linked[<nothing>]
+
 [case testMutuallyRecursiveProtocols]
 from typing import Protocol, Sequence, List
 
 class P1(Protocol):
     @property
     def attr1(self) -> Sequence[P2]: pass
-
 class P2(Protocol):
     @property
     def attr2(self) -> Sequence[P1]: pass
 
 class C: pass
-
 class A:
     attr1: List[B]
-
 class B:
     attr2: List[A]
 
@@ -750,6 +822,47 @@ t = A() # OK
 t = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P1")
 t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P1")
 [builtins fixtures/list.pyi]
+
+[case testMutuallyRecursiveProtocolsTypesWithSubteMismatch]
+from typing import Protocol, Sequence, List
+
+class P1(Protocol):
+    @property
+    def attr1(self) -> Sequence[P2]: pass
+class P2(Protocol):
+    @property
+    def attr2(self) -> Sequence[P1]: pass
+
+class C: pass
+class A:
+    attr1: List[B]
+class B:
+    attr2: List[C]
+
+t: P1
+t = A() # E: Incompatible types in assignment (expression has type "A", variable has type "P1") \
+        # N: Following member(s) of "A" have conflicts: \
+        # N:     attr1: expected Sequence[P2], got List[B]
+[builtins fixtures/list.pyi]
+
+[case testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable]
+from typing import Protocol
+
+class P1(Protocol):
+    @property
+    def attr1(self) -> P2: pass
+class P2(Protocol):
+    attr2: P1
+
+class A:
+    attr1: B
+class B:
+    attr2: A
+
+x: P1 = A() # E: Incompatible types in assignment (expression has type "A", variable has type "P1") \
+            # N: Following member(s) of "A" have conflicts: \
+            # N:     attr1: expected "P2", got "B"
+[builtins fixtures/property.pyi]
 
 -- @property, @classmethod and @staticmethod in protocol types
 -- -----------------------------------------------------------
@@ -926,7 +1039,6 @@ class P(Protocol):
     def f(self, x: int) -> int: pass
     @overload
     def f(self, x: str) -> str: pass
-    def f(self, x): pass
 
 class C:
     def f(self, x: Union[int, str]) -> None:
@@ -938,15 +1050,96 @@ class D:
 x: P = C()
 x = D()
 [out]
-main:18: error: Incompatible types in assignment (expression has type "D", variable has type "P")
-main:18: note: Following member(s) of "D" have conflicts:
-main:18: note:     Expected:
-main:18: note:         @overload
-main:18: note:         def f(self, x: int) -> int
-main:18: note:         @overload
-main:18: note:         def f(self, x: str) -> str
-main:18: note:     Got:
-main:18: note:         def f(self, x: int) -> None
+main:17: error: Incompatible types in assignment (expression has type "D", variable has type "P")
+main:17: note: Following member(s) of "D" have conflicts:
+main:17: note:     Expected:
+main:17: note:         @overload
+main:17: note:         def f(self, x: int) -> int
+main:17: note:         @overload
+main:17: note:         def f(self, x: str) -> str
+main:17: note:     Got:
+main:17: note:         def f(self, x: int) -> None
+
+[case testCannotInstantiateProtocolWithOverloadedUnimplementedMethod]
+from typing import overload, Protocol
+
+class P(Protocol):
+    @overload
+    def meth(self, x: int) -> int: pass
+    @overload
+    def meth(self, x: str) -> bytes: pass
+class C(P):
+    pass
+C() # E: Cannot instantiate abstract class 'C' with abstract attribute 'meth'
+
+[case testCanUseOverloadedImplementationsInProtocols]
+from typing import overload, Protocol, Union
+class P(Protocol):
+    @overload
+    def meth(self, x: int) -> int: pass
+    @overload
+    def meth(self, x: str) -> bool: pass
+    def meth(self, x: Union[int, str]):
+        if isinstance(x, int):
+            return x
+        return True
+
+class C(P):
+    pass
+x = C()
+reveal_type(x.meth('hi')) # E: Revealed type is 'builtins.bool'
+[builtins fixtures/isinstance.pyi]
+
+[case testProtocolsWithIdenticalOverloads]
+from typing import overload, Protocol
+
+class PA(Protocol):
+    @overload
+    def meth(self, x: int) -> int: pass
+    @overload
+    def meth(self, x: str) -> bytes: pass
+class PB(Protocol): # identical to above
+    @overload
+    def meth(self, x: int) -> int: pass
+    @overload
+    def meth(self, x: str) -> bytes: pass
+
+x: PA
+y: PB
+x = y
+def fun(arg: PB) -> None: pass
+fun(x)
+
+[case testProtocolsWithIncompatibleOverloads]
+from typing import overload, Protocol
+
+class PA(Protocol):
+    @overload
+    def meth(self, x: int) -> int: pass
+    @overload
+    def meth(self, x: str) -> bytes: pass
+class PB(Protocol):
+    @overload
+    def meth(self, x: int) -> int: pass
+    @overload
+    def meth(self, x: bytes) -> str: pass
+
+x: PA
+y: PB
+x = y
+[out]
+main:16: error: Incompatible types in assignment (expression has type "PB", variable has type "PA")
+main:16: note: Following member(s) of "PB" have conflicts:
+main:16: note:     Expected:
+main:16: note:         @overload
+main:16: note:         def meth(self, x: int) -> int
+main:16: note:         @overload
+main:16: note:         def meth(self, x: str) -> bytes
+main:16: note:     Got:
+main:16: note:         @overload
+main:16: note:         def meth(self, x: int) -> int
+main:16: note:         @overload
+main:16: note:         def meth(self, x: bytes) -> str
 
 -- Join and meet with protocol types
 -- ---------------------------------
@@ -963,9 +1156,25 @@ class P2(Protocol):
 x: P
 y: P2
 
+l0 = [x, x]
+l1 = [y, y]
 l = [x, y]
-
+reveal_type(l0) # E: Revealed type is 'builtins.list[__main__.P*]'
+reveal_type(l1) # E: Revealed type is 'builtins.list[__main__.P2*]'
 reveal_type(l) # E: Revealed type is 'builtins.list[__main__.P*]'
+[builtins fixtures/list.pyi]
+
+[case testJoinOfIncompatibleProtocols]
+from typing import Protocol
+
+class P(Protocol):
+    attr: int
+class P2(Protocol):
+    attr2: str
+
+x: P
+y: P2
+reveal_type([x, y]) # E: Revealed type is 'builtins.list[builtins.object*]'
 [builtins fixtures/list.pyi]
 
 [case testJoinProtocolWithNormal]
@@ -998,6 +1207,19 @@ T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: P, y: P2) -> None: pass
 reveal_type(f(g)) # E: Revealed type is '__main__.P2*'
+
+[case testMeetOfIncompatibleProtocols]
+from typing import Protocol, Callable, TypeVar
+
+class P(Protocol):
+    attr: int
+class P2(Protocol):
+    attr2: str
+
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: P, y: P2) -> None: pass
+x = f(g) # E: "f" does not return a value
 
 [case testMeetProtocolWithNormal]
 from typing import Protocol, Callable, TypeVar
@@ -1059,9 +1281,10 @@ def f(x):
 
 reveal_type(f(C1())) # E: Revealed type is 'builtins.int'
 reveal_type(f(C2())) # E: Revealed type is 'builtins.str'
-
+class D(C1, C2): pass # Compatible with both P1 and P2
+# FIXME: the below is not right, see #1322
+reveal_type(f(D())) # E: Revealed type is 'Any'
 f(C()) # E: No overload variant of "f" matches argument types [__main__.C]
-
 [builtins fixtures/isinstance.pyi]
 
 -- Unions of protocol types
@@ -1209,13 +1432,13 @@ class C(Protocol):
         Logger.log(cls)  #OK for classmethods
 [builtins fixtures/classmethod.pyi]
 
--- isinsatnce() with @runtime protocols
+-- isinstance() with @runtime protocols
 -- ------------------------------------
 
 [case testSimpleRuntimeProtocolCheck]
 from typing import Protocol, runtime
 
-@runtime # E: @runtime should be only used with protocol classes
+@runtime # E: @runtime can only be used with protocol classes
 class C:
     pass
 
@@ -1352,11 +1575,12 @@ class MyProto(Protocol[T]):
         pass
 
 t: Tuple[int, str]
-
 def f(x: MyProto[int]) -> None:
     pass
-
 f(t)  # OK
+
+y: MyProto[str]
+y = t # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type MyProto[str])
 [builtins fixtures/isinstancelist.pyi]
 
 [case testBasicNamedTupleStructuralSubtyping]
@@ -1424,7 +1648,26 @@ reveal_type(apply_gen(Add5())) # E: Revealed type is 'builtins.int*'
 def apply_str(f: Callable[[str], int], x: str) -> int:
     return f(x)
 apply_str(Add5(), 'a') # E: Argument 1 to "apply_str" has incompatible type "Add5"; expected Callable[[str], int] \
-                       # N: 'Add5.__call__' has type 'Callable[[int], int]'
+                       # N: 'Add5.__call__' has type 'Callable[[Arg(int, 'x')], int]'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testMoreComplexCallableStructuralSubtyping]
+from mypy_extensions import Arg, VarArg
+from typing import Protocol, Callable
+
+def call_soon(cb: Callable[[Arg(int, 'x'), VarArg(str)], int]): pass
+
+class Good:
+    def __call__(self, x: int, *rest: str) -> int: pass
+class Bad1:
+    def __call__(self, x: int, *rest: int) -> int: pass
+class Bad2:
+    def __call__(self, y: int, *rest: str) -> int: pass
+call_soon(Good())
+call_soon(Bad1()) # E: Argument 1 to "call_soon" has incompatible type "Bad1"; expected Callable[[int, VarArg(str)], int] \
+                  # N: 'Bad1.__call__' has type 'Callable[[Arg(int, 'x'), VarArg(int)], int]'
+call_soon(Bad2()) # E: Argument 1 to "call_soon" has incompatible type "Bad2"; expected Callable[[int, VarArg(str)], int] \
+                  # N: 'Bad2.__call__' has type 'Callable[[Arg(int, 'y'), VarArg(str)], int]'
 [builtins fixtures/isinstancelist.pyi]
 
 [case testStructuralSupportForPartial]
@@ -1461,11 +1704,10 @@ def bar(a: Sized) -> int:
     return a.__len__()
 
 bar(Foo())
-bar(1)
+bar((1, 2))
+bar(1) # E: Argument 1 to "bar" has incompatible type "int"; expected "Sized"
 
 [builtins fixtures/isinstancelist.pyi]
-[out]
-main:11: error: Argument 1 to "bar" has incompatible type "int"; expected "Sized"
 
 [case testBasicSupportsIntProtocol]
 from typing import SupportsInt
@@ -1478,11 +1720,9 @@ def foo(a: SupportsInt):
     pass
 
 foo(Bar())
-foo('no way')
+foo('no way') # E: Argument 1 to "foo" has incompatible type "str"; expected "SupportsInt"
 
 [builtins fixtures/isinstancelist.pyi]
-[out]
-main:11: error: Argument 1 to "foo" has incompatible type "str"; expected "SupportsInt"
 
 -- Additional tests and corner cases for protocols
 -- ----------------------------------------------
@@ -1625,7 +1865,7 @@ fun_p(D())  # E: Argument 1 to "fun_p" has incompatible type "D"; expected "PP" 
 fun_p(C())  # OK
 [builtins fixtures/list.pyi]
 
-[case testIpmlicitTypesInProtocols]
+[case testImplicitTypesInProtocols]
 from typing import Protocol
 
 class P(Protocol):
