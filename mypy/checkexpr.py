@@ -212,7 +212,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     elif typ.node.is_newtype:
                         self.msg.fail(messages.CANNOT_ISINSTANCE_NEWTYPE, e)
         self.try_infer_partial_type(e)
-        callee_type = self.accept(e.callee, always_allow_any=True)
+        if isinstance(e.callee, LambdaExpr):
+            formal_to_actual = map_actuals_to_formals(
+                e.arg_kinds, e.arg_names,
+                e.callee.arg_kinds, e.callee.arg_names,
+                lambda i: self.accept(e.args[i]))
+
+            arg_types = [join.join_type_list([self.accept(e.args[j]) for j in formal_to_actual[i]])
+                         for i in range(len(e.callee.arg_kinds))]
+            type_context = CallableType(arg_types, e.callee.arg_kinds, e.callee.arg_names,
+                                        ret_type=self.object_type(),
+                                        fallback=self.named_type('builtins.function'))
+        else:
+            type_context = None
+        callee_type = self.accept(e.callee, type_context, always_allow_any=True)
         if (self.chk.options.disallow_untyped_calls and
                 self.chk.in_checked_function() and
                 isinstance(callee_type, CallableType)
