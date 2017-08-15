@@ -395,8 +395,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
                 # Check opposite direction for settable attributes.
                 if not is_subtype(supertype, subtype):
                     return False
-            if (IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags or
-                    IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags):
+            if (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
                 return False
             if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
                 return False
