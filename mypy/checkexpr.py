@@ -154,6 +154,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
             result = type_object_type(node, self.named_type)
+            if isinstance(self.type_context[-1], TypeType):
+                # This is the type in a Type[] expression, so substitute type
+                # variables with Any.
+                result = erasetype.erase_typevars(result)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
             try:

@@ -3373,6 +3373,17 @@ reveal_type(f(e1t))  # E: Revealed type is '__main__.A'
 
 reveal_type(f(''))  # E: Revealed type is 'builtins.str'
 
+[case testTypeCErasesGenericsFromC]
+from typing import Generic, Type, TypeVar
+
+K = TypeVar('K')
+V = TypeVar('V')
+class ExampleDict(Generic[K, V]): ...
+
+D = TypeVar('D')
+def mkdict(dict_type: Type[D]) -> D: ...
+reveal_type(mkdict(ExampleDict))  # E: Revealed type is '__main__.ExampleDict*[Any, Any]'
+
 -- Synthetic types crashes
 -- -----------------------
 
