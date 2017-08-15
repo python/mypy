@@ -146,7 +146,9 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 structural = t
             elif self.s.type.is_protocol and is_protocol_implementation(t, self.s):
                 structural = self.s
-            # structural type for join is preferred
+            # Structural join is preferred in the case where we have found both
+            # structural and nominal and they have same MRO length (see two comments
+            # in join_instances_via_supertype). Otherwise, just return the nominal join.
             if not structural or is_better(nominal, structural):
                 return nominal
             return structural

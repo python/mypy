@@ -864,6 +864,22 @@ x: P1 = A() # E: Incompatible types in assignment (expression has type "A", vari
             # N:     attr1: expected "P2", got "B"
 [builtins fixtures/property.pyi]
 
+-- FIXME: things like this should work
+[case testWeirdRecursiveInferenceForProtocols-skip]
+from typing import Protocol, TypeVar, Generic
+T_co = TypeVar('T_co', covariant=True)
+T = TypeVar('T')
+
+class P(Protocol[T_co]):
+    def meth(self) -> P[T_co]: pass
+
+class C(Generic[T]):
+    def meth(self) -> C[T]: pass
+
+x: C[int]
+def f(arg: P[T]) -> T: pass
+reveal_type(f(x)) #E: Revealed type is 'builtins.int*'
+
 -- @property, @classmethod and @staticmethod in protocol types
 -- -----------------------------------------------------------
 
@@ -1688,6 +1704,19 @@ def foo(f: Callable[[int], T]) -> T:
 reveal_type(foo(partial(inc, 'temp'))) # E: Revealed type is 'builtins.int*'
 [builtins fixtures/list.pyi]
 
+[case testStructuralInferenceForCallable]
+from typing import Callable, TypeVar, Tuple
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class Actual:
+    def __call__(self, arg: int) -> str: pass
+
+def fun(cb: Callable[[T], S]) -> Tuple[T, S]: pass
+reveal_type(fun(Actual())) # E: Revealed type is 'Tuple[builtins.int*, builtins.str*]'
+[builtins fixtures/tuple.pyi]
+
 -- Standard protocol types (SupportsInt, Sized, etc.)
 -- --------------------------------------------------
 
@@ -2064,4 +2093,28 @@ class MockDict(MockMapping[T]):
 def f(x: MockMapping[int]) -> None: pass
 x: MockDict[str]
 f(x)  # E: Argument 1 to "f" has incompatible type MockDict[str]; expected MockMapping[int]
+
+[case testProtocolNotesForComplexSignatures]
+from typing import Protocol, Optional
+
+class P(Protocol):
+    def meth(self, x: int, *args: str) -> None: pass
+    def other(self, *args, hint: Optional[str] = None, **kwargs: str) -> None: pass
+class C:
+    def meth(self) -> int: pass
+    def other(self) -> int: pass
+
+x: P = C()
+[builtins fixtures/dict.pyi]
+[out]
+main:10: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+main:10: note: Following member(s) of "C" have conflicts:
+main:10: note:     Expected:
+main:10: note:         def meth(self, x: int, *args: str) -> None
+main:10: note:     Got:
+main:10: note:         def meth(self) -> int
+main:10: note:     Expected:
+main:10: note:         def other(self, *args: Any, hint: Optional[str] = ..., **kwargs: str) -> None
+main:10: note:     Got:
+main:10: note:         def other(self) -> int
 

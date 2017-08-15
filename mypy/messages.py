@@ -1022,6 +1022,7 @@ class MessageBuilder:
     def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
                                  supertype: Instance, context: Context) -> None:
         """Report possible protocol conflicts between 'subtype' and 'supertype'.
+
         This includes missing members, incompatible types, and incompatible
         attribute flags, such as settable vs read-only or class variable vs
         instance variable.
@@ -1043,20 +1044,6 @@ class MessageBuilder:
             # This will be only confusing a user even more.
             return
 
-        def pretty_overload(tp: Overloaded) -> None:
-            for item in tp.items()[:MAX_ITEMS]:
-                self.note('@overload', context, offset=2 * OFFSET)
-                self.note(self.pretty_callable(item), context, offset=2 * OFFSET)
-            if len(tp.items()) > MAX_ITEMS:
-                self.note('<{} more overload(s) not shown>'.format(len(tp.items()) - MAX_ITEMS),
-                          context, offset=2 * OFFSET)
-
-        def print_more(conflicts: Sequence[Any]) -> None:
-            if len(conflicts) > MAX_ITEMS:
-                self.note('<{} more conflict(s) not shown>'
-                          .format(len(conflicts) - MAX_ITEMS),
-                          context, offset=OFFSET)
-
         if isinstance(subtype, (TupleType, TypedDictType)):
             if not isinstance(subtype.fallback, Instance):
                 return
@@ -1071,7 +1058,7 @@ class MessageBuilder:
                       context)
             self.note(', '.join(missing), context, offset=OFFSET)
         elif len(missing) > MAX_ITEMS or len(missing) == len(supertype.type.protocol_members):
-            # this is an obviously wrong type: too many missing members
+            # This is an obviously wrong type: too many missing members
             return
 
         # Report member type conflicts
@@ -1093,14 +1080,14 @@ class MessageBuilder:
                         self.note(self.pretty_callable(exp), context, offset=2 * OFFSET)
                     else:
                         assert isinstance(exp, Overloaded)
-                        pretty_overload(exp)
+                        self.pretty_overload(exp, context, OFFSET, MAX_ITEMS)
                     self.note('Got:', context, offset=OFFSET)
                     if isinstance(got, CallableType):
                         self.note(self.pretty_callable(got), context, offset=2 * OFFSET)
                     else:
                         assert isinstance(got, Overloaded)
-                        pretty_overload(got)
-            print_more(conflict_types)
+                        self.pretty_overload(got, context, OFFSET, MAX_ITEMS)
+            self.print_more(conflict_types, context, OFFSET, MAX_ITEMS)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
         conflict_flags = get_bad_flags(subtype, supertype)
@@ -1117,7 +1104,23 @@ class MessageBuilder:
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 self.note('Protocol member {}.{} expected class or static method'
                           .format(supertype.type.name(), name), context)
-        print_more(conflict_flags)
+        self.print_more(conflict_flags, context, OFFSET, MAX_ITEMS)
+
+    def pretty_overload(self, tp: Overloaded, context: Context,
+                        offset: int, max_items: int) -> None:
+        for item in tp.items()[:max_items]:
+            self.note('@overload', context, offset=2 * offset)
+            self.note(self.pretty_callable(item), context, offset=2 * offset)
+        if len(tp.items()) > max_items:
+            self.note('<{} more overload(s) not shown>'.format(len(tp.items()) - max_items),
+                      context, offset=2 * offset)
+
+    def print_more(self, conflicts: Sequence[Any], context: Context,
+                   offset: int, max_items: int) -> None:
+        if len(conflicts) > max_items:
+            self.note('<{} more conflict(s) not shown>'
+                      .format(len(conflicts) - max_items),
+                      context, offset=offset)
 
     def pretty_callable(self, tp: CallableType) -> str:
         """Return a nice easily-readable representation of a callable type.
@@ -1125,15 +1128,16 @@ class MessageBuilder:
             def [T <: int] f(self, x: int, y: T) -> None
         """
         s = ''
-        bare_asterisk = False
+        asterisk = False
         for i in range(len(tp.arg_types)):
             if s:
                 s += ', '
-            if tp.arg_kinds[i] in (ARG_NAMED, ARG_NAMED_OPT) and not bare_asterisk:
+            if tp.arg_kinds[i] in (ARG_NAMED, ARG_NAMED_OPT) and not asterisk:
                 s += '*, '
-                bare_asterisk = True
+                asterisk = True
             if tp.arg_kinds[i] == ARG_STAR:
                 s += '*'
+                asterisk = True
             if tp.arg_kinds[i] == ARG_STAR2:
                 s += '**'
             name = tp.arg_names[i]
@@ -1141,7 +1145,7 @@ class MessageBuilder:
                 s += name + ': '
             s += strip_quotes(self.format(tp.arg_types[i]))
             if tp.arg_kinds[i] in (ARG_OPT, ARG_NAMED_OPT):
-                s += ' ='
+                s += ' = ...'
 
         # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
         if tp.definition is not None and tp.definition.name() is not None:

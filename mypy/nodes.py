@@ -1933,7 +1933,8 @@ class TempNode(Expression):
     """
 
     type = None  # type: mypy.types.Type
-    # Is it used to indicate no right hand side in assignment?
+    # Is this TempNode used to indicate absence of a right hand side in an annotated assignment?
+    # (e.g. for 'x: int' the rvalue is TempNode(AnyType(TypeOfAny.special_form), no_rhs=True))
     no_rhs = False  # type: bool
 
     def __init__(self, typ: 'mypy.types.Type', no_rhs: bool = False) -> None:
@@ -1979,24 +1980,48 @@ class TypeInfo(SymbolNode):
     is_protocol = False                    # Is this a protocol class?
     runtime_protocol = False               # Does this protocol support isinstance checks?
     abstract_attributes = None  # type: List[str]
+    # Protocol members are names of all attributes/methods defined in a protocol
+    # and in all its supertypes (except for 'object').
     protocol_members = None  # type: List[str]
 
-    # These represent structural subtype matrices. Note that these are shared
-    # by all 'Instance's with given TypeInfo.
+    # The attributes 'assuming' and 'assuming_proper' represent structural subtype matrices.
+    #
+    # In languages with structural subtyping, one can keep a global subtype matrix like this:
+    #   . A B C .
+    #   A 1 0 0
+    #   B 1 1 1
+    #   C 1 0 1
+    #   .
+    # where 1 indicates that the type in corresponding row is a subtype of the type
+    # in corresponding column. This matrix typically starts filled with all 1's and
+    # a typechecker tries to "disprove" every subtyping relation using atomic (or nominal) types.
+    # However, we don't want to keep this huge global state. Instead, we keep the subtype
+    # information in the form of list of pairs (subtype, supertype) shared by all 'Instance's
+    # with given supertype's TypeInfo. When we enter a subtype check we push a pair in this list
+    # thus assuming that we started with 1 in corresponding matrix element. Such algorithm allows
+    # to treat recursive and mutually recursive protocols and other kinds of complex situations.
+    #
     # If concurrent/parallel type checking will be added in future,
     # then there should be one matrix per thread/process to avoid false negatives
     # during the type checking phase.
     assuming = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
     assuming_proper = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
-    # Ditto for temporary stack of recursive constraint inference.
+    # Ditto for temporary 'inferring' stack of recursive constraint inference.
+    # It contains Instance's of protocol types that appeared as an argument to
+    # constraints.infer_constraints(). We need 'inferring' to avoid infinite recursion for
+    # recursive and mutually recursive protocols.
+    #
     # We make 'assuming' and 'inferring' attributes here instead of passing they as kwargs,
     # since this would require to pass them in many dozens of calls. In particular,
     # there is a dependency infer_constraint -> is_subtype -> is_callable_subtype ->
     # -> infer_constraints.
     inferring = None  # type: List[mypy.types.Instance]
+    # 'cache' and 'cache_proper' are subtype caches, implemented as sets of pairs
+    # of (subtype, supertype), where supertypes are instances of given TypeInfo.
+    # We need the caches, since subtype checks for structural types are very slow.
     cache = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
     cache_proper = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
-    # 'inferring' and 'assumig' can't be also made sets, since we need to use
+    # 'inferring' and 'assuming' can't be also made sets, since we need to use
     # is_same_type to correctly treat unions.
 
     # Classes inheriting from Enum shadow their true members with a __getattr__, so we
