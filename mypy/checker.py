@@ -25,10 +25,10 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, Import, ImportFrom, ImportAll, ImportBase,
-    AwaitExpr, PromoteExpr, Node, EnumCallExpr, literal, literal_hash,
-    ARG_POS, MDEF,
+    AwaitExpr, PromoteExpr, Node, EnumCallExpr, ARG_POS, MDEF,
     CONTRAVARIANT, COVARIANT
 )
+from mypy.literals import literal, literal_hash
 from mypy import nodes
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
 from mypy.types import (
