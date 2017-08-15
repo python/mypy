@@ -2361,7 +2361,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # thus decorated.  But it accepts a generator regardless of
         # how it's decorated.
         return_type = self.chk.return_types[-1]
-        subexpr_type = self.accept(e.expr, return_type)
+        # TODO: What should the context for the sub-expression be?
+        # If the containing function has type Generator[X, Y, ...],
+        # the context should be Generator[X, Y, T], where T is the
+        # context of the 'yield from' itself (but it isn't known).
+        subexpr_type = self.accept(e.expr)
         iter_type = None  # type: Type
 
         # Check that the expr is an instance of Iterable and get the type of the iterator produced
