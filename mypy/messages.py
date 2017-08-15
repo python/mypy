@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Optional, Union
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -1027,8 +1027,7 @@ class MessageBuilder:
         attribute flags, such as settable vs read-only or class variable vs
         instance variable.
         """
-        from mypy.subtypes import (get_missing_members, get_conflict_types, get_bad_flags,
-                                   is_subtype, IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC)
+        from mypy.subtypes import is_subtype, IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC
         OFFSET = 4  # Four spaces, so that notes will look like this:
         # note: 'Cls' is missing following 'Proto' members:
         # note:     method, attr
@@ -1050,7 +1049,7 @@ class MessageBuilder:
             subtype = subtype.fallback
 
         # Report missing members
-        missing = get_missing_members(subtype, supertype)
+        missing = get_missing_protocol_members(subtype, supertype)
         if (missing and len(missing) < len(supertype.type.protocol_members) and
                 len(missing) <= MAX_ITEMS):
             self.note("'{}' is missing following '{}' protocol member{}:"
@@ -1062,7 +1061,7 @@ class MessageBuilder:
             return
 
         # Report member type conflicts
-        conflict_types = get_conflict_types(subtype, supertype)
+        conflict_types = get_conflict_protocol_types(subtype, supertype)
         if conflict_types and (not is_subtype(subtype, erase_type(supertype)) or
                                not subtype.type.defn.type_vars or
                                not supertype.type.defn.type_vars):
@@ -1090,7 +1089,7 @@ class MessageBuilder:
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
-        conflict_flags = get_bad_flags(subtype, supertype)
+        conflict_flags = get_bad_protocol_flags(subtype, supertype)
         for name, subflags, superflags in conflict_flags[:MAX_ITEMS]:
             if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
                 self.note('Protocol member {}.{} expected instance variable,'
@@ -1184,6 +1183,67 @@ def variance_string(variance: int) -> str:
         return 'contravariant'
     else:
         return 'invariant'
+
+
+def get_missing_protocol_members(left: Instance, right: Instance) -> List[str]:
+    """Find all protocol members of 'right' that are not implemented
+    (i.e. completely missing) in 'left'.
+    """
+    from mypy.subtypes import find_member
+    assert right.type.is_protocol
+    missing = []  # type: List[str]
+    for member in right.type.protocol_members:
+        if not find_member(member, left, left):
+            missing.append(member)
+    return missing
+
+
+def get_conflict_protocol_types(left: Instance, right: Instance) -> List[Tuple[str, Type, Type]]:
+    """Find members that are defined in 'left' but have incompatible types.
+    Return them as a list of ('member', 'got', 'expected').
+    """
+    from mypy.subtypes import find_member, is_subtype, get_member_flags, IS_SETTABLE
+    assert right.type.is_protocol
+    conflicts = []  # type: List[Tuple[str, Type, Type]]
+    for member in right.type.protocol_members:
+        if member in ('__init__', '__new__'):
+            continue
+        supertype = find_member(member, right, left)
+        assert supertype is not None
+        subtype = find_member(member, left, left)
+        if not subtype:
+            continue
+        is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
+        if IS_SETTABLE in get_member_flags(member, right.type):
+            is_compat = is_compat and is_subtype(supertype, subtype)
+        if not is_compat:
+            conflicts.append((member, subtype, supertype))
+    return conflicts
+
+
+def get_bad_protocol_flags(left: Instance, right: Instance
+                           ) -> List[Tuple[str, Set[int], Set[int]]]:
+    """Return all incompatible attribute flags for members that are present in both
+    'left' and 'right'.
+    """
+    from mypy.subtypes import (find_member, get_member_flags,
+                               IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC)
+    assert right.type.is_protocol
+    all_flags = []  # type: List[Tuple[str, Set[int], Set[int]]]
+    for member in right.type.protocol_members:
+        if find_member(member, left, left):
+            item = (member,
+                    get_member_flags(member, left.type),
+                    get_member_flags(member, right.type))
+            all_flags.append(item)
+    bad_flags = []
+    for name, subflags, superflags in all_flags:
+        if (IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags or
+                IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags or
+                IS_SETTABLE in superflags and IS_SETTABLE not in subflags or
+                IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags):
+            bad_flags.append((name, subflags, superflags))
+    return bad_flags
 
 
 def capitalize(s: str) -> str:

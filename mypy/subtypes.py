@@ -143,16 +143,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and right.fallback.type.is_enum:
             return is_subtype(left, right.fallback)
         if isinstance(right, Instance):
-            if (left, right) in right.type.cache:
+            if right.type.is_cached_subtype_check(left, right):
                 return True
             # NOTE: left.type.mro may be None in quick mode if there
             # was an error somewhere.
             if left.type.mro is not None:
                 for base in left.type.mro:
+                    # TODO: Also pass recursively ignore_declared_variance
                     if base._promote and is_subtype(
                             base._promote, self.right, self.check_type_parameter,
                             ignore_pos_arg_names=self.ignore_pos_arg_names):
-                        right.type.cache.add((left, right))
+                        right.type.record_subtype_cache_entry(left, right)
                         return True
             rname = right.type.fullname()
             # Always try a nominal check if possible,
@@ -165,7 +166,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                               for lefta, righta, tvar in
                               zip(t.args, right.args, right.type.defn.type_vars))
                 if nominal:
-                    right.type.cache.add((left, right))
+                    right.type.record_subtype_cache_entry(left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(left, right):
                 return True
@@ -339,11 +340,14 @@ def pop_on_exit(stack: List[Tuple[Instance, Instance]],
     stack.pop()
 
 
-def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool = True) -> bool:
-    """Check whether 'left' implements the protocol 'right'. If 'allow_any' is False, then
-    check for a proper subtype. Treat recursive protocols by using the 'assuming'
-    structural subtype matrix (in sparse representation, i.e. as a list of pairs
-    (subtype, supertype)), see also comment in nodes.TypeInfo. When we enter a check for classes
+def is_protocol_implementation(left: Instance, right: Instance,
+                               proper_subtype: bool = False) -> bool:
+    """Check whether 'left' implements the protocol 'right'.
+
+    If 'proper_subtype' is True, then check for a proper subtype.
+    Treat recursive protocols by using the 'assuming' structural subtype matrix
+    (in sparse representation, i.e. as a list of pairs (subtype, supertype)),
+    see also comment in nodes.TypeInfo. When we enter a check for classes
     (A, P), defined as following::
 
       class P(Protocol):
@@ -351,11 +355,12 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
       class A:
           def f(self) -> A: ...
 
-    this results in A being a subtype of P without infinite recursion. On every false result,
-    we pop the assumption, thus avoiding an infinite recursion as well.
+    this results in A being a subtype of P without infinite recursion.
+    On every false result, we pop the assumption, thus avoiding an infinite recursion
+    as well.
     """
     assert right.type.is_protocol
-    assuming = right.type.assuming if allow_any else right.type.assuming_proper
+    assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
     for (l, r) in reversed(assuming):
         if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):
             return True
@@ -364,7 +369,7 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
             # nominal subtyping currently ignores '__init__' and '__new__' signatures
             if member in ('__init__', '__new__'):
                 continue
-            # The third argiment below indicates to what self type is bound.
+            # The third argument below indicates to what self type is bound.
             # We always bind self to the subtype. (Similarly to nominal types).
             supertype = find_member(member, right, left)
             assert supertype is not None
@@ -374,8 +379,8 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
             # print(member, 'of', right, 'has type', supertype)
             if not subtype:
                 return False
-            if allow_any:
-                # nominal check currently ignores arg names
+            if not proper_subtype:
+                # Nominal check currently ignores arg names
                 is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
             else:
                 is_compat = is_proper_subtype(subtype, supertype)
@@ -395,20 +400,21 @@ def is_protocol_implementation(left: Instance, right: Instance, allow_any: bool 
                 return False
             if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
                 return False
-            # this rule is copied from nominal check in checker.py
+            # This rule is copied from nominal check in checker.py
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 return False
-    if allow_any:
-        right.type.cache.add((left, right))
-    else:
-        right.type.cache_proper.add((left, right))
+    right.type.record_subtype_cache_entry(left, right, proper_subtype)
     return True
 
 
 def find_member(name: str, itype: Instance, subtype: Type) -> Optional[Type]:
-    """Find the type of member by 'name' in 'itype's TypeInfo. Apply type arguments
-    from 'itype', and bind 'self' to 'subtype'. Return None if member was not found.
+    """Find the type of member by 'name' in 'itype's TypeInfo.
+
+    Fin the member type after applying type arguments from 'itype', and binding
+    'self' to 'subtype'. Return None if member was not found.
     """
+    # TODO: this code shares some logic with checkmember.analyze_member_access,
+    # consider refactoring.
     info = itype.type
     method = info.get_method(name)
     if method:
@@ -448,6 +454,13 @@ def find_member(name: str, itype: Instance, subtype: Type) -> Optional[Type]:
 def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
     """Detect whether a member 'name' is settable, whether it is an
     instance or class variable, and whether it is class or static method.
+
+    The flags are defined as following:
+    * IS_SETTABLE: whether this attribute can be set, not set for methods and
+      non-settable properties;
+    * IS_CLASSVAR: set if the variable is annotated as 'x: ClassVar[t]';
+    * IS_CLASS_OR_STATIC: set for methods decorated with @classmethod or
+      with @staticmethod.
     """
     method = info.get_method(name)
     setattr_meth = info.get_method('__setattr__')
@@ -502,64 +515,6 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     itype = map_instance_to_supertype(itype, node.info)
     typ = expand_type_by_instance(typ, itype)
     return typ
-
-
-def get_missing_members(left: Instance, right: Instance) -> List[str]:
-    """Find all protocol members of 'right' that are not implemented
-    (i.e. completely missing) in 'left'. This is a helper to collect information
-    for better error reporting.
-    """
-    assert right.type.is_protocol
-    missing = []  # type: List[str]
-    for member in right.type.protocol_members:
-        if not find_member(member, left, left):
-            missing.append(member)
-    return missing
-
-
-def get_conflict_types(left: Instance, right: Instance) -> List[Tuple[str, Type, Type]]:
-    """Find members that are defined in 'left' but have incompatible types.
-    Return them as a list of ('member', 'got', 'expected'). This is a helper
-    to collect information for better error reporting.
-    """
-    assert right.type.is_protocol
-    conflicts = []  # type: List[Tuple[str, Type, Type]]
-    for member in right.type.protocol_members:
-        if member in ('__init__', '__new__'):
-            continue
-        supertype = find_member(member, right, left)
-        assert supertype is not None
-        subtype = find_member(member, left, left)
-        if not subtype:
-            continue
-        is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
-        if IS_SETTABLE in get_member_flags(member, right.type):
-            is_compat = is_compat and is_subtype(supertype, subtype)
-        if not is_compat:
-            conflicts.append((member, subtype, supertype))
-    return conflicts
-
-
-def get_bad_flags(left: Instance, right: Instance) -> List[Tuple[str, Set[int], Set[int]]]:
-    """Return all incompatible attribute flags for members that are present in both
-    'left' and 'right'. This is a helper to collect information for better error reporting.
-    """
-    assert right.type.is_protocol
-    all_flags = []  # type: List[Tuple[str, Set[int], Set[int]]]
-    for member in right.type.protocol_members:
-        if find_member(member, left, left):
-            item = (member,
-                    get_member_flags(member, left.type),
-                    get_member_flags(member, right.type))
-            all_flags.append(item)
-    bad_flags = []
-    for name, subflags, superflags in all_flags:
-        if (IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags or
-                IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags or
-                IS_SETTABLE in superflags and IS_SETTABLE not in subflags or
-                IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags):
-            bad_flags.append((name, subflags, superflags))
-    return bad_flags
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,
@@ -808,6 +763,8 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
     if isinstance(t, UnionType):
         # Since runtime type checks will ignore type arguments, erase the types.
         erased_s = erase_type(s)
+        # TODO: Implement more robust support for runtime isinstance() checks,
+        # see issue #3827
         new_items = [item for item in t.relevant_items()
                      if (not (is_proper_subtype(erase_type(item), erased_s) or
                               is_proper_subtype(item, erased_s))
@@ -862,11 +819,11 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_instance(self, left: Instance) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            if (left, right) in right.type.cache_proper:
+            if right.type.is_cached_subtype_check(left, right, proper_subtype=True):
                 return True
             for base in left.type.mro:
                 if base._promote and is_proper_subtype(base._promote, right):
-                    right.type.cache_proper.add((left, right))
+                    right.type.record_subtype_cache_entry(left, right, proper_subtype=True)
                     return True
 
             if left.type.has_base(right.type.fullname()):
@@ -883,10 +840,10 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 nominal = all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
                               zip(left.args, right.args, right.type.defn.type_vars))
                 if nominal:
-                    right.type.cache_proper.add((left, right))
+                    right.type.record_subtype_cache_entry(left, right, proper_subtype=True)
                 return nominal
             if (right.type.is_protocol and
-                    is_protocol_implementation(left, right, allow_any=False)):
+                    is_protocol_implementation(left, right, proper_subtype=True)):
                 return True
             return False
         if isinstance(right, CallableType):

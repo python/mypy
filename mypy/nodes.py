@@ -2016,11 +2016,11 @@ class TypeInfo(SymbolNode):
     # there is a dependency infer_constraint -> is_subtype -> is_callable_subtype ->
     # -> infer_constraints.
     inferring = None  # type: List[mypy.types.Instance]
-    # 'cache' and 'cache_proper' are subtype caches, implemented as sets of pairs
+    # '_cache' and '_cache_proper' are subtype caches, implemented as sets of pairs
     # of (subtype, supertype), where supertypes are instances of given TypeInfo.
     # We need the caches, since subtype checks for structural types are very slow.
-    cache = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
-    cache_proper = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
+    _cache = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
+    _cache_proper = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
     # 'inferring' and 'assuming' can't be also made sets, since we need to use
     # is_same_type to correctly treat unions.
 
@@ -2086,8 +2086,8 @@ class TypeInfo(SymbolNode):
         self.assuming = []
         self.assuming_proper = []
         self.inferring = []
-        self.cache = set()
-        self.cache_proper = set()
+        self._cache = set()
+        self._cache_proper = set()
         self.add_type_vars()
 
     def add_type_vars(self) -> None:
@@ -2121,6 +2121,21 @@ class TypeInfo(SymbolNode):
             if name in cls.names:
                 return cls
         return None
+
+    def record_subtype_cache_entry(self, left: 'mypy.types.Instance',
+                                   right: 'mypy.types.Instance',
+                                   proper_subtype: bool = False) -> None:
+        if proper_subtype:
+            self._cache_proper.add((left, right))
+        else:
+            self._cache.add((left, right))
+
+    def is_cached_subtype_check(self, left: 'mypy.types.Instance',
+                                right: 'mypy.types.Instance',
+                                proper_subtype: bool = False) -> bool:
+        if not proper_subtype:
+            return (left, right) in self._cache
+        return (left, right) in self._cache_proper
 
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
