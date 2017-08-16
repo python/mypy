@@ -219,13 +219,14 @@ def default_data_dir(bin_dir: Optional[str]) -> str:
             # Installed in site-packages or dist-packages, but invoked with python3 -m mypy;
             # __file__ is .../blah/lib/python3.N/site-packages/mypy/build.py
             # or .../blah/lib/python3.N/dist-packages/mypy/build.py (Debian)
+            # or .../blah/lib64/python3.N/dist-packages/mypy/build.py (Gentoo)
             # or .../blah/lib/site-packages/mypy/build.py (Windows)
             # blah may be a virtualenv or /usr/local.  We want .../blah/lib/mypy.
             lib = parent
             for i in range(2):
                 lib = os.path.dirname(lib)
-                if os.path.basename(lib) == 'lib':
-                    return os.path.join(lib, 'mypy')
+                if os.path.basename(lib) in ('lib', 'lib32', 'lib64'):
+                    return os.path.join(os.path.dirname(lib), 'lib/mypy')
         subdir = os.path.join(parent, 'lib', 'mypy')
         if os.path.isdir(subdir):
             # If installed via buildout, the __file__ is
@@ -1377,12 +1378,9 @@ class State:
                 # - skip -> don't analyze, make the type Any
                 follow_imports = self.options.follow_imports
                 if (follow_imports != 'normal'
-                    and not root_source  # Honor top-level modules
-                    and path.endswith('.py')  # Stubs are always normal
-                    and id != 'builtins'  # Builtins is always normal
-                    and not (caller_state and
-                             caller_state.tree and
-                             caller_state.tree.is_stub)):
+                        and not root_source  # Honor top-level modules
+                        and path.endswith('.py')  # Stubs are always normal
+                        and id != 'builtins'):  # Builtins is always normal
                     if follow_imports == 'silent':
                         # Still import it, but silence non-blocker errors.
                         manager.log("Silencing %s (%s)" % (path, id))

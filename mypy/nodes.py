@@ -669,6 +669,7 @@ class Var(SymbolNode):
     is_property = False
     is_settable_property = False
     is_classvar = False
+    is_abstract_var = False
     # Set to true when this variable refers to a module we were unable to
     # parse for some reason (eg a silenced module)
     is_suppressed_import = False
@@ -676,7 +677,7 @@ class Var(SymbolNode):
     FLAGS = [
         'is_self', 'is_ready', 'is_initialized_in_class', 'is_staticmethod',
         'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
-        'is_classvar'
+        'is_classvar', 'is_abstract_var'
     ]
 
     def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
@@ -1932,9 +1933,13 @@ class TempNode(Expression):
     """
 
     type = None  # type: mypy.types.Type
+    # Is this TempNode used to indicate absence of a right hand side in an annotated assignment?
+    # (e.g. for 'x: int' the rvalue is TempNode(AnyType(TypeOfAny.special_form), no_rhs=True))
+    no_rhs = False  # type: bool
 
-    def __init__(self, typ: 'mypy.types.Type') -> None:
+    def __init__(self, typ: 'mypy.types.Type', no_rhs: bool = False) -> None:
         self.type = typ
+        self.no_rhs = no_rhs
 
     def __repr__(self) -> str:
         return 'TempNode(%s)' % str(self.type)
@@ -1972,7 +1977,53 @@ class TypeInfo(SymbolNode):
     subtypes = None  # type: Set[TypeInfo] # Direct subclasses encountered so far
     names = None  # type: SymbolTable      # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
+    is_protocol = False                    # Is this a protocol class?
+    runtime_protocol = False               # Does this protocol support isinstance checks?
     abstract_attributes = None  # type: List[str]
+    # Protocol members are names of all attributes/methods defined in a protocol
+    # and in all its supertypes (except for 'object').
+    protocol_members = None  # type: List[str]
+
+    # The attributes 'assuming' and 'assuming_proper' represent structural subtype matrices.
+    #
+    # In languages with structural subtyping, one can keep a global subtype matrix like this:
+    #   . A B C .
+    #   A 1 0 0
+    #   B 1 1 1
+    #   C 1 0 1
+    #   .
+    # where 1 indicates that the type in corresponding row is a subtype of the type
+    # in corresponding column. This matrix typically starts filled with all 1's and
+    # a typechecker tries to "disprove" every subtyping relation using atomic (or nominal) types.
+    # However, we don't want to keep this huge global state. Instead, we keep the subtype
+    # information in the form of list of pairs (subtype, supertype) shared by all 'Instance's
+    # with given supertype's TypeInfo. When we enter a subtype check we push a pair in this list
+    # thus assuming that we started with 1 in corresponding matrix element. Such algorithm allows
+    # to treat recursive and mutually recursive protocols and other kinds of complex situations.
+    #
+    # If concurrent/parallel type checking will be added in future,
+    # then there should be one matrix per thread/process to avoid false negatives
+    # during the type checking phase.
+    assuming = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
+    assuming_proper = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
+    # Ditto for temporary 'inferring' stack of recursive constraint inference.
+    # It contains Instance's of protocol types that appeared as an argument to
+    # constraints.infer_constraints(). We need 'inferring' to avoid infinite recursion for
+    # recursive and mutually recursive protocols.
+    #
+    # We make 'assuming' and 'inferring' attributes here instead of passing they as kwargs,
+    # since this would require to pass them in many dozens of calls. In particular,
+    # there is a dependency infer_constraint -> is_subtype -> is_callable_subtype ->
+    # -> infer_constraints.
+    inferring = None  # type: List[mypy.types.Instance]
+    # '_cache' and '_cache_proper' are subtype caches, implemented as sets of pairs
+    # of (subtype, supertype), where supertypes are instances of given TypeInfo.
+    # We need the caches, since subtype checks for structural types are very slow.
+    _cache = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
+    _cache_proper = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
+    # 'inferring' and 'assuming' can't be also made sets, since we need to use
+    # is_same_type to correctly treat unions.
+
     # Classes inheriting from Enum shadow their true members with a __getattr__, so we
     # have to treat them as a special case.
     is_enum = False
@@ -2016,7 +2067,7 @@ class TypeInfo(SymbolNode):
 
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
-        'is_newtype'
+        'is_newtype', 'is_protocol', 'runtime_protocol'
     ]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
@@ -2032,6 +2083,11 @@ class TypeInfo(SymbolNode):
         self._fullname = defn.fullname
         self.is_abstract = False
         self.abstract_attributes = []
+        self.assuming = []
+        self.assuming_proper = []
+        self.inferring = []
+        self._cache = set()
+        self._cache_proper = set()
         self.add_type_vars()
 
     def add_type_vars(self) -> None:
@@ -2051,6 +2107,9 @@ class TypeInfo(SymbolNode):
         return len(self.type_vars) > 0
 
     def get(self, name: str) -> 'Optional[SymbolTableNode]':
+        if self.mro is None:  # Might be because of a previous error.
+            return None
+
         for cls in self.mro:
             n = cls.names.get(name)
             if n:
@@ -2062,6 +2121,21 @@ class TypeInfo(SymbolNode):
             if name in cls.names:
                 return cls
         return None
+
+    def record_subtype_cache_entry(self, left: 'mypy.types.Instance',
+                                   right: 'mypy.types.Instance',
+                                   proper_subtype: bool = False) -> None:
+        if proper_subtype:
+            self._cache_proper.add((left, right))
+        else:
+            self._cache.add((left, right))
+
+    def is_cached_subtype_check(self, left: 'mypy.types.Instance',
+                                right: 'mypy.types.Instance',
+                                proper_subtype: bool = False) -> bool:
+        if not proper_subtype:
+            return (left, right) in self._cache
+        return (left, right) in self._cache_proper
 
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
@@ -2203,6 +2277,7 @@ class TypeInfo(SymbolNode):
                 'names': self.names.serialize(self.fullname()),
                 'defn': self.defn.serialize(),
                 'abstract_attributes': self.abstract_attributes,
+                'protocol_members': self.protocol_members,
                 'type_vars': self.type_vars,
                 'bases': [b.serialize() for b in self.bases],
                 '_promote': None if self._promote is None else self._promote.serialize(),
@@ -2226,6 +2301,7 @@ class TypeInfo(SymbolNode):
         ti._fullname = data['fullname']
         # TODO: Is there a reason to reconstruct ti.subtypes?
         ti.abstract_attributes = data['abstract_attributes']
+        ti.protocol_members = data['protocol_members']
         ti.type_vars = data['type_vars']
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None
@@ -2286,6 +2362,8 @@ class SymbolTableNode:
     # If False, this name won't be imported via 'from <module> import *'.
     # This has no effect on names within classes.
     module_public = True
+    # If True, the name will be never exported (needed for stub files)
+    module_hidden = False
     # For deserialized MODULE_REF nodes, the referenced module name;
     # for other nodes, optionally the name of the referenced object.
     cross_ref = None  # type: Optional[str]
@@ -2302,11 +2380,13 @@ class SymbolTableNode:
                  module_public: bool = True,
                  normalized: bool = False,
                  alias_tvars: Optional[List[str]] = None,
-                 implicit: bool = False) -> None:
+                 implicit: bool = False,
+                 module_hidden: bool = False) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
         self.mod_id = mod_id
+        self.module_hidden = module_hidden
         self.module_public = module_public
         self.normalized = normalized
         self.alias_tvars = alias_tvars
@@ -2352,6 +2432,8 @@ class SymbolTableNode:
         data = {'.class': 'SymbolTableNode',
                 'kind': node_kinds[self.kind],
                 }  # type: JsonDict
+        if self.module_hidden:
+            data['module_hidden'] = True
         if not self.module_public:
             data['module_public'] = False
         if self.normalized:
@@ -2393,6 +2475,8 @@ class SymbolTableNode:
             stnode = SymbolTableNode(kind, node, typ=typ)
             if 'alias_tvars' in data:
                 stnode.alias_tvars = data['alias_tvars']
+        if 'module_hidden' in data:
+            stnode.module_hidden = data['module_hidden']
         if 'module_public' in data:
             stnode.module_public = data['module_public']
         if 'normalized' in data:

@@ -1501,6 +1501,99 @@ class MyClass:
 [rechecked]
 [stale]
 
+[case testIncrementalWorksWithBasicProtocols]
+import a
+[file a.py]
+from b import P
+
+x: int
+y: P[int]
+x = y.meth()
+
+class C:
+    def meth(self) -> int:
+        pass
+y = C()
+
+[file a.py.2]
+from b import P
+
+x: str
+y: P[str]
+x = y.meth()
+
+class C:
+    def meth(self) -> str:
+        pass
+y = C()
+[file b.py]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T', covariant=True)
+class P(Protocol[T]):
+    def meth(self) -> T:
+        pass
+
+[case testIncrementalSwitchFromNominalToStructural]
+import a
+[file a.py]
+from b import B, fun
+class C(B):
+    def x(self) -> int: pass
+    def y(self) -> int: pass
+fun(C())
+
+[file b.py]
+from typing import Protocol
+class B:
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[file b.py.2]
+from typing import Protocol
+class B(Protocol):
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[file a.py.3]
+from b import fun
+class C:
+    def x(self) -> int: pass
+    def y(self) -> int: pass
+fun(C())
+[out1]
+[out2]
+[out3]
+
+[case testIncrementalSwitchFromStructuralToNominal]
+import a
+[file a.py]
+from b import fun
+class C:
+    def x(self) -> int: pass
+    def y(self) -> int: pass
+fun(C())
+
+[file b.py]
+from typing import Protocol
+class B(Protocol):
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[file b.py.2]
+from typing import Protocol
+class B:
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[out1]
+[out2]
+tmp/a.py:5: error: Argument 1 to "fun" has incompatible type "C"; expected "B"
+
 [case testIncrementalWorksWithNamedTuple]
 import foo
 

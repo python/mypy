@@ -11,6 +11,7 @@ from mypy.version import __version__ as mypy_version
 
 
 T = TypeVar('T')
+allowed_duplicates = ['@overload', 'Got:', 'Expected:']
 
 
 class ErrorInfo:
@@ -261,7 +262,8 @@ class Errors:
                severity: str = 'error',
                file: Optional[str] = None,
                only_once: bool = False,
-               origin_line: Optional[int] = None) -> None:
+               origin_line: Optional[int] = None,
+               offset: int = 0) -> None:
         """Report message at the given line using the current error context.
 
         Args:
@@ -278,6 +280,8 @@ class Errors:
             type = None  # Omit type context if nested function
         if file is None:
             file = self.file
+        if offset:
+            message = " " * offset + message
         info = ErrorInfo(self.import_context(), file, self.current_module(), type,
                          self.function_or_member[-1], line, column, severity, message,
                          blocker, only_once,
@@ -479,6 +483,10 @@ class Errors:
             while (j >= 0 and errors[j][0] == errors[i][0] and
                     errors[j][1] == errors[i][1]):
                 if (errors[j][3] == errors[i][3] and
+                        # Allow duplicate notes in overload conficts reporting
+                        not (errors[i][3] == 'note' and
+                             errors[i][4].strip() in allowed_duplicates
+                             or errors[i][4].strip().startswith('def ')) and
                         errors[j][4] == errors[i][4]):  # ignore column
                     dup = True
                     break

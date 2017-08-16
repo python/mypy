@@ -38,10 +38,10 @@ def parse_test_cases(
     if not include_path:
         include_path = os.path.dirname(path)
     with open(path, encoding='utf-8') as f:
-        l = f.readlines()
-    for i in range(len(l)):
-        l[i] = l[i].rstrip('\n')
-    p = parse_test_data(l, path)
+        lst = f.readlines()
+    for i in range(len(lst)):
+        lst[i] = lst[i].rstrip('\n')
+    p = parse_test_data(lst, path)
     out = []  # type: List[DataDrivenTestCase]
 
     # Process the parsed items. Each item has a header of form [id args],
@@ -556,6 +556,9 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
 
 
 class DataSuite:
+    def __init__(self, *, update_data: bool) -> None:
+        self.update_data = update_data
+
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
         return []

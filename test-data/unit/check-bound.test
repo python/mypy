@@ -24,8 +24,8 @@ b = B()
 b = f(b)
 b = f(C()) # Fail
 [out]
-main:12: error: Type argument 1 of "f" has incompatible value "U"
-main:16: error: Type argument 1 of "f" has incompatible value "D"
+main:12: error: Value of type variable "T" of "f" cannot be "U"
+main:16: error: Value of type variable "T" of "f" cannot be "D"
 main:20: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 
 
@@ -42,7 +42,7 @@ class G(Generic[T]):
 v = None # type: G[A]
 w = None # type: G[B]
 x = None # type: G[str] # E: Type argument "builtins.str" of "G" must be a subtype of "__main__.A"
-y = G('a') # E: Type argument 1 of "G" has incompatible value "str"
+y = G('a') # E: Value of type variable "T" of "G" cannot be "str"
 z = G(A())
 z = G(B())
 
@@ -125,7 +125,7 @@ def j(x: TA) -> A:
 def k(x: TA) -> B:
     return x # Fail
 [out]
-main:16: error: Type argument 1 of "h" has incompatible value "TA"
+main:16: error: Value of type variable "TB" of "h" cannot be "TA"
 main:21: error: Incompatible return value type (got "TA", expected "B")
 
 
@@ -199,5 +199,5 @@ def foo(x: int) -> int:
 a = 1
 b = foo(a)
 b = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-twice(a) # E: Type argument 1 of "twice" has incompatible value "int"
+twice(a) # E: Value of type variable "T" of "twice" cannot be "int"
 [builtins fixtures/args.pyi]

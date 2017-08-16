@@ -72,6 +72,7 @@ files = [
     'check-generic-subtyping.test',
     'check-varargs.test',
     'check-newsyntax.test',
+    'check-protocols.test',
     'check-underscores.test',
     'check-classvar.test',
     'check-enum.test',
@@ -82,8 +83,6 @@ files = [
 
 
 class TypeCheckSuite(DataSuite):
-    def __init__(self, *, update_data: bool = False) -> None:
-        self.update_data = update_data
 
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:

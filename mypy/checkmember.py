@@ -4,7 +4,7 @@ from typing import cast, Callable, List, Optional, TypeVar
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
-    Overloaded, TypeVarType, UnionType, PartialType, UninhabitedType,
+    Overloaded, TypeVarType, UnionType, PartialType, UninhabitedType, TypeOfAny,
     DeletedType, NoneTyp, TypeType, function_type, get_type_vars,
 )
 from mypy.nodes import (
@@ -53,12 +53,14 @@ def analyze_member_access(name: str,
     the fallback type, for example.
     original_type is always the type used in the initial call.
     """
+    # TODO: this and following functions share some logic with subtypes.find_member,
+    # consider refactoring.
     if isinstance(typ, Instance):
         if name == '__init__' and not is_super:
             # Accessing __init__ in statically typed code would compromise
             # type safety unless used via super().
             msg.fail(messages.CANNOT_ACCESS_INIT, node)
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
 
         # The base object has an instance type.
 
@@ -101,10 +103,10 @@ def analyze_member_access(name: str,
                                              original_type=original_type, chk=chk)
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
-        return AnyType()
+        return AnyType(TypeOfAny.from_another_any, source_any=typ)
     elif isinstance(typ, NoneTyp):
         if chk.should_suppress_optional_error([typ]):
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
         # The only attribute NoneType has are those it inherits from object
         return analyze_member_access(name, builtin_type('builtins.object'), node, is_lvalue,
                                      is_super, is_operator, builtin_type, not_ready_callback, msg,
@@ -171,7 +173,7 @@ def analyze_member_access(name: str,
                                      original_type=original_type, chk=chk)
     elif isinstance(typ, DeletedType):
         msg.deleted_as_rvalue(typ, node)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
     elif isinstance(typ, TypeType):
         # Similar to FunctionLike + is_type_obj() above.
         item = None
@@ -202,7 +204,7 @@ def analyze_member_access(name: str,
                                      original_type=original_type, chk=chk)
 
     if chk.should_suppress_optional_error([typ]):
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
     return msg.has_no_attr(original_type, typ, name, node)
 
 
@@ -264,15 +266,15 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                     return setattr_type.arg_types[-1]
 
     if itype.type.fallback_to_any:
-        return AnyType()
+        return AnyType(TypeOfAny.special_form)
 
     # Could not find the member.
     if is_super:
         msg.undefined_in_superclass(name, node)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
     else:
         if chk and chk.should_suppress_optional_error([itype]):
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
         return msg.has_no_attr(original_type, itype, name, node)
 
 
@@ -325,7 +327,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
         if not var.is_ready:
             not_ready_callback(var.name(), node)
         # Implicit 'Any' type.
-        result = AnyType()
+        result = AnyType(TypeOfAny.special_form)
     fullname = '{}.{}'.format(var.info.fullname(), name)
     hook = chk.plugin.get_attribute_hook(fullname)
     if hook:
@@ -354,7 +356,7 @@ def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: Messag
         return typ
     else:
         msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
 
 def lookup_member_var_or_accessor(info: TypeInfo, name: str,
@@ -399,7 +401,7 @@ def analyze_class_attribute_access(itype: Instance,
     node = itype.type.get(name)
     if not node:
         if itype.type.fallback_to_any:
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
         return None
 
     is_decorated = isinstance(node.node, Decorator)
@@ -425,12 +427,12 @@ def analyze_class_attribute_access(itype: Instance,
         return add_class_tvars(t, itype, is_classmethod, builtin_type, original_type)
     elif isinstance(node.node, Var):
         not_ready_callback(name, context)
-        return AnyType()
+        return AnyType(TypeOfAny.special_form)
 
     if isinstance(node.node, TypeVarExpr):
         msg.fail('Type variable "{}.{}" cannot be used as an expression'.format(
                  itype.type.name(), name), context)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     if isinstance(node.node, TypeInfo):
         return type_object_type(node.node, builtin_type)
@@ -441,7 +443,7 @@ def analyze_class_attribute_access(itype: Instance,
 
     if is_decorated:
         # TODO: Return type of decorated function. This is quick hack to work around #998.
-        return AnyType()
+        return AnyType(TypeOfAny.special_form)
     else:
         return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
 
@@ -491,7 +493,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
     init_method = info.get_method('__init__')
     if not init_method:
         # Must be an invalid class definition.
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
     else:
         fallback = info.metaclass_type or builtin_type('builtins.type')
         if init_method.info.fullname() == 'builtins.object':
@@ -504,10 +506,11 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
             # base class, we can't know for sure, so check for that.
             if info.fallback_to_any:
                 # Construct a universal callable as the prototype.
-                sig = CallableType(arg_types=[AnyType(), AnyType()],
+                any_type = AnyType(TypeOfAny.special_form)
+                sig = CallableType(arg_types=[any_type, any_type],
                                    arg_kinds=[ARG_STAR, ARG_STAR2],
                                    arg_names=["_args", "_kwds"],
-                                   ret_type=AnyType(),
+                                   ret_type=any_type,
                                    fallback=builtin_type('builtins.function'))
                 return class_callable(sig, info, fallback, None)
         # Construct callable type based on signature of __init__. Adjust

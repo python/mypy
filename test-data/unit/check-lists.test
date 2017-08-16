@@ -64,7 +64,7 @@ class C: pass
 [case testListWithStarExpr]
 (x, *a) = [1, 2, 3]
 a = [1, *[2, 3]]
-reveal_type(a)  # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(a)  # E: Revealed type is 'builtins.list[builtins.int*]'
 b = [0, *a]
 reveal_type(b)  # E: Revealed type is 'builtins.list[builtins.int*]'
 c = [*a, 0]
