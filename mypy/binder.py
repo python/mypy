@@ -6,7 +6,7 @@ from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
 from mypy.nodes import Expression, Var, RefExpr
-from mypy.literals import Key, literal, literal_hash
+from mypy.literals import Key, literal, literal_hash, subkeys
 from mypy.nodes import IndexExpr, MemberExpr, NameExpr
 
 
@@ -93,9 +93,8 @@ class ConditionalTypeBinder:
             value = key
         else:
             self.dependencies.setdefault(key, set()).add(value)
-        for elt in key:
-            if isinstance(elt, Key):
-                self._add_dependencies(elt, value)
+        for elt in subkeys(key):
+            self._add_dependencies(elt, value)
 
     def push_frame(self) -> Frame:
         """Push a new frame into the binder."""

@@ -1,4 +1,4 @@
-from typing import Optional, Union, Any, Tuple
+from typing import Optional, Union, Any, Tuple, Iterable
 
 from mypy.nodes import (
     Expression, ComparisonExpr, OpExpr, MemberExpr, UnaryExpr, StarExpr, IndexExpr, LITERAL_YES,
@@ -78,14 +78,18 @@ def literal(e: Expression) -> int:
     return LITERAL_NO
 
 
-Key = tuple
+Key = Tuple[Any, ...]
+
+
+def subkeys(key: Key) -> Iterable[Key]:
+    return [elt for elt in key if isinstance(elt, tuple)]
 
 
 def literal_hash(e: Expression) -> Optional[Key]:
     return e.accept(_hasher)
 
 
-class Hasher(ExpressionVisitor[Optional[Key]]):
+class _Hasher(ExpressionVisitor[Optional[Key]]):
     def visit_int_expr(self, e: IntExpr) -> Key:
         return ('Literal', e.value)
 
@@ -226,4 +230,4 @@ class Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
 
-_hasher = Hasher()
+_hasher = _Hasher()
