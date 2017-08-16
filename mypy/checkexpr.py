@@ -156,7 +156,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = type_object_type(node, self.named_type)
             if isinstance(self.type_context[-1], TypeType):
                 # This is the type in a Type[] expression, so substitute type
-                # variables with Any.
+                # variables. Use the upper bound if applicable, or Any if we
+                # don't have a useful upper bound.
+                target_type = self.type_context[-1].item
+                if (isinstance(target_type, TypeVarType)
+                        and isinstance(target_type.upper_bound, Instance)):
+                    result = expand_type_by_instance(
+                        result, target_type.upper_bound)
                 result = erasetype.erase_typevars(result)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
