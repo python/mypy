@@ -1201,7 +1201,7 @@ reveal_type(D[str, int]().c()) # E: Revealed type is 'builtins.str*'
 from typing import TypeVar, Generic
 T = TypeVar('T')
 
-class A(Generic[T, T]): # E: Duplicate type variables in Generic[...]
+class A(Generic[T, T]): # E: Duplicate type variables in Generic[...] or Protocol[...]
     pass
 
 a = A[int]()
@@ -1218,7 +1218,7 @@ class A(Generic[T]):
 class B(Generic[T]):
     pass
 
-class C(A[T], B[S], Generic[T]): # E: If Generic[...] is present it should list all type variables
+class C(A[T], B[S], Generic[T]): # E: If Generic[...] or Protocol[...] is present it should list all type variables
     pass
 
 c = C[int, str]()

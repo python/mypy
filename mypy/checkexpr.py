@@ -36,7 +36,7 @@ from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
 from mypy.meet import narrow_declared_type
 from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import is_subtype, is_equivalent
+from mypy.subtypes import is_subtype, is_equivalent, find_member
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type, bind_self
@@ -155,6 +155,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
             result = type_object_type(node, self.named_type)
+            if isinstance(self.type_context[-1], TypeType):
+                # This is the type in a Type[] expression, so substitute type
+                # variables with Any.
+                result = erasetype.erase_typevars(result)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
             try:
@@ -213,7 +217,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     elif typ.node.is_newtype:
                         self.msg.fail(messages.CANNOT_ISINSTANCE_NEWTYPE, e)
         self.try_infer_partial_type(e)
-        callee_type = self.accept(e.callee, always_allow_any=True)
+        if isinstance(e.callee, LambdaExpr):
+            formal_to_actual = map_actuals_to_formals(
+                e.arg_kinds, e.arg_names,
+                e.callee.arg_kinds, e.callee.arg_names,
+                lambda i: self.accept(e.args[i]))
+
+            arg_types = [join.join_type_list([self.accept(e.args[j]) for j in formal_to_actual[i]])
+                         for i in range(len(e.callee.arg_kinds))]
+            type_context = CallableType(arg_types, e.callee.arg_kinds, e.callee.arg_names,
+                                        ret_type=self.object_type(),
+                                        fallback=self.named_type('builtins.function'))
+        else:
+            type_context = None
+        callee_type = self.accept(e.callee, type_context, always_allow_any=True)
         if (self.chk.options.disallow_untyped_calls and
                 self.chk.in_checked_function() and
                 isinstance(callee_type, CallableType)
@@ -246,6 +263,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         callee_type = self.apply_method_signature_hook(
                             e, callee_type, object_type, signature_hook)
         ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname, object_type)
+        if (isinstance(e.callee, RefExpr) and len(e.args) == 2 and
+                e.callee.fullname in ('builtins.isinstance', 'builtins.issubclass')):
+            for expr in mypy.checker.flatten(e.args[1]):
+                tp = self.chk.type_map[expr]
+                if (isinstance(tp, CallableType) and tp.is_type_obj() and
+                        tp.type_object().is_protocol and
+                        not tp.type_object().runtime_protocol):
+                    self.chk.fail('Only @runtime protocols can be used with'
+                                  ' instance and class checks', e)
         if isinstance(ret_type, UninhabitedType):
             self.chk.binder.unreachable()
         if not allow_none_return and isinstance(ret_type, NoneTyp):
@@ -503,6 +529,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.msg.cannot_instantiate_abstract_class(
                     callee.type_object().name(), type.abstract_attributes,
                     context)
+            elif (callee.is_type_obj() and callee.type_object().is_protocol
+                  # Exceptions for Type[...] and classmethod first argument
+                  and not callee.from_type_type and not callee.is_classmethod_class):
+                self.chk.fail('Cannot instantiate protocol class "{}"'
+                              .format(callee.type_object().name()), context)
 
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds, arg_names,
@@ -1002,19 +1033,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Check the type of a single argument in a call."""
         if isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
-        # Only non-abstract class can be given where Type[...] is expected...
+        # Only non-abstract non-protocol class can be given where Type[...] is expected...
         elif (isinstance(caller_type, CallableType) and isinstance(callee_type, TypeType) and
-              caller_type.is_type_obj() and caller_type.type_object().is_abstract and
-              isinstance(callee_type.item, Instance) and callee_type.item.type.is_abstract and
+              caller_type.is_type_obj() and
+              (caller_type.type_object().is_abstract or caller_type.type_object().is_protocol) and
+              isinstance(callee_type.item, Instance) and
+              (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol) and
               # ...except for classmethod first argument
               not caller_type.is_classmethod_class):
-            messages.fail("Only non-abstract class can be given where '{}' is expected"
-                          .format(callee_type), context)
+            self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return
             messages.incompatible_argument(n, m, callee, original_caller_type,
                                            caller_kind, context)
+            if (isinstance(original_caller_type, (Instance, TupleType, TypedDictType)) and
+                    isinstance(callee_type, Instance) and callee_type.type.is_protocol):
+                self.msg.report_protocol_problems(original_caller_type, callee_type, context)
+            if (isinstance(callee_type, CallableType) and
+                    isinstance(original_caller_type, Instance)):
+                call = find_member('__call__', original_caller_type, original_caller_type)
+                if call:
+                    self.msg.note_call(original_caller_type, call, context)
 
     def overload_call_target(self, arg_types: List[Type], arg_kinds: List[int],
                              arg_names: List[str],
@@ -2349,7 +2389,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # thus decorated.  But it accepts a generator regardless of
         # how it's decorated.
         return_type = self.chk.return_types[-1]
-        subexpr_type = self.accept(e.expr, return_type)
+        # TODO: What should the context for the sub-expression be?
+        # If the containing function has type Generator[X, Y, ...],
+        # the context should be Generator[X, Y, T], where T is the
+        # context of the 'yield from' itself (but it isn't known).
+        subexpr_type = self.accept(e.expr)
         iter_type = None  # type: Type
 
         # Check that the expr is an instance of Iterable and get the type of the iterator produced
@@ -2697,6 +2741,8 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             # First perform a quick check (as an optimization) and fall back to generic
             # subtyping algorithm if type promotions are possible (e.g., int vs. float).
             if formal.type in actual.type.mro:
+                return 2
+            elif formal.type.is_protocol and is_subtype(actual, erasetype.erase_type(formal)):
                 return 2
             elif actual.type._promote and is_subtype(actual, formal):
                 return 1

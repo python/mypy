@@ -544,11 +544,17 @@ class SemanticAnalyzer(NodeVisitor[None]):
             if defn.impl is not None:
                 assert defn.impl is defn.items[-1]
                 defn.items = defn.items[:-1]
-
             elif not self.is_stub_file and not non_overload_indexes:
-                self.fail(
-                    "An overloaded function outside a stub file must have an implementation",
-                    defn)
+                if not (self.is_class_scope() and self.type.is_protocol):
+                    self.fail(
+                        "An overloaded function outside a stub file must have an implementation",
+                        defn)
+                else:
+                    for item in defn.items:
+                        if isinstance(item, Decorator):
+                            item.func.is_abstract = True
+                        else:
+                            item.is_abstract = True
 
         if types:
             defn.type = Overloaded(types)
@@ -672,6 +678,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
     @contextmanager
     def analyze_class_body(self, defn: ClassDef) -> Iterator[bool]:
         with self.tvar_scope_frame(self.tvar_scope.class_frame()):
+            is_protocol = self.detect_protocol_base(defn)
             self.clean_up_bases_and_infer_type_variables(defn)
             self.analyze_class_keywords(defn)
             if self.analyze_typeddict_classdef(defn):
@@ -711,13 +718,12 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 self.setup_class_def_analysis(defn)
                 self.analyze_base_classes(defn)
                 self.analyze_metaclass(defn)
-
+                defn.info.is_protocol = is_protocol
+                defn.info.runtime_protocol = False
                 for decorator in defn.decorators:
                     self.analyze_class_decorator(defn, decorator)
-
                 self.enter_class(defn.info)
                 yield True
-
                 self.calculate_abstract_status(defn.info)
                 self.setup_type_promotion(defn)
 
@@ -744,6 +750,12 @@ class SemanticAnalyzer(NodeVisitor[None]):
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
+        if (isinstance(decorator, RefExpr) and
+                decorator.fullname in ('typing.runtime', 'typing_extensions.runtime')):
+            if defn.info.is_protocol:
+                defn.info.runtime_protocol = True
+            else:
+                self.fail('@runtime can only be used with protocol classes', defn)
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.
@@ -769,6 +781,10 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     if fdef.is_abstract and name not in concrete:
                         typ.is_abstract = True
                         abstract.append(name)
+                elif isinstance(node, Var):
+                    if node.is_abstract_var and name not in concrete:
+                        typ.is_abstract = True
+                        abstract.append(name)
                 concrete.add(name)
         typ.abstract_attributes = sorted(abstract)
 
@@ -790,6 +806,21 @@ class SemanticAnalyzer(NodeVisitor[None]):
             if defn.fullname in promotions:
                 promote_target = self.named_type_or_none(promotions[defn.fullname])
         defn.info._promote = promote_target
+
+    def detect_protocol_base(self, defn: ClassDef) -> bool:
+        for base_expr in defn.base_type_exprs:
+            try:
+                base = expr_to_unanalyzed_type(base_expr)
+            except TypeTranslationError:
+                continue  # This will be reported later
+            if not isinstance(base, UnboundType):
+                continue
+            sym = self.lookup_qualified(base.name, base)
+            if sym is None or sym.node is None:
+                continue
+            if sym.node.fullname() in ('typing.Protocol', 'typing_extensions.Protocol'):
+                return True
+        return False
 
     def clean_up_bases_and_infer_type_variables(self, defn: ClassDef) -> None:
         """Remove extra base classes such as Generic and infer type vars.
@@ -818,17 +849,26 @@ class SemanticAnalyzer(NodeVisitor[None]):
             tvars = self.analyze_typevar_declaration(base)
             if tvars is not None:
                 if declared_tvars:
-                    self.fail('Duplicate Generic in bases', defn)
+                    self.fail('Only single Generic[...] or Protocol[...] can be in bases', defn)
                 removed.append(i)
                 declared_tvars.extend(tvars)
+            if isinstance(base, UnboundType):
+                sym = self.lookup_qualified(base.name, base)
+                if sym is not None and sym.node is not None:
+                    if (sym.node.fullname() in ('typing.Protocol',
+                                                'typing_extensions.Protocol') and
+                            i not in removed):
+                        # also remove bare 'Protocol' bases
+                        removed.append(i)
 
         all_tvars = self.get_all_bases_tvars(defn, removed)
         if declared_tvars:
             if len(remove_dups(declared_tvars)) < len(declared_tvars):
-                self.fail("Duplicate type variables in Generic[...]", defn)
+                self.fail("Duplicate type variables in Generic[...] or Protocol[...]", defn)
             declared_tvars = remove_dups(declared_tvars)
             if not set(all_tvars).issubset(set(declared_tvars)):
-                self.fail("If Generic[...] is present it should list all type variables", defn)
+                self.fail("If Generic[...] or Protocol[...] is present"
+                          " it should list all type variables", defn)
                 # In case of error, Generic tvars will go first
                 declared_tvars = remove_dups(declared_tvars + all_tvars)
         else:
@@ -850,7 +890,9 @@ class SemanticAnalyzer(NodeVisitor[None]):
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is None or sym.node is None:
             return None
-        if sym.node.fullname() == 'typing.Generic':
+        if (sym.node.fullname() == 'typing.Generic' or
+                sym.node.fullname() == 'typing.Protocol' and t.args or
+                sym.node.fullname() == 'typing_extensions.Protocol' and t.args):
             tvars = []  # type: TypeVarList
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)
@@ -1595,10 +1637,16 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if s.type:
             allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
             s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
+            if (self.type and self.type.is_protocol and isinstance(lval, NameExpr) and
+                    isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
+                        if isinstance(lval.node, Var):
+                            lval.node.is_abstract_var = True
         else:
-            # Set the type if the rvalue is a simple literal.
-            if (s.type is None and len(s.lvalues) == 1 and
-                    isinstance(s.lvalues[0], NameExpr)):
+            if (any(isinstance(lv, NameExpr) and lv.is_def for lv in s.lvalues) and
+                    self.type and self.type.is_protocol and not self.is_func_scope()):
+                self.fail('All protocol members must have explicitly declared types', s)
+            # Set the type if the rvalue is a simple literal (even if the above error occurred).
+            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr):
                 if s.lvalues[0].is_def:
                     s.type = self.analyze_simple_literal_type(s.rvalue)
         if s.type:
@@ -1833,18 +1881,22 @@ class SemanticAnalyzer(NodeVisitor[None]):
 
     def analyze_member_lvalue(self, lval: MemberExpr) -> None:
         lval.accept(self)
-        if (self.is_self_member_ref(lval) and
-                self.type.get(lval.name) is None):
-            # Implicit attribute definition in __init__.
-            lval.is_def = True
-            v = Var(lval.name)
-            v.set_line(lval)
-            v._fullname = self.qualified_name(lval.name)
-            v.info = self.type
-            v.is_ready = False
-            lval.def_var = v
-            lval.node = v
-            self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
+        if self.is_self_member_ref(lval):
+            node = self.type.get(lval.name)
+            if node is None or isinstance(node.node, Var) and node.node.is_abstract_var:
+                if self.type.is_protocol and node is None:
+                    self.fail("Protocol members cannot be defined via assignment to self", lval)
+                else:
+                    # Implicit attribute definition in __init__.
+                    lval.is_def = True
+                    v = Var(lval.name)
+                    v.set_line(lval)
+                    v._fullname = self.qualified_name(lval.name)
+                    v.info = self.type
+                    v.is_ready = False
+                    lval.def_var = v
+                    lval.node = v
+                    self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
@@ -1907,6 +1959,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
             newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type.fallback)
             newtype_class_info.tuple_type = old_type
         elif isinstance(old_type, Instance):
+            if old_type.type.is_protocol:
+                self.fail("NewType cannot be used with protocol classes", s)
             newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
         else:
             message = "Argument 2 to NewType(...) must be subclassable (got {})"
@@ -3779,6 +3833,11 @@ class FirstPass(NodeVisitor[None]):
                         ('False', bool_type),
                         ('__debug__', bool_type),
                     ])
+                else:
+                    # We are running tests without 'bool' in builtins.
+                    # TODO: Find a permanent solution to this problem.
+                    # Maybe add 'bool' to all fixtures?
+                    literal_types.append(('True', AnyType(TypeOfAny.special_form)))
 
                 for name, typ in literal_types:
                     v = Var(name, typ)
@@ -4019,12 +4078,18 @@ class ThirdPass(TraverserVisitor):
         if not tdef.info.is_named_tuple:
             for type in tdef.info.bases:
                 self.analyze(type)
+                if tdef.info.is_protocol:
+                    if not isinstance(type, Instance) or not type.type.is_protocol:
+                        if type.type.fullname() != 'builtins.object':
+                            self.fail('All bases of a protocol must be protocols', tdef)
         # Recompute MRO now that we have analyzed all modules, to pick
         # up superclasses of bases imported from other modules in an
         # import loop. (Only do so if we succeeded the first time.)
         if tdef.info.mro:
             tdef.info.mro = []  # Force recomputation
             calculate_class_mro(tdef, self.fail_blocker)
+            if tdef.info.is_protocol:
+                add_protocol_members(tdef.info)
         if tdef.analyzed is not None:
             if isinstance(tdef.analyzed, TypedDictExpr):
                 self.analyze(tdef.analyzed.info.typeddict_type)
@@ -4140,6 +4205,16 @@ class ThirdPass(TraverserVisitor):
             return Instance(node, args)
         any_type = AnyType(TypeOfAny.special_form)
         return Instance(node, [any_type] * len(node.defn.type_vars))
+
+
+def add_protocol_members(typ: TypeInfo) -> None:
+    members = set()  # type: Set[str]
+    if typ.mro:
+        for base in typ.mro[:-1]:  # we skip "object" since everyone implements it
+            if base.is_protocol:
+                for name in base.names:
+                    members.add(name)
+    typ.protocol_members = sorted(list(members))
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
