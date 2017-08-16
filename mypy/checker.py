@@ -27,7 +27,7 @@ from mypy.nodes import (
     RefExpr, YieldExpr, BackquoteExpr, Import, ImportFrom, ImportAll, ImportBase,
     AwaitExpr, PromoteExpr, Node, EnumCallExpr,
     ARG_POS, MDEF,
-    CONTRAVARIANT, COVARIANT)
+    CONTRAVARIANT, COVARIANT, INVARIANT)
 from mypy import nodes
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
 from mypy.types import (
@@ -44,7 +44,7 @@ from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
     restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_subtype,
-    unify_generic_callable,
+    unify_generic_callable, find_member
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars
@@ -1147,6 +1147,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
         typ = defn.info
+        if typ.is_protocol and typ.defn.type_vars:
+            self.check_protocol_variance(defn)
         with self.errors.enter_type(defn.name), self.enter_partial_types():
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
@@ -1157,6 +1159,33 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not defn.has_incompatible_baseclass:
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
+
+    def check_protocol_variance(self, defn: ClassDef) -> None:
+        """Check that protocol definition is compatible with declared
+        variances of type variables.
+
+        Note that we also prohibit declaring protocol classes as invariant
+        if they are actually covariant/contravariant, since this may break
+        transitivity of subtyping, see PEP 544.
+        """
+        info = defn.info
+        object_type = Instance(info.mro[-1], [])
+        tvars = info.defn.type_vars
+        for i, tvar in enumerate(tvars):
+            up_args = [object_type if i == j else AnyType(TypeOfAny.special_form)
+                       for j, _ in enumerate(tvars)]
+            down_args = [UninhabitedType() if i == j else AnyType(TypeOfAny.special_form)
+                         for j, _ in enumerate(tvars)]
+            up, down = Instance(info, up_args), Instance(info, down_args)
+            # TODO: add advanced variance checks for recursive protocols
+            if is_subtype(down, up, ignore_declared_variance=True):
+                expected = COVARIANT
+            elif is_subtype(up, down, ignore_declared_variance=True):
+                expected = CONTRAVARIANT
+            else:
+                expected = INVARIANT
+            if expected != tvar.variance:
+                self.msg.bad_proto_variance(tvar.variance, tvar.name, expected, defn)
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Check for multiple inheritance related errors."""
@@ -1328,15 +1357,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
-                # Special case: only non-abstract classes can be assigned to variables
-                # with explicit type Type[A].
+                # Special case: only non-abstract non-protocol classes can be assigned to
+                # variables with explicit type Type[A], where A is protocol or abstract.
                 if (isinstance(rvalue_type, CallableType) and rvalue_type.is_type_obj() and
-                        rvalue_type.type_object().is_abstract and
+                        (rvalue_type.type_object().is_abstract or
+                         rvalue_type.type_object().is_protocol) and
                         isinstance(lvalue_type, TypeType) and
                         isinstance(lvalue_type.item, Instance) and
-                        lvalue_type.item.type.is_abstract):
-                    self.fail("Can only assign non-abstract classes"
-                              " to a variable of type '{}'".format(lvalue_type), rvalue)
+                        (lvalue_type.item.type.is_abstract or
+                         lvalue_type.item.type.is_protocol)):
+                    self.msg.concrete_only_assign(lvalue_type, rvalue)
                     return
                 if rvalue_type and infer_lvalue_type:
                     self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
@@ -2468,6 +2498,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.fail(msg, context)
             if note_msg:
                 self.note(note_msg, context)
+            if (isinstance(supertype, Instance) and supertype.type.is_protocol and
+                    isinstance(subtype, (Instance, TupleType, TypedDictType))):
+                self.msg.report_protocol_problems(subtype, supertype, context)
+            if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
+                call = find_member('__call__', subtype, subtype)
+                if call:
+                    self.msg.note_call(subtype, call, context)
             return False
 
     def contains_none(self, t: Type) -> bool:
@@ -2609,9 +2646,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Produce a warning message."""
         self.msg.warn(msg, context)
 
-    def note(self, msg: str, context: Context) -> None:
+    def note(self, msg: str, context: Context, offset: int = 0) -> None:
         """Produce a note."""
-        self.msg.note(msg, context)
+        self.msg.note(msg, context, offset=offset)
 
     def iterable_item_type(self, instance: Instance) -> Type:
         iterable = map_instance_to_supertype(

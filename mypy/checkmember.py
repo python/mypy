@@ -53,6 +53,8 @@ def analyze_member_access(name: str,
     the fallback type, for example.
     original_type is always the type used in the initial call.
     """
+    # TODO: this and following functions share some logic with subtypes.find_member,
+    # consider refactoring.
     if isinstance(typ, Instance):
         if name == '__init__' and not is_super:
             # Accessing __init__ in statically typed code would compromise

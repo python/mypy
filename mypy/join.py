@@ -9,7 +9,10 @@ from mypy.types import (
     PartialType, DeletedType, UninhabitedType, TypeType, true_or_false, TypeOfAny
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype
+from mypy.subtypes import (
+    is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype,
+    is_protocol_implementation
+)
 
 from mypy import experiments
 
@@ -137,7 +140,18 @@ class TypeJoinVisitor(TypeVisitor[Type]):
 
     def visit_instance(self, t: Instance) -> Type:
         if isinstance(self.s, Instance):
-            return join_instances(t, self.s)
+            nominal = join_instances(t, self.s)
+            structural = None  # type: Optional[Instance]
+            if t.type.is_protocol and is_protocol_implementation(self.s, t):
+                structural = t
+            elif self.s.type.is_protocol and is_protocol_implementation(t, self.s):
+                structural = self.s
+            # Structural join is preferred in the case where we have found both
+            # structural and nominal and they have same MRO length (see two comments
+            # in join_instances_via_supertype). Otherwise, just return the nominal join.
+            if not structural or is_better(nominal, structural):
+                return nominal
+            return structural
         elif isinstance(self.s, FunctionLike):
             return join_types(t, self.s.fallback)
         elif isinstance(self.s, TypeType):
@@ -237,7 +251,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             required_keys = set(items.keys()) & t.required_keys & self.s.required_keys
             return TypedDictType(items, required_keys, fallback)
         elif isinstance(self.s, Instance):
-            return join_instances(self.s, t.fallback)
+            return join_types(self.s, t.fallback)
         else:
             return self.default(self.s)
 
