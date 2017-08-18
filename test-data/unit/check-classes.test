@@ -3470,65 +3470,61 @@ reveal_type(y['b']) # E: Revealed type is '__main__.B'
 -- Special support for six
 -- -----------------------
 
-[case testSixWithMetaclass]
+[case testSixMetaclass]
 import six
 class M(type):
     x = 5
 class A(six.with_metaclass(M)): pass
+@six.add_metaclass(M)
+class B: pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(B).x)  # E: Revealed type is 'builtins.int'
 
-[case testSixWithMetaclass_python2]
+[case testSixMetaclass_python2]
 import six
 class M(type):
     x = 5
 class A(six.with_metaclass(M)): pass
-reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
-
-[case testSixAddMetaclass]
-import six
-class M(type):
-    x = 5
-class X:
-    a = 'h'
 @six.add_metaclass(M)
-class A(X): pass
+class B: pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
-reveal_type(A().a)  # E: Revealed type is 'builtins.str'
+reveal_type(type(B).x)  # E: Revealed type is 'builtins.int'
 
-[case testSixAddMetaclass_python2]
-import six
-class M(type):
-    x = 5
-@six.add_metaclass(M)
-class A(object): pass
-reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
-
-[case testFromSixWithMetaclass]
-from six import with_metaclass
+[case testFromSixMetaclass]
+from six import with_metaclass, add_metaclass
 class M(type):
     x = 5
 class A(with_metaclass(M)): pass
+@add_metaclass(M)
+class B: pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(B).x)  # E: Revealed type is 'builtins.int'
 
-[case testSixWithMetaclassImportFrom]
+[case testSixMetaclassImportFrom]
 import six
 from metadefs import M
 class A(six.with_metaclass(M)): pass
+@six.add_metaclass(M)
+class B: pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(B).x)  # E: Revealed type is 'builtins.int'
 [file metadefs.py]
 class M(type):
     x = 5
 
-[case testSixWithMetaclassImport]
+[case testSixhMetaclassImport]
 import six
 import metadefs
 class A(six.with_metaclass(metadefs.M)): pass
+@add_metaclass(metadefs.M)
+class B: pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(B).x)  # E: Revealed type is 'builtins.int'
 [file metadefs.py]
 class M(type):
     x = 5
 
-[case testSixWithMetaclassAndBase]
+[case testSixMetaclassAndBase]
 import six
 class M(type):
     x = 5
@@ -3538,15 +3534,26 @@ class B:
     def bar(self): pass
 class C1(six.with_metaclass(M, A)): pass
 class C2(six.with_metaclass(M, A, B)): pass
+@six.add_metaclass(M)
+class D1(A): pass
+@six.add_metaclass(M)
+class D2(A, B): pass
 reveal_type(type(C1).x)  # E: Revealed type is 'builtins.int'
 reveal_type(type(C2).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(D1).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(D2).x)  # E: Revealed type is 'builtins.int'
 C1().foo()
+D1().foo()
 C1().bar()  # E: "C1" has no attribute "bar"
+D1().bar()  # E: "D1" has no attribute "bar"
 C2().foo()
+D2().foo()
 C2().bar()
+D2().bar()
 C2().baz()  # E: "C2" has no attribute "baz"
+D2().baz()  # E: "D2" has no attribute "baz"
 
-[case testSixWithMetaclassGenerics]
+[case testSixMetaclassGenerics]
 from typing import Generic, GenericMeta, TypeVar
 import six
 class DestroyableMeta(type):
@@ -3558,12 +3565,16 @@ class ArcMeta(GenericMeta, DestroyableMeta):
     pass
 class Arc(six.with_metaclass(ArcMeta, Generic[T_co], Destroyable)):
     pass
+@six.add_metaclass(ArcMeta)
+class Arc1(Generic[T_co], Destroyable):
+    pass
 class MyDestr(Destroyable):
     pass
 reveal_type(Arc[MyDestr]())  # E: Revealed type is '__main__.Arc[__main__.MyDestr*]'
+reveal_type(Arc1[MyDestr]())  # E: Revealed type is '__main__.Arc1[__main__.MyDestr*]'
 [builtins fixtures/bool.pyi]
 
-[case testSixWithMetaclassErrors]
+[case testSixMetaclassErrors]
 import six
 class M(type): pass
 class A(object): pass
@@ -3571,10 +3582,16 @@ def f() -> type: return M
 class C1(six.with_metaclass(M), object): pass  # E: Invalid base class
 class C2(C1, six.with_metaclass(M)): pass  # E: Invalid base class
 class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
+@six.add_metaclass(A)  # E: Metaclasses not inheriting from 'type' are not supported
+class D3(A): pass
 class C4(six.with_metaclass(M), metaclass=M): pass  # E: Invalid base class
+@six.add_metaclass(M)
+class D4(metaclass=M): pass  # E: Invalid base class
 class C5(six.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
+@six.add_metaclass(f())
+class D5: pass  # E: Dynamic metaclass not supported for 'D5'
 
-[case testSixWithMetaclassErrors_python2-skip]
+[case testSixMetaclassErrors_python2-skip]
 # No error here yet
 import six
 class M(type): pass
