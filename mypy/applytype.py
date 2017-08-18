@@ -43,10 +43,8 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
             else:
                 constraints = get_inferred_object_constraints(msg, callable.arg_types, type, i + 1)
                 if constraints:
-                    constrained_indeces = get_inferred_object_arg_indeces(
-                        msg, constraints, callable.arg_types)
                     msg.incompatible_inferred_object_arguments(
-                        callable, constrained_indeces, constraints, context)
+                        callable, i + 1, constraints, context)
                 else:
                     msg.incompatible_typevar_value(
                         callable, type, callable.variables[i].name, context)
@@ -107,17 +105,3 @@ def add_inferred_object_arg_constraints(msg: MessageBuilder,
         for item in arg_type.items:
             constraints = add_inferred_object_arg_constraints(msg, constraints, item)
     return constraints
-
-
-def get_inferred_object_arg_indeces(msg: MessageBuilder,
-                                    constraints: Dict[str, Tuple[str, ...]],
-                                    arg_types: List[Type]) -> Dict[str, List[str]]:
-    """Get the indeces of all arguments with inferred type of object and the same constraint.
-    """
-    indeces = {}  # type: Dict[str, List[str]]
-    for constrained_type in constraints.keys():
-        indeces[constrained_type] = []
-        for i, type in enumerate(arg_types):
-            if constrained_type in msg.format(type):
-                indeces[constrained_type].append(str(i + 1))
-    return indeces
