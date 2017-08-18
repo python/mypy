@@ -3512,11 +3512,11 @@ reveal_type(type(B).x)  # E: Revealed type is 'builtins.int'
 class M(type):
     x = 5
 
-[case testSixhMetaclassImport]
+[case testSixMetaclassImport]
 import six
 import metadefs
 class A(six.with_metaclass(metadefs.M)): pass
-@add_metaclass(metadefs.M)
+@six.add_metaclass(metadefs.M)
 class B: pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
 reveal_type(type(B).x)  # E: Revealed type is 'builtins.int'
@@ -3584,16 +3584,16 @@ class C2(C1, six.with_metaclass(M)): pass  # E: Invalid base class
 class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
 @six.add_metaclass(A)  # E: Metaclasses not inheriting from 'type' are not supported
 class D3(A): pass
-class C4(six.with_metaclass(M), metaclass=M): pass  # E: Invalid base class
-@six.add_metaclass(M)
-class D4(metaclass=M): pass  # E: Invalid base class
+class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
+@six.add_metaclass(M)  # E: Multiple metaclass definitions
+class D4(metaclass=M): pass
 class C5(six.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
-@six.add_metaclass(f())
-class D5: pass  # E: Dynamic metaclass not supported for 'D5'
+@six.add_metaclass(f())  # E: Dynamic metaclass not supported for 'D5'
+class D5: pass
 
-[case testSixMetaclassErrors_python2-skip]
-# No error here yet
+[case testSixMetaclassErrors_python2]
+# flags: --python-version 2.7
 import six
 class M(type): pass
-class C4(six.with_metaclass(M)):
+class C4(six.with_metaclass(M)):  # E: Multiple metaclass definitions
     __metaclass__ = M
