@@ -655,6 +655,7 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
             print("%s: %s" % (config_file, err), file=sys.stderr)
         else:
             file_read = config_file
+            options.config_file = file_read
             break
     else:
         return

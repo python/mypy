@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Optional, Mapping
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union, Mapping
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -18,7 +18,7 @@ from mypy.types import (
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
-    ReturnStmt, NameExpr, Var
+    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT
 )
 
 
@@ -159,12 +159,13 @@ class MessageBuilder:
         return self.errors.is_errors()
 
     def report(self, msg: str, context: Context, severity: str,
-               file: Optional[str] = None, origin: Optional[Context] = None) -> None:
+               file: Optional[str] = None, origin: Optional[Context] = None,
+               offset: int = 0) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
-                               msg.strip(), severity=severity, file=file,
+                               msg.strip(), severity=severity, file=file, offset=offset,
                                origin_line=origin.get_line() if origin else None)
 
     def fail(self, msg: str, context: Context, file: Optional[str] = None,
@@ -173,9 +174,9 @@ class MessageBuilder:
         self.report(msg, context, 'error', file=file, origin=origin)
 
     def note(self, msg: str, context: Context, file: Optional[str] = None,
-             origin: Optional[Context] = None) -> None:
+             origin: Optional[Context] = None, offset: int = 0) -> None:
         """Report a note (unless disabled)."""
-        self.report(msg, context, 'note', file=file, origin=origin)
+        self.report(msg, context, 'note', file=file, origin=origin, offset=offset)
 
     def warn(self, msg: str, context: Context, file: Optional[str] = None,
              origin: Optional[Context] = None) -> None:
@@ -1013,6 +1014,252 @@ class MessageBuilder:
     def typed_function_untyped_decorator(self, func_name: str, context: Context) -> None:
         self.fail('Untyped decorator makes function "{}" untyped'.format(func_name), context)
 
+    def bad_proto_variance(self, actual: int, tvar_name: str, expected: int,
+                           context: Context) -> None:
+        msg = capitalize("{} type variable '{}' used in protocol where"
+                         " {} one is expected".format(variance_string(actual),
+                                                      tvar_name,
+                                                      variance_string(expected)))
+        self.fail(msg, context)
+
+    def concrete_only_assign(self, typ: Type, context: Context) -> None:
+        self.fail("Can only assign concrete classes to a variable of type '{}'"
+                  .format(self.format(typ)), context)
+
+    def concrete_only_call(self, typ: Type, context: Context) -> None:
+        self.fail("Only concrete class can be given where '{}' is expected"
+                  .format(self.format(typ)), context)
+
+    def note_call(self, subtype: Type, call: Type, context: Context) -> None:
+        self.note("'{}.__call__' has type '{}'".format(strip_quotes(self.format(subtype)),
+                                                       self.format(call, verbosity=1)), context)
+
+    def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
+                                 supertype: Instance, context: Context) -> None:
+        """Report possible protocol conflicts between 'subtype' and 'supertype'.
+
+        This includes missing members, incompatible types, and incompatible
+        attribute flags, such as settable vs read-only or class variable vs
+        instance variable.
+        """
+        from mypy.subtypes import is_subtype, IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC
+        OFFSET = 4  # Four spaces, so that notes will look like this:
+        # note: 'Cls' is missing following 'Proto' members:
+        # note:     method, attr
+        MAX_ITEMS = 2  # Maximum number of conflicts, missing members, and overloads shown
+        # List of special situations where we don't want to report additional problems
+        exclusions = {TypedDictType: ['typing.Mapping'],
+                      TupleType: ['typing.Iterable', 'typing.Sequence'],
+                      Instance: []}  # type: Dict[type, List[str]]
+        if supertype.type.fullname() in exclusions[type(subtype)]:
+            return
+        if any(isinstance(tp, UninhabitedType) for tp in supertype.args):
+            # We don't want to add notes for failed inference (e.g. Iterable[<nothing>]).
+            # This will be only confusing a user even more.
+            return
+
+        if isinstance(subtype, (TupleType, TypedDictType)):
+            if not isinstance(subtype.fallback, Instance):
+                return
+            subtype = subtype.fallback
+
+        # Report missing members
+        missing = get_missing_protocol_members(subtype, supertype)
+        if (missing and len(missing) < len(supertype.type.protocol_members) and
+                len(missing) <= MAX_ITEMS):
+            self.note("'{}' is missing following '{}' protocol member{}:"
+                      .format(subtype.type.name(), supertype.type.name(), plural_s(missing)),
+                      context)
+            self.note(', '.join(missing), context, offset=OFFSET)
+        elif len(missing) > MAX_ITEMS or len(missing) == len(supertype.type.protocol_members):
+            # This is an obviously wrong type: too many missing members
+            return
+
+        # Report member type conflicts
+        conflict_types = get_conflict_protocol_types(subtype, supertype)
+        if conflict_types and (not is_subtype(subtype, erase_type(supertype)) or
+                               not subtype.type.defn.type_vars or
+                               not supertype.type.defn.type_vars):
+            self.note('Following member(s) of {} have '
+                      'conflicts:'.format(self.format(subtype)), context)
+            for name, got, exp in conflict_types[:MAX_ITEMS]:
+                if (not isinstance(exp, (CallableType, Overloaded)) or
+                        not isinstance(got, (CallableType, Overloaded))):
+                    self.note('{}: expected {}, got {}'.format(name,
+                                                               *self.format_distinctly(exp, got)),
+                              context, offset=OFFSET)
+                else:
+                    self.note('Expected:', context, offset=OFFSET)
+                    if isinstance(exp, CallableType):
+                        self.note(self.pretty_callable(exp), context, offset=2 * OFFSET)
+                    else:
+                        assert isinstance(exp, Overloaded)
+                        self.pretty_overload(exp, context, OFFSET, MAX_ITEMS)
+                    self.note('Got:', context, offset=OFFSET)
+                    if isinstance(got, CallableType):
+                        self.note(self.pretty_callable(got), context, offset=2 * OFFSET)
+                    else:
+                        assert isinstance(got, Overloaded)
+                        self.pretty_overload(got, context, OFFSET, MAX_ITEMS)
+            self.print_more(conflict_types, context, OFFSET, MAX_ITEMS)
+
+        # Report flag conflicts (i.e. settable vs read-only etc.)
+        conflict_flags = get_bad_protocol_flags(subtype, supertype)
+        for name, subflags, superflags in conflict_flags[:MAX_ITEMS]:
+            if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
+                self.note('Protocol member {}.{} expected instance variable,'
+                          ' got class variable'.format(supertype.type.name(), name), context)
+            if IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
+                self.note('Protocol member {}.{} expected class variable,'
+                          ' got instance variable'.format(supertype.type.name(), name), context)
+            if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
+                self.note('Protocol member {}.{} expected settable variable,'
+                          ' got read-only attribute'.format(supertype.type.name(), name), context)
+            if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
+                self.note('Protocol member {}.{} expected class or static method'
+                          .format(supertype.type.name(), name), context)
+        self.print_more(conflict_flags, context, OFFSET, MAX_ITEMS)
+
+    def pretty_overload(self, tp: Overloaded, context: Context,
+                        offset: int, max_items: int) -> None:
+        for item in tp.items()[:max_items]:
+            self.note('@overload', context, offset=2 * offset)
+            self.note(self.pretty_callable(item), context, offset=2 * offset)
+        if len(tp.items()) > max_items:
+            self.note('<{} more overload(s) not shown>'.format(len(tp.items()) - max_items),
+                      context, offset=2 * offset)
+
+    def print_more(self, conflicts: Sequence[Any], context: Context,
+                   offset: int, max_items: int) -> None:
+        if len(conflicts) > max_items:
+            self.note('<{} more conflict(s) not shown>'
+                      .format(len(conflicts) - max_items),
+                      context, offset=offset)
+
+    def pretty_callable(self, tp: CallableType) -> str:
+        """Return a nice easily-readable representation of a callable type.
+        For example:
+            def [T <: int] f(self, x: int, y: T) -> None
+        """
+        s = ''
+        asterisk = False
+        for i in range(len(tp.arg_types)):
+            if s:
+                s += ', '
+            if tp.arg_kinds[i] in (ARG_NAMED, ARG_NAMED_OPT) and not asterisk:
+                s += '*, '
+                asterisk = True
+            if tp.arg_kinds[i] == ARG_STAR:
+                s += '*'
+                asterisk = True
+            if tp.arg_kinds[i] == ARG_STAR2:
+                s += '**'
+            name = tp.arg_names[i]
+            if name:
+                s += name + ': '
+            s += strip_quotes(self.format(tp.arg_types[i]))
+            if tp.arg_kinds[i] in (ARG_OPT, ARG_NAMED_OPT):
+                s += ' = ...'
+
+        # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
+        if tp.definition is not None and tp.definition.name() is not None:
+            definition_args = getattr(tp.definition, 'arg_names')
+            if definition_args and tp.arg_names != definition_args \
+                    and len(definition_args) > 0:
+                if s:
+                    s = ', ' + s
+                s = definition_args[0] + s
+            s = '{}({})'.format(tp.definition.name(), s)
+        else:
+            s = '({})'.format(s)
+
+        s += ' -> ' + strip_quotes(self.format(tp.ret_type))
+        if tp.variables:
+            tvars = []
+            for tvar in tp.variables:
+                if (tvar.upper_bound and isinstance(tvar.upper_bound, Instance) and
+                        tvar.upper_bound.type.fullname() != 'builtins.object'):
+                    tvars.append('{} <: {}'.format(tvar.name,
+                                                   strip_quotes(self.format(tvar.upper_bound))))
+                elif tvar.values:
+                    tvars.append('{} in ({})'
+                                 .format(tvar.name, ', '.join([strip_quotes(self.format(tp))
+                                                               for tp in tvar.values])))
+                else:
+                    tvars.append(tvar.name)
+            s = '[{}] {}'.format(', '.join(tvars), s)
+        return 'def {}'.format(s)
+
+
+def variance_string(variance: int) -> str:
+    if variance == COVARIANT:
+        return 'covariant'
+    elif variance == CONTRAVARIANT:
+        return 'contravariant'
+    else:
+        return 'invariant'
+
+
+def get_missing_protocol_members(left: Instance, right: Instance) -> List[str]:
+    """Find all protocol members of 'right' that are not implemented
+    (i.e. completely missing) in 'left'.
+    """
+    from mypy.subtypes import find_member
+    assert right.type.is_protocol
+    missing = []  # type: List[str]
+    for member in right.type.protocol_members:
+        if not find_member(member, left, left):
+            missing.append(member)
+    return missing
+
+
+def get_conflict_protocol_types(left: Instance, right: Instance) -> List[Tuple[str, Type, Type]]:
+    """Find members that are defined in 'left' but have incompatible types.
+    Return them as a list of ('member', 'got', 'expected').
+    """
+    from mypy.subtypes import find_member, is_subtype, get_member_flags, IS_SETTABLE
+    assert right.type.is_protocol
+    conflicts = []  # type: List[Tuple[str, Type, Type]]
+    for member in right.type.protocol_members:
+        if member in ('__init__', '__new__'):
+            continue
+        supertype = find_member(member, right, left)
+        assert supertype is not None
+        subtype = find_member(member, left, left)
+        if not subtype:
+            continue
+        is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
+        if IS_SETTABLE in get_member_flags(member, right.type):
+            is_compat = is_compat and is_subtype(supertype, subtype)
+        if not is_compat:
+            conflicts.append((member, subtype, supertype))
+    return conflicts
+
+
+def get_bad_protocol_flags(left: Instance, right: Instance
+                           ) -> List[Tuple[str, Set[int], Set[int]]]:
+    """Return all incompatible attribute flags for members that are present in both
+    'left' and 'right'.
+    """
+    from mypy.subtypes import (find_member, get_member_flags,
+                               IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC)
+    assert right.type.is_protocol
+    all_flags = []  # type: List[Tuple[str, Set[int], Set[int]]]
+    for member in right.type.protocol_members:
+        if find_member(member, left, left):
+            item = (member,
+                    get_member_flags(member, left.type),
+                    get_member_flags(member, right.type))
+            all_flags.append(item)
+    bad_flags = []
+    for name, subflags, superflags in all_flags:
+        if (IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags or
+                IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags or
+                IS_SETTABLE in superflags and IS_SETTABLE not in subflags or
+                IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags):
+            bad_flags.append((name, subflags, superflags))
+    return bad_flags
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""
@@ -1046,22 +1293,23 @@ def plural_s(s: Sequence[Any]) -> str:
 
 
 def format_string_list(s: Iterable[str]) -> str:
-    l = list(s)
-    assert len(l) > 0
-    if len(l) == 1:
-        return l[0]
-    elif len(l) <= 5:
-        return '%s and %s' % (', '.join(l[:-1]), l[-1])
+    lst = list(s)
+    assert len(lst) > 0
+    if len(lst) == 1:
+        return lst[0]
+    elif len(lst) <= 5:
+        return '%s and %s' % (', '.join(lst[:-1]), lst[-1])
     else:
-        return '%s, ... and %s (%i methods suppressed)' % (', '.join(l[:2]), l[-1], len(l) - 3)
+        return '%s, ... and %s (%i methods suppressed)' % (
+            ', '.join(lst[:2]), lst[-1], len(lst) - 3)
 
 
 def format_item_name_list(s: Iterable[str]) -> str:
-    l = list(s)
-    if len(l) <= 5:
-        return '(' + ', '.join(["'%s'" % name for name in l]) + ')'
+    lst = list(s)
+    if len(lst) <= 5:
+        return '(' + ', '.join(["'%s'" % name for name in lst]) + ')'
     else:
-        return '(' + ', '.join(["'%s'" % name for name in l[:5]]) + ', ...)'
+        return '(' + ', '.join(["'%s'" % name for name in lst[:5]]) + ', ...)'
 
 
 def callable_name(type: CallableType) -> str:
