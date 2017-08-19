@@ -1016,11 +1016,6 @@ def invariance_notes(notes: List[str], arg_type: Type, expected_type: Type) -> L
     return notes
 
 
-def append_invariance_link(notes: List[str],
-                           invariant_type: str) -> List[str]:
-    return notes
-
-
 def make_inferred_type_note(context: Context, subtype: Type,
                             supertype: Type, supertype_str: str) -> str:
     """Explain that the user may have forgotten to type a variable.
