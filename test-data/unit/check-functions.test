@@ -2225,7 +2225,7 @@ f(1, 2, '3', '4')
 f(1, 2, b'3', b'4')
 f(1, '2', '3', '4') # E: Argument 1 of "f" has incompatible value \
 # N: "S" must be all one type: "int" or "str"
-f('1', '2', b'3', '4') # E: Argument 2 of "f" have incompatible value \
+f('1', '2', b'3', '4') # E: Argument 2 of "f" has incompatible value \
 # N: "AnyStr" must be all one type: "str" or "bytes"
 f('1', 2, b'3', '4') # E: Argument 1 of "f" has incompatible value \
 # N: "S" must be all one type: "int" or "str" \
