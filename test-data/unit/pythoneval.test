@@ -1277,7 +1277,7 @@ re.subn(bpat, b'', b'')[0] + b''
 re.subn(bre, lambda m: b'', b'')[0] + b''
 re.subn(bpat, lambda m: b'', b'')[0] + b''
 [out]
-_program.py:7: error: Arguments 1 and 2 of "search" have incompatible values
+_program.py:7: error: Argument 1 of "search" has incompatible value
 _program.py:7: note: "AnyStr" must be all one type: "str" or "bytes"
 _program.py:9: error: Cannot infer type argument 1 of "search"
 
@@ -1302,7 +1302,7 @@ re.subn(spat, '', '')[0] + ''
 re.subn(sre, lambda m: '', '')[0] + ''
 re.subn(spat, lambda m: '', '')[0] + ''
 [out]
-_program.py:7: error: Arguments 1 and 2 of "search" have incompatible values
+_program.py:7: error: Argument 1 of "search" has incompatible value
 _program.py:7: note: "AnyStr" must be all one type: "str" or "bytes"
 _program.py:9: error: Cannot infer type argument 1 of "search"
 

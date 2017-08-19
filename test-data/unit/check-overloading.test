@@ -998,11 +998,11 @@ def g(x: int, *a: AnyStr) -> None: pass
 
 g('foo')
 g('foo', 'bar')
-g('foo', b'bar') # E: Arguments 1 and 2 of "g" have incompatible values \
+g('foo', b'bar') # E: Argument 1 of "g" has incompatible value \
 # N: "AnyStr" must be all one type: "bytes" or "str"
 g(1)
 g(1, 'foo')
-g(1, 'foo', b'bar') # E: Arguments 2 of "g" have incompatible values \
+g(1, 'foo', b'bar') # E: Argument 1 of "g" has incompatible value \
 # N: "AnyStr" must be all one type: "bytes" or "str"
 [builtins fixtures/primitives.pyi]
 
