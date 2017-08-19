@@ -600,7 +600,7 @@ def f(a: Dict[str, Sequence[int]]) -> None: pass
 a = {'a': [1, 2]}
 f(a) # E: Argument 1 to "f" has incompatible type Dict[str, List[int]]; expected Dict[str, Sequence[int]] \
 # N: "Dict" is invariant --- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
-# N: Consider using "Mapping" instead, which is covariant
+# N: Consider using "Mapping" instead, which is covariant in the value
 [builtins fixtures/dict.pyi]
 
 

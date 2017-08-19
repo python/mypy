@@ -998,23 +998,23 @@ def pretty_or(args: List[str]) -> str:
 
 
 def invariance_notes(notes: List[str], arg_type: str, expected_type: str) -> List[str]:
-    '''Explain that the type is invariant and give notes for how to solve the issue.'''
+    """Explain that the type is invariant and give notes for how to solve the issue."""
     if expected_type.startswith('List') and arg_type.startswith('List'):
-        notes = append_invariance_message(notes, 'List', 'Sequence')
+        notes = append_invariance_link(notes, 'List')
+        notes.append('Consider using "Sequence" instead, which is covariant')
     elif (expected_type.startswith('Dict') and arg_type.startswith('Dict') and
           expected_type.split(',')[0] == arg_type.split(',')[0] and
           expected_type.split(',')[1:] != arg_type.split(',')[1:]):
-        notes = append_invariance_message(notes, 'Dict', 'Mapping')
+        notes = append_invariance_link(notes, 'Dict')
+        notes.append('Consider using "Mapping" instead, which is covariant in the value')
     return notes
 
 
-def append_invariance_message(notes: List[str],
-                              invariant_type: str,
-                              suggested_alternative: str) -> List[str]:
+def append_invariance_link(notes: List[str],
+                           invariant_type: str) -> List[str]:
     notes.append(
         '"' + invariant_type + '" is invariant --- see ' +
         'http://mypy.readthedocs.io/en/latest/common_issues.html#variance')
-    notes.append('Consider using "' + suggested_alternative + '" instead, which is covariant')
     return notes
 
 
