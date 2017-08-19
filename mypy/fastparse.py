@@ -465,12 +465,6 @@ class ASTConverter(ast3.NodeTransformer):
     @with_line
     def visit_ClassDef(self, n: ast3.ClassDef) -> ClassDef:
         self.class_nesting += 1
-        metaclass_arg = find(lambda x: x.arg == 'metaclass', n.keywords)
-        metaclass = None
-        if metaclass_arg:
-            metaclass = stringify_name(metaclass_arg.value)
-            if metaclass is None:
-                metaclass = '<error>'  # To be reported later
         keywords = [(kw.arg, self.visit(kw.value))
                     for kw in n.keywords]
 
@@ -478,7 +472,7 @@ class ASTConverter(ast3.NodeTransformer):
                         self.as_block(n.body, n.lineno),
                         None,
                         self.translate_expr_list(n.bases),
-                        metaclass=metaclass,
+                        metaclass=dict(keywords).get('metaclass'),
                         keywords=keywords)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
         self.class_nesting -= 1
