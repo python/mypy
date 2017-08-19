@@ -593,7 +593,6 @@ class C:
 C().foo()
 C().foo(1)  # The decorator's return type says this should be okay
 
-
 [case testInvariantDictArgNote]
 from typing import Dict, Sequence
 def f(x: Dict[str, Sequence[int]]) -> None: pass
