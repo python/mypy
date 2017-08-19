@@ -1132,13 +1132,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if len(metas) > 1 or defn.metaclass is not None:
             self.fail("Multiple metaclass definitions", defn)
             return
-        metaclass_expr = metas.pop()
-        if isinstance(metaclass_expr, NameExpr):
-            defn.metaclass = metaclass_expr.name
-        elif isinstance(metaclass_expr, MemberExpr):
-            defn.metaclass = get_member_expr_fullname(metaclass_expr)
-        else:
-            self.fail("Dynamic metaclass not supported for '%s'" % defn.name, metaclass_expr)
+        defn.metaclass = metas.pop()
 
     def expr_to_analyzed_type(self, expr: Expression) -> Type:
         if isinstance(expr, CallExpr):
@@ -1189,10 +1183,15 @@ class SemanticAnalyzer(NodeVisitor[None]):
     def analyze_metaclass(self, defn: ClassDef) -> None:
         error_context = defn  # type: Context
         if defn.metaclass:
-            if defn.metaclass == '<error>':
-                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, error_context)
+
+            if isinstance(defn.metaclass, NameExpr):
+                metaclass = defn.metaclass.name
+            elif isinstance(defn.metaclass, MemberExpr):
+                metaclass = get_member_expr_fullname(defn.metaclass)
+            else:
+                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn.metaclass)
                 return
-            sym = self.lookup_qualified(defn.metaclass, error_context)
+            sym = self.lookup_qualified(metaclass, error_context)
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
                 return
@@ -1204,7 +1203,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 #       attributes, similar to an 'Any' base class.
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
-                self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
+                self.fail("Invalid metaclass '%s'" % metaclass, defn.metaclass)
                 return
             if not sym.node.is_metaclass():
                 self.fail("Metaclasses not inheriting from 'type' are not supported", defn)
@@ -1216,7 +1215,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if defn.info.metaclass_type is None:
             # Inconsistency may happen due to multiple baseclasses even in classes that
             # do not declare explicit metaclass, but it's harder to catch at this stage
-            if defn.metaclass:
+            if defn.metaclass is not None:
                 self.fail("Inconsistent metaclass structure for '%s'" % defn.name, defn)
 
     def object_type(self) -> Instance:
