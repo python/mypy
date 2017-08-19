@@ -413,7 +413,7 @@ MypyFile:1(
     A
     Metaclass(MemberExpr:2(
       NameExpr(abc)
-      ABCMeta))
+      ABCMeta [abc.ABCMeta]))
     PassStmt:2()))
 
 [case testStaticMethod]
