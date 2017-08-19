@@ -572,7 +572,8 @@ class MessageBuilder:
                 arg_type_str = '**' + arg_type_str
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 n, target, arg_type_str, expected_type_str)
-            notes = invariance_notes(notes, arg_type, expected_type)
+            if isinstance(arg_type, Instance) and isinstance(expected_type, Instance):
+                notes = append_invariance_notes(notes, arg_type, expected_type)
         self.fail(msg, context)
         if notes:
             for note_msg in notes:
@@ -997,24 +998,23 @@ def pretty_or(args: List[str]) -> str:
     return ", ".join(quoted[:-1]) + ", or " + quoted[-1]
 
 
-def invariance_notes(notes: List[str], arg_type: Type, expected_type: Type) -> List[str]:
+def append_invariance_notes(notes: List[str], arg_type: Type, expected_type: Type) -> List[str]:
     """Explain that the type is invariant and give notes for how to solve the issue."""
     from mypy.subtypes import is_subtype
     invariant_type = ''
     covariant_suggestion = ''
-    if isinstance(arg_type, Instance) and isinstance(expected_type, Instance):
-        if (arg_type.type.fullname() == 'builtins.list' and
-                expected_type.type.fullname() == 'builtins.list' and
-                is_subtype(arg_type.args[0], expected_type.args[0])):
-            invariant_type = 'List'
-            covariant_suggestion = 'Consider using "Sequence" instead, which is covariant'
-        elif (arg_type.type.fullname() == 'builtins.dict' and
-              expected_type.type.fullname() == 'builtins.dict' and
-              arg_type.args[0].type == expected_type.args[0].type and
-              is_subtype(arg_type.args[1], expected_type.args[1])):
-            invariant_type = 'Dict'
-            covariant_suggestion = ('Consider using "Mapping" instead, '
-                                    'which is covariant in the value')
+    if (arg_type.type.fullname() == 'builtins.list' and
+            expected_type.type.fullname() == 'builtins.list' and
+            is_subtype(arg_type.args[0], expected_type.args[0])):
+        invariant_type = 'List'
+        covariant_suggestion = 'Consider using "Sequence" instead, which is covariant'
+    elif (arg_type.type.fullname() == 'builtins.dict' and
+          expected_type.type.fullname() == 'builtins.dict' and
+          arg_type.args[0].type == expected_type.args[0].type and
+          is_subtype(arg_type.args[1], expected_type.args[1])):
+        invariant_type = 'Dict'
+        covariant_suggestion = ('Consider using "Mapping" instead, '
+                                'which is covariant in the value')
     if invariant_type and covariant_suggestion:
         notes.append(
             '"{}" is invariant --- see '.format(invariant_type) +
