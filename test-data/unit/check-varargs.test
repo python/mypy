@@ -634,6 +634,6 @@ def f(x: Listener) -> None: pass
 def g(y: DictReader) -> None: pass
 a = [1, 2]
 b = {'b': 1}
-f(a) # E: Argument 1 to "f" has incompatible type List[int]; expected Listener
-g(b) # E: Argument 1 to "f" has incompatible type Dict[str, int]; expected DictReader
+f(a) # E: Argument 1 to "f" has incompatible type List[int]; expected "Listener"
+g(b) # E: Argument 1 to "f" has incompatible type Dict[str, int]; expected "DictReader"
 [builtins fixtures/dict.pyi]
