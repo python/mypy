@@ -684,7 +684,7 @@ g('a')() # E: List[str] not callable
 # to backtrack later) and defaults to T = <nothing>. The result is an
 # awkward error message. Either a better error message, or simply accepting the
 # call, would be preferable here.
-g(['a']) # E: Argument 1 to "g" has incompatible type List[str]; expected List[<nothing>] 
+g(['a']) # E: Argument 1 to "g" has incompatible type List[str]; expected List[<nothing>]
 
 h(g(['a']))
 
