@@ -999,19 +999,23 @@ def pretty_or(args: List[str]) -> str:
 
 def invariance_notes(notes: List[str], arg_type: Type, expected_type: Type) -> List[str]:
     """Explain that the type is invariant and give notes for how to solve the issue."""
+    from mypy.subtypes import is_subtype
+    invariant_type = ''
+    covariant_suggestion = ''
     if isinstance(arg_type, Instance) and isinstance(expected_type, Instance):
         if (arg_type.type.fullname() == 'builtins.list' and
-                expected_type.type.fullname() == 'builtins.list'):
+                expected_type.type.fullname() == 'builtins.list' and
+                is_subtype(arg_type.args[0], expected_type.args[0])):
             invariant_type = 'List'
             covariant_suggestion = 'Consider using "Sequence" instead, which is covariant'
         elif (arg_type.type.fullname() == 'builtins.dict' and
               expected_type.type.fullname() == 'builtins.dict' and
               arg_type.args[0].type == expected_type.args[0].type and
-              arg_type.args[1].type != expected_type.args[1].type):
+              is_subtype(arg_type.args[1], expected_type.args[1])):
             invariant_type = 'Dict'
             covariant_suggestion = ('Consider using "Mapping" instead, '
                                     'which is covariant in the value')
-    if invariant_type:
+    if invariant_type and covariant_suggestion:
         notes.append(
             '"{}" is invariant --- see '.format(invariant_type) +
             'http://mypy.readthedocs.io/en/latest/common_issues.html#variance')
