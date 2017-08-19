@@ -572,7 +572,7 @@ class MessageBuilder:
                 arg_type_str = '**' + arg_type_str
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 n, target, arg_type_str, expected_type_str)
-            notes = invariance_notes(notes, arg_type_str, expected_type_str)
+            notes = invariance_notes(notes, arg_type, expected_type)
         self.fail(msg, context)
         if notes:
             for note_msg in notes:
@@ -997,24 +997,27 @@ def pretty_or(args: List[str]) -> str:
     return ", ".join(quoted[:-1]) + ", or " + quoted[-1]
 
 
-def invariance_notes(notes: List[str], arg_type: str, expected_type: str) -> List[str]:
+def invariance_notes(notes: List[str], arg_type: Type, expected_type: Type) -> List[str]:
     """Explain that the type is invariant and give notes for how to solve the issue."""
-    if expected_type.startswith('List') and arg_type.startswith('List'):
-        notes = append_invariance_link(notes, 'List')
+    if (arg_type.type.fullname() == 'builtins.list' and
+            expected_type.type.fullname() == 'builtins.list'):
+        notes.append(
+            '"List" is invariant --- see ' +
+            'http://mypy.readthedocs.io/en/latest/common_issues.html#variance')
         notes.append('Consider using "Sequence" instead, which is covariant')
-    elif (expected_type.startswith('Dict') and arg_type.startswith('Dict') and
-          expected_type.split(',')[0] == arg_type.split(',')[0] and
-          expected_type.split(',')[1:] != arg_type.split(',')[1:]):
-        notes = append_invariance_link(notes, 'Dict')
+    elif (arg_type.type.fullname() == 'builtins.dict' and
+          expected_type.type.fullname() == 'builtins.dict' and
+          arg_type.args[0].type == expected_type.args[0].type and
+          arg_type.args[1].type != expected_type.args[1].type):
+        notes.append(
+            '"Dict" is invariant --- see ' +
+            'http://mypy.readthedocs.io/en/latest/common_issues.html#variance')
         notes.append('Consider using "Mapping" instead, which is covariant in the value')
     return notes
 
 
 def append_invariance_link(notes: List[str],
                            invariant_type: str) -> List[str]:
-    notes.append(
-        '"' + invariant_type + '" is invariant --- see ' +
-        'http://mypy.readthedocs.io/en/latest/common_issues.html#variance')
     return notes
 
 
