@@ -1011,6 +1011,8 @@ def append_invariance_notes(notes: List[str], arg_type: Instance,
         covariant_suggestion = 'Consider using "Sequence" instead, which is covariant'
     elif (arg_type.type.fullname() == 'builtins.dict' and
           expected_type.type.fullname() == 'builtins.dict' and
+          isinstance(arg_type.args[0], Instance) and
+          isinstance(expected_type.args[0], Instance) and
           arg_type.args[0].type == expected_type.args[0].type and
           is_subtype(arg_type.args[1], expected_type.args[1])):
         invariant_type = 'Dict'
