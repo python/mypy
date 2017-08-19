@@ -998,7 +998,7 @@ def pretty_or(args: List[str]) -> str:
     return ", ".join(quoted[:-1]) + ", or " + quoted[-1]
 
 
-def append_invariance_notes(notes: List[str], arg_type: Type, expected_type: Type) -> List[str]:
+def append_invariance_notes(notes: List[str], arg_type: Instance, expected_type: Instance) -> List[str]:
     """Explain that the type is invariant and give notes for how to solve the issue."""
     from mypy.subtypes import is_subtype
     invariant_type = ''

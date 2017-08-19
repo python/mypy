@@ -684,9 +684,7 @@ g('a')() # E: List[str] not callable
 # to backtrack later) and defaults to T = <nothing>. The result is an
 # awkward error message. Either a better error message, or simply accepting the
 # call, would be preferable here.
-g(['a']) # E: Argument 1 to "g" has incompatible type List[str]; expected List[<nothing>] \
-# N: "List" is invariant --- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
-# N: Consider using "Sequence" instead, which is covariant
+g(['a']) # E: Argument 1 to "g" has incompatible type List[str]; expected List[<nothing>] 
 
 h(g(['a']))
 
@@ -695,9 +693,7 @@ a = [1]
 b = ['b']
 i(a, a, b)
 i(b, a, b)
-i(a, b, b) # E: Argument 1 to "i" has incompatible type List[int]; expected List[str] \
-# N: "List" is invariant --- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
-# N: Consider using "Sequence" instead, which is covariant
+i(a, b, b) # E: Argument 1 to "i" has incompatible type List[int]; expected List[str]
 [builtins fixtures/list.pyi]
 
 [case testCallableListJoinInference]

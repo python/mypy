@@ -604,7 +604,7 @@ b = {'b': ['c', 'd']}
 c = {'c': 1.0}
 d = {'d': 1}
 f(a) # E: Argument 1 to "f" has incompatible type Dict[str, List[int]]; expected Dict[str, Sequence[int]] \
-# N: "Dict" is invariant --- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+# N: "Dict" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
 # N: Consider using "Mapping" instead, which is covariant in the value type
 f(b) # E: Argument 1 to "f" has incompatible type Dict[str, List[str]]; expected Dict[str, Sequence[int]]
 g(c)
@@ -619,11 +619,11 @@ from typing import List, Union
 def f(numbers: List[Union[int, float]]) -> None: pass
 a = [1, 2]
 f(a) # E: Argument 1 to "f" has incompatible type List[int]; expected List[Union[int, float]] \
-# N: "List" is invariant --- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+# N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
 # N: Consider using "Sequence" instead, which is covariant
 x = [1]
 y = ['a']
-x = y
+x = y # E: Incompatible types in assignment (expression has type List[str], variable has type List[int])
 [builtins fixtures/list.pyi]
 
 
@@ -637,4 +637,4 @@ a = [1, 2]
 b = {'b': 1}
 f(a) # E: Argument 1 to "f" has incompatible type List[int]; expected Listener
 g(b) # E: Argument 1 to "f" has incompatible type Dict[str, int]; expected DictReader
-[builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]
