@@ -1014,10 +1014,10 @@ def append_invariance_notes(notes: List[str], arg_type: Type, expected_type: Typ
           is_subtype(arg_type.args[1], expected_type.args[1])):
         invariant_type = 'Dict'
         covariant_suggestion = ('Consider using "Mapping" instead, '
-                                'which is covariant in the value')
+                                'which is covariant in the value type')
     if invariant_type and covariant_suggestion:
         notes.append(
-            '"{}" is invariant --- see '.format(invariant_type) +
+            '"{}" is invariant -- see '.format(invariant_type) +
             'http://mypy.readthedocs.io/en/latest/common_issues.html#variance')
         notes.append(covariant_suggestion)
     return notes
