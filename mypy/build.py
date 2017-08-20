@@ -116,8 +116,8 @@ class BuildSourceSet:
 
 def build(sources: List[BuildSource],
           options: Options,
-          alt_lib_path: str = None,
-          bin_dir: str = None) -> BuildResult:
+          alt_lib_path: Optional[str] = None,
+          bin_dir: Optional[str] = None) -> BuildResult:
     """Analyze a program.
 
     A single call to build performs parsing, semantic analysis and optionally

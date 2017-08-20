@@ -28,7 +28,7 @@ class InvalidPackageName(Exception):
     """Exception indicating that a package name was invalid."""
 
 
-def main(script_path: Optional[str], args: List[str] = None) -> None:
+def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     """Main entry point to the type checker.
 
     Args:
@@ -38,7 +38,7 @@ def main(script_path: Optional[str], args: List[str] = None) -> None:
     """
     t0 = time.time()
     if script_path:
-        bin_dir = find_bin_directory(script_path)
+        bin_dir = find_bin_directory(script_path)  # type: Optional[str]
     else:
         bin_dir = None
     sys.setrecursionlimit(2 ** 14)
@@ -90,8 +90,9 @@ def readlinkabs(link: str) -> str:
     return os.path.join(os.path.dirname(link), path)
 
 
-def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) -> BuildResult:
-    # Type-check the program and dependencies and translate to Python.
+def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
+                    options: Options) -> BuildResult:
+    # Type-check the program and dependencies.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
                        options=options)
@@ -163,7 +164,7 @@ def parse_version(v: str) -> Tuple[int, int]:
 
 # Make the help output a little less jarring.
 class AugmentedHelpFormatter(argparse.HelpFormatter):
-    def __init__(self, prog: Optional[str]) -> None:
+    def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
 
@@ -204,9 +205,9 @@ def process_options(args: List[str],
 
     def add_invertible_flag(flag: str,
                             *,
-                            inverse: str = None,
+                            inverse: Optional[str] = None,
                             default: bool,
-                            dest: str = None,
+                            dest: Optional[str] = None,
                             help: str,
                             strict_flag: bool = False
                             ) -> None:
@@ -226,6 +227,7 @@ def process_options(args: List[str],
                                   dest=dest,
                                   help=argparse.SUPPRESS)
         if strict_flag:
+            assert dest is not None
             strict_flag_names.append(flag)
             strict_flag_assignments.append((dest, not default))
 
@@ -458,6 +460,7 @@ def process_options(args: List[str],
         experiments.STRICT_OPTIONAL = True
     if special_opts.find_occurrences:
         experiments.find_occurrences = special_opts.find_occurrences.split('.')
+        assert experiments.find_occurrences is not None
         if len(experiments.find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
         if len(experiments.find_occurrences) != 2:
@@ -638,9 +641,8 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
     If filename is None, fall back to default config file and then
     to setup.cfg.
     """
-    config_files = None  # type: Tuple[str, ...]
     if filename is not None:
-        config_files = (filename,)
+        config_files = (filename,)  # type: Tuple[str, ...]
     else:
         config_files = (defaults.CONFIG_FILE,) + SHARED_CONFIG_FILES
 
@@ -703,6 +705,7 @@ def parse_section(prefix: str, template: Options,
     results = {}  # type: Dict[str, object]
     report_dirs = {}  # type: Dict[str, str]
     for key in section:
+        orig_key = key
         key = key.replace('-', '_')
         if key in config_types:
             ct = config_types[key]
@@ -712,12 +715,12 @@ def parse_section(prefix: str, template: Options,
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
                     if report_type in reporter_classes:
-                        report_dirs[report_type] = section.get(key)
+                        report_dirs[report_type] = section[orig_key]
                     else:
-                        print("%s: Unrecognized report type: %s" % (prefix, key),
+                        print("%s: Unrecognized report type: %s" % (prefix, orig_key),
                               file=sys.stderr)
                     continue
-                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
+                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
                       file=sys.stderr)
                 continue
             ct = type(dv)
