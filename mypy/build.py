@@ -1545,8 +1545,7 @@ class State:
         self.manager.modules[self.id] = self.tree
 
     def fix_cross_refs(self) -> None:
-        assert self.tree is not None, "Internal error: this method must be called only" \
-                                      " for cached modules"
+        assert self.tree is not None, "Internal error: method must be called on parsed file only"
         fixup_module_pass_one(self.tree, self.manager.modules,
                               self.manager.options.quick_and_dirty)
 
