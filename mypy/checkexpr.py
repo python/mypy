@@ -817,7 +817,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             # In dynamically typed functions use implicit 'Any' types for
             # type variables.
-            inferred_args = [AnyType(TypeOfAny.implicit)] * len(callee_type.variables)
+            inferred_args = [AnyType(TypeOfAny.unannotated)] * len(callee_type.variables)
         return self.apply_inferred_arguments(callee_type, inferred_args,
                                              context)
 
@@ -2083,7 +2083,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         # at the end of the chain.  That's not an error.
                         return AnyType(TypeOfAny.special_form)
                     if not self.chk.in_checked_function():
-                        return AnyType(TypeOfAny.implicit)
+                        return AnyType(TypeOfAny.unannotated)
                     if self.chk.scope.active_class() is not None:
                         self.chk.fail('super() outside of a method is not supported', e)
                         return AnyType(TypeOfAny.from_error)
@@ -2285,7 +2285,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.disallowed_any_type(typ, node)
 
         if not self.chk.in_checked_function():
-            return AnyType(TypeOfAny.implicit)
+            return AnyType(TypeOfAny.unannotated)
         else:
             return typ
 

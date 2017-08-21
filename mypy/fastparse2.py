@@ -304,14 +304,14 @@ class ASTConverter(ast27.NodeTransformer):
                         isinstance(func_type_ast.argtypes[0], ast3.Ellipsis)):
                     arg_types = [a.type_annotation
                                  if a.type_annotation is not None
-                                 else AnyType(TypeOfAny.implicit)
+                                 else AnyType(TypeOfAny.unannotated)
                                  for a in args]
                 else:
                     # PEP 484 disallows both type annotations and type comments
                     if any(a.type_annotation is not None for a in args):
                         self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
-                    arg_types = [a if a is not None else AnyType(TypeOfAny.implicit) for
-                                a in converter.translate_expr_list(func_type_ast.argtypes)]
+                    arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated) for
+                                 a in converter.translate_expr_list(func_type_ast.argtypes)]
                 return_type = converter.visit(func_type_ast.returns)
 
                 # add implicit self type
@@ -338,7 +338,7 @@ class ASTConverter(ast27.NodeTransformer):
             elif len(arg_types) < len(arg_kinds):
                 self.fail('Type signature has too few arguments', n.lineno, 0)
             else:
-                any_type = AnyType(TypeOfAny.implicit)
+                any_type = AnyType(TypeOfAny.unannotated)
                 func_type = CallableType([a if a is not None else any_type for a in arg_types],
                                         arg_kinds,
                                         arg_names,
