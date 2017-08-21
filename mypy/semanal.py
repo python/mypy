@@ -982,7 +982,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 # Append name and type in this case...
                 name = stmt.lvalues[0].name
                 items.append(name)
-                types.append(AnyType(TypeOfAny.implicit)
+                types.append(AnyType(TypeOfAny.unannotated)
                              if stmt.type is None
                              else self.anal_type(stmt.type))
                 # ...despite possible minor failures that allow further analyzis.
@@ -1247,7 +1247,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if args:
             # TODO: assert len(args) == len(node.defn.type_vars)
             return Instance(node, args)
-        return Instance(node, [AnyType(TypeOfAny.implicit)] * len(node.defn.type_vars))
+        return Instance(node, [AnyType(TypeOfAny.unannotated)] * len(node.defn.type_vars))
 
     def is_typeddict(self, expr: Expression) -> bool:
         return (isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and
@@ -1341,7 +1341,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     continue
                 # Append name and type in this case...
                 fields.append(name)
-                types.append(AnyType(TypeOfAny.implicit)
+                types.append(AnyType(TypeOfAny.unannotated)
                              if stmt.type is None
                              else self.anal_type(stmt.type))
                 # ...despite possible minor failures that allow further analyzis.
@@ -2291,7 +2291,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 # The fields argument contains (name, type) tuples.
                 items, types, ok = self.parse_namedtuple_fields_with_types(listexpr.items, call)
         if not types:
-            types = [AnyType(TypeOfAny.implicit) for _ in items]
+            types = [AnyType(TypeOfAny.unannotated) for _ in items]
         underscore = [item for item in items if item.startswith('_')]
         if underscore:
             self.fail("namedtuple() field names cannot start with an underscore: "
@@ -4566,7 +4566,7 @@ def calculate_return_type(expr: Expression) -> Optional[Type]:
             typ = expr.node.type
             if typ is None:
                 # No signature -> default to Any.
-                return AnyType(TypeOfAny.implicit)
+                return AnyType(TypeOfAny.unannotated)
             # Explicit Any return?
             if isinstance(typ, CallableType):
                 return typ.ret_type

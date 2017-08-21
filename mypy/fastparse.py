@@ -324,7 +324,7 @@ class ASTConverter(ast3.NodeTransformer):
                         self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
                     arg_types = [a.type_annotation
                                  if a.type_annotation is not None
-                                 else AnyType(TypeOfAny.implicit)
+                                 else AnyType(TypeOfAny.unannotated)
                                  for a in args]
                 else:
                     # PEP 484 disallows both type annotations and type comments
@@ -332,7 +332,7 @@ class ASTConverter(ast3.NodeTransformer):
                         self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
                     translated_args = (TypeConverter(self.errors, line=n.lineno)
                                        .translate_expr_list(func_type_ast.argtypes))
-                    arg_types = [a if a is not None else AnyType(TypeOfAny.implicit)
+                    arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated)
                                 for a in translated_args]
                 return_type = TypeConverter(self.errors,
                                             line=n.lineno).visit(func_type_ast.returns)
@@ -363,11 +363,11 @@ class ASTConverter(ast3.NodeTransformer):
                 self.fail('Type signature has too few arguments', n.lineno, 0)
             else:
                 func_type = CallableType([a if a is not None else
-                                          AnyType(TypeOfAny.implicit) for a in arg_types],
+                                          AnyType(TypeOfAny.unannotated) for a in arg_types],
                                          arg_kinds,
                                          arg_names,
                                          return_type if return_type is not None else
-                                         AnyType(TypeOfAny.implicit),
+                                         AnyType(TypeOfAny.unannotated),
                                          None)
 
         func_def = FuncDef(n.name,

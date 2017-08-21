@@ -31,7 +31,7 @@ except ImportError:
     LXML_INSTALLED = False
 
 type_of_any_name_map = collections.OrderedDict([
-    (TypeOfAny.implicit, "Unannotated"),
+    (TypeOfAny.unannotated, "Unannotated"),
     (TypeOfAny.explicit, "Explicit"),
     (TypeOfAny.from_unimported_type, "Unimported"),
     (TypeOfAny.from_omitted_generics, "Omitted Generics"),
