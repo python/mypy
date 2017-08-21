@@ -87,7 +87,7 @@ def map_instance_to_direct_supertypes(instance: Instance,
     else:
         # Relationship with the supertype not specified explicitly. Use dynamic
         # type arguments implicitly.
-        any_type = AnyType(TypeOfAny.implicit)
+        any_type = AnyType(TypeOfAny.unannotated)
         return [Instance(supertype, [any_type] * len(supertype.type_vars))]
 
 
