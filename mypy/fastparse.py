@@ -986,13 +986,7 @@ class TypeConverter(ast3.NodeTransformer):
         self.line = line
         self.node_stack = []  # type: List[ast3.AST]
 
-    @overload
-    def visit(self, node: ast3.expr) -> Type: ...
-
-    @overload  # noqa
-    def visit(self, node: Optional[ast3.AST]) -> Optional[Type]: ...
-
-    def visit(self, node: Optional[ast3.AST]) -> Optional[Type]:  # noqa
+    def _visit_implementation(self, node: Optional[ast3.AST]) -> Optional[Type]:
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None
@@ -1001,6 +995,19 @@ class TypeConverter(ast3.NodeTransformer):
             return super().visit(node)
         finally:
             self.node_stack.pop()
+
+    if sys.version_info >= (3, 6):
+        @overload
+        def visit(self, node: ast3.expr) -> Type: ...
+
+        @overload  # noqa
+        def visit(self, node: Optional[ast3.AST]) -> Optional[Type]: ...
+
+        def visit(self, node: Optional[ast3.AST]) -> Optional[Type]:  # noqa
+            return self._visit_implementation(node)
+    else:
+        def visit(self, node: Optional[ast3.AST]) -> Any:
+            return self._visit_implementation(node)
 
     def parent(self) -> Optional[ast3.AST]:
         """Return the AST node above the one we are processing"""
