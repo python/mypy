@@ -3152,19 +3152,20 @@ def f(TB: Type[B]):
 [case testMetaclassIterable]
 from typing import Iterable, Iterator
 
-class BadMeta(type):
+class ImplicitMeta(type):
     def __iter__(self) -> Iterator[int]: yield 1
 
-class Bad(metaclass=BadMeta): pass
+class Implicit(metaclass=ImplicitMeta): pass
 
-for _ in Bad: pass  # E: Iterable expected
+for _ in Implicit: pass
+reveal_type(list(Implicit))  # E: Revealed type is 'builtins.list[builtins.int*]'
 
-class GoodMeta(type, Iterable[int]):
+class ExplicitMeta(type, Iterable[int]):
     def __iter__(self) -> Iterator[int]: yield 1
 
-class Good(metaclass=GoodMeta): pass
-for _ in Good: pass
-reveal_type(list(Good))  # E: Revealed type is 'builtins.list[builtins.int*]'
+class Explicit(metaclass=ExplicitMeta): pass
+for _ in Explicit: pass
+reveal_type(list(Explicit))  # E: Revealed type is 'builtins.list[builtins.int*]'
 
 [builtins fixtures/list.pyi]
 
@@ -3372,6 +3373,17 @@ e1t: Type[E1]
 reveal_type(f(e1t))  # E: Revealed type is '__main__.A'
 
 reveal_type(f(''))  # E: Revealed type is 'builtins.str'
+
+[case testTypeCErasesGenericsFromC]
+from typing import Generic, Type, TypeVar
+
+K = TypeVar('K')
+V = TypeVar('V')
+class ExampleDict(Generic[K, V]): ...
+
+D = TypeVar('D')
+def mkdict(dict_type: Type[D]) -> D: ...
+reveal_type(mkdict(ExampleDict))  # E: Revealed type is '__main__.ExampleDict*[Any, Any]'
 
 -- Synthetic types crashes
 -- -----------------------

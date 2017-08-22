@@ -1,7 +1,9 @@
 from functools import wraps
 import sys
 
-from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set
+from typing import (
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set, overload
+)
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
 )
@@ -23,8 +25,8 @@ from mypy.nodes import (
     check_arg_names,
 )
 from mypy.types import (
-    Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
-    CallableArgument,
+    Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
+    TypeOfAny
 )
 from mypy import defaults
 from mypy import experiments
@@ -56,12 +58,16 @@ T = TypeVar('T', bound=Union[ast3.expr, ast3.stmt])
 U = TypeVar('U', bound=Node)
 V = TypeVar('V')
 
+# There is no way to create reasonable fallbacks at this stage,
+# they must be patched later.
+_dummy_fallback = None  # type: Any
+
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
 
 
 def parse(source: Union[str, bytes],
-          fnam: Optional[str] = None,
+          fnam: str,
           errors: Optional[Errors] = None,
           options: Options = Options()) -> MypyFile:
 
@@ -74,8 +80,8 @@ def parse(source: Union[str, bytes],
     if errors is None:
         errors = Errors()
         raise_on_error = True
-    errors.set_file('<input>' if fnam is None else fnam, None)
-    is_stub_file = bool(fnam) and fnam.endswith('.pyi')
+    errors.set_file(fnam, None)
+    is_stub_file = fnam.endswith('.pyi')
     try:
         if is_stub_file:
             feature_version = defaults.PYTHON3_VERSION[1]
@@ -123,7 +129,7 @@ def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', 
     return wrapper
 
 
-def find(f: Callable[[V], bool], seq: Sequence[V]) -> V:
+def find(f: Callable[[V], bool], seq: Sequence[V]) -> Optional[V]:
     for item in seq:
         if f(item):
             return item
@@ -157,14 +163,16 @@ class ASTConverter(ast3.NodeTransformer):
     def generic_visit(self, node: ast3.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))
 
-    def visit_NoneType(self, n: Any) -> Optional[Node]:
-        return None
+    def visit(self, node: Optional[ast3.AST]) -> Any:  # same as in typed_ast stub
+        if node is None:
+            return None
+        return super().visit(node)
 
     def translate_expr_list(self, l: Sequence[ast3.AST]) -> List[Expression]:
         res = []  # type: List[Expression]
         for e in l:
             exp = self.visit(e)
-            assert exp is None or isinstance(exp, Expression)
+            isinstance(exp, Expression)
             res.append(exp)
         return res
 
@@ -172,7 +180,7 @@ class ASTConverter(ast3.NodeTransformer):
         res = []  # type: List[Statement]
         for e in l:
             stmt = self.visit(e)
-            assert stmt is None or isinstance(stmt, Statement)
+            isinstance(stmt, Statement)
             res.append(stmt)
         return res
 
@@ -219,11 +227,17 @@ class ASTConverter(ast3.NodeTransformer):
         else:
             return op_name
 
-    def as_block(self, stmts: List[ast3.stmt], lineno: int) -> Block:
+    def as_block(self, stmts: List[ast3.stmt], lineno: int) -> Optional[Block]:
         b = None
         if stmts:
             b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             b.set_line(lineno)
+        return b
+
+    def as_required_block(self, stmts: List[ast3.stmt], lineno: int) -> Block:
+        assert stmts  # must be non-empty
+        b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
+        b.set_line(lineno)
         return b
 
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
@@ -308,7 +322,7 @@ class ASTConverter(ast3.NodeTransformer):
         arg_names = [None if argument_elide_name(name) else name for name in arg_names]
         if special_function_elide_names(n.name):
             arg_names = [None] * len(arg_names)
-        arg_types = None  # type: List[Type]
+        arg_types = []  # type: List[Optional[Type]]
         if no_type_check:
             arg_types = [None] * len(args)
             return_type = None
@@ -322,7 +336,9 @@ class ASTConverter(ast3.NodeTransformer):
                     if n.returns:
                         # PEP 484 disallows both type annotations and type comments
                         self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
-                    arg_types = [a.type_annotation if a.type_annotation is not None else AnyType()
+                    arg_types = [a.type_annotation
+                                 if a.type_annotation is not None
+                                 else AnyType(TypeOfAny.unannotated)
                                  for a in args]
                 else:
                     # PEP 484 disallows both type annotations and type comments
@@ -330,18 +346,18 @@ class ASTConverter(ast3.NodeTransformer):
                         self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
                     translated_args = (TypeConverter(self.errors, line=n.lineno)
                                        .translate_expr_list(func_type_ast.argtypes))
-                    arg_types = [a if a is not None else AnyType()
+                    arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated)
                                 for a in translated_args]
                 return_type = TypeConverter(self.errors,
                                             line=n.lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
                 if self.in_class() and len(arg_types) < len(args):
-                    arg_types.insert(0, AnyType())
+                    arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
-                arg_types = [AnyType()] * len(args)
-                return_type = AnyType()
+                arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
+                return_type = AnyType(TypeOfAny.from_error)
         else:
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(self.errors, line=n.returns.lineno
@@ -361,16 +377,16 @@ class ASTConverter(ast3.NodeTransformer):
                 self.fail('Type signature has too few arguments', n.lineno, 0)
             else:
                 func_type = CallableType([a if a is not None else
-                                          AnyType(implicit=True) for a in arg_types],
+                                          AnyType(TypeOfAny.unannotated) for a in arg_types],
                                          arg_kinds,
                                          arg_names,
                                          return_type if return_type is not None else
-                                         AnyType(implicit=True),
-                                         None)
+                                         AnyType(TypeOfAny.unannotated),
+                                         _dummy_fallback)
 
         func_def = FuncDef(n.name,
                        args,
-                       self.as_block(n.body, n.lineno),
+                       self.as_required_block(n.body, n.lineno),
                        func_type)
         if is_coroutine:
             # A coroutine is also a generator, mostly for internal reasons.
@@ -391,7 +407,7 @@ class ASTConverter(ast3.NodeTransformer):
         else:
             return func_def
 
-    def set_type_optional(self, type: Type, initializer: Expression) -> None:
+    def set_type_optional(self, type: Optional[Type], initializer: Optional[Expression]) -> None:
         if self.options.no_implicit_optional:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
@@ -470,10 +486,10 @@ class ASTConverter(ast3.NodeTransformer):
             if metaclass is None:
                 metaclass = '<error>'  # To be reported later
         keywords = [(kw.arg, self.visit(kw.value))
-                    for kw in n.keywords]
+                    for kw in n.keywords if kw.arg]
 
         cdef = ClassDef(n.name,
-                        self.as_block(n.body, n.lineno),
+                        self.as_required_block(n.body, n.lineno),
                         None,
                         self.translate_expr_list(n.bases),
                         metaclass=metaclass,
@@ -512,10 +528,11 @@ class ASTConverter(ast3.NodeTransformer):
     @with_line
     def visit_AnnAssign(self, n: ast3.AnnAssign) -> AssignmentStmt:
         if n.value is None:  # always allow 'x: int'
-            rvalue = TempNode(AnyType())  # type: Expression
+            rvalue = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)  # type: Expression
         else:
             rvalue = self.visit(n.value)
         typ = TypeConverter(self.errors, line=n.lineno).visit(n.annotation)
+        assert typ is not None
         typ.column = n.annotation.col_offset
         return AssignmentStmt([self.visit(n.target)], rvalue, type=typ, new_syntax=True)
 
@@ -535,7 +552,7 @@ class ASTConverter(ast3.NodeTransformer):
             target_type = None
         return ForStmt(self.visit(n.target),
                        self.visit(n.iter),
-                       self.as_block(n.body, n.lineno),
+                       self.as_required_block(n.body, n.lineno),
                        self.as_block(n.orelse, n.lineno),
                        target_type)
 
@@ -548,7 +565,7 @@ class ASTConverter(ast3.NodeTransformer):
             target_type = None
         r = ForStmt(self.visit(n.target),
                     self.visit(n.iter),
-                    self.as_block(n.body, n.lineno),
+                    self.as_required_block(n.body, n.lineno),
                     self.as_block(n.orelse, n.lineno),
                     target_type)
         r.is_async = True
@@ -558,14 +575,14 @@ class ASTConverter(ast3.NodeTransformer):
     @with_line
     def visit_While(self, n: ast3.While) -> WhileStmt:
         return WhileStmt(self.visit(n.test),
-                         self.as_block(n.body, n.lineno),
+                         self.as_required_block(n.body, n.lineno),
                          self.as_block(n.orelse, n.lineno))
 
     # If(expr test, stmt* body, stmt* orelse)
     @with_line
     def visit_If(self, n: ast3.If) -> IfStmt:
         return IfStmt([self.visit(n.test)],
-                      [self.as_block(n.body, n.lineno)],
+                      [self.as_required_block(n.body, n.lineno)],
                       self.as_block(n.orelse, n.lineno))
 
     # With(withitem* items, stmt* body, string? type_comment)
@@ -577,7 +594,7 @@ class ASTConverter(ast3.NodeTransformer):
             target_type = None
         return WithStmt([self.visit(i.context_expr) for i in n.items],
                         [self.visit(i.optional_vars) for i in n.items],
-                        self.as_block(n.body, n.lineno),
+                        self.as_required_block(n.body, n.lineno),
                         target_type)
 
     # AsyncWith(withitem* items, stmt* body, string? type_comment)
@@ -589,7 +606,7 @@ class ASTConverter(ast3.NodeTransformer):
             target_type = None
         r = WithStmt([self.visit(i.context_expr) for i in n.items],
                      [self.visit(i.optional_vars) for i in n.items],
-                     self.as_block(n.body, n.lineno),
+                     self.as_required_block(n.body, n.lineno),
                      target_type)
         r.is_async = True
         return r
@@ -604,9 +621,9 @@ class ASTConverter(ast3.NodeTransformer):
     def visit_Try(self, n: ast3.Try) -> TryStmt:
         vs = [NameExpr(h.name) if h.name is not None else None for h in n.handlers]
         types = [self.visit(h.type) for h in n.handlers]
-        handlers = [self.as_block(h.body, h.lineno) for h in n.handlers]
+        handlers = [self.as_required_block(h.body, h.lineno) for h in n.handlers]
 
-        return TryStmt(self.as_block(n.body, n.lineno),
+        return TryStmt(self.as_required_block(n.body, n.lineno),
                        vs,
                        types,
                        handlers,
@@ -621,7 +638,7 @@ class ASTConverter(ast3.NodeTransformer):
     # Import(alias* names)
     @with_line
     def visit_Import(self, n: ast3.Import) -> Import:
-        names = []  # type: List[Tuple[str, str]]
+        names = []  # type: List[Tuple[str, Optional[str]]]
         for alias in n.names:
             name = self.translate_module_id(alias.name)
             asname = alias.asname
@@ -638,9 +655,10 @@ class ASTConverter(ast3.NodeTransformer):
     # ImportFrom(identifier? module, alias* names, int? level)
     @with_line
     def visit_ImportFrom(self, n: ast3.ImportFrom) -> ImportBase:
-        i = None  # type: ImportBase
+        assert n.level is not None
         if len(n.names) == 1 and n.names[0].name == '*':
-            i = ImportAll(n.module, n.level)
+            assert n.module is not None
+            i = ImportAll(n.module, n.level)  # type: ImportBase
         else:
             i = ImportFrom(self.translate_module_id(n.module) if n.module is not None else '',
                            n.level,
@@ -685,7 +703,6 @@ class ASTConverter(ast3.NodeTransformer):
     def visit_BoolOp(self, n: ast3.BoolOp) -> OpExpr:
         # mypy translates (1 and 2 and 3) as (1 and (2 and 3))
         assert len(n.values) >= 2
-        op = None
         if isinstance(n.op, ast3.And):
             op = 'and'
         elif isinstance(n.op, ast3.Or):
@@ -738,7 +755,7 @@ class ASTConverter(ast3.NodeTransformer):
         body.col_offset = n.col_offset
 
         return LambdaExpr(self.transform_args(n.args, n.lineno),
-                        self.as_block([body], n.lineno))
+                        self.as_required_block([body], n.lineno))
 
     # IfExp(expr test, expr body, expr orelse)
     @with_line
@@ -833,7 +850,8 @@ class ASTConverter(ast3.NodeTransformer):
         return CallExpr(self.visit(n.func),
                         arg_types,
                         arg_kinds,
-                        cast("List[str]", [None] * len(n.args)) + [k.arg for k in n.keywords])
+                        cast(List[Optional[str]], [None] * len(n.args)) +
+                        [k.arg for k in n.keywords])
 
     # Num(object n) -- a number as a PyObject.
     @with_line
@@ -963,42 +981,56 @@ class ASTConverter(ast3.NodeTransformer):
 
 
 class TypeConverter(ast3.NodeTransformer):
-    def __init__(self, errors: Errors, line: int = -1) -> None:
+    def __init__(self, errors: Optional[Errors], line: int = -1) -> None:
         self.errors = errors
         self.line = line
         self.node_stack = []  # type: List[ast3.AST]
 
-    def visit(self, node: ast3.AST) -> Type:
+    def _visit_implementation(self, node: Optional[ast3.AST]) -> Optional[Type]:
         """Modified visit -- keep track of the stack of nodes"""
+        if node is None:
+            return None
         self.node_stack.append(node)
         try:
             return super().visit(node)
         finally:
             self.node_stack.pop()
 
-    def parent(self) -> ast3.AST:
+    if sys.version_info >= (3, 6):
+        @overload
+        def visit(self, node: ast3.expr) -> Type: ...
+
+        @overload  # noqa
+        def visit(self, node: Optional[ast3.AST]) -> Optional[Type]: ...
+
+        def visit(self, node: Optional[ast3.AST]) -> Optional[Type]:  # noqa
+            return self._visit_implementation(node)
+    else:
+        def visit(self, node: Optional[ast3.AST]) -> Any:
+            return self._visit_implementation(node)
+
+    def parent(self) -> Optional[ast3.AST]:
         """Return the AST node above the one we are processing"""
         if len(self.node_stack) < 2:
             return None
         return self.node_stack[-2]
 
     def fail(self, msg: str, line: int, column: int) -> None:
-        self.errors.report(line, column, msg)
+        if self.errors:
+            self.errors.report(line, column, msg)
 
     def visit_raw_str(self, s: str) -> Type:
         # An escape hatch that allows the AST walker in fastparse2 to
         # directly hook into the Python 3.5 type converter in some cases
         # without needing to create an intermediary `ast3.Str` object.
-        return parse_type_comment(s.strip(), self.line, self.errors) or AnyType()
+        return (parse_type_comment(s.strip(), self.line, self.errors) or
+                AnyType(TypeOfAny.from_error))
 
     def generic_visit(self, node: ast3.AST) -> Type:  # type: ignore
         self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(node, 'col_offset', -1))
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
-    def visit_NoneType(self, n: Any) -> Type:
-        return None
-
-    def translate_expr_list(self, l: Sequence[ast3.AST]) -> List[Type]:
+    def translate_expr_list(self, l: Sequence[ast3.expr]) -> List[Type]:
         return [self.visit(e) for e in l]
 
     def visit_Call(self, e: ast3.Call) -> Type:
@@ -1010,11 +1042,13 @@ class TypeConverter(ast3.NodeTransformer):
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
         name = None  # type: Optional[str]
-        default_type = AnyType(implicit=True)
+        default_type = AnyType(TypeOfAny.special_form)
         typ = default_type  # type: Type
         for i, arg in enumerate(e.args):
             if i == 0:
-                typ = self.visit(arg)
+                converted = self.visit(arg)
+                assert converted is not None
+                typ = converted
             elif i == 1:
                 name = self._extract_argument_name(arg)
             else:
@@ -1031,17 +1065,19 @@ class TypeConverter(ast3.NodeTransformer):
                 if typ is not default_type:
                     self.fail('"{}" gets multiple values for keyword argument "type"'.format(
                         constructor), f.lineno, f.col_offset)
-                typ = self.visit(value)
+                converted = self.visit(value)
+                assert converted is not None
+                typ = converted
             else:
                 self.fail(
                     'Unexpected argument "{}" for argument constructor'.format(k.arg),
                     value.lineno, value.col_offset)
         return CallableArgument(typ, name, constructor, e.lineno, e.col_offset)
 
-    def translate_argument_list(self, l: Sequence[ast3.AST]) -> TypeList:
+    def translate_argument_list(self, l: Sequence[ast3.expr]) -> TypeList:
         return TypeList([self.visit(e) for e in l], line=self.line)
 
-    def _extract_argument_name(self, n: ast3.expr) -> str:
+    def _extract_argument_name(self, n: ast3.expr) -> Optional[str]:
         if isinstance(n, ast3.Str):
             return n.s.strip()
         elif isinstance(n, ast3.NameConstant) and str(n.value) == 'None':
@@ -1058,13 +1094,14 @@ class TypeConverter(ast3.NodeTransformer):
 
     # Str(string s)
     def visit_Str(self, n: ast3.Str) -> Type:
-        return parse_type_comment(n.s.strip(), self.line, self.errors) or AnyType()
+        return (parse_type_comment(n.s.strip(), self.line, self.errors) or
+                AnyType(TypeOfAny.from_error))
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
         if not isinstance(n.slice, ast3.Index):
             self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
 
         empty_tuple_index = False
         if isinstance(n.slice.value, ast3.Tuple):
@@ -1080,10 +1117,11 @@ class TypeConverter(ast3.NodeTransformer):
                                empty_tuple_index=empty_tuple_index)
         else:
             self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
 
     def visit_Tuple(self, n: ast3.Tuple) -> Type:
-        return TupleType(self.translate_expr_list(n.elts), None, implicit=True, line=self.line)
+        return TupleType(self.translate_expr_list(n.elts), _dummy_fallback,
+                         implicit=True, line=self.line)
 
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: ast3.Attribute) -> Type:
@@ -1093,7 +1131,7 @@ class TypeConverter(ast3.NodeTransformer):
             return UnboundType("{}.{}".format(before_dot.name, n.attr), line=self.line)
         else:
             self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast3.Ellipsis) -> Type:

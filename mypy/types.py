@@ -5,7 +5,7 @@ from abc import abstractmethod
 from collections import OrderedDict
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable,
+    Callable
 )
 
 import mypy.nodes
@@ -188,6 +188,15 @@ class UnboundType(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_unbound_type(self)
 
+    def __hash__(self) -> int:
+        return hash((self.name, self.optional, tuple(self.args)))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, UnboundType):
+            return NotImplemented
+        return (self.name == other.name and self.optional == other.optional and
+                self.args == other.args)
+
     def serialize(self) -> JsonDict:
         return {'.class': 'UnboundType',
                 'name': self.name,
@@ -250,57 +259,77 @@ class TypeList(Type):
 _dummy = object()  # type: Any
 
 
+class TypeOfAny:
+    """
+    This class describes different types of Any. Each 'Any' can be of only one type at a time.
+
+    TODO: this class should be made an Enum once we drop support for python 3.3.
+    """
+    MYPY = False
+    if MYPY:
+        from typing import NewType
+        TypeOfAny = NewType('TypeOfAny', str)
+    else:
+        def TypeOfAny(x: str) -> str:
+            return x
+
+    # Was this Any type was inferred without a type annotation?
+    unannotated = TypeOfAny('unannotated')
+    # Does this Any come from an explicit type annotation?
+    explicit = TypeOfAny('explicit')
+    # Does this come from an unfollowed import? See --disallow-any=unimported option
+    from_unimported_type = TypeOfAny('from_unimported_type')
+    # Does this Any type come from omitted generics?
+    from_omitted_generics = TypeOfAny('from_omitted_generics')
+    # Does this Any come from an error?
+    from_error = TypeOfAny('from_error')
+    # Is this a type that can't be represented in mypy's type system? For instance, type of
+    # call to NewType(...)). Even though these types aren't real Anys, we treat them as such.
+    special_form = TypeOfAny('special_form')
+    # Does this Any come from interaction with another Any?
+    from_another_any = TypeOfAny('from_another_any')
+
+
 class AnyType(Type):
     """The type 'Any'."""
 
     def __init__(self,
-                 implicit: bool = False,
-                 from_unimported_type: bool = False,
-                 explicit: bool = False,
-                 from_omitted_generics: bool = False,
-                 special_form: bool = False,
+                 type_of_any: TypeOfAny.TypeOfAny,
+                 source_any: Optional['AnyType'] = None,
                  line: int = -1,
                  column: int = -1) -> None:
         super().__init__(line, column)
-        # Was this Any type was inferred without a type annotation?
-        # Note that this is not always the opposite of explicit.
-        # For instance, if "Any" comes from an unimported type,
-        # both explicit and implicit will be False
-        self.implicit = implicit
-        # Does this come from an unfollowed import? See --disallow-any=unimported option
-        self.from_unimported_type = from_unimported_type
-        # Does this Any come from an explicit type annotation?
-        self.explicit = explicit
-        # Does this type come from omitted generics?
-        self.from_omitted_generics = from_omitted_generics
-        # Is this a type that can't be represented in mypy's type system? For instance, type of
-        # call to NewType(...)). Even though these types aren't real Anys, we treat them as such.
-        self.special_form = special_form
+        self.type_of_any = type_of_any
+        # If this Any was created as a result of interacting with another 'Any', record the source
+        # and use it in reports.
+        self.source_any = source_any
+        if source_any and source_any.source_any:
+            self.source_any = source_any.source_any
+
+        # Only Anys that come from another Any can have source_any.
+        assert type_of_any != TypeOfAny.from_another_any or source_any is not None
+        # We should not have chains of Anys.
+        assert not self.source_any or self.source_any.type_of_any != TypeOfAny.from_another_any
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
 
     def copy_modified(self,
-                      implicit: bool = _dummy,
-                      from_unimported_type: bool = _dummy,
-                      explicit: bool = _dummy,
-                      from_omitted_generics: bool = _dummy,
-                      special_form: bool = _dummy,
+                      type_of_any: TypeOfAny.TypeOfAny = _dummy,
+                      original_any: Optional['AnyType'] = _dummy,
                       ) -> 'AnyType':
-        if implicit is _dummy:
-            implicit = self.implicit
-        if from_unimported_type is _dummy:
-            from_unimported_type = self.from_unimported_type
-        if explicit is _dummy:
-            explicit = self.explicit
-        if from_omitted_generics is _dummy:
-            from_omitted_generics = self.from_omitted_generics
-        if special_form is _dummy:
-            special_form = self.special_form
-        return AnyType(implicit=implicit, from_unimported_type=from_unimported_type,
-                       explicit=explicit, from_omitted_generics=from_omitted_generics,
-                       special_form=special_form,
+        if type_of_any is _dummy:
+            type_of_any = self.type_of_any
+        if original_any is _dummy:
+            original_any = self.source_any
+        return AnyType(type_of_any=type_of_any, source_any=original_any,
                        line=self.line, column=self.column)
+
+    def __hash__(self) -> int:
+        return hash(AnyType)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, AnyType)
 
     def serialize(self) -> JsonDict:
         return {'.class': 'AnyType'}
@@ -308,7 +337,7 @@ class AnyType(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'AnyType':
         assert data['.class'] == 'AnyType'
-        return AnyType()
+        return AnyType(TypeOfAny.special_form)
 
 
 class UninhabitedType(Type):
@@ -336,6 +365,12 @@ class UninhabitedType(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_uninhabited_type(self)
 
+    def __hash__(self) -> int:
+        return hash(UninhabitedType)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, UninhabitedType)
+
     def serialize(self) -> JsonDict:
         return {'.class': 'UninhabitedType',
                 'is_noreturn': self.is_noreturn}
@@ -356,6 +391,12 @@ class NoneTyp(Type):
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
+
+    def __hash__(self) -> int:
+        return hash(NoneTyp)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, NoneTyp)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_none_type(self)
@@ -436,6 +477,14 @@ class Instance(Type):
 
     type_ref = None  # type: str
 
+    def __hash__(self) -> int:
+        return hash((self.type, tuple(self.args)))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Instance):
+            return NotImplemented
+        return self.type == other.type and self.args == other.args
+
     def serialize(self) -> Union[JsonDict, str]:
         assert self.type is not None
         type_ref = self.type.fullname()
@@ -497,6 +546,14 @@ class TypeVarType(Type):
             return UnionType.make_simplified_union(self.values)
         else:
             return self.upper_bound
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeVarType):
+            return NotImplemented
+        return self.id == other.id
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
@@ -776,6 +833,23 @@ class CallableType(FunctionLike):
             a.append(tv.id)
         return a
 
+    def __hash__(self) -> int:
+        return hash((self.ret_type, self.is_type_obj(),
+                     self.is_ellipsis_args, self.name,
+                    tuple(self.arg_types), tuple(self.arg_names), tuple(self.arg_kinds)))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, CallableType):
+            return (self.ret_type == other.ret_type and
+                    self.arg_types == other.arg_types and
+                    self.arg_names == other.arg_names and
+                    self.arg_kinds == other.arg_kinds and
+                    self.name == other.name and
+                    self.is_type_obj() == other.is_type_obj() and
+                    self.is_ellipsis_args == other.is_ellipsis_args)
+        else:
+            return NotImplemented
+
     def serialize(self) -> JsonDict:
         # TODO: As an optimization, leave out everything related to
         # generic functions for non-generic functions.
@@ -858,6 +932,14 @@ class Overloaded(FunctionLike):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_overloaded(self)
 
+    def __hash__(self) -> int:
+        return hash(tuple(self.items()))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Overloaded):
+            return NotImplemented
+        return self.items() == other.items()
+
     def serialize(self) -> JsonDict:
         return {'.class': 'Overloaded',
                 'items': [t.serialize() for t in self.items()],
@@ -898,6 +980,14 @@ class TupleType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_tuple_type(self)
+
+    def __hash__(self) -> int:
+        return hash((tuple(self.items), self.fallback))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TupleType):
+            return NotImplemented
+        return self.items == other.items and self.fallback == other.fallback
 
     def serialize(self) -> JsonDict:
         return {'.class': 'TupleType',
@@ -950,6 +1040,21 @@ class TypedDictType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_typeddict_type(self)
+
+    def __hash__(self) -> int:
+        return hash((frozenset(self.items.items()), self.fallback,
+                     frozenset(self.required_keys)))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, TypedDictType):
+            if frozenset(self.items.keys()) != frozenset(other.items.keys()):
+                return False
+            for (_, left_item_type, right_item_type) in self.zip(other):
+                if not left_item_type == right_item_type:
+                    return False
+            return self.fallback == other.fallback and self.required_keys == other.required_keys
+        else:
+            return NotImplemented
 
     def serialize(self) -> JsonDict:
         return {'.class': 'TypedDictType',
@@ -1047,6 +1152,14 @@ class UnionType(Type):
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
         super().__init__(line, column)
+
+    def __hash__(self) -> int:
+        return hash(frozenset(self.items))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, UnionType):
+            return NotImplemented
+        return frozenset(self.items) == frozenset(other.items)
 
     @staticmethod
     def make_union(items: List[Type], line: int = -1, column: int = -1) -> Type:
@@ -1243,6 +1356,14 @@ class TypeType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)
+
+    def __hash__(self) -> int:
+        return hash(self.item)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeType):
+            return NotImplemented
+        return self.item == other.item
 
     def serialize(self) -> JsonDict:
         return {'.class': 'TypeType', 'item': self.item.serialize()}
@@ -1772,10 +1893,10 @@ def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
         name = '"{}"'.format(name)
 
     return CallableType(
-        [AnyType()] * len(fdef.arg_names),
+        [AnyType(TypeOfAny.unannotated)] * len(fdef.arg_names),
         fdef.arg_kinds,
         [None if argument_elide_name(n) else n for n in fdef.arg_names],
-        ret_type or AnyType(),
+        ret_type or AnyType(TypeOfAny.unannotated),
         fallback,
         name,
         implicit=True,

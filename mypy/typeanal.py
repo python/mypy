@@ -6,14 +6,15 @@ from itertools import chain
 
 from contextlib import contextmanager
 
+import itertools
+
 from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.types import (
-    Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
-    AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
-    SyntheticTypeVisitor,
+    Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
+    CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    CallableArgument, get_type_vars, TypeQuery, union_items
+    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny
 )
 
 from mypy.nodes import (
@@ -155,7 +156,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
                 if sym.kind != UNBOUND_IMPORTED:
                     self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
-                return AnyType()
+                return AnyType(TypeOfAny.special_form)
             fullname = sym.node.fullname()
             hook = self.plugin.get_type_analyze_hook(fullname)
             if hook:
@@ -172,7 +173,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             elif fullname == 'builtins.None':
                 return NoneTyp()
             elif fullname == 'typing.Any' or fullname == 'builtins.Any':
-                return AnyType(explicit=True)
+                return AnyType(TypeOfAny.explicit)
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
@@ -193,14 +194,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             elif fullname == 'typing.Optional':
                 if len(t.args) != 1:
                     self.fail('Optional[...] must have exactly one type argument', t)
-                    return AnyType()
+                    return AnyType(TypeOfAny.from_error)
                 item = self.anal_type(t.args[0])
                 return make_optional_type(item)
             elif fullname == 'typing.Callable':
                 return self.analyze_callable_type(t)
             elif fullname == 'typing.Type':
                 if len(t.args) == 0:
-                    any_type = AnyType(from_omitted_generics=True, line=t.line, column=t.column)
+                    any_type = AnyType(TypeOfAny.from_omitted_generics,
+                                       line=t.line, column=t.column)
                     return TypeType(any_type, line=t.line, column=t.column)
                 if len(t.args) != 1:
                     self.fail('Type[...] must have exactly one type argument', t)
@@ -210,14 +212,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 if self.nesting_level > 0:
                     self.fail('Invalid type: ClassVar nested inside other type', t)
                 if len(t.args) == 0:
-                    return AnyType(line=t.line)
+                    return AnyType(TypeOfAny.from_omitted_generics, line=t.line, column=t.column)
                 if len(t.args) != 1:
                     self.fail('ClassVar[...] must have at most one type argument', t)
-                    return AnyType()
+                    return AnyType(TypeOfAny.from_error)
                 item = self.anal_type(t.args[0])
                 if isinstance(item, TypeVarType) or get_type_vars(item):
                     self.fail('Invalid type: ClassVar cannot be generic', t)
-                    return AnyType()
+                    return AnyType(TypeOfAny.from_error)
                 return item
             elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
                 return UninhabitedType(is_noreturn=True)
@@ -253,7 +255,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                     # context. This is slightly problematic as it allows using the type 'Any'
                     # as a base class -- however, this will fail soon at runtime so the problem
                     # is pretty minor.
-                    return AnyType(from_unimported_type=True)
+                    return AnyType(TypeOfAny.from_unimported_type)
                 # Allow unbound type variables when defining an alias
                 if not (self.aliasing and sym.kind == TVAR and
                         self.tvar_scope.get_binding(sym) is None):
@@ -261,9 +263,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 return t
             info = sym.node  # type: TypeInfo
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
-                return TupleType(self.anal_array(t.args),
-                                 Instance(info, [AnyType()], t.line),
-                                 t.line)
+                fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
+                return TupleType(self.anal_array(t.args), fallback, t.line)
             else:
                 # Analyze arguments and construct Instance type. The
                 # number of type arguments and their values are
@@ -278,7 +279,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                     # represented as a tuple type.
                     if t.args:
                         self.fail('Generic tuple types not supported', t)
-                        return AnyType()
+                        return AnyType(TypeOfAny.from_error)
                     return tup.copy_modified(items=self.anal_array(tup.items),
                                              fallback=instance)
                 td = info.typeddict_type
@@ -287,13 +288,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                     # represented as a typeddict type.
                     if t.args:
                         self.fail('Generic TypedDict types not supported', t)
-                        return AnyType()
+                        return AnyType(TypeOfAny.from_error)
                     # Create a named TypedDictType
                     return td.copy_modified(item_types=self.anal_array(list(td.items.values())),
                                             fallback=instance)
                 return instance
         else:
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
 
     def visit_any(self, t: AnyType) -> Type:
         return t
@@ -309,11 +310,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
 
     def visit_type_list(self, t: TypeList) -> Type:
         self.fail('Invalid type', t)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     def visit_callable_argument(self, t: CallableArgument) -> Type:
         self.fail('Invalid type', t)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     def visit_instance(self, t: Instance) -> Type:
         return t
@@ -339,17 +340,18 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
         # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
         if t.implicit and not self.allow_tuple_literal:
             self.fail('Invalid tuple literal type', t)
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
         star_count = sum(1 for item in t.items if isinstance(item, StarType))
         if star_count > 1:
             self.fail('At most one star type allowed in a tuple', t)
             if t.implicit:
-                return TupleType([AnyType() for _ in t.items],
+                return TupleType([AnyType(TypeOfAny.from_error) for _ in t.items],
                                  self.named_type('builtins.tuple'),
                                  t.line)
             else:
-                return AnyType()
-        fallback = t.fallback if t.fallback else self.named_type('builtins.tuple', [AnyType()])
+                return AnyType(TypeOfAny.from_error)
+        any_type = AnyType(TypeOfAny.special_form)
+        fallback = t.fallback if t.fallback else self.named_type('builtins.tuple', [any_type])
         return TupleType(self.anal_array(t.items), fallback, t.line)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
@@ -370,7 +372,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
 
     def visit_ellipsis_type(self, t: EllipsisType) -> Type:
         self.fail("Unexpected '...'", t)
-        return AnyType()
+        return AnyType(TypeOfAny.from_error)
 
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType.make_normalized(self.anal_type(t.item), line=t.line)
@@ -379,7 +381,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
         fallback = self.named_type('builtins.function')
         if len(t.args) == 0:
             # Callable (bare). Treat as Callable[..., Any].
-            any_type = AnyType(from_omitted_generics=True, line=t.line, column=t.column)
+            any_type = AnyType(TypeOfAny.from_omitted_generics,
+                               line=t.line, column=t.column)
             ret = CallableType([any_type, any_type],
                                [nodes.ARG_STAR, nodes.ARG_STAR2],
                                [None, None],
@@ -392,7 +395,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 # Callable[[ARG, ...], RET] (ordinary callable type)
                 analyzed_args = self.analyze_callable_args(t.args[0])
                 if analyzed_args is None:
-                    return AnyType()
+                    return AnyType(TypeOfAny.from_error)
                 args, kinds, names = analyzed_args
                 ret = CallableType(args,
                                    kinds,
@@ -401,7 +404,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                                    fallback=fallback)
             elif isinstance(t.args[0], EllipsisType):
                 # Callable[..., RET] (with literal ellipsis; accept arbitrary arguments)
-                ret = CallableType([AnyType(), AnyType()],
+                ret = CallableType([AnyType(TypeOfAny.explicit),
+                                    AnyType(TypeOfAny.explicit)],
                                    [nodes.ARG_STAR, nodes.ARG_STAR2],
                                    [None, None],
                                    ret_type=ret_type,
@@ -409,10 +413,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                                    is_ellipsis_args=True)
             else:
                 self.fail('The first argument to Callable must be a list of types or "..."', t)
-                return AnyType()
+                return AnyType(TypeOfAny.from_error)
         else:
             self.fail('Invalid function type', t)
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
         assert isinstance(ret, CallableType)
         return ret.accept(self)
 
@@ -544,11 +548,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                    column: int = -1) -> Instance:
         node = self.lookup_fqn_func(fully_qualified_name)
         assert isinstance(node.node, TypeInfo)
-        return Instance(node.node, args or [AnyType()] * len(node.node.defn.type_vars),
+        any_type = AnyType(TypeOfAny.special_form)
+        return Instance(node.node, args or [any_type] * len(node.node.defn.type_vars),
                         line=line, column=column)
 
     def tuple_type(self, items: List[Type]) -> TupleType:
-        return TupleType(items, fallback=self.named_type('builtins.tuple', [AnyType()]))
+        any_type = AnyType(TypeOfAny.special_form)
+        return TupleType(items, fallback=self.named_type('builtins.tuple', [any_type]))
 
 
 class TypeAnalyserPass3(TypeVisitor[None]):
@@ -591,8 +597,13 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     alternative = nongen_builtins[t.type.fullname()]
                     self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
                 # Insert implicit 'Any' type arguments.
-                any_type = AnyType(from_omitted_generics=not from_builtins, line=t.line,
-                                   column=t.line)
+                if from_builtins:
+                    # this 'Any' was already reported elsewhere
+                    any_type = AnyType(TypeOfAny.special_form,
+                                       line=t.line, column=t.column)
+                else:
+                    any_type = AnyType(TypeOfAny.from_omitted_generics,
+                                       line=t.line, column=t.column)
                 t.args = [any_type] * len(info.type_vars)
                 return
             # Invalid number of type parameters.
@@ -610,7 +621,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             # Construct the correct number of type arguments, as
             # otherwise the type checker may crash as it expects
             # things to be right.
-            t.args = [AnyType() for _ in info.type_vars]
+            t.args = [AnyType(TypeOfAny.from_error) for _ in info.type_vars]
             t.invalid = True
         elif info.defn.type_vars:
             # Check type argument values.
@@ -726,7 +737,11 @@ def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
 
 def set_any_tvars(tp: Type, vars: List[str],
                   newline: int, newcolumn: int, implicit: bool = True) -> Type:
-    any_type = AnyType(from_omitted_generics=implicit, line=newline, column=newcolumn)
+    if implicit:
+        type_of_any = TypeOfAny.from_omitted_generics
+    else:
+        type_of_any = TypeOfAny.special_form
+    any_type = AnyType(type_of_any, line=newline, column=newcolumn)
     return replace_alias_tvars(tp, vars, [any_type] * len(vars), newline, newcolumn)
 
 
@@ -809,7 +824,7 @@ class HasExplicitAny(TypeQuery[bool]):
         super().__init__(any)
 
     def visit_any(self, t: AnyType) -> bool:
-        return t.explicit
+        return t.type_of_any == TypeOfAny.explicit
 
     def visit_typeddict_type(self, t: TypedDictType) -> bool:
         # typeddict is checked during TypedDict declaration, so don't typecheck it here.
@@ -830,7 +845,7 @@ class HasAnyFromUnimportedType(TypeQuery[bool]):
         super().__init__(any)
 
     def visit_any(self, t: AnyType) -> bool:
-        return t.from_unimported_type
+        return t.type_of_any == TypeOfAny.from_unimported_type
 
     def visit_typeddict_type(self, t: TypedDictType) -> bool:
         # typeddict is checked during TypedDict declaration, so don't typecheck it here
@@ -855,6 +870,25 @@ class CollectAnyTypesQuery(TypeQuery[List[AnyType]]):
         for l in it:
             result.extend(l)
         return result
+
+
+def collect_all_inner_types(t: Type) -> List[Type]:
+    """
+    Return all types that `t` contains
+    """
+    return t.accept(CollectAllInnerTypesQuery())
+
+
+class CollectAllInnerTypesQuery(TypeQuery[List[Type]]):
+    def __init__(self) -> None:
+        super().__init__(self.combine_lists_strategy)
+
+    def query_types(self, types: Iterable[Type]) -> List[Type]:
+        return self.strategy(t.accept(self) for t in types) + list(types)
+
+    @classmethod
+    def combine_lists_strategy(cls, it: Iterable[List[Type]]) -> List[Type]:
+        return list(itertools.chain.from_iterable(it))
 
 
 def make_optional_type(t: Type) -> Type:

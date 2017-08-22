@@ -21,7 +21,7 @@ import sys
 import time
 from os.path import dirname, basename
 
-from typing import (AbstractSet, Dict, Iterable, Iterator, List,
+from typing import (AbstractSet, Dict, Iterable, Iterator, List, cast, Any,
                     NamedTuple, Optional, Set, Tuple, Union, Callable)
 # Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
 MYPY = False
@@ -116,8 +116,8 @@ class BuildSourceSet:
 
 def build(sources: List[BuildSource],
           options: Options,
-          alt_lib_path: str = None,
-          bin_dir: str = None) -> BuildResult:
+          alt_lib_path: Optional[str] = None,
+          bin_dir: Optional[str] = None) -> BuildResult:
     """Analyze a program.
 
     A single call to build performs parsing, semantic analysis and optionally
@@ -644,7 +644,7 @@ def remove_cwd_prefix_from_path(p: str) -> str:
 
 
 # Cache find_module: (id, lib_path) -> result.
-find_module_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], str]
+find_module_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], Optional[str]]
 
 # Cache some repeated work within distinct find_module calls: finding which
 # elements of lib_path have even the subdirectory they'd need for the module
@@ -674,7 +674,7 @@ def list_dir(path: str) -> Optional[List[str]]:
     if path in find_module_listdir_cache:
         return find_module_listdir_cache[path]
     try:
-        res = os.listdir(path)
+        res = os.listdir(path)  # type: Optional[List[str]]
     except OSError:
         res = None
     find_module_listdir_cache[path] = res
@@ -699,7 +699,7 @@ def is_file(path: str) -> bool:
     return os.path.isfile(path)
 
 
-def find_module(id: str, lib_path_arg: Iterable[str]) -> str:
+def find_module(id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
 
@@ -874,21 +874,22 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         manager.log('Could not load cache for {}: meta cache is not a dict: {}'
                     .format(id, repr(meta)))
         return None
+    sentinel = None  # type: Any  # the values will be post-validated below
     m = CacheMeta(
-        meta.get('id'),
-        meta.get('path'),
-        int(meta['mtime']) if 'mtime' in meta else None,
-        meta.get('size'),
-        meta.get('hash'),
+        meta.get('id', sentinel),
+        meta.get('path', sentinel),
+        int(meta['mtime']) if 'mtime' in meta else sentinel,
+        meta.get('size', sentinel),
+        meta.get('hash', sentinel),
         meta.get('dependencies', []),
-        int(meta['data_mtime']) if 'data_mtime' in meta else None,
+        int(meta['data_mtime']) if 'data_mtime' in meta else sentinel,
         data_json,
         meta.get('suppressed', []),
         meta.get('child_modules', []),
         meta.get('options'),
         meta.get('dep_prios', []),
         meta.get('interface_hash', ''),
-        meta.get('version_id'),
+        meta.get('version_id', sentinel),
         meta.get('ignore_all', True),
     )
     # Don't check for path match, that is dealt with in validate_meta().
@@ -946,7 +947,7 @@ def atomic_write(filename: str, *lines: str) -> bool:
     return True
 
 
-def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
+def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                   ignore_all: bool, manager: BuildManager) -> Optional[CacheMeta]:
     '''Checks whether the cached AST of this module can be used.
 
@@ -968,6 +969,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: str,
         manager.log('Metadata abandoned for {}: errors were previously ignored'.format(id))
         return None
 
+    assert path is not None, "Internal error: meta was provided without a path"
     # Check data_json; assume if its mtime matches it's good.
     # TODO: stat() errors
     data_mtime = getmtime(meta.data_json)
@@ -1321,7 +1323,7 @@ class State:
     ancestors = None  # type: Optional[List[str]]
 
     # A list of all direct submodules of a given module
-    child_modules = None  # type: Optional[Set[str]]
+    child_modules = None  # type: Set[str]
 
     # List of (path, line number) tuples giving context for import
     import_context = None  # type: List[Tuple[str, int]]
@@ -1349,9 +1351,9 @@ class State:
                  path: Optional[str],
                  source: Optional[str],
                  manager: BuildManager,
-                 caller_state: 'State' = None,
+                 caller_state: 'Optional[State]' = None,
                  caller_line: int = 0,
-                 ancestor_for: 'State' = None,
+                 ancestor_for: 'Optional[State]' = None,
                  root_source: bool = False,
                  ) -> None:
         assert id or path or source is not None, "Neither id, path nor source given"
@@ -1368,6 +1370,7 @@ class State:
         self.id = id or '__main__'
         self.options = manager.options.clone_for_module(self.id)
         if not path and source is None:
+            assert id is not None
             file_id = id
             if id == 'builtins' and self.options.python_version[0] == 2:
                 # The __builtin__ module is called internally by mypy
@@ -1426,7 +1429,7 @@ class State:
         self.xpath = path or '<string>'
         self.source = source
         if path and source is None and self.options.incremental:
-            self.meta = find_cache_meta(self.id, self.path, manager)
+            self.meta = find_cache_meta(self.id, path, manager)
             # TODO: Get mtime if not cached.
             if self.meta is not None:
                 self.interface_hash = self.meta.interface_hash
@@ -1543,6 +1546,8 @@ class State:
     # Methods for processing cached modules.
 
     def load_tree(self) -> None:
+        assert self.meta is not None, "Internal error: this method must be called only" \
+                                      " for cached modules"
         with open(self.meta.data_json) as f:
             data = json.load(f)
         # TODO: Assert data file wasn't changed.
@@ -1550,10 +1555,12 @@ class State:
         self.manager.modules[self.id] = self.tree
 
     def fix_cross_refs(self) -> None:
+        assert self.tree is not None, "Internal error: method must be called on parsed file only"
         fixup_module_pass_one(self.tree, self.manager.modules,
                               self.manager.options.quick_and_dirty)
 
     def calculate_mros(self) -> None:
+        assert self.tree is not None, "Internal error: method must be called on parsed file only"
         fixup_module_pass_two(self.tree, self.manager.modules,
                               self.manager.options.quick_and_dirty)
 
@@ -1635,6 +1642,7 @@ class State:
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     raise CompileError([
                         "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
+            assert source is not None
             self.tree = manager.parse_file(self.id, self.xpath, source,
                                            self.ignore_all or self.options.ignore_errors)
 
@@ -1698,12 +1706,14 @@ class State:
         self.check_blockers()
 
     def semantic_analysis(self) -> None:
+        assert self.tree is not None, "Internal error: method must be called on parsed file only"
         patches = []  # type: List[Callable[[], None]]
         with self.wrap_context():
             self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, patches)
         self.patches = patches
 
     def semantic_analysis_pass_three(self) -> None:
+        assert self.tree is not None, "Internal error: method must be called on parsed file only"
         with self.wrap_context():
             self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath, self.options)
             if self.options.dump_type_stats:
@@ -1714,6 +1724,7 @@ class State:
             patch_func()
 
     def type_check_first_pass(self) -> None:
+        assert self.tree is not None, "Internal error: method must be called on parsed file only"
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
@@ -1729,6 +1740,7 @@ class State:
             return self.type_checker.check_second_pass()
 
     def finish_passes(self) -> None:
+        assert self.tree is not None, "Internal error: method must be called on parsed file only"
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
@@ -1748,7 +1760,7 @@ class State:
                                      module_refs: Set[str],
                                      type_map: Dict[Expression, Type]) -> None:
         types = set(type_map.values())
-        types.discard(None)
+        assert None not in types
         valid = self.valid_references()
 
         encountered = self.manager.indirection_detector.find_modules(types) | module_refs
@@ -1764,8 +1776,9 @@ class State:
                 self.suppressed.append(dep)
 
     def valid_references(self) -> Set[str]:
+        assert self.ancestors is not None
         valid_refs = set(self.dependencies + self.suppressed + self.ancestors)
-        valid_refs .add(self.id)
+        valid_refs.add(self.id)
 
         if "os" in valid_refs:
             valid_refs.add("os.path")
@@ -1773,6 +1786,7 @@ class State:
         return valid_refs
 
     def write_cache(self) -> None:
+        assert self.tree is not None, "Internal error: method must be called on parsed file only"
         if not self.path or self.options.cache_dir == os.devnull:
             return
         if self.manager.options.quick_and_dirty:
@@ -1893,6 +1907,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # Collect dependencies.  We go breadth-first.
     while new:
         st = new.popleft()
+        assert st.ancestors is not None
         for dep in st.ancestors + st.dependencies + st.suppressed:
             # We don't want to recheck imports marked with '# type: ignore'
             # so we ignore any suppressed module not explicitly re-included
@@ -1931,6 +1946,10 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
             g.fix_suppressed_dependencies(graph)
             g.mark_interface_stale()
     return graph
+
+
+class FreshState(State):
+    meta = None  # type: CacheMeta
 
 
 def process_graph(graph: Graph, manager: BuildManager) -> None:
@@ -1987,23 +2006,25 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if fresh:
             # All cache files are fresh.  Check that no dependency's
             # cache file is newer than any scc node's cache file.
-            oldest_in_scc = min(graph[id].meta.data_mtime for id in scc)
+            fresh_graph = cast(Dict[str, FreshState], graph)
+            oldest_in_scc = min(fresh_graph[id].meta.data_mtime for id in scc)
             viable = {id for id in stale_deps if graph[id].meta is not None}
-            newest_in_deps = 0 if not viable else max(graph[dep].meta.data_mtime for dep in viable)
+            newest_in_deps = 0 if not viable else max(fresh_graph[dep].meta.data_mtime
+                                                      for dep in viable)
             if manager.options.verbosity >= 3:  # Dump all mtimes for extreme debugging.
-                all_ids = sorted(ascc | viable, key=lambda id: graph[id].meta.data_mtime)
+                all_ids = sorted(ascc | viable, key=lambda id: fresh_graph[id].meta.data_mtime)
                 for id in all_ids:
                     if id in scc:
-                        if graph[id].meta.data_mtime < newest_in_deps:
+                        if fresh_graph[id].meta.data_mtime < newest_in_deps:
                             key = "*id:"
                         else:
                             key = "id:"
                     else:
-                        if graph[id].meta.data_mtime > oldest_in_scc:
+                        if fresh_graph[id].meta.data_mtime > oldest_in_scc:
                             key = "+dep:"
                         else:
                             key = "dep:"
-                    manager.trace(" %5s %.0f %s" % (key, graph[id].meta.data_mtime, id))
+                    manager.trace(" %5s %.0f %s" % (key, fresh_graph[id].meta.data_mtime, id))
             # If equal, give the benefit of the doubt, due to 1-sec time granularity
             # (on some platforms).
             if manager.options.quick_and_dirty and stale_deps:

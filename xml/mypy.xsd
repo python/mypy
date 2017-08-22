@@ -38,6 +38,7 @@
           <xs:complexType>
             <xs:attribute name="number" type="xs:integer" use="required"/>
             <xs:attribute name="precision" type="precision" use="required"/>
+            <xs:attribute name="any_info" type="xs:string" use="optional"/>
             <xs:attribute name="content" type="xs:string" use="required"/>
           </xs:complexType>
         </xs:element>

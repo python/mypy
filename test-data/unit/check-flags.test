@@ -44,6 +44,75 @@ def f():
     1 + "str"
 [out]
 main:2: error: Function is missing a type annotation
+
+[case testDisallowUntypedDefsUntypedDecorator]
+# flags: --disallow-untyped-decorators
+def d(p):
+    return p
+
+@d  # E: Untyped decorator makes function "f" untyped
+def f(i: int) -> int:
+    return i
+
+[case testDisallowUntypedDecoratorsUnresolvedDecorator]
+# flags: --disallow-untyped-decorators --ignore-missing-imports
+from nonexistent import d
+
+@d  # E: Untyped decorator makes function "f" untyped
+def f(i: int) -> int:
+    return i
+
+[case testDisallowUntypedDecoratorUntypedDef]
+# flags: --disallow-untyped-decorators
+
+def d(p):
+    return p
+
+@d  # no error
+def f(): pass
+
+[case testDisallowUntypedDecoratorsPartialFunction]
+# flags: --disallow-untyped-decorators
+
+def d(p):
+    return p
+
+@d  # E: Untyped decorator makes function "f" untyped
+def f(x) -> None: pass
+
+@d  # E: Untyped decorator makes function "g" untyped
+def g(x, y: int): pass
+
+@d  # E: Untyped decorator makes function "h" untyped
+def h(x: int): pass
+
+[case testDisallowUntypedDecoratorsImpreciseDecorator]
+# flags: --disallow-untyped-decorators
+from typing import Any
+
+def d(p) -> Any:
+    return p
+
+@d  # no error
+def f() -> None: pass
+
+[case testDisallowUntypedDecoratorsMultipleDecorators]
+# flags: --disallow-untyped-decorators
+from typing import Any
+
+def d1(p):
+    return p
+def d2(p):
+    return p
+def d3(p) -> Any:
+    return p
+
+@d1  # E: Untyped decorator makes function "f" untyped
+@d2  # E: Untyped decorator makes function "f" untyped
+@d3  # no error
+@d1  # E: Untyped decorator makes function "f" untyped
+def f() -> None: pass
+
 [case testUntypedDefDisallowUnannotated]
 # flags: --disallow-any=unannotated
 def f():
@@ -898,3 +967,37 @@ Movie = TypedDict('Movie', {'name': str, 'year': int})
 def g(m: Movie) -> Movie:
     return m
 [builtins fixtures/dict.pyi]
+
+[case testDisallowIncompleteDefs]
+# flags: --disallow-incomplete-defs
+
+def f(i: int):  # E: Function is missing a return type annotation
+    pass
+def g(i) -> None:  # E: Function is missing a type annotation for one or more arguments
+    pass
+def h(i: int) -> int:  # no error
+    return i
+def i() -> None:  # no error
+    pass
+
+[case testDisallowIncompleteDefsNoReturn]
+# flags: --disallow-incomplete-defs --disallow-untyped-defs
+
+def f(i: int):  # E: Function is missing a return type annotation
+    pass
+
+[case testDisallowIncompleteDefsSelf]
+# flags: --disallow-incomplete-defs
+class C:
+    def foo(self) -> None:  # no error
+        pass
+
+[case testDisallowIncompleteDefsPartiallyAnnotatedParams]
+# flags: --disallow-incomplete-defs
+
+def f(i: int, s):
+    pass
+
+[out]
+main:3: error: Function is missing a return type annotation
+main:3: error: Function is missing a type annotation for one or more arguments

@@ -10,7 +10,7 @@ class object:
 class type: pass
 class ellipsis: pass
 
-class list(Iterable[T], Generic[T]):
+class list(Generic[T]):
     @overload
     def __init__(self) -> None: pass
     @overload
