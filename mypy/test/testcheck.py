@@ -287,10 +287,11 @@ class TypeCheckSuite(DataSuite):
 
     def find_missing_cache_files(self, modules: Dict[str, str],
                                  manager: build.BuildManager) -> Set[str]:
+        ignore_errors = True
         missing = {}
         for id, path in modules.items():
             meta = build.find_cache_meta(id, path, manager)
-            if not build.validate_meta(meta, id, path, manager):
+            if not build.validate_meta(meta, id, path, ignore_errors, manager):
                 missing[id] = path
         return set(missing.values())
 
