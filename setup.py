@@ -91,9 +91,6 @@ classifiers = [
     'Topic :: Software Development',
 ]
 
-
-package_dir = {'mypy': 'mypy'}
-
 setup(name='mypy',
       version=version,
       description=description,
@@ -103,9 +100,8 @@ setup(name='mypy',
       url='http://www.mypy-lang.org/',
       license='MIT License',
       platforms=['POSIX'],
-      package_dir=package_dir,
       py_modules=[],
-      packages=['mypy'],
+      packages=['mypy', 'mypy.test', 'mypy.myunit', 'mypy.server'],
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
                                         'stubgen=mypy.stubgen:main']},
       data_files=data_files,
