@@ -22,14 +22,6 @@ test_script:
     # Ignore lint (it's run in Travis)
     - "%PYTHON%\\python.exe runtests.py -x lint"
 
-after_test:
-  - "%PYTHON%\\python.exe -m pip install wheel"
-  - "%PYTHON%\\python.exe setup.py bdist_wheel -p win32"
-  - "%PYTHON%\\python.exe setup.py bdist_wheel -p win_amd64"
-
-artifacts:
-  - path: dist\*
-
 skip_commits:
   files:
     - docs/**/*
