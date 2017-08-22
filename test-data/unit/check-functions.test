@@ -2162,3 +2162,72 @@ def i() -> List[Union[str, int]]:
     return x
 
 [builtins fixtures/dict.pyi]
+
+[case testAnyStrIncompatibleArguments]
+from typing import TypeVar
+AnyStr = TypeVar('AnyStr', str, bytes)
+def f(x: AnyStr, y: AnyStr) -> None: pass
+def g(x: AnyStr, y: AnyStr, z: int) -> AnyStr: pass
+f('a', 'b')
+f(b'a', b'b')
+f('a', b'b') # E: Argument 1 of "f" has incompatible value \
+# N: "AnyStr" must be all one type: "str" or "bytes"
+g('a', 'b', 1)
+g(b'a', b'b', 1)
+g('a', b'b', 1) # E: Argument 1 of "g" has incompatible value \
+# N: "AnyStr" must be all one type: "str" or "bytes"
+g('a', b'b', 'c') # E: Argument 1 of "g" has incompatible value \
+# N: "AnyStr" must be all one type: "str" or "bytes" \
+# E: Argument 3 to "g" has incompatible type "str"; expected "int"
+
+[case testUnionAnyStrIncompatibleArguments]
+from typing import TypeVar, Union
+AnyStr = TypeVar('AnyStr', str, bytes)
+def f(x: Union[AnyStr, int], y: AnyStr) -> None: pass
+f('a', 'b')
+f(1, 'b')
+f('a', b'b') # E: Argument 1 of "f" has incompatible value \
+# N: "AnyStr" must be all one type: "str" or "bytes"
+
+[case testStarAnyStrIncompatibleArguments]
+from typing import TypeVar, Union
+AnyStr = TypeVar('AnyStr', str, bytes)
+def f(*x: AnyStr) -> None: pass
+def g(x: int, *y: AnyStr) -> None: pass
+def h(*x: AnyStr, y: int) -> None: pass
+f('a')
+f('a', 'b')
+f('a', b'b') # E: Argument 1 of "f" has incompatible value \
+# N: "AnyStr" must be all one type: "str" or "bytes"
+g(1, 'a')
+g(1, 'a', b'b') # E: Argument 1 of "g" has incompatible value \
+# N: "AnyStr" must be all one type: "str" or "bytes"
+h('a', y=1)
+h('a', 'b', y=1)
+h('a', b'b', y=1) # E: Value of type variable "AnyStr" of "h" cannot be "object"
+
+[case testConstrainedIncompatibleArguments]
+from typing import TypeVar
+S = TypeVar('S', int, str)
+def f(x: S, y: S) -> S: return (x + y)
+f('1', '2')
+f('1', 2) # E: Argument 1 of "f" has incompatible value \
+# N: "S" must be all one type: "int" or "str"
+
+[case testMultipleConstrainedIncompatibleArguments]
+from typing import TypeVar
+S = TypeVar('S', int, str)
+AnyStr = TypeVar('AnyStr', str, bytes)
+def f(a: S, b: S, c: AnyStr, d: AnyStr) -> S: return (a + b)
+f('1', '2', '3', '4')
+f('1', '2', b'3', b'4')
+f(1, 2, '3', '4')
+f(1, 2, b'3', b'4')
+f(1, '2', '3', '4') # E: Argument 1 of "f" has incompatible value \
+# N: "S" must be all one type: "int" or "str"
+f('1', '2', b'3', '4') # E: Argument 2 of "f" has incompatible value \
+# N: "AnyStr" must be all one type: "str" or "bytes"
+f('1', 2, b'3', '4') # E: Argument 1 of "f" has incompatible value \
+# N: "S" must be all one type: "int" or "str" \
+# E: Argument 2 of "f" has incompatible value \
+# N: "AnyStr" must be all one type: "str" or "bytes"

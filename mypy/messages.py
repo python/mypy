@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union, Mapping
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -874,6 +874,21 @@ class MessageBuilder:
                                    context: Context) -> None:
         self.fail(INCOMPATIBLE_TYPEVAR_VALUE.format(typevar_name, callable_name(callee),
                                                     self.format(typ)), context)
+
+    def incompatible_inferred_object_arguments(self,
+                                               callee: CallableType,
+                                               index: int,
+                                               constraints: Mapping[str, Sequence[str]],
+                                               context: Context) -> None:
+        for key, values in constraints.items():
+            self.fail('Argument {} of {} has incompatible value'.format(
+                index, callable_name(callee)), context)
+            if len(values) == 2:
+                constraint_str = '{} or {}'.format(values[0], values[1])
+            elif len(values) > 3:
+                constraint_str = ', '.join(values[:-1]) + ', or ' + values[-1]
+            self.note('"{}" must be all one type: {}'.format(
+                key, constraint_str), context)
 
     def overloaded_signatures_overlap(self, index1: int, index2: int,
                                       context: Context) -> None:
