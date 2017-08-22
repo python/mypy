@@ -248,6 +248,9 @@ def process_options(args: List[str],
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('--ignore-missing-imports', action='store_true',
                         help="silently ignore imports of missing modules")
+    parser.add_argument('--ignore-imports', action='append',
+                        help="silently ignore imports of the given module (may"
+                             " be specified more than once)")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
     parser.add_argument('--disallow-any', type=disallow_any_argument_type, default=[],
@@ -622,6 +625,7 @@ config_types = {
     'custom_typing_module': str,
     'custom_typeshed_dir': str,
     'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
+    'ignore_imports': lambda s: [p.strip() for p in s.split('.')],
     'junit_xml': str,
     'disallow_any': disallow_any_argument_type,
     # These two are for backwards compatibility

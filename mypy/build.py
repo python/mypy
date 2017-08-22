@@ -1403,7 +1403,8 @@ class State:
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
                 if caller_state:
-                    if not self.options.ignore_missing_imports:
+                    if (not self.options.ignore_missing_imports
+                            and id not in self.options.ignore_imports):
                         save_import_context = manager.errors.import_context()
                         manager.errors.set_import_context(caller_state.import_context)
                         manager.module_not_found(caller_state.xpath, caller_line, id)
