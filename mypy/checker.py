@@ -3110,6 +3110,11 @@ def is_unsafe_overlapping_signatures(signature: Type, other: Type) -> bool:
             # latter will never be called
             if is_more_general_arg_prefix(signature, other):
                 return False
+            # Special case: all args are subtypes, and returns are subtypes
+            if (all(is_proper_subtype(s, o)
+                    for (s, o) in zip(signature.arg_types, other.arg_types)) and
+                    is_proper_subtype(signature.ret_type, other.ret_type)):
+                return False
             return not is_more_precise_signature(signature, other)
     return True
 
