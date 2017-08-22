@@ -427,6 +427,25 @@ __all__ = [u'a', u'b', u'c']
 
 [out]
 
+[case testUnderscoreExportedValuesInImportAll]
+import typing
+from m import *
+_ = a
+_ = _b
+_ = __c__
+_ = ___d
+_ = e
+_ = f # E: Name 'f' is not defined
+_ = _g # E: Name '_g' is not defined
+[file m.py]
+__all__ = ['a']
+__all__ += ('_b',)
+__all__.append('__c__')
+__all__.extend(('___d', 'e'))
+
+a = _b = __c__ = ___d = e = f = _g = 1
+[builtins fixtures/module_all.pyi]
+
 [case testEllipsisInitializerInStubFileWithType]
 import m
 m.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -456,11 +475,11 @@ def f(x: int = ...) -> None: pass
 [file m.pyi]
 def g(x: int = '') -> None: pass
 [out]
-tmp/m.pyi:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:2: error: Incompatible types in assignment (expression has type "ellipsis", variable has type "int")
+tmp/m.pyi:1: error: Incompatible default for argument "x" (default has type "str", argument has type "int")
+main:2: error: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
 
 [case testEllipsisDefaultArgValueInNonStub]
-def f(x: int = ...) -> None: pass # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "int")
+def f(x: int = ...) -> None: pass # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
 [out]
 
 [case testStarImportOverlapping]
@@ -955,19 +974,24 @@ tmp/foo/bar.py: note: (Using --follow-imports=error, submodule passed on command
 # cmd: mypy -m main
 # flags: --follow-imports=skip
 [file main.py]
-from stub import x # Permitted
-from other import y # Disallowed
-x + '' # Error here
-y + '' # But not here
+from stub import x, z  # Followed
+from other import y  # Not followed
+x + ''  # No error here
+y + ''  # No error here
+z + ''  # Error here
 [file stub.pyi]
-from non_stub import x
+from non_stub import x as x  # this import is not followed
+
+z = 42
 [file non_stub.py]
 x = 42
+
+x + ''  # no error because file is not analyzed
 [file other.py]
 y = 42
 [builtins fixtures/module.pyi]
 [out]
-tmp/main.py:3: error: Unsupported left operand type for + ("int")
+tmp/main.py:5: error: Unsupported left operand type for + ("int")
 
 [case testSilentSubmoduleImport]
 # cmd: mypy -m foo
@@ -1360,7 +1384,7 @@ def do_something(dic: Row) -> None:
 def do_another() -> Row:
     return {}
 
-do_something({'good': 'bad'}) # E: Dict entry 0 has incompatible type "str": "str"
+do_something({'good': 'bad'}) # E: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
 reveal_type(do_another()) # E: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
 
 [file ex2a.py]
@@ -1638,5 +1662,279 @@ m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.M
 [file m.py]
 
 [file n.py]
+
+[builtins fixtures/module.pyi]
+
+[case testNoReExportFromStubs]
+from stub import Iterable  # E: Module 'stub' has no attribute 'Iterable'
+from stub import C
+
+c = C()
+reveal_type(c.x)  # E: Revealed type is 'builtins.int'
+it: Iterable[int]
+reveal_type(it)  # E: Revealed type is 'Any'
+
+[file stub.pyi]
+from typing import Iterable
+from substub import C as C
+
+def fun(x: Iterable[str]) -> Iterable[int]: pass
+
+[file substub.pyi]
+class C:
+    x: int
+
+[builtins fixtures/module.pyi]
+
+[case testNoReExportFromStubsMemberType]
+import stub
+
+c = stub.C()
+reveal_type(c.x)  # E: Revealed type is 'builtins.int'
+it: stub.Iterable[int]  # E: Name 'stub.Iterable' is not defined
+reveal_type(it)  # E: Revealed type is 'Any'
+
+[file stub.pyi]
+from typing import Iterable
+from substub import C as C
+
+def fun(x: Iterable[str]) -> Iterable[int]: pass
+
+[file substub.pyi]
+class C:
+    x: int
+
+[builtins fixtures/module.pyi]
+
+[case testNoReExportFromStubsMemberVar]
+import stub
+
+reveal_type(stub.y)  # E: Revealed type is 'builtins.int'
+reveal_type(stub.z)  # E: Revealed type is 'Any' \
+                     # E: Module has no attribute "z"
+
+[file stub.pyi]
+from substub import y as y
+from substub import z
+
+[file substub.pyi]
+y = 42
+z: int
+
+[builtins fixtures/module.pyi]
+
+[case testReExportChildStubs]
+import mod
+from mod import submod
+
+reveal_type(mod.x)  # E: Revealed type is 'mod.submod.C'
+y = submod.C()
+reveal_type(y.a)  # E: Revealed type is 'builtins.str'
+
+[file mod/__init__.pyi]
+from . import submod
+x: submod.C
+
+[file mod/submod.pyi]
+class C:
+    a: str
+
+[builtins fixtures/module.pyi]
+
+[case testReExportChildStubs2]
+import mod.submod
+
+y = mod.submod.C()
+reveal_type(y.a)  # E: Revealed type is 'builtins.str'
+
+[file mod/__init__.pyi]
+from . import submod
+x: submod.C
+
+[file mod/submod.pyi]
+class C:
+    a: str
+
+[builtins fixtures/module.pyi]
+
+[case testNoReExportChildStubs]
+import mod
+from mod import C, D  # E: Module 'mod' has no attribute 'C'
+
+reveal_type(mod.x)  # E: Revealed type is 'mod.submod.C'
+mod.C  # E: Module has no attribute "C"
+y = mod.D()
+reveal_type(y.a)  # E: Revealed type is 'builtins.str'
+
+[file mod/__init__.pyi]
+from .submod import C, D as D
+x: C
+
+[file mod/submod.pyi]
+class C: pass
+class D:
+    a: str
+[builtins fixtures/module.pyi]
+
+[case testNoReExportNestedStub]
+from stub import substub  # E: Module 'stub' has no attribute 'substub'
+
+[file stub.pyi]
+import substub
+
+[file substub.pyi]
+x = 42
+
+[file mod/submod.pyi]
+
+[case testModuleAliasToQualifiedImport]
+import package.module
+alias = package.module
+reveal_type(alias.whatever('/'))  # E: Revealed type is 'builtins.str*'
+[file package/__init__.py]
+
+[file package/module.py]
+from typing import TypeVar
+T = TypeVar('T')
+def whatever(x: T) -> T: pass
+[builtins fixtures/module.pyi]
+
+[case testModuleAliasToQualifiedImport2]
+import mod
+import othermod
+alias = mod.submod
+reveal_type(alias.whatever('/'))  # E: Revealed type is 'builtins.str*'
+alias = othermod  # E: Cannot assign multiple modules to name 'alias' without explicit 'types.ModuleType' annotation
+[file mod.py]
+import submod
+[file submod.py]
+from typing import TypeVar
+T = TypeVar('T')
+def whatever(x: T) -> T: pass
+[file othermod.py]
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattr]
+import has_getattr
+
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'
+
+[file has_getattr.pyi]
+from typing import Any
+
+def __getattr__(name: str) -> Any: ...
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrReturnType]
+import has_getattr
+
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'builtins.str'
+
+[file has_getattr.pyi]
+def __getattr__(name: str) -> str: ...
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrInvalidSignature]
+import has_getattr
+
+reveal_type(has_getattr.any_attribute)
+
+[file has_getattr.pyi]
+def __getattr__(x: int, y: str) -> str: ...
+
+[out]
+tmp/has_getattr.pyi:1: error: Invalid signature "def (builtins.int, builtins.str) -> builtins.str"
+main:3: error: Revealed type is 'builtins.str'
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrNotCallable]
+import has_getattr
+
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'  # E: Module has no attribute "any_attribute"
+
+[file has_getattr.pyi]
+__getattr__ = 3
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrUntyped]
+import has_getattr
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'
+
+[file has_getattr.pyi]
+def __getattr__(name): ...
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrNotStub]
+
+import has_getattr
+reveal_type(has_getattr.any_attribute)
+
+[file has_getattr.py]
+def __getattr__(name): ...
+
+[out]
+tmp/has_getattr.py:1: error: __getattr__ is not valid at the module level outside a stub file
+main:3: error: Revealed type is 'Any'
+main:3: error: Module has no attribute "any_attribute"
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattribute]
+
+def __getattribute__(): ...  # E: __getattribute__ is not valid at the module level
+
+[case testModuleLevelGetattrImportFrom]
+from has_attr import name
+reveal_type(name)  # E: Revealed type is 'Any'
+
+[file has_attr.pyi]
+from typing import Any
+def __getattr__(name: str) -> Any: ...
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrImportFromRetType]
+from has_attr import int_attr
+reveal_type(int_attr)  # E: Revealed type is 'builtins.int'
+
+[file has_attr.pyi]
+def __getattr__(name: str) -> int: ...
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrImportFromNotStub]
+from non_stub import name
+reveal_type(name)
+
+[file non_stub.py]
+from typing import Any
+def __getattr__(name: str) -> Any: ...
+
+[out]
+tmp/non_stub.py:2: error: __getattr__ is not valid at the module level outside a stub file
+main:1: error: Module 'non_stub' has no attribute 'name'
+main:2: error: Revealed type is 'Any'
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrImportFromAs]
+from has_attr import name as n
+reveal_type(name)
+reveal_type(n)
+
+[file has_attr.pyi]
+from typing import Any
+def __getattr__(name: str) -> Any: ...
+
+[out]
+main:2: error: Revealed type is 'Any'
+main:2: error: Name 'name' is not defined
+main:3: error: Revealed type is 'Any'
 
 [builtins fixtures/module.pyi]

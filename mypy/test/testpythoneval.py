@@ -19,7 +19,7 @@ import subprocess
 import sys
 
 import typing
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 from mypy.myunit import Suite, SkipTestCaseException
 from mypy.test.config import test_data_prefix, test_temp_dir
@@ -58,6 +58,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     If this passes without errors, executes the script again with a given Python
     version.
     """
+    assert testcase.old_cwd is not None, "test was not properly set up"
     mypy_cmdline = [
         python3_path,
         os.path.join(testcase.old_cwd, 'scripts', 'mypy'),
@@ -110,7 +111,7 @@ def adapt_output(testcase: DataDrivenTestCase) -> List[str]:
 
 
 def run(
-    cmdline: List[str], *, env: Dict[str, str] = None, timeout: int = 30
+    cmdline: List[str], *, env: Optional[Dict[str, str]] = None, timeout: int = 30
 ) -> Tuple[int, List[str]]:
     """A poor man's subprocess.run() for 3.3 and 3.4 compatibility."""
     process = subprocess.Popen(

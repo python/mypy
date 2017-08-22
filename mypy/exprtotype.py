@@ -7,7 +7,7 @@ from mypy.nodes import (
 )
 from mypy.fastparse import parse_type_comment
 from mypy.types import (
-    Type, UnboundType, TypeList, EllipsisType, AnyType, Optional, CallableArgument,
+    Type, UnboundType, TypeList, EllipsisType, AnyType, Optional, CallableArgument, TypeOfAny
 )
 
 
@@ -34,6 +34,7 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
     """
     # The `parent` paremeter is used in recursive calls to provide context for
     # understanding whether an CallableArgument is ok.
+    name = None  # type: Optional[str]
     if isinstance(expr, NameExpr):
         name = expr.name
         return UnboundType(name, line=expr.line, column=expr.column)
@@ -76,7 +77,7 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
 
         # Go through the constructor args to get its name and type.
         name = None
-        default_type = AnyType(implicit=True)
+        default_type = AnyType(TypeOfAny.unannotated)
         typ = default_type  # type: Type
         for i, arg in enumerate(expr.args):
             if expr.arg_names[i] is not None:

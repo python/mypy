@@ -124,7 +124,7 @@ overridden by the pattern sections matching the module name.
 .. note::
 
    If multiple pattern sections match a module they are processed in
-   unspecified order.
+   order of their occurrence in the config file.
 
 - ``follow_imports`` (string, default ``normal``) directs what to do
   with imports when the imported module is found as a ``.py`` file and
@@ -150,8 +150,12 @@ overridden by the pattern sections matching the module name.
 - ``disallow_any`` (Comma-separated list, default empty) is an option to
   disallow various types of ``Any`` in a module. The flag takes a
   comma-separated list of the following arguments: ``unimported``,
-  ``unannotated``, ``expr``. For explanations see the discussion for the
-  :ref:`--disallow-any <disallow-any>` option.
+  ``unannotated``, ``expr``, ``decorated``, ``explicit``, ``generics``.
+  For explanations see the discussion for the :ref:`--disallow-any <disallow-any>` option.
+
+- ``disallow_subclassing_any`` (Boolean, default False) disallows
+  subclassing a value of type ``Any``.  See
+  :ref:`--disallow-subclassing-any <disallow-subclassing-any>` option.
 
 - ``disallow_untyped_calls`` (Boolean, default False) disallows
   calling functions without type annotations from functions with type

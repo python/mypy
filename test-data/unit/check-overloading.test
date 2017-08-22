@@ -901,7 +901,7 @@ def f(x: int, y: List[int] = None) -> int: pass
 def f(x: int, y: List[str] = None) -> int: pass
 f(y=[1], x=0)() # E: "int" not callable
 f(y=[''], x=0)() # E: "int" not callable
-a = f(y=[['']], x=0) # E: List item 0 has incompatible type List[str]
+a = f(y=[['']], x=0) # E: List item 0 has incompatible type List[str]; expected "int"
 a() # E: "int" not callable
 [builtins fixtures/list.pyi]
 
@@ -957,8 +957,8 @@ def g(x: U, y: V) -> None:
     f(x)() # E: "mystr" not callable
     f(y) # E: No overload variant of "f" matches argument types [V`-2]
     a = f([x]) # E: "f" does not return a value
-    f([y]) # E: Type argument 1 of "f" has incompatible value "V"
-    f([x, y]) # E: Type argument 1 of "f" has incompatible value "object"
+    f([y]) # E: Value of type variable "T" of "f" cannot be "V"
+    f([x, y]) # E: Value of type variable "T" of "f" cannot be "object"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -998,10 +998,10 @@ def g(x: int, *a: AnyStr) -> None: pass
 
 g('foo')
 g('foo', 'bar')
-g('foo', b'bar') # E: Type argument 1 of "g" has incompatible value "object"
+g('foo', b'bar') # E: Value of type variable "AnyStr" of "g" cannot be "object"
 g(1)
 g(1, 'foo')
-g(1, 'foo', b'bar') # E: Type argument 1 of "g" has incompatible value "object"
+g(1, 'foo', b'bar') # E: Value of type variable "AnyStr" of "g" cannot be "object"
 [builtins fixtures/primitives.pyi]
 
 [case testBadOverlapWithTypeVarsWithValues]

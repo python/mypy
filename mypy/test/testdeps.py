@@ -1,7 +1,7 @@
 """Test cases for generating node-level dependencies (for fine-grained incremental checking)"""
 
 import os
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 
 from mypy import build
 from mypy.build import BuildSource
@@ -20,8 +20,6 @@ files = [
 
 
 class GetDependenciesSuite(DataSuite):
-    def __init__(self, *, update_data: bool) -> None:
-        pass
 
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
@@ -35,6 +33,8 @@ class GetDependenciesSuite(DataSuite):
         src = '\n'.join(testcase.input)
         messages, files, type_map = self.build(src)
         a = messages
+        assert files is not None and type_map is not None, ('cases where CompileError'
+                                                            ' occurred should not be run')
         deps = get_dependencies('__main__', files['__main__'], type_map)
 
         for source, targets in sorted(deps.items()):
@@ -49,8 +49,8 @@ class GetDependenciesSuite(DataSuite):
                                                   testcase.line))
 
     def build(self, source: str) -> Tuple[List[str],
-                                          Dict[str, MypyFile],
-                                          Dict[Expression, Type]]:
+                                          Optional[Dict[str, MypyFile]],
+                                          Optional[Dict[Expression, Type]]]:
         options = Options()
         options.use_builtins_fixtures = True
         options.show_traceback = True

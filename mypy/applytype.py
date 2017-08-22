@@ -38,12 +38,11 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
                     types[i] = value
                     break
             else:
-                msg.incompatible_typevar_value(callable, i + 1, type, context)
-
+                msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
         upper_bound = callable.variables[i].upper_bound
         if (type and not isinstance(type, PartialType) and
                 not mypy.subtypes.is_subtype(type, upper_bound)):
-            msg.incompatible_typevar_value(callable, i + 1, type, context)
+            msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
 
     # Create a map from type variable id to target type.
     id_to_type = {}  # type: Dict[TypeVarId, Type]

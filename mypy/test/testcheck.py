@@ -72,17 +72,17 @@ files = [
     'check-generic-subtyping.test',
     'check-varargs.test',
     'check-newsyntax.test',
+    'check-protocols.test',
     'check-underscores.test',
     'check-classvar.test',
     'check-enum.test',
     'check-incomplete-fixture.test',
     'check-custom-plugin.test',
+    'check-default-plugin.test',
 ]
 
 
 class TypeCheckSuite(DataSuite):
-    def __init__(self, *, update_data: bool = False) -> None:
-        self.update_data = update_data
 
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
@@ -287,10 +287,11 @@ class TypeCheckSuite(DataSuite):
 
     def find_missing_cache_files(self, modules: Dict[str, str],
                                  manager: build.BuildManager) -> Set[str]:
+        ignore_errors = True
         missing = {}
         for id, path in modules.items():
             meta = build.find_cache_meta(id, path, manager)
-            if not build.validate_meta(meta, id, path, manager):
+            if not build.validate_meta(meta, id, path, ignore_errors, manager):
                 missing[id] = path
         return set(missing.values())
 
@@ -328,6 +329,7 @@ class TypeCheckSuite(DataSuite):
             out = []
             for module_name in module_names.split(' '):
                 path = build.find_module(module_name, [test_temp_dir])
+                assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))

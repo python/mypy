@@ -1093,7 +1093,7 @@ d3.xyz # E
 d4 = dict(a=1, b='') # type: Dict[str, Any]
 result = dict(x=[], y=[]) # type: Dict[str, List[str]]
 [out]
-_program.py:3: error: Dict entry 1 has incompatible type "str": "str"
+_program.py:3: error: Dict entry 1 has incompatible type "str": "str"; expected "str": "int"
 _program.py:5: error: Dict[str, int] has no attribute "xyz"
 
 [case testDefaultDict]
@@ -1125,7 +1125,7 @@ MyDDict(dict)[0]
 _program.py:6: error: Argument 1 to "defaultdict" has incompatible type Type[List[Any]]; expected Callable[[], str]
 _program.py:9: error: Invalid index type "str" for defaultdict[int, str]; expected type "int"
 _program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
-_program.py:19: error: Dict entry 0 has incompatible type "str": List[<nothing>]
+_program.py:19: error: Dict entry 0 has incompatible type "str": List[<nothing>]; expected "int": List[<nothing>]
 _program.py:23: error: Invalid index type "str" for MyDDict[Dict[_KT, _VT]]; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
@@ -1277,7 +1277,7 @@ re.subn(bpat, b'', b'')[0] + b''
 re.subn(bre, lambda m: b'', b'')[0] + b''
 re.subn(bpat, lambda m: b'', b'')[0] + b''
 [out]
-_program.py:7: error: Type argument 1 of "search" has incompatible value "object"
+_program.py:7: error: Value of type variable "AnyStr" of "search" cannot be "object"
 _program.py:9: error: Cannot infer type argument 1 of "search"
 
 [case testReModuleString]
@@ -1301,7 +1301,7 @@ re.subn(spat, '', '')[0] + ''
 re.subn(sre, lambda m: '', '')[0] + ''
 re.subn(spat, lambda m: '', '')[0] + ''
 [out]
-_program.py:7: error: Type argument 1 of "search" has incompatible value "object"
+_program.py:7: error: Value of type variable "AnyStr" of "search" cannot be "object"
 _program.py:9: error: Cannot infer type argument 1 of "search"
 
 [case testListSetitemTuple]
@@ -1353,6 +1353,44 @@ reveal_type(d.get(s))
 [out]
 _testTypedDictGet.py:7: error: Revealed type is 'builtins.int'
 _testTypedDictGet.py:8: error: Revealed type is 'builtins.str'
-_testTypedDictGet.py:9: error: 'z' is not a valid TypedDict key; expected one of ('x', 'y')
+_testTypedDictGet.py:9: error: TypedDict "D" has no key 'z'
 _testTypedDictGet.py:10: error: No overload variant of "get" of "Mapping" matches argument types []
 _testTypedDictGet.py:12: error: Revealed type is 'builtins.object*'
+
+[case testTypedDictMappingMethods]
+from mypy_extensions import TypedDict
+Cell = TypedDict('Cell', {'value': int})
+c = Cell(value=42)
+for x in c:
+    reveal_type(x)
+reveal_type(iter(c))
+reveal_type(len(c))
+reveal_type('value' in c)
+reveal_type(c.keys())
+reveal_type(c.items())
+reveal_type(c.values())
+c == c
+c != c
+[out]
+_testTypedDictMappingMethods.py:5: error: Revealed type is 'builtins.str*'
+_testTypedDictMappingMethods.py:6: error: Revealed type is 'typing.Iterator[builtins.str*]'
+_testTypedDictMappingMethods.py:7: error: Revealed type is 'builtins.int'
+_testTypedDictMappingMethods.py:8: error: Revealed type is 'builtins.bool'
+_testTypedDictMappingMethods.py:9: error: Revealed type is 'typing.AbstractSet[builtins.str*]'
+_testTypedDictMappingMethods.py:10: error: Revealed type is 'typing.AbstractSet[Tuple[builtins.str*, builtins.int*]]'
+_testTypedDictMappingMethods.py:11: error: Revealed type is 'typing.ValuesView[builtins.int*]'
+
+[case testCanConvertTypedDictToAnySuperclassOfMapping]
+from mypy_extensions import TypedDict
+from typing import Sized, Iterable, Container
+
+Point = TypedDict('Point', {'x': int, 'y': int})
+
+p: Point
+s: Sized = p
+it: Iterable[str] = p
+c: Container[str] = p
+o: object = p
+it2: Iterable[int] = p
+[out]
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type Iterable[int])

@@ -151,7 +151,7 @@ A().x.append(1)
 A().x.append('')
 [builtins fixtures/list.pyi]
 [out]
-main:4: error: List item 0 has incompatible type "str"
+main:4: error: List item 0 has incompatible type "str"; expected "int"
 main:6: error: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 
 [case testClassVarWithUnion]

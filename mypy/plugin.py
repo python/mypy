@@ -7,7 +7,7 @@ from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
 from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
-    AnyType, TypeList, UnboundType
+    AnyType, TypeList, UnboundType, TypeOfAny
 )
 from mypy.messages import MessageBuilder
 from mypy.options import Options
@@ -248,7 +248,9 @@ def contextmanager_callback(ctx: FunctionContext) -> Type:
             return ctx.default_return_type.copy_modified(
                 arg_types=arg_type.arg_types,
                 arg_kinds=arg_type.arg_kinds,
-                arg_names=arg_type.arg_names)
+                arg_names=arg_type.arg_names,
+                variables=arg_type.variables,
+                is_ellipsis_args=arg_type.is_ellipsis_args)
     return ctx.default_return_type
 
 
@@ -308,8 +310,8 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
                     else:
                         return UnionType.make_simplified_union([value_type, ctx.arg_types[1][0]])
             else:
-                ctx.api.msg.typeddict_item_name_not_found(ctx.type, key, ctx.context)
-                return AnyType()
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                return AnyType(TypeOfAny.from_error)
     return ctx.default_return_type
 
 

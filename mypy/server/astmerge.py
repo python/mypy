@@ -3,7 +3,7 @@
 See the main entry point merge_asts for details.
 """
 
-from typing import Dict, List, cast, TypeVar
+from typing import Dict, List, cast, TypeVar, Optional
 
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
@@ -40,14 +40,15 @@ def merge_asts(old: MypyFile, old_symbols: SymbolTable,
 
 def replacement_map_from_symbol_table(
         old: SymbolTable, new: SymbolTable, prefix: str) -> Dict[SymbolNode, SymbolNode]:
-    replacements = {}
+    replacements = {}  # type: Dict[SymbolNode, SymbolNode]
     for name, node in old.items():
         if (name in new and (node.kind == MDEF
-                             or get_prefix(node.node.fullname()) == prefix)):
+                             or node.node and get_prefix(node.node.fullname()) == prefix)):
             new_node = new[name]
             if (type(new_node.node) == type(node.node)  # noqa
-                    and new_node.node.fullname() == node.node.fullname()
-                    and new_node.kind == node.kind):
+                    and new_node.node and node.node and
+                    new_node.node.fullname() == node.node.fullname() and
+                    new_node.kind == node.kind):
                 replacements[new_node.node] = node.node
                 if isinstance(node.node, TypeInfo) and isinstance(new_node.node, TypeInfo):
                     type_repl = replacement_map_from_symbol_table(
@@ -119,7 +120,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_member_expr(node)
 
     def visit_ref_expr(self, node: RefExpr) -> None:
-        node.node = self.fixup(node.node)
+        if node.node is not None:
+            node.node = self.fixup(node.node)
 
     # Helpers
 
@@ -208,7 +210,7 @@ class TypeReplaceVisitor(TypeVisitor[None]):
 def replace_nodes_in_symbol_table(symbols: SymbolTable,
                                   replacements: Dict[SymbolNode, SymbolNode]) -> None:
     for name, node in symbols.items():
-        if node.node in replacements:
+        if node.node and node.node in replacements:
             new = replacements[node.node]
             new.__dict__ = node.node.__dict__
             node.node = new

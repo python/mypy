@@ -335,10 +335,10 @@ def f(x: C) -> C: pass
 from typing import Any, Callable, List
 def f(fields: List[Callable[[Any], Any]]): pass
 class C: pass
-f([C])  # E: List item 0 has incompatible type
+f([C])  # E: List item 0 has incompatible type Type[C]; expected Callable[[Any], Any]
 class D:
     def __init__(self, a, b): pass
-f([D])  # E: List item 0 has incompatible type
+f([D])  # E: List item 0 has incompatible type Type[D]; expected Callable[[Any], Any]
 [builtins fixtures/list.pyi]
 
 [case testSubtypingTypeTypeAsCallable]
@@ -363,7 +363,7 @@ y = x  # E: Incompatible types in assignment (expression has type Callable[..., 
 
 a, b = None, None # type: (A, B)
 a = f()     # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "A"
+b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "Optional[A]"
 b = f(a, a) # E: Too many arguments for "f"
 
 b = f()
@@ -388,17 +388,54 @@ class A: pass
 
 [case testDefaultArgumentExpressions2]
 import typing
-def f(x: 'A' = B()) -> None: # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+def f(x: 'A' = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
     b = x # type: B      # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x # type: A
 
 class B: pass
 class A: pass
-[out]
+
+[case testDefaultArgumentExpressionsGeneric]
+from typing import TypeVar
+T = TypeVar('T', bound='A')
+def f(x: T = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "T")
+    b = x # type: B      # E: Incompatible types in assignment (expression has type "T", variable has type "B")
+    a = x # type: A
+
+class B: pass
+class A: pass
+
+[case testDefaultArgumentExpressionsPython2]
+# flags: --python-version 2.7
+from typing import Tuple
+def f(x = B()): # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
+    # type: (A) -> None
+    b = x # type: B      # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    a = x # type: A
+
+class B: pass
+class A: pass
+
+[case testDefaultTupleArgumentExpressionsPython2]
+# flags: --python-version 2.7
+from typing import Tuple
+def f((x, y) = (A(), B())): # E: Incompatible default for tuple argument 1 (default has type "Tuple[A, B]", argument has type "Tuple[B, B]")
+    # type: (Tuple[B, B]) -> None
+    b = x # type: B
+    a = x # type: A      # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+def g(a, (x, y) = (A(),)): # E: Incompatible default for tuple argument 2 (default has type "Tuple[A]", argument has type "Tuple[B, B]")
+    # type: (int, Tuple[B, B]) -> None
+    pass
+def h((x, y) = (A(), B(), A())): # E: Incompatible default for tuple argument 1 (default has type "Tuple[A, B, A]", argument has type "Tuple[B, B]")
+    # type: (Tuple[B, B]) -> None
+    pass
+
+class B: pass
+class A: pass
 
 [case testDefaultArgumentsWithSubtypes]
 import typing
-def f(x: 'B' = A()) -> None: # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+def f(x: 'B' = A()) -> None: # E: Incompatible default for argument "x" (default has type "A", argument has type "B")
     pass
 def g(x: 'A' = B()) -> None:
     pass
@@ -409,7 +446,7 @@ class B(A): pass
 
 [case testMultipleDefaultArgumentExpressions]
 import typing
-def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
     pass
 def h(x: 'A' = A(), y: 'B' = B()) -> None:
     pass
@@ -420,7 +457,7 @@ class B: pass
 
 [case testMultipleDefaultArgumentExpressions2]
 import typing
-def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible default for argument "y" (default has type "A", argument has type "B")
     pass
 
 class A: pass

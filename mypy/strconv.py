@@ -175,12 +175,12 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_var(self, o: 'mypy.nodes.Var') -> str:
-        l = ''
+        lst = ''
         # Add :nil line number tag if no line number is specified to remain
         # compatible with old test case descriptions that assume this.
         if o.line < 0:
-            l = ':nil'
-        return 'Var' + l + '(' + o.name() + ')'
+            lst = ':nil'
+        return 'Var' + lst + '(' + o.name() + ')'
 
     def visit_global_decl(self, o: 'mypy.nodes.GlobalDecl') -> str:
         return self.dump([o.names], o)
@@ -345,8 +345,8 @@ class StrConv(NodeVisitor[str]):
         pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_def, o.node)
         return short_type(o) + '(' + pretty + ')'
 
-    def pretty_name(self, name: str, kind: int, fullname: str, is_def: bool,
-                    target_node: 'mypy.nodes.Node' = None) -> str:
+    def pretty_name(self, name: str, kind: Optional[int], fullname: Optional[str],
+                    is_def: bool, target_node: 'Optional[mypy.nodes.Node]' = None) -> str:
         n = name
         if is_def:
             n += '*'

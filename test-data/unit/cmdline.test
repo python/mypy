@@ -304,14 +304,6 @@ bad = 0
 [out]
 mypy.ini: [mypy]: Unrecognized option: bad = 0
 
-[case testConfigErrorUnknownReport]
-# cmd: mypy -c pass
-[file mypy.ini]
-[[mypy]
-bad_report = .
-[out]
-mypy.ini: [mypy]: Unrecognized report type: bad_report
-
 [case testConfigErrorBadBoolean]
 # cmd: mypy -c pass
 [file mypy.ini]
@@ -325,67 +317,9 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 [file mypy.ini]
 [[mypy]
 [[mypy-*]
-strict_optional = True
+python_version = 3.4
 [out]
-mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (strict_optional)
-
-[case testAnyExprReportDivisionByZero]
-# cmd: mypy --any-exprs-report=out -c 'pass'
-
-[case testCoberturaParser]
-# cmd: mypy --cobertura-xml-report build pkg
-[file pkg/__init__.py]
-[file pkg/a.py]
-from typing import Dict
-
-def foo() -> Dict:
-  z = {'hello': 'world'}
-  return z
-[file pkg/subpkg/__init__.py]
-[file pkg/subpkg/a.py]
-def bar() -> str:
-  return 'world'
-def untyped_function():
-  return 42
-[outfile build/cobertura.xml]
-<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.8000" branch-rate="0">
-  <sources>
-    <source>$PWD</source>
-  </sources>
-  <packages>
-    <package complexity="1.0" name="pkg" branch-rate="0" line-rate="1.0000">
-      <classes>
-        <class complexity="1.0" filename="pkg/__init__.py" name="__init__.py" branch-rate="0" line-rate="1.0">
-          <methods/>
-          <lines/>
-        </class>
-        <class complexity="1.0" filename="pkg/a.py" name="a.py" branch-rate="0" line-rate="1.0000">
-          <methods/>
-          <lines>
-            <line branch="true" hits="1" number="3" precision="imprecise" condition-coverage="50% (1/2)"/>
-            <line branch="false" hits="1" number="4" precision="precise"/>
-            <line branch="false" hits="1" number="5" precision="precise"/>
-          </lines>
-        </class>
-      </classes>
-    </package>
-    <package complexity="1.0" name="pkg.subpkg" branch-rate="0" line-rate="0.5000">
-      <classes>
-        <class complexity="1.0" filename="pkg/subpkg/__init__.py" name="__init__.py" branch-rate="0" line-rate="1.0">
-          <methods/>
-          <lines/>
-        </class>
-        <class complexity="1.0" filename="pkg/subpkg/a.py" name="a.py" branch-rate="0" line-rate="0.5000">
-          <methods/>
-          <lines>
-            <line branch="false" hits="1" number="1" precision="precise"/>
-            <line branch="false" hits="0" number="3" precision="any"/>
-          </lines>
-        </class>
-      </classes>
-    </package>
-  </packages>
-</coverage>
+mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
 
 [case testConfigMypyPath]
 # cmd: mypy file.py
@@ -681,3 +615,466 @@ from unreal import F
 
 def f(x: F) -> None: pass
 [out]
+
+[case testDisallowAnyExplicitDefSignature]
+# cmd: mypy m.py
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+
+def f(x: Any) -> None:
+    pass
+
+def g() -> Any:
+    pass
+
+def h() -> List[Any]:
+    pass
+
+[out]
+m.py:3: error: Explicit "Any" is not allowed
+m.py:6: error: Explicit "Any" is not allowed
+m.py:9: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitVarDeclaration]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+v: Any = ''
+w = ''  # type: Any
+class X:
+    y = ''  # type: Any
+
+[out]
+m.py:2: error: Explicit "Any" is not allowed
+m.py:3: error: Explicit "Any" is not allowed
+m.py:5: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitGenericVarDeclaration]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+v: List[Any] = []
+[out]
+m.py:2: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitInheritance]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+
+class C(Any):
+    pass
+
+class D(List[Any]):
+    pass
+[out]
+m.py:3: error: Explicit "Any" is not allowed
+m.py:6: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitAlias]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List
+
+X = Any
+Y = List[Any]
+
+def foo(x: X) -> Y:  # no error
+    x.nonexistent()  # no error
+    return x
+
+[out]
+m.py:3: error: Explicit "Any" is not allowed
+m.py:4: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitGenericAlias]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, TypeVar, Tuple
+
+T = TypeVar('T')
+
+TupleAny = Tuple[Any, T]  # error
+
+def foo(x: TupleAny[str]) -> None:  # no error
+    pass
+
+def goo(x: TupleAny[Any]) -> None:  # error
+    pass
+
+[out]
+m.py:5: error: Explicit "Any" is not allowed
+m.py:10: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitCast]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, cast
+
+x = 1
+y = cast(Any, x)
+z = cast(List[Any], x)
+[out]
+m.py:4: error: Explicit "Any" is not allowed
+m.py:5: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitNamedTuple]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, NamedTuple
+
+Point = NamedTuple('Point', [('x', List[Any]),
+                             ('y', Any)])
+
+[out]
+m.py:3: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitTypeVarConstraint]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, TypeVar
+
+T = TypeVar('T', Any, List[Any])
+[out]
+m.py:3: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitNewType]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from typing import Any, List, NewType
+
+Baz = NewType('Baz', Any)  # this error does not come from `--disallow-any=explicit` flag
+Bar = NewType('Bar', List[Any])
+
+[out]
+m.py:3: error: Argument 2 to NewType(...) must be subclassable (got Any)
+m.py:4: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitTypedDictSimple]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from mypy_extensions import TypedDict
+from typing import Any
+
+M = TypedDict('M', {'x': str, 'y': Any})  # error
+M(x='x', y=2)  # no error
+def f(m: M) -> None: pass  # no error
+[out]
+m.py:4: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitTypedDictGeneric]
+# cmd: mypy m.py
+
+[file mypy.ini]
+[[mypy]
+[[mypy-m*]
+disallow_any = explicit
+
+[file m.py]
+from mypy_extensions import TypedDict
+from typing import Any, List
+
+M = TypedDict('M', {'x': str, 'y': List[Any]})  # error
+N = TypedDict('N', {'x': str, 'y': List})  # no error
+[out]
+m.py:4: error: Explicit "Any" is not allowed
+
+[case testDisallowAnyGenericsTupleNoTypeParams]
+# cmd: mypy m.py
+[file mypy.ini]
+[[mypy]
+[[mypy-m]
+disallow_any = generics
+
+[file m.py]
+from typing import Tuple
+
+def f(s: Tuple) -> None: pass  # error
+def g(s) -> Tuple:  # error
+    return 'a', 'b'
+def h(s) -> Tuple[str, str]:  # no error
+    return 'a', 'b'
+x: Tuple = ()  # error
+[out]
+m.py:3: error: Missing type parameters for generic type
+m.py:4: error: Missing type parameters for generic type
+m.py:8: error: Missing type parameters for generic type
+
+[case testDisallowAnyGenericsTupleWithNoTypeParamsGeneric]
+# cmd: mypy m.py
+[file mypy.ini]
+[[mypy]
+[[mypy-m]
+disallow_any = generics
+
+[file m.py]
+from typing import Tuple, List
+
+def f(s: List[Tuple]) -> None: pass  # error
+def g(s: List[Tuple[str, str]]) -> None: pass  # no error
+[out]
+m.py:3: error: Missing type parameters for generic type
+
+[case testDisallowAnyGenericsTypeType]
+# cmd: mypy m.py
+[file mypy.ini]
+[[mypy]
+[[mypy-m]
+disallow_any = generics
+
+[file m.py]
+from typing import Type, Any
+
+def f(s: Type[Any]) -> None: pass  # no error
+def g(s) -> Type:  # error
+    return s
+def h(s) -> Type[str]:  # no error
+    return s
+x: Type = g(0)  # error
+[out]
+m.py:4: error: Missing type parameters for generic type
+m.py:8: error: Missing type parameters for generic type
+
+[case testDisallowAnyGenericsAliasGenericType]
+# cmd: mypy m.py
+[file mypy.ini]
+[[mypy]
+[[mypy-m]
+disallow_any = generics
+
+[file m.py]
+from typing import List
+
+L = List  # no error
+
+def f(l: L) -> None: pass  # error
+def g(l: L[str]) -> None: pass  # no error
+[out]
+m.py:5: error: Missing type parameters for generic type
+
+[case testDisallowAnyGenericsGenericAlias]
+# cmd: mypy m.py
+[file mypy.ini]
+[[mypy]
+[[mypy-m]
+disallow_any = generics
+
+[file m.py]
+from typing import List, TypeVar, Tuple
+
+T = TypeVar('T')
+A = Tuple[T, str, T]
+
+def f(s: A) -> None: pass  # error
+def g(s) -> A:  # error
+    return 'a', 'b', 1
+def h(s) -> A[str]:  # no error
+    return 'a', 'b', 'c'
+x: A = ('a', 'b', 1)  # error
+[out]
+m.py:6: error: Missing type parameters for generic type
+m.py:7: error: Missing type parameters for generic type
+m.py:11: error: Missing type parameters for generic type
+
+[case testDisallowAnyGenericsPlainList]
+# cmd: mypy m.py
+[file mypy.ini]
+[[mypy]
+[[mypy-m]
+disallow_any = generics
+
+[file m.py]
+from typing import List
+
+def f(l: List) -> None: pass  # error
+def g(l: List[str]) -> None: pass  # no error
+def h(l: List[List]) -> None: pass  # error
+def i(l: List[List[List[List]]]) -> None: pass  # error
+
+x = []  # error: need type annotation
+y: List = []  # error
+[out]
+m.py:3: error: Missing type parameters for generic type
+m.py:5: error: Missing type parameters for generic type
+m.py:6: error: Missing type parameters for generic type
+m.py:8: error: Need type annotation for variable
+m.py:9: error: Missing type parameters for generic type
+
+[case testDisallowAnyGenericsCustomGenericClass]
+# cmd: mypy m.py
+[file mypy.ini]
+[[mypy]
+[[mypy-m]
+disallow_any = generics
+
+[file m.py]
+from typing import Generic, TypeVar, Any
+
+T = TypeVar('T')
+class G(Generic[T]): pass
+
+def f() -> G:  # error
+    return G()
+
+x: G[Any] = G()  # no error
+y: G = x  # error
+
+[out]
+m.py:6: error: Missing type parameters for generic type
+m.py:10: error: Missing type parameters for generic type
+
+[case testDisallowAnyGenericsBuiltinCollections]
+# cmd: mypy m.py
+[file mypy.ini]
+[[mypy]
+[[mypy-m]
+disallow_any = generics
+
+[file m.py]
+s = tuple([1, 2, 3])  # no error
+
+def f(t: tuple) -> None: pass
+def g() -> list: pass
+def h(s: dict) -> None: pass
+def i(s: set) -> None: pass
+def j(s: frozenset) -> None: pass
+[out]
+m.py:3: error: Implicit generic "Any". Use 'typing.Tuple' and specify generic parameters
+m.py:4: error: Implicit generic "Any". Use 'typing.List' and specify generic parameters
+m.py:5: error: Implicit generic "Any". Use 'typing.Dict' and specify generic parameters
+m.py:6: error: Implicit generic "Any". Use 'typing.Set' and specify generic parameters
+m.py:7: error: Implicit generic "Any". Use 'typing.FrozenSet' and specify generic parameters
+
+[case testDisallowAnyGenericsTypingCollections]
+# cmd: mypy m.py
+[file mypy.ini]
+[[mypy]
+[[mypy-m]
+disallow_any = generics
+
+[file m.py]
+from typing import Tuple, List, Dict, Set, FrozenSet
+
+def f(t: Tuple) -> None: pass
+def g() -> List: pass
+def h(s: Dict) -> None: pass
+def i(s: Set) -> None: pass
+def j(s: FrozenSet) -> None: pass
+[out]
+m.py:3: error: Missing type parameters for generic type
+m.py:4: error: Missing type parameters for generic type
+m.py:5: error: Missing type parameters for generic type
+m.py:6: error: Missing type parameters for generic type
+m.py:7: error: Missing type parameters for generic type
+
+[case testDisallowSubclassingAny]
+# cmd: mypy m.py y.py
+[file mypy.ini]
+[[mypy]
+disallow_subclassing_any = True
+[[mypy-m]
+disallow_subclassing_any = False
+
+[file m.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldBeFine(x): ...
+
+[file y.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldNotBeFine(x): ...
+[out]
+y.py:5: error: Class cannot subclass 'x' (has type 'Any')
+
+[case testDeterministicSectionOrdering]
+# cmd: mypy a
+[file a/__init__.py]
+[file a/b/__init__.py]
+[file a/b/c/__init__.py]
+[file a/b/c/d/__init__.py]
+[file a/b/c/d/e/__init__.py]
+0()
+[file mypy.ini]
+[[mypy]
+[[mypy-a.*]
+ignore_errors = True
+[[mypy-a.b.*]
+ignore_errors = True
+[[mypy-a.b.c.*]
+ignore_errors = True
+[[mypy-a.b.c.d.*]
+ignore_errors = True
+[[mypy-a.b.c.d.e]
+ignore_errors = False
+[out]
+a/b/c/d/e/__init__.py:1: error: "int" not callable

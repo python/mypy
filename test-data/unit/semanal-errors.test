@@ -953,7 +953,7 @@ from typing import Generic, TypeVar
 T = TypeVar('T')
 S = TypeVar('S')
 class A(Generic[T], Generic[S]): pass \
-      # E: Duplicate Generic in bases
+      # E: Only single Generic[...] or Protocol[...] can be in bases
 [out]
 
 [case testInvalidMetaclass]

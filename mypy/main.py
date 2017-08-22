@@ -28,7 +28,7 @@ class InvalidPackageName(Exception):
     """Exception indicating that a package name was invalid."""
 
 
-def main(script_path: str, args: List[str] = None) -> None:
+def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     """Main entry point to the type checker.
 
     Args:
@@ -38,7 +38,7 @@ def main(script_path: str, args: List[str] = None) -> None:
     """
     t0 = time.time()
     if script_path:
-        bin_dir = find_bin_directory(script_path)
+        bin_dir = find_bin_directory(script_path)  # type: Optional[str]
     else:
         bin_dir = None
     sys.setrecursionlimit(2 ** 14)
@@ -90,14 +90,15 @@ def readlinkabs(link: str) -> str:
     return os.path.join(os.path.dirname(link), path)
 
 
-def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) -> BuildResult:
-    # Type-check the program and dependencies and translate to Python.
+def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
+                    options: Options) -> BuildResult:
+    # Type-check the program and dependencies.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
                        options=options)
 
 
-disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated']
+disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated', 'explicit', 'generics']
 
 
 def disallow_any_argument_type(raw_options: str) -> List[str]:
@@ -163,7 +164,7 @@ def parse_version(v: str) -> Tuple[int, int]:
 
 # Make the help output a little less jarring.
 class AugmentedHelpFormatter(argparse.HelpFormatter):
-    def __init__(self, prog: Optional[str]) -> None:
+    def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
 
@@ -204,9 +205,9 @@ def process_options(args: List[str],
 
     def add_invertible_flag(flag: str,
                             *,
-                            inverse: str = None,
+                            inverse: Optional[str] = None,
                             default: bool,
-                            dest: str = None,
+                            dest: Optional[str] = None,
                             help: str,
                             strict_flag: bool = False
                             ) -> None:
@@ -226,6 +227,7 @@ def process_options(args: List[str],
                                   dest=dest,
                                   help=argparse.SUPPRESS)
         if strict_flag:
+            assert dest is not None
             strict_flag_names.append(flag)
             strict_flag_assignments.append((dest, not default))
 
@@ -258,6 +260,8 @@ def process_options(args: List[str],
     add_invertible_flag('--disallow-untyped-defs', default=False, strict_flag=True,
                         help="disallow defining functions without type annotations"
                         " or with incomplete type annotations")
+    add_invertible_flag('--disallow-incomplete-defs', default=False, strict_flag=True,
+                        help="disallow defining functions with incomplete type annotations")
     add_invertible_flag('--check-untyped-defs', default=False, strict_flag=True,
                         help="type check the interior of functions without type annotations")
     add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
@@ -265,6 +269,8 @@ def process_options(args: List[str],
     add_invertible_flag('--warn-incomplete-stub', default=False,
                         help="warn if missing type annotation in typeshed, only relevant with"
                         " --check-untyped-defs enabled")
+    add_invertible_flag('--disallow-untyped-decorators', default=False, strict_flag=True,
+                        help="disallow decorating typed functions with untyped decorators")
     add_invertible_flag('--warn-redundant-casts', default=False, strict_flag=True,
                         help="warn about casting an expression to its inferred type")
     add_invertible_flag('--no-warn-no-return', dest='warn_no_return', default=True,
@@ -289,6 +295,8 @@ def process_options(args: List[str],
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
+    parser.add_argument('--skip-version-check', action='store_true',
+                        help="allow using cache written by older mypy version")
     add_invertible_flag('--strict-optional', default=False, strict_flag=True,
                         help="enable experimental strict Optional checks")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
@@ -321,13 +329,10 @@ def process_options(args: List[str],
         ", ".join(strict_flag_names))
     parser.add_argument('--strict', action='store_true', dest='special-opts:strict',
                         help=strict_help)
+    parser.add_argument('--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
+                        dest='shadow_file',
+                        help='Typecheck SHADOW_FILE in place of SOURCE_FILE.')
     # hidden options
-    # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
-    # Useful for tools to make transformations to a file to get more
-    # information from a mypy run without having to change the file in-place
-    # (e.g. by adding a call to reveal_type).
-    parser.add_argument('--shadow-file', metavar='PATH', nargs=2, dest='shadow_file',
-                        help=argparse.SUPPRESS)
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
@@ -455,6 +460,7 @@ def process_options(args: List[str],
         experiments.STRICT_OPTIONAL = True
     if special_opts.find_occurrences:
         experiments.find_occurrences = special_opts.find_occurrences.split('.')
+        assert experiments.find_occurrences is not None
         if len(experiments.find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
         if len(experiments.find_occurrences) != 2:
@@ -635,9 +641,8 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
     If filename is None, fall back to default config file and then
     to setup.cfg.
     """
-    config_files = None  # type: Tuple[str, ...]
     if filename is not None:
-        config_files = (filename,)
+        config_files = (filename,)  # type: Tuple[str, ...]
     else:
         config_files = (defaults.CONFIG_FILE,) + SHARED_CONFIG_FILES
 
@@ -652,6 +657,7 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
             print("%s: %s" % (config_file, err), file=sys.stderr)
         else:
             file_read = config_file
+            options.config_file = file_read
             break
     else:
         return
@@ -699,6 +705,7 @@ def parse_section(prefix: str, template: Options,
     results = {}  # type: Dict[str, object]
     report_dirs = {}  # type: Dict[str, str]
     for key in section:
+        orig_key = key
         key = key.replace('-', '_')
         if key in config_types:
             ct = config_types[key]
@@ -708,12 +715,12 @@ def parse_section(prefix: str, template: Options,
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
                     if report_type in reporter_classes:
-                        report_dirs[report_type] = section.get(key)
+                        report_dirs[report_type] = section[orig_key]
                     else:
-                        print("%s: Unrecognized report type: %s" % (prefix, key),
+                        print("%s: Unrecognized report type: %s" % (prefix, orig_key),
                               file=sys.stderr)
                     continue
-                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
+                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
                       file=sys.stderr)
                 continue
             ct = type(dv)

@@ -198,6 +198,43 @@ class A:
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:8: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
+[case testClassNamesDefinedOnSelUsedInClassBody]
+class A(object):
+    def f(self):
+        self.attr = 1
+    attr = 0
+
+class B(object):
+    attr = 0
+    def f(self):
+        self.attr = 1
+
+class C(object):
+    attr = 0
+    def f(self):
+        self.attr = 1
+    attr = 0
+
+class D(object):
+    def g(self):
+        self.attr = 1
+    attr = 0
+    def f(self):
+        self.attr = 1
+[out]
+
+[case testClassNamesDefinedOnSelUsedInClassBodyReveal]
+class A(object):
+    def f(self) -> None:
+        self.attr = 1
+    reveal_type(attr)  # E: Revealed type is 'builtins.int'
+
+class B(object):
+    attr = 0
+    def f(self) -> None:
+        reveal_type(self.attr)  # E: Revealed type is 'builtins.int'
+[out]
+
 
 -- Method overriding
 -- -----------------
@@ -680,6 +717,21 @@ x = Bar()  # type: Bar
 def produce() -> Bar:
     reveal_type(Bar().make_int)  # E: Revealed type is 'def () -> builtins.int'
     return Bar()
+
+[case testInnerClassPropertyAccess]
+class Foo:
+    class Meta:
+        name = 'Bar'
+    meta = Meta
+
+reveal_type(Foo.Meta)  # E: Revealed type is 'def () -> __main__.Foo.Meta'
+reveal_type(Foo.meta)  # E: Revealed type is 'def () -> __main__.Foo.Meta'
+reveal_type(Foo.Meta.name)  # E: Revealed type is 'builtins.str'
+reveal_type(Foo.meta.name)  # E: Revealed type is 'builtins.str'
+reveal_type(Foo().Meta)  # E: Revealed type is 'def () -> __main__.Foo.Meta'
+reveal_type(Foo().meta)  # E: Revealed type is 'def () -> __main__.Foo.Meta'
+reveal_type(Foo().meta.name)  # E: Revealed type is 'builtins.str'
+reveal_type(Foo().Meta.name)  # E: Revealed type is 'builtins.str'
 
 -- Declaring attribute type in method
 -- ----------------------------------
@@ -2066,7 +2118,7 @@ def error(u_c: Type[U]) -> P:
 [out]
 main:11: error: Revealed type is '__main__.WizUser*'
 main:13: error: Incompatible return value type (got "U", expected "P")
-main:13: error: Type argument 1 of "new_pro" has incompatible value "U"
+main:13: error: Value of type variable "P" of "new_pro" cannot be "U"
 
 [case testTypeUsingTypeCCovariance]
 from typing import Type, TypeVar
@@ -2832,7 +2884,7 @@ class B(A[int]):
     b = ['']
 [builtins fixtures/list.pyi]
 [out]
-main:8: error: List item 0 has incompatible type "str"
+main:8: error: List item 0 has incompatible type "str"; expected "int"
 
 [case testVariableMethod]
 class A:
@@ -3100,19 +3152,20 @@ def f(TB: Type[B]):
 [case testMetaclassIterable]
 from typing import Iterable, Iterator
 
-class BadMeta(type):
+class ImplicitMeta(type):
     def __iter__(self) -> Iterator[int]: yield 1
 
-class Bad(metaclass=BadMeta): pass
+class Implicit(metaclass=ImplicitMeta): pass
 
-for _ in Bad: pass  # E: Iterable expected
+for _ in Implicit: pass
+reveal_type(list(Implicit))  # E: Revealed type is 'builtins.list[builtins.int*]'
 
-class GoodMeta(type, Iterable[int]):
+class ExplicitMeta(type, Iterable[int]):
     def __iter__(self) -> Iterator[int]: yield 1
 
-class Good(metaclass=GoodMeta): pass
-for _ in Good: pass
-reveal_type(list(Good))  # E: Revealed type is 'builtins.list[builtins.int*]'
+class Explicit(metaclass=ExplicitMeta): pass
+for _ in Explicit: pass
+reveal_type(list(Explicit))  # E: Revealed type is 'builtins.list[builtins.int*]'
 
 [builtins fixtures/list.pyi]
 
@@ -3289,6 +3342,49 @@ x3: M = cv
 
 [builtins fixtures/classmethod.pyi]
 
+[case testMetaclassOverloadResolution]
+from typing import Type, overload
+class A: pass
+
+class EM(type): pass
+class E(metaclass=EM): pass
+
+class EM1(type): pass
+class E1(metaclass=EM1): pass
+
+@overload
+def f(x: EM) -> int: ...
+@overload
+def f(x: EM1) -> A: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: object) -> object: return ''
+
+e: EM
+reveal_type(f(e))  # E: Revealed type is 'builtins.int'
+
+et: Type[E]
+reveal_type(f(et))  # E: Revealed type is 'builtins.int'
+
+e1: EM1
+reveal_type(f(e1))  # E: Revealed type is '__main__.A'
+
+e1t: Type[E1]
+reveal_type(f(e1t))  # E: Revealed type is '__main__.A'
+
+reveal_type(f(''))  # E: Revealed type is 'builtins.str'
+
+[case testTypeCErasesGenericsFromC]
+from typing import Generic, Type, TypeVar
+
+K = TypeVar('K')
+V = TypeVar('V')
+class ExampleDict(Generic[K, V]): ...
+
+D = TypeVar('D')
+def mkdict(dict_type: Type[D]) -> D: ...
+reveal_type(mkdict(ExampleDict))  # E: Revealed type is '__main__.ExampleDict*[Any, Any]'
+
 -- Synthetic types crashes
 -- -----------------------
 
@@ -3318,8 +3414,8 @@ x: TD
 x1 = TD({'x': []})
 y: NM
 y1 = NM(x=[])
-reveal_type(x) # E: Revealed type is 'TypedDict(x=builtins.list[Any], _fallback=__main__.TD)'
-reveal_type(x1) # E: Revealed type is 'TypedDict(x=builtins.list[Any], _fallback=typing.Mapping[builtins.str, builtins.list[Any]])'
+reveal_type(x) # E: Revealed type is 'TypedDict('__main__.TD', {'x': builtins.list[Any]})'
+reveal_type(x1) # E: Revealed type is 'TypedDict('__main__.TD', {'x': builtins.list[Any]})'
 reveal_type(y) # E: Revealed type is 'Tuple[builtins.list[Any], fallback=__main__.NM]'
 reveal_type(y1) # E: Revealed type is 'Tuple[builtins.list[Any], fallback=__main__.NM]'
 [builtins fixtures/dict.pyi]
@@ -3339,9 +3435,7 @@ NT([])
 [builtins fixtures/dict.pyi]
 [out]
 
--- The two tests below will not crash after
--- https://github.com/python/mypy/issues/3319 is fixed
-[case testCrashForwardSyntheticClassSyntax-skip]
+[case testCrashForwardSyntheticClassSyntax]
 from typing import NamedTuple
 from mypy_extensions import TypedDict
 class A1(NamedTuple):
@@ -3359,7 +3453,7 @@ reveal_type(y['b']) # E: Revealed type is '__main__.B'
 [builtins fixtures/dict.pyi]
 [out]
 
-[case testCrashForwardSyntheticFunctionSyntax-skip]
+[case testCrashForwardSyntheticFunctionSyntax]
 from typing import NamedTuple
 from mypy_extensions import TypedDict
 A1 = NamedTuple('A1', [('b', 'B'), ('x', int)])
