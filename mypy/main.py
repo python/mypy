@@ -53,6 +53,11 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         a = e.messages
         if not e.use_stdout:
             serious = True
+    if options.warn_unused_configs and options.unused_configs:
+        print("warning: unused section(s) in %s: %s" %
+              (options.config_file,
+               ", ".join("[mypy-%s]" % glob for glob in options.unused_configs.values())),
+              file=sys.stderr)
     if options.junit_xml:
         t1 = time.time()
         util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
@@ -280,6 +285,8 @@ def process_options(args: List[str],
                              " from non-Any typed functions")
     add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
                         help="warn about unneeded '# type: ignore' comments")
+    add_invertible_flag('--warn-unused-configs', default=False, strict_flag=True,
+                        help="warn about unnused '[mypy-<pattern>]' config sections")
     add_invertible_flag('--show-error-context', default=False,
                         dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
@@ -694,6 +701,7 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
                     glob = glob.replace(os.altsep, '.')
                 pattern = re.compile(fnmatch.translate(glob))
                 options.per_module_options[pattern] = updates
+                options.unused_configs[pattern] = glob
 
 
 def parse_section(prefix: str, template: Options,

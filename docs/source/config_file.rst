@@ -34,6 +34,11 @@ characters.
   separated by commas.  These sections specify additional flags that
   only apply to *modules* whose name matches at least one of the patterns.
 
+.. note::
+
+   The ``warn_unused_configs`` flag may be useful to debug misspelled
+   section names.
+
 Global flags
 ************
 
@@ -71,6 +76,10 @@ The following global flags may only be set in the global section
 
 - ``warn_unused_ignores`` (Boolean, default False) warns about
   unneeded ``# type: ignore`` comments.
+
+- ``warn_unused_configs`` (Boolean, default False) warns about
+  per-module sections in the config file that didn't match any
+  files processed in the current run.
 
 - ``strict_optional`` (Boolean, default False) enables experimental
   strict Optional checks.
