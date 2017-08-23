@@ -283,7 +283,7 @@ def default_lib_path(data_dir: str,
         # We allow a module for e.g. version 3.5 to be in 3.4/. The assumption
         # is that a module added with 3.4 will still be present in Python 3.5.
         versions = ["%d.%d" % (pyversion[0], minor)
-                    for minor in reversed(range(pyversion[1] + 1))]
+                    for minor in reversed(range(3, pyversion[1] + 1))]
     else:
         # For Python 2, we only have stubs for 2.7
         versions = ["2.7"]
@@ -298,9 +298,11 @@ def default_lib_path(data_dir: str,
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
         path.append('/usr/local/lib/mypy')
-    assert path, "Could not resolve typeshed subdirectories. If you are using MyPy " \
-                 "from source, you need to run \"git submodule --init update\"." \
-                 "Otherwise your MyPy install is broken."
+    if not path:
+        print("Could not resolve typeshed subdirectories. If you are using MyPy"
+              "from source, you need to run \"git submodule --init update\"."
+              "Otherwise your MyPy install is broken.", file=sys.stderr)
+        sys.exit(1)
     return path
 
 
