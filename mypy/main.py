@@ -54,7 +54,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         if not e.use_stdout:
             serious = True
     if options.warn_unused_configs and options.unused_configs:
-        print("warning: unused section(s) in %s: %s" %
+        print("Warning: unused section(s) in %s: %s" %
               (options.config_file,
                ", ".join("[mypy-%s]" % glob for glob in options.unused_configs.values())),
               file=sys.stderr)
