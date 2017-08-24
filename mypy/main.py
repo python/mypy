@@ -155,7 +155,8 @@ def parse_version(v: str) -> Tuple[int, int]:
     elif major == 3:
         if minor <= 2:
             raise argparse.ArgumentTypeError(
-                "Python 3.{} is not supported (must be 3.3 or higher)".format(minor))
+                "Python 3.{0} is not supported (must be {1}.{2} or higher)".format(minor,
+                                                                    *defaults.PYTHON3_VERSION_MIN))
     else:
         raise argparse.ArgumentTypeError(
             "Python major version '{}' out of range (must be 2 or 3)".format(major))
