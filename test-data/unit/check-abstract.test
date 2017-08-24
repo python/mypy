@@ -174,8 +174,8 @@ def f(cls: Type[A]) -> A:
 def g() -> A:
     return A()  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
 
-f(A)  # E: Only concrete class can be given where 'Type[A]' is expected
-f(B)  # E: Only concrete class can be given where 'Type[A]' is expected
+f(A)  # E: Only concrete class can be given where "Type[A]" is expected
+f(B)  # E: Only concrete class can be given where "Type[A]" is expected
 f(C)  # OK
 x: Type[B]
 f(x)  # OK

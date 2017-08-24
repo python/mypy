@@ -978,7 +978,7 @@ class C:
     c: Type[object] = Iterable[int]  # This is however also a variable
     a = B
     b = int  # E: Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation \
-             # E: Incompatible types in assignment (expression has type Type[int], variable has type "Type alias to Union")
+             # E: Incompatible types in assignment (expression has type "Type[int]", variable has type "Type alias to Union")
     c = int
     def f(self, x: a) -> None: pass  # E: Invalid type "__main__.C.a"
     def g(self, x: b) -> None: pass

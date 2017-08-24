@@ -127,7 +127,7 @@ f(None)
 
 [case testNoInferOptionalFromDefaultNone]
 # flags: --no-implicit-optional
-def f(x: int = None) -> None:  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+def f(x: int = None) -> None:  # E: Incompatible default for argument "x" (default has type "None", argument has type "int")
   pass
 [out]
 
@@ -140,7 +140,7 @@ f(None)
 
 [case testNoInferOptionalFromDefaultNoneComment]
 # flags: --no-implicit-optional
-def f(x=None):  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+def f(x=None):  # E: Incompatible default for argument "x" (default has type "None", argument has type "int")
   # type: (int) -> None
   pass
 [out]
@@ -455,7 +455,7 @@ reveal_type(l)  # E: Revealed type is 'builtins.list[typing.Generator*[builtins.
 [builtins fixtures/list.pyi]
 
 [case testNoneListTernary]
-x = [None] if "" else [1]  # E: List item 0 has incompatible type "int"; expected None
+x = [None] if "" else [1]  # E: List item 0 has incompatible type "int"; expected "None"
 [builtins fixtures/list.pyi]
 
 [case testListIncompatibleErrorMessage]
@@ -465,7 +465,7 @@ def foo(l: List[Callable[[], str]]) -> None: pass
 def f() -> int:
     return 42
 
-foo([f])  # E: List item 0 has incompatible type Callable[[], int]; expected Callable[[], str]
+foo([f])  # E: List item 0 has incompatible type "Callable[[], int]"; expected "Callable[[], str]"
 [builtins fixtures/list.pyi]
 
 [case testInferEqualsNotOptional]

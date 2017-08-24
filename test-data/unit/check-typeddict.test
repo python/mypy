@@ -343,7 +343,7 @@ Point = TypedDict('Point', {'x': int, 'y': int})
 def as_dict(p: Point) -> Dict[str, int]:
     return p  # E: Incompatible return value type (got "Point", expected "Dict[str, int]")
 def as_mutable_mapping(p: Point) -> MutableMapping[str, int]:
-    return p  # E: Incompatible return value type (got "Point", expected "MutableMapping[str, int])" \
+    return p  # E: Incompatible return value type (got "Point", expected "MutableMapping[str, int]") \
               # N: 'Point' is missing following 'MutableMapping' protocol member: \
               # N:     __setitem__
 [builtins fixtures/dict.pyi]
@@ -369,9 +369,9 @@ c: C
 def f(a: A) -> None: pass
 
 l = [a, b]  # Join generates an anonymous TypedDict
-f(l) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x': int})]; expected "A"
+f(l) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x': int})]"; expected "A"
 ll = [b, c]
-f(ll) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x': int, 'z': str})]; expected "A"
+f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x': int, 'z': str})]"; expected "A"
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictWithSimpleProtocol]
@@ -1096,9 +1096,9 @@ c: C
 def f(a: A) -> None: pass
 
 l = [a, b]  # Join generates an anonymous TypedDict
-f(l) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x'?: int})]; expected "A"
+f(l) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x'?: int})]"; expected "A"
 ll = [b, c]
-f(ll) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x'?: int, 'z'?: str})]; expected "A"
+f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x'?: int, 'z'?: str})]"; expected "A"
 [builtins fixtures/dict.pyi]
 
 
@@ -1184,7 +1184,7 @@ f(a)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
-main:13: error: Argument 1 to "f" has incompatible type "A"; expected Iterable[int]
+main:13: error: Argument 1 to "f" has incompatible type "A"; expected "Iterable[int]"
 main:13: note: Following member(s) of "A" have conflicts:
 main:13: note:     Expected:
 main:13: note:         def __iter__(self) -> Iterator[int]
@@ -1284,7 +1284,7 @@ class C(B): pass
 x: X
 reveal_type(x) # E: Revealed type is 'TypedDict('__main__.X', {'b': __main__.B, 'c': __main__.C})'
 m1: Mapping[str, B] = x
-m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type Mapping[str, C])
+m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, C]")
 [builtins fixtures/dict.pyi]
 
 [case testForwardReferenceInClassTypedDict]
@@ -1298,7 +1298,7 @@ class C(B): pass
 x: X
 reveal_type(x) # E: Revealed type is 'TypedDict('__main__.X', {'b': __main__.B, 'c': __main__.C})'
 m1: Mapping[str, B] = x
-m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type Mapping[str, C])
+m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, C]")
 [builtins fixtures/dict.pyi]
 
 [case testForwardReferenceToTypedDictInTypedDict]

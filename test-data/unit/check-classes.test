@@ -3292,14 +3292,14 @@ reveal_type(A.g4)  # E: Revealed type is 'def () -> def () -> __main__.A'
 class B(metaclass=M):
     def foo(self): pass
 
-B.g1  # Should be error: Argument 0 to "g1" of "M" has incompatible type "B"; expected Type[A]
-B.g2  # Should be error: Argument 0 to "g2" of "M" has incompatible type "B"; expected Type[TA]
+B.g1  # Should be error: Argument 0 to "g1" of "M" has incompatible type "B"; expected "Type[A]"
+B.g2  # Should be error: Argument 0 to "g2" of "M" has incompatible type "B"; expected "Type[TA]"
 B.g3  # Should be error: Argument 0 to "g3" of "M" has incompatible type "B"; expected "TTA"
 reveal_type(B.g4)  # E: Revealed type is 'def () -> def () -> __main__.B'
 
 # 4 examples of unsoundness - instantiation, classmethod, staticmethod and ClassVar:
 
-ta: Type[A] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[A])
+ta: Type[A] = m  # E: Incompatible types in assignment (expression has type "M", variable has type "Type[A]")
 a: A = ta()
 reveal_type(ta.g1)  # E: Revealed type is 'def () -> __main__.A'
 reveal_type(ta.g2)  # E: Revealed type is 'def () -> __main__.A*'
@@ -3307,8 +3307,8 @@ reveal_type(ta.g3)  # E: Revealed type is 'def () -> Type[__main__.A]'
 reveal_type(ta.g4)  # E: Revealed type is 'def () -> Type[__main__.A]'
 
 x: M = ta
-x.g1  # should be error: Argument 0 to "g1" of "M" has incompatible type "M"; expected Type[A]
-x.g2  # should be error: Argument 0 to "g2" of "M" has incompatible type "M"; expected Type[TA]
+x.g1  # should be error: Argument 0 to "g1" of "M" has incompatible type "M"; expected "Type[A]"
+x.g2  # should be error: Argument 0 to "g2" of "M" has incompatible type "M"; expected "Type[TA]"
 x.g3  # should be error: Argument 0 to "g3" of "M" has incompatible type "M"; expected "TTA"
 reveal_type(x.g4)  # E: Revealed type is 'def () -> __main__.M*'
 
@@ -3321,7 +3321,7 @@ class Class(metaclass=M):
     def f1(cls: Type[Class]) -> None: pass
     @classmethod
     def f2(cls: M) -> None: pass
-cl: Type[Class] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[Class])
+cl: Type[Class] = m  # E: Incompatible types in assignment (expression has type "M", variable has type "Type[Class]")
 reveal_type(cl.f1)  # E: Revealed type is 'def ()'
 reveal_type(cl.f2)  # E: Revealed type is 'def ()'
 x1: M = cl
@@ -3329,14 +3329,14 @@ x1: M = cl
 class Static(metaclass=M):
     @staticmethod
     def f() -> None: pass
-s: Type[Static] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[Static])
+s: Type[Static] = m  # E: Incompatible types in assignment (expression has type "M", variable has type "Type[Static]")
 reveal_type(s.f)  # E: Revealed type is 'def ()'
 x2: M = s
 
 from typing import ClassVar
 class Cvar(metaclass=M):
     x = 1  # type: ClassVar[int]
-cv: Type[Cvar] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[Cvar])
+cv: Type[Cvar] = m  # E: Incompatible types in assignment (expression has type "M", variable has type "Type[Cvar]")
 cv.x
 x3: M = cv
 
