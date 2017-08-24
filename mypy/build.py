@@ -289,7 +289,6 @@ def default_lib_path(data_dir: str,
         # For Python 2, we only have stubs for 2.7
         versions = ["2.7"]
     # E.g. for Python 3.5, try 3.5/, 3.4/, 3.3/, 3/, 2and3/.
-    # (Note that 3.1 and 3.0 aren't really supported, but we don't care.)
     for v in versions + [str(pyversion[0]), '2and3']:
         for lib_type in ['stdlib', 'third_party']:
             stubdir = os.path.join(typeshed_dir, lib_type, v)
