@@ -44,6 +44,7 @@ from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
 from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
+from mypy.defaults import PYTHON3_VERSION_MIN
 
 
 # We need to know the location of this file to load data, but
@@ -283,11 +284,11 @@ def default_lib_path(data_dir: str,
         # We allow a module for e.g. version 3.5 to be in 3.4/. The assumption
         # is that a module added with 3.4 will still be present in Python 3.5.
         versions = ["%d.%d" % (pyversion[0], minor)
-                    for minor in reversed(range(3, pyversion[1] + 1))]
+                    for minor in reversed(range(PYTHON3_VERSION_MIN[1], pyversion[1] + 1))]
     else:
         # For Python 2, we only have stubs for 2.7
         versions = ["2.7"]
-    # E.g. for Python 3.2, try 3.2/, 3.1/, 3.0/, 3/, 2and3/.
+    # E.g. for Python 3.5, try 3.5/, 3.4/, 3.3/, 3/, 2and3/.
     # (Note that 3.1 and 3.0 aren't really supported, but we don't care.)
     for v in versions + [str(pyversion[0]), '2and3']:
         for lib_type in ['stdlib', 'third_party']:
