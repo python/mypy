@@ -1020,11 +1020,11 @@ class MessageBuilder:
         self.fail(msg, context)
 
     def concrete_only_assign(self, typ: Type, context: Context) -> None:
-        self.fail("Can only assign concrete classes to a variable of type '{}'"
+        self.fail("Can only assign concrete classes to a variable of type {}"
                   .format(self.format(typ)), context)
 
     def concrete_only_call(self, typ: Type, context: Context) -> None:
-        self.fail("Only concrete class can be given where '{}' is expected"
+        self.fail("Only concrete class can be given where {} is expected"
                   .format(self.format(typ)), context)
 
     def note_call(self, subtype: Type, call: Type, context: Context) -> None:
