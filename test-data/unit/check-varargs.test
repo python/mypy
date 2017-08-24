@@ -86,7 +86,7 @@ a = None # type: A
 b = None # type: B
 c = None # type: C
 
-f(a)           # E: Argument 1 to "f" has incompatible type "A"; expected "C"
+f(a)           # E: Argument 1 to "f" has incompatible type "A"; expected "Optional[C]"
 f(c, c)        # E: Argument 2 to "f" has incompatible type "C"; expected "A"
 f(c, a, b, c)  # E: Argument 4 to "f" has incompatible type "C"; expected "A"
 f()
@@ -377,9 +377,10 @@ class B: pass
 [builtins fixtures/list.pyi]
 [out]
 main:3: error: Too few arguments for "f"
+main:4: error: Argument 2 to "f" has incompatible type *"List[A]"; expected "Optional[B]"
 main:4: error: Argument 2 to "f" has incompatible type *"List[A]"; expected "B"
 main:5: error: Argument 3 to "f" has incompatible type *"List[A]"; expected "B"
-main:6: error: Argument 1 to "f" has incompatible type *"Tuple[A, A, B]"; expected "B"
+main:6: error: Argument 1 to "f" has incompatible type *"Tuple[A, A, B]"; expected "Optional[B]"
 
 [case testVarArgsAfterKeywordArgInCall1-skip]
 # see: mypy issue #2729
@@ -592,3 +593,48 @@ class C:
     def foo(self) -> None: pass
 C().foo()
 C().foo(1)  # The decorator's return type says this should be okay
+
+[case testInvariantDictArgNote]
+from typing import Dict, Sequence
+def f(x: Dict[str, Sequence[int]]) -> None: pass
+def g(x: Dict[str, float]) -> None: pass
+def h(x: Dict[str, int]) -> None: pass
+a = {'a': [1, 2]}
+b = {'b': ['c', 'd']}
+c = {'c': 1.0}
+d = {'d': 1}
+f(a) # E: Argument 1 to "f" has incompatible type Dict[str, List[int]]; expected Dict[str, Sequence[int]] \
+     # N: "Dict" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: Consider using "Mapping" instead, which is covariant in the value type
+f(b) # E: Argument 1 to "f" has incompatible type Dict[str, List[str]]; expected Dict[str, Sequence[int]]
+g(c)
+g(d) # E: Argument 1 to "g" has incompatible type Dict[str, int]; expected Dict[str, float] \
+     # N: "Dict" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: Consider using "Mapping" instead, which is covariant in the value type
+h(c) # E: Argument 1 to "h" has incompatible type Dict[str, float]; expected Dict[str, int]
+h(d)
+[builtins fixtures/dict.pyi]
+
+[case testInvariantListArgNote]
+from typing import List, Union
+def f(numbers: List[Union[int, float]]) -> None: pass
+a = [1, 2]
+f(a) # E: Argument 1 to "f" has incompatible type List[int]; expected List[Union[int, float]] \
+     # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: Consider using "Sequence" instead, which is covariant
+x = [1]
+y = ['a']
+x = y # E: Incompatible types in assignment (expression has type List[str], variable has type List[int])
+[builtins fixtures/list.pyi]
+
+[case testInvariantTypeConfusingNames]
+from typing import TypeVar
+class Listener: pass
+class DictReader: pass
+def f(x: Listener) -> None: pass
+def g(y: DictReader) -> None: pass
+a = [1, 2]
+b = {'b': 1}
+f(a) # E: Argument 1 to "f" has incompatible type List[int]; expected "Listener"
+g(b) # E: Argument 1 to "g" has incompatible type Dict[str, int]; expected "DictReader"
+[builtins fixtures/dict.pyi]

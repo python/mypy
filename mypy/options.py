@@ -1,8 +1,9 @@
+from collections import OrderedDict
 import fnmatch
 import pprint
 import sys
 
-from typing import Any, Mapping, Optional, Tuple, List, Pattern, Dict
+from typing import Mapping, MutableMapping, Optional, Tuple, List, Pattern, Dict
 
 from mypy import defaults
 
@@ -19,6 +20,8 @@ class Options:
     PER_MODULE_OPTIONS = {
         "ignore_missing_imports",
         "follow_imports",
+        "disallow_any",
+        "disallow_subclassing_any",
         "disallow_untyped_calls",
         "disallow_untyped_defs",
         "check_untyped_defs",
@@ -30,9 +33,12 @@ class Options:
         "ignore_errors",
         "strict_boolean",
         "no_implicit_optional",
+        "strict_optional",
+        "disallow_untyped_decorators",
     }
 
-    OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional", "quick_and_dirty"}
+    OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS | {"quick_and_dirty", "platform"})
+                               - {"debug_cache"})
 
     def __init__(self) -> None:
         # -- build options --
@@ -45,6 +51,7 @@ class Options:
         self.report_dirs = {}  # type: Dict[str, str]
         self.ignore_missing_imports = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
+        self.disallow_any = []  # type: List[str]
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False
@@ -52,8 +59,14 @@ class Options:
         # Disallow defining untyped (or incompletely typed) functions
         self.disallow_untyped_defs = False
 
+        # Disallow defining incompletely typed functions
+        self.disallow_incomplete_defs = False
+
         # Type check unannotated functions
         self.check_untyped_defs = False
+
+        # Disallow decorating typed functions with untyped decorators
+        self.disallow_untyped_decorators = False
 
         # Disallow subclassing values of type 'Any'
         self.disallow_subclassing_any = False
@@ -110,9 +123,14 @@ class Options:
         self.cache_dir = defaults.CACHE_DIR
         self.debug_cache = False
         self.quick_and_dirty = False
+        self.skip_version_check = False
+
+        # Paths of user plugins
+        self.plugins = []  # type: List[str]
 
         # Per-module options (raw)
-        self.per_module_options = {}  # type: Dict[Pattern[str], Dict[str, object]]
+        pm_opts = OrderedDict()  # type: OrderedDict[Pattern[str], Dict[str, object]]
+        self.per_module_options = pm_opts
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)

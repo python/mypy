@@ -92,7 +92,7 @@ MypyFile:1(
       NameExpr(None [builtins.None])
       builtins.int)
     AssignmentStmt:4(
-      NameExpr(x [m])
+      NameExpr(x [__main__.A.x])
       IntExpr(1))))
 
 [case testFunctionSig]
@@ -720,7 +720,7 @@ MypyFile:1(
     def ()))
 
 [case testOverloadedFunction]
-from typing import overload
+from typing import overload, Any
 @overload
 def f(a: object) -> int: a
 @overload
@@ -730,7 +730,7 @@ def f(a: Any) -> Any: return a
 
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [overload])
+  ImportFrom:1(typing, [overload, Any])
   OverloadedFuncDef:2(
     FuncDef:7(
       f
@@ -1407,7 +1407,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: builtins.int)
+    def (x: Union[builtins.int, builtins.None])
     Block:2(
       PassStmt:2())))
 
@@ -1421,7 +1421,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: Union[builtins.int, builtins.str])
+    def (x: Union[builtins.int, builtins.None, builtins.str])
     Block:2(
       PassStmt:2())))
 
@@ -1448,7 +1448,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
     IntExpr(1)
-    builtins.int))
+    Union[builtins.int, builtins.None]))
 
 [case testInvalidOptionalType]
 from typing import Optional

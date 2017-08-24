@@ -2,27 +2,33 @@
 
 import cgi
 import os.path
+import typing
 
-from typing import Any, Dict, List, cast, Tuple
+from collections import Counter
+from typing import Dict, List, cast, Tuple, Optional
 
 from mypy.traverser import TraverserVisitor
+from mypy.typeanal import collect_all_inner_types
 from mypy.types import (
-    Type, AnyType, Instance, FunctionLike, TupleType, TypeVarType, TypeQuery, CallableType
+    Type, AnyType, Instance, FunctionLike, TupleType, TypeVarType, TypeQuery, CallableType,
+    TypeOfAny
 )
 from mypy import nodes
 from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
-    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr
+    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef
 )
 
 
 TYPE_EMPTY = 0
-TYPE_PRECISE = 1
-TYPE_IMPRECISE = 2
-TYPE_ANY = 3
+TYPE_UNANALYZED = 1  # type of non-typechecked code
+TYPE_PRECISE = 2
+TYPE_IMPRECISE = 3
+TYPE_ANY = 4
 
 precision_names = [
     'empty',
+    'unanalyzed',
     'precise',
     'imprecise',
     'any',
@@ -30,26 +36,36 @@ precision_names = [
 
 
 class StatisticsVisitor(TraverserVisitor):
-    def __init__(self, inferred: bool, typemap: Dict[Expression, Type] = None,
-                 all_nodes: bool = False) -> None:
+    def __init__(self,
+                 inferred: bool,
+                 filename: str,
+                 typemap: Optional[Dict[Expression, Type]] = None,
+                 all_nodes: bool = False,
+                 visit_untyped_defs: bool = True) -> None:
         self.inferred = inferred
+        self.filename = filename
         self.typemap = typemap
         self.all_nodes = all_nodes
+        self.visit_untyped_defs = visit_untyped_defs
 
-        self.num_precise = 0
-        self.num_imprecise = 0
-        self.num_any = 0
+        self.num_precise_exprs = 0
+        self.num_imprecise_exprs = 0
+        self.num_any_exprs = 0
 
-        self.num_simple = 0
-        self.num_generic = 0
-        self.num_tuple = 0
-        self.num_function = 0
-        self.num_typevar = 0
-        self.num_complex = 0
+        self.num_simple_types = 0
+        self.num_generic_types = 0
+        self.num_tuple_types = 0
+        self.num_function_types = 0
+        self.num_typevar_types = 0
+        self.num_complex_types = 0
+        self.num_any_types = 0
 
         self.line = -1
 
         self.line_map = {}  # type: Dict[int, int]
+
+        self.type_of_any_counter = Counter()  # type: typing.Counter[TypeOfAny.TypeOfAny]
+        self.any_line_map = {}  # type: Dict[int, List[AnyType]]
 
         self.output = []  # type: List[str]
 
@@ -57,9 +73,10 @@ class StatisticsVisitor(TraverserVisitor):
 
     def visit_func_def(self, o: FuncDef) -> None:
         self.line = o.line
-        if len(o.expanded) > 1:
+        if len(o.expanded) > 1 and o.expanded != [o] * len(o.expanded):
             if o in o.expanded:
-                print('ERROR: cycle in function expansion; skipping')
+                print('{}:{}: ERROR: cycle in function expansion; skipping'.format(self.filename,
+                                                                                   o.get_line()))
                 return
             for defn in o.expanded:
                 self.visit_func_def(cast(FuncDef, defn))
@@ -75,7 +92,17 @@ class StatisticsVisitor(TraverserVisitor):
                 self.type(sig.ret_type)
             elif self.all_nodes:
                 self.record_line(self.line, TYPE_ANY)
-            super().visit_func_def(o)
+            if not o.is_dynamic() or self.visit_untyped_defs:
+                super().visit_func_def(o)
+
+    def visit_class_def(self, o: ClassDef) -> None:
+        # Override this method because we don't want to analyze base_type_exprs (base_type_exprs
+        # are base classes in a class declaration).
+        # While base_type_exprs are technically expressions, type analyzer does not visit them and
+        # they are not in the typemap.
+        for d in o.decorators:
+            d.accept(self)
+        o.defs.accept(self)
 
     def visit_type_application(self, o: TypeApplication) -> None:
         self.line = o.line
@@ -91,7 +118,8 @@ class StatisticsVisitor(TraverserVisitor):
             return
         if o.type:
             self.type(o.type)
-        elif self.inferred:
+        elif self.inferred and not self.all_nodes:
+            # if self.all_nodes is set, lvalues will be visited later
             for lvalue in o.lvalues:
                 if isinstance(lvalue, nodes.TupleExpr):
                     items = lvalue.items
@@ -101,13 +129,8 @@ class StatisticsVisitor(TraverserVisitor):
                     items = [lvalue]
                 for item in items:
                     if isinstance(item, RefExpr) and item.is_def:
-                        t = self.typemap.get(item)
-                        if t:
-                            self.type(t)
-                        else:
-                            self.log('  !! No inferred type on line %d' %
-                                     self.line)
-                            self.record_line(self.line, TYPE_ANY)
+                        if self.typemap is not None:
+                            self.type(self.typemap.get(item))
         super().visit_assignment_stmt(o)
 
     def visit_name_expr(self, o: NameExpr) -> None:
@@ -149,72 +172,94 @@ class StatisticsVisitor(TraverserVisitor):
 
     def process_node(self, node: Expression) -> None:
         if self.all_nodes:
-            typ = self.typemap.get(node)
-            if typ:
+            if self.typemap is not None:
                 self.line = node.line
-                self.type(typ)
+                self.type(self.typemap.get(node))
 
-    def type(self, t: Type) -> None:
+    def type(self, t: Optional[Type]) -> None:
+        if not t:
+            # If an expression does not have a type, it is often due to dead code.
+            # Don't count these because there can be an unanalyzed value on a line with other
+            # analyzed expressions, which overwrite the TYPE_UNANALYZED.
+            self.record_line(self.line, TYPE_UNANALYZED)
+            return
+
+        if isinstance(t, AnyType) and t.type_of_any == TypeOfAny.special_form:
+            # This is not a real Any type, so don't collect stats for it.
+            return
+
         if isinstance(t, AnyType):
             self.log('  !! Any type around line %d' % self.line)
-            self.num_any += 1
+            self.num_any_exprs += 1
             self.record_line(self.line, TYPE_ANY)
         elif ((not self.all_nodes and is_imprecise(t)) or
               (self.all_nodes and is_imprecise2(t))):
             self.log('  !! Imprecise type around line %d' % self.line)
-            self.num_imprecise += 1
+            self.num_imprecise_exprs += 1
             self.record_line(self.line, TYPE_IMPRECISE)
         else:
-            self.num_precise += 1
+            self.num_precise_exprs += 1
             self.record_line(self.line, TYPE_PRECISE)
 
-        if isinstance(t, Instance):
-            if t.args:
-                if any(is_complex(arg) for arg in t.args):
-                    self.num_complex += 1
+        for typ in collect_all_inner_types(t) + [t]:
+            if isinstance(typ, AnyType):
+                if typ.type_of_any == TypeOfAny.from_another_any:
+                    assert typ.source_any
+                    assert typ.source_any.type_of_any != TypeOfAny.from_another_any
+                    typ = typ.source_any
+                self.type_of_any_counter[typ.type_of_any] += 1
+                self.num_any_types += 1
+                if self.line in self.any_line_map:
+                    self.any_line_map[self.line].append(typ)
                 else:
-                    self.num_generic += 1
-            else:
-                self.num_simple += 1
-        elif isinstance(t, FunctionLike):
-            self.num_function += 1
-        elif isinstance(t, TupleType):
-            if any(is_complex(item) for item in t.items):
-                self.num_complex += 1
-            else:
-                self.num_tuple += 1
-        elif isinstance(t, TypeVarType):
-            self.num_typevar += 1
+                    self.any_line_map[self.line] = [typ]
+            elif isinstance(typ, Instance):
+                if typ.args:
+                    if any(is_complex(arg) for arg in typ.args):
+                        self.num_complex_types += 1
+                    else:
+                        self.num_generic_types += 1
+                else:
+                    self.num_simple_types += 1
+            elif isinstance(typ, FunctionLike):
+                self.num_function_types += 1
+            elif isinstance(typ, TupleType):
+                if any(is_complex(item) for item in typ.items):
+                    self.num_complex_types += 1
+                else:
+                    self.num_tuple_types += 1
+            elif isinstance(typ, TypeVarType):
+                self.num_typevar_types += 1
 
     def log(self, string: str) -> None:
         self.output.append(string)
 
     def record_line(self, line: int, precision: int) -> None:
         self.line_map[line] = max(precision,
-                                  self.line_map.get(line, TYPE_PRECISE))
+                                  self.line_map.get(line, TYPE_EMPTY))
 
 
 def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
-                    typemap: Dict[Expression, Type] = None) -> None:
+                    typemap: Optional[Dict[Expression, Type]] = None) -> None:
     if is_special_module(path):
         return
     print(path)
-    visitor = StatisticsVisitor(inferred, typemap)
+    visitor = StatisticsVisitor(inferred, filename=tree.fullname(), typemap=typemap)
     tree.accept(visitor)
     for line in visitor.output:
         print(line)
     print('  ** precision **')
-    print('  precise  ', visitor.num_precise)
-    print('  imprecise', visitor.num_imprecise)
-    print('  any      ', visitor.num_any)
+    print('  precise  ', visitor.num_precise_exprs)
+    print('  imprecise', visitor.num_imprecise_exprs)
+    print('  any      ', visitor.num_any_exprs)
     print('  ** kinds **')
-    print('  simple   ', visitor.num_simple)
-    print('  generic  ', visitor.num_generic)
-    print('  function ', visitor.num_function)
-    print('  tuple    ', visitor.num_tuple)
-    print('  TypeVar  ', visitor.num_typevar)
-    print('  complex  ', visitor.num_complex)
-    print('  any      ', visitor.num_any)
+    print('  simple   ', visitor.num_simple_types)
+    print('  generic  ', visitor.num_generic_types)
+    print('  function ', visitor.num_function_types)
+    print('  tuple    ', visitor.num_tuple_types)
+    print('  TypeVar  ', visitor.num_typevar_types)
+    print('  complex  ', visitor.num_complex_types)
+    print('  any      ', visitor.num_any_types)
 
 
 def is_special_module(path: str) -> bool:
@@ -271,7 +316,8 @@ def generate_html_report(tree: MypyFile, path: str, type_map: Dict[Expression, T
     path = os.path.relpath(path)
     if path.startswith('..'):
         return
-    visitor = StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
+    visitor = StatisticsVisitor(inferred=True, filename=tree.fullname(), typemap=type_map,
+                                all_nodes=True)
     tree.accept(visitor)
     assert not os.path.isabs(path) and not path.startswith('..')
     # This line is *wrong* if the preceding assert fails.
@@ -302,7 +348,8 @@ def generate_html_report(tree: MypyFile, path: str, type_map: Dict[Expression, T
             status = visitor.line_map.get(lineno, TYPE_PRECISE)
             style_map = {TYPE_PRECISE: 'white',
                          TYPE_IMPRECISE: 'yellow',
-                         TYPE_ANY: 'red'}
+                         TYPE_ANY: 'red',
+                         TYPE_UNANALYZED: 'red'}
             style = style_map[status]
             append('<span class="lineno">%4d</span>   ' % lineno +
                    '<span class="%s">%s</span>' % (style,

@@ -13,12 +13,15 @@ from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict
 from mypy.myunit import TestCase, SkipTestCaseException
 
 
+root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+
 def parse_test_cases(
         path: str,
         perform: Optional[Callable[['DataDrivenTestCase'], None]],
         base_path: str = '.',
         optional_out: bool = False,
-        include_path: str = None,
+        include_path: Optional[str] = None,
         native_sep: bool = False) -> List['DataDrivenTestCase']:
     """Parse a file with test case descriptions.
 
@@ -35,10 +38,10 @@ def parse_test_cases(
     if not include_path:
         include_path = os.path.dirname(path)
     with open(path, encoding='utf-8') as f:
-        l = f.readlines()
-    for i in range(len(l)):
-        l[i] = l[i].rstrip('\n')
-    p = parse_test_data(l, path)
+        lst = f.readlines()
+    for i in range(len(lst)):
+        lst[i] = lst[i].rstrip('\n')
+    p = parse_test_data(lst, path)
     out = []  # type: List[DataDrivenTestCase]
 
     # Process the parsed items. Each item has a header of form [id args],
@@ -54,6 +57,7 @@ def parse_test_cases(
             output_files = []  # type: List[Tuple[str, str]] # path and contents for output files
             tcout = []  # type: List[str]  # Regular output errors
             tcout2 = {}  # type: Dict[int, List[str]]  # Output errors for incremental, runs 2+
+            deleted_paths = {}  # type: Dict[int, Set[str]]  # from run number of paths
             stale_modules = {}  # type: Dict[int, Set[str]]  # from run number to module names
             rechecked_modules = {}  # type: Dict[ int, Set[str]]  # from run number module names
             while i < len(p) and p[i].id != 'case':
@@ -61,13 +65,15 @@ def parse_test_cases(
                     # Record an extra file needed for the test case.
                     arg = p[i].arg
                     assert arg is not None
-                    file_entry = (join(base_path, arg), '\n'.join(p[i].data))
+                    contents = '\n'.join(p[i].data)
+                    contents = expand_variables(contents)
+                    file_entry = (join(base_path, arg), contents)
                     if p[i].id == 'file':
                         files.append(file_entry)
                     elif p[i].id == 'outfile':
                         output_files.append(file_entry)
                 elif p[i].id in ('builtins', 'builtins_py2'):
-                    # Use a custom source file for the std module.
+                    # Use an alternative stub file for the builtins module.
                     arg = p[i].arg
                     assert arg is not None
                     mpath = join(os.path.dirname(path), arg)
@@ -78,6 +84,13 @@ def parse_test_cases(
                         fnam = '__builtin__.pyi'
                     with open(mpath) as f:
                         files.append((join(base_path, fnam), f.read()))
+                elif p[i].id == 'typing':
+                    # Use an alternative stub file for the typing module.
+                    arg = p[i].arg
+                    assert arg is not None
+                    src_path = join(os.path.dirname(path), arg)
+                    with open(src_path) as f:
+                        files.append((join(base_path, 'typing.pyi'), f.read()))
                 elif re.match(r'stale[0-9]*$', p[i].id):
                     if p[i].id == 'stale':
                         passnum = 1
@@ -99,15 +112,27 @@ def parse_test_cases(
                         rechecked_modules[passnum] = set()
                     else:
                         rechecked_modules[passnum] = {item.strip() for item in arg.split(',')}
+                elif p[i].id == 'delete':
+                    # File to delete during a multi-step test case
+                    arg = p[i].arg
+                    assert arg is not None
+                    m = re.match(r'(.*)\.([0-9]+)$', arg)
+                    assert m, 'Invalid delete section: {}'.format(arg)
+                    num = int(m.group(2))
+                    assert num >= 2, "Can't delete during step {}".format(num)
+                    full = join(base_path, m.group(1))
+                    deleted_paths.setdefault(num, set()).add(full)
                 elif p[i].id == 'out' or p[i].id == 'out1':
                     tcout = p[i].data
-                    if native_sep and os.path.sep == '\\':
+                    tcout = [expand_variables(line) for line in tcout]
+                    if os.path.sep == '\\':
                         tcout = [fix_win_path(line) for line in tcout]
                     ok = True
                 elif re.match(r'out[0-9]*$', p[i].id):
                     passnum = int(p[i].id[3:])
                     assert passnum > 1
                     output = p[i].data
+                    output = [expand_variables(line) for line in output]
                     if native_sep and os.path.sep == '\\':
                         output = [fix_win_path(line) for line in output]
                     tcout2[passnum] = output
@@ -139,10 +164,12 @@ def parse_test_cases(
                 for file_path, contents in files:
                     expand_errors(contents.split('\n'), tcout, file_path)
                 lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
-                tc = DataDrivenTestCase(p[i0].arg, input, tcout, tcout2, path,
+                arg0 = p[i0].arg
+                assert arg0 is not None
+                tc = DataDrivenTestCase(arg0, input, tcout, tcout2, path,
                                         p[i0].line, lastline, perform,
                                         files, output_files, stale_modules,
-                                        rechecked_modules, native_sep)
+                                        rechecked_modules, deleted_paths, native_sep)
                 out.append(tc)
         if not ok:
             raise ValueError(
@@ -175,11 +202,12 @@ class DataDrivenTestCase(TestCase):
                  file: str,
                  line: int,
                  lastline: int,
-                 perform: Callable[['DataDrivenTestCase'], None],
+                 perform: Optional[Callable[['DataDrivenTestCase'], None]],
                  files: List[Tuple[str, str]],
                  output_files: List[Tuple[str, str]],
                  expected_stale_modules: Dict[int, Set[str]],
                  expected_rechecked_modules: Dict[int, Set[str]],
+                 deleted_paths: Dict[int, Set[str]],
                  native_sep: bool = False,
                  ) -> None:
         super().__init__(name)
@@ -194,24 +222,30 @@ class DataDrivenTestCase(TestCase):
         self.output_files = output_files
         self.expected_stale_modules = expected_stale_modules
         self.expected_rechecked_modules = expected_rechecked_modules
+        self.deleted_paths = deleted_paths
         self.native_sep = native_sep
 
     def set_up(self) -> None:
         super().set_up()
         encountered_files = set()
         self.clean_up = []
+        all_deleted = []  # type: List[str]
+        for paths in self.deleted_paths.values():
+            all_deleted += paths
         for path, content in self.files:
             dir = os.path.dirname(path)
             for d in self.add_dirs(dir):
                 self.clean_up.append((True, d))
             with open(path, 'w') as f:
                 f.write(content)
-            self.clean_up.append((False, path))
+            if path not in all_deleted:
+                # TODO: Don't assume that deleted files don't get reintroduced.
+                self.clean_up.append((False, path))
             encountered_files.add(path)
             if re.search(r'\.[2-9]$', path):
                 # Make sure new files introduced in the second and later runs are accounted for
                 renamed_path = path[:-2]
-                if renamed_path not in encountered_files:
+                if renamed_path not in encountered_files and renamed_path not in all_deleted:
                     encountered_files.add(renamed_path)
                     self.clean_up.append((False, renamed_path))
         for path, _ in self.output_files:
@@ -238,6 +272,7 @@ class DataDrivenTestCase(TestCase):
         if self.name.endswith('-skip'):
             raise SkipTestCaseException()
         else:
+            assert self.perform is not None, 'Tests without `perform` should not be `run`'
             self.perform(self)
 
     def tear_down(self) -> None:
@@ -390,6 +425,10 @@ def expand_includes(a: List[str], base_path: str) -> List[str]:
     return res
 
 
+def expand_variables(s: str) -> str:
+    return s.replace('<ROOT>', root_dir)
+
+
 def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
     """Transform comments such as '# E: message' or
     '# E:3: message' in input.
@@ -420,16 +459,17 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
 
 
 def fix_win_path(line: str) -> str:
-    r"""Changes paths to Windows paths in error messages.
+    r"""Changes Windows paths to Linux paths in error messages.
 
-    E.g. foo/bar.py -> foo\bar.py.
+    E.g. foo\bar.py -> foo/bar.py.
     """
+    line = line.replace(root_dir, root_dir.replace('\\', '/'))
     m = re.match(r'^([\S/]+):(\d+:)?(\s+.*)', line)
     if not m:
         return line
     else:
         filename, lineno, message = m.groups()
-        return '{}:{}{}'.format(filename.replace('/', '\\'),
+        return '{}:{}{}'.format(filename.replace('\\', '/'),
                                 lineno or '', message)
 
 
@@ -516,6 +556,9 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
 
 
 class DataSuite:
+    def __init__(self, *, update_data: bool) -> None:
+        self.update_data = update_data
+
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
         return []

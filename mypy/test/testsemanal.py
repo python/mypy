@@ -89,6 +89,7 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
                 a += str(f).split('\n')
     except CompileError as e:
         a = e.messages
+    a = normalize_error_messages(a)
     assert_string_arrays_equal(
         testcase.output, a,
         'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
@@ -200,6 +201,7 @@ class SemAnalTypeInfoSuite(Suite):
             for f in result.files.values():
                 for n in f.names.values():
                     if isinstance(n.node, TypeInfo):
+                        assert n.fullname is not None
                         typeinfos[n.fullname] = n.node
 
             # The output is the symbol table converted into a string.

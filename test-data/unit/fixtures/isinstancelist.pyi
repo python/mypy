@@ -1,4 +1,4 @@
-from typing import Iterable, Iterator, TypeVar, List, Mapping, overload, Tuple, Set, Union
+from typing import Iterable, Iterator, TypeVar, List, Mapping, overload, Tuple, Set, Union, Generic
 
 class object:
     def __init__(self) -> None: pass
@@ -6,8 +6,8 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
-class tuple: pass
 class function: pass
+class ellipsis: pass
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
 def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass
@@ -23,14 +23,17 @@ T = TypeVar('T')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
 
-class list(Iterable[T]):
+class tuple(Generic[T]):
+    def __len__(self) -> int: pass
+
+class list(Generic[T]):
     def __iter__(self) -> Iterator[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
     def __setitem__(self, x: int, v: T) -> None: pass
     def __getitem__(self, x: int) -> T: pass
     def __add__(self, x: List[T]) -> T: pass
 
-class dict(Iterable[KT], Mapping[KT, VT]):
+class dict(Mapping[KT, VT]):
     @overload
     def __init__(self, **kwargs: VT) -> None: pass
     @overload
@@ -39,7 +42,7 @@ class dict(Iterable[KT], Mapping[KT, VT]):
     def __iter__(self) -> Iterator[KT]: pass
     def update(self, a: Mapping[KT, VT]) -> None: pass
 
-class set(Iterable[T]):
+class set(Generic[T]):
     def __iter__(self) -> Iterator[T]: pass
     def add(self, x: T) -> None: pass
     def discard(self, x: T) -> None: pass

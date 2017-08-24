@@ -4,18 +4,20 @@ from collections import OrderedDict
 from typing import cast, List, Optional
 
 from mypy.types import (
-    Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType,
-    TypeVarType, CallableType, TupleType, TypedDictType, ErasedType, TypeList,
-    UnionType, FunctionLike, Overloaded, PartialType, DeletedType,
-    UninhabitedType, TypeType, true_or_false
+    Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
+    TupleType, TypedDictType, ErasedType, TypeList, UnionType, FunctionLike, Overloaded,
+    PartialType, DeletedType, UninhabitedType, TypeType, true_or_false, TypeOfAny
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype
+from mypy.subtypes import (
+    is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype,
+    is_protocol_implementation
+)
 
 from mypy import experiments
 
 
-def join_simple(declaration: Type, s: Type, t: Type) -> Type:
+def join_simple(declaration: Optional[Type], s: Type, t: Type) -> Type:
     """Return a simple least upper bound given the declared type."""
 
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
@@ -99,7 +101,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         self.s = s
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        return AnyType()
+        return AnyType(TypeOfAny.special_form)
 
     def visit_union_type(self, t: UnionType) -> Type:
         if is_subtype(self.s, t):
@@ -115,7 +117,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             if isinstance(self.s, (NoneTyp, UninhabitedType)):
                 return t
             elif isinstance(self.s, UnboundType):
-                return AnyType()
+                return AnyType(TypeOfAny.special_form)
             else:
                 return UnionType.make_simplified_union([self.s, t])
         else:
@@ -138,7 +140,18 @@ class TypeJoinVisitor(TypeVisitor[Type]):
 
     def visit_instance(self, t: Instance) -> Type:
         if isinstance(self.s, Instance):
-            return join_instances(t, self.s)
+            nominal = join_instances(t, self.s)
+            structural = None  # type: Optional[Instance]
+            if t.type.is_protocol and is_protocol_implementation(self.s, t):
+                structural = t
+            elif self.s.type.is_protocol and is_protocol_implementation(t, self.s):
+                structural = self.s
+            # Structural join is preferred in the case where we have found both
+            # structural and nominal and they have same MRO length (see two comments
+            # in join_instances_via_supertype). Otherwise, just return the nominal join.
+            if not structural or is_better(nominal, structural):
+                return nominal
+            return structural
         elif isinstance(self.s, FunctionLike):
             return join_types(t, self.s.fallback)
         elif isinstance(self.s, TypeType):
@@ -228,13 +241,17 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             items = OrderedDict([
                 (item_name, s_item_type)
                 for (item_name, s_item_type, t_item_type) in self.s.zip(t)
-                if is_equivalent(s_item_type, t_item_type)
+                if (is_equivalent(s_item_type, t_item_type) and
+                    (item_name in t.required_keys) == (item_name in self.s.required_keys))
             ])
             mapping_value_type = join_type_list(list(items.values()))
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
-            return TypedDictType(items, fallback)
+            # We need to filter by items.keys() since some required keys present in both t and
+            # self.s might be missing from the join if the types are incompatible.
+            required_keys = set(items.keys()) & t.required_keys & self.s.required_keys
+            return TypedDictType(items, required_keys, fallback)
         elif isinstance(self.s, Instance):
-            return join_instances(self.s, t.fallback)
+            return join_types(self.s, t.fallback)
         else:
             return self.default(self.s)
 
@@ -245,7 +262,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
 
     def visit_type_type(self, t: TypeType) -> Type:
         if isinstance(self.s, TypeType):
-            return TypeType(self.join(t.item, self.s.item), line=t.line)
+            return TypeType.make_normalized(self.join(t.item, self.s.item), line=t.line)
         elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
             return self.s
         else:
@@ -258,7 +275,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         if isinstance(typ, Instance):
             return object_from_instance(typ)
         elif isinstance(typ, UnboundType):
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
         elif isinstance(typ, TupleType):
             return self.default(typ.fallback)
         elif isinstance(typ, TypedDictType):
@@ -268,7 +285,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         elif isinstance(typ, TypeVarType):
             return self.default(typ.upper_bound)
         else:
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
 
 
 def join_instances(t: Instance, s: Instance) -> Type:

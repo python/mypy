@@ -3,13 +3,13 @@
 This is used for running mypy tests.
 """
 
-from typing import Dict, List, Optional, Set, Tuple, Any, Iterable
+from typing import Dict, List, Optional, Set, Tuple, Any, Iterable, IO
 
 import os
 from multiprocessing import cpu_count
 import pipes
 import re
-from subprocess import Popen, STDOUT
+from subprocess import Popen, STDOUT, DEVNULL
 import sys
 import tempfile
 import time
@@ -24,21 +24,24 @@ class WaiterError(Exception):
 class LazySubprocess:
     """Wrapper around a subprocess that runs a test task."""
 
-    def __init__(self, name: str, args: List[str], *, cwd: str = None,
-                 env: Dict[str, str] = None, passthrough: bool = False) -> None:
+    def __init__(self, name: str, args: List[str], *, cwd: Optional[str] = None,
+                 env: Optional[Dict[str, str]] = None,
+                 passthrough: Optional[int] = None) -> None:
         self.name = name
         self.args = args
         self.cwd = cwd
         self.env = env
-        self.start_time = None  # type: float
-        self.end_time = None  # type: float
+        self.start_time = None  # type: Optional[float]
+        self.end_time = None  # type: Optional[float]
+        # None means no passthrough
+        # otherwise, it represents verbosity level
         self.passthrough = passthrough
 
     def start(self) -> None:
-        if self.passthrough:
-            self.outfile = None
+        if self.passthrough is None or self.passthrough < 0:
+            self.outfile = tempfile.TemporaryFile()  # type: Optional[IO[Any]]
         else:
-            self.outfile = tempfile.TemporaryFile()
+            self.outfile = None
         self.start_time = time.perf_counter()
         self.process = Popen(self.args, cwd=self.cwd, env=self.env,
                              stdout=self.outfile, stderr=STDOUT)
@@ -51,7 +54,7 @@ class LazySubprocess:
         return self.process.returncode
 
     def read_output(self) -> str:
-        if self.passthrough:
+        if not self.outfile:
             return ''
         file = self.outfile
         file.seek(0)
@@ -60,7 +63,10 @@ class LazySubprocess:
 
     @property
     def elapsed_time(self) -> float:
-        return self.end_time - self.start_time
+        if self.end_time is None or self.start_time is None:
+            return 0
+        else:
+            return self.end_time - self.start_time
 
 
 class Noter:
@@ -141,7 +147,7 @@ class Waiter:
         self.ff = ff
         assert limit > 0
         self.xfail = set(xfail)
-        self._note = None  # type: Noter
+        self._note = None  # type: Optional[Noter]
         self.times1 = {}  # type: Dict[str, float]
         self.times2 = {}  # type: Dict[str, float]
         self.new_log = defaultdict(dict)  # type: Dict[str, Dict[str, float]]
@@ -182,6 +188,7 @@ class Waiter:
                 print('%-8s #%d %s' % ('COMMAND', num, cmd_str))
             sys.stdout.flush()
         elif self.verbosity >= 0:
+            assert self._note is not None
             self._note.start(num)
         self.next += 1
 
@@ -201,6 +208,7 @@ class Waiter:
                 code = cmd.process.poll()
                 if code is not None:
                     cmd.end_time = time.perf_counter()
+                    assert cmd.start_time is not None
                     self.new_log['exit_code'][cmd.name] = code
                     self.new_log['runtime'][cmd.name] = cmd.end_time - cmd.start_time
                     return pid, code
@@ -225,6 +233,7 @@ class Waiter:
             print('%-8s #%d %s' % (msg, num, name))
             sys.stdout.flush()
         elif self.verbosity >= 0:
+            assert self._note is not None
             self._note.stop(num, bool(rc))
         elif self.verbosity >= -1:
             sys.stdout.write('.' if rc == 0 else msg[0])
@@ -237,7 +246,7 @@ class Waiter:
 
         if rc != 0:
             if name not in self.xfail:
-                fail_type = 'FAILURE'
+                fail_type = 'FAILURE'  # type: Optional[str]
             else:
                 fail_type = 'XFAIL'
         else:
@@ -298,6 +307,7 @@ class Waiter:
                 sequential = -(cmd.name in self.sequential_tasks)
                 if self.ff:
                     # failed tasks first with -ff
+                    assert logs is not None
                     exit_code = -logs[-1]['exit_code'].get(cmd.name, 0)
                     if not exit_code:
                         # avoid interrupting parallel tasks with sequential in between
@@ -341,11 +351,14 @@ class Waiter:
             total_tests += tests
             total_failed_tests += test_fails
         if self.verbosity == 0:
+            assert self._note is not None
             self._note.clear()
 
         if self.new_log:  # don't append empty log, it will corrupt the cache file
             # log only LOGSIZE most recent tests
-            test_log = (self.load_log_file() + [self.new_log])[-self.LOGSIZE:]
+            logs = self.load_log_file()
+            assert logs is not None
+            test_log = (logs + [self.new_log])[-self.LOGSIZE:]
             try:
                 with open(self.FULL_LOG_FILENAME, 'w') as fp:
                     json.dump(test_log, fp, sort_keys=True, indent=4)

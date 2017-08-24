@@ -3,11 +3,11 @@ from typing import List, Optional, cast, Tuple
 
 from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
-    Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType,
-    Instance, CallableType, TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType,
-    DeletedType, UninhabitedType, TypeType
+    Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType, Instance, CallableType,
+    TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType, DeletedType,
+    UninhabitedType, TypeType, TypeOfAny
 )
-from mypy.subtypes import is_equivalent, is_subtype
+from mypy.subtypes import is_equivalent, is_subtype, is_protocol_implementation
 
 from mypy import experiments
 
@@ -31,7 +31,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return declared
     if isinstance(declared, UnionType):
         return UnionType.make_simplified_union([narrow_declared_type(x, narrowed)
-                                                for x in declared.items])
+                                                for x in declared.relevant_items()])
     elif not is_overlapping_types(declared, narrowed, use_promotions=True):
         if experiments.STRICT_OPTIONAL:
             return UninhabitedType()
@@ -39,7 +39,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
             return NoneTyp()
     elif isinstance(narrowed, UnionType):
         return UnionType.make_simplified_union([narrow_declared_type(declared, x)
-                                                for x in narrowed.items])
+                                                for x in narrowed.relevant_items()])
     elif isinstance(narrowed, AnyType):
         return narrowed
     elif isinstance(declared, (Instance, TupleType)):
@@ -52,7 +52,8 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
 
     Note that this effectively checks against erased types, since type
     variables are erased at runtime and the overlapping check is based
-    on runtime behavior.
+    on runtime behavior. The exception is protocol types, it is not safe,
+    but convenient and is an opt-in behavior.
 
     If use_promotions is True, also consider type promotions (int and
     float would only be overlapping if it's True).
@@ -84,6 +85,10 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
         t = t.erase_to_union_or_bound()
     if isinstance(s, TypeVarType):
         s = s.erase_to_union_or_bound()
+    if isinstance(t, TypedDictType):
+        t = t.as_anonymous().fallback
+    if isinstance(s, TypedDictType):
+        s = s.as_anonymous().fallback
     if isinstance(t, Instance):
         if isinstance(s, Instance):
             # Consider two classes non-disjoint if one is included in the mro
@@ -96,13 +101,19 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
                     return True
                 if s.type._promote and is_overlapping_types(s.type._promote, t):
                     return True
-            return t.type in s.type.mro or s.type in t.type.mro
+            if t.type in s.type.mro or s.type in t.type.mro:
+                return True
+            if t.type.is_protocol and is_protocol_implementation(s, t):
+                return True
+            if s.type.is_protocol and is_protocol_implementation(t, s):
+                return True
+            return False
     if isinstance(t, UnionType):
         return any(is_overlapping_types(item, s)
-                   for item in t.items)
+                   for item in t.relevant_items())
     if isinstance(s, UnionType):
         return any(is_overlapping_types(t, item)
-                   for item in s.items)
+                   for item in s.relevant_items())
     if isinstance(t, TypeType) and isinstance(s, TypeType):
         # If both types are TypeType, compare their inner types.
         return is_overlapping_types(t.item, s.item, use_promotions)
@@ -131,13 +142,13 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if isinstance(self.s, NoneTyp):
             if experiments.STRICT_OPTIONAL:
-                return AnyType()
+                return AnyType(TypeOfAny.special_form)
             else:
                 return self.s
         elif isinstance(self.s, UninhabitedType):
             return self.s
         else:
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
 
     def visit_any(self, t: AnyType) -> Type:
         return self.s
@@ -252,8 +263,9 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         if isinstance(self.s, TypedDictType):
-            for (_, l, r) in self.s.zip(t):
-                if not is_equivalent(l, r):
+            for (name, l, r) in self.s.zip(t):
+                if (not is_equivalent(l, r) or
+                        (name in t.required_keys) != (name in self.s.required_keys)):
                     return self.default(self.s)
             item_list = []  # type: List[Tuple[str, Type]]
             for (item_name, s_item_type, t_item_type) in self.s.zipall(t):
@@ -266,7 +278,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             items = OrderedDict(item_list)
             mapping_value_type = join_type_list(list(items.values()))
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
-            return TypedDictType(items, fallback)
+            required_keys = t.required_keys | self.s.required_keys
+            return TypedDictType(items, required_keys, fallback)
         else:
             return self.default(self.s)
 
@@ -278,7 +291,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         if isinstance(self.s, TypeType):
             typ = self.meet(t.item, self.s.item)
             if not isinstance(typ, NoneTyp):
-                typ = TypeType(typ, line=t.line)
+                typ = TypeType.make_normalized(typ, line=t.line)
             return typ
         elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
             return t
@@ -290,7 +303,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def default(self, typ: Type) -> Type:
         if isinstance(typ, UnboundType):
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
         else:
             if experiments.STRICT_OPTIONAL:
                 return UninhabitedType()

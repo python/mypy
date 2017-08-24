@@ -10,9 +10,8 @@ from mypy.expandtype import expand_type
 from mypy.join import join_types, join_simple
 from mypy.meet import meet_types
 from mypy.types import (
-    UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type,
-    Instance, NoneTyp, Overloaded, TypeType, UnionType, UninhabitedType,
-    true_only, false_only, TypeVarId
+    UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneTyp, Overloaded,
+    TypeType, UnionType, UninhabitedType, true_only, false_only, TypeVarId, TypeOfAny
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
@@ -28,51 +27,53 @@ class TypesSuite(Suite):
         self.function = self.fx.function
 
     def test_any(self) -> None:
-        assert_equal(str(AnyType()), 'Any')
+        assert_equal(str(AnyType(TypeOfAny.special_form)), 'Any')
 
     def test_simple_unbound_type(self) -> None:
         u = UnboundType('Foo')
         assert_equal(str(u), 'Foo?')
 
     def test_generic_unbound_type(self) -> None:
-        u = UnboundType('Foo', [UnboundType('T'), AnyType()])
+        u = UnboundType('Foo', [UnboundType('T'), AnyType(TypeOfAny.special_form)])
         assert_equal(str(u), 'Foo?[T?, Any]')
 
     def test_callable_type(self) -> None:
         c = CallableType([self.x, self.y],
                          [ARG_POS, ARG_POS],
                          [None, None],
-                         AnyType(), self.function)
+                         AnyType(TypeOfAny.special_form), self.function)
         assert_equal(str(c), 'def (X?, Y?) -> Any')
 
-        c2 = CallableType([], [], [], NoneTyp(), None)
+        c2 = CallableType([], [], [], NoneTyp(), self.fx.function)
         assert_equal(str(c2), 'def ()')
 
     def test_callable_type_with_default_args(self) -> None:
         c = CallableType([self.x, self.y], [ARG_POS, ARG_OPT], [None, None],
-                     AnyType(), self.function)
+                     AnyType(TypeOfAny.special_form), self.function)
         assert_equal(str(c), 'def (X?, Y? =) -> Any')
 
         c2 = CallableType([self.x, self.y], [ARG_OPT, ARG_OPT], [None, None],
-                      AnyType(), self.function)
+                      AnyType(TypeOfAny.special_form), self.function)
         assert_equal(str(c2), 'def (X? =, Y? =) -> Any')
 
     def test_callable_type_with_var_args(self) -> None:
-        c = CallableType([self.x], [ARG_STAR], [None], AnyType(), self.function)
+        c = CallableType([self.x], [ARG_STAR], [None], AnyType(TypeOfAny.special_form),
+                         self.function)
         assert_equal(str(c), 'def (*X?) -> Any')
 
         c2 = CallableType([self.x, self.y], [ARG_POS, ARG_STAR],
-                      [None, None], AnyType(), self.function)
+                      [None, None], AnyType(TypeOfAny.special_form), self.function)
         assert_equal(str(c2), 'def (X?, *Y?) -> Any')
 
         c3 = CallableType([self.x, self.y], [ARG_OPT, ARG_STAR], [None, None],
-                      AnyType(), self.function)
+                      AnyType(TypeOfAny.special_form), self.function)
         assert_equal(str(c3), 'def (X? =, *Y?) -> Any')
 
     def test_tuple_type(self) -> None:
-        assert_equal(str(TupleType([], None)), 'Tuple[]')
-        assert_equal(str(TupleType([self.x], None)), 'Tuple[X?]')
-        assert_equal(str(TupleType([self.x, AnyType()], None)), 'Tuple[X?, Any]')
+        assert_equal(str(TupleType([], self.fx.std_tuple)), 'Tuple[]')
+        assert_equal(str(TupleType([self.x], self.fx.std_tuple)), 'Tuple[X?]')
+        assert_equal(str(TupleType([self.x, AnyType(TypeOfAny.special_form)],
+                                   self.fx.std_tuple)), 'Tuple[X?, Any]')
 
     def test_type_variable_binding(self) -> None:
         assert_equal(str(TypeVarDef('X', 1, [], self.fx.o)), 'X')
@@ -247,7 +248,8 @@ class TypeOpsSuite(Suite):
         assert_false(tuple_type.can_be_true)
 
     def test_nonempty_tuple_always_true(self) -> None:
-        tuple_type = self.tuple(AnyType(), AnyType())
+        tuple_type = self.tuple(AnyType(TypeOfAny.special_form),
+                                AnyType(TypeOfAny.special_form))
         assert_true(tuple_type.can_be_true)
         assert_false(tuple_type.can_be_false)
 
@@ -274,7 +276,7 @@ class TypeOpsSuite(Suite):
         assert_type(UninhabitedType, to)
 
     def test_true_only_of_true_type_is_idempotent(self) -> None:
-        always_true = self.tuple(AnyType())
+        always_true = self.tuple(AnyType(TypeOfAny.special_form))
         to = true_only(always_true)
         assert_true(always_true is to)
 
@@ -288,7 +290,7 @@ class TypeOpsSuite(Suite):
         assert_true(self.fx.a.can_be_false)
 
     def test_true_only_of_union(self) -> None:
-        tup_type = self.tuple(AnyType())
+        tup_type = self.tuple(AnyType(TypeOfAny.special_form))
         # Union of something that is unknown, something that is always true, something
         # that is always false
         union_type = UnionType([self.fx.a, tup_type, self.tuple()])
@@ -300,7 +302,7 @@ class TypeOpsSuite(Suite):
         assert_true(to.items[1] is tup_type)
 
     def test_false_only_of_true_type_is_uninhabited(self) -> None:
-        fo = false_only(self.tuple(AnyType()))
+        fo = false_only(self.tuple(AnyType(TypeOfAny.special_form)))
         assert_type(UninhabitedType, fo)
 
     def test_false_only_of_false_type_is_idempotent(self) -> None:
@@ -321,7 +323,8 @@ class TypeOpsSuite(Suite):
         tup_type = self.tuple()
         # Union of something that is unknown, something that is always true, something
         # that is always false
-        union_type = UnionType([self.fx.a, self.tuple(AnyType()), tup_type])
+        union_type = UnionType([self.fx.a, self.tuple(AnyType(TypeOfAny.special_form)),
+                                tup_type])
         assert_equal(len(union_type.items), 3)
         fo = false_only(union_type)
         assert isinstance(fo, UnionType)
@@ -343,7 +346,7 @@ class TypeOpsSuite(Suite):
         tv = []  # type: List[TypeVarDef]
         n = -1
         for v in vars:
-            tv.append(TypeVarDef(v, n, None, self.fx.o))
+            tv.append(TypeVarDef(v, n, [], self.fx.o))
             n -= 1
         return CallableType(list(a[:-1]),
                             [ARG_POS] * (len(a) - 1),
@@ -443,7 +446,7 @@ class JoinSuite(Suite):
 
     def test_mixed_truth_restricted_type(self) -> None:
         # join_types against differently restricted truthiness types drops restrictions.
-        true_any = true_only(AnyType())
+        true_any = true_only(AnyType(TypeOfAny.special_form))
         false_o = false_only(self.fx.o)
         j = join_types(true_any, false_o)
         assert_true(j.can_be_true)
@@ -580,7 +583,7 @@ class JoinSuite(Suite):
         self.assert_join(self.fx.type_b, self.fx.type_any, self.fx.type_any)
         self.assert_join(self.fx.type_b, self.fx.type_type, self.fx.type_type)
         self.assert_join(self.fx.type_b, self.fx.type_c, self.fx.type_a)
-        self.assert_join(self.fx.type_c, self.fx.type_d, TypeType(self.fx.o))
+        self.assert_join(self.fx.type_c, self.fx.type_d, TypeType.make_normalized(self.fx.o))
         self.assert_join(self.fx.type_type, self.fx.type_any, self.fx.type_type)
         self.assert_join(self.fx.type_b, self.fx.anyt, self.fx.anyt)
 

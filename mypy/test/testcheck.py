@@ -17,7 +17,7 @@ from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
-    testcase_pyversion, update_testcase_output,
+    retry_on_error, testcase_pyversion, update_testcase_output,
 )
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -72,15 +72,17 @@ files = [
     'check-generic-subtyping.test',
     'check-varargs.test',
     'check-newsyntax.test',
+    'check-protocols.test',
     'check-underscores.test',
     'check-classvar.test',
     'check-enum.test',
+    'check-incomplete-fixture.test',
+    'check-custom-plugin.test',
+    'check-default-plugin.test',
 ]
 
 
 class TypeCheckSuite(DataSuite):
-    def __init__(self, *, update_data: bool = False) -> None:
-        self.update_data = update_data
 
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
@@ -147,13 +149,18 @@ class TypeCheckSuite(DataSuite):
                         if file.endswith('.' + str(incremental_step)):
                             full = os.path.join(dn, file)
                             target = full[:-2]
-                            shutil.copy(full, target)
+                            # Use retries to work around potential flakiness on Windows (AppVeyor).
+                            retry_on_error(lambda: shutil.copy(full, target))
 
                             # In some systems, mtime has a resolution of 1 second which can cause
                             # annoying-to-debug issues when a file has the same size after a
                             # change. We manually set the mtime to circumvent this.
                             new_time = os.stat(target).st_mtime + 1
                             os.utime(target, times=(new_time, new_time))
+                # Delete files scheduled to be deleted in [delete <path>.num] sections.
+                for path in testcase.deleted_paths.get(incremental_step, set()):
+                    # Use retries to work around potential flakiness on Windows (AppVeyor).
+                    retry_on_error(lambda: os.remove(path))
 
         # Parse options after moving files (in case mypy.ini is being moved).
         options = self.parse_options(original_program_text, testcase, incremental_step)
@@ -255,7 +262,8 @@ class TypeCheckSuite(DataSuite):
         for line in a:
             m = re.match(r'([^\s:]+):\d+: error:', line)
             if m:
-                p = m.group(1).replace('/', os.path.sep)
+                # Normalize to Linux paths.
+                p = m.group(1).replace(os.path.sep, '/')
                 hits.add(p)
         return hits
 
@@ -279,10 +287,11 @@ class TypeCheckSuite(DataSuite):
 
     def find_missing_cache_files(self, modules: Dict[str, str],
                                  manager: build.BuildManager) -> Set[str]:
+        ignore_errors = True
         missing = {}
         for id, path in modules.items():
             meta = build.find_cache_meta(id, path, manager)
-            if not build.is_meta_fresh(meta, id, path, manager):
+            if not build.validate_meta(meta, id, path, ignore_errors, manager):
                 missing[id] = path
         return set(missing.values())
 
@@ -320,6 +329,7 @@ class TypeCheckSuite(DataSuite):
             out = []
             for module_name in module_names.split(' '):
                 path = build.find_module(module_name, [test_temp_dir])
+                assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))

@@ -15,14 +15,17 @@ from mypy.myunit import Suite, SkipTestCaseException, AssertionFailure
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import fix_cobertura_filename
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
 from mypy.version import __version__, base_version
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
 
 # Files containing test case descriptions.
-cmdline_files = ['cmdline.test']
+cmdline_files = [
+    'cmdline.test',
+    'reports.test',
+]
 
 
 class PythonEvaluationSuite(Suite):
@@ -39,6 +42,7 @@ class PythonEvaluationSuite(Suite):
 
 
 def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
+    assert testcase.old_cwd is not None, "test was not properly set up"
     # Write the program to a file.
     program = '_program.py'
     program_path = os.path.join(test_temp_dir, program)
@@ -71,10 +75,12 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
                                                       os.path.abspath(test_temp_dir))
             if testcase.native_sep and os.path.sep == '\\':
                 normalized_output = [fix_cobertura_filename(line) for line in normalized_output]
+            normalized_output = normalize_error_messages(normalized_output)
             assert_string_arrays_equal(expected_content.splitlines(), normalized_output,
                                        'Output file {} did not match its expected output'.format(
                                            path))
     else:
+        out = normalize_error_messages(out)
         assert_string_arrays_equal(testcase.output, out,
                                    'Invalid output ({}, line {})'.format(
                                        testcase.file, testcase.line))

@@ -4,6 +4,9 @@
 #       enough to handle them.
 
 import types
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
 
 class Any: pass
 
@@ -20,7 +23,7 @@ class str:
 
 class float: pass
 class bytes: pass
-class tuple: pass
+class tuple(Generic[T]): pass
 class function: pass
 class ellipsis: pass
-class list: pass
+class list(Generic[T]): pass

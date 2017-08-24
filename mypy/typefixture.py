@@ -3,11 +3,11 @@
 It contains class TypeInfos and Type objects.
 """
 
-from typing import List
+from typing import List, Optional
 
 from mypy.types import (
-    Type, TypeVarType, AnyType, NoneTyp,
-    Instance, CallableType, TypeVarDef, TypeType, UninhabitedType
+    Type, TypeVarType, AnyType, NoneTyp, Instance, CallableType, TypeVarDef, TypeType,
+    UninhabitedType, TypeOfAny
 )
 from mypy.nodes import (
     TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
@@ -40,7 +40,7 @@ class TypeFixture:
         self.sf1 = make_type_var('S', -1, [], self.o, variance)  # S`-1 (type variable)
 
         # Simple types
-        self.anyt = AnyType()
+        self.anyt = AnyType(TypeOfAny.special_form)
         self.nonet = NoneTyp()
         self.uninhabited = UninhabitedType()
 
@@ -145,12 +145,12 @@ class TypeFixture:
         self.lsta = Instance(self.std_listi, [self.a])  # List[A]
         self.lstb = Instance(self.std_listi, [self.b])  # List[B]
 
-        self.type_a = TypeType(self.a)
-        self.type_b = TypeType(self.b)
-        self.type_c = TypeType(self.c)
-        self.type_d = TypeType(self.d)
-        self.type_t = TypeType(self.t)
-        self.type_any = TypeType(self.anyt)
+        self.type_a = TypeType.make_normalized(self.a)
+        self.type_b = TypeType.make_normalized(self.b)
+        self.type_c = TypeType.make_normalized(self.c)
+        self.type_d = TypeType.make_normalized(self.d)
+        self.type_t = TypeType.make_normalized(self.t)
+        self.type_any = TypeType.make_normalized(self.anyt)
 
     # Helper methods
 
@@ -192,12 +192,12 @@ class TypeFixture:
                             a[-1], self.function)
 
     def make_type_info(self, name: str,
-                       module_name: str = None,
+                       module_name: Optional[str] = None,
                        is_abstract: bool = False,
-                       mro: List[TypeInfo] = None,
-                       bases: List[Instance] = None,
-                       typevars: List[str] = None,
-                       variances: List[int] = None) -> TypeInfo:
+                       mro: Optional[List[TypeInfo]] = None,
+                       bases: Optional[List[Instance]] = None,
+                       typevars: Optional[List[str]] = None,
+                       variances: Optional[List[int]] = None) -> TypeInfo:
         """Make a TypeInfo suitable for use in unit tests."""
 
         class_def = ClassDef(name, Block([]), None, [])

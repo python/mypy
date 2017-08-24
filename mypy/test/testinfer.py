@@ -5,7 +5,8 @@ from typing import List, Optional, Tuple, Union
 from mypy.myunit import Suite, assert_equal, assert_true
 from mypy.checkexpr import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED
-from mypy.types import AnyType, TupleType, Type
+from mypy.types import AnyType, TupleType, Type, TypeOfAny
+from mypy.typefixture import TypeFixture
 
 
 class MapActualsToFormalsSuite(Suite):
@@ -70,24 +71,25 @@ class MapActualsToFormalsSuite(Suite):
                         [[0]])
 
     def test_tuple_star(self) -> None:
+        any_type = AnyType(TypeOfAny.special_form)
         self.assert_vararg_map(
             [ARG_STAR],
             [ARG_POS],
             [[0]],
-            self.tuple(AnyType()))
+            self.tuple(any_type))
         self.assert_vararg_map(
             [ARG_STAR],
             [ARG_POS, ARG_POS],
             [[0], [0]],
-            self.tuple(AnyType(), AnyType()))
+            self.tuple(any_type, any_type))
         self.assert_vararg_map(
             [ARG_STAR],
             [ARG_POS, ARG_OPT, ARG_OPT],
             [[0], [0], []],
-            self.tuple(AnyType(), AnyType()))
+            self.tuple(any_type, any_type))
 
     def tuple(self, *args: Type) -> TupleType:
-        return TupleType(list(args), None)
+        return TupleType(list(args), TypeFixture().std_tuple)
 
     def test_named_args(self) -> None:
         self.assert_map(
@@ -177,7 +179,7 @@ class MapActualsToFormalsSuite(Suite):
             caller_names,
             callee_kinds,
             callee_names,
-            lambda i: AnyType())
+            lambda i: AnyType(TypeOfAny.special_form))
         assert_equal(result, expected)
 
     def assert_vararg_map(self,
@@ -198,7 +200,7 @@ class MapActualsToFormalsSuite(Suite):
 def expand_caller_kinds(kinds_or_names: List[Union[int, str]]
                         ) -> Tuple[List[int], List[Optional[str]]]:
     kinds = []
-    names = []
+    names = []  # type: List[Optional[str]]
     for k in kinds_or_names:
         if isinstance(k, str):
             kinds.append(ARG_NAMED)
@@ -212,7 +214,7 @@ def expand_caller_kinds(kinds_or_names: List[Union[int, str]]
 def expand_callee_kinds(kinds_and_names: List[Union[int, Tuple[int, str]]]
                         ) -> Tuple[List[int], List[Optional[str]]]:
     kinds = []
-    names = []
+    names = []  # type: List[Optional[str]]
     for v in kinds_and_names:
         if isinstance(v, tuple):
             kinds.append(v[0])

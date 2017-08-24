@@ -455,7 +455,17 @@ reveal_type(l)  # E: Revealed type is 'builtins.list[typing.Generator*[builtins.
 [builtins fixtures/list.pyi]
 
 [case testNoneListTernary]
-x = [None] if "" else [1]  # E: List item 0 has incompatible type "int"
+x = [None] if "" else [1]  # E: List item 0 has incompatible type "int"; expected None
+[builtins fixtures/list.pyi]
+
+[case testListIncompatibleErrorMessage]
+from typing import List, Callable
+
+def foo(l: List[Callable[[], str]]) -> None: pass
+def f() -> int:
+    return 42
+
+foo([f])  # E: List item 0 has incompatible type Callable[[], int]; expected Callable[[], str]
 [builtins fixtures/list.pyi]
 
 [case testInferEqualsNotOptional]
@@ -538,6 +548,21 @@ if x is not None:
 
 [builtins fixtures/ops.pyi]
 
+[case testOptionalTypeNarrowedInBooleanStatement]
+from typing import Optional
+
+x: Optional[int] = None
+x is not None and x + 42
+x is not None and x + '42'  # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/isinstance.pyi]
+
+[case testInvalidBooleanBranchIgnored]
+from typing import Optional
+
+x = None
+x is not None and x + 42
+[builtins fixtures/isinstance.pyi]
+
 [case testOptionalLambdaInference]
 from typing import Optional, Callable
 f = None # type: Optional[Callable[[int], None]]
@@ -594,3 +619,12 @@ x: Optional[Union[int, str]]
 reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.None]'
 y: Optional[Union[int, None]]
 reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+
+[case testUnionTruthinessTracking]
+from typing import Optional, Any
+def test_or_shortcut(value: Optional[Any]) -> None:
+    if not value:
+        pass
+    if not value or value.get('foo') == 'hello':
+        pass
+[builtins fixtures/bool.pyi]

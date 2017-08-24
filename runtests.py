@@ -101,7 +101,7 @@ class Driver:
         else:
             args = [sys.executable, '-m', 'pytest'] + pytest_args
 
-        self.waiter.add(LazySubprocess(full_name, args, env=self.env, passthrough=True),
+        self.waiter.add(LazySubprocess(full_name, args, env=self.env, passthrough=self.verbosity),
                         sequential=True)
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
@@ -170,9 +170,7 @@ def add_basic(driver: Driver) -> None:
 
 
 def add_selftypecheck(driver: Driver) -> None:
-    driver.add_mypy_package('package mypy nonstrict optional', 'mypy', '--config-file',
-                            'mypy_self_check.ini')
-    driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_strict_optional.ini')
+    driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_self_check.ini')
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
@@ -206,6 +204,8 @@ PYTEST_FILES = [os.path.join('mypy', 'test', '{}.py'.format(name)) for name in [
     'testdiff',
     'testfinegrained',
     'testmerge',
+    'testtransform',
+    'testparse',
 ]]
 
 
@@ -412,6 +412,13 @@ def main() -> None:
         pyt_arglist.append('--lf')
     if ff:
         pyt_arglist.append('--ff')
+    if verbosity >= 1:
+        pyt_arglist.extend(['-v'] * verbosity)
+    elif verbosity < 0:
+        pyt_arglist.extend(['-q'] * (-verbosity))
+    if parallel_limit:
+        if '-n' not in pyt_arglist:
+            pyt_arglist.append('-n{}'.format(parallel_limit))
 
     driver = Driver(whitelist=whitelist, blacklist=blacklist, lf=lf, ff=ff,
                     arglist=arglist, pyt_arglist=pyt_arglist, verbosity=verbosity,

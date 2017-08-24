@@ -13,7 +13,9 @@ class function: pass
 class int: pass
 class str: pass
 class bool: pass
-class tuple: pass
+class tuple(Generic[T]): pass
 class dict(Generic[T, S]): pass
 class ellipsis: pass
 
+classmethod = object()
+staticmethod = object()
