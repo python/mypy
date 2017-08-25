@@ -1028,8 +1028,8 @@ class MessageBuilder:
                   .format(self.format(typ)), context)
 
     def note_call(self, subtype: Type, call: Type, context: Context) -> None:
-        self.note("'{}.__call__' has type '{}'".format(strip_quotes(self.format(subtype)),
-                                                       self.format(call, verbosity=1)), context)
+        self.note("'{}.__call__' has type {}".format(strip_quotes(self.format(subtype)),
+                                                     self.format(call, verbosity=1)), context)
 
     def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
                                  supertype: Instance, context: Context) -> None:
