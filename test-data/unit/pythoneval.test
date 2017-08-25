@@ -784,7 +784,7 @@ def f(*args: str) -> str: return args[0]
 map(f, ['x'])
 map(f, [1])
 [out]
-_program.py:4: error: Argument 1 to "map" has incompatible type Callable[[VarArg(str)], str]; expected Callable[[int], str]
+_program.py:4: error: Argument 1 to "map" has incompatible type "Callable[[VarArg(str)], str]"; expected "Callable[[int], str]"
 
 [case testMapStr]
 import typing
@@ -1122,7 +1122,7 @@ class MyDDict(t.DefaultDict[int,T], t.Generic[T]):
 MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
-_program.py:6: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected Callable[[], str]
+_program.py:6: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Callable[[], str]"
 _program.py:9: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
 _program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
 _program.py:19: error: Dict entry 0 has incompatible type "str": "List[<nothing>]"; expected "int": "List[<nothing>]"
@@ -1393,4 +1393,4 @@ c: Container[str] = p
 o: object = p
 it2: Iterable[int] = p
 [out]
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type Iterable[int])
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
