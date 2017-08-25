@@ -683,7 +683,7 @@ def foo(f: Callable[[], Unchecked]) -> Tuple[Unchecked]:
 [builtins fixtures/list.pyi]
 [out]
 main:5: error: Return type becomes "Tuple[Any]" due to an unfollowed import
-main:5: error: Argument 1 to "foo" becomes Callable[[], Any] due to an unfollowed import
+main:5: error: Argument 1 to "foo" becomes "Callable[[], Any]" due to an unfollowed import
 
 [case testDisallowImplicitAnySubclassingExplicitAny]
 # flags: --ignore-missing-imports --disallow-any=unimported --disallow-subclassing-any
@@ -770,7 +770,7 @@ def d(f) -> Callable[..., None]:
     return f
 
 @d
-def g(i: int, s: str) -> None: pass  # E: Type of decorated function contains type "Any" (Callable[..., None])
+def g(i: int, s: str) -> None: pass  # E: Type of decorated function contains type "Any" ("Callable[..., None]")
 
 [builtins fixtures/list.pyi]
 [case testDisallowAnyDecoratedNonexistentDecorator]
@@ -790,13 +790,13 @@ def d2(f) -> Callable[[int], List[Any]]: pass
 def d3(f) -> Callable[[Any], List[str]]: pass
 
 @d
-def f(i: int, s: str) -> None:  # E: Type of decorated function contains type "Any" (Callable[[int, Any], Any])
+def f(i: int, s: str) -> None:  # E: Type of decorated function contains type "Any" ("Callable[[int, Any], Any]")
     pass
 @d2
-def g(i: int) -> None:  # E: Type of decorated function contains type "Any" (Callable[[int], List[Any]])
+def g(i: int) -> None:  # E: Type of decorated function contains type "Any" ("Callable[[int], List[Any]]")
     pass
 @d3
-def h(i: int) -> None:  # E: Type of decorated function contains type "Any" (Callable[[Any], List[str]])
+def h(i: int) -> None:  # E: Type of decorated function contains type "Any" ("Callable[[Any], List[str]]")
     pass
 [builtins fixtures/list.pyi]
 

@@ -577,7 +577,7 @@ x = None # type: Callable[[int], None]
 def f(*x: int) -> None: pass
 def g(*x: str) -> None: pass
 x = f
-x = g # E: Incompatible types in assignment (expression has type Callable[[VarArg(str)], None], variable has type Callable[[int], None])
+x = g # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str)], None]", variable has type "Callable[[int], None]")
 [builtins fixtures/list.pyi]
 [out]
 

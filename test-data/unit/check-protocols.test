@@ -211,7 +211,7 @@ class C:
         pass
 x: P = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P") \
            # N: Following member(s) of "C" have conflicts: \
-           # N:     meth: expected "int", got Callable[[], int]
+           # N:     meth: expected "int", got "Callable[[], int]"
 [builtins fixtures/property.pyi]
 
 [case testCannotAssignNormalToProtocol]
@@ -272,7 +272,7 @@ class MyHashable(Protocol):
 
 class C(MyHashable):
     __my_hash__ = None  # E: Incompatible types in assignment \
-(expression has type "None", base class "MyHashable" defined the type as Callable[[MyHashable], int])
+(expression has type "None", base class "MyHashable" defined the type as "Callable[[MyHashable], int]")
 
 [case testProtocolsWithNoneAndStrictOptional]
 # flags: --strict-optional
@@ -1680,9 +1680,9 @@ class Bad1:
 class Bad2:
     def __call__(self, y: int, *rest: str) -> int: pass
 call_soon(Good())
-call_soon(Bad1()) # E: Argument 1 to "call_soon" has incompatible type "Bad1"; expected Callable[[int, VarArg(str)], int] \
+call_soon(Bad1()) # E: Argument 1 to "call_soon" has incompatible type "Bad1"; expected "Callable[[int, VarArg(str)], int]" \
                   # N: 'Bad1.__call__' has type 'Callable[[Arg(int, 'x'), VarArg(int)], int]'
-call_soon(Bad2()) # E: Argument 1 to "call_soon" has incompatible type "Bad2"; expected Callable[[int, VarArg(str)], int] \
+call_soon(Bad2()) # E: Argument 1 to "call_soon" has incompatible type "Bad2"; expected "Callable[[int, VarArg(str)], int]" \
                   # N: 'Bad2.__call__' has type 'Callable[[Arg(int, 'y'), VarArg(str)], int]'
 [builtins fixtures/isinstancelist.pyi]
 

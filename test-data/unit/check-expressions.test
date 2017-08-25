@@ -1199,7 +1199,7 @@ f = lambda: ''.x
 f = lambda: ''
 [out]
 main:3: error: "str" has no attribute "x"
-main:4: error: Incompatible types in assignment (expression has type Callable[[], str], variable has type Callable[[], int])
+main:4: error: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "Callable[[], int]")
 main:4: error: Incompatible return value type (got "str", expected "int")
 
 [case testVoidLambda]
@@ -1359,7 +1359,7 @@ from typing import Callable, Iterator, List
 
 a = []  # type: List[Callable[[], str]]
 b = None  # type: Iterator[Callable[[], int]]
-b = (x for x in a)  # E: Generator has incompatible item type Callable[[], str]; expected Callable[[], int]
+b = (x for x in a)  # E: Generator has incompatible item type "Callable[[], str]"; expected "Callable[[], int]"
 [builtins fixtures/list.pyi]
 
 -- Conditional expressions
@@ -1416,8 +1416,8 @@ def f() -> None:
     pass
 [out]
 main:5: error: Unsupported left operand type for + ("None")
-main:6: error: Unsupported left operand type for + (Callable[[], None])
-main:7: error: Unsupported operand types for + ("A" and Callable[[], None])
+main:6: error: Unsupported left operand type for + ("Callable[[], None]")
+main:7: error: Unsupported operand types for + ("A" and "Callable[[], None]")
 
 [case testOperatorMethodWithInvalidArgCount]
 
@@ -1733,7 +1733,7 @@ from typing import Dict, Callable
 def things() -> int:
     return 42
 
-stuff: Dict[int, Callable[[], str]] = {  # E: Dict entry 0 has incompatible type "int": Callable[[], int]; expected "int": Callable[[], str]
+stuff: Dict[int, Callable[[], str]] = {  # E: Dict entry 0 has incompatible type "int": "Callable[[], int]"; expected "int": "Callable[[], str]"
     1: things
 }
 [builtins fixtures/dict.pyi]

@@ -584,7 +584,7 @@ x = ''
 def f(x): pass
 def g(x): pass
 try:
-    from m import f, g # E: Incompatible import of "g" (imported name has type Callable[[Any, Any], Any], local name has type Callable[[Any], Any])
+    from m import f, g # E: Incompatible import of "g" (imported name has type "Callable[[Any, Any], Any]", local name has type "Callable[[Any], Any]")
 except:
     pass
 [file m.py]
@@ -620,7 +620,7 @@ def f(x): pass
 try:
     from m import f
 except:
-    f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Callable[[], Any])
+    f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [file m.py]
 def f(): pass
 
@@ -630,7 +630,7 @@ from m import f
 def g() -> None:
     global f
     f = None
-    f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Callable[[], Any])
+    f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [file m.py]
 def f(): pass
 [out]
@@ -638,7 +638,7 @@ def f(): pass
 [case testAssignToFuncDefViaNestedModules]
 import m.n
 m.n.f = None
-m.n.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Callable[[], Any])
+m.n.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [file m/__init__.py]
 [file m/n.py]
 def f(): pass
@@ -647,7 +647,7 @@ def f(): pass
 [case testAssignToFuncDefViaModule]
 import m
 m.f = None
-m.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Callable[[], Any])
+m.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [file m.py]
 def f(): pass
 [out]
@@ -933,7 +933,7 @@ def y() -> str: return "foo"
 class z: pass
 [out]
 main:2: error: Incompatible import of "x" (imported name has type "str", local name has type "int")
-main:2: error: Incompatible import of "y" (imported name has type Callable[[], str], local name has type Callable[[], int])
+main:2: error: Incompatible import of "y" (imported name has type "Callable[[], str]", local name has type "Callable[[], int]")
 main:2: error: Incompatible import of "z" (imported name has type "Type[b.z]", local name has type "Type[a.z]")
 
 -- Misc

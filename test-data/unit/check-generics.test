@@ -825,9 +825,9 @@ reveal_type(make_cb(1)) # E: Revealed type is 'def (*Any, **Any) -> builtins.int
 def use_cb(arg: T, cb: C2[T]) -> Node[T]:
     return cb(arg, arg)
 
-use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected Callable[[int, int], Node[int]]
+use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected "Callable[[int, int], Node[int]]"
 my_cb = None # type: C2[int]
-use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type Callable[[int, int], Node[int]]; expected Callable[[str, str], Node[str]]
+use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type "Callable[[int, int], Node[int]]"; expected "Callable[[str, str], Node[str]]"
 reveal_type(use_cb(1, my_cb)) # E: Revealed type is '__main__.Node[builtins.int]'
 
 [out]
@@ -1499,25 +1499,25 @@ y1 = f1
 y1 = f1
 y1 = f2
 y1 = f3
-y1 = f4 # E: Incompatible types in assignment (expression has type Callable[[int], A], variable has type Callable[[A], A])
+y1 = f4 # E: Incompatible types in assignment (expression has type "Callable[[int], A]", variable has type "Callable[[A], A]")
 
 y2 = f2
 y2 = f2
-y2 = f1 # E: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[A], B])
-y2 = f3 # E: Incompatible types in assignment (expression has type Callable[[B], B], variable has type Callable[[A], B])
-y2 = f4 # E: Incompatible types in assignment (expression has type Callable[[int], A], variable has type Callable[[A], B])
+y2 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[A], B]")
+y2 = f3 # E: Incompatible types in assignment (expression has type "Callable[[B], B]", variable has type "Callable[[A], B]")
+y2 = f4 # E: Incompatible types in assignment (expression has type "Callable[[int], A]", variable has type "Callable[[A], B]")
 
 y3 = f3
 y3 = f3
 y3 = f1
 y3 = f2
-y3 = f4 # E: Incompatible types in assignment (expression has type Callable[[int], A], variable has type Callable[[B], B])
+y3 = f4 # E: Incompatible types in assignment (expression has type "Callable[[int], A]", variable has type "Callable[[B], B]")
 
 y4 = f4
 y4 = f4
-y4 = f1 # E: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[int], A])
+y4 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[int], A]")
 y4 = f2
-y4 = f3 # E: Incompatible types in assignment (expression has type Callable[[B], B], variable has type Callable[[int], A])
+y4 = f3 # E: Incompatible types in assignment (expression has type "Callable[[B], B]", variable has type "Callable[[int], A]")
 
 [case testSubtypingWithGenericInnerFunctions]
 from typing import TypeVar
@@ -1533,24 +1533,24 @@ def outer(t: T) -> None:
 
     y1 = f1
     y1 = f2
-    y1 = f3 # E: Incompatible types in assignment (expression has type Callable[[T], A], variable has type Callable[[A], A])
-    y1 = f4 # E: Incompatible types in assignment (expression has type Callable[[A], T], variable has type Callable[[A], A])
-    y1 = f5 # E: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[A], A])
+    y1 = f3 # E: Incompatible types in assignment (expression has type "Callable[[T], A]", variable has type "Callable[[A], A]")
+    y1 = f4 # E: Incompatible types in assignment (expression has type "Callable[[A], T]", variable has type "Callable[[A], A]")
+    y1 = f5 # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[A], A]")
 
     y2 = f2
-    y2 = f1 # E: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[A], B])
+    y2 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[A], B]")
 
     y3 = f3
-    y3 = f1 # E: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[T], A])
+    y3 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[T], A]")
     y3 = f2
-    y3 = f4 # E: Incompatible types in assignment (expression has type Callable[[A], T], variable has type Callable[[T], A])
-    y3 = f5 # E: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[T], A])
+    y3 = f4 # E: Incompatible types in assignment (expression has type "Callable[[A], T]", variable has type "Callable[[T], A]")
+    y3 = f5 # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[T], A]")
 
     y4 = f4
-    y4 = f1 # E: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[A], T])
+    y4 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[A], T]")
     y4 = f2
-    y4 = f3 # E: Incompatible types in assignment (expression has type Callable[[T], A], variable has type Callable[[A], T])
-    y4 = f5 # E: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[A], T])
+    y4 = f3 # E: Incompatible types in assignment (expression has type "Callable[[T], A]", variable has type "Callable[[A], T]")
+    y4 = f5 # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[A], T]")
 
     y5 = f5
     y5 = f1
@@ -1568,8 +1568,8 @@ g1(f)
 def g2(f: Callable[[int], int]) -> None: pass
 g2(f)
 def g3(f: Callable[[object], object]) -> None: pass
-g3(f) # E: Argument 1 to "g3" has incompatible type Callable[[T], T]; \
-           expected Callable[[object], object]
+g3(f) # E: Argument 1 to "g3" has incompatible type "Callable[[T], T]"; \
+           expected "Callable[[object], object]"
 
 [case testSubtypingWithGenericFunctionUsingTypevarWithValues2-skip]
 from typing import TypeVar, Callable
@@ -1626,7 +1626,7 @@ T = TypeVar('T')
 class C(Generic[T]):
     def __init__(self) -> None: pass
 x = C # type: Callable[[], C[int]]
-y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type "Type[C[Any]]", variable has type Callable[[], int])
+y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type "Type[C[Any]]", variable has type "Callable[[], int]")
 
 
 -- Special cases

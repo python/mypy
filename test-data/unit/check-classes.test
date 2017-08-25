@@ -504,8 +504,8 @@ class A:
     h = f # type: Callable[[A], None]
     h = f
     g = h
-    ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type Callable[[A], None], variable has type Callable[[B], None])
-    g = ff                # E: Incompatible types in assignment (expression has type Callable[[B], None], variable has type Callable[[A], None])
+    ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type "Callable[[A], None]", variable has type "Callable[[B], None]")
+    g = ff                # E: Incompatible types in assignment (expression has type "Callable[[B], None]", variable has type "Callable[[A], None]")
 [out]
 
 
@@ -2894,7 +2894,7 @@ class B(A):
     a = 1
     def b(self) -> None: pass
 [out]
-main:5: error: Incompatible types in assignment (expression has type "int", base class "A" defined the type as Callable[[A], None])
+main:5: error: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "Callable[[A], None]")
 main:6: error: Signature of "b" incompatible with supertype "A"
 
 [case testVariableProperty]
@@ -2934,7 +2934,7 @@ class C(B):
     def m(self, a: str) -> None: pass
     n = m
 [out]
-main:5: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "B" defined the type as Callable[[int], None])
+main:5: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "B" defined the type as "Callable[[int], None]")
 
 [case testInstanceMethodOverwriteTypevar]
 from typing import Generic, TypeVar
@@ -2978,7 +2978,7 @@ class C(B):
     n = m
 [builtins fixtures/classmethod.pyi]
 [out]
-main:7: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "B" defined the type as Callable[[int], None])
+main:7: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "B" defined the type as "Callable[[int], None]")
 
 [case testClassSpec]
 from typing import Callable
@@ -2996,7 +2996,7 @@ class B(A):
     def c(self, a: str) -> int: pass
     b = c
 [out]
-main:6: error: Incompatible types in assignment (expression has type Callable[[str], int], base class "A" defined the type as Callable[[int], int])
+main:6: error: Incompatible types in assignment (expression has type "Callable[[str], int]", base class "A" defined the type as "Callable[[int], int]")
 
 [case testClassStaticMethod]
 class A():
@@ -3008,7 +3008,7 @@ class B(A):
     a = b
 [builtins fixtures/staticmethod.pyi]
 [out]
-main:7: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "A" defined the type as Callable[[int], None])
+main:7: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "A" defined the type as "Callable[[int], None]")
 
 [case testClassStaticMethodIndirect]
 class A():
@@ -3021,7 +3021,7 @@ class B(A):
     c = b
 [builtins fixtures/staticmethod.pyi]
 [out]
-main:8: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "A" defined the type as Callable[[int], None])
+main:8: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "A" defined the type as "Callable[[int], None]")
 
 [case testClassStaticMethodSubclassing]
 class A:

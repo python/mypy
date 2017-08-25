@@ -610,9 +610,9 @@ f = lambda x: A() # type: Callable[[], A]
 f2 = lambda: A() # type: Callable[[A], A]
 class A: pass
 [out]
-main:2: error: Incompatible types in assignment (expression has type Callable[[Any], A], variable has type Callable[[], A])
+main:2: error: Incompatible types in assignment (expression has type "Callable[[Any], A]", variable has type "Callable[[], A]")
 main:2: error: Cannot infer type of lambda
-main:3: error: Incompatible types in assignment (expression has type Callable[[], A], variable has type Callable[[A], A])
+main:3: error: Incompatible types in assignment (expression has type "Callable[[], A]", variable has type "Callable[[A], A]")
 main:3: error: Cannot infer type of lambda
 
 [case testEllipsisContextForLambda]
@@ -624,7 +624,7 @@ f4 = lambda x: x # type: Callable[..., int]
 g = lambda x: 1 # type: Callable[..., str]
 [builtins fixtures/dict.pyi]
 [out]
-main:6: error: Incompatible types in assignment (expression has type Callable[[Any], int], variable has type Callable[..., str])
+main:6: error: Incompatible types in assignment (expression has type "Callable[[Any], int]", variable has type "Callable[..., str]")
 main:6: error: Incompatible return value type (got "int", expected "str")
 
 [case testEllipsisContextForLambda2]
@@ -651,7 +651,7 @@ def f(func: Callable[[T], S], *z: T, r: S = None) -> S: pass
 f(lambda x: 0 if isinstance(x, B) else 1) # E: Cannot infer type argument 1 of "f"
 f(lambda x: 0 if isinstance(x, B) else 1, A())() # E: "int" not callable
 f(lambda x: x if isinstance(x, B) else B(), A(), r=B())() # E: "B" not callable
-f( # E: Argument 1 to "f" has incompatible type Callable[[A], A]; expected Callable[[A], B]
+f( # E: Argument 1 to "f" has incompatible type "Callable[[A], A]"; expected "Callable[[A], B]"
     lambda x: B() if isinstance(x, B) else x, # E: Incompatible return value type (got "A", expected "B")
     A(), r=B())
 [builtins fixtures/isinstance.pyi]
@@ -825,7 +825,7 @@ S = TypeVar('S')
 def f(a: T, b: S) -> None:
     c = lambda x: x  # type: Callable[[T], S]
 [out]
-main:5: error: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[T], S])
+main:5: error: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[T], S]")
 main:5: error: Incompatible return value type (got "T", expected "S")
 
 [case testLambdaInGenericClass]
@@ -836,7 +836,7 @@ class A(Generic[T]):
     def f(self, b: S) -> None:
         c = lambda x: x  # type: Callable[[T], S]
 [out]
-main:6: error: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[T], S])
+main:6: error: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[T], S]")
 main:6: error: Incompatible return value type (got "T", expected "S")
 
 [case testRevealTypeContext]

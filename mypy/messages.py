@@ -202,7 +202,7 @@ class MessageBuilder:
             elif isinstance(func, CallableType):
                 return_type = strip_quotes(self.format(func.ret_type))
                 if func.is_ellipsis_args:
-                    return 'Callable[..., {}]'.format(return_type)
+                    return '"Callable[..., {}]"'.format(return_type)
                 arg_strings = []
                 for arg_name, arg_type, arg_kind in zip(
                         func.arg_names, func.arg_types, func.arg_kinds):
@@ -226,7 +226,7 @@ class MessageBuilder:
                                 strip_quotes(self.format(arg_type)),
                                 repr(arg_name)))
 
-                return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
+                return '"Callable[[{}], {}]"'.format(", ".join(arg_strings), return_type)
             else:
                 # Use a simple representation for function types; proper
                 # function types may result in long and difficult-to-read

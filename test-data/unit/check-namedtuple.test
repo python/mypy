@@ -415,7 +415,7 @@ b = B._make([''])  # type: B
 [case testNamedTupleIncompatibleRedefinition]
 from typing import NamedTuple
 class Crash(NamedTuple):
-    count: int  # E: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as Callable[[Tuple[Any, ...], Any], int])
+    count: int  # E: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[Any, ...], Any], int]")
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleInClassNamespace]

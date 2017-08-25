@@ -792,7 +792,7 @@ def k1(x: int, y: List[T]) -> List[Union[T, int]]: pass
 def k2(x: S, y: List[T]) -> List[Union[T, int]]: pass
 a = k2
 a = k2
-a = k1 # E: Incompatible types in assignment (expression has type Callable[[int, List[T]], List[Union[T, int]]], variable has type Callable[[S, List[T]], List[Union[T, int]]])
+a = k1 # E: Incompatible types in assignment (expression has type "Callable[[int, List[T]], List[Union[T, int]]]", variable has type "Callable[[S, List[T]], List[Union[T, int]]]")
 b = k1
 b = k1
 b = k2
@@ -1074,14 +1074,14 @@ from typing import List, Callable
 li = [1]
 l = lambda: li
 f1 = l # type: Callable[[], List[int]]
-f2 = l # type: Callable[[], List[str]] # E: Incompatible types in assignment (expression has type Callable[[], List[int]], variable has type Callable[[], List[str]])
+f2 = l # type: Callable[[], List[str]] # E: Incompatible types in assignment (expression has type "Callable[[], List[int]]", variable has type "Callable[[], List[str]]")
 [builtins fixtures/list.pyi]
 
 [case testInferLambdaType2]
 from typing import List, Callable
 l = lambda: [B()]
 f1 = l # type: Callable[[], List[B]]
-f2 = l # type: Callable[[], List[A]] # E: Incompatible types in assignment (expression has type Callable[[], List[B]], variable has type Callable[[], List[A]])
+f2 = l # type: Callable[[], List[A]] # E: Incompatible types in assignment (expression has type "Callable[[], List[B]]", variable has type "Callable[[], List[A]]")
 
 class A: pass
 class B: pass
@@ -1119,7 +1119,7 @@ from typing import Callable
 def f(a: Callable[..., None] = lambda *a, **k: None):
     pass
 
-def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible default for argument "a" (default has type Callable[[VarArg(Any), KwArg(Any)], int], argument has type Callable[..., None])
+def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible default for argument "a" (default has type "Callable[[VarArg(Any), KwArg(Any)], int]", argument has type "Callable[..., None]")
     pass
 [builtins fixtures/dict.pyi]
 

@@ -524,7 +524,7 @@ a = f
 a = g
 b = g
 b = g
-b = f # E: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[U], U])
+b = f # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[U], U]")
 
 [case testInnerFunctionWithTypevarValues]
 from typing import TypeVar
