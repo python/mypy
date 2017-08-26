@@ -212,12 +212,12 @@ PYTEST_FILES = test_path(
     'testparse',
     'testsemanal',
     'testpythoneval',
-    'testcmdline'
+    'testcmdline',
+    'teststubgen'
 )
 
 MYUNIT_FILES = test_path(
-    'teststubgen',  # contains data-driven suite
-
+    'teststubgen',
     'testargs',
     'testgraph',
     'testinfer',
