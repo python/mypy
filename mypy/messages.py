@@ -223,12 +223,12 @@ class MessageBuilder:
                 # interpreted as a normal word.
                 return base_str
             elif itype.type.fullname() == 'builtins.tuple':
-                item_type_str = strip_quotes(self.format(itype.args[0]))
+                item_type_str = self.format_bare(itype.args[0])
                 return 'Tuple[{}, ...]'.format(item_type_str)
             elif itype.type.fullname() in reverse_type_aliases:
                 alias = reverse_type_aliases[itype.type.fullname()]
                 alias = alias.split('.')[-1]
-                items = [strip_quotes(self.format(arg)) for arg in itype.args]
+                items = [self.format_bare(arg) for arg in itype.args]
                 return '{}[{}]'.format(alias, ', '.join(items))
             else:
                 # There are type arguments. Convert the arguments to strings
@@ -237,7 +237,7 @@ class MessageBuilder:
                 # with [...].
                 a = []  # type: List[str]
                 for arg in itype.args:
-                    a.append(strip_quotes(self.format(arg)))
+                    a.append(self.format_bare(arg))
                 s = ', '.join(a)
                 if len((base_str + s)) < 150:
                     return '{}[{}]'.format(base_str, s)
@@ -252,7 +252,7 @@ class MessageBuilder:
                 return self.format_bare(typ.fallback)
             items = []
             for t in typ.items:
-                items.append(strip_quotes(self.format(t)))
+                items.append(self.format_bare(t))
             s = 'Tuple[{}]'.format(', '.join(items))
             if len(s) < 400:
                 return s
@@ -267,7 +267,7 @@ class MessageBuilder:
                 modifier = '' if item_name in typ.required_keys else '?'
                 items.append('{!r}{}: {}'.format(item_name,
                                                  modifier,
-                                                 strip_quotes(self.format(item_type))))
+                                                 self.format_bare(item_type)))
             s = 'TypedDict({{{}}})'.format(', '.join(items))
             return s
         elif isinstance(typ, UnionType):
@@ -276,11 +276,11 @@ class MessageBuilder:
                                  sum(isinstance(t, NoneTyp) for t in typ.items) == 1)
             if print_as_optional:
                 rest = [t for t in typ.items if not isinstance(t, NoneTyp)]
-                return 'Optional[{}]'.format(strip_quotes(self.format(rest[0])))
+                return 'Optional[{}]'.format(self.format_bare(rest[0]))
             else:
                 items = []
                 for t in typ.items:
-                    items.append(strip_quotes(self.format(t)))
+                    items.append(self.format_bare(t))
                 s = 'Union[{}]'.format(', '.join(items))
                 if len(s) < 400:
                     return s
@@ -298,8 +298,7 @@ class MessageBuilder:
             else:
                 return '<nothing>'
         elif isinstance(typ, TypeType):
-            return 'Type[{}]'.format(
-                strip_quotes(self.format_bare(typ.item, verbosity)))
+            return 'Type[{}]'.format(self.format_bare(typ.item, verbosity))
         elif isinstance(typ, FunctionLike):
             func = typ
             if func.is_type_obj():
@@ -310,7 +309,7 @@ class MessageBuilder:
                         erase_type(func.items()[0].ret_type)),
                     verbosity)
             elif isinstance(func, CallableType):
-                return_type = strip_quotes(self.format(func.ret_type))
+                return_type = self.format_bare(func.ret_type)
                 if func.is_ellipsis_args:
                     return 'Callable[..., {}]'.format(return_type)
                 arg_strings = []
@@ -320,20 +319,19 @@ class MessageBuilder:
                             or verbosity == 0 and arg_kind in (ARG_POS, ARG_OPT)):
 
                         arg_strings.append(
-                            strip_quotes(
-                                self.format(
-                                    arg_type,
-                                    verbosity = max(verbosity - 1, 0))))
+                            self.format_bare(
+                                arg_type,
+                                verbosity = max(verbosity - 1, 0)))
                     else:
                         constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
                         if arg_kind in (ARG_STAR, ARG_STAR2) or arg_name is None:
                             arg_strings.append("{}({})".format(
                                 constructor,
-                                strip_quotes(self.format(arg_type))))
+                                self.format_bare(arg_type)))
                         else:
                             arg_strings.append("{}({}, {})".format(
                                 constructor,
-                                strip_quotes(self.format(arg_type)),
+                                self.format_bare(arg_type),
                                 repr(arg_name)))
 
                 return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
@@ -1020,7 +1018,7 @@ class MessageBuilder:
                   .format(self.format(typ)), context)
 
     def note_call(self, subtype: Type, call: Type, context: Context) -> None:
-        self.note("'{}.__call__' has type {}".format(strip_quotes(self.format(subtype)),
+        self.note("'{}.__call__' has type {}".format(self.format_bare(subtype),
                                                      self.format(call, verbosity=1)), context)
 
     def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
@@ -1146,7 +1144,7 @@ class MessageBuilder:
             name = tp.arg_names[i]
             if name:
                 s += name + ': '
-            s += strip_quotes(self.format(tp.arg_types[i]))
+            s += self.format_bare(tp.arg_types[i])
             if tp.arg_kinds[i] in (ARG_OPT, ARG_NAMED_OPT):
                 s += ' = ...'
 
@@ -1162,17 +1160,17 @@ class MessageBuilder:
         else:
             s = '({})'.format(s)
 
-        s += ' -> ' + strip_quotes(self.format(tp.ret_type))
+        s += ' -> ' + self.format_bare(tp.ret_type)
         if tp.variables:
             tvars = []
             for tvar in tp.variables:
                 if (tvar.upper_bound and isinstance(tvar.upper_bound, Instance) and
                         tvar.upper_bound.type.fullname() != 'builtins.object'):
                     tvars.append('{} <: {}'.format(tvar.name,
-                                                   strip_quotes(self.format(tvar.upper_bound))))
+                                                   self.format_bare(tvar.upper_bound)))
                 elif tvar.values:
                     tvars.append('{} in ({})'
-                                 .format(tvar.name, ', '.join([strip_quotes(self.format(tp))
+                                 .format(tvar.name, ', '.join([self.format_bare(tp)
                                                                for tp in tvar.values])))
                 else:
                     tvars.append(tvar.name)
