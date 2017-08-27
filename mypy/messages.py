@@ -604,7 +604,8 @@ class MessageBuilder:
                 expected_type = callee.arg_types[m - 1]
             except IndexError:  # Varargs callees
                 expected_type = callee.arg_types[-1]
-            arg_type_str, expected_type_str = self.format_distinctly(arg_type, expected_type, bare=True)
+            arg_type_str, expected_type_str = self.format_distinctly(
+                arg_type, expected_type, bare=True)
             if arg_kind == ARG_STAR:
                 arg_type_str = '*' + arg_type_str
             elif arg_kind == ARG_STAR2:
