@@ -188,13 +188,7 @@ class MessageBuilder:
 
         Mostly behave like format_simple below, but never return an empty string.
         """
-        s = self.format_simple(typ, verbosity)
-        if s != '' and s != '""':
-            # If format_simple returns a non-trivial result, use that.
-            return s
-        else:
-            # Default case; we simply have to return something meaningful here.
-            return 'object'
+        return self.format_simple(typ, verbosity)
 
     def format_simple(self, typ: Type, verbosity: int = 0) -> str:
         """Convert simple types to string that is suitable for error messages.
@@ -354,10 +348,8 @@ class MessageBuilder:
         elif typ is None:
             raise RuntimeError('Type is None')
         else:
-            # No simple representation for this type that would convey very
-            # useful information. No need to mention the type explicitly in a
-            # message.
-            return ''
+            # Default case; we simply have to return something meaningful here.
+            return 'object'
 
     def format_distinctly(self, type1: Type, type2: Type) -> Tuple[str, str]:
         """Jointly format a pair of types to distinct strings.
