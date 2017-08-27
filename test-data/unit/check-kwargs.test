@@ -252,8 +252,8 @@ d = None # type: Dict[str, A]
 f(**d)
 f(x=A(), **d)
 d2 = None # type: Dict[str, B]
-f(**d2)        # E: Argument 1 to "f" has incompatible type **"Dict[str, B]"; expected "A"
-f(x=A(), **d2) # E: Argument 2 to "f" has incompatible type **"Dict[str, B]"; expected "A"
+f(**d2)        # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
+f(x=A(), **d2) # E: Argument 2 to "f" has incompatible type "**Dict[str, B]"; expected "A"
 class A: pass
 class B: pass
 [builtins fixtures/dict.pyi]
@@ -316,7 +316,7 @@ def f(a: 'A', b: 'B') -> None: pass
 d = None # type: Dict[str, Any]
 f(**d)
 d2 = None # type: Dict[str, A]
-f(**d2) # E: Argument 1 to "f" has incompatible type **"Dict[str, A]"; expected "B"
+f(**d2) # E: Argument 1 to "f" has incompatible type "**Dict[str, A]"; expected "B"
 class A: pass
 class B: pass
 [builtins fixtures/dict.pyi]
@@ -362,7 +362,7 @@ def f(a: int) -> None:
     pass
 
 s = ('',)
-f(*s) # E: Argument 1 to "f" has incompatible type *"Tuple[str]"; expected "int"
+f(*s) # E: Argument 1 to "f" has incompatible type "*Tuple[str]"; expected "int"
 
 a = {'': 0}
 f(a) # E: Argument 1 to "f" has incompatible type "Dict[str, int]"; expected "int"
@@ -370,7 +370,7 @@ f(**a) # okay
 
 b = {'': ''}
 f(b) # E: Argument 1 to "f" has incompatible type "Dict[str, str]"; expected "int"
-f(**b) # E: Argument 1 to "f" has incompatible type **"Dict[str, str]"; expected "int"
+f(**b) # E: Argument 1 to "f" has incompatible type "**Dict[str, str]"; expected "int"
 
 c = {0: 0}
 f(**c) # E: Keywords must be strings

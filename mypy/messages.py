@@ -346,15 +346,19 @@ class MessageBuilder:
             # Default case; we simply have to return something meaningful here.
             return 'object'
 
-    def format_distinctly(self, type1: Type, type2: Type) -> Tuple[str, str]:
+    def format_distinctly(self, type1: Type, type2: Type, bare: bool = False) -> Tuple[str, str]:
         """Jointly format a pair of types to distinct strings.
 
         Increase the verbosity of the type strings until they become distinct.
         """
+        if bare:
+            format_method = self.format_bare
+        else:
+            format_method = self.format
         verbosity = 0
         for verbosity in range(3):
-            str1 = self.format(type1, verbosity=verbosity)
-            str2 = self.format(type2, verbosity=verbosity)
+            str1 = format_method(type1, verbosity=verbosity)
+            str2 = format_method(type2, verbosity=verbosity)
             if str1 != str2:
                 return (str1, str2)
         return (str1, str2)
@@ -600,12 +604,12 @@ class MessageBuilder:
                 expected_type = callee.arg_types[m - 1]
             except IndexError:  # Varargs callees
                 expected_type = callee.arg_types[-1]
-            arg_type_str, expected_type_str = self.format_distinctly(arg_type, expected_type)
+            arg_type_str, expected_type_str = self.format_distinctly(arg_type, expected_type, bare=True)
             if arg_kind == ARG_STAR:
                 arg_type_str = '*' + arg_type_str
             elif arg_kind == ARG_STAR2:
                 arg_type_str = '**' + arg_type_str
-            msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
+            msg = 'Argument {} {}has incompatible type "{}"; expected "{}"'.format(
                 n, target, arg_type_str, expected_type_str)
             if isinstance(arg_type, Instance) and isinstance(expected_type, Instance):
                 notes = append_invariance_notes(notes, arg_type, expected_type)

@@ -1606,7 +1606,7 @@ kw2 = {'x': ''}
 d2 = dict(it, **kw2) # E: Cannot infer type argument 2 of "dict"
 d2() # E: "Dict[Any, Any]" not callable
 
-d3 = dict(it, **kw2) # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type **"Dict[str, str]"; expected "int"
+d3 = dict(it, **kw2) # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type "**Dict[str, str]"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testDictFromIterableAndStarStarArgs2]
