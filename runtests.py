@@ -89,17 +89,17 @@ class Driver:
     def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         self.add_mypy_cmd(name, ['-c'] + list(args), cwd=cwd)
 
-    def add_pytest(self, name: str, pytest_files: List[str], coverage: bool = True) -> None:
-        pytest_args = pytest_files + self.arglist + self.pyt_arglist
-        full_name = 'pytest %s' % name
-        if not self.allow(full_name):
+    def add_pytest(self, pytest_files: List[str], coverage: bool = True) -> None:
+        pytest_files = [name for name in pytest_files if self.allow(name[4:])]
+        if not pytest_files:
             return
+        pytest_args = pytest_files + self.arglist + self.pyt_arglist
         if coverage and self.coverage:
             args = [sys.executable, '-m', 'pytest', '--cov=mypy'] + pytest_args
         else:
             args = [sys.executable, '-m', 'pytest'] + pytest_args
 
-        self.waiter.add(LazySubprocess(full_name, args, env=self.env, passthrough=self.verbosity),
+        self.waiter.add(LazySubprocess('pytest', args, env=self.env, passthrough=self.verbosity),
                         sequential=True)
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
@@ -233,7 +233,7 @@ for f in find_files('mypy', prefix='test', suffix='.py'):
 
 
 def add_pytest(driver: Driver) -> None:
-    driver.add_pytest('pytest', PYTEST_FILES)
+    driver.add_pytest(PYTEST_FILES)
 
 
 def add_myunit(driver: Driver) -> None:
