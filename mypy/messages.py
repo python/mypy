@@ -184,14 +184,28 @@ class MessageBuilder:
         self.report(msg, context, 'warning', file=file, origin=origin)
 
     def format(self, typ: Type, verbosity: int = 0) -> str:
-        """Convert a type to a relatively short string suitable for error messages."""
-        ret = self._format_simple(typ, verbosity)
+        """
+        Convert a type to a relatively short string suitable for error messages.
+
+        This method returns a string appropriate for unmodified use in error
+        messages; this means that it will be quoted in most cases.  If
+        modification of the formatted string is required, callers should use
+        .format_bare.
+        """
+        ret = self.format_bare(typ, verbosity)
         if ret in ['Module', 'overloaded function']:
             # Messages are easier to read if these aren't quoted
             return ret
         return '"{}"'.format(ret)
 
-    def _format_simple(self, typ: Type, verbosity: int = 0) -> str:
+    def format_bare(self, typ: Type, verbosity: int = 0) -> str:
+        """
+        Convert a type to a relatively short string suitable for error messages.
+
+        This method will return an unquoted string.  If a caller doesn't need to
+        perform post-processing on the string output, .format should be used
+        instead.
+        """
         if isinstance(typ, Instance):
             itype = typ
             # Get the short name of the type.
@@ -235,7 +249,7 @@ class MessageBuilder:
         elif isinstance(typ, TupleType):
             # Prefer the name of the fallback class (if not tuple), as it's more informative.
             if typ.fallback.type.fullname() != 'builtins.tuple':
-                return self._format_simple(typ.fallback)
+                return self.format_bare(typ.fallback)
             items = []
             for t in typ.items:
                 items.append(strip_quotes(self.format(t)))
@@ -247,7 +261,7 @@ class MessageBuilder:
         elif isinstance(typ, TypedDictType):
             # If the TypedDictType is named, return the name
             if not typ.is_anonymous():
-                return self._format_simple(typ.fallback)
+                return self.format_bare(typ.fallback)
             items = []
             for (item_name, item_type) in typ.items.items():
                 modifier = '' if item_name in typ.required_keys else '?'
@@ -285,13 +299,13 @@ class MessageBuilder:
                 return '<nothing>'
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(
-                strip_quotes(self._format_simple(typ.item, verbosity)))
+                strip_quotes(self.format_bare(typ.item, verbosity)))
         elif isinstance(typ, FunctionLike):
             func = typ
             if func.is_type_obj():
                 # The type of a type object type can be derived from the
                 # return type (this always works).
-                return self._format_simple(
+                return self.format_bare(
                     TypeType.make_normalized(
                         erase_type(func.items()[0].ret_type)),
                     verbosity)
