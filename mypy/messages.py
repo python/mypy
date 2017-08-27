@@ -184,29 +184,12 @@ class MessageBuilder:
         self.report(msg, context, 'warning', file=file, origin=origin)
 
     def format(self, typ: Type, verbosity: int = 0) -> str:
-        """Convert a type to a relatively short string that is suitable for error messages.
-
-        Mostly behave like format_simple below, but never return an empty string.
-        """
-        return self.format_simple(typ, verbosity)
-
-    def format_simple(self, typ: Type, verbosity: int = 0) -> str:
-        """Convert simple types to string that is suitable for error messages.
-
-        Return "" for complex types. Try to keep the length of the result
-        relatively short to avoid overly long error messages.
-
-        Examples:
-          builtins.int -> 'int'
-          Any type -> 'Any'
-          None -> None
-          callable type -> "" (empty string)
-        """
+        """Convert a type to a relatively short string suitable for error messages."""
         ret = self._format_simple(typ, verbosity)
         if ret in ['Module', 'overloaded function']:
             # Messages are easier to read if these aren't quoted
             return ret
-        return '"{}"'.format(self._format_simple(typ, verbosity))
+        return '"{}"'.format(ret)
 
     def _format_simple(self, typ: Type, verbosity: int = 0) -> str:
         if isinstance(typ, Instance):
