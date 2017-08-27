@@ -192,46 +192,6 @@ class MessageBuilder:
         if s != '' and s != '""':
             # If format_simple returns a non-trivial result, use that.
             return s
-        elif isinstance(typ, FunctionLike):
-            func = typ
-            if func.is_type_obj():
-                # The type of a type object type can be derived from the
-                # return type (this always works).
-                return self.format(TypeType.make_normalized(erase_type(func.items()[0].ret_type)),
-                                   verbosity)
-            elif isinstance(func, CallableType):
-                return_type = strip_quotes(self.format(func.ret_type))
-                if func.is_ellipsis_args:
-                    return '"Callable[..., {}]"'.format(return_type)
-                arg_strings = []
-                for arg_name, arg_type, arg_kind in zip(
-                        func.arg_names, func.arg_types, func.arg_kinds):
-                    if (arg_kind == ARG_POS and arg_name is None
-                            or verbosity == 0 and arg_kind in (ARG_POS, ARG_OPT)):
-
-                        arg_strings.append(
-                            strip_quotes(
-                                self.format(
-                                    arg_type,
-                                    verbosity = max(verbosity - 1, 0))))
-                    else:
-                        constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
-                        if arg_kind in (ARG_STAR, ARG_STAR2) or arg_name is None:
-                            arg_strings.append("{}({})".format(
-                                constructor,
-                                strip_quotes(self.format(arg_type))))
-                        else:
-                            arg_strings.append("{}({}, {})".format(
-                                constructor,
-                                strip_quotes(self.format(arg_type)),
-                                repr(arg_name)))
-
-                return '"Callable[[{}], {}]"'.format(", ".join(arg_strings), return_type)
-            else:
-                # Use a simple representation for function types; proper
-                # function types may result in long and difficult-to-read
-                # error messages.
-                return 'overloaded function'
         else:
             # Default case; we simply have to return something meaningful here.
             return 'object'
@@ -249,7 +209,8 @@ class MessageBuilder:
           callable type -> "" (empty string)
         """
         ret = self._format_simple(typ, verbosity)
-        if ret == "Module":
+        if ret in ['Module', 'overloaded function']:
+            # Messages are easier to read if these aren't quoted
             return ret
         return '"{}"'.format(self._format_simple(typ, verbosity))
 
@@ -348,6 +309,48 @@ class MessageBuilder:
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(
                 strip_quotes(self._format_simple(typ.item, verbosity)))
+        elif isinstance(typ, FunctionLike):
+            func = typ
+            if func.is_type_obj():
+                # The type of a type object type can be derived from the
+                # return type (this always works).
+                return self._format_simple(
+                    TypeType.make_normalized(
+                        erase_type(func.items()[0].ret_type)),
+                    verbosity)
+            elif isinstance(func, CallableType):
+                return_type = strip_quotes(self.format(func.ret_type))
+                if func.is_ellipsis_args:
+                    return 'Callable[..., {}]'.format(return_type)
+                arg_strings = []
+                for arg_name, arg_type, arg_kind in zip(
+                        func.arg_names, func.arg_types, func.arg_kinds):
+                    if (arg_kind == ARG_POS and arg_name is None
+                            or verbosity == 0 and arg_kind in (ARG_POS, ARG_OPT)):
+
+                        arg_strings.append(
+                            strip_quotes(
+                                self.format(
+                                    arg_type,
+                                    verbosity = max(verbosity - 1, 0))))
+                    else:
+                        constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
+                        if arg_kind in (ARG_STAR, ARG_STAR2) or arg_name is None:
+                            arg_strings.append("{}({})".format(
+                                constructor,
+                                strip_quotes(self.format(arg_type))))
+                        else:
+                            arg_strings.append("{}({}, {})".format(
+                                constructor,
+                                strip_quotes(self.format(arg_type)),
+                                repr(arg_name)))
+
+                return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
+            else:
+                # Use a simple representation for function types; proper
+                # function types may result in long and difficult-to-read
+                # error messages.
+                return 'overloaded function'
         elif typ is None:
             raise RuntimeError('Type is None')
         else:
