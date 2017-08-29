@@ -218,9 +218,7 @@ class MessageBuilder:
             else:
                 base_str = itype.type.name()
             if itype.args == []:
-                # No type arguments. Place the type name in quotes to avoid
-                # potential for confusion: otherwise, the type name could be
-                # interpreted as a normal word.
+                # No type arguments, just return the type name
                 return base_str
             elif itype.type.fullname() == 'builtins.tuple':
                 item_type_str = self.format_bare(itype.args[0])
@@ -231,10 +229,8 @@ class MessageBuilder:
                 items = [self.format_bare(arg) for arg in itype.args]
                 return '{}[{}]'.format(alias, ', '.join(items))
             else:
-                # There are type arguments. Convert the arguments to strings
-                # (using format() instead of format_simple() to avoid empty
-                # strings). If the result is too long, replace arguments
-                # with [...].
+                # There are type arguments. Convert the arguments to strings.
+                # If the result is too long, replace arguments with [...].
                 a = []  # type: List[str]
                 for arg in itype.args:
                     a.append(self.format_bare(arg))
