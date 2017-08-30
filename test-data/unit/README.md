@@ -102,7 +102,7 @@ filters:
 
 For example, to run unit tests only, which run pretty quickly:
 
-    $ ./runtests.py unit-test pytest
+    $ ./runtests.py unit-test
 
 The unit test suites are driven by a mixture of test frameworks: mypy's own
 `myunit` framework, and `pytest`, which we're in the process of migrating to.
