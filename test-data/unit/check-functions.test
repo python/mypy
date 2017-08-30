@@ -1276,6 +1276,56 @@ if x:
 else:
     def f(x: int = 0) -> None: pass # E: All conditional function variants must have identical signatures
 
+[case testConditionalFunctionDefinitionUsingDecorator1]
+from typing import Callable
+
+def dec(f) -> Callable[[int], None]: pass
+
+x = int()
+if x:
+    @dec
+    def f(): pass
+else:
+    def f(x: int) -> None: pass
+
+[case testConditionalFunctionDefinitionUsingDecorator2]
+from typing import Callable
+
+def dec(f) -> Callable[[int], None]: pass
+
+x = int()
+if x:
+    @dec
+    def f(): pass
+else:
+    def f(x: str) -> None: pass # E: Incompatible redefinition (redefinition with type Callable[[str], None], original type Callable[[int], None])
+
+[case testConditionalFunctionDefinitionUsingDecorator3]
+from typing import Callable
+
+def dec(f) -> Callable[[int], None]: pass
+
+x = int()
+if x:
+    def f(x: int) -> None: pass
+else:
+    # TODO: This should be okay.
+    @dec # E: Name 'f' already defined
+    def f(): pass
+
+[case testConditionalFunctionDefinitionUsingDecorator4]
+from typing import Callable
+
+def dec(f) -> Callable[[int], None]: pass
+
+x = int()
+if x:
+    def f(x: str) -> None: pass
+else:
+    # TODO: We should report an incompatible redefinition.
+    @dec # E: Name 'f' already defined
+    def f(): pass
+
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
 from typing import Any
 def f(x: str) -> None: pass

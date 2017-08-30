@@ -345,6 +345,136 @@ class A:
 class B(A):
     def __init_subclass__(cls) -> None: pass
 
+[case testOverrideWithDecorator]
+from typing import Callable
+
+def int_to_none(f: Callable[..., int]) -> Callable[..., None]: ...
+def str_to_int(f: Callable[..., str]) -> Callable[..., int]: ...
+
+class A:
+    def f(self) -> None: pass
+    def g(self) -> str: pass
+    def h(self) -> None: pass
+
+class B(A):
+    @int_to_none
+    def f(self) -> int: pass
+    @str_to_int
+    def g(self) -> str: pass # E: Signature of "g" incompatible with supertype "A"
+    @int_to_none
+    @str_to_int
+    def h(self) -> str: pass
+
+[case testOverrideDecorated]
+from typing import Callable
+
+def str_to_int(f: Callable[..., str]) -> Callable[..., int]: ...
+
+class A:
+    @str_to_int
+    def f(self) -> str: pass
+    @str_to_int
+    def g(self) -> str: pass
+    @str_to_int
+    def h(self) -> str: pass
+
+class B(A):
+    def f(self) -> int: pass
+    def g(self) -> str: pass # E: Signature of "g" incompatible with supertype "A"
+    @str_to_int
+    def h(self) -> str: pass
+
+[case testOverrideWithDecoratorReturningAny]
+def dec(f): pass
+
+class A:
+    def f(self) -> str: pass
+
+class B(A):
+    @dec
+    def f(self) -> int: pass
+
+[case testOverrideWithDecoratorReturningInstance]
+def dec(f) -> str: pass
+
+class A:
+    def f(self) -> str: pass
+    @dec
+    def g(self) -> int: pass
+    @dec
+    def h(self) -> int: pass
+
+class B(A):
+    @dec
+    def f(self) -> int: pass # E: Signature of "f" incompatible with supertype "A"
+    def g(self) -> int: pass # E: Signature of "g" incompatible with supertype "A"
+    @dec
+    def h(self) -> str: pass
+
+[case testOverrideStaticMethodWithStaticMethod]
+class A:
+    @staticmethod
+    def f(x: int, y: str) -> None: pass
+    @staticmethod
+    def g(x: int, y: str) -> None: pass
+
+class B(A):
+    @staticmethod
+    def f(x: int, y: str) -> None: pass
+    @staticmethod
+    def g(x: str, y: str) -> None: pass # E: Argument 1 of "g" incompatible with supertype "A"
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideClassMethodWithClassMethod]
+class A:
+    @classmethod
+    def f(cls, x: int, y: str) -> None: pass
+    @classmethod
+    def g(cls, x: int, y: str) -> None: pass
+
+class B(A):
+    @classmethod
+    def f(cls, x: int, y: str) -> None: pass
+    @classmethod
+    def g(cls, x: str, y: str) -> None: pass # E: Argument 1 of "g" incompatible with supertype "A"
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideClassMethodWithStaticMethod]
+class A:
+    @classmethod
+    def f(cls, x: int) -> None: pass
+    @classmethod
+    def g(cls, x: int) -> int: pass
+    @classmethod
+    def h(cls) -> int: pass
+
+class B(A):
+    @staticmethod
+    def f(x: int) -> None: pass
+    @staticmethod
+    def g(x: str) -> int: pass # E: Argument 1 of "g" incompatible with supertype "A"
+    @staticmethod
+    def h() -> int: pass
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideStaticMethodWithClassMethod]
+class A:
+    @staticmethod
+    def f(x: int) -> None: pass
+    @staticmethod
+    def g(x: str) -> int: pass
+    @staticmethod
+    def h() -> int: pass
+
+class B(A):
+    @classmethod
+    def f(cls, x: int) -> None: pass
+    @classmethod
+    def g(cls, x: int) -> int: pass # E: Argument 1 of "g" incompatible with supertype "A"
+    @classmethod
+    def h(cls) -> int: pass
+[builtins fixtures/classmethod.pyi]
+
 
 -- Constructors
 -- ------------
