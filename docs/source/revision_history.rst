@@ -3,6 +3,23 @@ Revision history
 
 List of major changes:
 
+- July 2017
+    * Publish ``mypy`` version 0.521 on PyPI.
+
+    * Publish ``mypy`` version 0.520 on PyPI.
+
+    * Add :ref:`fine-grained control of Any types <disallow-any>`.
+
+    * Add :ref:`typeddict`.
+
+    * Other updates to :ref:`command-line`:
+
+      * Add ``--no-implicit-optional``.
+
+      * Add ``--shadow-file``.
+
+      * Add ``--no-incremental``.
+
 - May 2017
     * Publish ``mypy`` version 0.510 on PyPI.
 

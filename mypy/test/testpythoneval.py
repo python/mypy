@@ -18,15 +18,13 @@ import re
 import subprocess
 import sys
 
-import typing
-from typing import Dict, List, Tuple
+import pytest  # type: ignore  # no pytest in typeshed
+from typing import Dict, List, Tuple, Optional
 
-from mypy.myunit import Suite, SkipTestCaseException
 from mypy.test.config import test_data_prefix, test_temp_dir
-from mypy.test.data import DataDrivenTestCase, parse_test_cases
+from mypy.test.data import DataDrivenTestCase, parse_test_cases, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.util import try_find_python2_interpreter
-
 
 # Files which contain test case descriptions.
 python_eval_files = ['pythoneval.test',
@@ -39,8 +37,9 @@ python3_path = sys.executable
 program_re = re.compile(r'\b_program.py\b')
 
 
-class PythonEvaluationSuite(Suite):
-    def cases(self) -> List[DataDrivenTestCase]:
+class PythonEvaluationSuite(DataSuite):
+    @classmethod
+    def cases(cls) -> List[DataDrivenTestCase]:
         c = []  # type: List[DataDrivenTestCase]
         for f in python_eval_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
@@ -51,6 +50,9 @@ class PythonEvaluationSuite(Suite):
                     test_python_evaluation, test_temp_dir, True)
         return c
 
+    def run_case(self, testcase: DataDrivenTestCase):
+        test_python_evaluation(testcase)
+
 
 def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     """Runs Mypy in a subprocess.
@@ -58,6 +60,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     If this passes without errors, executes the script again with a given Python
     version.
     """
+    assert testcase.old_cwd is not None, "test was not properly set up"
     mypy_cmdline = [
         python3_path,
         os.path.join(testcase.old_cwd, 'scripts', 'mypy'),
@@ -67,9 +70,11 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     if py2:
         mypy_cmdline.append('--py2')
         interpreter = try_find_python2_interpreter()
-        if not interpreter:
+        if interpreter is None:
             # Skip, can't find a Python 2 interpreter.
-            raise SkipTestCaseException()
+            pytest.skip()
+            # placate the type checker
+            return
     else:
         interpreter = python3_path
 
@@ -110,7 +115,7 @@ def adapt_output(testcase: DataDrivenTestCase) -> List[str]:
 
 
 def run(
-    cmdline: List[str], *, env: Dict[str, str] = None, timeout: int = 30
+    cmdline: List[str], *, env: Optional[Dict[str, str]] = None, timeout: int = 30
 ) -> Tuple[int, List[str]]:
     """A poor man's subprocess.run() for 3.3 and 3.4 compatibility."""
     process = subprocess.Popen(

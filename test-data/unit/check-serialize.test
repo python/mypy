@@ -124,6 +124,26 @@ def f(x: int,
 [builtins fixtures/dict.pyi]
 [out2]
 
+[case testSerializeCallableWithBoundTypeArguments]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+x = b.f
+[file b.py]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def f(self, x: T) -> None: pass
+
+c: C[int]
+f = c.f
+[out]
+[out2]
+
 [case testSerializePositionalOnlyArgument]
 import a
 [file a.py]
@@ -642,7 +662,7 @@ class A: pass
 def f() -> None: pass
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:4: error: Incompatible types in assignment (expression has type Callable[[], None], variable has type "type")
+tmp/a.py:4: error: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "type")
 
 [case testSerializeOverloadedVsTypeObjectDistinction]
 import a
@@ -1018,12 +1038,12 @@ class C:
         self.c = A
 [builtins fixtures/dict.pyi]
 [out1]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
+main:2: error: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
+main:3: error: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
 main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
 [out2]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
-main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
+main:2: error: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
+main:3: error: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
 main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
 
 [case testSerializeNonTotalTypedDict]
@@ -1035,9 +1055,9 @@ D = TypedDict('D', {'x': int, 'y': str}, total=False)
 d: D
 [builtins fixtures/dict.pyi]
 [out1]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=m.D, _total=False)'
+main:2: error: Revealed type is 'TypedDict('m.D', {'x'?: builtins.int, 'y'?: builtins.str})'
 [out2]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=m.D, _total=False)'
+main:2: error: Revealed type is 'TypedDict('m.D', {'x'?: builtins.int, 'y'?: builtins.str})'
 
 --
 -- Modules

@@ -12,6 +12,7 @@ Union = 0
 Optional = 0
 TypeVar = 0
 Generic = 0
+Protocol = 0  # This is not yet defined in typeshed, see PR typeshed/#1220
 Tuple = 0
 Callable = 0
 _promote = 0
@@ -28,46 +29,57 @@ Dict = 0
 Set = 0
 
 T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
 U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
 
-class Container(Generic[T]):
+# Note: definitions below are different from typeshed, variances are declared
+# to silence the protocol variance checks. Maybe it is better to use type: ignore?
+
+@runtime
+class Container(Protocol[T_contra]):
     @abstractmethod
     # Use int because bool isn't in the default test builtins
-    def __contains__(self, arg: T) -> int: pass
+    def __contains__(self, arg: T_contra) -> int: pass
 
-class Sized:
+@runtime
+class Sized(Protocol):
     @abstractmethod
     def __len__(self) -> int: pass
 
-class Iterable(Generic[T]):
+@runtime
+class Iterable(Protocol[T_co]):
     @abstractmethod
-    def __iter__(self) -> 'Iterator[T]': pass
+    def __iter__(self) -> 'Iterator[T_co]': pass
 
-class Iterator(Iterable[T], Generic[T]):
+@runtime
+class Iterator(Iterable[T_co], Protocol):
     @abstractmethod
-    def __next__(self) -> T: pass
+    def __next__(self) -> T_co: pass
 
 class Generator(Iterator[T], Generic[T, U, V]):
     @abstractmethod
-    def send(self, value: U) -> T: pass
-
-    @abstractmethod
-    def throw(self, typ: Any, val: Any = None, tb: Any = None) -> None: pass
-
-    @abstractmethod
-    def close(self) -> None: pass
-
-    @abstractmethod
     def __iter__(self) -> 'Generator[T, U, V]': pass
 
-class Sequence(Iterable[T], Generic[T]):
+@runtime
+class Sequence(Iterable[T_co], Protocol):
     @abstractmethod
-    def __getitem__(self, n: Any) -> T: pass
+    def __getitem__(self, n: Any) -> T_co: pass
 
-class Mapping(Generic[T, U]): pass
+@runtime
+class Mapping(Protocol[T_contra, T_co]):
+    def __getitem__(self, key: T_contra) -> T_co: pass
 
-class MutableMapping(Generic[T, U]): pass
+@runtime
+class MutableMapping(Mapping[T_contra, U], Protocol):
+    def __setitem__(self, k: T_contra, v: U) -> None: pass
+
+class SupportsInt(Protocol):
+    def __int__(self) -> int: pass
+
+def runtime(cls: T) -> T:
+    return cls
 
 TYPE_CHECKING = 1

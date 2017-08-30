@@ -1232,6 +1232,28 @@ def C() -> str:
 [out2]
 tmp/m1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
+[case testIncrementalStoresAliasTypeVars]
+import a
+
+[file mod.py]
+from typing import TypeVar, Union
+T = TypeVar('T')
+Alias = Union[int, T]
+x: Alias[str]
+
+[file a.py]
+from mod import Alias, x
+
+[file a.py.2]
+from mod import Alias, x
+
+reveal_type(x)
+y: Alias[int]
+reveal_type(y)
+[out2]
+tmp/a.py:3: error: Revealed type is 'Union[builtins.int, builtins.str]'
+tmp/a.py:5: error: Revealed type is 'Union[builtins.int, builtins.int]'
+
 [case testIncrementalSilentImportsWithBlatantError]
 # cmd: mypy -m main
 # flags: --follow-imports=skip
@@ -1478,6 +1500,99 @@ class MyClass:
 
 [rechecked]
 [stale]
+
+[case testIncrementalWorksWithBasicProtocols]
+import a
+[file a.py]
+from b import P
+
+x: int
+y: P[int]
+x = y.meth()
+
+class C:
+    def meth(self) -> int:
+        pass
+y = C()
+
+[file a.py.2]
+from b import P
+
+x: str
+y: P[str]
+x = y.meth()
+
+class C:
+    def meth(self) -> str:
+        pass
+y = C()
+[file b.py]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T', covariant=True)
+class P(Protocol[T]):
+    def meth(self) -> T:
+        pass
+
+[case testIncrementalSwitchFromNominalToStructural]
+import a
+[file a.py]
+from b import B, fun
+class C(B):
+    def x(self) -> int: pass
+    def y(self) -> int: pass
+fun(C())
+
+[file b.py]
+from typing import Protocol
+class B:
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[file b.py.2]
+from typing import Protocol
+class B(Protocol):
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[file a.py.3]
+from b import fun
+class C:
+    def x(self) -> int: pass
+    def y(self) -> int: pass
+fun(C())
+[out1]
+[out2]
+[out3]
+
+[case testIncrementalSwitchFromStructuralToNominal]
+import a
+[file a.py]
+from b import fun
+class C:
+    def x(self) -> int: pass
+    def y(self) -> int: pass
+fun(C())
+
+[file b.py]
+from typing import Protocol
+class B(Protocol):
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[file b.py.2]
+from typing import Protocol
+class B:
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[out1]
+[out2]
+tmp/a.py:5: error: Argument 1 to "fun" has incompatible type "C"; expected "B"
 
 [case testIncrementalWorksWithNamedTuple]
 import foo
@@ -1901,11 +2016,11 @@ A = TypedDict('A', {'x': int, 'y': str})
 x: A
 [builtins fixtures/dict.pyi]
 [out1]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
-main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+main:2: error: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
+main:4: error: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
 [out2]
-main:2: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
-main:4: error: Revealed type is 'TypedDict(x=builtins.int, y=builtins.str, _fallback=b.A)'
+main:2: error: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
+main:4: error: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
 
 [case testSerializeMetaclass]
 import b
@@ -2685,6 +2800,29 @@ b.x.y
 tmp/c.py:2: error: Revealed type is '<stale cache: consider running mypy without --quick>'
 tmp/c.py:5: error: "<stale cache: consider running mypy without --quick>" has no attribute "y"
 
+[case testNoCrashOnDoubleImportAliasQuick]
+# cmd: mypy -m e
+# cmd2: mypy -m c
+# cmd3: mypy -m e
+# flags: --quick
+[file c.py]
+from typing import List
+Alias = List[int]
+[file c.py.2]
+from typing import List
+Alias = int
+
+[file d.py]
+from c import Alias
+
+[file e.py]
+from d import Alias
+[file e.py.3]
+from d import Alias
+x: Alias
+[out3]
+[builtins fixtures/list.pyi]
+
 [case testSerializeAbstractPropertyIncremental]
 from abc import abstractmethod
 import typing
@@ -2713,3 +2851,103 @@ class A:
         pass
 a = A()
 [builtins fixtures/property.pyi]
+
+[case testClassNamesResolutionCrashAccess]
+import mod
+
+[file mod.py]
+class C:
+    def __init__(self) -> None:
+        self.int = ''
+
+    def f(self, f: int) -> None:
+        pass
+
+[file mod.py.2]
+class C:
+    def __init__(self) -> None:
+        self.int = ''
+
+    def f(self, f: int) -> None:
+        f.x
+
+[out]
+[out2]
+tmp/mod.py:6: error: "int" has no attribute "x"
+
+[case testClassNamesResolutionCrashReadCache]
+import mod
+
+[file mod.py]
+import submod
+
+[file mod.py.2]
+from submod import C
+
+c = C()
+reveal_type(c.int)
+reveal_type(c.y)
+
+[file submod.py]
+from typing import List
+
+class C:
+    def __init__(self) -> None:
+        self.int = []  # type: List[int]
+
+    def f(self, f: int) -> None:
+        self.y = f
+
+[builtins fixtures/list.pyi]
+[out]
+[out2]
+tmp/mod.py:4: error: Revealed type is 'builtins.list[builtins.int]'
+tmp/mod.py:5: error: Revealed type is 'builtins.int'
+
+[case testClassNamesResolutionCrashReveal]
+import mod
+
+[file mod.py]
+class Foo(object):
+
+    def __init__(self) -> None:
+        self.bytes = b"foo"
+
+    def bar(self, f: bytes):
+        pass
+
+foo = Foo()
+foo.bar(b"test")
+
+[file mod.py.2]
+class Foo(object):
+
+    def __init__(self) -> None:
+        self.bytes = b"foo"
+
+    def bar(self, f: bytes):
+        reveal_type(f)
+
+foo = Foo()
+foo.bar(b"test")
+[out]
+[out2]
+tmp/mod.py:7: error: Revealed type is 'builtins.bytes'
+
+[case testIncrementalWithSilentImports]
+# cmd: mypy -m a
+# cmd2: mypy -m b
+# flags: --follow-imports=silent
+# flags2: --follow-imports=silent
+[file a.py]
+import b
+
+b.foo(1, 2)
+
+[file b.py]
+def foo(a: int, b: int) -> str:
+    return a + b
+
+[out1]
+[out2]
+tmp/b.py:2: error: Incompatible return value type (got "int", expected "str")

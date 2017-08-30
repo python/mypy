@@ -2,11 +2,11 @@
 
 [case testImplicitNoneType]
 x = None
-x()  # E: None not callable
+x()  # E: "None" not callable
 
 [case testExplicitNoneType]
 x = None  # type: None
-x()  # E: None not callable
+x()  # E: "None" not callable
 
 [case testNoneMemberOfOptional]
 from typing import Optional
@@ -19,12 +19,12 @@ x = 0  # type: Optional[int]
 [case testNoneNotMemberOfType]
 x = None  # type: int
 [out]
-main:1: error: Incompatible types in assignment (expression has type None, variable has type "int")
+main:1: error: Incompatible types in assignment (expression has type "None", variable has type "int")
 
 [case testTypeNotMemberOfNone]
 x = 0  # type: None
 [out]
-main:1: error: Incompatible types in assignment (expression has type "int", variable has type None)
+main:1: error: Incompatible types in assignment (expression has type "int", variable has type "None")
 
 [case testOptionalNotMemberOfType]
 from typing import Optional
@@ -127,7 +127,7 @@ f(None)
 
 [case testNoInferOptionalFromDefaultNone]
 # flags: --no-implicit-optional
-def f(x: int = None) -> None:  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+def f(x: int = None) -> None:  # E: Incompatible default for argument "x" (default has type "None", argument has type "int")
   pass
 [out]
 
@@ -140,7 +140,7 @@ f(None)
 
 [case testNoInferOptionalFromDefaultNoneComment]
 # flags: --no-implicit-optional
-def f(x=None):  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+def f(x=None):  # E: Incompatible default for argument "x" (default has type "None", argument has type "int")
   # type: (int) -> None
   pass
 [out]
@@ -180,13 +180,13 @@ reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 
 [case testInferOptionalListType]
 x = [None]
-x.append(1)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected None
+x.append(1)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "None"
 [builtins fixtures/list.pyi]
 
 [case testInferNonOptionalListType]
 x = []
 x.append(1)
-x()  # E: List[int] not callable
+x()  # E: "List[int]" not callable
 [builtins fixtures/list.pyi]
 
 [case testInferOptionalDictKeyValueTypes]
@@ -194,13 +194,13 @@ x = {None: None}
 x["bar"] = 1
 [builtins fixtures/dict.pyi]
 [out]
-main:2: error: Invalid index type "str" for Dict[None, None]; expected type None
-main:2: error: Incompatible types in assignment (expression has type "int", target has type None)
+main:2: error: Invalid index type "str" for "Dict[None, None]"; expected type "None"
+main:2: error: Incompatible types in assignment (expression has type "int", target has type "None")
 
 [case testInferNonOptionalDictType]
 x = {}
 x["bar"] = 1
-x()  # E: Dict[str, int] not callable
+x()  # E: "Dict[str, int]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testNoneClassVariable]
@@ -215,7 +215,7 @@ from typing import Optional
 class C:
     x = None  # type: int
     def __init__(self) -> None:
-        self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+        self.x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 [out]
 
 [case testMultipleAssignmentNoneClassVariableInInit]
@@ -223,8 +223,8 @@ from typing import Optional
 class C:
     x, y = None, None  # type: int, str
     def __init__(self) -> None:
-        self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
-        self.y = None  # E: Incompatible types in assignment (expression has type None, variable has type "str")
+        self.x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+        self.y = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str")
 [out]
 
 [case testOverloadWithNone]
@@ -455,7 +455,7 @@ reveal_type(l)  # E: Revealed type is 'builtins.list[typing.Generator*[builtins.
 [builtins fixtures/list.pyi]
 
 [case testNoneListTernary]
-x = [None] if "" else [1]  # E: List item 0 has incompatible type "int"
+x = [None] if "" else [1]  # E: List item 0 has incompatible type "int"; expected "None"
 [builtins fixtures/list.pyi]
 
 [case testListIncompatibleErrorMessage]
@@ -465,7 +465,7 @@ def foo(l: List[Callable[[], str]]) -> None: pass
 def f() -> int:
     return 42
 
-foo([f])  # E: List item 0 has incompatible type Callable[[], int]
+foo([f])  # E: List item 0 has incompatible type "Callable[[], int]"; expected "Callable[[], str]"
 [builtins fixtures/list.pyi]
 
 [case testInferEqualsNotOptional]
@@ -547,6 +547,21 @@ if x is not None:
     x.x = 1 # OK here
 
 [builtins fixtures/ops.pyi]
+
+[case testOptionalTypeNarrowedInBooleanStatement]
+from typing import Optional
+
+x: Optional[int] = None
+x is not None and x + 42
+x is not None and x + '42'  # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/isinstance.pyi]
+
+[case testInvalidBooleanBranchIgnored]
+from typing import Optional
+
+x = None
+x is not None and x + 42
+[builtins fixtures/isinstance.pyi]
 
 [case testOptionalLambdaInference]
 from typing import Optional, Callable

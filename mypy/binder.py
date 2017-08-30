@@ -1,13 +1,12 @@
-from typing import (Dict, List, Set, Iterator, Union)
+from typing import Dict, List, Set, Iterator, Union, Optional, cast
 from contextlib import contextmanager
 
-from mypy.types import Type, AnyType, PartialType, UnionType, NoneTyp
-from mypy.nodes import (Key, Node, Expression, Var, RefExpr, SymbolTableNode)
-
+from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
-
+from mypy.nodes import Expression, Var, RefExpr
+from mypy.literals import Key, literal, literal_hash, subkeys
 from mypy.nodes import IndexExpr, MemberExpr, NameExpr
 
 
@@ -26,6 +25,13 @@ class Frame(Dict[Key, Type]):
     onto the stack, so a given Frame only has information about types
     that were assigned in that frame.
     """
+
+    def __init__(self) -> None:
+        self.unreachable = False
+
+
+class DeclarationsFrame(Dict[Key, Optional[Type]]):
+    """Same as above, but allowed to have None values."""
 
     def __init__(self) -> None:
         self.unreachable = False
@@ -54,7 +60,7 @@ class ConditionalTypeBinder:
 
     def __init__(self) -> None:
         # The stack of frames currently used.  These map
-        # expr.literal_hash -- literals like 'foo.bar' --
+        # literal_hash(expr) -- literals like 'foo.bar' --
         # to types. The last element of this list is the
         # top-most, current frame. Each earlier element
         # records the state as of when that frame was last
@@ -68,9 +74,9 @@ class ConditionalTypeBinder:
         # has no corresponding element in this list.
         self.options_on_return = []  # type: List[List[Frame]]
 
-        # Maps expr.literal_hash] to get_declaration(expr)
+        # Maps literal_hash(expr) to get_declaration(expr)
         # for every expr stored in the binder
-        self.declarations = Frame()
+        self.declarations = DeclarationsFrame()
         # Set of other keys to invalidate if a key is changed, e.g. x -> {x.a, x[0]}
         # Whenever a new key (e.g. x.a.b) is added, we update this
         self.dependencies = {}  # type: Dict[Key, Set[Key]]
@@ -82,14 +88,13 @@ class ConditionalTypeBinder:
         self.break_frames = []  # type: List[int]
         self.continue_frames = []  # type: List[int]
 
-    def _add_dependencies(self, key: Key, value: Key = None) -> None:
+    def _add_dependencies(self, key: Key, value: Optional[Key] = None) -> None:
         if value is None:
             value = key
         else:
             self.dependencies.setdefault(key, set()).add(value)
-        for elt in key:
-            if isinstance(elt, Key):
-                self._add_dependencies(elt, value)
+        for elt in subkeys(key):
+            self._add_dependencies(elt, value)
 
     def push_frame(self) -> Frame:
         """Push a new frame into the binder."""
@@ -101,7 +106,7 @@ class ConditionalTypeBinder:
     def _put(self, key: Key, type: Type, index: int=-1) -> None:
         self.frames[index][key] = type
 
-    def _get(self, key: Key, index: int=-1) -> Type:
+    def _get(self, key: Key, index: int=-1) -> Optional[Type]:
         if index < 0:
             index += len(self.frames)
         for i in range(index, -1, -1):
@@ -112,11 +117,11 @@ class ConditionalTypeBinder:
     def put(self, expr: Expression, typ: Type) -> None:
         if not isinstance(expr, BindableTypes):
             return
-        if not expr.literal:
+        if not literal(expr):
             return
-        key = expr.literal_hash
+        key = literal_hash(expr)
+        assert key is not None, 'Internal error: binder tried to put non-literal'
         if key not in self.declarations:
-            assert isinstance(expr, BindableTypes)
             self.declarations[key] = get_declaration(expr)
             self._add_dependencies(key)
         self._put(key, typ)
@@ -124,8 +129,10 @@ class ConditionalTypeBinder:
     def unreachable(self) -> None:
         self.frames[-1].unreachable = True
 
-    def get(self, expr: Expression) -> Type:
-        return self._get(expr.literal_hash)
+    def get(self, expr: Expression) -> Optional[Type]:
+        key = literal_hash(expr)
+        assert key is not None, 'Internal error: binder tried to get non-literal'
+        return self._get(key)
 
     def is_unreachable(self) -> bool:
         # TODO: Copy the value of unreachable into new frames to avoid
@@ -134,7 +141,9 @@ class ConditionalTypeBinder:
 
     def cleanse(self, expr: Expression) -> None:
         """Remove all references to a Node from the binder."""
-        self._cleanse_key(expr.literal_hash)
+        key = literal_hash(expr)
+        assert key is not None, 'Internal error: binder tried cleanse non-literal'
+        self._cleanse_key(key)
 
     def _cleanse_key(self, key: Key) -> None:
         """Remove all references to a key from the binder."""
@@ -163,15 +172,18 @@ class ConditionalTypeBinder:
                 # know anything about key in at least one possible frame.
                 continue
 
-            if isinstance(self.declarations.get(key), AnyType):
-                type = resulting_values[0]
-                if not all(is_same_type(type, t) for t in resulting_values[1:]):
-                    type = AnyType()
+            type = resulting_values[0]
+            assert type is not None
+            declaration_type = self.declarations.get(key)
+            if isinstance(declaration_type, AnyType):
+                # At this point resulting values can't contain None, see continue above
+                if not all(is_same_type(type, cast(Type, t)) for t in resulting_values[1:]):
+                    type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
-                type = resulting_values[0]
                 for other in resulting_values[1:]:
+                    assert other is not None
                     type = join_simple(self.declarations[key], type, other)
-            if not is_same_type(type, current_value):
+            if current_value is None or not is_same_type(type, current_value):
                 self._put(key, type)
                 changed = True
 
@@ -204,7 +216,7 @@ class ConditionalTypeBinder:
                     restrict_any: bool = False) -> None:
         if not isinstance(expr, BindableTypes):
             return None
-        if not expr.literal:
+        if not literal(expr):
             return
         self.invalidate_dependencies(expr)
 
@@ -221,12 +233,16 @@ class ConditionalTypeBinder:
             # times?
             return
 
-        # If x is Any and y is int, after x = y we do not infer that x is int.
-        # This could be changed.
-
-        if (isinstance(self.most_recent_enclosing_type(expr, type), AnyType)
+        enclosing_type = self.most_recent_enclosing_type(expr, type)
+        if (isinstance(enclosing_type, AnyType)
                 and not restrict_any):
-            pass
+            # If x is Any and y is int, after x = y we do not infer that x is int.
+            # This could be changed.
+            if not isinstance(type, AnyType):
+                # We narrowed type from Any in a recent frame (probably an
+                # isinstance check), but now it is reassigned, so broaden back
+                # to Any (which is the most recent enclosing type)
+                self.put(expr, enclosing_type)
         elif (isinstance(type, AnyType)
               and not (isinstance(declared_type, UnionType)
                        and any(isinstance(item, AnyType) for item in declared_type.items))):
@@ -249,13 +265,16 @@ class ConditionalTypeBinder:
         It is overly conservative: it invalidates globally, including
         in code paths unreachable from here.
         """
-        for dep in self.dependencies.get(expr.literal_hash, set()):
+        key = literal_hash(expr)
+        assert key is not None
+        for dep in self.dependencies.get(key, set()):
             self._cleanse_key(dep)
 
-    def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Type:
+    def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Optional[Type]:
         if isinstance(type, AnyType):
             return get_declaration(expr)
-        key = expr.literal_hash
+        key = literal_hash(expr)
+        assert key is not None
         enclosers = ([get_declaration(expr)] +
                      [f[key] for f in self.frames
                       if key in f and is_subtype(type, f[key])])
@@ -342,7 +361,7 @@ class ConditionalTypeBinder:
         self.pop_frame(True, 0)
 
 
-def get_declaration(expr: BindableExpression) -> Type:
+def get_declaration(expr: BindableExpression) -> Optional[Type]:
     if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
         type = expr.node.type
         if not isinstance(type, PartialType):

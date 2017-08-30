@@ -221,7 +221,7 @@ a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[int]
 [case testNamedTupleMissingClassAttribute]
 import collections
 MyNamedTuple = collections.namedtuple('MyNamedTuple', ['spam', 'eggs'])
-MyNamedTuple.x # E: Type[MyNamedTuple] has no attribute "x"
+MyNamedTuple.x # E: "Type[MyNamedTuple]" has no attribute "x"
 
 
 [case testNamedTupleEmptyItems]
@@ -286,7 +286,7 @@ from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
 reveal_type(X._make([5, 'a']))  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
-X._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any]
+X._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected "Iterable[Any]"
 
 -- # FIX: not a proper class method
 -- x = None  # type: X
@@ -412,6 +412,12 @@ b = B._make([''])  # type: B
 
 [builtins fixtures/list.pyi]
 
+[case testNamedTupleIncompatibleRedefinition]
+from typing import NamedTuple
+class Crash(NamedTuple):
+    count: int  # E: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[Any, ...], Any], int]")
+[builtins fixtures/tuple.pyi]
+
 [case testNamedTupleInClassNamespace]
 # https://github.com/python/mypy/pull/2553#issuecomment-266474341
 from typing import NamedTuple
@@ -420,7 +426,7 @@ class C:
         A = NamedTuple('A', [('x', int)])
     def g(self):
         A = NamedTuple('A', [('y', int)])
-C.A  # E: Type[C] has no attribute "A"
+C.A  # E: "Type[C]" has no attribute "A"
 
 [case testNamedTupleInFunction]
 from typing import NamedTuple

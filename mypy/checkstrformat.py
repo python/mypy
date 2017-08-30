@@ -5,7 +5,7 @@ import re
 from typing import cast, List, Tuple, Dict, Callable, Union, Optional
 
 from mypy.types import (
-    Type, AnyType, TupleType, Instance, UnionType
+    Type, AnyType, TupleType, Instance, UnionType, TypeOfAny
 )
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr
@@ -71,7 +71,7 @@ class StringFormatterChecker:
         if isinstance(expr, BytesExpr) and (3, 0) <= self.chk.options.python_version < (3, 5):
             self.msg.fail('Bytes formatting is only supported in Python 3.5 and later',
                           replacements)
-            return AnyType()
+            return AnyType(TypeOfAny.from_error)
 
         if has_mapping_keys is None:
             pass  # Error was reported
@@ -185,8 +185,9 @@ class StringFormatterChecker:
                                        'placeholder with key \'%s\' has type' % specifier.key)
         else:
             rep_type = self.accept(replacements)
+            any_type = AnyType(TypeOfAny.special_form)
             dict_type = self.chk.named_generic_type('builtins.dict',
-                                            [AnyType(), AnyType()])
+                                                    [any_type, any_type])
             self.chk.check_subtype(rep_type, dict_type, replacements,
                                    messages.FORMAT_REQUIRES_MAPPING,
                                    'expression has type', 'expected type for mapping is')
@@ -309,9 +310,10 @@ class StringFormatterChecker:
             if self.chk.options.python_version < (3, 0):
                 self.msg.fail("Format character 'a' is only supported in Python 3", context)
                 return None
-            return AnyType()
+            # todo: return type object?
+            return AnyType(TypeOfAny.special_form)
         elif p in ['s', 'r']:
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
         elif p in ['d', 'i', 'o', 'u', 'x', 'X',
                    'e', 'E', 'f', 'F', 'g', 'G']:
             return UnionType([self.named_type('builtins.int'),
@@ -334,6 +336,6 @@ class StringFormatterChecker:
         """
         return self.chk.named_type(name)
 
-    def accept(self, expr: Expression, context: Type = None) -> Type:
+    def accept(self, expr: Expression, context: Optional[Type] = None) -> Type:
         """Type check a node. Alias for TypeChecker.accept."""
         return self.chk.expr_checker.accept(expr, context)
