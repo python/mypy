@@ -3525,27 +3525,31 @@ class M(type):
     x = 5
 
 [case testSixMetaclassAndBase]
+from typing import Iterable, Iterator
 import six
-class M(type):
+class M(type, Iterable[int]):
     x = 5
+    def __iter__(self) -> Iterator[int]: ...
 class A:
     def foo(self): pass
 class B:
     def bar(self): pass
 class C1(six.with_metaclass(M, A)): pass
-class C2(six.with_metaclass(M, A, B)): pass
 @six.add_metaclass(M)
 class D1(A): pass
+class C2(six.with_metaclass(M, A, B)): pass
 @six.add_metaclass(M)
 class D2(A, B): pass
 reveal_type(type(C1).x)  # E: Revealed type is 'builtins.int'
-reveal_type(type(C2).x)  # E: Revealed type is 'builtins.int'
 reveal_type(type(D1).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(C2).x)  # E: Revealed type is 'builtins.int'
 reveal_type(type(D2).x)  # E: Revealed type is 'builtins.int'
 C1().foo()
 D1().foo()
 C1().bar()  # E: "C1" has no attribute "bar"
 D1().bar()  # E: "D1" has no attribute "bar"
+for x in C1: reveal_type(x)  # E: Revealed type is 'builtins.int*'
+for x in C2: reveal_type(x)  # E: Revealed type is 'builtins.int*'
 C2().foo()
 D2().foo()
 C2().bar()
@@ -3590,6 +3594,21 @@ class D4(metaclass=M): pass
 class C5(six.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
 @six.add_metaclass(f())  # E: Dynamic metaclass not supported for 'D5'
 class D5: pass
+
+@six.add_metaclass(M)  # E: Multiple metaclass definitions
+class CD(six.with_metaclass(M)): pass
+
+def q(t):
+    class E(metaclass=t): pass
+    class F(six.with_metaclass(t)): pass
+    @six.add_metaclass(t)
+    class G: pass
+
+class M1(type): pass
+class Q1(metaclass=M1): pass
+@six.add_metaclass(M)  # E: Inconsistent metaclass structure for 'CQA'
+class CQA(Q1): pass
+class CQW(six.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for 'CQW'
 
 [case testSixMetaclassErrors_python2]
 # flags: --python-version 2.7

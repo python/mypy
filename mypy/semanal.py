@@ -1089,7 +1089,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if defn.info.is_enum and defn.type_vars:
             self.fail("Enum class cannot be generic", defn)
 
-    def update_metaclass(self, defn: ClassDef):
+    def update_metaclass(self, defn: ClassDef) -> None:
         """Lookup for special metaclass declarations, and update defn fields accordingly.
 
         * __metaclass__ attribute in Python 2
@@ -1187,16 +1187,6 @@ class SemanticAnalyzer(NodeVisitor[None]):
         return False
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
-        if defn.metaclass is None and self.options.python_version[0] == 2:
-            # Look for "__metaclass__ = <metaclass>" in Python 2.
-            for body_node in defn.defs.body:
-                if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
-                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
-                    return
-                elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
-                    lvalue = body_node.lvalues[0]
-                    if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
-                        defn.metaclass = body_node.rvalue
         if defn.metaclass:
             if isinstance(defn.metaclass, NameExpr):
                 metaclass_name = defn.metaclass.name
