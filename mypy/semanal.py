@@ -70,6 +70,7 @@ from mypy.nodes import (
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
     collections_type_aliases, get_member_expr_fullname,
 )
+from mypy.literals import literal
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
@@ -981,7 +982,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 # Append name and type in this case...
                 name = stmt.lvalues[0].name
                 items.append(name)
-                types.append(AnyType(TypeOfAny.implicit)
+                types.append(AnyType(TypeOfAny.unannotated)
                              if stmt.type is None
                              else self.anal_type(stmt.type))
                 # ...despite possible minor failures that allow further analyzis.
@@ -1089,14 +1090,28 @@ class SemanticAnalyzer(NodeVisitor[None]):
             self.fail("Enum class cannot be generic", defn)
 
     def update_metaclass(self, defn: ClassDef):
-        # Lookup for special metaclass declarations:
-        # * six.with_metaclass(M, B1, B2, ...)
-        # * @six.add_metaclass(M)
-        # * __metaclass__ attribute in Python 2
-        # TODO: make defn.metaclass an expression instead of str
+        """Lookup for special metaclass declarations, and update defn fields accordingly.
+
+        * __metaclass__ attribute in Python 2
+        * six.with_metaclass(M, B1, B2, ...)
+        * @six.add_metaclass(M)
+        """
+
+        # Look for "__metaclass__ = <metaclass>" in Python 2
+        python2_meta_expr = None  # type: Optional[Expression]
+        if self.options.python_version[0] == 2:
+            for body_node in defn.defs.body:
+                if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
+                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
+                    break
+                elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
+                    lvalue = body_node.lvalues[0]
+                    if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
+                        python2_meta_expr = body_node.rvalue
+
+        # Look for six.with_metaclass(M, B1, B2, ...)
         with_meta_expr = None  # type: Optional[Expression]
         if len(defn.base_type_exprs) == 1:
-            # Look for six.with_metaclass(M, B1, B2, ...)
             base_expr = defn.base_type_exprs[0]
             if isinstance(base_expr, CallExpr) and isinstance(base_expr.callee, RefExpr):
                 base_expr.callee.accept(self)
@@ -1105,7 +1120,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
                         and all(kind == ARG_POS for kind in base_expr.arg_kinds)):
                     with_meta_expr = base_expr.args[0]
                     defn.base_type_exprs = base_expr.args[1:]
-        # Look for six.add_metaclass(M)
+
+        # Look for @six.add_metaclass(M)
         add_meta_expr = None  # type: Optional[Expression]
         for dec_expr in defn.decorators:
             if isinstance(dec_expr, CallExpr) and isinstance(dec_expr.callee, RefExpr):
@@ -1115,21 +1131,11 @@ class SemanticAnalyzer(NodeVisitor[None]):
                         and dec_expr.arg_kinds[0] == ARG_POS):
                     add_meta_expr = dec_expr.args[0]
                     break
-        python2_meta_expr = None  # type: Optional[Expression]
-        if self.options.python_version[0] == 2:
-            # Look for "__metaclass__ = <metaclass>" in Python 2.
-            for body_node in defn.defs.body:
-                if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
-                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
-                    break
-                elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
-                    lvalue = body_node.lvalues[0]
-                    if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
-                        python2_meta_expr = body_node.rvalue
-        metas = {with_meta_expr, add_meta_expr, python2_meta_expr} - {None}
+
+        metas = {defn.metaclass, python2_meta_expr, with_meta_expr, add_meta_expr} - {None}
         if len(metas) == 0:
             return
-        if len(metas) > 1 or defn.metaclass is not None:
+        if len(metas) > 1:
             self.fail("Multiple metaclass definitions", defn)
             return
         defn.metaclass = metas.pop()
@@ -1181,17 +1187,25 @@ class SemanticAnalyzer(NodeVisitor[None]):
         return False
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
-        error_context = defn  # type: Context
+        if defn.metaclass is None and self.options.python_version[0] == 2:
+            # Look for "__metaclass__ = <metaclass>" in Python 2.
+            for body_node in defn.defs.body:
+                if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
+                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
+                    return
+                elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
+                    lvalue = body_node.lvalues[0]
+                    if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
+                        defn.metaclass = body_node.rvalue
         if defn.metaclass:
-
             if isinstance(defn.metaclass, NameExpr):
-                metaclass = defn.metaclass.name
+                metaclass_name = defn.metaclass.name
             elif isinstance(defn.metaclass, MemberExpr):
-                metaclass = get_member_expr_fullname(defn.metaclass)
+                metaclass_name = get_member_expr_fullname(defn.metaclass)
             else:
                 self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn.metaclass)
                 return
-            sym = self.lookup_qualified(metaclass, error_context)
+            sym = self.lookup_qualified(metaclass_name, defn.metaclass)
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
                 return
@@ -1203,10 +1217,11 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 #       attributes, similar to an 'Any' base class.
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
-                self.fail("Invalid metaclass '%s'" % metaclass, defn.metaclass)
+                self.fail("Invalid metaclass '%s'" % metaclass_name, defn.metaclass)
                 return
             if not sym.node.is_metaclass():
-                self.fail("Metaclasses not inheriting from 'type' are not supported", defn)
+                self.fail("Metaclasses not inheriting from 'type' are not supported",
+                          defn.metaclass)
                 return
             inst = fill_typevars(sym.node)
             assert isinstance(inst, Instance)
@@ -1252,7 +1267,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if args:
             # TODO: assert len(args) == len(node.defn.type_vars)
             return Instance(node, args)
-        return Instance(node, [AnyType(TypeOfAny.implicit)] * len(node.defn.type_vars))
+        return Instance(node, [AnyType(TypeOfAny.unannotated)] * len(node.defn.type_vars))
 
     def is_typeddict(self, expr: Expression) -> bool:
         return (isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and
@@ -1346,7 +1361,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     continue
                 # Append name and type in this case...
                 fields.append(name)
-                types.append(AnyType(TypeOfAny.implicit)
+                types.append(AnyType(TypeOfAny.unannotated)
                              if stmt.type is None
                              else self.anal_type(stmt.type))
                 # ...despite possible minor failures that allow further analyzis.
@@ -2296,7 +2311,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 # The fields argument contains (name, type) tuples.
                 items, types, ok = self.parse_namedtuple_fields_with_types(listexpr.items, call)
         if not types:
-            types = [AnyType(TypeOfAny.implicit) for _ in items]
+            types = [AnyType(TypeOfAny.unannotated) for _ in items]
         underscore = [item for item in items if item.startswith('_')]
         if underscore:
             self.fail("namedtuple() field names cannot start with an underscore: "
@@ -4469,7 +4484,7 @@ def contains_int_or_tuple_of_ints(expr: Expression
     if isinstance(expr, IntExpr):
         return expr.value
     if isinstance(expr, TupleExpr):
-        if expr.literal == LITERAL_YES:
+        if literal(expr) == LITERAL_YES:
             thing = []
             for x in expr.items:
                 if not isinstance(x, IntExpr):
@@ -4571,7 +4586,7 @@ def calculate_return_type(expr: Expression) -> Optional[Type]:
             typ = expr.node.type
             if typ is None:
                 # No signature -> default to Any.
-                return AnyType(TypeOfAny.implicit)
+                return AnyType(TypeOfAny.unannotated)
             # Explicit Any return?
             if isinstance(typ, CallableType):
                 return typ.ret_type

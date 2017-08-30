@@ -135,6 +135,7 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
     Return None if the module is a C module. Return (module_path, __all__) if
     Python module. Raise an exception or exit if failed.
     """
+    module_path = None  # type: Optional[str]
     if not no_import:
         if pyversion[0] == 2:
             module_path, module_all = load_python_module_info(module, interpreter)

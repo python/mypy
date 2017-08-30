@@ -24,6 +24,7 @@ from mypy.nodes import (
     TypeAliasExpr, BackquoteExpr, EnumCallExpr,
     ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE,
 )
+from mypy.literals import literal
 from mypy import nodes
 import mypy.checker
 from mypy import types
@@ -817,7 +818,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             # In dynamically typed functions use implicit 'Any' types for
             # type variables.
-            inferred_args = [AnyType(TypeOfAny.implicit)] * len(callee_type.variables)
+            inferred_args = [AnyType(TypeOfAny.unannotated)] * len(callee_type.variables)
         return self.apply_inferred_arguments(callee_type, inferred_args,
                                              context)
 
@@ -2083,7 +2084,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         # at the end of the chain.  That's not an error.
                         return AnyType(TypeOfAny.special_form)
                     if not self.chk.in_checked_function():
-                        return AnyType(TypeOfAny.implicit)
+                        return AnyType(TypeOfAny.unannotated)
                     if self.chk.scope.active_class() is not None:
                         self.chk.fail('super() outside of a method is not supported', e)
                         return AnyType(TypeOfAny.from_error)
@@ -2285,7 +2286,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.disallowed_any_type(typ, node)
 
         if not self.chk.in_checked_function():
-            return AnyType(TypeOfAny.implicit)
+            return AnyType(TypeOfAny.unannotated)
         else:
             return typ
 
@@ -2497,7 +2498,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.named_type('builtins.bool')
 
     def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
-        if expr.literal >= LITERAL_TYPE:
+        if literal(expr) >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
             if restriction:
                 ans = narrow_declared_type(known_type, restriction)

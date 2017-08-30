@@ -2933,3 +2933,21 @@ foo.bar(b"test")
 [out]
 [out2]
 tmp/mod.py:7: error: Revealed type is 'builtins.bytes'
+
+[case testIncrementalWithSilentImports]
+# cmd: mypy -m a
+# cmd2: mypy -m b
+# flags: --follow-imports=silent
+# flags2: --follow-imports=silent
+[file a.py]
+import b
+
+b.foo(1, 2)
+
+[file b.py]
+def foo(a: int, b: int) -> str:
+    return a + b
+
+[out1]
+[out2]
+tmp/b.py:2: error: Incompatible return value type (got "int", expected "str")

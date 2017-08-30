@@ -270,7 +270,7 @@ y = C(S())
 x = y
 y = x
 c_int = C(1) # type: C[int]
-y = c_int # E: Incompatible types in assignment (expression has type C[int], variable has type C[str])
+y = c_int # E: Incompatible types in assignment (expression has type "C[int]", variable has type "C[str]")
 
 [case testGenericTypeBodyWithTypevarValues]
 from typing import TypeVar, Generic
@@ -524,7 +524,7 @@ a = f
 a = g
 b = g
 b = g
-b = f # E: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[U], U])
+b = f # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[U], U]")
 
 [case testInnerFunctionWithTypevarValues]
 from typing import TypeVar

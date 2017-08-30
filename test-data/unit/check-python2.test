@@ -34,7 +34,7 @@ class A:
 print >>A(), ''
 print >>None, ''
 print >>1, '' # E: "int" has no attribute "write"
-print >>(None + ''), None # E: Unsupported left operand type for + (None)
+print >>(None + ''), None # E: Unsupported left operand type for + ("None")
 
 [case testDivision]
 class A:
@@ -279,10 +279,9 @@ class C(object):
 
 [case testErrorInMetaclass]
 x = 0
--- fix duplicate confusing error messages
-class A(object):  # E: Name 'm' is not defined
+class A(object):
     __metaclass__ = m.M  # E: Name 'm' is not defined
-class B(object):  # E: Name 'M' is not defined
+class B(object):
     __metaclass__ = M  # E: Name 'M' is not defined
 
 [case testMetaclassAndSkippedImportInPython2]
@@ -292,7 +291,7 @@ class A(object):
     __metaclass__ = M
     y = 0
 reveal_type(A.y) # E: Revealed type is 'builtins.int'
-A.x # E: Type[A] has no attribute "x"
+A.x # E: "Type[A]" has no attribute "x"
 
 [case testAnyAsBaseOfMetaclass]
 from typing import Any, Type

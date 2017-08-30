@@ -29,6 +29,7 @@ from mypy.nodes import (
     ARG_POS, MDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT)
 from mypy import nodes
+from mypy.literals import literal, literal_hash
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
@@ -771,11 +772,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_for_missing_annotations(self, fdef: FuncItem) -> None:
         # Check for functions with unspecified/not fully specified types.
-        def is_implicit_any(t: Type) -> bool:
-            return isinstance(t, AnyType) and t.type_of_any == TypeOfAny.implicit
+        def is_unannotated_any(t: Type) -> bool:
+            return isinstance(t, AnyType) and t.type_of_any == TypeOfAny.unannotated
 
         has_explicit_annotation = (isinstance(fdef.type, CallableType)
-                                   and any(not is_implicit_any(t)
+                                   and any(not is_unannotated_any(t)
                                            for t in fdef.type.arg_types + [fdef.type.ret_type]))
 
         show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
@@ -784,9 +785,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if fdef.type is None and self.options.disallow_untyped_defs:
                 self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
-                if is_implicit_any(fdef.type.ret_type):
+                if is_unannotated_any(fdef.type.ret_type):
                     self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
-                if any(is_implicit_any(t) for t in fdef.type.arg_types):
+                if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
 
     def is_trivial_body(self, block: Block) -> bool:
@@ -2846,9 +2847,9 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     # arbitrarily give precedence to m2. (In the future, we could use
     # an intersection type.)
     result = m2.copy()
-    m2_keys = set(n2.literal_hash for n2 in m2)
+    m2_keys = set(literal_hash(n2) for n2 in m2)
     for n1 in m1:
-        if n1.literal_hash not in m2_keys:
+        if literal_hash(n1) not in m2_keys:
             result[n1] = m1[n1]
     return result
 
@@ -2870,7 +2871,7 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     result = {}
     for n1 in m1:
         for n2 in m2:
-            if n1.literal_hash == n2.literal_hash:
+            if literal_hash(n1) == literal_hash(n2):
                 result[n1] = UnionType.make_simplified_union([m1[n1], m2[n2]])
     return result
 
@@ -2910,13 +2911,13 @@ def find_isinstance_check(node: Expression,
             if len(node.args) != 2:  # the error will be reported later
                 return {}, {}
             expr = node.args[0]
-            if expr.literal == LITERAL_TYPE:
+            if literal(expr) == LITERAL_TYPE:
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
                 return conditional_type_map(expr, vartype, type)
         elif refers_to_fullname(node.callee, 'builtins.issubclass'):
             expr = node.args[0]
-            if expr.literal == LITERAL_TYPE:
+            if literal(expr) == LITERAL_TYPE:
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
                 if isinstance(vartype, UnionType):
@@ -2940,7 +2941,7 @@ def find_isinstance_check(node: Expression,
                 return yes_map, no_map
         elif refers_to_fullname(node.callee, 'builtins.callable'):
             expr = node.args[0]
-            if expr.literal == LITERAL_TYPE:
+            if literal(expr) == LITERAL_TYPE:
                 vartype = type_map[expr]
                 return conditional_callable_type_map(expr, vartype)
     elif isinstance(node, ComparisonExpr) and experiments.STRICT_OPTIONAL:
@@ -2950,7 +2951,8 @@ def find_isinstance_check(node: Expression,
             if_vars = {}  # type: TypeMap
             else_vars = {}  # type: TypeMap
             for expr in node.operands:
-                if expr.literal == LITERAL_TYPE and not is_literal_none(expr) and expr in type_map:
+                if (literal(expr) == LITERAL_TYPE and not is_literal_none(expr)
+                        and expr in type_map):
                     # This should only be true at most once: there should be
                     # two elements in node.operands, and at least one of them
                     # should represent a None.
@@ -3109,6 +3111,11 @@ def is_unsafe_overlapping_signatures(signature: Type, other: Type) -> bool:
             # If the first signature has more general argument types, the
             # latter will never be called
             if is_more_general_arg_prefix(signature, other):
+                return False
+            # Special case: all args are subtypes, and returns are subtypes
+            if (all(is_proper_subtype(s, o)
+                    for (s, o) in zip(signature.arg_types, other.arg_types)) and
+                    is_proper_subtype(signature.ret_type, other.ret_type)):
                 return False
             return not is_more_precise_signature(signature, other)
     return True
@@ -3301,7 +3308,7 @@ def nothing() -> Iterator[None]:
 def is_typed_callable(c: Optional[Type]) -> bool:
     if not c or not isinstance(c, CallableType):
         return False
-    return not all(isinstance(t, AnyType) and t.type_of_any == TypeOfAny.implicit
+    return not all(isinstance(t, AnyType) and t.type_of_any == TypeOfAny.unannotated
                    for t in c.arg_types + [c.ret_type])
 
 

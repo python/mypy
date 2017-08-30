@@ -13,9 +13,9 @@ ac = None # type: A[C]
 ad = None # type: A[D]
 b = None # type: B
 
-b = ad # E: Incompatible types in assignment (expression has type A[D], variable has type "B")
-ad = b # E: Incompatible types in assignment (expression has type "B", variable has type A[D])
-b = ac # E: Incompatible types in assignment (expression has type A[C], variable has type "B")
+b = ad # E: Incompatible types in assignment (expression has type "A[D]", variable has type "B")
+ad = b # E: Incompatible types in assignment (expression has type "B", variable has type "A[D]")
+b = ac # E: Incompatible types in assignment (expression has type "A[C]", variable has type "B")
 
 b = b
 ac = b
@@ -32,10 +32,10 @@ a = None # type: A
 bc = None # type: B[C]
 bd = None # type: B[D]
 
-bc = bd # E: Incompatible types in assignment (expression has type B[D], variable has type B[C])
-bd = bc # E: Incompatible types in assignment (expression has type B[C], variable has type B[D])
-bc = a  # E: Incompatible types in assignment (expression has type "A", variable has type B[C])
-bd = a  # E: Incompatible types in assignment (expression has type "A", variable has type B[D])
+bc = bd # E: Incompatible types in assignment (expression has type "B[D]", variable has type "B[C]")
+bd = bc # E: Incompatible types in assignment (expression has type "B[C]", variable has type "B[D]")
+bc = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B[C]")
+bd = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B[D]")
 
 a = bc
 a = bd
@@ -54,10 +54,10 @@ ad = None # type: A[D]
 bcc = None # type: B[C, C]
 bdc = None # type: B[D, C]
 
-ad = bcc # E: Incompatible types in assignment (expression has type B[C, C], variable has type A[D])
-ad = bdc # E: Incompatible types in assignment (expression has type B[D, C], variable has type A[D])
-bcc = ac # E: Incompatible types in assignment (expression has type A[C], variable has type B[C, C])
-bdc = ac # E: Incompatible types in assignment (expression has type A[C], variable has type B[D, C])
+ad = bcc # E: Incompatible types in assignment (expression has type "B[C, C]", variable has type "A[D]")
+ad = bdc # E: Incompatible types in assignment (expression has type "B[D, C]", variable has type "A[D]")
+bcc = ac # E: Incompatible types in assignment (expression has type "A[C]", variable has type "B[C, C]")
+bdc = ac # E: Incompatible types in assignment (expression has type "A[C]", variable has type "B[D, C]")
 
 bcc = bcc
 bdc = bdc
@@ -82,8 +82,8 @@ cef = None # type: C[E, F]
 cff = None # type: C[F, F]
 cfe = None # type: C[F, E]
 
-ae = cef # E: Incompatible types in assignment (expression has type C[E, F], variable has type A[A[E]])
-af = cfe # E: Incompatible types in assignment (expression has type C[F, E], variable has type A[A[F]])
+ae = cef # E: Incompatible types in assignment (expression has type "C[E, F]", variable has type "A[A[E]]")
+af = cfe # E: Incompatible types in assignment (expression has type "C[F, E]", variable has type "A[A[F]]")
 
 ae = cfe
 af = cef
@@ -280,7 +280,7 @@ a = None # type: A
 bc = None # type: B[C]
 bd = None # type: B[D]
 
-a = bc # E: Incompatible types in assignment (expression has type B[C], variable has type "A")
+a = bc # E: Incompatible types in assignment (expression has type "B[C]", variable has type "A")
 bc = a
 bd = a
 
@@ -305,8 +305,8 @@ a = None # type: A
 c = None # type: C
 bc = None # type: B[C]
 
-a.x = c # E: Incompatible types in assignment (expression has type "C", variable has type B[Any])
-a.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"; expected B[Any]
+a.x = c # E: Incompatible types in assignment (expression has type "C", variable has type "B[Any]")
+a.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"; expected "B[Any]"
 a.x = bc
 a.f(bc)
 [out]
@@ -325,8 +325,8 @@ class B(Generic[T]):
 
 class A(B):
   def g(self) -> None:
-    self.x = c # E: Incompatible types in assignment (expression has type "C", variable has type B[Any])
-    self.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"; expected B[Any]
+    self.x = c # E: Incompatible types in assignment (expression has type "C", variable has type "B[Any]")
+    self.f(c)  # E: Argument 1 to "f" of "B" has incompatible type "C"; expected "B[Any]"
     self.x = bc
     self.f(bc)
 
@@ -394,7 +394,7 @@ B(1)
 C(1)
 C('a')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 D(A(1))
-D(1)  # E: Argument 1 to "D" has incompatible type "int"; expected A[<nothing>]
+D(1)  # E: Argument 1 to "D" has incompatible type "int"; expected "A[<nothing>]"
 
 
 [case testInheritedConstructor2]
@@ -427,9 +427,9 @@ adc = None # type: A[D, C]
 ic = None # type: I[C]
 id = None # type: I[D]
 
-ic = acd # E: Incompatible types in assignment (expression has type A[C, D], variable has type I[C])
-id = adc # E: Incompatible types in assignment (expression has type A[D, C], variable has type I[D])
-adc = ic # E: Incompatible types in assignment (expression has type I[C], variable has type A[D, C])
+ic = acd # E: Incompatible types in assignment (expression has type "A[C, D]", variable has type "I[C]")
+id = adc # E: Incompatible types in assignment (expression has type "A[D, C]", variable has type "I[D]")
+adc = ic # E: Incompatible types in assignment (expression has type "I[C]", variable has type "A[D, C]")
 
 ic = adc
 id = acd
@@ -451,11 +451,11 @@ class I(Generic[S]): pass
 class B(I[C]): pass
 class A(B): pass
 
-ie = a # E: Incompatible types in assignment (expression has type "A", variable has type I[E])
-a = ic # E: Incompatible types in assignment (expression has type I[C], variable has type "A")
-a = id # E: Incompatible types in assignment (expression has type I[D], variable has type "A")
+ie = a # E: Incompatible types in assignment (expression has type "A", variable has type "I[E]")
+a = ic # E: Incompatible types in assignment (expression has type "I[C]", variable has type "A")
+a = id # E: Incompatible types in assignment (expression has type "I[D]", variable has type "A")
 a = b  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-id = a # E: Incompatible types in assignment (expression has type "A", variable has type I[D])
+id = a # E: Incompatible types in assignment (expression has type "A", variable has type "I[D]")
 
 ic = a
 b = a
@@ -486,8 +486,8 @@ a, i, j = None, None, None # type: (A[object], I[object], J[object])
 ii = a
 jj = a
 jj = i
-a = i # E: Incompatible types in assignment (expression has type I[object], variable has type A[object])
-a = j # E: Incompatible types in assignment (expression has type J[object], variable has type A[object])
+a = i # E: Incompatible types in assignment (expression has type "I[object]", variable has type "A[object]")
+a = j # E: Incompatible types in assignment (expression has type "J[object]", variable has type "A[object]")
 
 class J(Generic[t]): pass
 class X(metaclass=ABCMeta): pass
@@ -546,7 +546,7 @@ class A(B):
 class C: pass
 class D: pass
 [out]
-main:7: error: Incompatible types in assignment (expression has type "A", variable has type I[D])
+main:7: error: Incompatible types in assignment (expression has type "A", variable has type "I[D]")
 
 [case testSubclassingGenericABCWithDeepHierarchy2]
 from typing import Any, TypeVar, Generic
@@ -704,7 +704,7 @@ a = None  # type: G[A]
 b = None  # type: G[B]
 c = None  # type: G[C]
 
-b = a  # E: Incompatible types in assignment (expression has type G[A], variable has type G[B])
+b = a  # E: Incompatible types in assignment (expression has type "G[A]", variable has type "G[B]")
 b = c
 [builtins fixtures/bool.pyi]
 [out]
@@ -723,7 +723,7 @@ b = None  # type: G[B]
 c = None  # type: G[C]
 
 b = a
-b = c  # E: Incompatible types in assignment (expression has type G[C], variable has type G[B])
+b = c  # E: Incompatible types in assignment (expression has type "G[C]", variable has type "G[B]")
 [builtins fixtures/bool.pyi]
 [out]
 
@@ -740,8 +740,8 @@ a = None  # type: G[A]
 b = None  # type: G[B]
 c = None  # type: G[C]
 
-b = a  # E: Incompatible types in assignment (expression has type G[A], variable has type G[B])
-b = c  # E: Incompatible types in assignment (expression has type G[C], variable has type G[B])
+b = a  # E: Incompatible types in assignment (expression has type "G[A]", variable has type "G[B]")
+b = c  # E: Incompatible types in assignment (expression has type "G[C]", variable has type "G[B]")
 [builtins fixtures/bool.pyi]
 [out]
 
