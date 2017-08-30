@@ -3598,12 +3598,6 @@ class D5: pass
 @six.add_metaclass(M)  # E: Multiple metaclass definitions
 class CD(six.with_metaclass(M)): pass
 
-def q(t):
-    class E(metaclass=t): pass
-    class F(six.with_metaclass(t)): pass
-    @six.add_metaclass(t)
-    class G: pass
-
 class M1(type): pass
 class Q1(metaclass=M1): pass
 @six.add_metaclass(M)  # E: Inconsistent metaclass structure for 'CQA'
@@ -3616,3 +3610,11 @@ import six
 class M(type): pass
 class C4(six.with_metaclass(M)):  # E: Multiple metaclass definitions
     __metaclass__ = M
+
+[case testSixMetaclassAny]
+import t  # type: ignore
+import six
+class E(metaclass=t.M): pass
+class F(six.with_metaclass(t.M)): pass
+@six.add_metaclass(t.M)
+class G: pass
