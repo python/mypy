@@ -193,7 +193,7 @@ class MessageBuilder:
         .format_bare.
         """
         ret = self.format_bare(typ, verbosity)
-        if ret in ['Module', 'overloaded function']:
+        if ret in ['Module', 'overloaded function', '<nothing>', '<deleted>']:
             # Messages are easier to read if these aren't quoted
             return ret
         return '"{}"'.format(ret)
