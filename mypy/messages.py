@@ -185,7 +185,7 @@ class MessageBuilder:
 
     def quote_type_string(self, type_string: str) -> str:
         """Quotes a type representation for use in messages."""
-        no_quote_regex = r'^tuple\(length \d+\)$'
+        no_quote_regex = r'^<(tuple|union): \d+ items>$'
         if (type_string in ['Module', 'overloaded function', '<nothing>', '<deleted>']
                 or re.match(no_quote_regex, type_string) is not None):
             # Messages are easier to read if these aren't quoted.  We use a
@@ -260,7 +260,7 @@ class MessageBuilder:
             if len(s) < 400:
                 return s
             else:
-                return 'tuple(length {})'.format(len(items))
+                return '<tuple: {} items>'.format(len(items))
         elif isinstance(typ, TypedDictType):
             # If the TypedDictType is named, return the name
             if not typ.is_anonymous():
@@ -288,7 +288,7 @@ class MessageBuilder:
                 if len(s) < 400:
                     return s
                 else:
-                    return 'union type ({} items)'.format(len(items))
+                    return '<union: {} items>'.format(len(items))
         elif isinstance(typ, NoneTyp):
             return 'None'
         elif isinstance(typ, AnyType):

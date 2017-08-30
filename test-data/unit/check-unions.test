@@ -496,3 +496,22 @@ if bool():
     reveal_type(x)  # E: Revealed type is 'Any'
 reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
 [builtins fixtures/bool.pyi]
+
+[case testLongUnionFormatting]
+from typing import Any, Generic, TypeVar, Union
+
+T = TypeVar('T')
+
+class ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes(Generic[T]):
+    pass
+
+x: Union[ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[int],
+         ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[object],
+         ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[float],
+         ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[str],
+         ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[Any],
+         ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[bytes]]
+
+def takes_int(arg: int) -> None: pass
+
+takes_int(x)  # E: Argument 1 to "takes_int" has incompatible type <union: 6 items>; expected "int"
