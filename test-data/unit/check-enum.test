@@ -325,7 +325,7 @@ main:17: error: Enum() with dict literal requires string literals
 main:18: error: Unexpected arguments to Enum()
 main:19: error: Unexpected arguments to Enum()
 main:20: error: Unexpected arguments to Enum()
-main:22: error: Type[W] has no attribute "c"
+main:22: error: "Type[W]" has no attribute "c"
 
 [case testFunctionalEnumFlag]
 from enum import Flag, IntFlag

@@ -447,7 +447,7 @@ from foo import *
 from typing import overload
 t, a = None, None # type: (type, A)
 
-a = A # E: Incompatible types in assignment (expression has type Type[A], variable has type "A")
+a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
 t = A
 
 class A:
@@ -610,7 +610,7 @@ n = 1
 m = 1
 n = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 m = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-f(list_object) # E: Argument 1 to "f" has incompatible type List[object]; expected List[int]
+f(list_object) # E: Argument 1 to "f" has incompatible type "List[object]"; expected "List[int]"
 [builtins fixtures/list.pyi]
 
 [case testOverlappingOverloadSignatures]
@@ -901,7 +901,7 @@ def f(x: int, y: List[int] = None) -> int: pass
 def f(x: int, y: List[str] = None) -> int: pass
 f(y=[1], x=0)() # E: "int" not callable
 f(y=[''], x=0)() # E: "int" not callable
-a = f(y=[['']], x=0) # E: List item 0 has incompatible type List[str]; expected "int"
+a = f(y=[['']], x=0) # E: List item 0 has incompatible type "List[str]"; expected "int"
 a() # E: "int" not callable
 [builtins fixtures/list.pyi]
 
@@ -1117,14 +1117,14 @@ def f(x: int, y: Tuple[str, ...]) -> None: pass
 @overload
 def f(x: int, y: str) -> None: pass
 f(1, ('2', '3'))
-f(1, (2, '3')) # E: Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected Tuple[str, ...]
+f(1, (2, '3')) # E: Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected "Tuple[str, ...]"
 f(1, ('2',))
 f(1, '2')
-f(1, (2, 3)) # E: Argument 2 to "f" has incompatible type "Tuple[int, int]"; expected Tuple[str, ...]
+f(1, (2, 3)) # E: Argument 2 to "f" has incompatible type "Tuple[int, int]"; expected "Tuple[str, ...]"
 x = ('2', '3')  # type: Tuple[str, ...]
 f(1, x)
 y = (2, 3)  # type: Tuple[int, ...]
-f(1, y) # E: Argument 2 to "f" has incompatible type Tuple[int, ...]; expected Tuple[str, ...]
+f(1, y) # E: Argument 2 to "f" has incompatible type "Tuple[int, ...]"; expected "Tuple[str, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testCallableSpecificOverload]

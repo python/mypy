@@ -184,69 +184,30 @@ class MessageBuilder:
         self.report(msg, context, 'warning', file=file, origin=origin)
 
     def format(self, typ: Type, verbosity: int = 0) -> str:
-        """Convert a type to a relatively short string that is suitable for error messages.
-
-        Mostly behave like format_simple below, but never return an empty string.
         """
-        s = self.format_simple(typ, verbosity)
-        if s != '':
-            # If format_simple returns a non-trivial result, use that.
-            return s
-        elif isinstance(typ, FunctionLike):
-            func = typ
-            if func.is_type_obj():
-                # The type of a type object type can be derived from the
-                # return type (this always works).
-                return self.format(TypeType.make_normalized(erase_type(func.items()[0].ret_type)),
-                                   verbosity)
-            elif isinstance(func, CallableType):
-                return_type = strip_quotes(self.format(func.ret_type))
-                if func.is_ellipsis_args:
-                    return 'Callable[..., {}]'.format(return_type)
-                arg_strings = []
-                for arg_name, arg_type, arg_kind in zip(
-                        func.arg_names, func.arg_types, func.arg_kinds):
-                    if (arg_kind == ARG_POS and arg_name is None
-                            or verbosity == 0 and arg_kind in (ARG_POS, ARG_OPT)):
+        Convert a type to a relatively short string suitable for error messages.
 
-                        arg_strings.append(
-                            strip_quotes(
-                                self.format(
-                                    arg_type,
-                                    verbosity = max(verbosity - 1, 0))))
-                    else:
-                        constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
-                        if arg_kind in (ARG_STAR, ARG_STAR2) or arg_name is None:
-                            arg_strings.append("{}({})".format(
-                                constructor,
-                                strip_quotes(self.format(arg_type))))
-                        else:
-                            arg_strings.append("{}({}, {})".format(
-                                constructor,
-                                strip_quotes(self.format(arg_type)),
-                                repr(arg_name)))
+        This method returns a string appropriate for unmodified use in error
+        messages; this means that it will be quoted in most cases.  If
+        modification of the formatted string is required, callers should use
+        .format_bare.
+        """
+        ret = self.format_bare(typ, verbosity)
+        no_quote_regex = r'^tuple\(length \d+\)$'
+        if (ret in ['Module', 'overloaded function', '<nothing>', '<deleted>']
+                or re.match(no_quote_regex, ret) is not None):
+            # Messages are easier to read if these aren't quoted.  We use a
+            # regex to match strings with variable contents.
+            return ret
+        return '"{}"'.format(ret)
 
-                return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
-            else:
-                # Use a simple representation for function types; proper
-                # function types may result in long and difficult-to-read
-                # error messages.
-                return 'overloaded function'
-        else:
-            # Default case; we simply have to return something meaningful here.
-            return 'object'
+    def format_bare(self, typ: Type, verbosity: int = 0) -> str:
+        """
+        Convert a type to a relatively short string suitable for error messages.
 
-    def format_simple(self, typ: Type, verbosity: int = 0) -> str:
-        """Convert simple types to string that is suitable for error messages.
-
-        Return "" for complex types. Try to keep the length of the result
-        relatively short to avoid overly long error messages.
-
-        Examples:
-          builtins.int -> 'int'
-          Any type -> 'Any'
-          None -> None
-          callable type -> "" (empty string)
+        This method will return an unquoted string.  If a caller doesn't need to
+        perform post-processing on the string output, .format should be used
+        instead.
         """
         if isinstance(typ, Instance):
             itype = typ
@@ -260,26 +221,22 @@ class MessageBuilder:
             else:
                 base_str = itype.type.name()
             if itype.args == []:
-                # No type arguments. Place the type name in quotes to avoid
-                # potential for confusion: otherwise, the type name could be
-                # interpreted as a normal word.
-                return '"{}"'.format(base_str)
+                # No type arguments, just return the type name
+                return base_str
             elif itype.type.fullname() == 'builtins.tuple':
-                item_type_str = strip_quotes(self.format(itype.args[0]))
+                item_type_str = self.format_bare(itype.args[0])
                 return 'Tuple[{}, ...]'.format(item_type_str)
             elif itype.type.fullname() in reverse_type_aliases:
                 alias = reverse_type_aliases[itype.type.fullname()]
                 alias = alias.split('.')[-1]
-                items = [strip_quotes(self.format(arg)) for arg in itype.args]
+                items = [self.format_bare(arg) for arg in itype.args]
                 return '{}[{}]'.format(alias, ', '.join(items))
             else:
-                # There are type arguments. Convert the arguments to strings
-                # (using format() instead of format_simple() to avoid empty
-                # strings). If the result is too long, replace arguments
-                # with [...].
+                # There are type arguments. Convert the arguments to strings.
+                # If the result is too long, replace arguments with [...].
                 a = []  # type: List[str]
                 for arg in itype.args:
-                    a.append(strip_quotes(self.format(arg)))
+                    a.append(self.format_bare(arg))
                 s = ', '.join(a)
                 if len((base_str + s)) < 150:
                     return '{}[{}]'.format(base_str, s)
@@ -287,15 +244,15 @@ class MessageBuilder:
                     return '{}[...]'.format(base_str)
         elif isinstance(typ, TypeVarType):
             # This is similar to non-generic instance types.
-            return '"{}"'.format(typ.name)
+            return typ.name
         elif isinstance(typ, TupleType):
             # Prefer the name of the fallback class (if not tuple), as it's more informative.
             if typ.fallback.type.fullname() != 'builtins.tuple':
-                return self.format_simple(typ.fallback)
+                return self.format_bare(typ.fallback)
             items = []
             for t in typ.items:
-                items.append(strip_quotes(self.format(t)))
-            s = '"Tuple[{}]"'.format(', '.join(items))
+                items.append(self.format_bare(t))
+            s = 'Tuple[{}]'.format(', '.join(items))
             if len(s) < 400:
                 return s
             else:
@@ -303,14 +260,14 @@ class MessageBuilder:
         elif isinstance(typ, TypedDictType):
             # If the TypedDictType is named, return the name
             if not typ.is_anonymous():
-                return self.format_simple(typ.fallback)
+                return self.format_bare(typ.fallback)
             items = []
             for (item_name, item_type) in typ.items.items():
                 modifier = '' if item_name in typ.required_keys else '?'
                 items.append('{!r}{}: {}'.format(item_name,
                                                  modifier,
-                                                 strip_quotes(self.format(item_type))))
-            s = '"TypedDict({{{}}})"'.format(', '.join(items))
+                                                 self.format_bare(item_type)))
+            s = 'TypedDict({{{}}})'.format(', '.join(items))
             return s
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
@@ -318,12 +275,12 @@ class MessageBuilder:
                                  sum(isinstance(t, NoneTyp) for t in typ.items) == 1)
             if print_as_optional:
                 rest = [t for t in typ.items if not isinstance(t, NoneTyp)]
-                return '"Optional[{}]"'.format(strip_quotes(self.format(rest[0])))
+                return 'Optional[{}]'.format(self.format_bare(rest[0]))
             else:
                 items = []
                 for t in typ.items:
-                    items.append(strip_quotes(self.format(t)))
-                s = '"Union[{}]"'.format(', '.join(items))
+                    items.append(self.format_bare(t))
+                s = 'Union[{}]'.format(', '.join(items))
                 if len(s) < 400:
                     return s
                 else:
@@ -331,7 +288,7 @@ class MessageBuilder:
         elif isinstance(typ, NoneTyp):
             return 'None'
         elif isinstance(typ, AnyType):
-            return '"Any"'
+            return 'Any'
         elif isinstance(typ, DeletedType):
             return '<deleted>'
         elif isinstance(typ, UninhabitedType):
@@ -340,25 +297,72 @@ class MessageBuilder:
             else:
                 return '<nothing>'
         elif isinstance(typ, TypeType):
-            return 'Type[{}]'.format(
-                strip_quotes(self.format_simple(typ.item, verbosity)))
+            return 'Type[{}]'.format(self.format_bare(typ.item, verbosity))
+        elif isinstance(typ, FunctionLike):
+            func = typ
+            if func.is_type_obj():
+                # The type of a type object type can be derived from the
+                # return type (this always works).
+                return self.format_bare(
+                    TypeType.make_normalized(
+                        erase_type(func.items()[0].ret_type)),
+                    verbosity)
+            elif isinstance(func, CallableType):
+                return_type = self.format_bare(func.ret_type)
+                if func.is_ellipsis_args:
+                    return 'Callable[..., {}]'.format(return_type)
+                arg_strings = []
+                for arg_name, arg_type, arg_kind in zip(
+                        func.arg_names, func.arg_types, func.arg_kinds):
+                    if (arg_kind == ARG_POS and arg_name is None
+                            or verbosity == 0 and arg_kind in (ARG_POS, ARG_OPT)):
+
+                        arg_strings.append(
+                            self.format_bare(
+                                arg_type,
+                                verbosity = max(verbosity - 1, 0)))
+                    else:
+                        constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
+                        if arg_kind in (ARG_STAR, ARG_STAR2) or arg_name is None:
+                            arg_strings.append("{}({})".format(
+                                constructor,
+                                self.format_bare(arg_type)))
+                        else:
+                            arg_strings.append("{}({}, {})".format(
+                                constructor,
+                                self.format_bare(arg_type),
+                                repr(arg_name)))
+
+                return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
+            else:
+                # Use a simple representation for function types; proper
+                # function types may result in long and difficult-to-read
+                # error messages.
+                return 'overloaded function'
         elif typ is None:
             raise RuntimeError('Type is None')
         else:
-            # No simple representation for this type that would convey very
-            # useful information. No need to mention the type explicitly in a
-            # message.
-            return ''
+            # Default case; we simply have to return something meaningful here.
+            return 'object'
 
-    def format_distinctly(self, type1: Type, type2: Type) -> Tuple[str, str]:
+    def format_distinctly(self, type1: Type, type2: Type, bare: bool = False) -> Tuple[str, str]:
         """Jointly format a pair of types to distinct strings.
 
         Increase the verbosity of the type strings until they become distinct.
+
+        By default, the returned strings are created using .format() and will be
+        quoted accordingly. If ``bare`` is True, the returned strings will not
+        be quoted; callers who need to do post-processing of the strings before
+        quoting them (such as prepending * or **) should use this.
         """
+        if bare:
+            format_method = self.format_bare
+        else:
+            format_method = self.format
         verbosity = 0
         for verbosity in range(3):
-            str1 = self.format(type1, verbosity=verbosity)
-            str2 = self.format(type2, verbosity=verbosity)
+            str1 = format_method(type1, verbosity=verbosity)
+            str2 = format_method(type2, verbosity=verbosity)
             if str1 != str2:
                 return (str1, str2)
         return (str1, str2)
@@ -604,12 +608,13 @@ class MessageBuilder:
                 expected_type = callee.arg_types[m - 1]
             except IndexError:  # Varargs callees
                 expected_type = callee.arg_types[-1]
-            arg_type_str, expected_type_str = self.format_distinctly(arg_type, expected_type)
+            arg_type_str, expected_type_str = self.format_distinctly(
+                arg_type, expected_type, bare=True)
             if arg_kind == ARG_STAR:
                 arg_type_str = '*' + arg_type_str
             elif arg_kind == ARG_STAR2:
                 arg_type_str = '**' + arg_type_str
-            msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
+            msg = 'Argument {} {}has incompatible type "{}"; expected "{}"'.format(
                 n, target, arg_type_str, expected_type_str)
             if isinstance(arg_type, Instance) and isinstance(expected_type, Instance):
                 notes = append_invariance_notes(notes, arg_type, expected_type)
@@ -1014,16 +1019,16 @@ class MessageBuilder:
         self.fail(msg, context)
 
     def concrete_only_assign(self, typ: Type, context: Context) -> None:
-        self.fail("Can only assign concrete classes to a variable of type '{}'"
+        self.fail("Can only assign concrete classes to a variable of type {}"
                   .format(self.format(typ)), context)
 
     def concrete_only_call(self, typ: Type, context: Context) -> None:
-        self.fail("Only concrete class can be given where '{}' is expected"
+        self.fail("Only concrete class can be given where {} is expected"
                   .format(self.format(typ)), context)
 
     def note_call(self, subtype: Type, call: Type, context: Context) -> None:
-        self.note("'{}.__call__' has type '{}'".format(strip_quotes(self.format(subtype)),
-                                                       self.format(call, verbosity=1)), context)
+        self.note("'{}.__call__' has type {}".format(self.format_bare(subtype),
+                                                     self.format(call, verbosity=1)), context)
 
     def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
                                  supertype: Instance, context: Context) -> None:
@@ -1148,7 +1153,7 @@ class MessageBuilder:
             name = tp.arg_names[i]
             if name:
                 s += name + ': '
-            s += strip_quotes(self.format(tp.arg_types[i]))
+            s += self.format_bare(tp.arg_types[i])
             if tp.arg_kinds[i] in (ARG_OPT, ARG_NAMED_OPT):
                 s += ' = ...'
 
@@ -1164,17 +1169,17 @@ class MessageBuilder:
         else:
             s = '({})'.format(s)
 
-        s += ' -> ' + strip_quotes(self.format(tp.ret_type))
+        s += ' -> ' + self.format_bare(tp.ret_type)
         if tp.variables:
             tvars = []
             for tvar in tp.variables:
                 if (tvar.upper_bound and isinstance(tvar.upper_bound, Instance) and
                         tvar.upper_bound.type.fullname() != 'builtins.object'):
                     tvars.append('{} <: {}'.format(tvar.name,
-                                                   strip_quotes(self.format(tvar.upper_bound))))
+                                                   self.format_bare(tvar.upper_bound)))
                 elif tvar.values:
                     tvars.append('{} in ({})'
-                                 .format(tvar.name, ', '.join([strip_quotes(self.format(tp))
+                                 .format(tvar.name, ', '.join([self.format_bare(tp)
                                                                for tp in tvar.values])))
                 else:
                     tvars.append(tvar.name)
