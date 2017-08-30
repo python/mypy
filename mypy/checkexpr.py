@@ -24,6 +24,7 @@ from mypy.nodes import (
     TypeAliasExpr, BackquoteExpr, EnumCallExpr,
     ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE,
 )
+from mypy.literals import literal
 from mypy import nodes
 import mypy.checker
 from mypy import types
@@ -2497,7 +2498,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.named_type('builtins.bool')
 
     def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
-        if expr.literal >= LITERAL_TYPE:
+        if literal(expr) >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
             if restriction:
                 ans = narrow_declared_type(known_type, restriction)
