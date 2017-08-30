@@ -833,8 +833,6 @@ class SemanticAnalyzer(NodeVisitor[None]):
         Now we will remove Generic[T] from bases of Foo and infer that the
         type variable 'T' is a type argument of Foo.
 
-        We also process six.with_metaclass() here.
-
         Note that this is performed *before* semantic analysis.
         """
         removed = []  # type: List[int]
