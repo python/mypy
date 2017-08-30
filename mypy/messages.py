@@ -193,8 +193,11 @@ class MessageBuilder:
         .format_bare.
         """
         ret = self.format_bare(typ, verbosity)
-        if ret in ['Module', 'overloaded function', '<nothing>', '<deleted>']:
-            # Messages are easier to read if these aren't quoted
+        no_quote_regex = r'^tuple\(length \d+\)$'
+        if (ret in ['Module', 'overloaded function', '<nothing>', '<deleted>']
+                or re.match(no_quote_regex, ret) is not None):
+            # Messages are easier to read if these aren't quoted.  We use a
+            # regex to match strings with variable contents.
             return ret
         return '"{}"'.format(ret)
 
