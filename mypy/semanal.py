@@ -1090,26 +1090,18 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if defn.info.is_enum and defn.type_vars:
             self.fail("Enum class cannot be generic", defn)
 
-    def check_with_metaclass(self, defn: ClassDef) -> Tuple[List[Expression], Optional[str]]:
+    def check_with_metaclass(self, defn: ClassDef) -> Tuple[List[Expression],
+                                                            Optional[Expression]]:
         # Special-case six.with_metaclass(M, B1, B2, ...).
-        base_type_exprs, metaclass = defn.base_type_exprs, defn.metaclass
-        if metaclass is None and len(base_type_exprs) == 1:
-            base_expr = base_type_exprs[0]
+        if defn.metaclass is None and len(defn.base_type_exprs) == 1:
+            base_expr = defn.base_type_exprs[0]
             if isinstance(base_expr, CallExpr) and isinstance(base_expr.callee, RefExpr):
                 base_expr.callee.accept(self)
                 if (base_expr.callee.fullname == 'six.with_metaclass'
                         and len(base_expr.args) >= 1
                         and all(kind == ARG_POS for kind in base_expr.arg_kinds)):
-                    metaclass_expr = base_expr.args[0]
-                    if isinstance(metaclass_expr, NameExpr):
-                        metaclass = metaclass_expr.name
-                    elif isinstance(metaclass_expr, MemberExpr):
-                        metaclass = get_member_expr_fullname(metaclass_expr)
-                    else:
-                        self.fail("Dynamic metaclass not supported for '%s'" % defn.name,
-                                  metaclass_expr)
-                    return (base_expr.args[1:], metaclass)
-        return (base_type_exprs, metaclass)
+                    return (base_expr.args[1:], base_expr.args[0])
+        return (defn.base_type_exprs, defn.metaclass)
 
     def expr_to_analyzed_type(self, expr: Expression) -> Type:
         if isinstance(expr, CallExpr):
@@ -1158,7 +1150,6 @@ class SemanticAnalyzer(NodeVisitor[None]):
         return False
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
-        error_context = defn  # type: Context
         if defn.metaclass is None and self.options.python_version[0] == 2:
             # Look for "__metaclass__ = <metaclass>" in Python 2.
             for body_node in defn.defs.body:
@@ -1168,26 +1159,16 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
                     lvalue = body_node.lvalues[0]
                     if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
-                        error_context = body_node.rvalue
-                        if isinstance(body_node.rvalue, NameExpr):
-                            name = body_node.rvalue.name
-                        elif isinstance(body_node.rvalue, MemberExpr):
-                            name = get_member_expr_fullname(body_node.rvalue)
-                        else:
-                            name = None
-                        if name:
-                            defn.metaclass = name
-                        else:
-                            self.fail(
-                                "Dynamic metaclass not supported for '%s'" % defn.name,
-                                body_node
-                            )
-                            return
+                        defn.metaclass = body_node.rvalue
         if defn.metaclass:
-            if defn.metaclass == '<error>':
-                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, error_context)
+            if isinstance(defn.metaclass, NameExpr):
+                metaclass_name = defn.metaclass.name
+            elif isinstance(defn.metaclass, MemberExpr):
+                metaclass_name = get_member_expr_fullname(defn.metaclass)
+            else:
+                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn.metaclass)
                 return
-            sym = self.lookup_qualified(defn.metaclass, error_context)
+            sym = self.lookup_qualified(metaclass_name, defn.metaclass)
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
                 return
@@ -1199,10 +1180,11 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 #       attributes, similar to an 'Any' base class.
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
-                self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
+                self.fail("Invalid metaclass '%s'" % metaclass_name, defn.metaclass)
                 return
             if not sym.node.is_metaclass():
-                self.fail("Metaclasses not inheriting from 'type' are not supported", defn)
+                self.fail("Metaclasses not inheriting from 'type' are not supported",
+                          defn.metaclass)
                 return
             inst = fill_typevars(sym.node)
             assert isinstance(inst, Instance)
