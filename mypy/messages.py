@@ -346,6 +346,11 @@ class MessageBuilder:
         """Jointly format a pair of types to distinct strings.
 
         Increase the verbosity of the type strings until they become distinct.
+
+        By default, the returned strings are created using .format() and will be
+        quoted accordingly. If ``bare`` is True, the returned strings will not
+        be quoted; callers who need to do post-processing of the strings before
+        quoting them (such as prepending * or **) should use this.
         """
         if bare:
             format_method = self.format_bare
