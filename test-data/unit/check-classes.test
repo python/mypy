@@ -3388,6 +3388,192 @@ reveal_type(mkdict(ExampleDict))  # E: Revealed type is '__main__.ExampleDict*[A
 -- Synthetic types crashes
 -- -----------------------
 
+[case testCrashOnSelfRecursiveNamedTupleVar]
+from typing import NamedTuple
+
+N = NamedTuple('N', [('x', N)])
+n: N
+[out]
+
+[case testCrashOnSelfRecursiveTypedDictVar]
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'a': 'A'})
+a: A
+[out]
+
+[case testCrashInJoinOfSelfRecursiveNamedTuples]
+from typing import NamedTuple
+
+class N(NamedTuple):
+    x: N
+class M(NamedTuple):
+    x: M
+
+n: N
+m: M
+lst = [n, m]
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCorrectJoinOfSelfRecursiveTypedDicts]
+from mypy_extensions import TypedDict
+
+class N(TypedDict):
+    x: N
+class M(TypedDict):
+    x: M
+
+n: N
+m: M
+lst = [n, m]
+reveal_type(lst)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCrashInForwardRefToNamedTupleWithIsinstance]
+from typing import Dict, NamedTuple
+
+NameDict = Dict[str, 'NameInfo']
+class NameInfo(NamedTuple):
+    ast: bool
+
+def parse_ast(name_dict: NameDict) -> None:
+    if isinstance(name_dict[''], int):
+        pass
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCrashInForwardRefToTypedDictWithIsinstance]
+from mypy_extensions import TypedDict
+from typing import Dict
+
+NameDict = Dict[str, 'NameInfo']
+class NameInfo(TypedDict):
+    ast: bool
+
+def parse_ast(name_dict: NameDict) -> None:
+    if isinstance(name_dict[''], int):
+        pass
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCorrectIsinstanceInForwardRefToNewType]
+from typing import Dict, NewType
+
+NameDict = Dict[str, 'NameInfo']
+class NameInfoBase:
+    ast: bool
+NameInfo = NewType('NameInfo', NameInfoBase)
+
+def parse_ast(name_dict: NameDict) -> None:
+    if isinstance(name_dict[''], int):
+        pass
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCorrectAttributeInForwardRefToNamedTuple]
+from typing import NamedTuple
+
+def get_state(proc: 'Process') -> int:
+    return proc.state
+class Process(NamedTuple):
+     state: int
+[out]
+
+[case testCorrectItemTypeInForwardRefToTypedDict]
+from mypy_extensions import TypedDict
+
+def get_state(proc: 'Process') -> int:
+    return proc['state']
+class Process(TypedDict):
+     state: int
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCorrectDoubleForwardNamedTuple]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    name: 'B'
+    year: int
+class B(NamedTuple):
+    director: str
+
+x: A
+reveal_type(x.name.director)  # E: Revealed type is 'builtins.str'
+[out]
+
+[case testCrashOnDoubleForwardTypedDict]
+from mypy_extensions import TypedDict
+
+class A(TypedDict):
+    name: 'B'
+    year: int
+class B(TypedDict):
+    director: str
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCrashOnForwardUnionOfNamedTuples]
+from typing import Union, NamedTuple
+
+NodeType = Union['Foo', 'Bar']
+class Foo(NamedTuple):
+    pass
+class Bar(NamedTuple):
+    pass
+
+def foo(node: NodeType):
+    x = node
+[out]
+
+[case testCrashOnForwardUnionOfTypedDicts]
+from mypy_extensions import TypedDict
+from typing import Union
+
+NodeType = Union['Foo', 'Bar']
+class Foo(TypedDict):
+    pass
+class Bar(TypedDict):
+    pass
+
+def foo(node: NodeType):
+    x = node
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testSupportForwardUnionOfNewTypes]
+from typing import Union, NewType
+
+NodeType = Union['Foo', 'Bar']
+Foo = NewType('Foo', int)
+Bar = NewType('Bar', str)
+
+def foo(node: NodeType):
+    x = node
+[out]
+
+[case testCrashOnComplexCheckWithNamedTupleUnion]
+from typing import NamedTuple, Union
+
+AOrB = Union['A', 'B']
+class A(NamedTuple):
+    lat: float
+    lng: float
+
+class B(object):
+    def __init__(self, a: AOrB) -> None:
+        self.a = a
+    @property
+    def lat(self) -> float:
+        return self.a.lat
+    @property
+    def lng(self) -> float:
+        return self.a.lng
+[builtins fixtures/property.pyi]
+[out]
+
 [case testCrashInvalidArgsSyntheticClassSyntax]
 from typing import List, NamedTuple
 from mypy_extensions import TypedDict
