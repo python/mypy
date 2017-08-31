@@ -1027,7 +1027,7 @@ class MessageBuilder:
                   .format(self.format(typ)), context)
 
     def note_call(self, subtype: Type, call: Type, context: Context) -> None:
-        self.note("'{}.__call__' has type {}".format(self.format_bare(subtype),
+        self.note('"{}.__call__" has type {}'.format(self.format_bare(subtype),
                                                      self.format(call, verbosity=1)), context)
 
     def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
