@@ -290,7 +290,7 @@ class C:
     def __aenter__(self) -> int: pass
     async def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
-    async with C() as x:  # E: Incompatible types in "async with" for __aenter__ (actual type "int", expected type "Awaitable[Any]")
+    async with C() as x:  # E: Incompatible types in "async with" for "__aenter__" (actual type "int", expected type "Awaitable[Any]")
         pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
@@ -312,7 +312,7 @@ class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> int: pass
 async def f() -> None:
-    async with C() as x: # E: Incompatible types in "async with" for __aexit__ (actual type "int", expected type "Awaitable[Any]")
+    async with C() as x: # E: Incompatible types in "async with" for "__aexit__" (actual type "int", expected type "Awaitable[Any]")
         pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
