@@ -183,6 +183,16 @@ class MessageBuilder:
         """Report a warning message (unless disabled)."""
         self.report(msg, context, 'warning', file=file, origin=origin)
 
+    def quote_type_string(self, type_string: str) -> str:
+        """Quotes a type representation for use in messages."""
+        no_quote_regex = r'^<(tuple|union): \d+ items>$'
+        if (type_string in ['Module', 'overloaded function', '<nothing>', '<deleted>']
+                or re.match(no_quote_regex, type_string) is not None):
+            # Messages are easier to read if these aren't quoted.  We use a
+            # regex to match strings with variable contents.
+            return type_string
+        return '"{}"'.format(type_string)
+
     def format(self, typ: Type, verbosity: int = 0) -> str:
         """
         Convert a type to a relatively short string suitable for error messages.
@@ -192,14 +202,7 @@ class MessageBuilder:
         modification of the formatted string is required, callers should use
         .format_bare.
         """
-        ret = self.format_bare(typ, verbosity)
-        no_quote_regex = r'^tuple\(length \d+\)$'
-        if (ret in ['Module', 'overloaded function', '<nothing>', '<deleted>']
-                or re.match(no_quote_regex, ret) is not None):
-            # Messages are easier to read if these aren't quoted.  We use a
-            # regex to match strings with variable contents.
-            return ret
-        return '"{}"'.format(ret)
+        return self.quote_type_string(self.format_bare(typ, verbosity))
 
     def format_bare(self, typ: Type, verbosity: int = 0) -> str:
         """
@@ -207,7 +210,8 @@ class MessageBuilder:
 
         This method will return an unquoted string.  If a caller doesn't need to
         perform post-processing on the string output, .format should be used
-        instead.
+        instead.  (The caller may want to use .quote_type_string after
+        processing has happened, to maintain consistent quoting in messages.)
         """
         if isinstance(typ, Instance):
             itype = typ
@@ -256,7 +260,7 @@ class MessageBuilder:
             if len(s) < 400:
                 return s
             else:
-                return 'tuple(length {})'.format(len(items))
+                return '<tuple: {} items>'.format(len(items))
         elif isinstance(typ, TypedDictType):
             # If the TypedDictType is named, return the name
             if not typ.is_anonymous():
@@ -284,7 +288,7 @@ class MessageBuilder:
                 if len(s) < 400:
                     return s
                 else:
-                    return 'union type ({} items)'.format(len(items))
+                    return '<union: {} items>'.format(len(items))
         elif isinstance(typ, NoneTyp):
             return 'None'
         elif isinstance(typ, AnyType):
@@ -614,8 +618,9 @@ class MessageBuilder:
                 arg_type_str = '*' + arg_type_str
             elif arg_kind == ARG_STAR2:
                 arg_type_str = '**' + arg_type_str
-            msg = 'Argument {} {}has incompatible type "{}"; expected "{}"'.format(
-                n, target, arg_type_str, expected_type_str)
+            msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
+                n, target, self.quote_type_string(arg_type_str),
+                self.quote_type_string(expected_type_str))
             if isinstance(arg_type, Instance) and isinstance(expected_type, Instance):
                 notes = append_invariance_notes(notes, arg_type, expected_type)
         self.fail(msg, context)
