@@ -141,7 +141,7 @@ from typing import Any
 def g() -> Any: pass
 def f() -> int: return g()
 [out]
-main:4: warning: Returning Any from function with declared return type "builtins.int"
+main:4: warning: Returning Any from function with declared return type "int"
 
 [case testReturnAnySilencedFromTypedFunction]
 # flags: --warn-return-any
