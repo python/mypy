@@ -1215,7 +1215,7 @@ from typing import Iterator, Callable
 lambda: (yield)
 
 gen: Callable[[], Iterator[str]]
-gen = (lambda: (yield 1))  # E: Incompatible types in yield (actual type "int", expected type "str")
+gen = (lambda: (yield 1))  # E: Incompatible types in "yield" (actual type "int", expected type "str")
 
 def fun(cb: Callable[[], Iterator[str]]) -> None:
     pass

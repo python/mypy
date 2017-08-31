@@ -1664,7 +1664,7 @@ reveal_type(apply_gen(Add5())) # E: Revealed type is 'builtins.int*'
 def apply_str(f: Callable[[str], int], x: str) -> int:
     return f(x)
 apply_str(Add5(), 'a') # E: Argument 1 to "apply_str" has incompatible type "Add5"; expected "Callable[[str], int]" \
-                       # N: 'Add5.__call__' has type "Callable[[Arg(int, 'x')], int]"
+                       # N: "Add5.__call__" has type "Callable[[Arg(int, 'x')], int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMoreComplexCallableStructuralSubtyping]
@@ -1681,9 +1681,9 @@ class Bad2:
     def __call__(self, y: int, *rest: str) -> int: pass
 call_soon(Good())
 call_soon(Bad1()) # E: Argument 1 to "call_soon" has incompatible type "Bad1"; expected "Callable[[int, VarArg(str)], int]" \
-                  # N: 'Bad1.__call__' has type "Callable[[Arg(int, 'x'), VarArg(int)], int]"
+                  # N: "Bad1.__call__" has type "Callable[[Arg(int, 'x'), VarArg(int)], int]"
 call_soon(Bad2()) # E: Argument 1 to "call_soon" has incompatible type "Bad2"; expected "Callable[[int, VarArg(str)], int]" \
-                  # N: 'Bad2.__call__' has type "Callable[[Arg(int, 'y'), VarArg(str)], int]"
+                  # N: "Bad2.__call__" has type "Callable[[Arg(int, 'y'), VarArg(str)], int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testStructuralSupportForPartial]

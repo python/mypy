@@ -45,12 +45,12 @@ YIELD_VALUE_EXPECTED = 'Yield value expected'
 INCOMPATIBLE_TYPES = 'Incompatible types'
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
 INCOMPATIBLE_REDEFINITION = 'Incompatible redefinition'
-INCOMPATIBLE_TYPES_IN_AWAIT = 'Incompatible types in await'
-INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER = 'Incompatible types in "async with" for __aenter__'
-INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT = 'Incompatible types in "async with" for __aexit__'
+INCOMPATIBLE_TYPES_IN_AWAIT = 'Incompatible types in "await"'
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER = 'Incompatible types in "async with" for "__aenter__"'
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT = 'Incompatible types in "async with" for "__aexit__"'
 INCOMPATIBLE_TYPES_IN_ASYNC_FOR = 'Incompatible types in "async for"'
 
-INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
+INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in "yield"'
 INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
 MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
@@ -1032,7 +1032,7 @@ class MessageBuilder:
                   .format(self.format(typ)), context)
 
     def note_call(self, subtype: Type, call: Type, context: Context) -> None:
-        self.note("'{}.__call__' has type {}".format(self.format_bare(subtype),
+        self.note('"{}.__call__" has type {}'.format(self.format_bare(subtype),
                                                      self.format(call, verbosity=1)), context)
 
     def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
