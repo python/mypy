@@ -1050,7 +1050,7 @@ while x == 5: ...  # E: Trying to read deleted variable 'x'
 from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
-    yield '' # E: Incompatible types in yield (actual type "str", expected type "int")
+    yield '' # E: Incompatible types in "yield" (actual type "str", expected type "int")
 [builtins fixtures/for.pyi]
 [out]
 
