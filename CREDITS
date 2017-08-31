@@ -1,15 +1,10 @@
 Credits
 -------
 
-Lead developer:
-
-  Jukka Lehtosalo <jukka.lehtosalo@iki.fi>
-
 Core team:
 
-  Guido <guido@dropbox.com>
-  David Fisher <ddfisher@dropbox.com>
-  Greg Price <gregprice@dropbox.com>
+  Jukka Lehtosalo <jukka.lehtosalo@iki.fi>
+  Guido van Rossum <guido@python.org>
 
 Contributors (in alphabetical order, including typeshed):
 
@@ -23,6 +18,7 @@ Contributors (in alphabetical order, including typeshed):
   Ian Cordasco
   ctcutler
   Ben Darnell
+  David Fisher
   Miguel Garcia (@rockneurotiko)
   Mihnea Giurgea
   Ryan Gonzalez (@kirbyfan64)
@@ -48,6 +44,7 @@ Contributors (in alphabetical order, including typeshed):
   Jared Pochtar (@jaredp)
   Michal Pokorný
   Eric Price (@ecprice)
+  Greg Price
   Brodie Rao
   Sebastian Reuße
   Sebastian Riikonen
