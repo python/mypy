@@ -3400,6 +3400,7 @@ from mypy_extensions import TypedDict
 
 A = TypedDict('A', {'a': 'A'})
 a: A
+[builtins fixtures/isinstancelist.pyi]
 [out]
 
 [case testCrashInJoinOfSelfRecursiveNamedTuples]
@@ -3427,7 +3428,7 @@ class M(TypedDict):
 n: N
 m: M
 lst = [n, m]
-reveal_type(lst)
+reveal_type(lst[0])  # E: Revealed type is 'TypedDict({'x': object}, fallback=typing.Mapping[builtins.str, object])'
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
@@ -3559,17 +3560,17 @@ from typing import NamedTuple, Union
 
 AOrB = Union['A', 'B']
 class A(NamedTuple):
-    lat: float
-    lng: float
+    lat: int
+    lng: int
 
 class B(object):
     def __init__(self, a: AOrB) -> None:
         self.a = a
     @property
-    def lat(self) -> float:
+    def lat(self) -> int:
         return self.a.lat
     @property
-    def lng(self) -> float:
+    def lng(self) -> int:
         return self.a.lng
 [builtins fixtures/property.pyi]
 [out]
