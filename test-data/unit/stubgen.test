@@ -669,6 +669,8 @@ def f(a): ...
 [case testInferOptionalOnlyFunc]
 class A:
     x = None
+    def __init__(self, a=None):
+        self.x = []
     def method(self, a=None):
         self.x = []
 [out]
@@ -676,6 +678,7 @@ from typing import Any, Optional
 
 class A:
     x: Any
+    def __init__(self, a: Optional[Any] = ...) -> None: ...
     def method(self, a: Optional[Any] = ...): ...
 
 [case testAnnotationImportsFrom]
