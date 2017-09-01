@@ -771,6 +771,18 @@ alias = Dict[str, List[str]]
 [out]
 alias = Dict[str, List[str]]
 
+[case testDeepGenericTypeAliasPreserved]
+from typing import TypeVar
+
+T = TypeVar('T')
+alias = Union[T, List[T]]
+
+[out]
+from typing import TypeVar
+
+T = TypeVar('T')
+alias = Union[T, List[T]]
+
 [case testEllipsisAliasPreserved]
 
 alias = Tuple[int, ...]
