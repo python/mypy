@@ -266,6 +266,8 @@ class AliasPrinter(NodeVisitor[str]):
         super().__init__()
 
     def visit_call_expr(self, node: CallExpr) -> str:
+        # Call expressions are not usually types, but we also treat `X = TypeVar(...)` as a
+        # type alias that has to be preserved (even if TypeVar is not the same as an alias)
         callee = node.callee.accept(self)
         args = []
         for name, arg, kind in zip(node.arg_names, node.args, node.arg_kinds):
