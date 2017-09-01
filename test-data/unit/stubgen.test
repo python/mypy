@@ -201,10 +201,10 @@ _x = 1
 class A:
     _y = 1
 [out]
-_x = ...  # type: int
+_x: int
 
 class A:
-    _y = ...  # type: int
+    _y: int
 
 [case testSpecialInternalVar]
 __all__ = []
@@ -397,9 +397,9 @@ class C: ...
 [out]
 class A: ...
 
-_x = ...  # type: int
-_y = ...  # type: int
-_z = ...  # type: int
+_x: int
+_y: int
+_z: int
 
 class C: ...
 

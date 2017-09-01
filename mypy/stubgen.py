@@ -317,7 +317,7 @@ class ImportTracker:
             if alias:
                 self.reverse_alias[alias] = name
 
-    def add_import(self, module: str, alias: str=None) -> None:
+    def add_import(self, module: str, alias: Optional[str]=None) -> None:
         name = module.split('.')[0]
         self.module_for[alias or name] = None
         self.direct_imports[name] = module
@@ -513,7 +513,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
                 items = lvalue.items
                 if isinstance(o.type, TupleType):
-                    annotations = o.type.items
+                    annotations = o.type.items  # type: List[Optional[Type]]
                 else:
                     annotations = [None] * len(items)
             else:
@@ -647,7 +647,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self._vars[-1].append(target_name)
             self.record_name(target_name)
 
-    def get_init(self, lvalue: str, rvalue: Expression, annotation: Type=None) -> Optional[str]:
+    def get_init(self, lvalue: str, rvalue: Expression,
+                 annotation: Optional[Type]=None) -> Optional[str]:
         """Return initializer for a variable.
 
         Return None if we've generated one already or if the variable is internal.
