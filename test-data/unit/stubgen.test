@@ -60,12 +60,17 @@ def f(x: Any = ...): ...
 [case testPreserveFunctionAnnotation]
 def f(x: Foo) -> Bar: ...
 [out]
-def f(x: 'Foo') -> 'Bar': ...
+def f(x: Foo) -> Bar: ...
 
 [case testPreserveVarAnnotation]
 x: Foo
 [out]
+x: Foo
+
+[case testPreserveVarAnnotationWithoutQuotes]
 x: 'Foo'
+[out]
+x: Foo
 
 [case testVarArgs]
 def f(x, *y): ...
@@ -101,7 +106,7 @@ x: int
 [case testAnnotatedVariableGeneric]
 x: Foo[int, str] = ...
 [out]
-x: 'Foo[int, str]'
+x: Foo[int, str]
 
 [case testAnnotatedVariableOldSyntax]
 x = 1  # type: int
@@ -722,10 +727,10 @@ class C:
 
 y: C
 [out]
-x: 'C'
+x: C
 
 class C:
-    attr: 'C'
+    attr: C
 
 y: C
 

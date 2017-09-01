@@ -239,18 +239,10 @@ class AnnotationPrinter(TypeStrVisitor):
     def __init__(self, stubgen: 'StubGenerator') -> None:
         super().__init__()
         self.stubgen = stubgen
-        self.requires_quotes = False
-
     def visit_unbound_type(self, t: UnboundType)-> str:
         s = t.name
         base = s.split('.')[0]
         self.stubgen.import_tracker.require_name(base)
-        # if the name is not defined, assume a forward reference
-        if (not self.requires_quotes and
-                base not in dir(builtins) and
-                not any(base in vs for vs in self.stubgen._vars)):
-            self.requires_quotes = True
-
         if t.args != []:
             s += '[{}]'.format(self.list_str(t.args))
         return s
@@ -738,10 +730,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def print_annotation(self, t: Type) -> str:
         printer = AnnotationPrinter(self)
-        typename = t.accept(printer)
-        if printer.requires_quotes:
-            typename = "'{}'".format(typename)
-        return typename
+        return t.accept(printer)
 
     def is_top_level(self) -> bool:
         """Are we processing the top level of a file?"""
