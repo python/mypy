@@ -1005,7 +1005,7 @@ class MessageBuilder:
         self.fail(message, context)
 
     def incorrectly_returning_any(self, typ: Type, context: Context) -> None:
-        message = 'Returning Any from function with declared return type {}'.format(
+        message = 'Returning Any from function declared to return {}'.format(
             self.format(typ))
         self.warn(message, context)
 
