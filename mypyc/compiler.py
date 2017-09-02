@@ -101,25 +101,25 @@ class ModuleCompiler:
         emitter.emit_line('};')
         emitter.emit_line()
 
-        emitter.emit_line('static struct PyModuleDef module = {')
-        emitter.emit_line('PyModuleDef_HEAD_INIT,')
-        emitter.emit_line('"{}",'.format(self.module_name))
-        emitter.emit_line('NULL, /* docstring */')
-        emitter.emit_line('-1,       /* size of per-interpreter state of the module,')
-        emitter.emit_line('             or -1 if the module keeps state in global variables. */')
-        emitter.emit_line('module_methods')
-        emitter.emit_line('};')
+        emitter.emit_lines('static struct PyModuleDef module = {',
+                           'PyModuleDef_HEAD_INIT,',
+                           '"{}",'.format(self.module_name),
+                           'NULL, /* docstring */',
+                           '-1,       /* size of per-interpreter state of the module,',
+                           '             or -1 if the module keeps state in global variables. */',
+                           'module_methods',
+                           '};')
         emitter.emit_line()
-        emitter.emit_line('PyMODINIT_FUNC PyInit_{}(void)'.format(self.module_name))
-        emitter.emit_line('{')
-        emitter.emit_line('PyObject *m;')
+        emitter.emit_lines('PyMODINIT_FUNC PyInit_{}(void)'.format(self.module_name),
+                           '{',
+                           'PyObject *m;')
         for cl in self.module.classes:
             type_struct = cl.type_struct
             emitter.emit_lines('if (PyType_Ready(&{}) < 0)'.format(type_struct),
                                 '        return NULL;')
-        emitter.emit_line('m = PyModule_Create(&module);')
-        emitter.emit_line('if (m == NULL)')
-        emitter.emit_line('    return NULL;')
+        emitter.emit_lines('m = PyModule_Create(&module);',
+                           'if (m == NULL)',
+                           '    return NULL;')
         self.code_generator.generate_imports_init_section(self.module.imports, emitter)
         for cl in self.module.classes:
             name = cl.name
