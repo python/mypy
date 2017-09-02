@@ -10,6 +10,43 @@ from mypyc.ops import (
 )
 
 
+class Emitter:
+    """Helper for C code generation."""
+
+    def __init__(self, code_generator: 'CodeGenerator', env: Environment) -> None:
+        self.env = env
+        self.declarations = []  # type: List[str]
+        self.fragments = []  # type: List[str]
+        self.code_generator = code_generator
+
+    def all_fragments(self) -> List[str]:
+        return self.declarations + self.fragments
+
+    def label(self, label: Label) -> str:
+        return 'CPyL%d' % label
+
+    def reg(self, reg: Register) -> str:
+        name = self.env.names[reg]
+        return REG_PREFIX + name
+
+    def emit(self, string: str) -> None:
+        self.fragments.append(string)
+
+    def emit_declaration(self, line: str, indent: int = 4) -> None:
+        self.declarations.append(indent * ' ' + line + '\n')
+
+    def emit_line(self, line: str, indent: int = 4) -> None:
+        self.fragments.append(indent * ' ' + line + '\n')
+
+    def emit_lines(self, *lines: str, indent: int = 4) -> None:
+        for line in lines:
+            self.emit_line(line, indent=indent)
+
+    def emit_label(self, label: Label) -> None:
+        # Extra semicolon prevents an error when the next line declares a tempvar
+        self.emit_line('{}: ;'.format(self.label(label)), indent=0)
+
+
 class HeaderDeclaration:
     def __init__(self, dependencies: Set[str], body: List[str]) -> None:
         self.dependencies = dependencies
@@ -579,41 +616,6 @@ class CodeGenerator:
         result.append('    return 0;')
         result.append('}')
         return result
-
-
-class Emitter:
-    def __init__(self, code_generator: CodeGenerator, env: Environment) -> None:
-        self.env = env
-        self.declarations = []  # type: List[str]
-        self.fragments = []  # type: List[str]
-        self.code_generator = code_generator
-
-    def all_fragments(self) -> List[str]:
-        return self.declarations + self.fragments
-
-    def label(self, label: Label) -> str:
-        return 'CPyL%d' % label
-
-    def reg(self, reg: Register) -> str:
-        name = self.env.names[reg]
-        return REG_PREFIX + name
-
-    def emit(self, string: str) -> None:
-        self.fragments.append(string)
-
-    def emit_declaration(self, line: str, indent: int = 4) -> None:
-        self.declarations.append(indent * ' ' + line + '\n')
-
-    def emit_line(self, line: str, indent: int = 4) -> None:
-        self.fragments.append(indent * ' ' + line + '\n')
-
-    def emit_lines(self, *lines: str, indent: int = 4) -> None:
-        for line in lines:
-            self.emit_line(line, indent=indent)
-
-    def emit_label(self, label: Label) -> None:
-        # Extra semicolon prevents an error when the next line declares a tempvar
-        self.emit_line('{}: ;'.format(self.label(label)), indent=0)
 
 
 class EmitterVisitor(OpVisitor):
