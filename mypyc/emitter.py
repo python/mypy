@@ -28,9 +28,6 @@ class Emitter:
         name = self.env.names[reg]
         return REG_PREFIX + name
 
-    def emit(self, string: str) -> None:
-        self.fragments.append(string)
-
     def emit_declaration(self, line: str, indent: int = 4) -> None:
         self.declarations.append(indent * ' ' + line + '\n')
 
@@ -867,9 +864,6 @@ class EmitterVisitor(OpVisitor):
 
     def type(self, reg: Register) -> RTType:
         return self.env.types[reg]
-
-    def emit(self, string: str) -> None:
-        self.emitter.emit(string)
 
     def emit_line(self, line: str, indent: int = 4) -> None:
         self.emitter.emit_line(line, indent)

@@ -27,11 +27,6 @@ class TestEmitter(unittest.TestCase):
     def test_reg(self):
         assert self.emitter.reg(self.n) == 'cpy_r_n'
 
-    def test_emit(self):
-        self.emitter.emit('foobar')
-        self.emitter.emit('x\ny')
-        assert self.emitter.fragments == ['foobar', 'x\ny']
-
     def test_emit_line(self):
         self.emitter.emit_line('line;')
         self.emitter.emit_line('a', indent=0)
