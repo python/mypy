@@ -13,8 +13,8 @@ from mypyc.ops import (
 class Emitter:
     """Helper for C code generation."""
 
-    def __init__(self, env: Environment) -> None:
-        self.env = env
+    def __init__(self, env: Environment = None) -> None:
+        self.env = env or Environment()
         self.fragments = []  # type: List[str]
         self._indent = 0
 
@@ -32,8 +32,8 @@ class Emitter:
         name = self.env.names[reg]
         return REG_PREFIX + name
 
-    def emit_line(self, line: str) -> None:
-        if line.endswith('}'):
+    def emit_line(self, line: str = '') -> None:
+        if line.startswith('}'):
             self.dedent()
         self.fragments.append(self._indent * ' ' + line + '\n')
         if line.endswith('{'):
@@ -147,16 +147,12 @@ class CodeGenerator:
         self.temp_counter += 1
         return '__tmp%d' % self.temp_counter
 
-    def generate_imports_init_section(self, imps: List[str]) -> List[str]:
-        result = []
-
+    def generate_imports_init_section(self, imps: List[str], emitter: Emitter) -> None:
         for imp in imps:
-            result.append('    /* import {} */'.format(imp))
-            result.append('    {} = PyImport_ImportModule("{}");'.format(c_module_name(imp), imp))
-            result.append('    if ({} == NULL)'.format(c_module_name(imp)))
-            result.append('        return NULL;')
-
-        return result
+            emitter.emit_line('/* import {} */'.format(imp))
+            emitter.emit_line('{} = PyImport_ImportModule("{}");'.format(c_module_name(imp), imp))
+            emitter.emit_line('if ({} == NULL)'.format(c_module_name(imp)))
+            emitter.emit_line('    return NULL;')
 
     def generate_c_for_function(self, fn: FuncIR) -> List[str]:
         declarations = Emitter(fn.env)

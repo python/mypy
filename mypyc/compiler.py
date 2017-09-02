@@ -12,34 +12,11 @@ from mypyc.emitter import (
     native_function_header,
     wrapper_function_header,
     CodeGenerator,
+    Emitter,
 )
 from mypyc.common import PREFIX
 from mypyc.ops import FuncIR, ClassIR, RTType, ModuleIR
 from mypyc.refcount import insert_ref_count_opcodes
-
-
-INIT_FUNC_FORMAT = textwrap.dedent("""\
-    static struct PyModuleDef module = {{
-        PyModuleDef_HEAD_INIT,
-        "{name}",
-        NULL, /* docstring */
-        -1,       /* size of per-interpreter state of the module,
-                     or -1 if the module keeps state in global variables. */
-        module_methods
-    }};
-
-    PyMODINIT_FUNC PyInit_{name}(void)
-    {{
-        PyObject *m;
-        {init_classes}
-        m = PyModule_Create(&module);
-        if (m == NULL)
-            return NULL;
-    {init_modules}
-        {namespace_setup}
-        return m;
-    }}
-""")
 
 
 def compile_module_to_c(sources: List[BuildSource], module_name: str, options: Options,
@@ -87,8 +64,8 @@ class ModuleCompiler:
 
         result.append('')
 
-        fragments = self.generate_module_def()
-        result.extend(fragments)
+        defs = self.generate_module_def()
+        result.append(defs.rstrip())
 
         for fn in self.module.functions:
             result.append('')
@@ -110,36 +87,46 @@ class ModuleCompiler:
 
         return '\n'.join(fresult)
 
-    def generate_module_def(self) -> List[str]:
-        lines = []
-        lines.append('static PyMethodDef module_methods[] = {')
+    def generate_module_def(self) -> str:
+        emitter = Emitter()
+
+        emitter.emit_line('static PyMethodDef module_methods[] = {')
         for fn in self.module.functions:
-            lines.append(
-                ('    {{"{name}", (PyCFunction){prefix}{name}, METH_VARARGS | METH_KEYWORDS, '
+            emitter.emit_line(
+                ('{{"{name}", (PyCFunction){prefix}{name}, METH_VARARGS | METH_KEYWORDS, '
                  'NULL /* docstring */}},').format(
                     name=fn.name,
                     prefix=PREFIX))
-        lines.append('    {NULL, NULL, 0, NULL}')
-        lines.append('};')
-        lines.append('')
+        emitter.emit_line('{NULL, NULL, 0, NULL}')
+        emitter.emit_line('};')
+        emitter.emit_line()
 
-        init_classes = []
-        namespace_setup = []  # type: List[str]
+        emitter.emit_line('static struct PyModuleDef module = {')
+        emitter.emit_line('PyModuleDef_HEAD_INIT,')
+        emitter.emit_line('"{}",'.format(self.module_name))
+        emitter.emit_line('NULL, /* docstring */')
+        emitter.emit_line('-1,       /* size of per-interpreter state of the module,')
+        emitter.emit_line('             or -1 if the module keeps state in global variables. */')
+        emitter.emit_line('module_methods')
+        emitter.emit_line('};')
+        emitter.emit_line()
+        emitter.emit_line('PyMODINIT_FUNC PyInit_{}(void)'.format(self.module_name))
+        emitter.emit_line('{')
+        emitter.emit_line('PyObject *m;')
+        for cl in self.module.classes:
+            type_struct = cl.type_struct
+            emitter.emit_lines('if (PyType_Ready(&{}) < 0)'.format(type_struct),
+                                '        return NULL;')
+        emitter.emit_line('m = PyModule_Create(&module);')
+        emitter.emit_line('if (m == NULL)')
+        emitter.emit_line('    return NULL;')
+        self.code_generator.generate_imports_init_section(self.module.imports, emitter)
         for cl in self.module.classes:
             name = cl.name
             type_struct = cl.type_struct
-            init_classes.extend(['if (PyType_Ready(&{}) < 0)'.format(type_struct),
-                                 '        return NULL;'])
-            namespace_setup.extend(
-                ['Py_INCREF(&{});'.format(type_struct),
-                 '    PyModule_AddObject(m, "{}", (PyObject *)&{});'.format(name, type_struct)])
-
-        lines.extend(
-            INIT_FUNC_FORMAT.format(
-                name=self.module_name,
-                init_classes='\n'.join(init_classes),
-                init_modules='\n'.join(
-                    self.code_generator.generate_imports_init_section(self.module.imports)
-                ),
-                namespace_setup='\n'.join(namespace_setup)).splitlines())
-        return lines
+            emitter.emit_lines(
+                'Py_INCREF(&{});'.format(type_struct),
+                'PyModule_AddObject(m, "{}", (PyObject *)&{});'.format(name, type_struct))
+        emitter.emit_line('return m;')
+        emitter.emit_line('}')
+        return ''.join(emitter.fragments)

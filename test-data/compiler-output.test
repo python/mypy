@@ -29,7 +29,6 @@ static struct PyModuleDef module = {
 PyMODINIT_FUNC PyInit_prog(void)
 {
     PyObject *m;
-
     m = PyModule_Create(&module);
     if (m == NULL)
         return NULL;
@@ -37,7 +36,6 @@ PyMODINIT_FUNC PyInit_prog(void)
     module_builtins = PyImport_ImportModule("builtins");
     if (module_builtins == NULL)
         return NULL;
-
     return m;
 }
 
