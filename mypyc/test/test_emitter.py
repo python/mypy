@@ -46,7 +46,8 @@ class TestEmitterVisitor(unittest.TestCase):
         self.ll = self.env.add_local(Var('ll'), RTType('list'))
         self.o = self.env.add_local(Var('o'), RTType('object'))
         self.emitter = Emitter(self.env)
-        self.visitor = EmitterVisitor(self.emitter, CodeGenerator())
+        self.declarations = Emitter(self.env)
+        self.visitor = EmitterVisitor(self.emitter, self.declarations, CodeGenerator())
 
     def test_goto(self):
         self.assert_emit(Goto(2),
@@ -212,10 +213,11 @@ class TestEmitterVisitor(unittest.TestCase):
                          """CPY_SET_ATTR(cpy_r_n, 3, cpy_r_m, AObject, CPyTagged);""")
 
     def assert_emit(self, op, expected):
-        self.emitter.declarations = []
         self.emitter.fragments = []
+        self.declarations.fragments = []
         op.accept(self.visitor)
-        actual_lines = [line.strip(' ') for line in self.emitter.all_fragments()]
+        frags = self.declarations.fragments + self.emitter.fragments
+        actual_lines = [line.strip(' ') for line in frags]
         assert all(line.endswith('\n') for line in actual_lines)
         actual_lines = [line.rstrip('\n') for line in actual_lines]
         expected_lines = expected.rstrip().split('\n')

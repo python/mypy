@@ -15,11 +15,7 @@ class Emitter:
 
     def __init__(self, env: Environment) -> None:
         self.env = env
-        self.declarations = []  # type: List[str]
         self.fragments = []  # type: List[str]
-
-    def all_fragments(self) -> List[str]:
-        return self.declarations + self.fragments
 
     def label(self, label: Label) -> str:
         return 'CPyL%d' % label
@@ -27,9 +23,6 @@ class Emitter:
     def reg(self, reg: Register) -> str:
         name = self.env.names[reg]
         return REG_PREFIX + name
-
-    def emit_declaration(self, line: str, indent: int = 4) -> None:
-        self.declarations.append(indent * ' ' + line + '\n')
 
     def emit_line(self, line: str, indent: int = 4) -> None:
         self.fragments.append(indent * ' ' + line + '\n')
@@ -154,16 +147,17 @@ class CodeGenerator:
         return result
 
     def generate_c_for_function(self, fn: FuncIR) -> List[str]:
+        declarations = Emitter(fn.env)
         emitter = Emitter(fn.env)
-        visitor = EmitterVisitor(emitter, self)
+        visitor = EmitterVisitor(emitter, declarations, self)
 
-        emitter.emit_declaration('{} {{'.format(native_function_header(fn)), indent=0)
+        declarations.emit_line('{} {{'.format(native_function_header(fn)), indent=0)
 
         for i in range(len(fn.args), fn.env.num_regs()):
             ctype = fn.env.types[i].ctype
-            emitter.emit_declaration('{ctype} {prefix}{name};'.format(ctype=ctype,
-                                                                      prefix=REG_PREFIX,
-                                                                      name=fn.env.names[i]))
+            declarations.emit_line('{ctype} {prefix}{name};'.format(ctype=ctype,
+                                                                    prefix=REG_PREFIX,
+                                                                    name=fn.env.names[i]))
 
         for block in fn.blocks:
             emitter.emit_label(block.label)
@@ -172,7 +166,7 @@ class CodeGenerator:
 
         emitter.emit_line('}', indent=0);
 
-        return emitter.all_fragments()
+        return declarations.fragments + emitter.fragments
 
     def generate_box(self, src: str, dest: str, typ: RTType, failure: str) -> List[str]:
         """Generate code for boxing a value of give type.
@@ -615,8 +609,10 @@ class CodeGenerator:
 
 
 class EmitterVisitor(OpVisitor):
-    def __init__(self, emitter: Emitter, code_generator: CodeGenerator) -> None:
+    def __init__(self, emitter: Emitter, declarations: Emitter,
+                 code_generator: CodeGenerator) -> None:
         self.emitter = emitter
+        self.declarations = declarations
         self.code_generator = code_generator
         self.env = self.emitter.env
 
@@ -687,7 +683,7 @@ class EmitterVisitor(OpVisitor):
                                 '    abort();')
             elif op.desc is PrimitiveOp.LIST_REPEAT:
                 temp = self.temp_name()
-                self.emit_declaration('long long %s;' % temp)
+                self.declarations.emit_line('long long %s;' % temp)
                 self.emit_lines(
                     '%s = CPyTagged_AsLongLong(%s);' % (temp, right),
                     'if (%s == -1 && PyErr_Occurred())' % temp,
@@ -746,12 +742,12 @@ class EmitterVisitor(OpVisitor):
             src = self.reg(op.args[0])
             if op.desc is PrimitiveOp.LIST_LEN:
                 temp = self.temp_name()
-                self.emit_declaration('long long %s;' % temp)
+                self.declarations.emit_line('long long %s;' % temp)
                 self.emit_line('%s = PyList_GET_SIZE(%s);' % (temp, src))
                 self.emit_line('%s = CPyTagged_ShortFromLongLong(%s);' % (dest, temp))
             elif op.desc is PrimitiveOp.HOMOGENOUS_TUPLE_LEN:
                 temp = self.temp_name()
-                self.emit_declaration('long long %s;' % temp)
+                self.declarations.emit_line('long long %s;' % temp)
                 self.emit_line('%s = PyTuple_GET_SIZE(%s);' % (temp, src))
                 self.emit_line('%s = CPyTagged_ShortFromLongLong(%s);' % (dest, temp))
             elif op.desc is PrimitiveOp.LIST_TO_HOMOGENOUS_TUPLE:
@@ -870,9 +866,6 @@ class EmitterVisitor(OpVisitor):
 
     def emit_lines(self, *lines: str, indent: int = 4) -> None:
         self.emitter.emit_lines(*lines, indent=indent)
-
-    def emit_declaration(self, line: str, indent: int = 4) -> None:
-        self.emitter.emit_declaration(line, indent)
 
     def emit_print(self, args: str) -> None:
         """Emit printf call (for debugging mypyc)."""
