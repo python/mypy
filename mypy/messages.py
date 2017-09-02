@@ -11,7 +11,7 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Option
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
-    Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
+    Type, CallableType, Instance, TypeVarDef, TypeVarType, TupleType, TypedDictType,
     UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny
 )
@@ -883,6 +883,19 @@ class MessageBuilder:
                                    context: Context) -> None:
         self.fail(INCOMPATIBLE_TYPEVAR_VALUE.format(typevar_name, callable_name(callee),
                                                     self.format(typ)), context)
+
+    def new_incompatible_typevar_value(self,
+                                       callee: CallableType,
+                                       variable: TypeVarDef,
+                                       context: Context) -> None:
+        self.fail(
+            'Argument types for type variable "{}" are incompatible in call to {}'.format(
+                variable.name, callable_name(callee)),
+            context)
+        self.note(
+            'All arguments for type variable "{}" must be of the same type (one of {})'.format(
+                variable.name, ', '.join(self.format(typ) for typ in variable.values)),
+            context)
 
     def overloaded_signatures_overlap(self, index1: int, index2: int,
                                       context: Context) -> None:
