@@ -16,6 +16,14 @@ class Emitter:
     def __init__(self, env: Environment) -> None:
         self.env = env
         self.fragments = []  # type: List[str]
+        self._indent = 0
+
+    def indent(self) -> None:
+        self._indent += 4
+
+    def dedent(self) -> None:
+        self._indent -= 4
+        assert self._indent >= 0
 
     def label(self, label: Label) -> str:
         return 'CPyL%d' % label
@@ -24,16 +32,20 @@ class Emitter:
         name = self.env.names[reg]
         return REG_PREFIX + name
 
-    def emit_line(self, line: str, indent: int = 4) -> None:
-        self.fragments.append(indent * ' ' + line + '\n')
+    def emit_line(self, line: str) -> None:
+        if line.endswith('}'):
+            self.dedent()
+        self.fragments.append(self._indent * ' ' + line + '\n')
+        if line.endswith('{'):
+            self.indent()
 
-    def emit_lines(self, *lines: str, indent: int = 4) -> None:
+    def emit_lines(self, *lines: str) -> None:
         for line in lines:
-            self.emit_line(line, indent=indent)
+            self.emit_line(line)
 
     def emit_label(self, label: Label) -> None:
         # Extra semicolon prevents an error when the next line declares a tempvar
-        self.emit_line('{}: ;'.format(self.label(label)), indent=0)
+        self.fragments.append('{}: ;\n'.format(self.label(label)))
 
 
 class HeaderDeclaration:
@@ -151,7 +163,8 @@ class CodeGenerator:
         emitter = Emitter(fn.env)
         visitor = EmitterVisitor(emitter, declarations, self)
 
-        declarations.emit_line('{} {{'.format(native_function_header(fn)), indent=0)
+        declarations.emit_line('{} {{'.format(native_function_header(fn)))
+        emitter.indent()
 
         for i in range(len(fn.args), fn.env.num_regs()):
             ctype = fn.env.types[i].ctype
@@ -164,7 +177,7 @@ class CodeGenerator:
             for op in block.ops:
                 op.accept(visitor)
 
-        emitter.emit_line('}', indent=0);
+        emitter.emit_line('}')
 
         return declarations.fragments + emitter.fragments
 
@@ -264,7 +277,7 @@ class CodeGenerator:
             ]
         elif typ.name == 'bool':
             return [
-                '    if(!PyBool_Check({}))'.format(src),
+                '    if (!PyBool_Check({}))'.format(src),
                 failure,
                 '    char {} = PyObject_IsTrue({});'.format(dest, src)
             ]
@@ -861,11 +874,11 @@ class EmitterVisitor(OpVisitor):
     def type(self, reg: Register) -> RTType:
         return self.env.types[reg]
 
-    def emit_line(self, line: str, indent: int = 4) -> None:
-        self.emitter.emit_line(line, indent)
+    def emit_line(self, line: str) -> None:
+        self.emitter.emit_line(line)
 
-    def emit_lines(self, *lines: str, indent: int = 4) -> None:
-        self.emitter.emit_lines(*lines, indent=indent)
+    def emit_lines(self, *lines: str) -> None:
+        self.emitter.emit_lines(*lines)
 
     def emit_print(self, args: str) -> None:
         """Emit printf call (for debugging mypyc)."""

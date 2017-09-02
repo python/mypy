@@ -29,11 +29,13 @@ class TestEmitter(unittest.TestCase):
 
     def test_emit_line(self):
         self.emitter.emit_line('line;')
-        self.emitter.emit_line('a', indent=0)
-        self.emitter.emit_line('b', indent=8)
-        assert self.emitter.fragments == ['    line;\n',
-                                          'a\n',
-                                          '        b\n']
+        self.emitter.emit_line('a {')
+        self.emitter.emit_line('f();')
+        self.emitter.emit_line('}')
+        assert self.emitter.fragments == ['line;\n',
+                                          'a {\n',
+                                          '    f();\n',
+                                          '}\n']
 
 
 class TestEmitterVisitor(unittest.TestCase):
