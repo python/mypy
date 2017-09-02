@@ -19,7 +19,7 @@ class TestEmitter(unittest.TestCase):
     def setUp(self):
         self.env = Environment()
         self.n = self.env.add_local(Var('n'), RTType('int'))
-        self.emitter = Emitter(CodeGenerator(), self.env)
+        self.emitter = Emitter(self.env)
 
     def test_label(self):
         assert self.emitter.label(4) == 'CPyL4'
@@ -50,8 +50,8 @@ class TestEmitterVisitor(unittest.TestCase):
         self.l = self.env.add_local(Var('l'), RTType('list'))
         self.ll = self.env.add_local(Var('ll'), RTType('list'))
         self.o = self.env.add_local(Var('o'), RTType('object'))
-        self.emitter = Emitter(CodeGenerator(), self.env)
-        self.visitor = EmitterVisitor(self.emitter)
+        self.emitter = Emitter(self.env)
+        self.visitor = EmitterVisitor(self.emitter, CodeGenerator())
 
     def test_goto(self):
         self.assert_emit(Goto(2),

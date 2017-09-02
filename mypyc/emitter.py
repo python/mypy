@@ -13,11 +13,10 @@ from mypyc.ops import (
 class Emitter:
     """Helper for C code generation."""
 
-    def __init__(self, code_generator: 'CodeGenerator', env: Environment) -> None:
+    def __init__(self, env: Environment) -> None:
         self.env = env
         self.declarations = []  # type: List[str]
         self.fragments = []  # type: List[str]
-        self.code_generator = code_generator
 
     def all_fragments(self) -> List[str]:
         return self.declarations + self.fragments
@@ -158,8 +157,8 @@ class CodeGenerator:
         return result
 
     def generate_c_for_function(self, fn: FuncIR) -> List[str]:
-        emitter = Emitter(self, fn.env)
-        visitor = EmitterVisitor(emitter)
+        emitter = Emitter(fn.env)
+        visitor = EmitterVisitor(emitter, self)
 
         emitter.emit_declaration('{} {{'.format(native_function_header(fn)), indent=0)
 
@@ -619,9 +618,9 @@ class CodeGenerator:
 
 
 class EmitterVisitor(OpVisitor):
-    def __init__(self, emitter: Emitter) -> None:
+    def __init__(self, emitter: Emitter, code_generator: CodeGenerator) -> None:
         self.emitter = emitter
-        self.code_generator = self.emitter.code_generator
+        self.code_generator = code_generator
         self.env = self.emitter.env
 
     def temp_name(self) -> str:
