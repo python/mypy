@@ -888,6 +888,7 @@ class MessageBuilder:
                                        callee: CallableType,
                                        variable: TypeVarDef,
                                        context: Context) -> None:
+        from mypy.typeanal import collect_all_inner_types
         callee_name = callable_name(callee)
         self.fail(
             'Argument types for type variable "{}" are incompatible in call to {}'.format(
@@ -895,12 +896,14 @@ class MessageBuilder:
             context)
         arg_indexes = []
         for n, arg_type in enumerate(callee.arg_types):
-            if isinstance(arg_type, TypeVarType):
-                if arg_type.id == variable.id:
-                    arg_indexes.append('"{}"'.format(callee.arg_names[n]))
+            for typ in [arg_type] + collect_all_inner_types(arg_type):
+                if isinstance(typ, TypeVarType):
+                    if typ.id == variable.id:
+                        arg_indexes.append('"{}"'.format(callee.arg_names[n]))
+                        break
         self.note(
-            'Arguments {} in call to {} must all be of the same type (one of {})'.format(
-                format_string_list(arg_indexes, suppress=False), callee_name,
+            'Arguments {} in call to {} must all have the same type for "{}" (one of {})'.format(
+                format_string_list(arg_indexes, suppress=False), callee_name, variable.name,
                 ', '.join(self.format(typ) for typ in variable.values)),
             context)
 
