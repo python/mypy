@@ -370,6 +370,14 @@ class MessageBuilder:
                 return (str1, str2)
         return (str1, str2)
 
+    def format_arg_string(self, arg_type_str: str, arg_kind: int) -> str:
+        """Given a type string and arg_kind, return a quoted, starred string."""
+        if arg_kind == ARG_STAR:
+            arg_type_str = '*' + arg_type_str
+        elif arg_kind == ARG_STAR2:
+            arg_type_str = '**' + arg_type_str
+        return self.quote_type_string(arg_type_str)
+
     #
     # Specific operations
     #
@@ -613,12 +621,8 @@ class MessageBuilder:
                 expected_type = callee.arg_types[-1]
             arg_type_str, expected_type_str = self.format_distinctly(
                 arg_type, expected_type, bare=True)
-            if arg_kind == ARG_STAR:
-                arg_type_str = '*' + arg_type_str
-            elif arg_kind == ARG_STAR2:
-                arg_type_str = '**' + arg_type_str
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
-                n, target, self.quote_type_string(arg_type_str),
+                n, target, self.format_arg_string(arg_type_str, arg_kind),
                 self.quote_type_string(expected_type_str))
             if isinstance(arg_type, Instance) and isinstance(expected_type, Instance):
                 notes = append_invariance_notes(notes, arg_type, expected_type)
