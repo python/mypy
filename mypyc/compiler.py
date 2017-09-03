@@ -49,47 +49,40 @@ class ModuleCompiler:
         self.code_generator = CodeGenerator()
 
     def generate_c_module(self) -> str:
-        result = []
+        emitter = Emitter()
 
         code_generator = CodeGenerator()
         code_generator.declare_imports(self.module.imports)
 
         for cl in self.module.classes:
             fragments = code_generator.generate_class_declaration(cl, self.module_name)
-            result.extend(fragments)
+            emitter.emit_lines(*fragments)
 
         for fn in self.module.functions:
             fragments = generate_function_declaration(fn)
-            result.extend(fragments)
+            emitter.emit_lines(*fragments)
 
-        result.append('')
+        emitter.emit_line()
 
-        defs = self.generate_module_def()
-        result.append(defs.rstrip())
+        self.generate_module_def(emitter)
 
         for fn in self.module.functions:
-            result.append('')
-            fragments = code_generator.generate_c_for_function(fn)
-            result.extend([frag.rstrip() for frag in fragments])
-            result.append('')
-            fragments = code_generator.generate_wrapper_function(fn)
-            result.extend(fragments)
+            emitter.emit_line()
+            code_generator.generate_c_for_function(fn, emitter)
+            emitter.emit_line()
+            code_generator.generate_wrapper_function(fn, emitter)
 
-        fresult = []
-        fresult.append('#include <Python.h>')
-        fresult.append('#include <CPy.h>')
-        fresult.append('')
+        declarations = Emitter()
+        declarations.emit_line('#include <Python.h>')
+        declarations.emit_line('#include <CPy.h>')
+        declarations.emit_line()
 
         for declaration in code_generator.toposort_declarations():
-            fresult += declaration.body
+            declarations.emit_lines(*declaration.body)
 
-        fresult += result
+        return ''.join(declarations.fragments + emitter.fragments)
 
-        return '\n'.join(fresult)
-
-    def generate_module_def(self) -> str:
-        emitter = Emitter()
-
+    def generate_module_def(self, emitter: Emitter) -> None:
         emitter.emit_line('static PyMethodDef module_methods[] = {')
         for fn in self.module.functions:
             emitter.emit_line(
@@ -129,4 +122,3 @@ class ModuleCompiler:
                 'PyModule_AddObject(m, "{}", (PyObject *)&{});'.format(name, type_struct))
         emitter.emit_line('return m;')
         emitter.emit_line('}')
-        return ''.join(emitter.fragments)
