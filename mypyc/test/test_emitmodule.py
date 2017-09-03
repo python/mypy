@@ -16,7 +16,7 @@ from mypyc.test.config import test_data_prefix
 from mypyc.test.testutil import ICODE_GEN_BUILTINS, use_custom_builtins
 
 
-files = ['compiler-output.test']
+files = ['module-output.test']
 
 
 class TestCompiler(DataSuite):
