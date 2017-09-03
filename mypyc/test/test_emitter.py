@@ -10,7 +10,7 @@ from mypyc.ops import (
 )
 from mypyc.emitcommon import Emitter, EmitterContext
 from mypyc.emitfunc import generate_c_for_function, FunctionEmitterVisitor
-from mypyc.emitter import CodeGenerator
+from mypyc.compiler import generate_arg_check
 
 
 class TestEmitter(unittest.TestCase):
@@ -235,7 +235,6 @@ class TestGenerateFunction(unittest.TestCase):
         self.env = Environment()
         self.reg = self.env.add_local(self.var, RTType('int'))
         self.block = BasicBlock(Label(0))
-        self.code_generator = CodeGenerator(EmitterContext())
 
     def test_simple(self) -> None:
         self.block.ops.append(Return(self.reg))
@@ -273,11 +272,10 @@ class TestGenerateFunction(unittest.TestCase):
 class TestArgCheck(unittest.TestCase):
     def setUp(self) -> None:
         self.context = EmitterContext()
-        self.code_generator = CodeGenerator(self.context)
 
     def test_check_list(self) -> None:
         emitter = Emitter(self.context)
-        self.code_generator.generate_arg_check('x', RTType('list'), emitter)
+        generate_arg_check('x', RTType('list'), emitter)
         lines = emitter.fragments
         assert lines == [
             'PyObject *arg_x;\n',
