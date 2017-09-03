@@ -18,7 +18,7 @@ from mypy.types import (
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
-    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT
+    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, CallExpr
 )
 
 
@@ -884,10 +884,10 @@ class MessageBuilder:
         self.fail(INCOMPATIBLE_TYPEVAR_VALUE.format(typevar_name, callable_name(callee),
                                                     self.format(typ)), context)
 
-    def new_incompatible_typevar_value(self,
-                                       callee: CallableType,
-                                       variable: TypeVarDef,
-                                       context: Context) -> None:
+    def incompatible_typevar_value_in_call(self,
+                                           callee: CallableType,
+                                           variable: TypeVarDef,
+                                           context: CallExpr) -> None:
         from mypy.typeanal import collect_all_inner_types
         callee_name = callable_name(callee)
         self.fail(
