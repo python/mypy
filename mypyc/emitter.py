@@ -385,13 +385,13 @@ class CodeGenerator:
         # Use dummy empty __init__ for now.
         init = FuncIR(cl.name, [], RTType(cl.name), [], Environment())
         emitter.emit_line(native_function_header(init) + ';')
-        emitter.emit_lines(*self.generate_object_struct(cl))
+        self.generate_object_struct(cl, emitter)
         emitter.emit_line()
         emitter.emit_lines(*self.generate_new_for_class(cl, new_name, vtable_name))
         emitter.emit_line()
         emitter.emit_lines(*self.generate_dealloc_for_class(cl, dealloc_name))
         emitter.emit_line()
-        emitter.emit_lines(*self.generate_native_getters_and_setters(cl))
+        self.generate_native_getters_and_setters(cl, emitter)
         emitter.emit_lines(*self.generate_vtable(cl, vtable_name))
         emitter.emit_line()
         emitter.emit_lines(*self.generate_getseter_declarations(cl))
@@ -449,42 +449,39 @@ class CodeGenerator:
         emitter.emit_lines(*self.generate_constructor_for_class(cl, new_name, vtable_name))
         emitter.emit_lines(*self.generate_getseters(cl))
 
-    def generate_object_struct(self, cl: ClassIR) -> List[str]:
-        result = []
-        result.append('typedef struct {')
-        result.append('    PyObject_HEAD')
-        result.append('    CPyVTableItem *vtable;')
+    def generate_object_struct(self, cl: ClassIR, emitter: Emitter) -> None:
+        emitter.emit_lines('typedef struct {',
+                           'PyObject_HEAD',
+                           'CPyVTableItem *vtable;')
         for attr, rtype in cl.attributes:
-            result.append('    {}{};'.format(rtype.ctype_spaced, attr))
-        result.append('}} {};'.format(cl.struct_name))
-        return result
+            emitter.emit_line('{}{};'.format(rtype.ctype_spaced, attr))
+        emitter.emit_line('}} {};'.format(cl.struct_name))
 
     def generate_native_getters_and_setters(self,
-                                            cl: ClassIR) -> List[str]:
-        result = []
+                                            cl: ClassIR,
+                                            emitter: Emitter) -> None:
         for attr, rtype in cl.attributes:
-            result.append('{}{}({} *self)'.format(rtype.ctype_spaced,
+            emitter.emit_line('{}{}({} *self)'.format(rtype.ctype_spaced,
                                                    native_getter_name(cl.name, attr),
                                                    cl.struct_name))
-            result.append('{')
-            result.append('    if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-            result.extend(self.generate_inc_ref('self->{}'.format(attr), rtype))
-            result.append('    }')
-            result.append('    return self->{};'.format(attr))
-            result.append('}')
-            result.append('')
-            result.append('void {}({} *self, {}value)'.format(native_setter_name(cl.name, attr),
+            emitter.emit_line('{')
+            emitter.emit_line('    if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
+            emitter.emit_lines(*self.generate_inc_ref('self->{}'.format(attr), rtype))
+            emitter.emit_line('    }')
+            emitter.emit_line('    return self->{};'.format(attr))
+            emitter.emit_line('}')
+            emitter.emit_line()
+            emitter.emit_line('void {}({} *self, {}value)'.format(native_setter_name(cl.name, attr),
                                                               cl.struct_name,
                                                               rtype.ctype_spaced))
-            result.append('{')
-            result.append('    if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-            result.extend(self.generate_dec_ref('self->{}'.format(attr), rtype))
-            result.append('    }')
-            result.extend(self.generate_inc_ref('value'.format(attr), rtype))
-            result.append('    self->{} = value;'.format(attr))
-            result.append('}')
-            result.append('')
-        return result
+            emitter.emit_line('{')
+            emitter.emit_line('    if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
+            emitter.emit_lines(*self.generate_dec_ref('self->{}'.format(attr), rtype))
+            emitter.emit_line('    }')
+            emitter.emit_lines(*self.generate_inc_ref('value'.format(attr), rtype))
+            emitter.emit_line('    self->{} = value;'.format(attr))
+            emitter.emit_line('}')
+            emitter.emit_line()
 
     def generate_vtable(self,
                         cl: ClassIR,
