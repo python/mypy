@@ -51,8 +51,7 @@ class TestEmitterVisitor(unittest.TestCase):
         self.context = EmitterContext()
         self.emitter = Emitter(self.context, self.env)
         self.declarations = Emitter(self.context, self.env)
-        code_generator = CodeGenerator(EmitterContext())
-        self.visitor = EmitterVisitor(self.emitter, self.declarations, code_generator)
+        self.visitor = EmitterVisitor(self.emitter, self.declarations)
 
     def test_goto(self) -> None:
         self.assert_emit(Goto(Label(2)),

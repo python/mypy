@@ -92,7 +92,7 @@ class CodeGenerator:
     def generate_c_for_function(self, fn: FuncIR, emitter: Emitter) -> None:
         declarations = Emitter(self.context, fn.env)
         body = Emitter(self.context, fn.env)
-        visitor = EmitterVisitor(body, declarations, self)
+        visitor = EmitterVisitor(body, declarations)
 
         declarations.emit_line('{} {{'.format(native_function_header(fn)))
         body.indent()
@@ -414,11 +414,9 @@ class CodeGenerator:
 
 
 class EmitterVisitor(OpVisitor):
-    def __init__(self, emitter: Emitter, declarations: Emitter,
-                 code_generator: CodeGenerator) -> None:
+    def __init__(self, emitter: Emitter, declarations: Emitter) -> None:
         self.emitter = emitter
         self.declarations = declarations
-        self.code_generator = code_generator
         self.env = self.emitter.env
 
     def temp_name(self) -> str:
