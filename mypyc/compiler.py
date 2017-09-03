@@ -1,6 +1,5 @@
-"""Code for creating Python C extension modules from IR (intermediate representation)."""
+"""Generate C code for a Python C extension module from Python source code."""
 
-import textwrap
 from typing import List
 
 from mypy.build import BuildSource, build
@@ -25,6 +24,7 @@ class MarkedDeclaration:
 
 def compile_module_to_c(sources: List[BuildSource], module_name: str, options: Options,
                         alt_lib_path: str) -> str:
+    """Compile a Python module to source for a Python C extension module."""
     result = build(sources=sources,
                    options=options,
                    alt_lib_path=alt_lib_path)
@@ -35,8 +35,8 @@ def compile_module_to_c(sources: List[BuildSource], module_name: str, options: O
     for fn in module.functions:
         insert_ref_count_opcodes(fn)
 
-    compiler = ModuleCompiler(module_name, module)
-    return compiler.generate_c_module()
+    generator = ModuleGenerator(module_name, module)
+    return generator.generate_c_module()
 
 
 def generate_function_declaration(fn: FuncIR) -> List[str]:
@@ -46,7 +46,7 @@ def generate_function_declaration(fn: FuncIR) -> List[str]:
     ]
 
 
-class ModuleCompiler:
+class ModuleGenerator:
     def __init__(self, module_name: str, module: ModuleIR) -> None:
         self.module_name = module_name
         self.module = module
