@@ -5,6 +5,12 @@ from mypyc.emit import Emitter
 from mypyc.ops import FuncIR, RTType
 
 
+def wrapper_function_header(fn: FuncIR) -> str:
+    return 'static PyObject *{prefix}{name}(PyObject *self, PyObject *args, PyObject *kw)'.format(
+            prefix=PREFIX,
+            name=fn.name)
+
+
 def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
     """Generates a CPython-compatible wrapper function for a native function.
 
@@ -66,9 +72,3 @@ def generate_arg_check(name: str, typ: RTType, emitter: Emitter) -> None:
     """
     emitter.emit_unbox_or_cast('obj_{}'.format(name), 'arg_{}'.format(name), typ,
                                'return NULL;')
-
-
-def wrapper_function_header(fn: FuncIR) -> str:
-    return 'static PyObject *{prefix}{name}(PyObject *self, PyObject *args, PyObject *kw)'.format(
-            prefix=PREFIX,
-            name=fn.name)
