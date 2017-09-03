@@ -40,11 +40,10 @@ def compile_module_to_c(sources: List[BuildSource], module_name: str, options: O
     return generator.generate_c_module()
 
 
-def generate_function_declaration(fn: FuncIR) -> List[str]:
-    return [
+def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
+    emitter.emit_lines(
         '{};'.format(native_function_header(fn)),
-        '{};'.format(wrapper_function_header(fn))
-    ]
+        '{};'.format(wrapper_function_header(fn)))
 
 
 class ModuleGenerator:
@@ -62,8 +61,7 @@ class ModuleGenerator:
             generate_class(cl, self.module_name, emitter)
 
         for fn in self.module.functions:
-            fragments = generate_function_declaration(fn)
-            emitter.emit_lines(*fragments)
+            generate_function_declaration(fn, emitter)
 
         emitter.emit_line()
 
