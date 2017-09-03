@@ -2,7 +2,7 @@
 
 import textwrap
 
-from mypyc.emitcommon import Emitter
+from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
 from mypyc.ops import ClassIR, FuncIR, RTType, Environment, type_struct_name
 

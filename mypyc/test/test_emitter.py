@@ -8,7 +8,7 @@ from mypyc.ops import (
     PrimitiveOp, IncRef, DecRef, Branch, Call, Unbox, Box, TupleRTType, TupleGet, GetAttr,
     ClassIR, UserRTType, SetAttr, Op, Label
 )
-from mypyc.emitcommon import Emitter, EmitterContext
+from mypyc.emit import Emitter, EmitterContext
 from mypyc.emitfunc import generate_native_function, FunctionEmitterVisitor
 from mypyc.emitmodule import generate_arg_check
 

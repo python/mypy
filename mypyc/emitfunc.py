@@ -1,7 +1,7 @@
 """Code generation for native function bodies."""
 
 from mypyc.common import REG_PREFIX, NATIVE_PREFIX
-from mypyc.emitcommon import Emitter
+from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, PrimitiveOp, Assign, LoadInt, GetAttr, SetAttr,
     LoadStatic, TupleGet, Call, PyCall, PyGetAttr, IncRef, DecRef, Box, Cast, Unbox, Label,

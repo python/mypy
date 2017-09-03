@@ -8,7 +8,7 @@ from mypy.options import Options
 
 from mypyc import genops
 from mypyc.common import PREFIX, NATIVE_PREFIX
-from mypyc.emitcommon import EmitterContext, Emitter, HeaderDeclaration
+from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
 from mypyc.emitclass import generate_class
 from mypyc.ops import c_module_name, FuncIR, ClassIR, RTType, ModuleIR
