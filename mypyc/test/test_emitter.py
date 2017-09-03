@@ -10,7 +10,7 @@ from mypyc.ops import (
 )
 from mypyc.emitcommon import Emitter, EmitterContext
 from mypyc.emitfunc import generate_c_for_function, FunctionEmitterVisitor
-from mypyc.compiler import generate_arg_check
+from mypyc.emitmodule import generate_arg_check
 
 
 class TestEmitter(unittest.TestCase):

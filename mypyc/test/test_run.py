@@ -12,7 +12,7 @@ from mypy.errors import CompileError
 from mypy.options import Options
 
 from mypyc import genops
-from mypyc import compiler
+from mypyc import emitmodule
 from mypyc import buildc
 from mypyc.test.testutil import ICODE_GEN_BUILTINS, use_custom_builtins
 from mypyc.test.config import test_data_prefix
@@ -48,7 +48,7 @@ class TestRun(DataSuite):
             source = build.BuildSource('native.py', 'native', text)
 
             try:
-                ctext = compiler.compile_module_to_c(
+                ctext = emitmodule.compile_module_to_c(
                     sources=[source],
                     module_name='native',
                     options=options,

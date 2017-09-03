@@ -11,7 +11,7 @@ from mypy.errors import CompileError
 from mypy.options import Options
 
 from mypyc import genops
-from mypyc import compiler
+from mypyc import emitmodule
 from mypyc.test.config import test_data_prefix
 from mypyc.test.testutil import ICODE_GEN_BUILTINS, use_custom_builtins
 
@@ -45,7 +45,7 @@ class TestCompiler(DataSuite):
             source = build.BuildSource('prog.py', 'prog', text)
 
             try:
-                ctext = compiler.compile_module_to_c(
+                ctext = emitmodule.compile_module_to_c(
                     sources=[source],
                     module_name='prog',
                     options=options,
