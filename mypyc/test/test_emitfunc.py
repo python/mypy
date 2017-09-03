@@ -235,7 +235,7 @@ class TestGenerateFunction(unittest.TestCase):
         result = emitter.fragments
         assert_string_arrays_equal(
             [
-                'static PyObject * CPyDef_myfunc(CPyTagged cpy_r_arg) {\n',
+                'static PyObject *CPyDef_myfunc(CPyTagged cpy_r_arg) {\n',
                 '    CPyTagged cpy_r_r0;\n',
                 'CPyL0: ;\n',
                 '    cpy_r_r0 = 10;\n',

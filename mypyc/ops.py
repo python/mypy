@@ -90,6 +90,11 @@ class RTType:
         else:
             return 'NULL'
 
+    @property
+    def is_refcounted(self) -> bool:
+        """Does the unboxed representation of the type use reference counting?"""
+        return self.name != 'bool'
+
     def __repr__(self) -> str:
         return '<RTType %s>' % self.name
 
@@ -124,6 +129,10 @@ class TupleRTType(RTType):
     @property
     def ctype(self) -> str:
         return 'struct {}'.format(self.struct_name)
+
+    @property
+    def is_refcounted(self) -> bool:
+        return any(t.is_refcounted for t in self.types)
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, TupleRTType) and self.types == other.types

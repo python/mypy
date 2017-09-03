@@ -110,7 +110,7 @@ class ModuleGenerator:
         for cl in self.module.classes:
             type_struct = cl.type_struct
             emitter.emit_lines('if (PyType_Ready(&{}) < 0)'.format(type_struct),
-                                '        return NULL;')
+                                '    return NULL;')
         emitter.emit_lines('m = PyModule_Create(&module);',
                            'if (m == NULL)',
                            '    return NULL;')
@@ -170,7 +170,6 @@ class ModuleGenerator:
 
     def generate_imports_init_section(self, imps: List[str], emitter: Emitter) -> None:
         for imp in imps:
-            emitter.emit_line('/* import {} */'.format(imp))
             emitter.emit_line('{} = PyImport_ImportModule("{}");'.format(c_module_name(imp), imp))
             emitter.emit_line('if ({} == NULL)'.format(c_module_name(imp)))
             emitter.emit_line('    return NULL;')
