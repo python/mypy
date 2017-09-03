@@ -387,12 +387,12 @@ class CodeGenerator:
         emitter.emit_line(native_function_header(init) + ';')
         self.generate_object_struct(cl, emitter)
         emitter.emit_line()
-        emitter.emit_lines(*self.generate_new_for_class(cl, new_name, vtable_name))
+        self.generate_new_for_class(cl, new_name, vtable_name, emitter)
         emitter.emit_line()
-        emitter.emit_lines(*self.generate_dealloc_for_class(cl, dealloc_name))
+        self.generate_dealloc_for_class(cl, dealloc_name, emitter)
         emitter.emit_line()
         self.generate_native_getters_and_setters(cl, emitter)
-        emitter.emit_lines(*self.generate_vtable(cl, vtable_name))
+        self.generate_vtable(cl, vtable_name, emitter)
         emitter.emit_line()
         emitter.emit_lines(*self.generate_getseter_declarations(cl))
         emitter.emit_lines(*self.generate_getseters_table(cl, getseters_name))
@@ -465,34 +465,33 @@ class CodeGenerator:
                                                    native_getter_name(cl.name, attr),
                                                    cl.struct_name))
             emitter.emit_line('{')
-            emitter.emit_line('    if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
+            emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
             emitter.emit_lines(*self.generate_inc_ref('self->{}'.format(attr), rtype))
-            emitter.emit_line('    }')
-            emitter.emit_line('    return self->{};'.format(attr))
+            emitter.emit_line('}')
+            emitter.emit_line('return self->{};'.format(attr))
             emitter.emit_line('}')
             emitter.emit_line()
             emitter.emit_line('void {}({} *self, {}value)'.format(native_setter_name(cl.name, attr),
                                                               cl.struct_name,
                                                               rtype.ctype_spaced))
             emitter.emit_line('{')
-            emitter.emit_line('    if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
+            emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
             emitter.emit_lines(*self.generate_dec_ref('self->{}'.format(attr), rtype))
-            emitter.emit_line('    }')
+            emitter.emit_line('}')
             emitter.emit_lines(*self.generate_inc_ref('value'.format(attr), rtype))
-            emitter.emit_line('    self->{} = value;'.format(attr))
+            emitter.emit_line('self->{} = value;'.format(attr))
             emitter.emit_line('}')
             emitter.emit_line()
 
     def generate_vtable(self,
                         cl: ClassIR,
-                        vtable_name: str) -> List[str]:
-        result = []
-        result.append('static CPyVTableItem {}[] = {{'.format(vtable_name))
+                        vtable_name: str,
+                        emitter: Emitter) -> None:
+        emitter.emit_line('static CPyVTableItem {}[] = {{'.format(vtable_name))
         for attr, rtype in cl.attributes:
-            result.append('    (CPyVTableItem){},'.format(native_getter_name(cl.name, attr)))
-            result.append('    (CPyVTableItem){},'.format(native_setter_name(cl.name, attr)))
-        result.append('};')
-        return result
+            emitter.emit_line('(CPyVTableItem){},'.format(native_getter_name(cl.name, attr)))
+            emitter.emit_line('(CPyVTableItem){},'.format(native_setter_name(cl.name, attr)))
+        emitter.emit_line('};')
 
     def generate_constructor_for_class(self, cl: ClassIR, func_name: str,
                                        vtable_name: str) -> List[str]:
@@ -514,28 +513,32 @@ class CodeGenerator:
         result.append('}')
         return result
 
-    def generate_new_for_class(self, cl: ClassIR, func_name: str, vtable_name: str) -> List[str]:
-        result = []
-        result.append('static PyObject *')
-        result.append('{}(PyTypeObject *type, PyObject *args, PyObject *kwds)'.format(func_name))
-        result.append('{')
+    def generate_new_for_class(self,
+                               cl: ClassIR,
+                               func_name: str,
+                               vtable_name: str,
+                               emitter: Emitter) -> None:
+        emitter.emit_line('static PyObject *')
+        emitter.emit_line(
+            '{}(PyTypeObject *type, PyObject *args, PyObject *kwds)'.format(func_name))
+        emitter.emit_line('{')
         # TODO: Check and unbox arguments
-        result.append('    return CPyDef_{}();'.format(cl.name))
-        result.append('}')
-        return result
+        emitter.emit_line('return CPyDef_{}();'.format(cl.name))
+        emitter.emit_line('}')
 
-    def generate_dealloc_for_class(self, cl: ClassIR, func_name: str) -> List[str]:
-        result = []
-        result.append('static void')
-        result.append('{}({} *self)'.format(func_name, cl.struct_name))
-        result.append('{')
+    def generate_dealloc_for_class(self,
+                                   cl: ClassIR,
+                                   func_name: str,
+                                   emitter: Emitter) -> None:
+        emitter.emit_line('static void')
+        emitter.emit_line('{}({} *self)'.format(func_name, cl.struct_name))
+        emitter.emit_line('{')
         for attr, rtype in cl.attributes:
-            result.append('    if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-            result.extend(self.generate_dec_ref('self->{}'.format(attr), rtype))
-            result.append('    }')
-        result.append('    Py_TYPE(self)->tp_free((PyObject *)self);')
-        result.append('}')
-        return result
+            emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
+            emitter.emit_lines(*self.generate_dec_ref('self->{}'.format(attr), rtype))
+            emitter.emit_line('}')
+        emitter.emit_line('Py_TYPE(self)->tp_free((PyObject *)self);')
+        emitter.emit_line('}')
 
     def generate_getseter_declarations(self, cl: ClassIR) -> List[str]:
         result = []
