@@ -903,11 +903,10 @@ class MessageBuilder:
             # We collect all inner types to handle cases like List[T], where the
             # argument itself is not the type variable.
             for typ in [arg_type] + collect_all_inner_types(arg_type):
-                if isinstance(typ, TypeVarType):
-                    if typ.id == variable.id:
-                        arg_names.append(
-                            self.format_arg_string(callee.arg_names[n], callee.arg_kinds[n]))
-                        break
+                if isinstance(typ, TypeVarType) and typ.id == variable.id:
+                    arg_names.append(
+                        self.format_arg_string(callee.arg_names[n], callee.arg_kinds[n]))
+                    break
         valid_variable_types = ', '.join(
             self.format(typ) for typ in variable.values)
         if len(arg_names) > 1:
