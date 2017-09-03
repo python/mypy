@@ -898,28 +898,28 @@ class MessageBuilder:
             'Argument types for type variable "{}" are incompatible in call to {}'.format(
                 variable.name, callee_name),
             context)
-        arg_indexes = []
+        arg_names = []
         for n, arg_type in enumerate(callee.arg_types):
             for typ in [arg_type] + collect_all_inner_types(arg_type):
                 if isinstance(typ, TypeVarType):
                     if typ.id == variable.id:
-                        arg_indexes.append(
+                        arg_names.append(
                             self.format_arg_string(callee.arg_names[n], callee.arg_kinds[n]))
                         break
         valid_variable_types = ', '.join(
             self.format(typ) for typ in variable.values)
-        if len(arg_indexes) > 1:
+        if len(arg_names) > 1:
             self.note(
                 'Arguments {} in call to {} must all have the same type for'
                 ' "{}" (one of {})'.format(
-                    format_string_list(arg_indexes, suppress=False),
+                    format_string_list(arg_names, suppress=False),
                     callee_name, variable.name, valid_variable_types),
                 context)
         else:
             self.note(
                 'Argument {} in call to {} must have a valid type for "{}" (one'
                 ' of {})'.format(
-                    arg_indexes[0], callee_name, variable.name, valid_variable_types),
+                    arg_names[0], callee_name, variable.name, valid_variable_types),
                 context)
 
     def overloaded_signatures_overlap(self, index1: int, index2: int,
