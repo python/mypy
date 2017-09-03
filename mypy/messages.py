@@ -903,7 +903,8 @@ class MessageBuilder:
             for typ in [arg_type] + collect_all_inner_types(arg_type):
                 if isinstance(typ, TypeVarType):
                     if typ.id == variable.id:
-                        arg_indexes.append('"{}"'.format(callee.arg_names[n]))
+                        arg_indexes.append(
+                            self.format_arg_string(callee.arg_names[n], callee.arg_kinds[n]))
                         break
         valid_variable_types = ', '.join(
             self.format(typ) for typ in variable.values)
