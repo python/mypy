@@ -374,9 +374,7 @@ class CodeGenerator:
         # Otherwise assume it's an unboxed, pointerless value.
         return []
 
-    def generate_class_declaration(self,
-                                   cl: ClassIR,
-                                   module: str) -> List[str]:
+    def generate_class(self, cl: ClassIR, module: str, emitter: Emitter) -> None:
         name = cl.name
         fullname = '{}.{}'.format(module, name)
         new_name = '{}_new'.format(name)
@@ -384,24 +382,23 @@ class CodeGenerator:
         getseters_name = '{}_getseters'.format(name)
         vtable_name = '{}_vtable'.format(name)
 
-        result = []  # type: List[str]
         # Use dummy empty __init__ for now.
         init = FuncIR(cl.name, [], RTType(cl.name), [], Environment())
-        result.append(native_function_header(init) + ';')
-        result.extend(self.generate_object_struct(cl))
-        result.append('')
-        result.extend(self.generate_new_for_class(cl, new_name, vtable_name))
-        result.append('')
-        result.extend(self.generate_dealloc_for_class(cl, dealloc_name))
-        result.append('')
-        result.extend(self.generate_native_getters_and_setters(cl))
-        result.extend(self.generate_vtable(cl, vtable_name))
-        result.append('')
-        result.extend(self.generate_getseter_declarations(cl))
-        result.extend(self.generate_getseters_table(cl, getseters_name))
-        result.append('')
+        emitter.emit_line(native_function_header(init) + ';')
+        emitter.emit_lines(*self.generate_object_struct(cl))
+        emitter.emit_line()
+        emitter.emit_lines(*self.generate_new_for_class(cl, new_name, vtable_name))
+        emitter.emit_line()
+        emitter.emit_lines(*self.generate_dealloc_for_class(cl, dealloc_name))
+        emitter.emit_line()
+        emitter.emit_lines(*self.generate_native_getters_and_setters(cl))
+        emitter.emit_lines(*self.generate_vtable(cl, vtable_name))
+        emitter.emit_line()
+        emitter.emit_lines(*self.generate_getseter_declarations(cl))
+        emitter.emit_lines(*self.generate_getseters_table(cl, getseters_name))
+        emitter.emit_line()
 
-        result.append(textwrap.dedent("""\
+        emitter.emit_line(textwrap.dedent("""\
             static PyTypeObject {type_struct} = {{
                 PyVarObject_HEAD_INIT(NULL, 0)
                 "{fullname}",              /* tp_name */
@@ -448,10 +445,9 @@ class CodeGenerator:
                         dealloc_name=dealloc_name,
                         new_name=new_name,
                         getseters_name=getseters_name))
-        result.append('')
-        result.extend(self.generate_constructor_for_class(cl, new_name, vtable_name))
-        result.extend(self.generate_getseters(cl))
-        return result
+        emitter.emit_line()
+        emitter.emit_lines(*self.generate_constructor_for_class(cl, new_name, vtable_name))
+        emitter.emit_lines(*self.generate_getseters(cl))
 
     def generate_object_struct(self, cl: ClassIR) -> List[str]:
         result = []

@@ -55,8 +55,7 @@ class ModuleCompiler:
         code_generator.declare_imports(self.module.imports)
 
         for cl in self.module.classes:
-            fragments = code_generator.generate_class_declaration(cl, self.module_name)
-            emitter.emit_lines(*fragments)
+            code_generator.generate_class(cl, self.module_name, emitter)
 
         for fn in self.module.functions:
             fragments = generate_function_declaration(fn)
