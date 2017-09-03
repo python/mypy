@@ -1,20 +1,14 @@
 import textwrap
-from typing import List, Set, Dict
+from typing import List, Dict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
-from mypyc.emitcommon import Emitter, emit_inc_ref, emit_dec_ref
+from mypyc.emitcommon import Emitter, HeaderDeclaration, EmitterContext
 from mypyc.ops import (
     OpVisitor, Environment, Label, Register, RTType, FuncIR, Goto, Branch, Return, PrimitiveOp,
     Assign, LoadInt, IncRef, DecRef, Call, Box, Unbox, TupleRTType, TupleGet, UserRTType, ClassIR,
     GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Cast, OP_BINARY, type_struct_name,
     c_module_name
 )
-
-
-class HeaderDeclaration:
-    def __init__(self, dependencies: Set[str], body: List[str]) -> None:
-        self.dependencies = dependencies
-        self.body = body
 
 
 class MarkedDeclaration:
@@ -41,13 +35,8 @@ def native_setter_name(cl: str, attribute: str) -> str:
 
 
 class CodeGenerator:
-    def __init__(self) -> None:
-        self.temp_counter = 0
-
-        # A map of a C identifier to whatever the C identifier declares. Currently this is
-        # used for declaring structsm and the key corresponds to the name of the struct.
-        # The declaration contains the body of the struct.
-        self.declarations = {} # type: Dict[str, HeaderDeclaration]
+    def __init__(self, context: EmitterContext) -> None:
+        self.context = context
 
     def toposort_declarations(self) -> List[HeaderDeclaration]:
         """Topologically sort the declaration dict by dependencies.
@@ -60,7 +49,7 @@ class CodeGenerator:
         """
         result = []
         marked_declarations = {k: MarkedDeclaration(v, False)
-                               for k, v in self.declarations.items()}
+                               for k, v in self.context.declarations.items()}
 
         def _toposort_visit(name):
             decl = marked_declarations[name]
@@ -78,23 +67,10 @@ class CodeGenerator:
 
         return result
 
-    def declare_tuple_struct(self, tuple_type: TupleRTType) -> None:
-        if tuple_type.struct_name not in self.declarations:
-            dependencies = set()
-            for typ in tuple_type.types:
-                # XXX other types might eventually need similar behavior
-                if isinstance(typ, TupleRTType):
-                    dependencies.add(typ.struct_name)
-
-            self.declarations[tuple_type.struct_name] = HeaderDeclaration(
-                dependencies,
-                tuple_type.get_c_declaration(),
-            )
-
     def declare_global(self, type_spaced, name, static=True) -> None:
         static_str = 'static ' if static else ''
-        if name not in self.declarations:
-            self.declarations[name] = HeaderDeclaration(
+        if name not in self.context.declarations:
+            self.context.declarations[name] = HeaderDeclaration(
                 set(),
                 ['{}{}{};'.format(static_str, type_spaced, name)],
             )
@@ -106,10 +82,6 @@ class CodeGenerator:
         for imp in imps:
             self.declare_import(imp)
 
-    def temp_name(self) -> str:
-        self.temp_counter += 1
-        return '__tmp%d' % self.temp_counter
-
     def generate_imports_init_section(self, imps: List[str], emitter: Emitter) -> None:
         for imp in imps:
             emitter.emit_line('/* import {} */'.format(imp))
@@ -118,8 +90,8 @@ class CodeGenerator:
             emitter.emit_line('    return NULL;')
 
     def generate_c_for_function(self, fn: FuncIR, emitter: Emitter) -> None:
-        declarations = Emitter(fn.env)
-        body = Emitter(fn.env)
+        declarations = Emitter(self.context, fn.env)
+        body = Emitter(self.context, fn.env)
         visitor = EmitterVisitor(body, declarations, self)
 
         declarations.emit_line('{} {{'.format(native_function_header(fn)))
@@ -141,38 +113,6 @@ class CodeGenerator:
         emitter.emit_from_emitter(declarations)
         emitter.emit_from_emitter(body)
 
-    def generate_box(self, src: str, dest: str, typ: RTType, failure: str) -> List[str]:
-        """Generate code for boxing a value of give type.
-
-        Generate a simple assignment if no boxing is needed.
-        """
-        if typ.name == 'int':
-            return ['PyObject *{} = CPyTagged_AsObject({});'.format(dest, src)]
-        elif typ.name == 'bool':
-            # The Py_RETURN macros return the correct PyObject * with reference count handling.
-            return ['PyObject *{} = PyBool_FromLong({});'.format(dest, src)]
-        elif typ.name == 'tuple':
-            assert isinstance(typ, TupleRTType)
-            self.declare_tuple_struct(typ)
-            result = []
-            result.append('PyObject *{} = PyTuple_New({});'.format(dest, len(typ.types)))
-            result.append('if ({} == NULL) {{'.format(dest))
-            result.append('    {}'.format(failure))
-            result.append('}')
-            # TODO: Fail if dest is None
-            for i in range(0, len(typ.types)):
-                if not typ.supports_unbox:
-                    result.append('PyTuple_SetItem({}, {}, {}.f{}'.format(dest, i, src, i))
-                else:
-                    inner_name = self.temp_name()
-                    result += self.generate_box('{}.f{}'.format(src, i), inner_name, typ.types[i],
-                                                failure)
-                    result.append('PyTuple_SetItem({}, {}, {});'.format(dest, i, inner_name, i))
-            return result
-        else:
-            # Type is boxed -- trivially just assign.
-            return ['PyObject *{} = {};'.format(dest, src)]
-
     def generate_wrapper_function(self, fn: FuncIR, emitter: Emitter) -> None:
         """Generates a CPython-compatible wrapper function for a native function.
 
@@ -192,8 +132,7 @@ class CodeGenerator:
             'return NULL;',
             '}')
         for arg in fn.args:
-            check = self.generate_arg_check(arg.name, arg.type)
-            emitter.emit_lines(*check)
+            self.generate_arg_check(arg.name, arg.type, emitter)
         native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
 
         if fn.ret_type.supports_unbox:
@@ -202,23 +141,20 @@ class CodeGenerator:
                                    'if (retval == CPY_INT_ERROR_VALUE && PyErr_Occurred()) {',
                                    'return NULL; // TODO: Add traceback entry?',
                                    '}')
-                box = self.generate_box('retval', 'retbox', fn.ret_type, 'return NULL;')
-                emitter.emit_lines(*box)
+                emitter.emit_box('retval', 'retbox', fn.ret_type, 'return NULL;')
                 # TODO: Decrease reference count of retval?
                 emitter.emit_lines('return retbox;')
             elif fn.ret_type.name == 'bool':
                 # The Py_RETURN macros return the correct PyObject * with reference count handling.
                 emitter.emit_line('char retval = {}{}({});'.format(NATIVE_PREFIX, fn.name,
                                                                    native_args))
-                box = self.generate_box('retval', 'retbox', fn.ret_type, 'return NULL;')
-                emitter.emit_lines(*box)
+                emitter.emit_box('retval', 'retbox', fn.ret_type, 'return NULL;')
                 emitter.emit_line('return retbox;')
             elif fn.ret_type.name == 'tuple':
                 emitter.emit_line('{}retval = {}{}({});'.format(fn.ret_type.ctype_spaced,
                                                                 NATIVE_PREFIX, fn.name,
                                                                 native_args))
-                box = self.generate_box('retval', 'retbox', fn.ret_type, 'return NULL;')
-                emitter.emit_lines(*box)
+                emitter.emit_box('retval', 'retbox', fn.ret_type, 'return NULL;')
                 emitter.emit_line('return retbox;')
         else:
             # Any type that needs to be unboxed should be special cased, so fail if
@@ -228,74 +164,14 @@ class CodeGenerator:
             # TODO: Tracebacks?
         emitter.emit_line('}')
 
-    def generate_unbox(self, src: str, dest: str, typ: RTType, failure: str) -> List[str]:
-        failure = '    ' + failure
-        if typ.name == 'int':
-            return [
-                'CPyTagged {};'.format(dest),
-                'if (PyLong_Check({}))'.format(src),
-                '    {} = CPyTagged_FromObject({});'.format(dest, src),
-                'else',
-                failure,
-            ]
-        elif typ.name == 'bool':
-            return [
-                'if (!PyBool_Check({}))'.format(src),
-                failure,
-                'char {} = PyObject_IsTrue({});'.format(dest, src)
-            ]
-        elif typ.name == 'list':
-            return [
-                'PyObject *{};'.format(dest),
-                'if (PyList_Check({}))'.format(src),
-                '    {} = {};'.format(dest, src),
-                'else',
-                failure,
-            ]
-        elif typ.name == 'sequence_tuple':
-            return [
-                'if (!PyTuple_Check({}))'.format(src),
-                failure,
-                '{} {} = {};'.format(typ.ctype, dest, src)
-            ]
-        elif typ.name == 'tuple':
-            assert isinstance(typ, TupleRTType)
-            self.declare_tuple_struct(typ)
-            result = [
-                'if (!PyTuple_Check({}) || PyTuple_Size({}) != {})'.format(src, src,
-                                                                           len(typ.types)),
-                failure,
-                '{} {};'.format(typ.ctype, dest)
-            ]
-            for i in range(0, len(typ.types)):
-                temp = self.temp_name()
-                result.append('PyObject *{} = PyTuple_GetItem({}, {});'.format(temp, src, i))
-
-                temp2 = self.temp_name()
-                # Unbox and check the sub-argument
-                result += self.generate_unbox('{}'.format(temp), temp2,
-                    typ.types[i], failure)
-
-                result.append('{}.f{} = {};'.format(dest, i, temp2))
-            return result
-        elif isinstance(typ, UserRTType):
-            return [
-                'PyObject *{};'.format(dest),
-                'if (PyObject_TypeCheck({}, &{}))'.format(src, type_struct_name(typ.name)),
-                '    {} = {};'.format(dest, src),
-                'else',
-                failure
-            ]
-        assert False, 'Unboxing not implemented: %s' % typ
-
-    def generate_arg_check(self, name: str, typ: RTType) -> List[str]:
+    def generate_arg_check(self, name: str, typ: RTType, emitter: Emitter) -> None:
         """Insert a runtime check for argument and unbox if necessary.
 
         The object is named PyObject *obj_{}. This is expected to generate
         a value of name arg_{} (unboxed if necessary). For each primitive a runtime
         check ensures the correct type.
         """
-        return self.generate_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ,
+        emitter.emit_unbox_or_cast('obj_{}'.format(name), 'arg_{}'.format(name), typ,
                                    'return NULL;')
 
     def generate_class(self, cl: ClassIR, module: str, emitter: Emitter) -> None:
@@ -390,7 +266,7 @@ class CodeGenerator:
                                                    cl.struct_name))
             emitter.emit_line('{')
             emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-            emit_inc_ref('self->{}'.format(attr), rtype, emitter)
+            emitter.emit_inc_ref('self->{}'.format(attr), rtype)
             emitter.emit_line('}')
             emitter.emit_line('return self->{};'.format(attr))
             emitter.emit_line('}')
@@ -400,9 +276,9 @@ class CodeGenerator:
                                                               rtype.ctype_spaced))
             emitter.emit_line('{')
             emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-            emit_dec_ref('self->{}'.format(attr), rtype, emitter)
+            emitter.emit_dec_ref('self->{}'.format(attr), rtype)
             emitter.emit_line('}')
-            emit_inc_ref('value'.format(attr), rtype, emitter)
+            emitter.emit_inc_ref('value'.format(attr), rtype)
             emitter.emit_line('self->{} = value;'.format(attr))
             emitter.emit_line('}')
             emitter.emit_line()
@@ -460,7 +336,7 @@ class CodeGenerator:
         emitter.emit_line('{')
         for attr, rtype in cl.attributes:
             emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-            emit_dec_ref('self->{}'.format(attr), rtype, emitter)
+            emitter.emit_dec_ref('self->{}'.format(attr), rtype)
             emitter.emit_line('}')
         emitter.emit_line('Py_TYPE(self)->tp_free((PyObject *)self);')
         emitter.emit_line('}')
@@ -511,8 +387,7 @@ class CodeGenerator:
                                                                             repr(cl.name)))
         emitter.emit_line('return NULL;')
         emitter.emit_line('}')
-        emitter.emit_lines(*self.generate_box('self->{}'.format(attr),
-                                              'retval', rtype, 'abort();'))
+        emitter.emit_box('self->{}'.format(attr), 'retval', rtype, 'abort();')
         emitter.emit_line('return retval;')
         emitter.emit_line('}')
 
@@ -527,10 +402,10 @@ class CodeGenerator:
             cl.struct_name))
         emitter.emit_line('{')
         emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-        emit_dec_ref('self->{}'.format(attr), rtype, emitter)
+        emitter.emit_dec_ref('self->{}'.format(attr), rtype)
         emitter.emit_line('}')
         emitter.emit_line('if (value != NULL) {')
-        emitter.emit_lines(*self.generate_unbox('value', 'tmp', rtype, 'abort();'))
+        emitter.emit_unbox_or_cast('value', 'tmp', rtype, 'abort();')
         emitter.emit_line('self->{} = tmp;'.format(attr))
         emitter.emit_line('} else')
         emitter.emit_line('    self->{} = {};'.format(attr, rtype.c_undefined_value))
@@ -547,7 +422,7 @@ class EmitterVisitor(OpVisitor):
         self.env = self.emitter.env
 
     def temp_name(self) -> str:
-        return self.code_generator.temp_name()
+        return self.emitter.temp_name()
 
     def visit_goto(self, op: Goto) -> None:
         self.emit_line('goto %s;' % self.label(op.label))
@@ -657,7 +532,7 @@ class EmitterVisitor(OpVisitor):
         elif op.desc is PrimitiveOp.NEW_TUPLE:
             tuple_type = self.env.types[op.dest]
             assert isinstance(tuple_type, TupleRTType)
-            self.code_generator.declare_tuple_struct(tuple_type)
+            self.emitter.declare_tuple_struct(tuple_type)
             for i, arg in enumerate(op.args):
                 self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(arg)))
             self.emit_inc_ref(dest, tuple_type)
@@ -763,7 +638,7 @@ class EmitterVisitor(OpVisitor):
         src = self.reg(op.src)
         dest = self.reg(op.dest)
         temp = self.temp_name()
-        self.emit_lines(*self.code_generator.generate_box(src, temp, op.type, 'abort();'))
+        self.emitter.emit_box(src, temp, op.type, 'abort();')
         self.emit_line('{} = {};'.format(dest, temp))
 
     def visit_cast(self, op: Cast) -> None:
@@ -777,7 +652,7 @@ class EmitterVisitor(OpVisitor):
         src = self.reg(op.src)
         dest = self.reg(op.dest)
         temp = self.temp_name()
-        self.emit_lines(*self.code_generator.generate_unbox(src, temp, op.type, 'abort();'))
+        self.emitter.emit_unbox_or_cast(src, temp, op.type, 'abort();')
         self.emit_line('{} = {};'.format(dest, temp))
 
     # Helpers
@@ -804,10 +679,10 @@ class EmitterVisitor(OpVisitor):
         self.emit_line(r'fflush(stdout);')
 
     def emit_inc_ref(self, dest: str, rtype: RTType) -> None:
-        emit_inc_ref(dest, rtype, self.emitter)
+        self.emitter.emit_inc_ref(dest, rtype)
 
     def emit_dec_ref(self, dest: str, rtype: RTType) -> None:
-        emit_dec_ref(dest, rtype, self.emitter)
+        self.emitter.emit_dec_ref(dest, rtype)
 
 
 def native_function_header(fn: FuncIR) -> str:

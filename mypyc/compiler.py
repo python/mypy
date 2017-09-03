@@ -8,11 +8,11 @@ from mypy.errors import CompileError
 from mypy.options import Options
 
 from mypyc import genops
+from mypyc.emitcommon import EmitterContext, Emitter
 from mypyc.emitter import (
     native_function_header,
     wrapper_function_header,
     CodeGenerator,
-    Emitter,
 )
 from mypyc.common import PREFIX
 from mypyc.ops import FuncIR, ClassIR, RTType, ModuleIR
@@ -46,12 +46,13 @@ class ModuleCompiler:
     def __init__(self, module_name: str, module: ModuleIR) -> None:
         self.module_name = module_name
         self.module = module
-        self.code_generator = CodeGenerator()
+        self.context = EmitterContext()
+        self.code_generator = CodeGenerator(self.context)
 
     def generate_c_module(self) -> str:
-        emitter = Emitter()
+        code_generator = self.code_generator
+        emitter = Emitter(self.context)
 
-        code_generator = CodeGenerator()
         code_generator.declare_imports(self.module.imports)
 
         for cl in self.module.classes:
@@ -71,7 +72,7 @@ class ModuleCompiler:
             emitter.emit_line()
             code_generator.generate_wrapper_function(fn, emitter)
 
-        declarations = Emitter()
+        declarations = Emitter(self.code_generator.context)
         declarations.emit_line('#include <Python.h>')
         declarations.emit_line('#include <CPy.h>')
         declarations.emit_line()

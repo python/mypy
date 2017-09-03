@@ -8,9 +8,9 @@ from mypyc.ops import (
     PrimitiveOp, IncRef, DecRef, Branch, Call, Unbox, Box, TupleRTType, TupleGet, GetAttr,
     ClassIR, UserRTType, SetAttr, Op, Label
 )
+from mypyc.emitcommon import Emitter, EmitterContext
 from mypyc.emitter import (
     EmitterVisitor,
-    Emitter,
     CodeGenerator,
 )
 
@@ -19,7 +19,8 @@ class TestEmitter(unittest.TestCase):
     def setUp(self) -> None:
         self.env = Environment()
         self.n = self.env.add_local(Var('n'), RTType('int'))
-        self.emitter = Emitter(self.env)
+        self.context = EmitterContext()
+        self.emitter = Emitter(self.context, self.env)
 
     def test_label(self) -> None:
         assert self.emitter.label(Label(4)) == 'CPyL4'
@@ -47,9 +48,11 @@ class TestEmitterVisitor(unittest.TestCase):
         self.l = self.env.add_local(Var('l'), RTType('list'))
         self.ll = self.env.add_local(Var('ll'), RTType('list'))
         self.o = self.env.add_local(Var('o'), RTType('object'))
-        self.emitter = Emitter(self.env)
-        self.declarations = Emitter(self.env)
-        self.visitor = EmitterVisitor(self.emitter, self.declarations, CodeGenerator())
+        self.context = EmitterContext()
+        self.emitter = Emitter(self.context, self.env)
+        self.declarations = Emitter(self.context, self.env)
+        code_generator = CodeGenerator(EmitterContext())
+        self.visitor = EmitterVisitor(self.emitter, self.declarations, code_generator)
 
     def test_goto(self) -> None:
         self.assert_emit(Goto(Label(2)),
@@ -235,12 +238,12 @@ class TestGenerateFunction(unittest.TestCase):
         self.env = Environment()
         self.reg = self.env.add_local(self.var, RTType('int'))
         self.block = BasicBlock(Label(0))
-        self.code_generator = CodeGenerator()
+        self.code_generator = CodeGenerator(EmitterContext())
 
     def test_simple(self) -> None:
         self.block.ops.append(Return(self.reg))
         fn = FuncIR('myfunc', [self.arg], RTType('int'), [self.block], self.env)
-        emitter = Emitter()
+        emitter = Emitter(EmitterContext())
         self.code_generator.generate_c_for_function(fn, emitter)
         result = emitter.fragments
         assert_string_arrays_equal(
@@ -256,7 +259,7 @@ class TestGenerateFunction(unittest.TestCase):
         self.temp = self.env.add_temp(RTType('int'))
         self.block.ops.append(LoadInt(self.temp, 5))
         fn = FuncIR('myfunc', [self.arg], RTType('list'), [self.block], self.env)
-        emitter = Emitter()
+        emitter = Emitter(EmitterContext())
         self.code_generator.generate_c_for_function(fn, emitter)
         result = emitter.fragments
         assert_string_arrays_equal(
@@ -272,14 +275,17 @@ class TestGenerateFunction(unittest.TestCase):
 
 class TestArgCheck(unittest.TestCase):
     def setUp(self) -> None:
-        self.code_generator = CodeGenerator()
+        self.context = EmitterContext()
+        self.code_generator = CodeGenerator(self.context)
 
     def test_check_list(self) -> None:
-        lines = self.code_generator.generate_arg_check('x', RTType('list'))
+        emitter = Emitter(self.context)
+        self.code_generator.generate_arg_check('x', RTType('list'), emitter)
+        lines = emitter.fragments
         assert lines == [
-            'PyObject *arg_x;',
-            'if (PyList_Check(obj_x))',
-            '    arg_x = obj_x;',
-            'else',
-            '    return NULL;',
+            'PyObject *arg_x;\n',
+            'if (PyList_Check(obj_x))\n',
+            '    arg_x = obj_x;\n',
+            'else\n',
+            '    return NULL;\n',
         ]
