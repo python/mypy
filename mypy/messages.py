@@ -900,6 +900,8 @@ class MessageBuilder:
             context)
         arg_names = []
         for n, arg_type in enumerate(callee.arg_types):
+            # We collect all inner types to handle cases like List[T], where the
+            # argument itself is not the type variable.
             for typ in [arg_type] + collect_all_inner_types(arg_type):
                 if isinstance(typ, TypeVarType):
                     if typ.id == variable.id:
