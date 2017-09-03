@@ -21,7 +21,7 @@ def native_function_header(fn: FuncIR) -> str:
         args=', '.join(args) or 'void')
 
 
-def generate_c_for_function(fn: FuncIR, emitter: Emitter) -> None:
+def generate_native_function(fn: FuncIR, emitter: Emitter) -> None:
     declarations = Emitter(emitter.context, fn.env)
     body = Emitter(emitter.context, fn.env)
     visitor = FunctionEmitterVisitor(body, declarations)

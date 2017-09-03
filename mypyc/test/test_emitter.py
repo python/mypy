@@ -9,7 +9,7 @@ from mypyc.ops import (
     ClassIR, UserRTType, SetAttr, Op, Label
 )
 from mypyc.emitcommon import Emitter, EmitterContext
-from mypyc.emitfunc import generate_c_for_function, FunctionEmitterVisitor
+from mypyc.emitfunc import generate_native_function, FunctionEmitterVisitor
 from mypyc.emitmodule import generate_arg_check
 
 
@@ -240,7 +240,7 @@ class TestGenerateFunction(unittest.TestCase):
         self.block.ops.append(Return(self.reg))
         fn = FuncIR('myfunc', [self.arg], RTType('int'), [self.block], self.env)
         emitter = Emitter(EmitterContext())
-        generate_c_for_function(fn, emitter)
+        generate_native_function(fn, emitter)
         result = emitter.fragments
         assert_string_arrays_equal(
             [
@@ -256,7 +256,7 @@ class TestGenerateFunction(unittest.TestCase):
         self.block.ops.append(LoadInt(self.temp, 5))
         fn = FuncIR('myfunc', [self.arg], RTType('list'), [self.block], self.env)
         emitter = Emitter(EmitterContext())
-        generate_c_for_function(fn, emitter)
+        generate_native_function(fn, emitter)
         result = emitter.fragments
         assert_string_arrays_equal(
             [

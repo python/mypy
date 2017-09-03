@@ -9,7 +9,7 @@ from mypy.options import Options
 from mypyc import genops
 from mypyc.common import PREFIX, NATIVE_PREFIX
 from mypyc.emitcommon import EmitterContext, Emitter, HeaderDeclaration
-from mypyc.emitfunc import generate_c_for_function, native_function_header
+from mypyc.emitfunc import generate_native_function, native_function_header
 from mypyc.emitclass import generate_class
 from mypyc.ops import c_module_name, FuncIR, ClassIR, RTType, ModuleIR
 from mypyc.refcount import insert_ref_count_opcodes
@@ -70,7 +70,7 @@ class ModuleGenerator:
 
         for fn in self.module.functions:
             emitter.emit_line()
-            generate_c_for_function(fn, emitter)
+            generate_native_function(fn, emitter)
             emitter.emit_line()
             self.generate_wrapper_function(fn, emitter)
 
