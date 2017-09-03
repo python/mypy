@@ -901,11 +901,21 @@ class MessageBuilder:
                     if typ.id == variable.id:
                         arg_indexes.append('"{}"'.format(callee.arg_names[n]))
                         break
-        self.note(
-            'Arguments {} in call to {} must all have the same type for "{}" (one of {})'.format(
-                format_string_list(arg_indexes, suppress=False), callee_name, variable.name,
-                ', '.join(self.format(typ) for typ in variable.values)),
-            context)
+        valid_variable_types = ', '.join(
+            self.format(typ) for typ in variable.values)
+        if len(arg_indexes) > 1:
+            self.note(
+                'Arguments {} in call to {} must all have the same type for'
+                ' "{}" (one of {})'.format(
+                    format_string_list(arg_indexes, suppress=False),
+                    callee_name, variable.name, valid_variable_types),
+                context)
+        else:
+            self.note(
+                'Argument {} in call to {} must have a valid type for "{}" (one'
+                ' of {})'.format(
+                    arg_indexes[0], callee_name, variable.name, valid_variable_types),
+                context)
 
     def overloaded_signatures_overlap(self, index1: int, index2: int,
                                       context: Context) -> None:
