@@ -2,53 +2,13 @@ import textwrap
 from typing import List, Set, Dict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
+from mypyc.emitcommon import Emitter, emit_inc_ref, emit_dec_ref
 from mypyc.ops import (
     OpVisitor, Environment, Label, Register, RTType, FuncIR, Goto, Branch, Return, PrimitiveOp,
     Assign, LoadInt, IncRef, DecRef, Call, Box, Unbox, TupleRTType, TupleGet, UserRTType, ClassIR,
     GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Cast, OP_BINARY, type_struct_name,
     c_module_name
 )
-
-
-class Emitter:
-    """Helper for C code generation."""
-
-    def __init__(self, env: Environment = None) -> None:
-        self.env = env or Environment()
-        self.fragments = []  # type: List[str]
-        self._indent = 0
-
-    def indent(self) -> None:
-        self._indent += 4
-
-    def dedent(self) -> None:
-        self._indent -= 4
-        assert self._indent >= 0
-
-    def label(self, label: Label) -> str:
-        return 'CPyL%d' % label
-
-    def reg(self, reg: Register) -> str:
-        name = self.env.names[reg]
-        return REG_PREFIX + name
-
-    def emit_line(self, line: str = '') -> None:
-        if line.startswith('}'):
-            self.dedent()
-        self.fragments.append(self._indent * ' ' + line + '\n')
-        if line.endswith('{'):
-            self.indent()
-
-    def emit_lines(self, *lines: str) -> None:
-        for line in lines:
-            self.emit_line(line)
-
-    def emit_label(self, label: Label) -> None:
-        # Extra semicolon prevents an error when the next line declares a tempvar
-        self.fragments.append('{}: ;\n'.format(self.label(label)))
-
-    def emit_from_emitter(self, emitter: 'Emitter') -> None:
-        self.fragments.extend(emitter.fragments)
 
 
 class HeaderDeclaration:
@@ -338,42 +298,6 @@ class CodeGenerator:
         return self.generate_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ,
                                    'return NULL;')
 
-    def generate_inc_ref(self, dest: str, rtype: RTType) -> List[str]:
-        """Increment reference count of C expression `dest`.
-
-        For composite unboxed structures (e.g. tuples) recursively
-        increment reference counts for each component.
-        """
-        if rtype.name == 'int':
-            return ['CPyTagged_IncRef(%s);' % dest]
-        elif isinstance(rtype, TupleRTType):
-            result = []
-            for i, item_type in enumerate(rtype.types):
-                result.extend(self.generate_inc_ref('{}.f{}'.format(dest, i), item_type))
-            return result
-        elif not rtype.supports_unbox:
-            return ['Py_INCREF(%s);' % dest]
-        # Otherwise assume it's an unboxed, pointerless value.
-        return []
-
-    def generate_dec_ref(self, dest: str, rtype: RTType) -> List[str]:
-        """Decrement reference count of C expression `dest`.
-
-        For composite unboxed structures (e.g. tuples) recursively
-        decrement reference counts for each component.
-        """
-        if rtype.name == 'int':
-            return ['CPyTagged_DecRef(%s);' % dest]
-        elif isinstance(rtype, TupleRTType):
-            result = []
-            for i, item_type in enumerate(rtype.types):
-                result.extend(self.generate_dec_ref('{}.f{}'.format(dest, i), item_type))
-            return result
-        elif not rtype.supports_unbox:
-            return ['Py_DECREF(%s);' % dest]
-        # Otherwise assume it's an unboxed, pointerless value.
-        return []
-
     def generate_class(self, cl: ClassIR, module: str, emitter: Emitter) -> None:
         name = cl.name
         fullname = '{}.{}'.format(module, name)
@@ -466,7 +390,7 @@ class CodeGenerator:
                                                    cl.struct_name))
             emitter.emit_line('{')
             emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-            emitter.emit_lines(*self.generate_inc_ref('self->{}'.format(attr), rtype))
+            emit_inc_ref('self->{}'.format(attr), rtype, emitter)
             emitter.emit_line('}')
             emitter.emit_line('return self->{};'.format(attr))
             emitter.emit_line('}')
@@ -476,9 +400,9 @@ class CodeGenerator:
                                                               rtype.ctype_spaced))
             emitter.emit_line('{')
             emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-            emitter.emit_lines(*self.generate_dec_ref('self->{}'.format(attr), rtype))
+            emit_dec_ref('self->{}'.format(attr), rtype, emitter)
             emitter.emit_line('}')
-            emitter.emit_lines(*self.generate_inc_ref('value'.format(attr), rtype))
+            emit_inc_ref('value'.format(attr), rtype, emitter)
             emitter.emit_line('self->{} = value;'.format(attr))
             emitter.emit_line('}')
             emitter.emit_line()
@@ -536,7 +460,7 @@ class CodeGenerator:
         emitter.emit_line('{')
         for attr, rtype in cl.attributes:
             emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-            emitter.emit_lines(*self.generate_dec_ref('self->{}'.format(attr), rtype))
+            emit_dec_ref('self->{}'.format(attr), rtype, emitter)
             emitter.emit_line('}')
         emitter.emit_line('Py_TYPE(self)->tp_free((PyObject *)self);')
         emitter.emit_line('}')
@@ -603,7 +527,7 @@ class CodeGenerator:
             cl.struct_name))
         emitter.emit_line('{')
         emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-        emitter.emit_lines(*self.generate_dec_ref('self->{}'.format(attr), rtype))
+        emit_dec_ref('self->{}'.format(attr), rtype, emitter)
         emitter.emit_line('}')
         emitter.emit_line('if (value != NULL) {')
         emitter.emit_lines(*self.generate_unbox('value', 'tmp', rtype, 'abort();'))
@@ -880,12 +804,10 @@ class EmitterVisitor(OpVisitor):
         self.emit_line(r'fflush(stdout);')
 
     def emit_inc_ref(self, dest: str, rtype: RTType) -> None:
-        lines = self.code_generator.generate_inc_ref(dest, rtype)
-        self.emit_lines(*lines)
+        emit_inc_ref(dest, rtype, self.emitter)
 
     def emit_dec_ref(self, dest: str, rtype: RTType) -> None:
-        lines = self.code_generator.generate_dec_ref(dest, rtype)
-        self.emit_lines(*lines)
+        emit_dec_ref(dest, rtype, self.emitter)
 
 
 def native_function_header(fn: FuncIR) -> str:
