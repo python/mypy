@@ -852,7 +852,8 @@ fun1(1) # E: Argument 1 to "fun1" has incompatible type "int"; expected "List[Tu
 fun1([(1, 'x')]) # E: Cannot infer type argument 1 of "fun1"
 
 reveal_type(fun2([(1, 1)], 1)) # E: Revealed type is 'builtins.list[Tuple[builtins.int*, builtins.int*]]'
-fun2([('x', 'x')], 'x') # E: Value of type variable "T" of "fun2" cannot be "str"
+fun2([('x', 'x')], 'x') # E: Argument types for type variable "T" are incompatible in call to "fun2" \
+                        # N: Arguments "v" and "scale" in call to "fun2" must all have the same type for "T" (one of "int", "bool")
 
 [builtins fixtures/list.pyi]
 

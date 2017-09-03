@@ -7,7 +7,8 @@ T = TypeVar('T', int, str)
 def f(x: T) -> None: pass
 f(1)
 f('x')
-f(object()) # E: Value of type variable "T" of "f" cannot be "object"
+f(object()) # E: Argument types for type variable "T" are incompatible in call to "f" \
+            # N: Argument "x" in call to "f" must have a valid type for "T" (one of "int", "str")
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionUsingContext]
 from typing import TypeVar, List
@@ -18,7 +19,8 @@ s = ['x']
 o = [object()]
 i = f(1)
 s = f('')
-o = f(1) # E: Value of type variable "T" of "f" cannot be "object"
+o = f(1) # E: Argument types for type variable "T" are incompatible in call to "f" \
+         # N: Argument "x" in call to "f" must have a valid type for "T" (one of "int", "str")
 [builtins fixtures/list.pyi]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs]
@@ -239,7 +241,8 @@ class A(Generic[X]):
 A(1)
 A('x')
 A(cast(Any, object()))
-A(object()) # E: Value of type variable "X" of "A" cannot be "object"
+A(object()) # E: Argument types for type variable "X" are incompatible in call to "A" \
+            # N: Argument "x" in call to "A" must have a valid type for "X" (one of "int", "str")
 
 [case testGenericTypeWithTypevarValuesAndTypevarArgument]
 from typing import TypeVar, Generic
@@ -402,8 +405,10 @@ Y = TypeVar('Y', int, str)
 def f(x: X, y: Y) -> None: pass
 f(A(), '')
 f(B(), 1)
-f(A(), A())  # E: Value of type variable "Y" of "f" cannot be "A"
-f(1, 1)  # E: Value of type variable "X" of "f" cannot be "int"
+f(A(), A())  # E: Argument types for type variable "Y" are incompatible in call to "f" \
+             # N: Argument "y" in call to "f" must have a valid type for "Y" (one of "int", "str")
+f(1, 1)  # E: Argument types for type variable "X" are incompatible in call to "f" \
+         # N: Argument "x" in call to "f" must have a valid type for "X" (one of "A", "B")
 
 [case testGenericFunctionWithNormalAndRestrictedTypevar]
 from typing import TypeVar, Generic
@@ -418,7 +423,8 @@ def f(x: X, y: Y, z: int) -> None:
     z = y # Error
     y.foo # Error
 [out]
-main:8: error: Value of type variable "Y" of "C" cannot be "X"
+main:8: error: Argument types for type variable "Y" are incompatible in call to "C"
+main:8: note: Argument "y" in call to "C" must have a valid type for "Y" (one of "int", "str")
 main:9: error: Incompatible types in assignment (expression has type "X", variable has type "int")
 main:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:11: error: "int" has no attribute "foo"
