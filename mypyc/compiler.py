@@ -9,8 +9,8 @@ from mypy.options import Options
 
 from mypyc import genops
 from mypyc.emitcommon import EmitterContext, Emitter
+from mypyc.emitfunc import generate_c_for_function, native_function_header
 from mypyc.emitter import (
-    native_function_header,
     wrapper_function_header,
     CodeGenerator,
 )
@@ -68,7 +68,7 @@ class ModuleCompiler:
 
         for fn in self.module.functions:
             emitter.emit_line()
-            code_generator.generate_c_for_function(fn, emitter)
+            generate_c_for_function(fn, emitter)
             emitter.emit_line()
             code_generator.generate_wrapper_function(fn, emitter)
 

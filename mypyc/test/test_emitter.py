@@ -9,10 +9,8 @@ from mypyc.ops import (
     ClassIR, UserRTType, SetAttr, Op, Label
 )
 from mypyc.emitcommon import Emitter, EmitterContext
-from mypyc.emitter import (
-    EmitterVisitor,
-    CodeGenerator,
-)
+from mypyc.emitfunc import generate_c_for_function, FunctionEmitterVisitor
+from mypyc.emitter import CodeGenerator
 
 
 class TestEmitter(unittest.TestCase):
@@ -51,7 +49,7 @@ class TestEmitterVisitor(unittest.TestCase):
         self.context = EmitterContext()
         self.emitter = Emitter(self.context, self.env)
         self.declarations = Emitter(self.context, self.env)
-        self.visitor = EmitterVisitor(self.emitter, self.declarations)
+        self.visitor = FunctionEmitterVisitor(self.emitter, self.declarations)
 
     def test_goto(self) -> None:
         self.assert_emit(Goto(Label(2)),
@@ -243,7 +241,7 @@ class TestGenerateFunction(unittest.TestCase):
         self.block.ops.append(Return(self.reg))
         fn = FuncIR('myfunc', [self.arg], RTType('int'), [self.block], self.env)
         emitter = Emitter(EmitterContext())
-        self.code_generator.generate_c_for_function(fn, emitter)
+        generate_c_for_function(fn, emitter)
         result = emitter.fragments
         assert_string_arrays_equal(
             [
@@ -259,7 +257,7 @@ class TestGenerateFunction(unittest.TestCase):
         self.block.ops.append(LoadInt(self.temp, 5))
         fn = FuncIR('myfunc', [self.arg], RTType('list'), [self.block], self.env)
         emitter = Emitter(EmitterContext())
-        self.code_generator.generate_c_for_function(fn, emitter)
+        generate_c_for_function(fn, emitter)
         result = emitter.fragments
         assert_string_arrays_equal(
             [
