@@ -394,8 +394,8 @@ class CodeGenerator:
         self.generate_native_getters_and_setters(cl, emitter)
         self.generate_vtable(cl, vtable_name, emitter)
         emitter.emit_line()
-        emitter.emit_lines(*self.generate_getseter_declarations(cl))
-        emitter.emit_lines(*self.generate_getseters_table(cl, getseters_name))
+        self.generate_getseter_declarations(cl, emitter)
+        self.generate_getseters_table(cl, getseters_name, emitter)
         emitter.emit_line()
 
         emitter.emit_line(textwrap.dedent("""\
@@ -446,8 +446,8 @@ class CodeGenerator:
                         new_name=new_name,
                         getseters_name=getseters_name))
         emitter.emit_line()
-        emitter.emit_lines(*self.generate_constructor_for_class(cl, new_name, vtable_name))
-        emitter.emit_lines(*self.generate_getseters(cl))
+        self.generate_constructor_for_class(cl, new_name, vtable_name, emitter)
+        self.generate_getseters(cl, emitter)
 
     def generate_object_struct(self, cl: ClassIR, emitter: Emitter) -> None:
         emitter.emit_lines('typedef struct {',
@@ -493,25 +493,26 @@ class CodeGenerator:
             emitter.emit_line('(CPyVTableItem){},'.format(native_setter_name(cl.name, attr)))
         emitter.emit_line('};')
 
-    def generate_constructor_for_class(self, cl: ClassIR, func_name: str,
-                                       vtable_name: str) -> List[str]:
+    def generate_constructor_for_class(self,
+                                       cl: ClassIR,
+                                       func_name: str,
+                                       vtable_name: str,
+                                       emitter: Emitter) -> None:
         """Generate a native function that constructs an instance of a class."""
-        result = []
-        result.append('static PyObject *')
-        result.append('CPyDef_{}(void)'.format(cl.name))
-        result.append('{')
-        result.append('    {} *self;'.format(cl.struct_name))
-        result.append('    self = ({} *){}.tp_alloc(&{}, 0);'.format(cl.struct_name,
+        emitter.emit_line('static PyObject *')
+        emitter.emit_line('CPyDef_{}(void)'.format(cl.name))
+        emitter.emit_line('{')
+        emitter.emit_line('{} *self;'.format(cl.struct_name))
+        emitter.emit_line('self = ({} *){}.tp_alloc(&{}, 0);'.format(cl.struct_name,
                                                                      cl.type_struct,
                                                                      cl.type_struct))
-        result.append('    if (self == NULL)')
-        result.append('        abort(); // TODO')
-        result.append('    self->vtable = {};'.format(vtable_name))
+        emitter.emit_line('if (self == NULL)')
+        emitter.emit_line('    abort(); // TODO')
+        emitter.emit_line('self->vtable = {};'.format(vtable_name))
         for attr, rtype in cl.attributes:
-            result.append('    self->{} = {};'.format(attr, rtype.c_undefined_value))
-        result.append('    return (PyObject *)self;')
-        result.append('}')
-        return result
+            emitter.emit_line('self->{} = {};'.format(attr, rtype.c_undefined_value))
+        emitter.emit_line('return (PyObject *)self;')
+        emitter.emit_line('}')
 
     def generate_new_for_class(self,
                                cl: ClassIR,
@@ -540,84 +541,77 @@ class CodeGenerator:
         emitter.emit_line('Py_TYPE(self)->tp_free((PyObject *)self);')
         emitter.emit_line('}')
 
-    def generate_getseter_declarations(self, cl: ClassIR) -> List[str]:
-        result = []
+    def generate_getseter_declarations(self, cl: ClassIR, emitter: Emitter) -> None:
         for attr, rtype in cl.attributes:
-            result.append('static PyObject *')
-            result.append('{}({} *self, void *closure);'.format(getter_name(cl.name, attr),
+            emitter.emit_line('static PyObject *')
+            emitter.emit_line('{}({} *self, void *closure);'.format(getter_name(cl.name, attr),
                                                                 cl.struct_name))
-            result.append('static int')
-            result.append('{}({} *self, PyObject *value, void *closure);'.format(
+            emitter.emit_line('static int')
+            emitter.emit_line('{}({} *self, PyObject *value, void *closure);'.format(
                 setter_name(cl.name, attr),
                 cl.struct_name))
-        return result
 
     def generate_getseters_table(self,
                                  cl: ClassIR,
-                                 name: str) -> List[str]:
+                                 name: str,
+                                 emitter: Emitter) -> None:
 
-        result = []
-        result.append('static PyGetSetDef {}[] = {{'.format(name))
+        emitter.emit_line('static PyGetSetDef {}[] = {{'.format(name))
         for attr, rtype in cl.attributes:
-            result.append('    {{"{}",'.format(attr))
-            result.append('     (getter){}, (setter){},'.format(getter_name(cl.name, attr),
+            emitter.emit_line('{{"{}",'.format(attr))
+            emitter.emit_line(' (getter){}, (setter){},'.format(getter_name(cl.name, attr),
                                                                 setter_name(cl.name, attr)))
-            result.append('     NULL, NULL},')
-        result.append('    {NULL}  /* Sentinel */')
-        result.append('};')
-        return result
+            emitter.emit_line(' NULL, NULL},')
+        emitter.emit_line('{NULL}  /* Sentinel */')
+        emitter.emit_line('};')
 
-    def generate_getseters(self, cl: ClassIR) -> List[str]:
-        result = []  # type: List[str]
+    def generate_getseters(self, cl: ClassIR, emitter: Emitter) -> None:
         for attr, rtype in cl.attributes:
-            result.extend(self.generate_getter(cl, attr, rtype))
-            result.append('')
-            result.extend(self.generate_setter(cl, attr, rtype))
-            result.append('')
-        return result
+            self.generate_getter(cl, attr, rtype, emitter)
+            emitter.emit_line('')
+            self.generate_setter(cl, attr, rtype, emitter)
+            emitter.emit_line('')
 
     def generate_getter(self,
                         cl: ClassIR,
                         attr: str,
-                        rtype: RTType) -> List[str]:
-        result = []
-        result.append('static PyObject *')
-        result.append('{}({} *self, void *closure)'.format(getter_name(cl.name, attr),
+                        rtype: RTType,
+                        emitter: Emitter) -> None:
+        emitter.emit_line('static PyObject *')
+        emitter.emit_line('{}({} *self, void *closure)'.format(getter_name(cl.name, attr),
                                                                             cl.struct_name))
-        result.append('{')
-        result.append('    if (self->{} == {}) {{'.format(attr, rtype.c_undefined_value))
-        result.append('        PyErr_SetString(PyExc_AttributeError,')
-        result.append('            "attribute {} of {} undefined");'.format(repr(attr),
+        emitter.emit_line('{')
+        emitter.emit_line('if (self->{} == {}) {{'.format(attr, rtype.c_undefined_value))
+        emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
+        emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
                                                                             repr(cl.name)))
-        result.append('        return NULL;')
-        result.append('    }')
-        result.extend(self.generate_box('self->{}'.format(attr),
-                                        'retval', rtype, 'abort();'))
-        result.append('    return retval;')
-        result.append('}')
-        return result
+        emitter.emit_line('return NULL;')
+        emitter.emit_line('}')
+        emitter.emit_lines(*self.generate_box('self->{}'.format(attr),
+                                              'retval', rtype, 'abort();'))
+        emitter.emit_line('return retval;')
+        emitter.emit_line('}')
 
     def generate_setter(self,
                         cl: ClassIR,
                         attr: str,
-                        rtype: RTType) -> List[str]:
-        result = []
-        result.append('static int')
-        result.append('{}({} *self, PyObject *value, void *closure)'.format(
+                        rtype: RTType,
+                        emitter: Emitter) -> None:
+        emitter.emit_line('static int')
+        emitter.emit_line('{}({} *self, PyObject *value, void *closure)'.format(
             setter_name(cl.name, attr),
             cl.struct_name))
-        result.append('{')
-        result.append('    if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-        result.extend(self.generate_dec_ref('self->{}'.format(attr), rtype))
-        result.append('    }')
-        result.append('    if (value != NULL) {')
-        result.extend(self.generate_unbox('value', 'tmp', rtype, 'abort();'))
-        result.append('        self->{} = tmp;'.format(attr))
-        result.append('    } else')
-        result.append('        self->{} = {};'.format(attr, rtype.c_undefined_value))
-        result.append('    return 0;')
-        result.append('}')
-        return result
+        emitter.emit_line('{')
+        emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
+        emitter.emit_lines(*self.generate_dec_ref('self->{}'.format(attr), rtype))
+        emitter.emit_line('}')
+        emitter.emit_line('if (value != NULL) {')
+        emitter.emit_lines(*self.generate_unbox('value', 'tmp', rtype, 'abort();'))
+        emitter.emit_line('self->{} = tmp;'.format(attr))
+        emitter.emit_line('} else')
+        emitter.emit_line('    self->{} = {};'.format(attr, rtype.c_undefined_value))
+        emitter.emit_line('return 0;')
+        emitter.emit_line('}')
 
 
 class EmitterVisitor(OpVisitor):
