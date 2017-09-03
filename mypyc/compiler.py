@@ -10,6 +10,7 @@ from mypy.options import Options
 from mypyc import genops
 from mypyc.emitcommon import EmitterContext, Emitter
 from mypyc.emitfunc import generate_c_for_function, native_function_header
+from mypyc.emitclass import generate_class
 from mypyc.emitter import (
     wrapper_function_header,
     CodeGenerator,
@@ -56,7 +57,7 @@ class ModuleCompiler:
         code_generator.declare_imports(self.module.imports)
 
         for cl in self.module.classes:
-            code_generator.generate_class(cl, self.module_name, emitter)
+            generate_class(cl, self.module_name, emitter)
 
         for fn in self.module.functions:
             fragments = generate_function_declaration(fn)
