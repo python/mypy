@@ -7,24 +7,28 @@ from typing import List
 from mypy import defaults
 from mypy.myunit import Suite, AssertionFailure
 from mypy.test.helpers import assert_string_arrays_equal
-from mypy.test.data import parse_test_cases, DataDrivenTestCase
+from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test import config
 from mypy.parse import parse
 from mypy.errors import CompileError
 from mypy.options import Options
 
 
-class ParserSuite(Suite):
+class ParserSuite(DataSuite):
     parse_files = ['parse.test',
                    'parse-python2.test']
 
-    def cases(self) -> List[DataDrivenTestCase]:
+    @classmethod
+    def cases(cls) -> List[DataDrivenTestCase]:
         # The test case descriptions are stored in data files.
         c = []  # type: List[DataDrivenTestCase]
-        for f in self.parse_files:
+        for f in cls.parse_files:
             c += parse_test_cases(
                 os.path.join(config.test_data_prefix, f), test_parser)
         return c
+
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
+        test_parser(testcase)
 
 
 def test_parser(testcase: DataDrivenTestCase) -> None:
@@ -57,12 +61,16 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
 INPUT_FILE_NAME = 'file'
 
 
-class ParseErrorSuite(Suite):
-    def cases(self) -> List[DataDrivenTestCase]:
+class ParseErrorSuite(DataSuite):
+    @classmethod
+    def cases(cls) -> List[DataDrivenTestCase]:
         # Test case descriptions are in an external file.
         return parse_test_cases(os.path.join(config.test_data_prefix,
                                              'parse-errors.test'),
                                 test_parse_error)
+
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
+        test_parse_error(testcase)
 
 
 def test_parse_error(testcase: DataDrivenTestCase) -> None:

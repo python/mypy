@@ -55,7 +55,7 @@ from typing import NewType, List
 UserId = NewType('UserId', int)
 IdList = NewType('IdList', List[UserId])
 
-bad1 = IdList([1])  # E: List item 0 has incompatible type "int"
+bad1 = IdList([1])  # E: List item 0 has incompatible type "int"; expected "UserId"
 
 foo = IdList([])
 foo.append(3)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "UserId"
@@ -330,6 +330,22 @@ from typing import NewType
 class A: pass
 B = NewType('B', A)
 class C(B): pass  # E: Cannot subclass NewType
+[out]
+
+[case testCannotUseNewTypeWithProtocols]
+from typing import Protocol, NewType
+
+class P(Protocol):
+    attr: int
+class D:
+    attr: int
+
+C = NewType('C', P)  # E: NewType cannot be used with protocol classes
+
+x: C = C(D())  # We still accept this, treating 'C' as non-protocol subclass.
+reveal_type(x.attr)  # E: Revealed type is 'builtins.int'
+x.bad_attr  # E: "C" has no attribute "bad_attr"
+C(1)  # E: Argument 1 to "C" has incompatible type "int"; expected "P"
 [out]
 
 [case testNewTypeAny]

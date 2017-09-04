@@ -1,0 +1,338 @@
+-- Tests for reports
+-- ------------------------------
+--
+-- This file follows syntax of cmdline.test
+
+-- ----------------------------------------
+
+[case testConfigErrorUnknownReport]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+bad_report = .
+[out]
+mypy.ini: [mypy]: Unrecognized report type: bad_report
+
+[case testCoberturaParser]
+# cmd: mypy --cobertura-xml-report build pkg
+[file pkg/__init__.py]
+[file pkg/a.py]
+from typing import Dict
+
+def foo() -> Dict:
+  z = {'hello': 'world'}
+  return z
+[file pkg/subpkg/__init__.py]
+[file pkg/subpkg/a.py]
+def bar() -> str:
+  return 'world'
+def untyped_function():
+  return 42
+[outfile build/cobertura.xml]
+<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.8000" branch-rate="0">
+  <sources>
+    <source>$PWD</source>
+  </sources>
+  <packages>
+    <package complexity="1.0" name="pkg" branch-rate="0" line-rate="1.0000">
+      <classes>
+        <class complexity="1.0" filename="pkg/__init__.py" name="__init__.py" branch-rate="0" line-rate="1.0">
+          <methods/>
+          <lines/>
+        </class>
+        <class complexity="1.0" filename="pkg/a.py" name="a.py" branch-rate="0" line-rate="1.0000">
+          <methods/>
+          <lines>
+            <line branch="true" hits="1" number="3" precision="imprecise" condition-coverage="50% (1/2)"/>
+            <line branch="false" hits="1" number="4" precision="precise"/>
+            <line branch="false" hits="1" number="5" precision="precise"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+    <package complexity="1.0" name="pkg.subpkg" branch-rate="0" line-rate="0.5000">
+      <classes>
+        <class complexity="1.0" filename="pkg/subpkg/__init__.py" name="__init__.py" branch-rate="0" line-rate="1.0">
+          <methods/>
+          <lines/>
+        </class>
+        <class complexity="1.0" filename="pkg/subpkg/a.py" name="a.py" branch-rate="0" line-rate="0.5000">
+          <methods/>
+          <lines>
+            <line branch="false" hits="1" number="1" precision="precise"/>
+            <line branch="false" hits="0" number="3" precision="any"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>
+
+
+[case testAnyExprReportDivisionByZero]
+# cmd: mypy --any-exprs-report=out -c 'pass'
+
+[case testClassDefIsTreatedAsEmpty]
+# cmd: mypy --html-report report n.py
+[file n.py]
+class A(object):
+    pass
+
+[file report/mypy-html.css]
+[file report/index.html]
+[outfile report/html/n.py.html]
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="../mypy-html.css">
+</head>
+<body>
+<h2>n</h2>
+<table>
+<caption>n.py</caption>
+<tbody><tr>
+<td class="table-lines"><pre><span id="L1" class="lineno"><a class="lineno" href="#L1">1</a></span>
+<span id="L2" class="lineno"><a class="lineno" href="#L2">2</a></span>
+</pre></td>
+<td class="table-code"><pre><span class="line-empty" title="No Anys on this line!">class A(object):</span>
+<span class="line-empty" title="No Anys on this line!">    pass</span>
+</pre></td>
+</tr></tbody>
+</table>
+</body>
+</html>
+
+[case testTypeVarTreatedAsEmptyLine]
+# cmd: mypy --html-report report n.py
+
+[file n.py]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+[file report/mypy-html.css]
+[file report/index.html]
+[outfile report/html/n.py.html]
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="../mypy-html.css">
+</head>
+<body>
+<h2>n</h2>
+<table>
+<caption>n.py</caption>
+<tbody><tr>
+<td class="table-lines"><pre><span id="L1" class="lineno"><a class="lineno" href="#L1">1</a></span>
+<span id="L2" class="lineno"><a class="lineno" href="#L2">2</a></span>
+<span id="L3" class="lineno"><a class="lineno" href="#L3">3</a></span>
+</pre></td>
+<td class="table-code"><pre><span class="line-empty" title="No Anys on this line!">from typing import TypeVar</span>
+<span class="line-empty" title="No Anys on this line!"></span>
+<span class="line-empty" title="No Anys on this line!">T = TypeVar('T')</span>
+</pre></td>
+</tr></tbody>
+</table>
+</body>
+</html>
+
+[case testUnreachableCodeMarkedAsAny]
+# cmd: mypy --html-report report n.py
+
+[file n.py]
+def bar(x):
+    # type: (str) -> None
+    print(x)
+    assert False
+    print(x)
+
+[file report/mypy-html.css]
+[file report/index.html]
+[outfile report/html/n.py.html]
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="../mypy-html.css">
+</head>
+<body>
+<h2>n</h2>
+<table>
+<caption>n.py</caption>
+<tbody><tr>
+<td class="table-lines"><pre><span id="L1" class="lineno"><a class="lineno" href="#L1">1</a></span>
+<span id="L2" class="lineno"><a class="lineno" href="#L2">2</a></span>
+<span id="L3" class="lineno"><a class="lineno" href="#L3">3</a></span>
+<span id="L4" class="lineno"><a class="lineno" href="#L4">4</a></span>
+<span id="L5" class="lineno"><a class="lineno" href="#L5">5</a></span>
+</pre></td>
+<td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">def bar(x):</span>
+<span class="line-empty" title="No Anys on this line!">    # type: (str) -&gt; None</span>
+<span class="line-precise" title="Any Types on this line:
+Explicit (x1)">    print(x)</span>
+<span class="line-empty" title="No Anys on this line!">    assert False</span>
+<span class="line-unanalyzed" title="No Anys on this line!">    print(x)</span>
+</pre></td>
+</tr></tbody>
+</table>
+</body>
+</html>
+
+[case testHtmlReportMemberExprNoUnanalyzed]
+# cmd: mypy --html-report report n.py
+
+[file n.py]
+import sys
+
+old_stdout = sys.stdout
+
+[file report/mypy-html.css]
+[file report/index.html]
+[outfile report/html/n.py.html]
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="../mypy-html.css">
+</head>
+<body>
+<h2>n</h2>
+<table>
+<caption>n.py</caption>
+<tbody><tr>
+<td class="table-lines"><pre><span id="L1" class="lineno"><a class="lineno" href="#L1">1</a></span>
+<span id="L2" class="lineno"><a class="lineno" href="#L2">2</a></span>
+<span id="L3" class="lineno"><a class="lineno" href="#L3">3</a></span>
+</pre></td>
+<td class="table-code"><pre><span class="line-empty" title="No Anys on this line!">import sys</span>
+<span class="line-empty" title="No Anys on this line!"></span>
+<span class="line-precise" title="No Anys on this line!">old_stdout = sys.stdout</span>
+</pre></td>
+</tr></tbody>
+</table>
+</body>
+</html>
+
+[case testAnyExprReportIncludesDeadCode]
+# cmd: mypy --any-exprs-report report i.py j.py
+
+[file i.py]
+def bar(x):
+    # type: (str) -> None
+    print(x)
+    assert False
+    print(x)  # dead code!
+
+[file j.py]
+def bar(x):
+    # type: (str) -> None
+    print(x)
+    assert False
+
+[file report/types-of-anys.txt]
+[outfile report/any-exprs.txt]
+ Name   Anys   Exprs   Coverage
+---------------------------------
+    i      1       7     85.71%
+    j      0       6    100.00%
+---------------------------------
+Total      1      13     92.31%
+
+[case testAnyExprReportHigherKindedTypesAreNotAny]
+# cmd: mypy --any-exprs-report report i.py
+
+[file i.py]
+from enum import Enum
+from mypy_extensions import TypedDict
+from typing import NewType, NamedTuple, TypeVar
+
+from typing import TypeVar
+
+T = TypeVar('T')  # no error
+
+def f(t: T) -> T:
+    return t
+
+Point = NamedTuple('Point', [('x', int), ('y', int)])  # no error
+
+def origin() -> Point:
+    return Point(x=0, y=0)
+
+NT = NewType('NT', int)  # no error
+
+def nt() -> NT:
+    return NT(1)
+
+E = Enum('E', '1, 2, 3')  # no error
+
+def k(s: E) -> None: pass
+
+Movie = TypedDict('Movie', {'name': str, 'year': int})
+
+def g(m: Movie) -> Movie:
+    return m
+
+[file report/types-of-anys.txt]
+[outfile report/any-exprs.txt]
+ Name   Anys   Exprs   Coverage
+---------------------------------
+    i      0      16    100.00%
+---------------------------------
+Total      0      16    100.00%
+
+
+[case testAnyExpressionsReportTypesOfAny]
+# cmd: mypy --any-exprs-report report n.py
+
+[file n.py]
+from typing import Any, List
+from nonexistent import C  # type: ignore
+
+def a(x) -> None:  # Unannotated
+    print(x)
+
+x: Any = 2  # Explicit
+y: C = None  # Unimported
+
+def b() -> List:  # Omitted Generics
+    return [1, 2, 3]
+
+g = 1
+z = g.does_not_exist()  # type: ignore  # Error
+
+
+[file report/any-exprs.txt]
+[outfile report/types-of-anys.txt]
+ Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form
+---------------------------------------------------------------------------------------
+    n             2          3            2                  1       3              0
+---------------------------------------------------------------------------------------
+Total             2          3            2                  1       3              0
+
+[case testAnyExpressionsReportUnqualifiedError]
+# cmd: mypy --any-exprs-report report n.py
+
+[file n.py]
+z = does_not_exist()  # type: ignore  # Error
+
+[file report/any-exprs.txt]
+[outfile report/types-of-anys.txt]
+ Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form
+---------------------------------------------------------------------------------------
+    n             0          0            0                  0       3              0
+---------------------------------------------------------------------------------------
+Total             0          0            0                  0       3              0
+
+[case testAnyExpressionsReportUntypedDef]
+# cmd: mypy --any-exprs-report report n.py
+
+[file n.py]
+def foo():
+    x = 0
+    f = 0
+
+[file report/any-exprs.txt]
+[outfile report/types-of-anys.txt]
+ Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form
+---------------------------------------------------------------------------------------
+    n             0          0            0                  0       0              0
+---------------------------------------------------------------------------------------
+Total             0          0            0                  0       0              0

@@ -17,7 +17,7 @@ A function without a type annotation is considered dynamically typed:
 
 You can declare the signature of a function using the Python 3
 annotation syntax (Python 2 is discussed later in :ref:`python2`).
-This makes the the function statically typed, and that causes type
+This makes the function statically typed, and that causes type
 checker report type errors within the function.
 
 Here's a version of the above function that is statically typed and

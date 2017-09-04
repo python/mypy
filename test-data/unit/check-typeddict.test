@@ -343,7 +343,9 @@ Point = TypedDict('Point', {'x': int, 'y': int})
 def as_dict(p: Point) -> Dict[str, int]:
     return p  # E: Incompatible return value type (got "Point", expected Dict[str, int])
 def as_mutable_mapping(p: Point) -> MutableMapping[str, int]:
-    return p  # E: Incompatible return value type (got "Point", expected MutableMapping[str, int])
+    return p  # E: Incompatible return value type (got "Point", expected MutableMapping[str, int]) \
+              # N: 'Point' is missing following 'MutableMapping' protocol member: \
+              # N:     __setitem__
 [builtins fixtures/dict.pyi]
 
 [case testCanConvertTypedDictToAny]
@@ -372,6 +374,52 @@ ll = [b, c]
 f(ll) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x': int, 'z': str})]; expected "A"
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictWithSimpleProtocol]
+from typing_extensions import Protocol
+from mypy_extensions import TypedDict
+
+class StrIntMap(Protocol):
+    def __getitem__(self, key: str) -> int: ...
+
+A = TypedDict('A', {'x': int, 'y': int})
+B = TypedDict('B', {'x': int, 'y': str})
+
+def fun(arg: StrIntMap) -> None: ...
+a: A
+b: B
+fun(a)
+fun(b)  # Error
+[builtins fixtures/dict.pyi]
+[out]
+main:14: error: Argument 1 to "fun" has incompatible type "B"; expected "StrIntMap"
+main:14: note: Following member(s) of "B" have conflicts:
+main:14: note:     Expected:
+main:14: note:         def __getitem__(self, str) -> int
+main:14: note:     Got:
+main:14: note:         def __getitem__(self, str) -> object
+
+[case testTypedDictWithSimpleProtocolInference]
+from typing_extensions import Protocol
+from mypy_extensions import TypedDict
+from typing import TypeVar
+
+T_co = TypeVar('T_co', covariant=True)
+T = TypeVar('T')
+
+class StrMap(Protocol[T_co]):
+    def __getitem__(self, key: str) -> T_co: ...
+
+A = TypedDict('A', {'x': int, 'y': int})
+B = TypedDict('B', {'x': int, 'y': str})
+
+def fun(arg: StrMap[T]) -> T:
+    return arg['whatever']
+a: A
+b: B
+reveal_type(fun(a))  # E: Revealed type is 'builtins.int*'
+reveal_type(fun(b))  # E: Revealed type is 'builtins.object*'
+[builtins fixtures/dict.pyi]
+[out]
 
 -- Join
 
@@ -847,7 +895,7 @@ class A: pass
 D = TypedDict('D', {'x': List[int], 'y': int})
 d: D
 reveal_type(d.get('x', [])) # E: Revealed type is 'builtins.list[builtins.int]'
-d.get('x', ['x']) # E: List item 0 has incompatible type "str"
+d.get('x', ['x']) # E: List item 0 has incompatible type "str"; expected "int"
 a = ['']
 reveal_type(d.get('x', a)) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str*]]'
 [builtins fixtures/dict.pyi]
@@ -1132,9 +1180,16 @@ def f(x: int) -> None: ...
 def f(x): pass
 
 a: A
-f(a)  # E: Argument 1 to "f" has incompatible type "A"; expected Iterable[int]
+f(a)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+[out]
+main:13: error: Argument 1 to "f" has incompatible type "A"; expected Iterable[int]
+main:13: note: Following member(s) of "A" have conflicts:
+main:13: note:     Expected:
+main:13: note:         def __iter__(self) -> Iterator[int]
+main:13: note:     Got:
+main:13: note:         def __iter__(self) -> Iterator[str]
 
 [case testTypedDictOverloading3]
 from typing import overload

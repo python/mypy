@@ -1,10 +1,12 @@
 # Builtins stub used in slicing test cases.
+from typing import Generic, TypeVar
+T = TypeVar('T')
 
 class object:
     def __init__(self): pass
 
 class type: pass
-class tuple: pass
+class tuple(Generic[T]): pass
 class function: pass
 
 class int: pass

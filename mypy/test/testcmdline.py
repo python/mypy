@@ -14,7 +14,7 @@ from typing import Tuple, List, Dict, Set
 from mypy.myunit import Suite, SkipTestCaseException, AssertionFailure
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import fix_cobertura_filename
-from mypy.test.data import parse_test_cases, DataDrivenTestCase
+from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
 from mypy.version import __version__, base_version
 
@@ -22,12 +22,16 @@ from mypy.version import __version__, base_version
 python3_path = sys.executable
 
 # Files containing test case descriptions.
-cmdline_files = ['cmdline.test']
+cmdline_files = [
+    'cmdline.test',
+    'reports.test',
+]
 
 
-class PythonEvaluationSuite(Suite):
+class PythonEvaluationSuite(DataSuite):
 
-    def cases(self) -> List[DataDrivenTestCase]:
+    @classmethod
+    def cases(cls) -> List[DataDrivenTestCase]:
         c = []  # type: List[DataDrivenTestCase]
         for f in cmdline_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
@@ -37,8 +41,12 @@ class PythonEvaluationSuite(Suite):
                                   native_sep=True)
         return c
 
+    def run_case(self, testcase: DataDrivenTestCase):
+        test_python_evaluation(testcase)
+
 
 def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
+    assert testcase.old_cwd is not None, "test was not properly set up"
     # Write the program to a file.
     program = '_program.py'
     program_path = os.path.join(test_temp_dir, program)
