@@ -1,7 +1,7 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
 from collections import OrderedDict
-from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
+from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional, Iterable
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, set_any_tvars
@@ -1076,8 +1076,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if similarity > 0 and similarity >= best_match:
                 if (match and not is_same_type(match[-1].ret_type,
                                                typ.ret_type) and
-                    not mypy.checker.is_more_precise_signature(
-                        match[-1], typ)):
+                    (not mypy.checker.is_more_precise_signature(match[-1], typ)
+                     or (any(isinstance(arg, AnyType) for arg in arg_types)
+                         and any_arg_causes_overload_ambiguity(
+                             match + [typ], arg_types, arg_kinds, arg_names)))):
                     # Ambiguous return type. Either the function overload is
                     # overlapping (which we don't handle very well here) or the
                     # caller has provided some Any argument types; in either
@@ -2764,3 +2766,71 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
         return 2
     # Fall back to a conservative equality check for the remaining kinds of type.
     return 2 if is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal)) else 0
+
+
+def any_arg_causes_overload_ambiguity(items: List[CallableType],
+                                      arg_types: List[Type],
+                                      arg_kinds: List[int],
+                                      arg_names: List[Optional[str]]) -> bool:
+    """May an Any actual argument cause ambiguous result type on call to overloaded function?
+
+    Note that this sometimes returns True even if there is no ambiguity, since a correct
+    implementation would be complex (and the call would be imprecisely typed due to Any
+    types anyway).
+
+    Args:
+        items: Overload items matching the actual arguments
+        arg_types: Actual argument types
+        arg_kinds: Actual argument kinds
+        arg_names: Actual argument names
+    """
+    actual_to_formal = [
+        map_formals_to_actuals(
+            arg_kinds, arg_names, item.arg_kinds, item.arg_names, lambda i: arg_types[i])
+        for item in items
+    ]
+
+    for i, arg_type in enumerate(arg_types):
+        if isinstance(arg_type, AnyType):
+            matching_formals_unfiltered = [(j, lookup[i])
+                                           for j, lookup in enumerate(actual_to_formal)
+                                           if lookup[i]]
+            matching_formals = []
+            for j, formals in matching_formals_unfiltered:
+                if len(formals) > 1:
+                    # An actual maps to multiple formals -- give up as too
+                    # complex, just assume it overlaps.
+                    return True
+                matching_formals.append((j, items[j].arg_types[formals[0]]))
+            if (not all_same_types(t for _, t in matching_formals) and
+                    not all_same_types(items[j].ret_type for j, _ in matching_formals)):
+                # Any maps to multiple different types, and the return types of these items differ.
+                return True
+    return False
+
+
+def all_same_types(types: Iterable[Type]) -> bool:
+    types = list(types)
+    if len(types) == 0:
+        return True
+    return all(is_same_type(t, types[0]) for t in types[1:])
+
+
+def map_formals_to_actuals(caller_kinds: List[int],
+                           caller_names: List[Optional[str]],
+                           callee_kinds: List[int],
+                           callee_names: List[Optional[str]],
+                           caller_arg_type: Callable[[int],
+                                                     Type]) -> List[List[int]]:
+    """Calculate the reverse mapping of map_actuals_to_formals."""
+    formal_to_actual = map_actuals_to_formals(caller_kinds,
+                                              caller_names,
+                                              callee_kinds,
+                                              callee_names,
+                                              caller_arg_type)
+    # Now reverse the mapping.
+    actual_to_formal = [[] for _ in caller_kinds]  # type: List[List[int]]
+    for formal, actuals in enumerate(formal_to_actual):
+        for actual in actuals:
+            actual_to_formal[actual].append(formal)
+    return actual_to_formal

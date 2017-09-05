@@ -1157,3 +1157,116 @@ class Test(object):
 
 t = Test()
 reveal_type(t.do_chain)  # E: Revealed type is '__main__.Chain'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument1]
+from typing import overload, Any
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: object) -> object: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument2]
+from typing import overload, Any
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: float) -> float: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument3]
+from typing import overload, Any
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument4]
+from typing import overload, Any
+
+@overload
+def f(x: int, y: int, z: str) -> int: ...
+@overload
+def f(x: object, y: int, z: str) -> object: ...
+def f(x): pass
+
+a: Any
+# Any causes ambiguity
+reveal_type(f(a, 1, ''))  # E: Revealed type is 'Any'
+# Any causes no ambiguity
+reveal_type(f(1, a, a))  # E: Revealed type is 'builtins.int'
+reveal_type(f('', a, a))  # E: Revealed type is 'builtins.object'
+# Like above, but use keyword arguments.
+reveal_type(f(y=1, z='', x=a))  # E: Revealed type is 'Any'
+reveal_type(f(y=a, z='', x=1))  # E: Revealed type is 'builtins.int'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument5]
+from typing import overload, Any, Union
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: Union[int, float]) -> float: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument6]
+from typing import overload, Any
+
+@overload
+def f(x: int, y: int) -> int: ...
+@overload
+def f(x: float, y: int, z: str) -> float: ...
+@overload
+def f(x: object, y: int, z: str, a: None) -> object: ...
+def f(x): pass
+
+a: Any
+# Any causes ambiguity
+reveal_type(f(*a))  # E: Revealed type is 'Any'
+reveal_type(f(a, *a))  # E: Revealed type is 'Any'
+reveal_type(f(1, *a))  # E: Revealed type is 'Any'
+reveal_type(f(1.1, *a))  # E: Revealed type is 'Any'
+reveal_type(f('', *a))  # E: Revealed type is 'builtins.object'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument7]
+from typing import overload, Any
+
+@overload
+def f(x: int, y: int, z: int) -> int: ...
+@overload
+def f(x: object, y: int, z: int) -> object: ...
+def f(x): pass
+
+a: Any
+# TODO: We could infer 'int' here
+reveal_type(f(1, *a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument8]
+from typing import overload, Any
+
+@overload
+def f(x: int, y: int, z: int) -> str: ...
+@overload
+def f(x: object, y: int, z: int) -> str: ...
+def f(x): pass
+
+a: Any
+# The return type is not ambiguous so Any arguments cause no ambiguity.
+reveal_type(f(a, 1, 1)) # E: Revealed type is 'builtins.str'
+reveal_type(f(1, *a))  # E: Revealed type is 'builtins.str'
