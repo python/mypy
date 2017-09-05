@@ -13,7 +13,7 @@ MypyFile:1(
   Import:2(typing)
   ClassDef:4(
     A
-    Metaclass(ABCMeta)
+    Metaclass(NameExpr(ABCMeta [abc.ABCMeta]))
     Decorator:5(
       Var(g)
       FuncDef:6(
@@ -49,11 +49,11 @@ MypyFile:1(
   Import:2(typing)
   ClassDef:4(
     A
-    Metaclass(ABCMeta)
+    Metaclass(NameExpr(ABCMeta [abc.ABCMeta]))
     PassStmt:4())
   ClassDef:5(
     B
-    Metaclass(ABCMeta)
+    Metaclass(NameExpr(ABCMeta [abc.ABCMeta]))
     PassStmt:5())
   ClassDef:6(
     C
@@ -106,7 +106,7 @@ MypyFile:1(
   Import:3(typing)
   ClassDef:5(
     A
-    Metaclass(ABCMeta)
+    Metaclass(NameExpr(ABCMeta [abc.ABCMeta]))
     Decorator:6(
       Var(g)
       FuncDef:7(

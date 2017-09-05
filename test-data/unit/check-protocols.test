@@ -197,7 +197,7 @@ class C:
     meth: int
 x: P = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P") \
            # N: Following member(s) of "C" have conflicts: \
-           # N:     meth: expected Callable[[], int], got "int"
+           # N:     meth: expected "Callable[[], int]", got "int"
 
 [case testProtocolMethodVsAttributeErrors2]
 from typing import Protocol
@@ -211,7 +211,7 @@ class C:
         pass
 x: P = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P") \
            # N: Following member(s) of "C" have conflicts: \
-           # N:     meth: expected "int", got Callable[[], int]
+           # N:     meth: expected "int", got "Callable[[], int]"
 [builtins fixtures/property.pyi]
 
 [case testCannotAssignNormalToProtocol]
@@ -272,7 +272,7 @@ class MyHashable(Protocol):
 
 class C(MyHashable):
     __my_hash__ = None  # E: Incompatible types in assignment \
-(expression has type None, base class "MyHashable" defined the type as Callable[[MyHashable], int])
+(expression has type "None", base class "MyHashable" defined the type as "Callable[[MyHashable], int]")
 
 [case testProtocolsWithNoneAndStrictOptional]
 # flags: --strict-optional
@@ -289,10 +289,10 @@ f(C()) # Error!
 [out]
 main:9: error: Incompatible types in assignment (expression has type "C", variable has type "P")
 main:9: note: Following member(s) of "C" have conflicts:
-main:9: note:     x: expected "int", got None
+main:9: note:     x: expected "int", got "None"
 main:11: error: Argument 1 to "f" has incompatible type "C"; expected "P"
 main:11: note: Following member(s) of "C" have conflicts:
-main:11: note:     x: expected "int", got None
+main:11: note:     x: expected "int", got "None"
 
 -- Semanal errors in protocol types
 -- --------------------------------
@@ -442,18 +442,18 @@ class B(A): pass
 
 x1: Pco[B]
 y1: Pco[A]
-x1 = y1 # E: Incompatible types in assignment (expression has type Pco[A], variable has type Pco[B])
-y1 = x1 # E: Incompatible types in assignment (expression has type Pco[B], variable has type Pco[A])
+x1 = y1 # E: Incompatible types in assignment (expression has type "Pco[A]", variable has type "Pco[B]")
+y1 = x1 # E: Incompatible types in assignment (expression has type "Pco[B]", variable has type "Pco[A]")
 
 x2: Pcontra[B]
 y2: Pcontra[A]
-y2 = x2 # E: Incompatible types in assignment (expression has type Pcontra[B], variable has type Pcontra[A])
-x2 = y2 # E: Incompatible types in assignment (expression has type Pcontra[A], variable has type Pcontra[B])
+y2 = x2 # E: Incompatible types in assignment (expression has type "Pcontra[B]", variable has type "Pcontra[A]")
+x2 = y2 # E: Incompatible types in assignment (expression has type "Pcontra[A]", variable has type "Pcontra[B]")
 
 x3: Pinv[B]
 y3: Pinv[A]
-y3 = x3 # E: Incompatible types in assignment (expression has type Pinv[B], variable has type Pinv[A])
-x3 = y3 # E: Incompatible types in assignment (expression has type Pinv[A], variable has type Pinv[B])
+y3 = x3 # E: Incompatible types in assignment (expression has type "Pinv[B]", variable has type "Pinv[A]")
+x3 = y3 # E: Incompatible types in assignment (expression has type "Pinv[A]", variable has type "Pinv[B]")
 
 [case testProtocolVarianceWithCallableAndList]
 from typing import Protocol, TypeVar, Callable, List
@@ -586,7 +586,7 @@ class C:
 
 c: C
 var: P2[int, int] = c
-var2: P2[int, str] = c # E: Incompatible types in assignment (expression has type "C", variable has type P2[int, str]) \
+var2: P2[int, str] = c # E: Incompatible types in assignment (expression has type "C", variable has type "P2[int, str]") \
                        # N: Following member(s) of "C" have conflicts: \
                        # N:     attr2: expected "Tuple[int, str]", got "Tuple[int, int]"
 
@@ -597,7 +597,7 @@ class E(D[T]):
 
 def f(x: T) -> T:
     z: P2[T, T] = E[T]()
-    y: P2[T, T] = D[T]() # E: Incompatible types in assignment (expression has type D[T], variable has type P2[T, T]) \
+    y: P2[T, T] = D[T]() # E: Incompatible types in assignment (expression has type "D[T]", variable has type "P2[T, T]") \
                          # N: 'D' is missing following 'P2' protocol member: \
                          # N:     attr2
     return x
@@ -628,7 +628,7 @@ class D(A, B): pass
 
 x: P = D()  # Same as P[Any, Any]
 
-var: P[Union[int, P], Union[P, str]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type P[Union[int, P[Any, Any]], Union[P[Any, Any], str]]) \
+var: P[Union[int, P], Union[P, str]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P[Union[int, P[Any, Any]], Union[P[Any, Any], str]]") \
                                            # N: Following member(s) of "C" have conflicts: \
                                            # N:     attr1: expected "Union[int, P[Any, Any]]", got "int" \
                                            # N:     attr2: expected "Union[P[Any, Any], str]", got "str"
@@ -653,7 +653,7 @@ class C:
 var: P[Union[int, P], Union[P, str]] = C() # OK for covariant
 var2: P[Union[str, P], Union[P, int]] = C()
 [out]
-main:18: error: Incompatible types in assignment (expression has type "C", variable has type P[Union[str, P[Any, Any]], Union[P[Any, Any], int]])
+main:18: error: Incompatible types in assignment (expression has type "C", variable has type "P[Union[str, P[Any, Any]], Union[P[Any, Any], int]]")
 main:18: note: Following member(s) of "C" have conflicts:
 main:18: note:     Expected:
 main:18: note:         def attr1(self) -> Union[str, P[Any, Any]]
@@ -799,7 +799,7 @@ class L:
 
 def last(seq: Linked[T]) -> T:
     pass
-last(L()) # E: Argument 1 to "last" has incompatible type "L"; expected Linked[<nothing>]
+last(L()) # E: Argument 1 to "last" has incompatible type "L"; expected "Linked[<nothing>]"
 
 [case testMutuallyRecursiveProtocols]
 from typing import Protocol, Sequence, List
@@ -842,7 +842,7 @@ class B:
 t: P1
 t = A() # E: Incompatible types in assignment (expression has type "A", variable has type "P1") \
         # N: Following member(s) of "A" have conflicts: \
-        # N:     attr1: expected Sequence[P2], got List[B]
+        # N:     attr1: expected "Sequence[P2]", got "List[B]"
 [builtins fixtures/list.pyi]
 
 [case testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable]
@@ -1385,13 +1385,13 @@ def f(cls: Type[P]) -> P:
 def g() -> P:
     return P()  # E: Cannot instantiate protocol class "P"
 
-f(P)  # E: Only concrete class can be given where 'Type[P]' is expected
+f(P)  # E: Only concrete class can be given where "Type[P]" is expected
 f(B)  # OK
 f(C)  # OK
 x: Type[P1]
 xbad: Type[Pbad]
 f(x)  # OK
-f(xbad)  # E: Argument 1 to "f" has incompatible type Type[Pbad]; expected Type[P]
+f(xbad)  # E: Argument 1 to "f" has incompatible type "Type[Pbad]"; expected "Type[P]"
 
 [case testInstantiationProtocolInTypeForAliases]
 from typing import Type, Protocol
@@ -1409,7 +1409,7 @@ Alias = P
 GoodAlias = C
 Alias()  # E: Cannot instantiate protocol class "P"
 GoodAlias()
-f(Alias)  # E: Only concrete class can be given where 'Type[P]' is expected
+f(Alias)  # E: Only concrete class can be given where "Type[P]" is expected
 f(GoodAlias)
 
 [case testInstantiationProtocolInTypeForVariables]
@@ -1424,13 +1424,13 @@ class C:
 
 var: Type[P]
 var()
-var = P # E: Can only assign concrete classes to a variable of type 'Type[P]'
+var = P # E: Can only assign concrete classes to a variable of type "Type[P]"
 var = B # OK
 var = C # OK
 
 var_old = None # type: Type[P] # Old syntax for variable annotations
 var_old()
-var_old = P # E: Can only assign concrete classes to a variable of type 'Type[P]'
+var_old = P # E: Can only assign concrete classes to a variable of type "Type[P]"
 var_old = B # OK
 var_old = C # OK
 
@@ -1596,7 +1596,7 @@ def f(x: MyProto[int]) -> None:
 f(t)  # OK
 
 y: MyProto[str]
-y = t # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type MyProto[str])
+y = t # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "MyProto[str]")
 [builtins fixtures/isinstancelist.pyi]
 
 [case testBasicNamedTupleStructuralSubtyping]
@@ -1631,11 +1631,11 @@ def fun3(x: P[T, T]) -> T:
     return x.x
 
 fun(z)
-fun2(z) # E: Argument 1 to "fun2" has incompatible type "N"; expected P[int, int] \
+fun2(z) # E: Argument 1 to "fun2" has incompatible type "N"; expected "P[int, int]" \
         # N: Following member(s) of "N" have conflicts: \
         # N:     y: expected "int", got "str"
 
-fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected P[int, str] \
+fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected "P[int, str]" \
            # N: 'N2' is missing following 'P' protocol member: \
            # N:     y
 
@@ -1663,8 +1663,8 @@ def apply_gen(f: Callable[[T], T]) -> T:
 reveal_type(apply_gen(Add5())) # E: Revealed type is 'builtins.int*'
 def apply_str(f: Callable[[str], int], x: str) -> int:
     return f(x)
-apply_str(Add5(), 'a') # E: Argument 1 to "apply_str" has incompatible type "Add5"; expected Callable[[str], int] \
-                       # N: 'Add5.__call__' has type 'Callable[[Arg(int, 'x')], int]'
+apply_str(Add5(), 'a') # E: Argument 1 to "apply_str" has incompatible type "Add5"; expected "Callable[[str], int]" \
+                       # N: "Add5.__call__" has type "Callable[[Arg(int, 'x')], int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMoreComplexCallableStructuralSubtyping]
@@ -1680,10 +1680,10 @@ class Bad1:
 class Bad2:
     def __call__(self, y: int, *rest: str) -> int: pass
 call_soon(Good())
-call_soon(Bad1()) # E: Argument 1 to "call_soon" has incompatible type "Bad1"; expected Callable[[int, VarArg(str)], int] \
-                  # N: 'Bad1.__call__' has type 'Callable[[Arg(int, 'x'), VarArg(int)], int]'
-call_soon(Bad2()) # E: Argument 1 to "call_soon" has incompatible type "Bad2"; expected Callable[[int, VarArg(str)], int] \
-                  # N: 'Bad2.__call__' has type 'Callable[[Arg(int, 'y'), VarArg(str)], int]'
+call_soon(Bad1()) # E: Argument 1 to "call_soon" has incompatible type "Bad1"; expected "Callable[[int, VarArg(str)], int]" \
+                  # N: "Bad1.__call__" has type "Callable[[Arg(int, 'x'), VarArg(int)], int]"
+call_soon(Bad2()) # E: Argument 1 to "call_soon" has incompatible type "Bad2"; expected "Callable[[int, VarArg(str)], int]" \
+                  # N: "Bad2.__call__" has type "Callable[[Arg(int, 'y'), VarArg(str)], int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testStructuralSupportForPartial]
@@ -1783,7 +1783,7 @@ f1(C1())
 f2(C2())
 f3(C3())
 
-f2(C3())  # E: Argument 1 to "f2" has incompatible type "C3"; expected P2[str]
+f2(C3())  # E: Argument 1 to "f2" has incompatible type "C3"; expected "P2[str]"
 a: Any
 f1(a)
 f2(a)
@@ -2042,8 +2042,8 @@ def f1(x: Iterable[str]) -> None: pass
 def f2(x: Sequence[str]) -> None: pass
 
 # The errors below should be short
-f1(N(1))  # E: Argument 1 to "f1" has incompatible type "N"; expected Iterable[str]
-f2(N(2))  # E: Argument 1 to "f2" has incompatible type "N"; expected Sequence[str]
+f1(N(1))  # E: Argument 1 to "f1" has incompatible type "N"; expected "Iterable[str]"
+f2(N(2))  # E: Argument 1 to "f2" has incompatible type "N"; expected "Sequence[str]"
 [builtins fixtures/tuple.pyi]
 
 [case testNotManyFlagConflitsShownInProtocols]
@@ -2092,7 +2092,7 @@ class MockDict(MockMapping[T]):
 
 def f(x: MockMapping[int]) -> None: pass
 x: MockDict[str]
-f(x)  # E: Argument 1 to "f" has incompatible type MockDict[str]; expected MockMapping[int]
+f(x)  # E: Argument 1 to "f" has incompatible type "MockDict[str]"; expected "MockMapping[int]"
 
 [case testProtocolNotesForComplexSignatures]
 from typing import Protocol, Optional

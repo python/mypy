@@ -265,7 +265,7 @@ reveal_type(f() or no_return())  # E: Revealed type is 'builtins.int'
 # flags: --warn-no-return
 from mypy_extensions import NoReturn
 
-x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type NoReturn)
+x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type "NoReturn")
 [builtins fixtures/dict.pyi]
 
 [case testNoReturnImportFromTyping]
@@ -281,7 +281,7 @@ def no_return() -> NoReturn: pass
 def f() -> NoReturn:
   no_return()
 
-x: NoReturn = 0 # E: Incompatible types in assignment (expression has type "int", variable has type NoReturn)
+x: NoReturn = 0 # E: Incompatible types in assignment (expression has type "int", variable has type "NoReturn")
 [builtins fixtures/dict.pyi]
 
 [case testShowErrorContextFunction]
@@ -462,7 +462,7 @@ x = 0
 x = None
 [file optional.py]
 x = 0
-x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 
 [file mypy.ini]
 [[mypy]
@@ -486,10 +486,10 @@ f(optional_int)  # optional ints can be used as ints in this file
 [file optional.py]
 import standard
 def f(x: int) -> None: pass
-standard.an_int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+standard.an_int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 standard.optional_int = None  # OK -- explicitly declared as optional
 f(standard.an_int)  # ints can be used as ints
-f(standard.optional_int)  # E: Argument 1 to "f" has incompatible type None; expected "int"
+f(standard.optional_int)  # E: Argument 1 to "f" has incompatible type "None"; expected "int"
 
 [file mypy.ini]
 [[mypy]
@@ -603,9 +603,9 @@ def foo(l: List[Unchecked]) -> List[Unchecked]:
     return l
 [builtins fixtures/list.pyi]
 [out]
-main:5: error: Return type becomes List[Any] due to an unfollowed import
-main:5: error: Argument 1 to "foo" becomes List[Any] due to an unfollowed import
-main:6: error: Type of variable becomes List[Any] due to an unfollowed import
+main:5: error: Return type becomes "List[Any]" due to an unfollowed import
+main:5: error: Argument 1 to "foo" becomes "List[Any]" due to an unfollowed import
+main:6: error: Type of variable becomes "List[Any]" due to an unfollowed import
 
 [case testDisallowImplicitAnyInherit]
 # flags: --ignore-missing-imports --disallow-any=unimported
@@ -615,7 +615,7 @@ from typing import List
 class C(Unchecked): # E: Base type Unchecked becomes "Any" due to an unfollowed import
     pass
 
-class A(List[Unchecked]): # E: Base type becomes List[Any] due to an unfollowed import
+class A(List[Unchecked]): # E: Base type becomes "List[Any]" due to an unfollowed import
     pass
 [builtins fixtures/list.pyi]
 
@@ -626,7 +626,7 @@ from typing import List
 
 X = List[Unchecked]
 
-def f(x: X) -> None:  # E: Argument 1 to "f" becomes List[Any] due to an unfollowed import
+def f(x: X) -> None:  # E: Argument 1 to "f" becomes "List[Any]" due to an unfollowed import
     pass
 [builtins fixtures/list.pyi]
 
@@ -637,7 +637,7 @@ from typing import List, cast
 
 
 foo = [1, 2, 3]
-cast(List[Unchecked], foo)  # E: Target type of cast becomes List[Any] due to an unfollowed import
+cast(List[Unchecked], foo)  # E: Target type of cast becomes "List[Any]" due to an unfollowed import
 cast(Unchecked, foo)  # E: Target type of cast becomes "Any" due to an unfollowed import
 [builtins fixtures/list.pyi]
 
@@ -661,7 +661,7 @@ T = TypeVar('T', Unchecked, List[Unchecked], str)
 [builtins fixtures/list.pyi]
 [out]
 main:5: error: Constraint 1 becomes "Any" due to an unfollowed import
-main:5: error: Constraint 2 becomes List[Any] due to an unfollowed import
+main:5: error: Constraint 2 becomes "List[Any]" due to an unfollowed import
 
 [case testDisallowImplicitAnyNewType]
 # flags: --ignore-missing-imports --disallow-any=unimported
@@ -669,7 +669,7 @@ from typing import NewType, List
 from missing import Unchecked
 
 Baz = NewType('Baz', Unchecked)  # E: Argument 2 to NewType(...) must be subclassable (got Any)
-Bar = NewType('Bar', List[Unchecked])  # E: Argument 2 to NewType(...) becomes List[Any] due to an unfollowed import
+Bar = NewType('Bar', List[Unchecked])  # E: Argument 2 to NewType(...) becomes "List[Any]" due to an unfollowed import
 
 [builtins fixtures/list.pyi]
 
@@ -683,7 +683,7 @@ def foo(f: Callable[[], Unchecked]) -> Tuple[Unchecked]:
 [builtins fixtures/list.pyi]
 [out]
 main:5: error: Return type becomes "Tuple[Any]" due to an unfollowed import
-main:5: error: Argument 1 to "foo" becomes Callable[[], Any] due to an unfollowed import
+main:5: error: Argument 1 to "foo" becomes "Callable[[], Any]" due to an unfollowed import
 
 [case testDisallowImplicitAnySubclassingExplicitAny]
 # flags: --ignore-missing-imports --disallow-any=unimported --disallow-subclassing-any
@@ -720,7 +720,7 @@ from mypy_extensions import TypedDict
 from typing import List
 from x import Unchecked
 
-M = TypedDict('M', {'x': str, 'y': List[Unchecked]})  # E: Type of a TypedDict key becomes List[Any] due to an unfollowed import
+M = TypedDict('M', {'x': str, 'y': List[Unchecked]})  # E: Type of a TypedDict key becomes "List[Any]" due to an unfollowed import
 
 def f(m: M) -> M: pass  # no error
 [builtins fixtures/dict.pyi]
@@ -770,7 +770,7 @@ def d(f) -> Callable[..., None]:
     return f
 
 @d
-def g(i: int, s: str) -> None: pass  # E: Type of decorated function contains type "Any" (Callable[..., None])
+def g(i: int, s: str) -> None: pass  # E: Type of decorated function contains type "Any" ("Callable[..., None]")
 
 [builtins fixtures/list.pyi]
 [case testDisallowAnyDecoratedNonexistentDecorator]
@@ -790,13 +790,13 @@ def d2(f) -> Callable[[int], List[Any]]: pass
 def d3(f) -> Callable[[Any], List[str]]: pass
 
 @d
-def f(i: int, s: str) -> None:  # E: Type of decorated function contains type "Any" (Callable[[int, Any], Any])
+def f(i: int, s: str) -> None:  # E: Type of decorated function contains type "Any" ("Callable[[int, Any], Any]")
     pass
 @d2
-def g(i: int) -> None:  # E: Type of decorated function contains type "Any" (Callable[[int], List[Any]])
+def g(i: int) -> None:  # E: Type of decorated function contains type "Any" ("Callable[[int], List[Any]]")
     pass
 @d3
-def h(i: int) -> None:  # E: Type of decorated function contains type "Any" (Callable[[Any], List[str]])
+def h(i: int) -> None:  # E: Type of decorated function contains type "Any" ("Callable[[Any], List[str]]")
     pass
 [builtins fixtures/list.pyi]
 
@@ -883,9 +883,9 @@ def g(s: List[Any]) -> None:
 
 f(0)
 
-# type of list below is inferred with expected type of List[Any], so that becomes it's type
+# type of list below is inferred with expected type of "List[Any]", so that becomes it's type
 # instead of List[str]
-g([''])  # E: Expression type contains "Any" (has type List[Any])
+g([''])  # E: Expression type contains "Any" (has type "List[Any]")
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExprAllowsAnyInCast]
@@ -916,8 +916,8 @@ n = Foo().g  # type: Any  # E: Expression has type "Any"
 from typing import List
 
 l: List = []
-l.append(1)  # E: Expression type contains "Any" (has type List[Any])
-k = l[0]  # E: Expression type contains "Any" (has type List[Any])  # E: Expression has type "Any"
+l.append(1)  # E: Expression type contains "Any" (has type "List[Any]")
+k = l[0]  # E: Expression type contains "Any" (has type "List[Any]")  # E: Expression has type "Any"
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExprTypeVar]

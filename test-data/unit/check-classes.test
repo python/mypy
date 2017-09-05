@@ -504,8 +504,8 @@ class A:
     h = f # type: Callable[[A], None]
     h = f
     g = h
-    ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type Callable[[A], None], variable has type Callable[[B], None])
-    g = ff                # E: Incompatible types in assignment (expression has type Callable[[B], None], variable has type Callable[[A], None])
+    ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type "Callable[[A], None]", variable has type "Callable[[B], None]")
+    g = ff                # E: Incompatible types in assignment (expression has type "Callable[[B], None]", variable has type "Callable[[A], None]")
 [out]
 
 
@@ -551,7 +551,7 @@ b = A.x # type: B # E: Incompatible types in assignment (expression has type "A"
 [case testAccessingUndefinedAttributeViaClass]
 import typing
 class A: pass
-A.x # E: Type[A] has no attribute "x"
+A.x # E: "Type[A]" has no attribute "x"
 
 [case testAccessingUndefinedAttributeViaClassWithOverloadedInit]
 from foo import *
@@ -562,7 +562,7 @@ class A:
     def __init__(self): pass
     @overload
     def __init__(self, x): pass
-A.x # E: Type[A] has no attribute "x"
+A.x # E: "Type[A]" has no attribute "x"
 
 [case testAccessMethodOfClassWithOverloadedInit]
 from foo import *
@@ -864,7 +864,7 @@ class C:
     cls(1)      # E: Too many arguments for "C"
     cls.bar()
     cls.bar(1)  # E: Too many arguments for "bar" of "C"
-    cls.bozo()  # E: Type[C] has no attribute "bozo"
+    cls.bozo()  # E: "Type[C]" has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -875,7 +875,7 @@ class C:
   def foo(cls) -> None: pass
 C.foo()
 C.foo(1)  # E: Too many arguments for "foo" of "C"
-C.bozo()  # E: Type[C] has no attribute "bozo"
+C.bozo()  # E: "Type[C]" has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 
 [case testClassMethodCalledOnInstance]
@@ -885,7 +885,7 @@ class C:
   def foo(cls) -> None: pass
 C().foo()
 C().foo(1)  # E: Too many arguments for "foo" of "C"
-C.bozo()    # E: Type[C] has no attribute "bozo"
+C.bozo()    # E: "Type[C]" has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 
 [case testClassMethodMayCallAbstractMethod]
@@ -1330,7 +1330,7 @@ class D:
     def __get__(self, inst: Any, own: str) -> Any: pass
 class A:
     f = D()
-A().f  # E: Argument 2 to "__get__" of "D" has incompatible type Type[A]; expected "str"
+A().f  # E: Argument 2 to "__get__" of "D" has incompatible type "Type[A]"; expected "str"
 
 [case testDescriptorGetSetDifferentTypes]
 from typing import Any
@@ -1853,7 +1853,7 @@ class C:
 def f(x: type) -> None: pass
 def g(x: int) -> None: pass
 f(C)
-g(C) # E: Argument 1 to "g" has incompatible type Type[C]; expected "int"
+g(C) # E: Argument 1 to "g" has incompatible type "Type[C]"; expected "int"
 [builtins fixtures/__new__.pyi]
 
 [case testClassWith__new__AndCompatibilityWithType2]
@@ -1864,7 +1864,7 @@ class C:
 def f(x: type) -> None: pass
 def g(x: int) -> None: pass
 f(C)
-g(C) # E: Argument 1 to "g" has incompatible type Type[C]; expected "int"
+g(C) # E: Argument 1 to "g" has incompatible type "Type[C]"; expected "int"
 [builtins fixtures/__new__.pyi]
 
 [case testGenericClassWith__new__]
@@ -1944,7 +1944,7 @@ class B:
 [case testClassVsInstanceDisambiguation]
 class A: pass
 def f(x: A) -> None: pass
-f(A) # E: Argument 1 to "f" has incompatible type Type[A]; expected "A"
+f(A) # E: Argument 1 to "f" has incompatible type "Type[A]"; expected "A"
 [out]
 
 -- TODO
@@ -2151,7 +2151,7 @@ class User: pass
 def new_user(user_class: Type[User]):
     return user_class()
 def foo(arg: Type[int]):
-    new_user(arg)  # E: Argument 1 to "new_user" has incompatible type Type[int]; expected Type[User]
+    new_user(arg)  # E: Argument 1 to "new_user" has incompatible type "Type[int]"; expected "Type[User]"
 [out]
 
 [case testTypeUsingTypeCUnionOverload]
@@ -2190,7 +2190,7 @@ def foo(arg: Type[Any]):
     # Member access is ok and types as Any
     reveal_type(x)  # E: Revealed type is 'Any'
     # But Type[Any] is distinct from Any
-    y: int = arg  # E: Incompatible types in assignment (expression has type Type[Any], variable has type "int")
+    y: int = arg  # E: Incompatible types in assignment (expression has type "Type[Any]", variable has type "int")
 [out]
 
 [case testTypeUsingTypeCTypeAnyMemberFallback]
@@ -2231,7 +2231,7 @@ def process(cls: Type[User]):
     obj = cls()
     reveal_type(cls.bar(obj))  # E: Revealed type is 'builtins.int'
     cls.mro()  # Defined in class type
-    cls.error  # E: Type[User] has no attribute "error"
+    cls.error  # E: "Type[User]" has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2264,7 +2264,7 @@ def process(cls: Type[U]):
     obj = cls()
     reveal_type(cls.bar(obj))  # E: Revealed type is 'builtins.int'
     cls.mro()  # Defined in class type
-    cls.error  # E: Type[U] has no attribute "error"
+    cls.error  # E: "Type[U]" has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2279,11 +2279,11 @@ class ProUser(User): pass
 class BasicUser(User): pass
 U = TypeVar('U', bound=Union[ProUser, BasicUser])
 def process(cls: Type[U]):
-    cls.foo()  # E: Type[U] has no attribute "foo"
+    cls.foo()  # E: "Type[U]" has no attribute "foo"
     obj = cls()
-    cls.bar(obj)  # E: Type[U] has no attribute "bar"
+    cls.bar(obj)  # E: "Type[U]" has no attribute "bar"
     cls.mro()  # Defined in class type
-    cls.error  # E: Type[U] has no attribute "error"
+    cls.error  # E: "Type[U]" has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2751,7 +2751,7 @@ int.__eq__(3, 4)
 [builtins fixtures/args.pyi]
 [out]
 main:33: error: Too few arguments for "__eq__" of "int"
-main:33: error: Unsupported operand types for == ("int" and Type[int])
+main:33: error: Unsupported operand types for == ("int" and "Type[int]")
 
 [case testMroSetAfterError]
 class C(str, str):
@@ -2894,7 +2894,7 @@ class B(A):
     a = 1
     def b(self) -> None: pass
 [out]
-main:5: error: Incompatible types in assignment (expression has type "int", base class "A" defined the type as Callable[[A], None])
+main:5: error: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "Callable[[A], None]")
 main:6: error: Signature of "b" incompatible with supertype "A"
 
 [case testVariableProperty]
@@ -2934,7 +2934,7 @@ class C(B):
     def m(self, a: str) -> None: pass
     n = m
 [out]
-main:5: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "B" defined the type as Callable[[int], None])
+main:5: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "B" defined the type as "Callable[[int], None]")
 
 [case testInstanceMethodOverwriteTypevar]
 from typing import Generic, TypeVar
@@ -2978,7 +2978,7 @@ class C(B):
     n = m
 [builtins fixtures/classmethod.pyi]
 [out]
-main:7: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "B" defined the type as Callable[[int], None])
+main:7: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "B" defined the type as "Callable[[int], None]")
 
 [case testClassSpec]
 from typing import Callable
@@ -2996,7 +2996,7 @@ class B(A):
     def c(self, a: str) -> int: pass
     b = c
 [out]
-main:6: error: Incompatible types in assignment (expression has type Callable[[str], int], base class "A" defined the type as Callable[[int], int])
+main:6: error: Incompatible types in assignment (expression has type "Callable[[str], int]", base class "A" defined the type as "Callable[[int], int]")
 
 [case testClassStaticMethod]
 class A():
@@ -3008,7 +3008,7 @@ class B(A):
     a = b
 [builtins fixtures/staticmethod.pyi]
 [out]
-main:7: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "A" defined the type as Callable[[int], None])
+main:7: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "A" defined the type as "Callable[[int], None]")
 
 [case testClassStaticMethodIndirect]
 class A():
@@ -3021,7 +3021,7 @@ class B(A):
     c = b
 [builtins fixtures/staticmethod.pyi]
 [out]
-main:8: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "A" defined the type as Callable[[int], None])
+main:8: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "A" defined the type as "Callable[[int], None]")
 
 [case testClassStaticMethodSubclassing]
 class A:
@@ -3116,7 +3116,7 @@ class M:
 
 class A(metaclass=M): pass  # E: Metaclasses not inheriting from 'type' are not supported
 
-A.x  # E: Type[A] has no attribute "x"
+A.x  # E: "Type[A]" has no attribute "x"
 
 [case testMetaclassTypeReveal]
 from typing import Type
@@ -3188,7 +3188,7 @@ class Concrete(metaclass=Meta):
     pass
 
 reveal_type(Concrete + X())  # E: Revealed type is 'builtins.str'
-Concrete + "hello"  # E: Unsupported operand types for + (Type[Concrete] and "str")
+Concrete + "hello"  # E: Unsupported operand types for + ("Type[Concrete]" and "str")
 
 [case testMetaclassGetitem]
 class M(type):
@@ -3216,7 +3216,7 @@ from missing import M
 class A(metaclass=M):
     y = 0
 reveal_type(A.y) # E: Revealed type is 'builtins.int'
-A.x # E: Type[A] has no attribute "x"
+A.x # E: "Type[A]" has no attribute "x"
 
 [case testAnyMetaclass]
 from typing import Any
@@ -3224,7 +3224,7 @@ M = None  # type: Any
 class A(metaclass=M):
     y = 0
 reveal_type(A.y) # E: Revealed type is 'builtins.int'
-A.x # E: Type[A] has no attribute "x"
+A.x # E: "Type[A]" has no attribute "x"
 
 [case testInvalidVariableAsMetaclass]
 from typing import Any
@@ -3235,7 +3235,7 @@ class A(metaclass=M): # E: Invalid metaclass 'M'
 class B(metaclass=MM): # E: Invalid metaclass 'MM'
     y = 0
 reveal_type(A.y) # E: Revealed type is 'builtins.int'
-A.x # E: Type[A] has no attribute "x"
+A.x # E: "Type[A]" has no attribute "x"
 
 [case testAnyAsBaseOfMetaclass]
 from typing import Any, Type
@@ -3250,7 +3250,7 @@ class A(metaclass=MM):
 
 def h(a: Type[A], b: Type[object]) -> None:
     h(a, a)
-    h(b, a) # E: Argument 1 to "h" has incompatible type Type[object]; expected Type[A]
+    h(b, a) # E: Argument 1 to "h" has incompatible type "Type[object]"; expected "Type[A]"
     a.f(1) # E: Too many arguments for "f" of "A"
     reveal_type(a.y) # E: Revealed type is 'builtins.int'
 
@@ -3292,14 +3292,14 @@ reveal_type(A.g4)  # E: Revealed type is 'def () -> def () -> __main__.A'
 class B(metaclass=M):
     def foo(self): pass
 
-B.g1  # Should be error: Argument 0 to "g1" of "M" has incompatible type "B"; expected Type[A]
-B.g2  # Should be error: Argument 0 to "g2" of "M" has incompatible type "B"; expected Type[TA]
+B.g1  # Should be error: Argument 0 to "g1" of "M" has incompatible type "B"; expected "Type[A]"
+B.g2  # Should be error: Argument 0 to "g2" of "M" has incompatible type "B"; expected "Type[TA]"
 B.g3  # Should be error: Argument 0 to "g3" of "M" has incompatible type "B"; expected "TTA"
 reveal_type(B.g4)  # E: Revealed type is 'def () -> def () -> __main__.B'
 
 # 4 examples of unsoundness - instantiation, classmethod, staticmethod and ClassVar:
 
-ta: Type[A] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[A])
+ta: Type[A] = m  # E: Incompatible types in assignment (expression has type "M", variable has type "Type[A]")
 a: A = ta()
 reveal_type(ta.g1)  # E: Revealed type is 'def () -> __main__.A'
 reveal_type(ta.g2)  # E: Revealed type is 'def () -> __main__.A*'
@@ -3307,8 +3307,8 @@ reveal_type(ta.g3)  # E: Revealed type is 'def () -> Type[__main__.A]'
 reveal_type(ta.g4)  # E: Revealed type is 'def () -> Type[__main__.A]'
 
 x: M = ta
-x.g1  # should be error: Argument 0 to "g1" of "M" has incompatible type "M"; expected Type[A]
-x.g2  # should be error: Argument 0 to "g2" of "M" has incompatible type "M"; expected Type[TA]
+x.g1  # should be error: Argument 0 to "g1" of "M" has incompatible type "M"; expected "Type[A]"
+x.g2  # should be error: Argument 0 to "g2" of "M" has incompatible type "M"; expected "Type[TA]"
 x.g3  # should be error: Argument 0 to "g3" of "M" has incompatible type "M"; expected "TTA"
 reveal_type(x.g4)  # E: Revealed type is 'def () -> __main__.M*'
 
@@ -3321,7 +3321,7 @@ class Class(metaclass=M):
     def f1(cls: Type[Class]) -> None: pass
     @classmethod
     def f2(cls: M) -> None: pass
-cl: Type[Class] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[Class])
+cl: Type[Class] = m  # E: Incompatible types in assignment (expression has type "M", variable has type "Type[Class]")
 reveal_type(cl.f1)  # E: Revealed type is 'def ()'
 reveal_type(cl.f2)  # E: Revealed type is 'def ()'
 x1: M = cl
@@ -3329,14 +3329,14 @@ x1: M = cl
 class Static(metaclass=M):
     @staticmethod
     def f() -> None: pass
-s: Type[Static] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[Static])
+s: Type[Static] = m  # E: Incompatible types in assignment (expression has type "M", variable has type "Type[Static]")
 reveal_type(s.f)  # E: Revealed type is 'def ()'
 x2: M = s
 
 from typing import ClassVar
 class Cvar(metaclass=M):
     x = 1  # type: ClassVar[int]
-cv: Type[Cvar] = m  # E: Incompatible types in assignment (expression has type "M", variable has type Type[Cvar])
+cv: Type[Cvar] = m  # E: Incompatible types in assignment (expression has type "M", variable has type "Type[Cvar]")
 cv.x
 x3: M = cv
 
@@ -3470,64 +3470,94 @@ reveal_type(y['b']) # E: Revealed type is '__main__.B'
 -- Special support for six
 -- -----------------------
 
-[case testSixWithMetaclass]
+[case testSixMetaclass]
 import six
 class M(type):
     x = 5
 class A(six.with_metaclass(M)): pass
+@six.add_metaclass(M)
+class B: pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(B).x)  # E: Revealed type is 'builtins.int'
 
-[case testSixWithMetaclass_python2]
+[case testSixMetaclass_python2]
 import six
 class M(type):
     x = 5
 class A(six.with_metaclass(M)): pass
+@six.add_metaclass(M)
+class B: pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(B).x)  # E: Revealed type is 'builtins.int'
 
-[case testFromSixWithMetaclass]
-from six import with_metaclass
+[case testFromSixMetaclass]
+from six import with_metaclass, add_metaclass
 class M(type):
     x = 5
 class A(with_metaclass(M)): pass
+@add_metaclass(M)
+class B: pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(B).x)  # E: Revealed type is 'builtins.int'
 
-[case testSixWithMetaclassImportFrom]
+[case testSixMetaclassImportFrom]
 import six
 from metadefs import M
 class A(six.with_metaclass(M)): pass
+@six.add_metaclass(M)
+class B: pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(B).x)  # E: Revealed type is 'builtins.int'
 [file metadefs.py]
 class M(type):
     x = 5
 
-[case testSixWithMetaclassImport]
+[case testSixMetaclassImport]
 import six
 import metadefs
 class A(six.with_metaclass(metadefs.M)): pass
+@six.add_metaclass(metadefs.M)
+class B: pass
 reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(B).x)  # E: Revealed type is 'builtins.int'
 [file metadefs.py]
 class M(type):
     x = 5
 
-[case testSixWithMetaclassAndBase]
+[case testSixMetaclassAndBase]
+from typing import Iterable, Iterator
 import six
-class M(type):
+class M(type, Iterable[int]):
     x = 5
+    def __iter__(self) -> Iterator[int]: ...
 class A:
     def foo(self): pass
 class B:
     def bar(self): pass
 class C1(six.with_metaclass(M, A)): pass
+@six.add_metaclass(M)
+class D1(A): pass
 class C2(six.with_metaclass(M, A, B)): pass
+@six.add_metaclass(M)
+class D2(A, B): pass
 reveal_type(type(C1).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(D1).x)  # E: Revealed type is 'builtins.int'
 reveal_type(type(C2).x)  # E: Revealed type is 'builtins.int'
+reveal_type(type(D2).x)  # E: Revealed type is 'builtins.int'
 C1().foo()
+D1().foo()
 C1().bar()  # E: "C1" has no attribute "bar"
+D1().bar()  # E: "D1" has no attribute "bar"
+for x in C1: reveal_type(x)  # E: Revealed type is 'builtins.int*'
+for x in C2: reveal_type(x)  # E: Revealed type is 'builtins.int*'
 C2().foo()
+D2().foo()
 C2().bar()
+D2().bar()
 C2().baz()  # E: "C2" has no attribute "baz"
+D2().baz()  # E: "D2" has no attribute "baz"
 
-[case testSixWithMetaclassGenerics]
+[case testSixMetaclassGenerics]
 from typing import Generic, GenericMeta, TypeVar
 import six
 class DestroyableMeta(type):
@@ -3539,12 +3569,16 @@ class ArcMeta(GenericMeta, DestroyableMeta):
     pass
 class Arc(six.with_metaclass(ArcMeta, Generic[T_co], Destroyable)):
     pass
+@six.add_metaclass(ArcMeta)
+class Arc1(Generic[T_co], Destroyable):
+    pass
 class MyDestr(Destroyable):
     pass
 reveal_type(Arc[MyDestr]())  # E: Revealed type is '__main__.Arc[__main__.MyDestr*]'
+reveal_type(Arc1[MyDestr]())  # E: Revealed type is '__main__.Arc1[__main__.MyDestr*]'
 [builtins fixtures/bool.pyi]
 
-[case testSixWithMetaclassErrors]
+[case testSixMetaclassErrors]
 import six
 class M(type): pass
 class A(object): pass
@@ -3552,12 +3586,35 @@ def f() -> type: return M
 class C1(six.with_metaclass(M), object): pass  # E: Invalid base class
 class C2(C1, six.with_metaclass(M)): pass  # E: Invalid base class
 class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
-class C4(six.with_metaclass(M), metaclass=M): pass  # E: Invalid base class
+@six.add_metaclass(A)  # E: Metaclasses not inheriting from 'type' are not supported
+class D3(A): pass
+class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
+@six.add_metaclass(M)  # E: Multiple metaclass definitions
+class D4(metaclass=M): pass
 class C5(six.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
+@six.add_metaclass(f())  # E: Dynamic metaclass not supported for 'D5'
+class D5: pass
 
-[case testSixWithMetaclassErrors_python2-skip]
-# No error here yet
+@six.add_metaclass(M)  # E: Multiple metaclass definitions
+class CD(six.with_metaclass(M)): pass
+
+class M1(type): pass
+class Q1(metaclass=M1): pass
+@six.add_metaclass(M)  # E: Inconsistent metaclass structure for 'CQA'
+class CQA(Q1): pass
+class CQW(six.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for 'CQW'
+
+[case testSixMetaclassErrors_python2]
+# flags: --python-version 2.7
 import six
 class M(type): pass
-class C4(six.with_metaclass(M)):
+class C4(six.with_metaclass(M)):  # E: Multiple metaclass definitions
     __metaclass__ = M
+
+[case testSixMetaclassAny]
+import t  # type: ignore
+import six
+class E(metaclass=t.M): pass
+class F(six.with_metaclass(t.M)): pass
+@six.add_metaclass(t.M)
+class G: pass

@@ -2015,7 +2015,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # function is not declared to return Any)
                     if (self.options.warn_return_any and
                             not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)):
-                        self.warn(messages.RETURN_ANY.format(return_type), s)
+                        self.msg.incorrectly_returning_any(return_type, s)
                     return
 
                 # Disallow return expressions in functions declared to return

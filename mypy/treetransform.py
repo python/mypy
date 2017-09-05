@@ -177,7 +177,7 @@ class TransformVisitor(NodeVisitor[Node]):
                        self.block(node.defs),
                        node.type_vars,
                        self.expressions(node.base_type_exprs),
-                       node.metaclass)
+                       self.optional_expr(node.metaclass))
         new.fullname = node.fullname
         new.info = node.info
         new.decorators = [self.expr(decorator)

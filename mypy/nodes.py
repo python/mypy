@@ -684,7 +684,7 @@ class ClassDef(Statement):
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs = None  # type: List[Expression]
     info = None  # type: TypeInfo  # Related TypeInfo
-    metaclass = ''  # type: Optional[str]
+    metaclass = None  # type: Optional[Expression]
     decorators = None  # type: List[Expression]
     keywords = None  # type: OrderedDict[str, Expression]
     analyzed = None  # type: Optional[Expression]
@@ -695,7 +695,7 @@ class ClassDef(Statement):
                  defs: 'Block',
                  type_vars: Optional[List['mypy.types.TypeVarDef']] = None,
                  base_type_exprs: Optional[List[Expression]] = None,
-                 metaclass: Optional[str] = None,
+                 metaclass: Optional[Expression] = None,
                  keywords: Optional[List[Tuple[str, Expression]]] = None) -> None:
         self.name = name
         self.defs = defs
@@ -712,12 +712,12 @@ class ClassDef(Statement):
         return self.info.is_generic()
 
     def serialize(self) -> JsonDict:
-        # Not serialized: defs, base_type_exprs, decorators, analyzed (for named tuples etc.)
+        # Not serialized: defs, base_type_exprs, metaclass, decorators,
+        # analyzed (for named tuples etc.)
         return {'.class': 'ClassDef',
                 'name': self.name,
                 'fullname': self.fullname,
                 'type_vars': [v.serialize() for v in self.type_vars],
-                'metaclass': self.metaclass,
                 }
 
     @classmethod
@@ -726,7 +726,6 @@ class ClassDef(Statement):
         res = ClassDef(data['name'],
                        Block([]),
                        [mypy.types.TypeVarDef.deserialize(v) for v in data['type_vars']],
-                       metaclass=data['metaclass'],
                        )
         res.fullname = data['fullname']
         return res
