@@ -2790,20 +2790,21 @@ def any_arg_causes_overload_ambiguity(items: List[CallableType],
         for item in items
     ]
 
-    for i, arg_type in enumerate(arg_types):
+    for arg_idx, arg_type in enumerate(arg_types):
         if isinstance(arg_type, AnyType):
-            matching_formals_unfiltered = [(j, lookup[i])
-                                           for j, lookup in enumerate(actual_to_formal)
-                                           if lookup[i]]
+            matching_formals_unfiltered = [(item_idx, lookup[arg_idx])
+                                           for item_idx, lookup in enumerate(actual_to_formal)
+                                           if lookup[arg_idx]]
             matching_formals = []
-            for j, formals in matching_formals_unfiltered:
+            for item_idx, formals in matching_formals_unfiltered:
                 if len(formals) > 1:
                     # An actual maps to multiple formals -- give up as too
                     # complex, just assume it overlaps.
                     return True
-                matching_formals.append((j, items[j].arg_types[formals[0]]))
+                matching_formals.append((item_idx, items[item_idx].arg_types[formals[0]]))
             if (not all_same_types(t for _, t in matching_formals) and
-                    not all_same_types(items[j].ret_type for j, _ in matching_formals)):
+                    not all_same_types(items[idx].ret_type
+                                       for idx, _ in matching_formals)):
                 # Any maps to multiple different types, and the return types of these items differ.
                 return True
     return False
