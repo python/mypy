@@ -1212,6 +1212,8 @@ reveal_type(f('', a, a))  # E: Revealed type is 'builtins.object'
 # Like above, but use keyword arguments.
 reveal_type(f(y=1, z='', x=a))  # E: Revealed type is 'Any'
 reveal_type(f(y=a, z='', x=1))  # E: Revealed type is 'builtins.int'
+reveal_type(f(z='', x=1, y=a))  # E: Revealed type is 'builtins.int'
+reveal_type(f(z='', x=a, y=1))  # E: Revealed type is 'Any'
 
 [case testOverloadWithOverlappingItemsAndAnyArgument5]
 from typing import overload, Any, Union
