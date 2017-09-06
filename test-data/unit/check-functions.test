@@ -1298,7 +1298,7 @@ if x:
     @dec
     def f(): pass
 else:
-    def f(x: str) -> None: pass # E: Incompatible redefinition (redefinition with type Callable[[str], None], original type Callable[[int], None])
+    def f(x: str) -> None: pass # E: Incompatible redefinition (redefinition with type "Callable[[str], None]", original type "Callable[[int], None]")
 
 [case testConditionalFunctionDefinitionUsingDecorator3]
 from typing import Callable
