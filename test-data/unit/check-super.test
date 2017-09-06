@@ -125,16 +125,21 @@ class C:
     def h(self):
         super(C, self).xyz
 
-[case testSuperWithTypeType]
+[case testSuperWithTypeObjects]
 from typing import Type
 
 class A:
-    def f(self) -> None: pass
+    def f(self) -> object: pass
 
 class B(A):
+    def f(self) -> int: pass
+
     @classmethod
     def g(cls, x) -> None:
-        reveal_type(super(cls, x).f) # E: Revealed type is 'def ()'
+        reveal_type(super(cls, x).f) # E: Revealed type is 'def () -> builtins.object'
+
+    def h(self, t: Type[B]) -> None:
+        reveal_type(super(t, self).f) # E: Revealed type is 'def () -> builtins.object'
 [builtins fixtures/classmethod.pyi]
 
 [case testSuperWithTypeTypeAsSecondArgument]
@@ -152,17 +157,17 @@ from typing import TypeVar
 T = TypeVar('T', bound='C')
 
 class B:
-    def f(self) -> None: pass
+    def f(self) -> float: pass
 
 class C(B):
-    def f(self) -> None: pass
+    def f(self) -> int: pass
 
     def g(self: T) -> T:
-        reveal_type(super(C, self).f) # E: Revealed type is 'def ()'
+        reveal_type(super(C, self).f) # E: Revealed type is 'def () -> builtins.float'
         return self
 
-[case testSuperWithTypeVarValues]
-from typing import TypeVar, Generic
+[case testSuperWithTypeVarValues1]
+from typing import TypeVar
 
 T = TypeVar('T', 'C', 'D')
 S = TypeVar('S', 'B', 'C')
@@ -171,6 +176,24 @@ class B:
     def f(self) -> None: pass
 
 class C(B):
+    def f(self) -> None: pass
+
+    def g(self, x: T, y: S) -> None:
+        super(C, x).f
+        super(C, y).f # E: Argument 2 for "super" not an instance of argument 1
+
+class D(C): pass
+
+[case testSuperWithTypeVarValues2]
+from typing import TypeVar, Generic
+
+T = TypeVar('T', 'C', 'D')
+S = TypeVar('S', 'B', 'C')
+
+class B:
+    def f(self) -> None: pass
+
+class C(B, Generic[T, S]):
     def f(self) -> None: pass
 
     def g(self, x: T, y: S) -> None:
