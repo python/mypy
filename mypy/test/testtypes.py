@@ -176,11 +176,11 @@ class TypeOpsSuite(Suite):
         assert_true(is_more_precise(fx.b, fx.anyt))
         assert_true(is_more_precise(self.tuple(fx.b, fx.a),
                                     self.tuple(fx.b, fx.a)))
+        assert_true(is_more_precise(self.tuple(fx.b, fx.b),
+                                    self.tuple(fx.b, fx.a)))
 
         assert_false(is_more_precise(fx.a, fx.b))
         assert_false(is_more_precise(fx.anyt, fx.b))
-        assert_false(is_more_precise(self.tuple(fx.b, fx.b),
-                                     self.tuple(fx.b, fx.a)))
 
     # is_proper_subtype
 
