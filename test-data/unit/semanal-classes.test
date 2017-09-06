@@ -411,7 +411,9 @@ MypyFile:1(
   Import:1(abc)
   ClassDef:2(
     A
-    Metaclass(abc.ABCMeta)
+    Metaclass(MemberExpr:2(
+      NameExpr(abc)
+      ABCMeta [abc.ABCMeta]))
     PassStmt:2()))
 
 [case testStaticMethod]
