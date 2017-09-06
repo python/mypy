@@ -287,3 +287,13 @@ class B(A):
     def h(self) -> None:
         def a() -> None:
             super().f() # E: super() requires one or more positional arguments in enclosing function
+
+[case testSuperWithUnsupportedTypeObject]
+from typing import Type
+
+class A:
+    def f(self) -> int: pass
+
+class B(A):
+    def h(self, t: Type[None]) -> None:
+        super(t, self).f # E: Unsupported argument 1 for "super"

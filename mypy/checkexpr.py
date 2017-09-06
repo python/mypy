@@ -2099,7 +2099,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if not isinstance(item, Instance):
                     # A complicated type object type. Too tricky, give up.
                     # TODO: Do something more clever here.
-                    self.chk.fail(messages.UNSUPPORTED_ARGUMENT_2_FOR_SUPER, e)
+                    self.chk.fail('Unsupported argument 1 for "super"', e)
                     return
                 type_info = item.type
             elif isinstance(type_obj_type, AnyType):
