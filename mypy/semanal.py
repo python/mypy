@@ -679,6 +679,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
     def analyze_class_body(self, defn: ClassDef) -> Iterator[bool]:
         with self.tvar_scope_frame(self.tvar_scope.class_frame()):
             is_protocol = self.detect_protocol_base(defn)
+            self.update_metaclass(defn)
             self.clean_up_bases_and_infer_type_variables(defn)
             self.analyze_class_keywords(defn)
             if self.analyze_typeddict_classdef(defn):
@@ -832,12 +833,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
         Now we will remove Generic[T] from bases of Foo and infer that the
         type variable 'T' is a type argument of Foo.
 
-        We also process six.with_metaclass() here.
-
         Note that this is performed *before* semantic analysis.
         """
-        # First process six.with_metaclass if present and well-formed
-        defn.base_type_exprs, defn.metaclass = self.check_with_metaclass(defn)
         removed = []  # type: List[int]
         declared_tvars = []  # type: TypeVarList
         for i, base_expr in enumerate(defn.base_type_exprs):
@@ -1090,26 +1087,56 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if defn.info.is_enum and defn.type_vars:
             self.fail("Enum class cannot be generic", defn)
 
-    def check_with_metaclass(self, defn: ClassDef) -> Tuple[List[Expression], Optional[str]]:
-        # Special-case six.with_metaclass(M, B1, B2, ...).
-        base_type_exprs, metaclass = defn.base_type_exprs, defn.metaclass
-        if metaclass is None and len(base_type_exprs) == 1:
-            base_expr = base_type_exprs[0]
+    def update_metaclass(self, defn: ClassDef) -> None:
+        """Lookup for special metaclass declarations, and update defn fields accordingly.
+
+        * __metaclass__ attribute in Python 2
+        * six.with_metaclass(M, B1, B2, ...)
+        * @six.add_metaclass(M)
+        """
+
+        # Look for "__metaclass__ = <metaclass>" in Python 2
+        python2_meta_expr = None  # type: Optional[Expression]
+        if self.options.python_version[0] == 2:
+            for body_node in defn.defs.body:
+                if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
+                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
+                    break
+                elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
+                    lvalue = body_node.lvalues[0]
+                    if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
+                        python2_meta_expr = body_node.rvalue
+
+        # Look for six.with_metaclass(M, B1, B2, ...)
+        with_meta_expr = None  # type: Optional[Expression]
+        if len(defn.base_type_exprs) == 1:
+            base_expr = defn.base_type_exprs[0]
             if isinstance(base_expr, CallExpr) and isinstance(base_expr.callee, RefExpr):
                 base_expr.callee.accept(self)
                 if (base_expr.callee.fullname == 'six.with_metaclass'
                         and len(base_expr.args) >= 1
                         and all(kind == ARG_POS for kind in base_expr.arg_kinds)):
-                    metaclass_expr = base_expr.args[0]
-                    if isinstance(metaclass_expr, NameExpr):
-                        metaclass = metaclass_expr.name
-                    elif isinstance(metaclass_expr, MemberExpr):
-                        metaclass = get_member_expr_fullname(metaclass_expr)
-                    else:
-                        self.fail("Dynamic metaclass not supported for '%s'" % defn.name,
-                                  metaclass_expr)
-                    return (base_expr.args[1:], metaclass)
-        return (base_type_exprs, metaclass)
+                    with_meta_expr = base_expr.args[0]
+                    defn.base_type_exprs = base_expr.args[1:]
+
+        # Look for @six.add_metaclass(M)
+        add_meta_expr = None  # type: Optional[Expression]
+        for dec_expr in defn.decorators:
+            if isinstance(dec_expr, CallExpr) and isinstance(dec_expr.callee, RefExpr):
+                dec_expr.callee.accept(self)
+                if (dec_expr.callee.fullname == 'six.add_metaclass'
+                    and len(dec_expr.args) == 1
+                        and dec_expr.arg_kinds[0] == ARG_POS):
+                    add_meta_expr = dec_expr.args[0]
+                    break
+
+        metas = {defn.metaclass, python2_meta_expr, with_meta_expr, add_meta_expr} - {None}
+        if len(metas) == 0:
+            return
+        if len(metas) > 1:
+            self.fail("Multiple metaclass definitions", defn)
+            return
+        defn.metaclass = metas.pop()
 
     def expr_to_analyzed_type(self, expr: Expression) -> Type:
         if isinstance(expr, CallExpr):
@@ -1158,36 +1185,15 @@ class SemanticAnalyzer(NodeVisitor[None]):
         return False
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
-        error_context = defn  # type: Context
-        if defn.metaclass is None and self.options.python_version[0] == 2:
-            # Look for "__metaclass__ = <metaclass>" in Python 2.
-            for body_node in defn.defs.body:
-                if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
-                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
-                    return
-                elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
-                    lvalue = body_node.lvalues[0]
-                    if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
-                        error_context = body_node.rvalue
-                        if isinstance(body_node.rvalue, NameExpr):
-                            name = body_node.rvalue.name
-                        elif isinstance(body_node.rvalue, MemberExpr):
-                            name = get_member_expr_fullname(body_node.rvalue)
-                        else:
-                            name = None
-                        if name:
-                            defn.metaclass = name
-                        else:
-                            self.fail(
-                                "Dynamic metaclass not supported for '%s'" % defn.name,
-                                body_node
-                            )
-                            return
         if defn.metaclass:
-            if defn.metaclass == '<error>':
-                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, error_context)
+            if isinstance(defn.metaclass, NameExpr):
+                metaclass_name = defn.metaclass.name
+            elif isinstance(defn.metaclass, MemberExpr):
+                metaclass_name = get_member_expr_fullname(defn.metaclass)
+            else:
+                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn.metaclass)
                 return
-            sym = self.lookup_qualified(defn.metaclass, error_context)
+            sym = self.lookup_qualified(metaclass_name, defn.metaclass)
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
                 return
@@ -1199,10 +1205,11 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 #       attributes, similar to an 'Any' base class.
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
-                self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
+                self.fail("Invalid metaclass '%s'" % metaclass_name, defn.metaclass)
                 return
             if not sym.node.is_metaclass():
-                self.fail("Metaclasses not inheriting from 'type' are not supported", defn)
+                self.fail("Metaclasses not inheriting from 'type' are not supported",
+                          defn.metaclass)
                 return
             inst = fill_typevars(sym.node)
             assert isinstance(inst, Instance)
@@ -1211,7 +1218,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if defn.info.metaclass_type is None:
             # Inconsistency may happen due to multiple baseclasses even in classes that
             # do not declare explicit metaclass, but it's harder to catch at this stage
-            if defn.metaclass:
+            if defn.metaclass is not None:
                 self.fail("Inconsistent metaclass structure for '%s'" % defn.name, defn)
 
     def object_type(self) -> Instance:

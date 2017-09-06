@@ -1,77 +1,31 @@
 Credits
 -------
 
-Lead developer:
+For a full list of contributors you can mine the commit history:
+https://github.com/python/mypy/commits/master
+
+For lists of contributors per mypy release (including typeshed) see
+the release blog posts at https://mypy-lang.blogspot.com/.
+
+Mypy team:
 
   Jukka Lehtosalo <jukka.lehtosalo@iki.fi>
+  Guido van Rossum <guido@python.org>
 
-Core team:
+Past Dropbox core team members:
 
-  Guido <guido@dropbox.com>
-  David Fisher <ddfisher@dropbox.com>
-  Greg Price <gregprice@dropbox.com>
+  David Fisher
+  Svyatoslav Ilinskiy
+  Greg Price
+  Naomi Seyfer
+  Michael Lee
+  Reid Barton
 
-Contributors (in alphabetical order, including typeshed):
+Non-Dropbox core team members:
 
-  Tim Abbott
-  Steven Allen (@Stebalien)
-  Della Anjeh
-  Reid Barton (@rwbarton)
-  Matthias Bussonnier
-  Anup Chenthamarakshan
-  Kyle Consalus
-  Ian Cordasco
-  ctcutler
-  Ben Darnell
-  Miguel Garcia (@rockneurotiko)
-  Mihnea Giurgea
-  Ryan Gonzalez (@kirbyfan64)
-  James Guthrie
-  Jared Hance
-  Ashley Hewson (@ashleyh)
-  icoxfog417
-  Bob Ippolito (@etrepum)
-  ismail-s
-  Sander Kersten (@spkersten)
-  Matthias Kramm
-  Ian Kronquist (@iankronquist)
-  Yuval Langer
-  Howard Lee
-  Tad Leonard
-  Li Haoyi
-  Darjus Loktevic
-  Ben Longbons
-  Florian Ludwig (@FlorianLudwig)
-  Robert T. McGibbon
-  Ron Murawski <ron@horizonchess.com>
-  Motoki Naruse
-  Jared Pochtar (@jaredp)
-  Michal Pokorný
-  Eric Price (@ecprice)
-  Brodie Rao
-  Sebastian Reuße
-  Sebastian Riikonen
-  Seo Sanghyeon
-  Marek Sapota
-  Gigi Sayfan
-  Vlad Shcherbina
-  Anders Schuller
-  Daniel Shaulov
-  David Shea
-  Vita Smid
-  Schuyler Smith
-  Marcell Vazquez-Chanlatte (@mvcisback)
-  Prayag Verma
-  Igor Vuk (@ivuk)
-  Jeff Walden (@jswalden)
-  Michael Walter
-  Jing Wang
-  Wen Zhang
-  Roy Williams
-  wizzardx
-  Matthew Wright
-  Yuanchao Zhu (@yczhu)
-  Gennadiy Zlobin (@gennad)
+  Ivan Levkivskyi
+  Ethan Smith
+  Jelle Zijlstra
 
 Additional thanks to:
 
