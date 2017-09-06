@@ -99,6 +99,7 @@ CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
 BARE_GENERIC = 'Missing type parameters for generic type'
 IMPLICIT_GENERIC_ANY_BUILTIN = 'Implicit generic "Any". Use \'{}\' and specify generic parameters'
 INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'
+UNSUPPORTED_ARGUMENT_2_FOR_SUPER = 'Unsupported argument 2 for "super"'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -818,6 +819,15 @@ class MessageBuilder:
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
+
+    def first_argument_for_super_must_be_type(self, actual: Type, context: Context) -> None:
+        if isinstance(actual, Instance):
+            # Don't include type of instance, because it can look confusingly like a type
+            # object.
+            type_str = 'a non-type instance'
+        else:
+            type_str = self.format(actual)
+        self.fail('Argument 1 for "super" must be a type object; got {}'.format(type_str), context)
 
     def too_few_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not enough arguments for format string', context)
