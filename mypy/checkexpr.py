@@ -2145,9 +2145,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.chk.fail('super() outside of a method is not supported', e)
                         return AnyType(TypeOfAny.from_error)
                     args = self.chk.scope.top_function().arguments
-                    # An empty args with super() is an error; we need something in declared_self
+                    # super() in a function with empty args is an error; we
+                    # need something in declared_self.
                     if not args:
-                        self.chk.fail('super() requires at least one positional argument', e)
+                        self.chk.fail(
+                            'super() requires one or more positional arguments in '
+                            'enclosing function', e)
                         return AnyType(TypeOfAny.from_error)
                     declared_self = args[0].variable.type
                     return analyze_member_access(name=e.name, typ=fill_typevars(e.info), node=e,
