@@ -1089,7 +1089,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     base.name(),
                                     context)
             elif is_equivalent(original_type, typ):
-                # Assume invariance for a non-callable attribute here.
+                # Assume invariance for a non-callable attribute here. Note
+                # that this doesn't affect read-only properties which can have
+                # covariant overrides.
                 #
                 # TODO: Allow covariance for read-only attributes?
                 pass
