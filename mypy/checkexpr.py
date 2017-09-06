@@ -2094,9 +2094,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if isinstance(item, AnyType):
                     # Could be anything.
                     return
+                if isinstance(item, TupleType):
+                    item = item.fallback  # Handle named tuples and other Tuple[...] subclasses.
                 if not isinstance(item, Instance):
-                    # A complicated type object type. Assume it's fine.
+                    # A complicated type object type. Too tricky, give up.
                     # TODO: Do something more clever here.
+                    self.chk.fail(messages.UNSUPPORTED_ARGUMENT_2_FOR_SUPER, e)
                     return
                 type_info = item.type
             elif isinstance(type_obj_type, AnyType):
@@ -2111,10 +2114,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     instance_type = instance_type.upper_bound
                     if not isinstance(instance_type, (Instance, TupleType)):
                         # Too tricky, give up.
-                        self.chk.fail('Unsupported argument 2 for "super"', e)
+                        # TODO: Do something more clever here.
+                        self.chk.fail(messages.UNSUPPORTED_ARGUMENT_2_FOR_SUPER, e)
                         return
                 if isinstance(instance_type, TupleType):
-                    # Needed for named tuples and classes derived from Tuple[...].
+                    # Needed for named tuples and other Tuple[...] subclasses.
                     instance_type = instance_type.fallback
                 if type_info not in instance_type.type.mro:
                     self.chk.fail('Argument 2 for "super" not an instance of argument 1', e)
@@ -2123,7 +2127,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: Check whether this is a valid type object here.
                 pass
             elif not isinstance(instance_type, AnyType):
-                self.chk.fail('Unsupported argument 2 for "super"', e)
+                self.chk.fail(messages.UNSUPPORTED_ARGUMENT_2_FOR_SUPER, e)
 
     def analyze_super(self, e: SuperExpr, is_lvalue: bool) -> Type:
         """Type check a super expression."""

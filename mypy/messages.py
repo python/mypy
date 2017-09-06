@@ -99,6 +99,7 @@ CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
 BARE_GENERIC = 'Missing type parameters for generic type'
 IMPLICIT_GENERIC_ANY_BUILTIN = 'Implicit generic "Any". Use \'{}\' and specify generic parameters'
 INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'
+UNSUPPORTED_ARGUMENT_2_FOR_SUPER = 'Unsupported argument 2 for "super"'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
