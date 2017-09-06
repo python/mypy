@@ -260,7 +260,14 @@ class B:
     def f(self) -> None: pass
 class C(B):
     def h(self) -> None:
-        super(self, C).f # E: First argument for "super" must be a type object
+        super(self, C).f # E: Argument 1 for "super" must be a type object; got a non-type instance
+
+[case testInvalidFirstSuperArg]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(None, C).f # E: Argument 1 for "super" must be a type object; got "None"
 
 [case testInvalidSecondArgumentToSuper]
 class B:

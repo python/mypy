@@ -2105,7 +2105,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             elif isinstance(type_obj_type, AnyType):
                 return
             else:
-                self.chk.fail('First argument for "super" must be a type object', e)
+                self.msg.first_argument_for_super_must_be_type(type_obj_type, e)
                 return
 
             if isinstance(instance_type, (Instance, TupleType, TypeVarType)):
