@@ -1,7 +1,14 @@
 """Facilities and constants for generating error messages during type checking.
 
-The type checker itself does not deal with message string literals to
-improve code clarity and to simplify localization (in the future)."""
+Don't add any non-trivial message construction logic to the type
+checker, as it can compromise clarity and make messages less
+consistent. Add such logic to this module instead. Literal messages used
+in multiple places should also be defined as constants in this module so
+they won't get out of sync.
+
+Historically we tried to avoid all message string literals in the type
+checker but we are moving away from this convention.
+"""
 
 import re
 import difflib
