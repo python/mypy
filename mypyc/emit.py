@@ -118,16 +118,25 @@ class Emitter:
             self.emit_line('Py_DECREF(%s);' % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
-    def emit_unbox_or_cast(self, src: str, dest: str, typ: RTType, failure: str) -> None:
+    def emit_unbox_or_cast(self, src: str, dest: str, typ: RTType, failure: str,
+                           declare_dest: bool = False) -> None:
         """Emit code for unboxing a value of given type (from PyObject *).
 
         Generate a cast if no actual unboxing is needed. Evaluate C code in 'failure'
         if the value has an incompatible type.
+
+        Args:
+            src: Name of source C variable
+            dest: Name of target C variable
+            typ: Type of value
+            failure: What happens on error
+            declare_dest: If True, also declare the variable 'dest'
         """
         failure = '    ' + failure
         if typ.name == 'int':
+            if declare_dest:
+                self.emit_line('CPyTagged {};'.format(dest))
             self.emit_lines(
-                'CPyTagged {};'.format(dest),
                 'if (PyLong_Check({}))'.format(src),
                 '    {} = CPyTagged_FromObject({});'.format(dest, src),
                 'else',
@@ -135,11 +144,16 @@ class Emitter:
         elif typ.name == 'bool':
             self.emit_lines(
                 'if (!PyBool_Check({}))'.format(src),
-                failure,
-                'char {} = PyObject_IsTrue({});'.format(dest, src))
+                failure)
+            conversion = 'PyObject_IsTrue({})'.format(src)
+            if declare_dest:
+                self.emit_line('char {} = {};'.format(dest, conversion))
+            else:
+                self.emit_line('{} = {};'.format(dest, conversion))
         elif typ.name == 'list':
+            if declare_dest:
+                self.emit_line('PyObject *{};'.format(dest))
             self.emit_lines(
-                'PyObject *{};'.format(dest),
                 'if (PyList_Check({}))'.format(src),
                 '    {} = {};'.format(dest, src),
                 'else',
@@ -147,27 +161,33 @@ class Emitter:
         elif typ.name == 'sequence_tuple':
             self.emit_lines(
                 'if (!PyTuple_Check({}))'.format(src),
-                failure,
-                '{} {} = {};'.format(typ.ctype, dest, src))
+                failure)
+            if declare_dest:
+                self.emit_line('{} {} = {};'.format(typ.ctype, dest, src))
+            else:
+                self.emit_line('{} = {};'.format(dest, src))
         elif typ.name == 'tuple':
             assert isinstance(typ, TupleRTType)
             self.declare_tuple_struct(typ)
             self.emit_lines(
                 'if (!PyTuple_Check({}) || PyTuple_Size({}) != {})'.format(src, src,
                                                                            len(typ.types)),
-                failure,
-                '{} {};'.format(typ.ctype, dest))
+                failure)
+            if declare_dest:
+                self.emit_line('{} {};'.format(typ.ctype, dest))
             for i in range(0, len(typ.types)):
                 temp = self.temp_name()
                 self.emit_line('PyObject *{} = PyTuple_GetItem({}, {});'.format(temp, src, i))
 
                 temp2 = self.temp_name()
                 # Unbox and check the sub-argument
-                self.emit_unbox_or_cast('{}'.format(temp), temp2, typ.types[i], failure)
+                self.emit_unbox_or_cast('{}'.format(temp), temp2, typ.types[i], failure,
+                                        declare_dest=True)
                 self.emit_line('{}.f{} = {};'.format(dest, i, temp2))
         elif isinstance(typ, UserRTType):
+            if declare_dest:
+                self.emit_line('PyObject *{};'.format(dest))
             self.emit_lines(
-                'PyObject *{};'.format(dest),
                 'if (PyObject_TypeCheck({}, &{}))'.format(src, type_struct_name(typ.name)),
                 '    {} = {};'.format(dest, src),
                 'else',

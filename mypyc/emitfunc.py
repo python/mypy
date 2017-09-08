@@ -282,9 +282,7 @@ class FunctionEmitterVisitor(OpVisitor):
         # dest is already declared but generate_unbox will declare, so indirection is needed.
         src = self.reg(op.src)
         dest = self.reg(op.dest)
-        temp = self.temp_name()
-        self.emitter.emit_unbox_or_cast(src, temp, op.type, 'abort();')
-        self.emit_line('{} = {};'.format(dest, temp))
+        self.emitter.emit_unbox_or_cast(src, dest, op.type, 'abort();')
 
     # Helpers
 

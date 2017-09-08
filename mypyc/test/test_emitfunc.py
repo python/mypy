@@ -152,12 +152,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_unbox(self) -> None:
         self.assert_emit(Unbox(self.n, self.m, RTType('int')),
-                         """CPyTagged __tmp1;
-                            if (PyLong_Check(cpy_r_m))
-                                __tmp1 = CPyTagged_FromObject(cpy_r_m);
+                         """if (PyLong_Check(cpy_r_m))
+                                cpy_r_n = CPyTagged_FromObject(cpy_r_m);
                             else
                                 abort();
-                            cpy_r_n = __tmp1;
                          """)
 
     def test_new_list(self) -> None:

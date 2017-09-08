@@ -71,4 +71,4 @@ def generate_arg_check(name: str, typ: RTType, emitter: Emitter) -> None:
     check ensures the correct type.
     """
     emitter.emit_unbox_or_cast('obj_{}'.format(name), 'arg_{}'.format(name), typ,
-                               'return NULL;')
+                               'return NULL;', declare_dest=True)
