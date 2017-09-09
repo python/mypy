@@ -12,10 +12,11 @@ Here's a summary of what should work:
 * Calls to top-level functions defined in the same file.
 * Types:
   * `int`
-  * `List[...]`.
+  * `List[...]`
+  * `Tuple[...]` (only a few tuple operations)
   * `None` as return type
 * Some integer operations:
-  * Basic integer arithmetic: `+` `-` `*` `//` `%` (but no unary `-`)
+  * Basic integer arithmetic: `+` `-` `*` `//` `%`
   * Integer comparisons.
 * Some list operations:
   * `[e, ...]` (construct list)
@@ -31,6 +32,7 @@ Here's a summary of what should work:
 * Return statement.
 * `and` and `or` in a boolean context.
 * `for x in range(n): ...` (for convenience only).
+* `break` and `continue` statements.
 
 ## High-level Overview
 
@@ -136,8 +138,8 @@ have to do at least these steps:
   (see Syntactic Sugar for more information).
 
 * Implement C generation for the new operation in
-  `mypyc.emitter`. Test cases are located in
-  `mypyc.test.test_emitter`. They are normal Python unit tests instead
+  `mypyc.emitfunc`. Test cases are located in
+  `mypyc.test.test_emitfunc`. They are normal Python unit tests instead
   of data-driven test cases.
 
 * Test that your new operation works by adding a test case to
@@ -175,25 +177,19 @@ Here are some hints about how to add support for a new primitive type
   (a representation that is not just `PyObject *`).
 
 * Update `RTType` to support the primitive type. Make sure
-  `supports_unbox` and `ctype` work correctly for the new type.
+  `supports_unbox`, `ctype` and various other properties work
+  correctly for the new type.
 
-* Add a wrapper function argument type check to
-  `mypyc.emitter.generate_arg_check`.
+* Update `emit_box` and `emit_unbox_or_cast` in `mypyc.emit`.
 
-* Add return value boxing to `generate_wrapper_function` for unboxed
-  types (TODO: refactor).
-
-* Update `visit_return` in `mypyc.emitter` (TODO: refactor).
-
-* Update `visit_box` and `visit_unbox` in `mypyc.emitter` if the type
-  is unboxed.
-
-* Update `visit_inc_ref` and `visit_dec_ref` in `mypypc.emitter` if
+* Update `emit_inc_ref` and `emit_dec_ref` in `mypypc.emit` if
   needed. If the unboxed representation does not need reference
   counting, these can be no-ops. If the representation is not unboxed
   these will already work.
 
-* Update `myypc.genops.Mapper.type_to_rttype()`.
+* Update `emit_error_check` in `mypyc.emit` for unboxed types.
+
+* Update `mypyc.genops.Mapper.type_to_rttype()`.
 
 The above may be enough to allow you to declare variables with the
 type and pass values around. You likely also want to add support for
@@ -201,7 +197,7 @@ some primitive operations for the type (see Built-in Operation for an
 Already Supported Type for how to do this).
 
 If you want to just test C generation, you can add a test case with
-dummy output to `test-data/compiler-output.test` and manually inspect
+dummy output to `test-data/module-output.test` and manually inspect
 the generated code. You probably don't want to add a new test case
 there since these test cases are very fragile, however.
 
