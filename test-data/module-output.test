@@ -56,8 +56,8 @@ static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
     else
         return NULL;
     CPyTagged retval = CPyDef_f(arg_x);
-    if (retval == CPY_INT_ERROR_VALUE && PyErr_Occurred()) {
-        return NULL; // TODO: Add traceback entry?
+    if (retval == CPY_INT_TAG) {
+        return NULL;
     }
     PyObject *retbox = CPyTagged_AsObject(retval);
     return retbox;

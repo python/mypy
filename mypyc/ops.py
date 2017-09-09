@@ -91,6 +91,10 @@ class RTType:
             return 'NULL'
 
     @property
+    def c_error_value(self) -> str:
+        return self.c_undefined_value
+
+    @property
     def is_refcounted(self) -> bool:
         """Does the unboxed representation of the type use reference counting?"""
         return self.name != 'bool'

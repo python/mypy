@@ -223,3 +223,11 @@ class Emitter:
         else:
             # Type is boxed -- trivially just assign.
             self.emit_line('PyObject *{} = {};'.format(dest, src))
+
+    def emit_error_check(self, value: str, rtype: RTType, failure: str) -> None:
+        """Emit code for checking a native function return value for uncaught exception."""
+        if not isinstance(rtype, TupleRTType):
+            self.emit_line('if ({} == {}) {{'.format(value, rtype.c_error_value))
+        else:
+            self.emit_line('if ({}.f0 == {}) {{'.format(value, rtype.types[0].c_error_value))
+        self.emit_lines(failure, '}')

@@ -372,8 +372,6 @@ static inline PyObject *CPyObject_GetAttrString(PyObject *obj, const char *attr_
     return result;
 }
 
-#define CPY_INT_ERROR_VALUE 0x1234abc
-
 #ifdef __cplusplus
 }
 #endif

@@ -34,31 +34,17 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
     native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
 
     if fn.ret_type.supports_unbox:
-        if fn.ret_type.name == 'int':
-            emitter.emit_lines('CPyTagged retval = CPyDef_{}({});'.format(fn.name, native_args),
-                               'if (retval == CPY_INT_ERROR_VALUE && PyErr_Occurred()) {',
-                               'return NULL; // TODO: Add traceback entry?',
-                               '}')
-            emitter.emit_box('retval', 'retbox', fn.ret_type, 'return NULL;')
-            # TODO: Decrease reference count of retval?
-            emitter.emit_lines('return retbox;')
-        elif fn.ret_type.name == 'bool':
-            # The Py_RETURN macros return the correct PyObject * with reference count handling.
-            emitter.emit_line('char retval = {}{}({});'.format(NATIVE_PREFIX, fn.name,
-                                                               native_args))
-            emitter.emit_box('retval', 'retbox', fn.ret_type, 'return NULL;')
-            emitter.emit_line('return retbox;')
-        elif fn.ret_type.name == 'tuple':
-            emitter.emit_line('{}retval = {}{}({});'.format(fn.ret_type.ctype_spaced,
-                                                            NATIVE_PREFIX, fn.name,
-                                                            native_args))
-            emitter.emit_box('retval', 'retbox', fn.ret_type, 'return NULL;')
-            emitter.emit_line('return retbox;')
+        # TODO: The Py_RETURN macros return the correct PyObject * with reference count handling.
+        ret_type = fn.ret_type
+        emitter.emit_line('{}retval = {}{}({});'.format(ret_type.ctype_spaced,
+                                                        NATIVE_PREFIX, fn.name,
+                                                        native_args))
+        emitter.emit_error_check('retval', ret_type, 'return NULL;')
+        emitter.emit_box('retval', 'retbox', ret_type, 'return NULL;')
+        emitter.emit_lines('return retbox;')
+        # TODO: Decrease reference count of retval?
     else:
-        # Any type that needs to be unboxed should be special cased, so fail if
-        # we failed to do so.
-        assert not fn.ret_type.supports_unbox
-        emitter.emit_line(' return CPyDef_{}({});'.format(fn.name, native_args))
+        emitter.emit_line('return CPyDef_{}({});'.format(fn.name, native_args))
         # TODO: Tracebacks?
     emitter.emit_line('}')
 
