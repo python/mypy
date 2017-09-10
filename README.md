@@ -36,10 +36,10 @@ First clone the mypyc git repository *and git submodules*:
     $ git clone --recurse-submodules https://github.com/JukkaL/mypyc.git
     $ cd mypyc
 
-Optional (recommended) create a virtualenv:
+Optionally create a virtualenv (recommended):
 
-    $ virtualenv env -p python 3
-    $ source env/bin/activate
+    $ virtualenv -p python3 <directory>
+    $ source <directory>/bin/activate
 
 Then install the dependencies:
 
@@ -64,7 +64,7 @@ We have some [developer documentation](doc/dev-intro.md).
 Development Roadmap
 -------------------
 
-These are the current major objectives:
+These are the current planned major milestones:
 
 1. Support a smallish but useful Python subset (exact details to be
    decided). Focus on compiling single modules, while the rest of the
