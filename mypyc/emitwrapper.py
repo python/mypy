@@ -44,7 +44,7 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
         emitter.emit_box('retval', 'retbox', ret_type, 'return NULL;', declare_dest=True)
         emitter.emit_lines('return retbox;')
     else:
-        emitter.emit_line('return CPyDef_{}({});'.format(fn.name, native_args))
+        emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX, fn.name, native_args))
         # TODO: Tracebacks?
     emitter.emit_line('}')
 

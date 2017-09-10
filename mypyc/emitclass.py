@@ -2,6 +2,7 @@
 
 import textwrap
 
+from mypyc.common import NATIVE_PREFIX
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
 from mypyc.ops import ClassIR, FuncIR, RType, ObjectRType, Environment, type_struct_name
@@ -160,7 +161,7 @@ def generate_constructor_for_class(cl: ClassIR,
                                    emitter: Emitter) -> None:
     """Generate a native function that constructs an instance of a class."""
     emitter.emit_line('static PyObject *')
-    emitter.emit_line('CPyDef_{}(void)'.format(cl.name))
+    emitter.emit_line('{}{}(void)'.format(NATIVE_PREFIX, cl.name))
     emitter.emit_line('{')
     emitter.emit_line('{} *self;'.format(cl.struct_name))
     emitter.emit_line('self = ({} *){}.tp_alloc(&{}, 0);'.format(cl.struct_name,
@@ -184,7 +185,7 @@ def generate_new_for_class(cl: ClassIR,
         '{}(PyTypeObject *type, PyObject *args, PyObject *kwds)'.format(func_name))
     emitter.emit_line('{')
     # TODO: Check and unbox arguments
-    emitter.emit_line('return CPyDef_{}();'.format(cl.name))
+    emitter.emit_line('return {}{}();'.format(NATIVE_PREFIX, cl.name))
     emitter.emit_line('}')
 
 
