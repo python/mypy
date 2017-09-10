@@ -41,32 +41,18 @@ def c_module_name(module_name: str):
     return 'module_{}'.format(module_name.replace('.', '__dot__'))
 
 
-class RTType:
-    """Runtime type (erased, only concrete; no generics).
+class RType:
+    """Abstract base class for runtime types (erased, only concrete; no generics)."""
 
-
-    Valid names:
-      'bool'
-      'int'
-      'list'
-      'object'
-      'tuple' (e.g. Tuple[int, str])
-      'sequence_tuple' (e.g. Tuple[int, ...])
-      'None'
-    """
-
-    def __init__(self, name: str) -> None:
-        assert isinstance(name, str)
-        self.name = name
+    name = None  # type: str
 
     @property
     def supports_unbox(self) -> bool:
-        return self.name in ['bool', 'int', 'tuple']
+        raise NotImplementedError
 
     @property
     def ctype_spaced(self) -> str:
-        """Adds a space after ctype for non-pointers.
-        """
+        """Adds a space after ctype for non-pointers."""
         if self.ctype[-1] == '*':
             return self.ctype
         else:
@@ -74,21 +60,11 @@ class RTType:
 
     @property
     def ctype(self) -> str:
-        if self.name == 'int':
-            return 'CPyTagged'
-        elif self.name == 'bool':
-            return 'char'
-        else:
-            return 'PyObject *'
+        raise NotImplementedError
 
     @property
     def c_undefined_value(self) -> str:
-        if self.name == 'int':
-            return 'CPY_INT_TAG'
-        elif self.name == 'bool':
-            return '2'
-        else:
-            return 'NULL'
+        raise NotImplementedError
 
     @property
     def c_error_value(self) -> str:
@@ -97,22 +73,83 @@ class RTType:
     @property
     def is_refcounted(self) -> bool:
         """Does the unboxed representation of the type use reference counting?"""
-        return self.name != 'bool'
+        return True
 
     def __repr__(self) -> str:
-        return '<RTType %s>' % self.name
+        return '<RType %s>' % self.name
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, RTType) and other.name == self.name
+        return isinstance(other, RType) and other.name == self.name
 
     def __hash__(self) -> int:
         return hash(self.name)
 
 
-class TupleRTType(RTType):
-    def __init__(self, types: List[RTType]) -> None:
-        super().__init__('tuple')
+class IntRType(RType):
+    """int"""
+
+    def __init__(self) -> None:
+        self.name = 'int'
+
+    @property
+    def supports_unbox(self) -> bool:
+        return True
+
+    @property
+    def ctype(self) -> str:
+        return 'CPyTagged'
+
+    @property
+    def c_undefined_value(self) -> str:
+        return 'CPY_INT_TAG'
+
+
+class BoolRType(RType):
+    """bool"""
+
+    def __init__(self) -> None:
+        self.name = 'bool'
+
+    @property
+    def supports_unbox(self) -> bool:
+        return True
+
+    @property
+    def ctype(self) -> str:
+        return 'char'
+
+    @property
+    def c_undefined_value(self) -> str:
+        return '2'
+
+    @property
+    def is_refcounted(self) -> bool:
+        return False
+
+
+class TupleRType(RType):
+    """Fixed-length tuple."""
+
+    def __init__(self, types: List[RType]) -> None:
+        self.name = 'tuple'
         self.types = tuple(types)
+
+    @property
+    def supports_unbox(self) -> bool:
+        return True
+
+    @property
+    def c_undefined_value(self) -> str:
+        # TODO: Implement this
+        raise RuntimeError('Not implemented yet')
+
+    @property
+    def ctype(self) -> str:
+        return 'struct {}'.format(self.struct_name)
+
+    @property
+    def is_refcounted(self) -> bool:
+        return any(t.is_refcounted for t in self.types)
 
     @property
     def unique_id(self) -> str:
@@ -130,16 +167,8 @@ class TupleRTType(RTType):
         # max c length is 31 charas, this should be enough entropy to be unique.
         return 'tuple_def_' + self.unique_id
 
-    @property
-    def ctype(self) -> str:
-        return 'struct {}'.format(self.struct_name)
-
-    @property
-    def is_refcounted(self) -> bool:
-        return any(t.is_refcounted for t in self.types)
-
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, TupleRTType) and self.types == other.types
+        return isinstance(other, TupleRType) and self.types == other.types
 
     def __hash__(self) -> int:
         return hash((self.name, self.types))
@@ -156,11 +185,51 @@ class TupleRTType(RTType):
         return result
 
 
-class UserRTType(RTType):
+class PyObjectRType(RType):
+    """Abstract base class for PyObject * types."""
+
+    @property
+    def supports_unbox(self) -> bool:
+        return False
+
+    @property
+    def ctype(self) -> str:
+        return 'PyObject *'
+
+    @property
+    def c_undefined_value(self) -> str:
+        return 'NULL'
+
+
+class ObjectRType(PyObjectRType):
+    """Arbitrary object (PyObject *)"""
+
+    def __init__(self) -> None:
+        self.name = 'object'
+
+
+class SequenceTupleRType(PyObjectRType):
+    """Uniform tuple (Tuple[x, ...])"""
+
+    def __init__(self) -> None:
+        self.name = 'sequence_tuple'
+
+
+class NoneRType(PyObjectRType):
+    def __init__(self) -> None:
+        self.name = 'None'
+
+
+class ListRType(PyObjectRType):
+    def __init__(self) -> None:
+        self.name = 'list'
+
+
+class UserRType(PyObjectRType):
     """Instance of user-defined class."""
 
     def __init__(self, class_ir: 'ClassIR') -> None:
-        super().__init__(class_ir.name)
+        self.name = class_ir.name
         self.class_ir = class_ir
 
     @property
@@ -176,14 +245,14 @@ class UserRTType(RTType):
     def setter_index(self, name: str) -> int:
         return self.getter_index(name) + 1
 
-    def attr_type(self, name: str) -> RTType:
+    def attr_type(self, name: str) -> RType:
         for i, (attr, rtype) in enumerate(self.class_ir.attributes):
             if attr == name:
                 return rtype
         assert False, '%r has no attribute %r' % (self.name, name)
 
     def __repr__(self) -> str:
-        return '<UserRTType %s>' % self.name
+        return '<UserRType %s>' % self.name
 
 
 class Environment:
@@ -191,14 +260,14 @@ class Environment:
 
     def __init__(self) -> None:
         self.names = []  # type: List[str]
-        self.types = []  # type: List[RTType]
+        self.types = []  # type: List[RType]
         self.symtable = {}  # type: Dict[Var, Register]
         self.temp_index = 0
 
     def num_regs(self) -> int:
         return len(self.names)
 
-    def add_local(self, var: Var, typ: RTType) -> Register:
+    def add_local(self, var: Var, typ: RType) -> Register:
         assert isinstance(var, Var)
         self.names.append(var.name())
         self.types.append(typ)
@@ -212,8 +281,8 @@ class Environment:
     def lookup(self, var: Var) -> Register:
         return self.symtable[var]
 
-    def add_temp(self, typ: RTType) -> Register:
-        assert isinstance(typ, RTType)
+    def add_temp(self, typ: RType) -> Register:
+        assert isinstance(typ, RType)
         self.names.append('r%d' % self.temp_index)
         self.temp_index += 1
         self.types.append(typ)
@@ -402,7 +471,7 @@ class RegisterOp(Op):
 class IncRef(RegisterOp):
     """inc_ref r"""
 
-    def __init__(self, dest: Register, typ: RTType) -> None:
+    def __init__(self, dest: Register, typ: RType) -> None:
         super().__init__(dest)
         self.target_type = typ
 
@@ -422,7 +491,7 @@ class IncRef(RegisterOp):
 class DecRef(RegisterOp):
     """dec_ref r"""
 
-    def __init__(self, dest: Register, typ: RTType) -> None:
+    def __init__(self, dest: Register, typ: RType) -> None:
         super().__init__(dest)
         self.target_type = typ
 
@@ -653,7 +722,7 @@ class LoadInt(RegisterOp):
 class GetAttr(RegisterOp):
     """dest = obj.attr (for a native object)"""
 
-    def __init__(self, dest: Register, obj: Register, attr: str, rtype: UserRTType) -> None:
+    def __init__(self, dest: Register, obj: Register, attr: str, rtype: UserRType) -> None:
         self.dest = dest
         self.obj = obj
         self.attr = attr
@@ -672,7 +741,7 @@ class GetAttr(RegisterOp):
 class SetAttr(RegisterOp):
     """obj.attr = src (for a native object)"""
 
-    def __init__(self, obj: Register, attr: str, src: Register, rtype: UserRTType) -> None:
+    def __init__(self, obj: Register, attr: str, src: Register, rtype: UserRType) -> None:
         self.dest = None
         self.obj = obj
         self.attr = attr
@@ -709,7 +778,7 @@ class LoadStatic(RegisterOp):
 class TupleGet(RegisterOp):
     """dest = src[n]"""
 
-    def __init__(self, dest: Register, src: Register, index: int, target_type: RTType) -> None:
+    def __init__(self, dest: Register, src: Register, index: int, target_type: RType) -> None:
         self.dest = dest
         self.src = src
         self.index = index
@@ -734,7 +803,7 @@ class Cast(RegisterOp):
     """
     # TODO: Error checking
 
-    def __init__(self, dest: Register, src: Register, typ: RTType) -> None:
+    def __init__(self, dest: Register, src: Register, typ: RType) -> None:
         self.dest = dest
         self.src = src
         self.typ = typ
@@ -756,7 +825,7 @@ class Box(RegisterOp):
     Only supported for types with an unboxed representation.
     """
 
-    def __init__(self, dest: Register, src: Register, typ: RTType) -> None:
+    def __init__(self, dest: Register, src: Register, typ: RType) -> None:
         self.dest = dest
         self.src = src
         self.type = typ
@@ -779,7 +848,7 @@ class Unbox(RegisterOp):
     """
     # TODO: Error checking
 
-    def __init__(self, dest: Register, src: Register, typ: RTType) -> None:
+    def __init__(self, dest: Register, src: Register, typ: RType) -> None:
         self.dest = dest
         self.src = src
         self.type = typ
@@ -807,7 +876,7 @@ class BasicBlock:
 
 
 class RuntimeArg:
-    def __init__(self, name: str, typ: RTType) -> None:
+    def __init__(self, name: str, typ: RType) -> None:
         self.name = name
         self.type = typ
 
@@ -821,7 +890,7 @@ class FuncIR:
     def __init__(self,
                  name: str,
                  args: List[RuntimeArg],
-                 ret_type: RTType,
+                 ret_type: RType,
                  blocks: List[BasicBlock],
                  env: Environment) -> None:
         self.name = name
@@ -842,7 +911,7 @@ class ClassIR:
 
     def __init__(self,
                  name: str,
-                 attributes: List[Tuple[str, RTType]]) -> None:
+                 attributes: List[Tuple[str, RType]]) -> None:
         self.name = name
         self.attributes = attributes
 

@@ -2,7 +2,7 @@ import unittest
 
 from mypyc.emit import Emitter, EmitterContext
 from mypyc.emitwrapper import generate_arg_check
-from mypyc.ops import RTType
+from mypyc.ops import ListRType
 
 
 class TestArgCheck(unittest.TestCase):
@@ -11,7 +11,7 @@ class TestArgCheck(unittest.TestCase):
 
     def test_check_list(self) -> None:
         emitter = Emitter(self.context)
-        generate_arg_check('x', RTType('list'), emitter)
+        generate_arg_check('x', ListRType(), emitter)
         lines = emitter.fragments
         assert lines == [
             'PyObject *arg_x;\n',

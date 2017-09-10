@@ -5,7 +5,7 @@ from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, PrimitiveOp, Assign, LoadInt, GetAttr, SetAttr,
     LoadStatic, TupleGet, Call, PyCall, PyGetAttr, IncRef, DecRef, Box, Cast, Unbox, Label,
-    Register, RTType, OP_BINARY, TupleRTType
+    Register, RType, OP_BINARY, TupleRType
 )
 
 
@@ -162,7 +162,7 @@ class FunctionEmitterVisitor(OpVisitor):
 
         elif op.desc is PrimitiveOp.NEW_TUPLE:
             tuple_type = self.env.types[op.dest]
-            assert isinstance(tuple_type, TupleRTType)
+            assert isinstance(tuple_type, TupleRType)
             self.emitter.declare_tuple_struct(tuple_type)
             for i, arg in enumerate(op.args):
                 self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(arg)))
@@ -281,7 +281,7 @@ class FunctionEmitterVisitor(OpVisitor):
     def reg(self, reg: Register) -> str:
         return self.emitter.reg(reg)
 
-    def type(self, reg: Register) -> RTType:
+    def type(self, reg: Register) -> RType:
         return self.env.types[reg]
 
     def emit_line(self, line: str) -> None:
@@ -296,8 +296,8 @@ class FunctionEmitterVisitor(OpVisitor):
         self.emit_line(r'printf("\n");')
         self.emit_line(r'fflush(stdout);')
 
-    def emit_inc_ref(self, dest: str, rtype: RTType) -> None:
+    def emit_inc_ref(self, dest: str, rtype: RType) -> None:
         self.emitter.emit_inc_ref(dest, rtype)
 
-    def emit_dec_ref(self, dest: str, rtype: RTType) -> None:
+    def emit_dec_ref(self, dest: str, rtype: RType) -> None:
         self.emitter.emit_dec_ref(dest, rtype)

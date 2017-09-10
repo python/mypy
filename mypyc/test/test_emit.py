@@ -3,13 +3,13 @@ import unittest
 from mypy.nodes import Var
 
 from mypyc.emit import Emitter, EmitterContext
-from mypyc.ops import Environment, RTType, Label
+from mypyc.ops import Environment, RType, IntRType, Label
 
 
 class TestEmitter(unittest.TestCase):
     def setUp(self) -> None:
         self.env = Environment()
-        self.n = self.env.add_local(Var('n'), RTType('int'))
+        self.n = self.env.add_local(Var('n'), IntRType())
         self.context = EmitterContext()
         self.emitter = Emitter(self.context, self.env)
 

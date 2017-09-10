@@ -28,10 +28,11 @@ from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
 
 from mypyc.ops import (
-    BasicBlock, Environment, Op, LoadInt, RTType, Register, Label, Return, FuncIR, Assign,
-    PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRTType,
-    Unreachable, TupleGet, ClassIR, UserRTType, ModuleIR, GetAttr, SetAttr, LoadStatic,
-    PyGetAttr, PyCall, c_module_name, INVALID_REGISTER, INVALID_LABEL
+    BasicBlock, Environment, Op, LoadInt, RType, Register, Label, Return, FuncIR, Assign,
+    PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRType,
+    Unreachable, TupleGet, ClassIR, UserRType, ModuleIR, GetAttr, SetAttr, LoadStatic,
+    PyGetAttr, PyCall, IntRType, BoolRType, ListRType, SequenceTupleRType, ObjectRType, NoneRType,
+    c_module_name, INVALID_REGISTER, INVALID_LABEL
 )
 
 
@@ -50,24 +51,24 @@ class Mapper:
     def __init__(self) -> None:
         self.type_to_ir = {}  # type: Dict[TypeInfo, ClassIR]
 
-    def type_to_rttype(self, typ: Type) -> RTType:
+    def type_to_rtype(self, typ: Type) -> RType:
         if isinstance(typ, Instance):
             if typ.type.fullname() == 'builtins.int':
-                return RTType('int')
+                return IntRType()
             elif typ.type.fullname() == 'builtins.bool':
-                return RTType('bool')
+                return BoolRType()
             elif typ.type.fullname() == 'builtins.list':
-                return RTType('list')
+                return ListRType()
             elif typ.type.fullname() == 'builtins.tuple':
-                return RTType('sequence_tuple')
+                return SequenceTupleRType()
             elif typ.type in self.type_to_ir:
-                return UserRTType(self.type_to_ir[typ.type])
+                return UserRType(self.type_to_ir[typ.type])
         elif isinstance(typ, TupleType):
-            return TupleRTType([self.type_to_rttype(t) for t in typ.items])
+            return TupleRType([self.type_to_rtype(t) for t in typ.items])
         elif isinstance(typ, CallableType):
-            return RTType('object')
+            return ObjectRType()
         elif isinstance(typ, NoneTyp):
-            return RTType('None')
+            return NoneRType()
         assert False, '%s unsupported' % type(typ)
 
 
@@ -87,7 +88,7 @@ class AssignmentTargetIndex(AssignmentTarget):
 
 
 class AssignmentTargetAttr(AssignmentTarget):
-    def __init__(self, obj_reg: Register, attr: str, obj_type: UserRTType) -> None:
+    def __init__(self, obj_reg: Register, attr: str, obj_type: UserRType) -> None:
         self.obj_reg = obj_reg
         self.attr = attr
         self.obj_type = obj_type
@@ -143,7 +144,7 @@ class IRBuilder(NodeVisitor[Register]):
         attributes = []
         for name, node in cdef.info.names.items():
             if isinstance(node.node, Var):
-                attributes.append((name, self.type_to_rttype(node.node.type)))
+                attributes.append((name, self.type_to_rtype(node.node.type)))
         ir = self.mapper.type_to_ir[cdef.info]
         ir.attributes = attributes
         return INVALID_REGISTER
@@ -183,7 +184,7 @@ class IRBuilder(NodeVisitor[Register]):
         self.enter()
 
         for arg in fdef.arguments:
-            self.environment.add_local(arg.variable, self.type_to_rttype(arg.variable.type))
+            self.environment.add_local(arg.variable, self.type_to_rtype(arg.variable.type))
         fdef.body.accept(self)
 
         ret_type = self.convert_return_type(fdef)
@@ -201,17 +202,17 @@ class IRBuilder(NodeVisitor[Register]):
     def convert_args(self, fdef: FuncDef) -> List[RuntimeArg]:
         assert isinstance(fdef.type, CallableType)
         ann = fdef.type
-        return [RuntimeArg(arg.variable.name(), self.type_to_rttype(ann.arg_types[i]))
+        return [RuntimeArg(arg.variable.name(), self.type_to_rtype(ann.arg_types[i]))
                 for i, arg in enumerate(fdef.arguments)]
 
-    def convert_return_type(self, fdef: FuncDef) -> RTType:
+    def convert_return_type(self, fdef: FuncDef) -> RType:
         assert isinstance(fdef.type, CallableType)
-        return self.type_to_rttype(fdef.type.ret_type)
+        return self.type_to_rtype(fdef.type.ret_type)
 
     def add_implicit_return(self) -> None:
         block = self.blocks[-1][-1]
         if not block.ops or not isinstance(block.ops[-1], Return):
-            retval = self.environment.add_temp(RTType('None'))
+            retval = self.environment.add_temp(NoneRType())
             self.add(PrimitiveOp(retval, PrimitiveOp.NONE))
             self.add(Return(retval))
 
@@ -233,7 +234,7 @@ class IRBuilder(NodeVisitor[Register]):
         if stmt.expr:
             retval = self.accept(stmt.expr)
         else:
-            retval = self.environment.add_temp(RTType('None'))
+            retval = self.environment.add_temp(NoneRType())
             self.add(PrimitiveOp(retval, PrimitiveOp.NONE))
         self.add(Return(retval))
         return INVALID_REGISTER
@@ -283,7 +284,7 @@ class IRBuilder(NodeVisitor[Register]):
         elif isinstance(lvalue, MemberExpr):
             # Attribute assignment x.y = e
             obj_type = self.node_type(lvalue.expr)
-            assert isinstance(obj_type, UserRTType), 'Attribute set only supported for user types'
+            assert isinstance(obj_type, UserRType), 'Attribute set only supported for user types'
             obj_reg = self.accept(lvalue.expr)
             return AssignmentTargetAttr(obj_reg, lvalue.name, obj_type)
 
@@ -292,7 +293,7 @@ class IRBuilder(NodeVisitor[Register]):
     def assign_to_target(self,
             target: AssignmentTarget,
             rvalue: Expression,
-            rvalue_type: Optional[RTType] = None) -> Register:
+            rvalue_type: Optional[RType] = None) -> Register:
         rvalue_type = rvalue_type or self.node_type(rvalue)
 
         if isinstance(target, AssignmentTargetRegister):
@@ -313,7 +314,7 @@ class IRBuilder(NodeVisitor[Register]):
     def assign(self,
                lvalue: Lvalue,
                rvalue: Expression,
-               rvalue_type: Optional[RTType] = None,
+               rvalue_type: Optional[RType] = None,
                declared_type: Optional[Type] = None) -> Register:
         target = self.get_assignment_target(lvalue, declared_type)
         return self.assign_to_target(target, rvalue, rvalue_type)
@@ -396,7 +397,7 @@ class IRBuilder(NodeVisitor[Register]):
             end_reg = self.accept(end)
 
             # Initialize loop index to 0.
-            index_reg = self.assign(s.index, IntExpr(0), RTType('int'))
+            index_reg = self.assign(s.index, IntExpr(0), IntRType())
             goto = Goto(INVALID_LABEL)
             self.add(goto)
 
@@ -417,7 +418,7 @@ class IRBuilder(NodeVisitor[Register]):
             end_goto.label = end_block.label
 
             # Increment index register.
-            one_reg = self.alloc_temp(RTType('int'))
+            one_reg = self.alloc_temp(IntRType())
             self.add(LoadInt(one_reg, 1))
             self.add(PrimitiveOp(index_reg, PrimitiveOp.INT_ADD, index_reg, one_reg))
 
@@ -434,10 +435,10 @@ class IRBuilder(NodeVisitor[Register]):
 
             expr_reg = self.accept(s.expr)
 
-            index_reg = self.alloc_temp(RTType('int'))
+            index_reg = self.alloc_temp(IntRType())
             self.add(LoadInt(index_reg, 0))
 
-            one_reg = self.alloc_temp(RTType('int'))
+            one_reg = self.alloc_temp(IntRType())
             self.add(LoadInt(one_reg, 1))
 
             assert isinstance(s.index, NameExpr)
@@ -449,7 +450,7 @@ class IRBuilder(NodeVisitor[Register]):
 
             # For compatibility with python semantics we recalculate the length
             # at every iteration.
-            len_reg = self.alloc_temp(RTType('int'))
+            len_reg = self.alloc_temp(IntRType())
             self.add(PrimitiveOp(len_reg, PrimitiveOp.LIST_LEN, expr_reg))
 
             branch = Branch(index_reg, len_reg, INVALID_LABEL, INVALID_LABEL, Branch.INT_LT)
@@ -461,8 +462,8 @@ class IRBuilder(NodeVisitor[Register]):
 
             target_list_type = self.types[s.expr]
             assert isinstance(target_list_type, Instance)
-            target_type = self.type_to_rttype(target_list_type.args[0])
-            value_box = self.alloc_temp(RTType('object'))
+            target_type = self.type_to_rtype(target_list_type.args[0])
+            value_box = self.alloc_temp(ObjectRType())
             self.add(PrimitiveOp(value_box, PrimitiveOp.LIST_GET, expr_reg, index_reg))
 
             self.unbox(value_box, target_type, target=lvalue_reg)
@@ -515,7 +516,7 @@ class IRBuilder(NodeVisitor[Register]):
         if etype.name != 'int':
             assert False, 'Unsupported unary operation'
 
-        target = self.alloc_target(RTType('int'))
+        target = self.alloc_target(IntRType())
         zero = self.accept(IntExpr(0))
         self.add(PrimitiveOp(target, PrimitiveOp.INT_SUB, zero, reg))
 
@@ -528,12 +529,12 @@ class IRBuilder(NodeVisitor[Register]):
         rreg = self.accept(expr.right)
         return self.binary_op(ltype, lreg, rtype, rreg, expr.op)
 
-    def binary_op(self, ltype: RTType, lreg: Register, rtype: RTType, rreg: Register, expr_op: str,
+    def binary_op(self, ltype: RType, lreg: Register, rtype: RType, rreg: Register, expr_op: str,
                   target: Optional[Register] = None) -> Register:
         if ltype.name == 'int' and rtype.name == 'int':
             # Primitive int operation
             if target is None:
-                target = self.alloc_target(RTType('int'))
+                target = self.alloc_target(IntRType())
             op = self.int_binary_ops[expr_op]
         elif ltype.name == 'list' or rtype.name == 'list':
             if rtype.name == 'list':
@@ -542,7 +543,7 @@ class IRBuilder(NodeVisitor[Register]):
             if rtype.name != 'int':
                 assert False, 'Unsupported binary operation'  # TODO: Operator overloading
             if target is None:
-                target = self.alloc_target(RTType('list'))
+                target = self.alloc_target(ListRType())
             op = PrimitiveOp.LIST_REPEAT
         else:
             assert False, 'Unsupported binary operation'
@@ -550,9 +551,9 @@ class IRBuilder(NodeVisitor[Register]):
         return target
 
     def visit_index_expr(self, expr: IndexExpr) -> Register:
-        base_rttype = self.node_type(expr.base)
+        base_rtype = self.node_type(expr.base)
 
-        if base_rttype.name == 'list' or base_rttype.name == 'sequence_tuple':
+        if base_rtype.name == 'list' or base_rtype.name == 'sequence_tuple':
             index_type = self.types[expr.index]
             if not is_named_instance(index_type, 'builtins.int'):
                 assert False, 'Unsupported indexing operation'
@@ -560,9 +561,9 @@ class IRBuilder(NodeVisitor[Register]):
             base_reg = self.accept(expr.base)
             index_reg = self.accept(expr.index)
             target_type = self.node_type(expr)
-            tmp = self.alloc_temp(RTType('object'))
+            tmp = self.alloc_temp(ObjectRType())
 
-            if base_rttype.name == 'list':
+            if base_rtype.name == 'list':
                 op = PrimitiveOp.LIST_GET
             else:
                 op = PrimitiveOp.HOMOGENOUS_TUPLE_GET
@@ -571,7 +572,7 @@ class IRBuilder(NodeVisitor[Register]):
             target = self.alloc_target(target_type)
             return self.unbox(tmp, target_type, target)
 
-        elif isinstance(base_rttype, TupleRTType):
+        elif isinstance(base_rtype, TupleRType):
             base_reg = self.accept(expr.base)
             target_type = self.node_type(expr)
 
@@ -579,13 +580,13 @@ class IRBuilder(NodeVisitor[Register]):
 
             target = self.alloc_target(target_type)
             self.add(TupleGet(target, base_reg, expr.index.value,
-                              base_rttype.types[expr.index.value]))
+                              base_rtype.types[expr.index.value]))
             return target
 
         assert False, 'Unsupported indexing operation'
 
     def visit_int_expr(self, expr: IntExpr) -> Register:
-        reg = self.alloc_target(RTType('int'))
+        reg = self.alloc_target(IntRType())
         self.add(LoadInt(reg, expr.value))
         return reg
 
@@ -599,15 +600,15 @@ class IRBuilder(NodeVisitor[Register]):
 
     def visit_name_expr(self, expr: NameExpr) -> Register:
         if expr.node.fullname() == 'builtins.None':
-            target = self.alloc_target(RTType('None'))
+            target = self.alloc_target(NoneRType())
             self.add(PrimitiveOp(target, PrimitiveOp.NONE))
             return target
         elif expr.node.fullname() == 'builtins.True':
-            target = self.alloc_target(RTType('bool'))
+            target = self.alloc_target(BoolRType())
             self.add(PrimitiveOp(target, PrimitiveOp.TRUE))
             return target
         elif expr.node.fullname() == 'builtins.False':
-            target = self.alloc_target(RTType('bool'))
+            target = self.alloc_target(BoolRType())
             self.add(PrimitiveOp(target, PrimitiveOp.FALSE))
             return target
 
@@ -638,7 +639,7 @@ class IRBuilder(NodeVisitor[Register]):
             target = self.alloc_target(attr_type)
             obj_type = self.node_type(expr.expr)
             assert isinstance(obj_type,
-                              UserRTType), 'Attribute access not supported: %s' % obj_type
+                              UserRType), 'Attribute access not supported: %s' % obj_type
             self.add(GetAttr(target, obj_reg, expr.name, obj_type))
             return target
 
@@ -646,14 +647,14 @@ class IRBuilder(NodeVisitor[Register]):
         target = self.alloc_target(self.node_type(expr))
         module = '.'.join(expr.node.fullname().split('.')[:-1])
         right = expr.node.fullname().split('.')[-1]
-        left = self.alloc_temp(RTType('object'))
+        left = self.alloc_temp(ObjectRType())
         self.add(LoadStatic(left, c_module_name(module)))
         self.add(PyGetAttr(target, left, right))
 
         return target
 
-    def py_call(self, function: Register, args: List[Expression], target_type: RTType) -> Register:
-        target_box = self.alloc_temp(RTType('object'))
+    def py_call(self, function: Register, args: List[Expression], target_type: RType) -> Register:
+        target_box = self.alloc_temp(ObjectRType())
 
         arg_boxes = [] # type: List[Register]
         for arg_expr in args:
@@ -679,22 +680,22 @@ class IRBuilder(NodeVisitor[Register]):
         assert isinstance(expr.callee, NameExpr)
         fn = expr.callee.name  # TODO: fullname
         if fn == 'len' and len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
-            target = self.alloc_target(RTType('int'))
+            target = self.alloc_target(IntRType())
             arg = self.accept(expr.args[0])
 
-            expr_rttype = self.node_type(expr.args[0])
-            if expr_rttype.name == 'list':
+            expr_rtype = self.node_type(expr.args[0])
+            if expr_rtype.name == 'list':
                 self.add(PrimitiveOp(target, PrimitiveOp.LIST_LEN, arg))
-            elif expr_rttype.name == 'sequence_tuple':
+            elif expr_rtype.name == 'sequence_tuple':
                 self.add(PrimitiveOp(target, PrimitiveOp.HOMOGENOUS_TUPLE_LEN, arg))
-            elif isinstance(expr_rttype, TupleRTType):
-                self.add(LoadInt(target, len(expr_rttype.types)))
+            elif isinstance(expr_rtype, TupleRType):
+                self.add(LoadInt(target, len(expr_rtype.types)))
             else:
                 assert False, "unsupported use of len"
 
         # Handle conversion to sequence tuple
         elif fn == 'tuple' and len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
-            target = self.alloc_target(RTType('sequence_tuple'))
+            target = self.alloc_target(SequenceTupleRType())
             arg = self.accept(expr.args[0])
 
             self.add(PrimitiveOp(target, PrimitiveOp.LIST_TO_HOMOGENOUS_TUPLE, arg))
@@ -746,8 +747,8 @@ class IRBuilder(NodeVisitor[Register]):
     def visit_list_expr(self, expr: ListExpr) -> Register:
         list_type = self.types[expr]
         assert isinstance(list_type, Instance)
-        item_type = self.type_to_rttype(list_type.args[0])
-        target = self.alloc_target(RTType('list'))
+        item_type = self.type_to_rtype(list_type.args[0])
+        target = self.alloc_target(ListRType())
         items = []
         for item in expr.items:
             item_reg = self.accept(item)
@@ -760,7 +761,7 @@ class IRBuilder(NodeVisitor[Register]):
         tuple_type = self.types[expr]
         assert isinstance(tuple_type, TupleType)
 
-        target = self.alloc_target(self.type_to_rttype(tuple_type))
+        target = self.alloc_target(self.type_to_rtype(tuple_type))
         items = [self.accept(i) for i in expr.items]
         self.add(PrimitiveOp(target, PrimitiveOp.NEW_TUPLE, *items))
         return target
@@ -866,32 +867,32 @@ class IRBuilder(NodeVisitor[Register]):
         self.targets.pop()
         return actual
 
-    def alloc_target(self, type: RTType) -> Register:
+    def alloc_target(self, type: RType) -> Register:
         if self.targets[-1] < 0:
             return self.environment.add_temp(type)
         else:
             return self.targets[-1]
 
-    def alloc_temp(self, type: RTType) -> Register:
+    def alloc_temp(self, type: RType) -> Register:
         return self.environment.add_temp(type)
 
-    def type_to_rttype(self, typ: Type) -> RTType:
-        return self.mapper.type_to_rttype(typ)
+    def type_to_rtype(self, typ: Type) -> RType:
+        return self.mapper.type_to_rtype(typ)
 
-    def node_type(self, node: Expression) -> RTType:
+    def node_type(self, node: Expression) -> RType:
         mypy_type = self.types[node]
-        return self.type_to_rttype(mypy_type)
+        return self.type_to_rtype(mypy_type)
 
-    def box(self, src: Register, typ: RTType) -> Register:
+    def box(self, src: Register, typ: RType) -> Register:
         if typ.supports_unbox:
-            target = self.alloc_temp(RTType('object'))
+            target = self.alloc_temp(ObjectRType())
             self.add(Box(target, src, typ))
             return target
         else:
             # Already boxed
             return src
 
-    def unbox(self, src: Register, target_type: RTType,
+    def unbox(self, src: Register, target_type: RType,
               target: Optional[Register] = None) -> Register:
         if target is None:
             target = self.alloc_temp(target_type)

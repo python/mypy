@@ -2,7 +2,7 @@
 
 from mypyc.common import PREFIX, NATIVE_PREFIX
 from mypyc.emit import Emitter
-from mypyc.ops import FuncIR, RTType
+from mypyc.ops import FuncIR, RType
 
 
 def wrapper_function_header(fn: FuncIR) -> str:
@@ -49,7 +49,7 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
     emitter.emit_line('}')
 
 
-def generate_arg_check(name: str, typ: RTType, emitter: Emitter) -> None:
+def generate_arg_check(name: str, typ: RType, emitter: Emitter) -> None:
     """Insert a runtime check for argument and unbox if necessary.
 
     The object is named PyObject *obj_{}. This is expected to generate

@@ -4,7 +4,7 @@ import textwrap
 
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
-from mypyc.ops import ClassIR, FuncIR, RTType, Environment, type_struct_name
+from mypyc.ops import ClassIR, FuncIR, RType, ObjectRType, Environment, type_struct_name
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
@@ -20,7 +20,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     vtable_name = '{}_vtable'.format(name)
 
     # Use dummy empty __init__ for now.
-    init = FuncIR(cl.name, [], RTType(cl.name), [], Environment())
+    # TODO: Use UserRType
+    init = FuncIR(cl.name, [], ObjectRType(), [], Environment())
     emitter.emit_line(native_function_header(init) + ';')
     emitter.emit_line()
     generate_object_struct(cl, emitter)
@@ -238,7 +239,7 @@ def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
 
 def generate_getter(cl: ClassIR,
                     attr: str,
-                    rtype: RTType,
+                    rtype: RType,
                     emitter: Emitter) -> None:
     emitter.emit_line('static PyObject *')
     emitter.emit_line('{}({} *self, void *closure)'.format(getter_name(cl.name, attr),
@@ -257,7 +258,7 @@ def generate_getter(cl: ClassIR,
 
 def generate_setter(cl: ClassIR,
                     attr: str,
-                    rtype: RTType,
+                    rtype: RType,
                     emitter: Emitter) -> None:
     emitter.emit_line('static int')
     emitter.emit_line('{}({} *self, PyObject *value, void *closure)'.format(
