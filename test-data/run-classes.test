@@ -169,3 +169,16 @@ print(g())
 [out]
 6
 7
+
+[case testCastUserClass]
+from typing import List
+
+class C:
+    x: int
+
+def f(a: List[C]) -> C:
+    return a[0]
+[file driver.py]
+from native import f, C
+c = C()
+assert f([c]) is c

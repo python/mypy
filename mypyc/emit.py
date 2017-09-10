@@ -192,6 +192,10 @@ class Emitter:
                 '    {} = {};'.format(dest, src),
                 'else',
                 failure)
+        elif typ.name == 'None':
+            if declare_dest:
+                self.emit_line('PyObject *{};'.format(dest))
+            self.emit_line('{} = {};'.format(dest, src))
         else:
             assert False, 'Unboxing not implemented: %s' % typ
 

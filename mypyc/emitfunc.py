@@ -273,16 +273,10 @@ class FunctionEmitterVisitor(OpVisitor):
         self.emit_line('{} = {};'.format(dest, temp))
 
     def visit_cast(self, op: Cast) -> None:
-        # TODO Actually cast things (runtime check). (#43)
-        src = self.reg(op.src)
-        dest = self.reg(op.dest)
-        self.emit_line('{} = {};'.format(dest, src))
+        self.emitter.emit_unbox_or_cast(self.reg(op.src), self.reg(op.dest), op.typ, 'abort();')
 
     def visit_unbox(self, op: Unbox) -> None:
-        # dest is already declared but generate_unbox will declare, so indirection is needed.
-        src = self.reg(op.src)
-        dest = self.reg(op.dest)
-        self.emitter.emit_unbox_or_cast(src, dest, op.type, 'abort();')
+        self.emitter.emit_unbox_or_cast(self.reg(op.src), self.reg(op.dest), op.type, 'abort();')
 
     # Helpers
 
