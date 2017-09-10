@@ -52,7 +52,7 @@ static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
     }
     CPyTagged arg_x;
     if (PyLong_Check(obj_x))
-        arg_x = CPyTagged_FromObject(obj_x);
+        arg_x = CPyTagged_BorrowFromObject(obj_x);
     else
         return NULL;
     CPyTagged retval = CPyDef_f(arg_x);

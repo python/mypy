@@ -35,6 +35,7 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
 
     if fn.ret_type.supports_unbox:
         # TODO: The Py_RETURN macros return the correct PyObject * with reference count handling.
+        #       Are they relevant?
         ret_type = fn.ret_type
         emitter.emit_line('{}retval = {}{}({});'.format(ret_type.ctype_spaced,
                                                         NATIVE_PREFIX, fn.name,
@@ -42,7 +43,6 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
         emitter.emit_error_check('retval', ret_type, 'return NULL;')
         emitter.emit_box('retval', 'retbox', ret_type, 'return NULL;', declare_dest=True)
         emitter.emit_lines('return retbox;')
-        # TODO: Decrease reference count of retval?
     else:
         emitter.emit_line('return CPyDef_{}({});'.format(fn.name, native_args))
         # TODO: Tracebacks?
@@ -56,5 +56,10 @@ def generate_arg_check(name: str, typ: RTType, emitter: Emitter) -> None:
     a value of name arg_{} (unboxed if necessary). For each primitive a runtime
     check ensures the correct type.
     """
-    emitter.emit_unbox_or_cast('obj_{}'.format(name), 'arg_{}'.format(name), typ,
-                               'return NULL;', declare_dest=True)
+    if typ.supports_unbox:
+        # Borrow when unboxing to avoid reference count manipulation.
+        emitter.emit_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ,
+                           'return NULL;', declare_dest=True, borrow=True)
+    else:
+        emitter.emit_cast('obj_{}'.format(name), 'arg_{}'.format(name), typ, 'return NULL;',
+                          declare_dest=True)

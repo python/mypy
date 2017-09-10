@@ -180,7 +180,9 @@ Here are some hints about how to add support for a new primitive type
   `supports_unbox`, `ctype` and various other properties work
   correctly for the new type.
 
-* Update `emit_box` and `emit_unbox_or_cast` in `mypyc.emit`.
+* Update `emit_box` in `mypyc.emit`.
+
+* Update `emit_unbox` or `emit_cast` in `mypyc.emit`.
 
 * Update `emit_inc_ref` and `emit_dec_ref` in `mypypc.emit` if
   needed. If the unboxed representation does not need reference

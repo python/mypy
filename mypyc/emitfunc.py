@@ -268,10 +268,10 @@ class FunctionEmitterVisitor(OpVisitor):
         self.emitter.emit_box(self.reg(op.src), self.reg(op.dest), op.type, 'abort();')
 
     def visit_cast(self, op: Cast) -> None:
-        self.emitter.emit_unbox_or_cast(self.reg(op.src), self.reg(op.dest), op.typ, 'abort();')
+        self.emitter.emit_cast(self.reg(op.src), self.reg(op.dest), op.typ, 'abort();')
 
     def visit_unbox(self, op: Unbox) -> None:
-        self.emitter.emit_unbox_or_cast(self.reg(op.src), self.reg(op.dest), op.type, 'abort();')
+        self.emitter.emit_unbox(self.reg(op.src), self.reg(op.dest), op.type, 'abort();')
 
     # Helpers
 

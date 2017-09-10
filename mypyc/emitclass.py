@@ -269,7 +269,11 @@ def generate_setter(cl: ClassIR,
         emitter.emit_dec_ref('self->{}'.format(attr), rtype)
         emitter.emit_line('}')
     emitter.emit_line('if (value != NULL) {')
-    emitter.emit_unbox_or_cast('value', 'tmp', rtype, 'abort();',declare_dest=True)
+    if rtype.supports_unbox:
+        emitter.emit_unbox('value', 'tmp', rtype, 'abort();',declare_dest=True)
+    else:
+        emitter.emit_cast('value', 'tmp', rtype, 'abort();',declare_dest=True)
+        emitter.emit_inc_ref('tmp', rtype)
     emitter.emit_line('self->{} = tmp;'.format(attr))
     emitter.emit_line('} else')
     emitter.emit_line('    self->{} = {};'.format(attr, rtype.c_undefined_value))

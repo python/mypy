@@ -74,6 +74,38 @@ static CPyTagged CPyTagged_FromObject(PyObject *object) {
     // the common case where long long is small enough.
     if (overflow != 0 || (((unsigned long long)value >= (1LL << 62)) &&
                           (value >= 0 || value < -(1LL << 62)))) {
+        Py_INCREF(object);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return value << 1;
+    }
+}
+
+static CPyTagged CPyTagged_StealFromObject(PyObject *object) {
+    int overflow;
+    // TODO: This may call __int__ and raise exceptions.
+    PY_LONG_LONG value = PyLong_AsLongLongAndOverflow(object, &overflow);
+    // We use a Python object if the value shifted left by 1 is too
+    // large for long long.  The latter check is micro-optimized where
+    // the common case where long long is small enough.
+    if (overflow != 0 || (((unsigned long long)value >= (1LL << 62)) &&
+                          (value >= 0 || value < -(1LL << 62)))) {
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        Py_DECREF(object);
+        return value << 1;
+    }
+}
+
+static CPyTagged CPyTagged_BorrowFromObject(PyObject *object) {
+    int overflow;
+    // TODO: This may call __int__ and raise exceptions.
+    PY_LONG_LONG value = PyLong_AsLongLongAndOverflow(object, &overflow);
+    // We use a Python object if the value shifted left by 1 is too
+    // large for long long.  The latter check is micro-optimized where
+    // the common case where long long is small enough.
+    if (overflow != 0 || (((unsigned long long)value >= (1LL << 62)) &&
+                          (value >= 0 || value < -(1LL << 62)))) {
         return ((CPyTagged)object) | CPY_INT_TAG;
     } else {
         return value << 1;
@@ -149,7 +181,7 @@ static CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
     PyObject *result = PyNumber_Add(left_obj, right_obj);
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
-    return CPyTagged_FromObject(result);
+    return CPyTagged_StealFromObject(result);
 }
 
 inline bool CPyTagged_IsSubtractOverflow(CPyTagged diff, CPyTagged left, CPyTagged right) {
@@ -170,7 +202,7 @@ static CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
     PyObject *result = PyNumber_Subtract(left_obj, right_obj);
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
-    return CPyTagged_FromObject(result);
+    return CPyTagged_StealFromObject(result);
 }
 
 inline bool CPyTagged_IsMultiplyOverflow(CPyTagged left, CPyTagged right) {
@@ -190,7 +222,7 @@ static CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
     PyObject *result = PyNumber_Multiply(left_obj, right_obj);
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
-    return CPyTagged_FromObject(result);
+    return CPyTagged_StealFromObject(result);
 }
 
 inline bool CPyTagged_MaybeFloorDivideOverflow(CPyTagged left, CPyTagged right) {
@@ -216,7 +248,7 @@ static CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
     PyObject *result = PyNumber_FloorDivide(left_obj, right_obj);
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
-    return CPyTagged_FromObject(result);
+    return CPyTagged_StealFromObject(result);
 }
 
 inline bool CPyTagged_MaybeRemainderOverflow(CPyTagged left, CPyTagged right) {
@@ -237,7 +269,7 @@ static CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right) {
     PyObject *result = PyNumber_Remainder(left_obj, right_obj);
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
-    return CPyTagged_FromObject(result);
+    return CPyTagged_StealFromObject(result);
 }
 
 static bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right) {
