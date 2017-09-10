@@ -205,22 +205,25 @@ class Emitter:
         """Emit code for boxing a value of give type.
 
         Generate a simple assignment if no boxing is needed.
+
+        The source reference count is stolen for the result (no need to decref afterwards).
         """
-        # TODO: Refcount handling seems broken.
         if declare_dest:
             declaration = 'PyObject *'
         else:
             declaration = ''
         if typ.name == 'int':
-            self.emit_line('{}{} = CPyTagged_AsObject({});'.format(declaration, dest, src))
+            # Steal the existing reference if it exists.
+            self.emit_line('{}{} = CPyTagged_StealAsObject({});'.format(declaration, dest, src))
         elif typ.name == 'bool':
-            # The Py_RETURN macros return the correct PyObject * with reference count handling.
+            # TODO: The Py_RETURN macros return the correct PyObject * with reference count
+            #       handling. Relevant here?
             self.emit_lines('{}{} = PyBool_FromLong({});'.format(declaration, dest, src))
         elif isinstance(typ, TupleRTType):
             self.declare_tuple_struct(typ)
             self.emit_line('{}{} = PyTuple_New({});'.format(declaration, dest, len(typ.types)))
             self.emit_line('if ({} == NULL) {{'.format(dest))
-            self.emit_line('{}'.format(failure))
+            self.emit_line('{}'.format(failure)) # TODO: Decrease refcounts?
             self.emit_line('}')
             # TODO: Fail if dest is None
             for i in range(0, len(typ.types)):

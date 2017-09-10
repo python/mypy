@@ -27,7 +27,7 @@ from mypyc.analysis import (
 )
 from mypyc.ops import (
     FuncIR, BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
-    Return, Op, Register, Label, Cast
+    Return, Op, Register, Label, Cast, Box
 )
 
 
@@ -60,8 +60,8 @@ def transform_block(block: BasicBlock,
     ops = []  # type: List[Op]
     for i, op in enumerate(old_ops):
         key = (block.label, i)
-        if isinstance(op, (Assign, Cast)):
-            # These operations just copy a reference and don't touch reference
+        if isinstance(op, (Assign, Cast, Box)):
+            # These operations just copy/steal a reference and don't touch reference
             # counts.
             if op.src in post_live[key] or op.src in pre_borrow[key]:
                 ops.append(IncRef(op.src, env.types[op.src]))

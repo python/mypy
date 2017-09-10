@@ -94,6 +94,19 @@ static PyObject *CPyTagged_AsObject(CPyTagged x) {
     return value;
 }
 
+static PyObject *CPyTagged_StealAsObject(CPyTagged x) {
+    PyObject *value;
+    if (CPyTagged_CheckLong(x)) {
+        value = CPyTagged_LongAsObject(x);
+    } else {
+        value = PyLong_FromLongLong(CPyTagged_ShortAsLongLong(x));
+        if (value == NULL) {
+            abort(); // TODO: Better way of dealing with out of memory errors.
+        }
+    }
+    return value;
+}
+
 static long long CPyTagged_AsLongLong(CPyTagged x) {
     if (CPyTagged_CheckShort(x)) {
         return CPyTagged_ShortAsLongLong(x);

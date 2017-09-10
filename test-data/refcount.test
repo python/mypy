@@ -458,10 +458,8 @@ def f() -> int:
 L0:
     r0 = 0
     r1 = box(int, r0)
-    dec_ref r0 :: int
     r2 = 1
     r3 = box(int, r2)
-    dec_ref r2 :: int
     a = [r1, r3]
     dec_ref r1
     dec_ref r3
@@ -475,6 +473,7 @@ def f(x: int) -> List[int]:
     return [x]
 [out]
 L0:
+    inc_ref x :: int
     r1 = box(int, x)
     r0 = [r1]
     dec_ref r1
@@ -493,7 +492,6 @@ L0:
     r3 = unbox(int, r2)
     dec_ref r2
     r4 = box(int, r3)
-    dec_ref r3 :: int
     a[r0] = r4 :: list
     dec_ref r0 :: int
     dec_ref r4

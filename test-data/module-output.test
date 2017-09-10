@@ -59,7 +59,7 @@ static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
     if (retval == CPY_INT_TAG) {
         return NULL;
     }
-    PyObject *retbox = CPyTagged_AsObject(retval);
+    PyObject *retbox = CPyTagged_StealAsObject(retval);
     return retbox;
 }
 
