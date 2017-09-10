@@ -265,12 +265,7 @@ class FunctionEmitterVisitor(OpVisitor):
         self.emit_dec_ref(dest, op.target_type)
 
     def visit_box(self, op: Box) -> None:
-        # dest is already declared but generate_box will declare, so indirection is needed.
-        src = self.reg(op.src)
-        dest = self.reg(op.dest)
-        temp = self.temp_name()
-        self.emitter.emit_box(src, temp, op.type, 'abort();')
-        self.emit_line('{} = {};'.format(dest, temp))
+        self.emitter.emit_box(self.reg(op.src), self.reg(op.dest), op.type, 'abort();')
 
     def visit_cast(self, op: Cast) -> None:
         self.emitter.emit_unbox_or_cast(self.reg(op.src), self.reg(op.dest), op.typ, 'abort();')

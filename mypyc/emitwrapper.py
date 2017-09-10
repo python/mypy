@@ -40,7 +40,7 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
                                                         NATIVE_PREFIX, fn.name,
                                                         native_args))
         emitter.emit_error_check('retval', ret_type, 'return NULL;')
-        emitter.emit_box('retval', 'retbox', ret_type, 'return NULL;')
+        emitter.emit_box('retval', 'retbox', ret_type, 'return NULL;', declare_dest=True)
         emitter.emit_lines('return retbox;')
         # TODO: Decrease reference count of retval?
     else:

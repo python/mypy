@@ -132,6 +132,7 @@ class Emitter:
             failure: What happens on error
             declare_dest: If True, also declare the variable 'dest'
         """
+        # TODO: Verify refcount handling.
         failure = '    ' + failure
         if typ.name == 'int':
             if declare_dest:
@@ -199,20 +200,25 @@ class Emitter:
         else:
             assert False, 'Unboxing not implemented: %s' % typ
 
-    def emit_box(self, src: str, dest: str, typ: RTType, failure: str) -> None:
+    def emit_box(self, src: str, dest: str, typ: RTType, failure: str,
+                 declare_dest: bool = False) -> None:
         """Emit code for boxing a value of give type.
 
         Generate a simple assignment if no boxing is needed.
         """
+        # TODO: Refcount handling seems broken.
+        if declare_dest:
+            declaration = 'PyObject *'
+        else:
+            declaration = ''
         if typ.name == 'int':
-            self.emit_line('PyObject *{} = CPyTagged_AsObject({});'.format(dest, src))
+            self.emit_line('{}{} = CPyTagged_AsObject({});'.format(declaration, dest, src))
         elif typ.name == 'bool':
             # The Py_RETURN macros return the correct PyObject * with reference count handling.
-            self.emit_lines('PyObject *{} = PyBool_FromLong({});'.format(dest, src))
-        elif typ.name == 'tuple':
-            assert isinstance(typ, TupleRTType)
+            self.emit_lines('{}{} = PyBool_FromLong({});'.format(declaration, dest, src))
+        elif isinstance(typ, TupleRTType):
             self.declare_tuple_struct(typ)
-            self.emit_line('PyObject *{} = PyTuple_New({});'.format(dest, len(typ.types)))
+            self.emit_line('{}{} = PyTuple_New({});'.format(declaration, dest, len(typ.types)))
             self.emit_line('if ({} == NULL) {{'.format(dest))
             self.emit_line('{}'.format(failure))
             self.emit_line('}')
@@ -222,11 +228,12 @@ class Emitter:
                     self.emit_line('PyTuple_SetItem({}, {}, {}.f{}'.format(dest, i, src, i))
                 else:
                     inner_name = self.temp_name()
-                    self.emit_box('{}.f{}'.format(src, i), inner_name, typ.types[i], failure)
+                    self.emit_box('{}.f{}'.format(src, i), inner_name, typ.types[i], failure,
+                                  declare_dest=True)
                     self.emit_line('PyTuple_SetItem({}, {}, {});'.format(dest, i, inner_name, i))
         else:
             # Type is boxed -- trivially just assign.
-            self.emit_line('PyObject *{} = {};'.format(dest, src))
+            self.emit_line('{}{} = {};'.format(declaration, dest, src))
 
     def emit_error_check(self, value: str, rtype: RTType, failure: str) -> None:
         """Emit code for checking a native function return value for uncaught exception."""

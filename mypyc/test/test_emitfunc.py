@@ -146,9 +146,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_box(self) -> None:
         self.assert_emit(Box(self.o, self.n, RTType('int')),
-                         """PyObject *__tmp1 = CPyTagged_AsObject(cpy_r_n);
-                            cpy_r_o = __tmp1;
-                         """)
+                         """cpy_r_o = CPyTagged_AsObject(cpy_r_n);""")
 
     def test_unbox(self) -> None:
         self.assert_emit(Unbox(self.n, self.m, RTType('int')),
