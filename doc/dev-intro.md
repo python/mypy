@@ -12,12 +12,13 @@ Here's a summary of what should work:
 * Calls to top-level functions defined in the same file.
 * Types:
   * `int`
+  * `bool`
   * `List[...]`
   * `Tuple[...]` (only a few tuple operations)
   * `None` as return type
 * Some integer operations:
   * Basic integer arithmetic: `+` `-` `*` `//` `%`
-  * Integer comparisons.
+  * Integer comparisons
 * Some list operations:
   * `[e, ...]` (construct list)
   * `l[n]`
@@ -26,7 +27,7 @@ Here's a summary of what should work:
   * `len(l)`
   * `l * n` (multiply list by integer)
 * Simple assignment statement `var = x` (only local variables).
-* If/else statement.
+* If/else/elif statement.
 * While statement.
 * Expression statement.
 * Return statement.
@@ -46,7 +47,7 @@ It has these passes:
   * The IR is defined in `mypyc.ops`.
   * The translation happens in `mypyc.genops`.
 * Insert explicit reference count inc/dec opcodes (`mypyc.refcount`).
-* Translate the IR into C (`mypyc.emitter` and `mypyc.compiler`).
+* Translate the IR into C (`mypyc.emit*`).
 * Compile the generated C code using a C compiler.
 
 ## Tests
@@ -61,8 +62,9 @@ One of the tests (`test_self_type_check`) type checks mypyc using mypy.
 
 ## Overview of Generated C
 
-Mypyc uses a tagged pointer representation for integers. For other
-objects mypyc uses the CPython `PyObject *`.
+Mypyc uses a tagged pointer representation for integers, `char` for
+booleans, and C structs for tuples. For most other objects mypyc uses
+the CPython `PyObject *`.
 
 Mypyc compiles a function into two functions:
 
@@ -82,7 +84,8 @@ The generated code does runtime checking so that it can assume that
 values always have the declared types. Whenever accessing CPython
 values which might have unexpected types we need to insert a type
 check. For example, when getting a list item we need to insert a
-runtime type check, since Python lists can contain arbitrary objects.
+runtime type check (an unbox or a cast operation), since Python lists
+can contain arbitrary objects.
 
 The generated code uses various helpers defined in `lib-rt/CPy.h`.
 The header should only contain inline or static functions, since
@@ -167,8 +170,7 @@ smaller. Here is how to do this:
 ### A New Primitive Type
 
 Some types such as `int` and `list` are special cased in mypyc to
-generate operations specific to these types (actually currently this
-is the only way to support new types).
+generate operations specific to these types.
 
 Here are some hints about how to add support for a new primitive type
 (this may be incomplete):
@@ -176,7 +178,7 @@ Here are some hints about how to add support for a new primitive type
 * Decide whether the primitive type has an "unboxed" representation
   (a representation that is not just `PyObject *`).
 
-* Update `RTType` to support the primitive type. Make sure
+* Create a subclass of `RType` to support the primitive type. Make sure
   `supports_unbox`, `ctype` and various other properties work
   correctly for the new type.
 
@@ -191,7 +193,7 @@ Here are some hints about how to add support for a new primitive type
 
 * Update `emit_error_check` in `mypyc.emit` for unboxed types.
 
-* Update `mypyc.genops.Mapper.type_to_rttype()`.
+* Update `mypyc.genops.Mapper.type_to_rtype()`.
 
 The above may be enough to allow you to declare variables with the
 type and pass values around. You likely also want to add support for
@@ -200,8 +202,8 @@ Already Supported Type for how to do this).
 
 If you want to just test C generation, you can add a test case with
 dummy output to `test-data/module-output.test` and manually inspect
-the generated code. You probably don't want to add a new test case
-there since these test cases are very fragile, however.
+the generated code. You probably don't want to commit a new test case
+there since these test cases are very fragile.
 
 Add a test case to `test-data/run.test` to test compilation and
 running compiled code. Ideas for things to test:
