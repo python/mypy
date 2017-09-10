@@ -23,7 +23,7 @@ from mypy.nodes import (
     ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef, TypeInfo,
     Import, ImportFrom, ImportAll, ARG_POS, MODULE_REF
 )
-from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType
+from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, UnionType
 from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
 
@@ -32,7 +32,7 @@ from mypyc.ops import (
     PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRType,
     Unreachable, TupleGet, ClassIR, UserRType, ModuleIR, GetAttr, SetAttr, LoadStatic,
     PyGetAttr, PyCall, IntRType, BoolRType, ListRType, SequenceTupleRType, ObjectRType, NoneRType,
-    c_module_name, INVALID_REGISTER, INVALID_LABEL
+    OptionalRType, c_module_name, INVALID_REGISTER, INVALID_LABEL
 )
 
 
@@ -69,6 +69,13 @@ class Mapper:
             return ObjectRType()
         elif isinstance(typ, NoneTyp):
             return NoneRType()
+        elif isinstance(typ, UnionType):
+            assert len(typ.items) == 2 and any(isinstance(it, NoneTyp) for it in typ.items)
+            if isinstance(typ.items[0], NoneTyp):
+                value_type = typ.items[1]
+            else:
+                value_type = typ.items[0]
+            return OptionalRType(self.type_to_rtype(value_type))
         assert False, '%s unsupported' % type(typ)
 
 
@@ -788,9 +795,16 @@ class IRBuilder(NodeVisitor[Register]):
                 right = self.accept(e.operands[1])
                 opcode = self.int_relative_ops[op]
                 branch = Branch(left, right, INVALID_LABEL, INVALID_LABEL, opcode)
-                self.add(branch)
-                return [branch]
-            assert False, "unsupported comparison epxression"
+            elif op in ['is', 'is not']:
+                left = self.accept(e.operands[0])
+                branch = Branch(left, INVALID_REGISTER, INVALID_LABEL, INVALID_LABEL,
+                                Branch.IS_NONE)
+                if op == 'is not':
+                    branch.negated = True
+            else:
+                assert False, "unsupported comparison epxression"
+            self.add(branch)
+            return [branch]
         elif isinstance(e, OpExpr) and e.op in ['and', 'or']:
             if e.op == 'and':
                 # Short circuit 'and' in a conditional context.

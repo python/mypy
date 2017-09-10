@@ -4,7 +4,8 @@ from typing import List, Set, Dict
 
 from mypyc.common import REG_PREFIX
 from mypyc.ops import (
-    Environment, Label, Register, RType, ObjectRType, TupleRType, UserRType, type_struct_name
+    Environment, Label, Register, RType, ObjectRType, TupleRType, UserRType, OptionalRType,
+    type_struct_name
 )
 
 
@@ -162,7 +163,20 @@ class Emitter:
         elif typ.name == 'None':
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
-            self.emit_line('{} = {};'.format(dest, src))
+            self.emit_lines(
+                'if ({} == Py_None)'.format(src),
+                '    {} = {};'.format(dest, src),
+                'else',
+                failure)
+        elif isinstance(typ, OptionalRType):
+            if declare_dest:
+                self.emit_line('PyObject *{};'.format(dest))
+            self.emit_lines(
+                'if ({} == Py_None)'.format(src),
+                '    {} = {};'.format(dest, src),
+                'else {')
+            self.emit_cast(src, dest, typ.value_type, failure.lstrip())
+            self.emit_line('}')
         else:
             assert False, 'Cast not implemented: %s' % typ
 
@@ -263,6 +277,7 @@ class Emitter:
                                   declare_dest=True)
                     self.emit_line('PyTuple_SetItem({}, {}, {});'.format(dest, i, inner_name, i))
         else:
+            assert not typ.supports_unbox
             # Type is boxed -- trivially just assign.
             self.emit_line('{}{} = {};'.format(declaration, dest, src))
 

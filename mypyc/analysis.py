@@ -254,7 +254,7 @@ def analyze_undefined_regs(blocks: List[BasicBlock],
 
 class LivenessVisitor(BaseAnalysisVisitor):
     def visit_branch(self, op: Branch) -> GenAndKill:
-        return {op.left, op.right}, set()
+        return set(op.sources()), set()
 
     def visit_return(self, op: Return) -> GenAndKill:
         return {op.reg}, set()

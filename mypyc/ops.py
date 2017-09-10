@@ -29,12 +29,12 @@ Label = NewType('Label', int)
 # Eventually we may want to separate expression visitors and statement-like visitors at
 # the type level but until then returning INVALID_REGISTER from a statement-like visitor
 # seems acceptable.
-INVALID_REGISTER = Register(-1)
+INVALID_REGISTER = Register(-99999)
 
 
 # Similarly this is used for placeholder labels which aren't assigned yet (but will
 # be eventually. Its kind of a hack.
-INVALID_LABEL = Label(-1)
+INVALID_LABEL = Label(-88888)
 
 
 def c_module_name(module_name: str):
@@ -255,6 +255,23 @@ class UserRType(PyObjectRType):
         return '<UserRType %s>' % self.name
 
 
+class OptionalRType(PyObjectRType):
+    """Optional[x]"""
+
+    def __init__(self, value_type: RType) -> None:
+        self.name = 'optional'
+        self.value_type = value_type
+
+    def __repr__(self) -> str:
+        return '<OptionalRType %s>' % self.value_type
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, OptionalRType) and other.value_type == self.value_type
+
+    def __hash__(self) -> int:
+        return hash(('optional', self.value_type))
+
+
 class Environment:
     """Keep track of names and types of registers."""
 
@@ -361,9 +378,10 @@ class Branch(Op):
     INT_GT = 14
     INT_GE = 15
 
-    # Unlike the above, a unary operation so it only uses the "left" register
+    # Unlike the above, these are unary operations so they only uses the "left" register
     # ("right" should be INVALID_REGISTER).
-    BOOL_EXPR = 16
+    BOOL_EXPR = 100
+    IS_NONE = 101
 
     op_names = {
         INT_EQ:  ('==', 'int'),
@@ -372,6 +390,11 @@ class Branch(Op):
         INT_LE:  ('<=', 'int'),
         INT_GT:  ('>', 'int'),
         INT_GE:  ('>=', 'int'),
+    }
+
+    unary_op_names = {
+        BOOL_EXPR: ('%r', 'bool'),
+        IS_NONE: ('%r is None', 'object'),
     }
 
     def __init__(self, left: Register, right: Register, true_label: Label,
@@ -384,24 +407,24 @@ class Branch(Op):
         self.negated = False
 
     def sources(self) -> List[Register]:
-        return [self.left, self.right]
+        if self.right != INVALID_REGISTER:
+            return [self.left, self.right]
+        else:
+            return [self.left]
 
     def to_str(self, env: Environment) -> str:
         # Right not used for BOOL_EXPR
-        if self.op != Branch.BOOL_EXPR:
+        if self.op in self.op_names:
             if self.negated:
                 fmt = 'not %r {} %r'
             else:
                 fmt = '%r {} %r'
             op, typ = self.op_names[self.op]
             fmt = fmt.format(op)
-
         else:
+            fmt, typ = self.unary_op_names[self.op]
             if self.negated:
-                fmt = 'not %r'
-            else:
-                fmt = '%r'
-            typ = 'bool'
+                fmt = 'not {}'.format(fmt)
 
         cond = env.format(fmt, self.left, self.right)
         fmt = 'if {} goto %l else goto %l :: {}'.format(cond, typ)
@@ -674,7 +697,7 @@ class PrimitiveOp(RegisterOp):
 
     def to_str(self, env: Environment) -> str:
         params = {}  # type: Dict[str, Any]
-        if self.dest is not None:
+        if self.dest is not None and self.dest != INVALID_REGISTER:
             params['dest'] = env.format('%r', self.dest)
         args = [env.format('%r', arg) for arg in self.args]
         params['args'] = args

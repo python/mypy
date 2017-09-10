@@ -257,3 +257,25 @@ from native import f
 f(5)
 [out]
 5
+
+[case testOptional]
+from typing import Optional
+
+class A: pass
+
+def f(x: Optional[A]) -> Optional[A]:
+    return x
+
+def g(x: Optional[A]) -> int:
+    if x is None:
+        return 1
+    if x is not None:
+        return 2
+    return 3
+[file driver.py]
+from native import f, g, A
+a = A()
+assert f(None) is None
+assert f(a) is a
+assert g(None) == 1
+assert g(a) == 2

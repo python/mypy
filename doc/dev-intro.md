@@ -182,6 +182,8 @@ Here are some hints about how to add support for a new primitive type
   `supports_unbox`, `ctype` and various other properties work
   correctly for the new type.
 
+* Update `mypyc.genops.Mapper.type_to_rtype()`.
+
 * Update `emit_box` in `mypyc.emit`.
 
 * Update `emit_unbox` or `emit_cast` in `mypyc.emit`.
@@ -192,8 +194,6 @@ Here are some hints about how to add support for a new primitive type
   these will already work.
 
 * Update `emit_error_check` in `mypyc.emit` for unboxed types.
-
-* Update `mypyc.genops.Mapper.type_to_rtype()`.
 
 The above may be enough to allow you to declare variables with the
 type and pass values around. You likely also want to add support for

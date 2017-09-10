@@ -544,3 +544,18 @@ L0:
     dec_ref d
     r3 = None
     return r3
+
+[case testUnaryBranchSpecialCase]
+def f(x: bool) -> int:
+    if x:
+        return 1
+    return 2
+[out]
+L0:
+    if x goto L1 else goto L2 :: bool
+L1:
+    r0 = 1
+    return r0
+L2:
+    r1 = 2
+    return r1

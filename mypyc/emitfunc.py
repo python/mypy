@@ -73,6 +73,9 @@ class FunctionEmitterVisitor(OpVisitor):
         if op.op == Branch.BOOL_EXPR:
             expr_result = self.reg(op.left) # right isn't used
             self.emit_line('if ({}({}))'.format(neg, expr_result))
+        elif op.op == Branch.IS_NONE:
+            compare = '!=' if op.negated else '=='
+            self.emit_line('if ({} {} Py_None)'.format(self.reg(op.left), compare))
         else:
             left = self.reg(op.left)
             right = self.reg(op.right)
