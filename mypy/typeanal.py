@@ -152,7 +152,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             # We don't need to worry about double-wrapping Optionals or
             # wrapping Anys: Union simplification will take care of that.
             return make_optional_type(self.visit_unbound_type(t))
-        sym = self.lookup(t.name, t, suppress_errors=self.third_pass)
+        sym = self.lookup(t.name, t, suppress_errors=self.third_pass)  # type: ignore
         if sym is not None:
             if sym.node is None:
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
@@ -599,6 +599,8 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_instance(self, t: Instance) -> None:
         info = t.type
+        if info.replaced:
+            self.indicator['synthetic'] = True
         # Check type argument count.
         if len(t.args) != len(info.type_vars):
             if len(t.args) == 0:

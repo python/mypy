@@ -942,6 +942,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                         info = self.build_namedtuple_typeinfo(
                             defn.name, items, types, default_items)
                         node.node = info
+                        defn.info.replaced = info
                         defn.info = info
                         defn.analyzed = NamedTupleExpr(info)
                         return info
@@ -1281,6 +1282,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     # Building a new TypedDict
                     fields, types, required_keys = self.check_typeddict_classdef(defn)
                     info = self.build_typeddict_typeinfo(defn.name, fields, types, required_keys)
+                    defn.info.replaced = info
                     node.node = info
                     defn.analyzed = TypedDictExpr(info)
                     return True
@@ -1313,6 +1315,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 types.extend(new_types)
                 required_keys.update(new_required_keys)
                 info = self.build_typeddict_typeinfo(defn.name, keys, types, required_keys)
+                defn.info.replaced = info
                 node.node = info
                 defn.analyzed = TypedDictExpr(info)
                 return True
@@ -4165,6 +4168,8 @@ class ThirdPass(TraverserVisitor):
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.analyze(s.type, s)
+        if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
+            self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
         if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
             self.analyze(s.rvalue.analyzed.type, s.rvalue.analyzed)
         if isinstance(s.rvalue, CallExpr):
@@ -4197,35 +4202,46 @@ class ThirdPass(TraverserVisitor):
 
     # Helpers
 
-    def remove_forwards_from_node(self, node: Node) -> None:
+    def perform_transform(self, node: Node, transform) -> None:
         if isinstance(node, (FuncDef, CastExpr, AssignmentStmt, TypeAliasExpr, Var)):
-            node.type = self.remove_forward_refs(node.type)
+            node.type = transform(node.type)
         if isinstance(node, NewTypeExpr):
-            node.old_type = self.remove_forward_refs(node.old_type)
+            node.old_type = transform(node.old_type)
         if isinstance(node, TypedDictExpr):
             node.info.typeddict_type = cast(TypedDictType,
-                                            self.remove_forward_refs(node.info.typeddict_type))
+                                            transform(node.info.typeddict_type))
         if isinstance(node, NamedTupleExpr):
             node.info.tuple_type = cast(TupleType,
-                                        self.remove_forward_refs(node.info.tuple_type))
+                                        transform(node.info.tuple_type))
         if isinstance(node, TypeApplication):
-            node.types = [self.remove_forward_refs(t) for t in node.types]
+            node.types = [transform(t) for t in node.types]
 
     def remove_forward_refs(self, tp: Type) -> Type:
-        #print("BEFORE", tp)
+        # print("BEFORE", tp)
         tp = tp.accept(ForwardRefRemover())
-        #print("AFTER", tp)
+        # print("AFTER", tp)
+        return tp
+
+    def replace_synthetic(self, tp: Type) -> Type:
+        print("BEFORE", tp)
+        tp = tp.accept(SyntheticReplacer())
+        print("AFTER", tp)
         return tp
 
     def analyze(self, type: Optional[Type], node: Optional[Node]) -> None:
         indicator = {}  # type: Dict[str, bool]
         if type:
-            analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file, self.sem, indicator)
+            analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file,
+                                         self.sem, indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
             if indicator.get('forward') and node is not None:
                 def patch():
-                    self.remove_forwards_from_node(node)
+                    self.perform_transform(node, self.remove_forward_refs)
+                self.patches.append(patch)
+            if indicator.get('synthetic') and node is not None:
+                def patch():
+                    self.perform_transform(node, self.replace_synthetic)
                 self.patches.append(patch)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
@@ -4654,10 +4670,7 @@ class MakeAnyNonExplicit(TypeTranslator):
         return t
 
 
-class ForwardRefRemover(TypeVisitor[Type]):
-    def __init__(self):
-        self.seen = []
-
+class TypeReplacer(TypeVisitor[Type]):
     def visit_unbound_type(self, t: UnboundType) -> UnboundType:
         return t
 
@@ -4683,7 +4696,7 @@ class ForwardRefRemover(TypeVisitor[Type]):
             t.values = [v.accept(self) for v in t.values]
         return t
 
-    def visit_instance(self, t: Instance) -> Instance:
+    def visit_instance(self, t: Instance) -> Type:
         t.args = [arg.accept(self) for arg in t.args]
         return t
 
@@ -4693,18 +4706,18 @@ class ForwardRefRemover(TypeVisitor[Type]):
         return t
 
     def visit_overloaded(self, t: Overloaded) -> Overloaded:
-        t._items = [it.accept(self) for it in t.items()]
+        t._items = [cast(CallableType, it.accept(self)) for it in t.items()]
         t.fallback.accept(self)
         return t
 
     def visit_tuple_type(self, t: TupleType) -> TupleType:
         t.items = [it.accept(self) for it in t.items]
-        t.fallback = t.fallback.accept(self)
+        t.fallback = cast(Instance, t.fallback.accept(self))
         return t
 
     def visit_typeddict_type(self, t: TypedDictType) -> TypedDictType:
         t.items = OrderedDict([(k, tp.accept(self)) for k, tp in t.items.items()])
-        t.fallback = t.fallback.accept(self)
+        t.fallback = cast(Instance, t.fallback.accept(self))
         return t
 
     def visit_union_type(self, t: UnionType) -> UnionType:
@@ -4718,8 +4731,40 @@ class ForwardRefRemover(TypeVisitor[Type]):
         t.item = t.item.accept(self)
         return t
 
+
+class ForwardRefRemover(TypeReplacer):
+    def __init__(self):
+        self.seen = []
+
     def visit_forwardref_type(self, t: ForwardRef) -> Type:
         if not any(s is t for s in self.seen):
             self.seen.append(t)
             return t.link.accept(self)
         return AnyType(TypeOfAny.from_error)
+
+
+class SyntheticReplacer(TypeReplacer):
+    def __init__(self):
+        self.seen = []
+
+    def visit_tuple_type(self, t: TupleType) -> TupleType:
+        self.seen.append(t)
+        return super().visit_tuple_type(t)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> TypedDictType:
+        self.seen.append(t)
+        return super().visit_typeddict_type(t)
+
+    def visit_instance(self, t: Instance) -> Type:
+        info = t.type
+        if info.replaced and info.replaced.tuple_type:
+            tp = info.replaced.tuple_type
+            if any(s is tp for s in self.seen):
+                return AnyType(TypeOfAny.from_error)
+            return tp.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+        if info.replaced and info.replaced.typeddict_type:
+            td = info.replaced.typeddict_type
+            if any(s is td for s in self.seen):
+                return AnyType(TypeOfAny.from_error)
+            return td.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+        return super().visit_instance(t)

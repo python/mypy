@@ -3495,24 +3495,28 @@ class Process(TypedDict):
 [case testCorrectDoubleForwardNamedTuple]
 from typing import NamedTuple
 
+x: A
 class A(NamedTuple):
     name: 'B'
     year: int
 class B(NamedTuple):
     director: str
 
-x: A
 reveal_type(x.name.director)  # E: Revealed type is 'builtins.str'
+reveal_type(x)
 [out]
 
 [case testCrashOnDoubleForwardTypedDict]
 from mypy_extensions import TypedDict
 
+x: A
 class A(TypedDict):
     name: 'B'
     year: int
 class B(TypedDict):
     director: str
+
+reveal_type(x['name']['director'])  # E: Revealed type is 'builtins.str'
 [builtins fixtures/isinstancelist.pyi]
 [out]
 

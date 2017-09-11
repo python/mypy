@@ -1970,6 +1970,8 @@ class TypeInfo(SymbolNode):
     # Is this a newtype type?
     is_newtype = False
 
+    replaced = None  # type: TypeInfo
+
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol'
