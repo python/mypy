@@ -1976,7 +1976,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
         else:
             message = "Argument 2 to NewType(...) must be subclassable (got {})"
-            self.fail(message.format(old_type), s)
+            self.fail(message.format(self.msg.format(old_type)), s)
             return
 
         check_for_explicit_any(old_type, self.options, self.is_typeshed_stub_file, self.msg,
@@ -4051,6 +4051,7 @@ class ThirdPass(TraverserVisitor):
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options, patches) -> None:
         self.errors.set_file(fnam, file_node.fullname())
         self.options = options
+        self.sem.options = options
         self.patches = patches
         self.is_typeshed_file = self.errors.is_typeshed_file(fnam)
         with experiments.strict_optional_set(options.strict_optional):
@@ -4205,7 +4206,10 @@ class ThirdPass(TraverserVisitor):
             node.types = list(self.remove_forward_refs(t) for t in node.types)
 
     def remove_forward_refs(self, tp: Type) -> Type:
-        return tp.accept(ForwardRefRemover())
+        #print("BEFORE", tp)
+        tp = tp.accept(ForwardRefRemover())
+        #print("AFTER", tp)
+        return tp
 
     def analyze(self, type: Optional[Type], node: Optional[Node]) -> None:
         indicator = {}  # type: Dict[str, bool]
@@ -4668,44 +4672,37 @@ class ForwardRefRemover(TypeVisitor[Type]):
 
     def visit_type_var(self, t: TypeVarType) -> TypeVarType:
         if t.upper_bound:
-            t.upper_bound.accept(self)
+            t.upper_bound = t.upper_bound.accept(self)
         if t.values:
-            for c in t.values:
-                c.accept(self)
+            t.values = [v.accept(self) for v in t.values]
         return t
 
     def visit_instance(self, t: Instance) -> Instance:
-        for arg in t.args:
-            arg.accept(self)
+        t.args = [arg.accept(self) for arg in t.args]
         return t
 
     def visit_callable_type(self, t: CallableType) -> CallableType:
-        for tp in t.arg_types:
-            tp.accept(self)
-        t.ret_type.accept(self)
+        t.arg_types = [tp.accept(self) for tp in t.arg_types]
+        t.ret_type = t.ret_type.accept(self)
         return t
 
     def visit_overloaded(self, t: Overloaded) -> Overloaded:
-        for it in t.items():
-            it.accept(self)
+        t._items = [it.accept(self) for it in t.items()]
         t.fallback.accept(self)
         return t
 
     def visit_tuple_type(self, t: TupleType) -> TupleType:
-        for it in t.items:
-            it.accept(self)
-        t.fallback.accept(self)
+        t.items = [it.accept(self) for it in t.items]
+        t.fallback = t.fallback.accept(self)
         return t
 
     def visit_typeddict_type(self, t: TypedDictType) -> TypedDictType:
-        for tp in t.items.values():
-            tp.accept(self)
-        t.fallback.accept(self)
+        t.items = OrderedDict([(k, tp.accept(self)) for k, tp in t.items.items()])
+        t.fallback = t.fallback.accept(self)
         return t
 
     def visit_union_type(self, t: UnionType) -> UnionType:
-        for it in t.items:
-            it.accept(self)
+        t.items = [it.accept(self) for it in t.items]
         return t
 
     def visit_partial_type(self, t: PartialType) -> None:

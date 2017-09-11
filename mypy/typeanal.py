@@ -647,6 +647,8 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     else:
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
+                if isinstance(arg, ForwardRef):
+                    arg = arg.link
                 if not is_subtype(arg, tvar.upper_bound):
                     self.fail('Type argument "{}" of "{}" must be '
                               'a subtype of "{}"'.format(
@@ -722,7 +724,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_forwardref_type(self, t: ForwardRef) -> None:
         self.indicator['forward'] = True
-        if isinstance(t, UnboundType):
+        if isinstance(t.link, UnboundType):
             t.link = self.sem.anal_type(t.link, third_pass=True)
 
 TypeVarList = List[Tuple[str, TypeVarExpr]]

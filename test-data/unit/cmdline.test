@@ -806,7 +806,7 @@ Baz = NewType('Baz', Any)  # this error does not come from `--disallow-any=expli
 Bar = NewType('Bar', List[Any])
 
 [out]
-m.py:3: error: Argument 2 to NewType(...) must be subclassable (got Any)
+m.py:3: error: Argument 2 to NewType(...) must be subclassable (got "Any")
 m.py:4: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitTypedDictSimple]

@@ -1384,14 +1384,6 @@ class ForwardRef(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_forwardref_type(self)
 
-    def __hash__(self) -> int:
-        return hash(self.link)
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, ForwardRef):
-            return NotImplemented
-        return self.link == other.link
-
 
 #
 # Visitor-related classes
