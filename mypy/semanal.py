@@ -4113,6 +4113,12 @@ class ThirdPass(TraverserVisitor):
                 self.analyze(tdef.analyzed.info.typeddict_type, tdef.analyzed)
             elif isinstance(tdef.analyzed, NamedTupleExpr):
                 self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed)
+                for name in tdef.analyzed.info.names:
+                    sym = tdef.analyzed.info.names[name]
+                    if isinstance(sym.node, (FuncDef, Decorator)):
+                        self.accept(sym.node)
+                    if isinstance(sym.node, Var):
+                        self.analyze(sym.node.type, sym.node)
         super().visit_class_def(tdef)
 
     def visit_decorator(self, dec: Decorator) -> None:

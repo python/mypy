@@ -3428,7 +3428,7 @@ class M(TypedDict):
 n: N
 m: M
 lst = [n, m]
-reveal_type(lst[0])  # E: Revealed type is 'TypedDict({'x': object}, fallback=typing.Mapping[builtins.str, object])'
+reveal_type(lst[0]['x'])  # E: Revealed type is 'TypedDict('__main__.N', {'x': Any})'
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
@@ -3503,7 +3503,6 @@ class B(NamedTuple):
     director: str
 
 reveal_type(x.name.director)  # E: Revealed type is 'builtins.str'
-reveal_type(x)
 [out]
 
 [case testCrashOnDoubleForwardTypedDict]
