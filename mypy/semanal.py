@@ -1609,7 +1609,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                       tvar_scope: Optional[TypeVarScope] = None,
                       allow_tuple_literal: bool = False,
                       aliasing: bool = False,
-                      third_pass: boll = False) -> TypeAnalyser:
+                      third_pass: bool = False) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
         return TypeAnalyser(self.lookup_qualified,
@@ -4617,3 +4617,84 @@ class MakeAnyNonExplicit(TypeTranslator):
         if t.type_of_any == TypeOfAny.explicit:
             return t.copy_modified(TypeOfAny.special_form)
         return t
+
+
+def remove_forward_refs(tp: Type) -> Type:
+    """Returns a type with forward refs removed."""
+    return tp.accept(ForwardRefRemover())
+
+
+class ForwardRefRemover(TypeVisitor[Type]):
+    def __init__(self):
+        self.seen = []
+
+    def visit_unbound_type(self, t: UnboundType) -> UnboundType:
+        return t
+
+    def visit_any(self, t: AnyType) -> AnyType:
+        return t
+
+    def visit_none_type(self, t: NoneTyp) -> NoneTyp:
+        return t
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> UninhabitedType:
+        return t
+
+    def visit_erased_type(self, t: ErasedType) -> ErasedType:
+        return t
+
+    def visit_deleted_type(self, t: DeletedType) -> None:
+        assert False, "Internal error: deleted type in semantic analysis"
+
+    def visit_type_var(self, t: TypeVarType) -> TypeVarType:
+        if t.bound:
+            t.bound.accept(self)
+        if t.constrains:
+            for c in t.constrains:
+                c.accept(self)
+        return t
+
+    def visit_instance(self, t: Instance) -> Instance:
+        for arg in t.args:
+            arg.accept(self)
+        return t
+
+    def visit_callable_type(self, t: CallableType) -> CallableType:
+        for tp in t.arg_types:
+            tp.accept(self)
+        tp.ret_type.accpet(self)
+        return t
+
+    def visit_overloaded(self, t: Overloaded) -> Overloaded:
+        for it in t.items:
+            it.accept(self)
+        t.fallback.accept(self)
+        return t
+
+    def visit_tuple_type(self, t: TupleType) -> TupleType:
+        for it in t.items:
+            it.accept(self)
+        t.fallback.accept(self)
+        return t
+
+    def visit_typeddict_type(self, t: TypedDictType) -> TypedDictType:
+        t.fallback.accept(self)
+        return t
+
+    def visit_union_type(self, t: UnionType) -> UnionType:
+        for it in t.items:
+            it.accept(self)
+        return t
+
+    def visit_partial_type(self, t: PartialType) -> None:
+        assert False, "Internal error: partial type in semantic analysis"
+
+    def visit_type_type(self, t: TypeType) -> TypeType:
+        t.item = t.item.accept(self)
+        return t
+
+    def visit_forwardref_type(self, t: ForwardRef) -> Type:
+        if not any(s is t for s in self.seen):
+            self.seen.append(seen)
+            return t.link.accept(self)
+        return AnyType(TypeOfAny.from_error)

@@ -258,11 +258,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                     # as a base class -- however, this will fail soon at runtime so the problem
                     # is pretty minor.
                     return AnyType(TypeOfAny.from_unimported_type)
-                if not self.third_pass:
-                    return ForwardRef(t)
                 # Allow unbound type variables when defining an alias
                 if not (self.aliasing and sym.kind == TVAR and
                         self.tvar_scope.get_binding(sym) is None):
+                    if not self.third_pass:
+                        return ForwardRef(t)
                     self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = sym.node  # type: TypeInfo
@@ -296,6 +296,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                     # Create a named TypedDictType
                     return td.copy_modified(item_types=self.anal_array(list(td.items.values())),
                                             fallback=instance)
+                if not instance.type.mro and not self.third_pass:
+                    return ForwardRef(t)
                 return instance
         else:
             return AnyType(TypeOfAny.special_form)
@@ -918,3 +920,4 @@ def make_optional_type(t: Type) -> Type:
         return UnionType(items + [NoneTyp()], t.line, t.column)
     else:
         return UnionType([t, NoneTyp()], t.line, t.column)
+
