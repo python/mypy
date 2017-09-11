@@ -1,7 +1,7 @@
 """Semantic analysis of types"""
 
 from collections import OrderedDict
-from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable
+from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Dict
 from itertools import chain
 
 from contextlib import contextmanager
@@ -29,6 +29,9 @@ from mypy.subtypes import is_subtype
 from mypy.plugin import Plugin, AnalyzerPluginInterface, AnalyzeTypeContext
 from mypy import nodes, messages
 
+MYPY = False
+if MYPY:
+    from mypy.semanal import SemanticAnalyzer
 
 T = TypeVar('T')
 
@@ -590,7 +593,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                  fail_func: Callable[[str, Context], None],
                  options: Options,
                  is_typeshed_stub: bool,
-                 sem, indicator) -> None:
+                 sem: 'SemanticAnalyzer', indicator: Dict[str, bool]) -> None:
         self.fail = fail_func
         self.options = options
         self.is_typeshed_stub = is_typeshed_stub

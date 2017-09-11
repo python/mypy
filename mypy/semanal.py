@@ -4049,12 +4049,14 @@ class ThirdPass(TraverserVisitor):
     straightforward type inference.
     """
 
-    def __init__(self, modules: Dict[str, MypyFile], errors: Errors, sem) -> None:
+    def __init__(self, modules: Dict[str, MypyFile], errors: Errors,
+                 sem: SemanticAnalyzer) -> None:
         self.modules = modules
         self.errors = errors
         self.sem = sem
 
-    def visit_file(self, file_node: MypyFile, fnam: str, options: Options, patches) -> None:
+    def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
+                   patches: List[Callable[[], None]]) -> None:
         self.errors.set_file(fnam, file_node.fullname())
         self.options = options
         self.sem.options = options
@@ -4211,7 +4213,7 @@ class ThirdPass(TraverserVisitor):
 
     # Helpers
 
-    def perform_transform(self, node: Node, transform) -> None:
+    def perform_transform(self, node: Node, transform: Callable[[Type], Type]) -> None:
         if isinstance(node, (FuncDef, CastExpr, AssignmentStmt, TypeAliasExpr, Var)):
             node.type = transform(node.type)
         if isinstance(node, NewTypeExpr):
@@ -4225,14 +4227,6 @@ class ThirdPass(TraverserVisitor):
         if isinstance(node, TypeApplication):
             node.types = [transform(t) for t in node.types]
 
-    def remove_forward_refs(self, tp: Type) -> Type:
-        tp = tp.accept(ForwardRefRemover())
-        return tp
-
-    def replace_synthetic(self, tp: Type) -> Type:
-        tp = tp.accept(SyntheticReplacer())
-        return tp
-
     def analyze(self, type: Optional[Type], node: Optional[Node]) -> None:
         indicator = {}  # type: Dict[str, bool]
         if type:
@@ -4241,12 +4235,12 @@ class ThirdPass(TraverserVisitor):
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
             if indicator.get('forward') and node is not None:
-                def patch():
-                    self.perform_transform(node, self.remove_forward_refs)
+                def patch() -> None:
+                    self.perform_transform(node, lambda tp: tp.accept(ForwardRefRemover()))
                 self.patches.append(patch)
             if indicator.get('synthetic') and node is not None:
-                def patch():
-                    self.perform_transform(node, self.replace_synthetic)
+                def patch() -> None:
+                    self.perform_transform(node, lambda tp: tp.accept(SyntheticReplacer()))
                 self.patches.append(patch)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
@@ -4738,8 +4732,8 @@ class TypeReplacer(TypeVisitor[Type]):
 
 
 class ForwardRefRemover(TypeReplacer):
-    def __init__(self):
-        self.seen = []
+    def __init__(self) -> None:
+        self.seen = []  # type: List[Type]
 
     def visit_forwardref_type(self, t: ForwardRef) -> Type:
         if not any(s is t for s in self.seen):
@@ -4749,8 +4743,8 @@ class ForwardRefRemover(TypeReplacer):
 
 
 class SyntheticReplacer(TypeReplacer):
-    def __init__(self):
-        self.seen = []
+    def __init__(self) -> None:
+        self.seen = []  # type: List[Type]
 
     def visit_tuple_type(self, t: TupleType) -> TupleType:
         self.seen.append(t)
