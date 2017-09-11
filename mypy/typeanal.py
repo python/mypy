@@ -296,8 +296,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                     # Create a named TypedDictType
                     return td.copy_modified(item_types=self.anal_array(list(td.items.values())),
                                             fallback=instance)
-                if not instance.type.mro and not self.third_pass:
-                    return ForwardRef(t)
                 return instance
         else:
             return AnyType(TypeOfAny.special_form)
@@ -590,11 +588,12 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                  fail_func: Callable[[str, Context], None],
                  options: Options,
                  is_typeshed_stub: bool,
-                 sem) -> None:
+                 sem, indicator) -> None:
         self.fail = fail_func
         self.options = options
         self.is_typeshed_stub = is_typeshed_stub
         self.sem = sem
+        self.indicator = indicator
 
     def visit_instance(self, t: Instance) -> None:
         info = t.type
@@ -722,6 +721,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         pass
 
     def visit_forwardref_type(self, t: ForwardRef) -> None:
+        self.indicator['forward'] = True
         if isinstance(t, UnboundType):
             t.link = self.sem.anal_type(t.link, third_pass=True)
 
@@ -920,4 +920,3 @@ def make_optional_type(t: Type) -> Type:
         return UnionType(items + [NoneTyp()], t.line, t.column)
     else:
         return UnionType([t, NoneTyp()], t.line, t.column)
-

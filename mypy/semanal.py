@@ -80,7 +80,8 @@ from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TypeType, TupleType, UnionType, StarType, function_type,
     TypedDictType, NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    TypeTranslator, TypeOfAny
+    TypeTranslator, TypeOfAny, TypeVisitor, UninhabitedType, ErasedType, DeletedType,
+    PartialType, ForwardRef
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -4047,9 +4048,10 @@ class ThirdPass(TraverserVisitor):
         self.errors = errors
         self.sem = sem
 
-    def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
+    def visit_file(self, file_node: MypyFile, fnam: str, options: Options, patches) -> None:
         self.errors.set_file(fnam, file_node.fullname())
         self.options = options
+        self.patches = patches
         self.is_typeshed_file = self.errors.is_typeshed_file(fnam)
         with experiments.strict_optional_set(options.strict_optional):
             self.accept(file_node)
@@ -4080,7 +4082,7 @@ class ThirdPass(TraverserVisitor):
 
     def visit_func_def(self, fdef: FuncDef) -> None:
         self.errors.push_function(fdef.name())
-        self.analyze(fdef.type)
+        self.analyze(fdef.type, fdef)
         super().visit_func_def(fdef)
         self.errors.pop_function()
 
@@ -4089,7 +4091,7 @@ class ThirdPass(TraverserVisitor):
         # check them again here.
         if not tdef.info.is_named_tuple:
             for type in tdef.info.bases:
-                self.analyze(type)
+                self.analyze(type, None)
                 if tdef.info.is_protocol:
                     if not isinstance(type, Instance) or not type.type.is_protocol:
                         if type.type.fullname() != 'builtins.object':
@@ -4104,9 +4106,9 @@ class ThirdPass(TraverserVisitor):
                 add_protocol_members(tdef.info)
         if tdef.analyzed is not None:
             if isinstance(tdef.analyzed, TypedDictExpr):
-                self.analyze(tdef.analyzed.info.typeddict_type)
+                self.analyze(tdef.analyzed.info.typeddict_type, tdef.analyzed)
             elif isinstance(tdef.analyzed, NamedTupleExpr):
-                self.analyze(tdef.analyzed.info.tuple_type)
+                self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed)
         super().visit_class_def(tdef)
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -4161,20 +4163,21 @@ class ThirdPass(TraverserVisitor):
                 dec.var.type = sig
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
-        self.analyze(s.type)
+        self.analyze(s.type, s)
         if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
-            self.analyze(s.rvalue.analyzed.type)
+            self.analyze(s.rvalue.analyzed.type, s.rvalue.analyzed)
         if isinstance(s.rvalue, CallExpr):
-            if isinstance(s.rvalue.analyzed, NewTypeExpr):
-                self.analyze(s.rvalue.analyzed.old_type)
-            if isinstance(s.rvalue.analyzed, TypedDictExpr):
-                self.analyze(s.rvalue.analyzed.info.typeddict_type)
-            if isinstance(s.rvalue.analyzed, NamedTupleExpr):
-                self.analyze(s.rvalue.analyzed.info.tuple_type)
+            analyzed = s.rvalue.analyzed
+            if isinstance(analyzed, NewTypeExpr):
+                self.analyze(analyzed.old_type, analyzed)
+            if isinstance(analyzed, TypedDictExpr):
+                self.analyze(analyzed.info.typeddict_type, analyzed)
+            if isinstance(analyzed, NamedTupleExpr):
+                self.analyze(analyzed.info.tuple_type, analyzed)
         super().visit_assignment_stmt(s)
 
     def visit_cast_expr(self, e: CastExpr) -> None:
-        self.analyze(e.type)
+        self.analyze(e.type, e)
         super().visit_cast_expr(e)
 
     def visit_reveal_type_expr(self, e: RevealTypeExpr) -> None:
@@ -4182,16 +4185,38 @@ class ThirdPass(TraverserVisitor):
 
     def visit_type_application(self, e: TypeApplication) -> None:
         for type in e.types:
-            self.analyze(type)
+            self.analyze(type, e)
         super().visit_type_application(e)
 
     # Helpers
 
-    def analyze(self, type: Optional[Type]) -> None:
+    def remove_forwards_from_node(self, node: Node) -> None:
+        if isinstance(node, (FuncDef, CastExpr, AssignmentStmt, TypeAliasExpr)):
+            node.type = self.remove_forward_refs(node.type)
+        if isinstance(node, NewTypeExpr):
+            node.old_type = self.remove_forward_refs(node.old_type)
+        if isinstance(node, TypedDictExpr):
+            node.info.typeddict_type = cast(TypedDictType,
+                                            self.remove_forward_refs(node.info.typeddict_type))
+        if isinstance(node, NamedTupleExpr):
+            node.info.tuple_type = cast(TupleType,
+                                        self.remove_forward_refs(node.info.tuple_type))
+        if isinstance(node, TypeApplication):
+            node.types = list(self.remove_forward_refs(t) for t in node.types)
+
+    def remove_forward_refs(self, tp: Type) -> Type:
+        return tp.accept(ForwardRefRemover())
+
+    def analyze(self, type: Optional[Type], node: Optional[Node]) -> None:
+        indicator = {}  # type: Dict[str, bool]
         if type:
-            analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file, self.sem)
+            analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file, self.sem, indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
+            if indicator.get('forward') and node is not None:
+                def patch():
+                    self.remove_forwards_from_node(node)
+                self.patches.append(patch)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
         if 'generics' not in self.options.disallow_any or self.is_typeshed_file:
@@ -4619,11 +4644,6 @@ class MakeAnyNonExplicit(TypeTranslator):
         return t
 
 
-def remove_forward_refs(tp: Type) -> Type:
-    """Returns a type with forward refs removed."""
-    return tp.accept(ForwardRefRemover())
-
-
 class ForwardRefRemover(TypeVisitor[Type]):
     def __init__(self):
         self.seen = []
@@ -4647,10 +4667,10 @@ class ForwardRefRemover(TypeVisitor[Type]):
         assert False, "Internal error: deleted type in semantic analysis"
 
     def visit_type_var(self, t: TypeVarType) -> TypeVarType:
-        if t.bound:
-            t.bound.accept(self)
-        if t.constrains:
-            for c in t.constrains:
+        if t.upper_bound:
+            t.upper_bound.accept(self)
+        if t.values:
+            for c in t.values:
                 c.accept(self)
         return t
 
@@ -4662,11 +4682,11 @@ class ForwardRefRemover(TypeVisitor[Type]):
     def visit_callable_type(self, t: CallableType) -> CallableType:
         for tp in t.arg_types:
             tp.accept(self)
-        tp.ret_type.accpet(self)
+        t.ret_type.accept(self)
         return t
 
     def visit_overloaded(self, t: Overloaded) -> Overloaded:
-        for it in t.items:
+        for it in t.items():
             it.accept(self)
         t.fallback.accept(self)
         return t
@@ -4678,6 +4698,8 @@ class ForwardRefRemover(TypeVisitor[Type]):
         return t
 
     def visit_typeddict_type(self, t: TypedDictType) -> TypedDictType:
+        for tp in t.items.values():
+            tp.accept(self)
         t.fallback.accept(self)
         return t
 
@@ -4695,6 +4717,6 @@ class ForwardRefRemover(TypeVisitor[Type]):
 
     def visit_forwardref_type(self, t: ForwardRef) -> Type:
         if not any(s is t for s in self.seen):
-            self.seen.append(seen)
+            self.seen.append(t)
             return t.link.accept(self)
         return AnyType(TypeOfAny.from_error)

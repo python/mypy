@@ -1573,7 +1573,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType.make_normalized(t.item.accept(self), line=t.line, column=t.column)
 
-    def visit_forwardref_type(self, t: TypeType) -> Type:
+    def visit_forwardref_type(self, t: ForwardRef) -> Type:
         return t
 
 
@@ -1813,7 +1813,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_type_type(self, t: TypeType) -> T:
         return t.item.accept(self)
 
-    def visit_forwardref_type(self, t: TypeType) -> T:
+    def visit_forwardref_type(self, t: ForwardRef) -> T:
         return t.link.accept(self)
 
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
