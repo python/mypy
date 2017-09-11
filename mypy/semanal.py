@@ -2361,11 +2361,6 @@ class SemanticAnalyzer(NodeVisitor[None]):
         # Actual signature should return OrderedDict[str, Union[types]]
         ordereddictype = (self.named_type_or_none('builtins.dict', [strtype, implicit_any])
                           or self.object_type())
-        # 'builtins.tuple' has only one type parameter.
-        #
-        # TODO: The corresponding type argument in the fallback instance should be a join of
-        #       all item types, but we can't do joins during this pass of semantic analysis
-        #       and we are using Any as a workaround.
         fallback = self.named_type('__builtins__.tuple', [implicit_any])
         # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
         # but it can't be expressed. 'new' and 'len' should be callable types.
@@ -2375,6 +2370,15 @@ class SemanticAnalyzer(NodeVisitor[None]):
         info = self.basic_new_typeinfo(name, fallback)
         info.is_named_tuple = True
         info.tuple_type = TupleType(types, fallback)
+
+        def patch() -> None:
+            # Calculate the correct value type for the fallback Mapping.
+            fallback.args[0] = join.join_type_list(list(info.tuple_type.items))
+
+        # We can't calculate the complete fallback type until after semantic
+        # analysis, since otherwise MROs might be incomplete. Postpone a callback
+        # function that patches the fallback.
+        self.patches.append(patch)
 
         def add_field(var: Var, is_initialized_in_class: bool = False,
                       is_property: bool = False) -> None:
@@ -2595,19 +2599,18 @@ class SemanticAnalyzer(NodeVisitor[None]):
         fallback = (self.named_type_or_none('typing.Mapping',
                                             [self.str_type(), self.object_type()])
                     or self.object_type())
+        info = self.basic_new_typeinfo(name, fallback)
+        info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), required_keys,
+                                            fallback)
 
         def patch() -> None:
             # Calculate the correct value type for the fallback Mapping.
-            fallback.args[1] = join.join_type_list(types)
+            fallback.args[1] = join.join_type_list(list(info.typeddict_type.items.values()))
 
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise MROs might be incomplete. Postpone a callback
         # function that patches the fallback.
         self.patches.append(patch)
-
-        info = self.basic_new_typeinfo(name, fallback)
-        info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), required_keys,
-                                            fallback)
         return info
 
     def check_classvar(self, s: AssignmentStmt) -> None:
@@ -4223,15 +4226,11 @@ class ThirdPass(TraverserVisitor):
             node.types = [transform(t) for t in node.types]
 
     def remove_forward_refs(self, tp: Type) -> Type:
-        # print("BEFORE", tp)
         tp = tp.accept(ForwardRefRemover())
-        # print("AFTER", tp)
         return tp
 
     def replace_synthetic(self, tp: Type) -> Type:
-        print("BEFORE", tp)
         tp = tp.accept(SyntheticReplacer())
-        print("AFTER", tp)
         return tp
 
     def analyze(self, type: Optional[Type], node: Optional[Node]) -> None:
