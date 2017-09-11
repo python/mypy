@@ -4175,6 +4175,12 @@ class ThirdPass(TraverserVisitor):
                 self.analyze(analyzed.info.typeddict_type, analyzed)
             if isinstance(analyzed, NamedTupleExpr):
                 self.analyze(analyzed.info.tuple_type, analyzed)
+                for name in analyzed.info.names:
+                    sym = analyzed.info.names[name]
+                    if isinstance(sym.node, (FuncDef, Decorator)):
+                        self.accept(sym.node)
+                    if isinstance(sym.node, Var):
+                        self.analyze(sym.node.type, sym.node)
         super().visit_assignment_stmt(s)
 
     def visit_cast_expr(self, e: CastExpr) -> None:
@@ -4192,7 +4198,7 @@ class ThirdPass(TraverserVisitor):
     # Helpers
 
     def remove_forwards_from_node(self, node: Node) -> None:
-        if isinstance(node, (FuncDef, CastExpr, AssignmentStmt, TypeAliasExpr)):
+        if isinstance(node, (FuncDef, CastExpr, AssignmentStmt, TypeAliasExpr, Var)):
             node.type = self.remove_forward_refs(node.type)
         if isinstance(node, NewTypeExpr):
             node.old_type = self.remove_forward_refs(node.old_type)
@@ -4203,7 +4209,7 @@ class ThirdPass(TraverserVisitor):
             node.info.tuple_type = cast(TupleType,
                                         self.remove_forward_refs(node.info.tuple_type))
         if isinstance(node, TypeApplication):
-            node.types = list(self.remove_forward_refs(t) for t in node.types)
+            node.types = [self.remove_forward_refs(t) for t in node.types]
 
     def remove_forward_refs(self, tp: Type) -> Type:
         #print("BEFORE", tp)

@@ -20,7 +20,7 @@ from mypy.types import (
 from mypy.nodes import (
     TVAR, TYPE_ALIAS, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
-    ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr
+    ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.sametypes import is_same_type
@@ -152,7 +152,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             # We don't need to worry about double-wrapping Optionals or
             # wrapping Anys: Union simplification will take care of that.
             return make_optional_type(self.visit_unbound_type(t))
-        sym = self.lookup(t.name, t)
+        sym = self.lookup(t.name, t, suppress_errors=self.third_pass)
         if sym is not None:
             if sym.node is None:
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
@@ -261,7 +261,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 # Allow unbound type variables when defining an alias
                 if not (self.aliasing and sym.kind == TVAR and
                         self.tvar_scope.get_binding(sym) is None):
-                    if not self.third_pass:
+                    if (not self.third_pass and
+                            not (isinstance(sym.node, FuncDef) or
+                                 isinstance(sym.node, Var) and sym.node.is_ready)):
                         return ForwardRef(t)
                     self.fail('Invalid type "{}"'.format(name), t)
                 return t

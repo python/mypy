@@ -1304,8 +1304,7 @@ m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has ty
 [case testForwardReferenceToTypedDictInTypedDict]
 from typing import Mapping
 from mypy_extensions import TypedDict
-# Forward references don't quite work yet
-X = TypedDict('X', {'a': 'A'}) # E: Invalid type "__main__.A"
+X = TypedDict('X', {'a': 'A'})
 A = TypedDict('A', {'b': int})
 x: X
 reveal_type(x) # E: Revealed type is 'TypedDict('__main__.X', {'a': TypedDict('__main__.A', {'b': builtins.int})})'
