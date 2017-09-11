@@ -491,7 +491,7 @@ class BuildManager:
         self.semantic_analyzer = SemanticAnalyzer(self.modules, self.missing_modules,
                                                   lib_path, self.errors, self.plugin)
         self.modules = self.semantic_analyzer.modules
-        self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
+        self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors, self.semantic_analyzer)
         self.all_types = {}  # type: Dict[Expression, Type]
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]

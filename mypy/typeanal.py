@@ -14,7 +14,7 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny
+    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef
 )
 
 from mypy.nodes import (
@@ -130,7 +130,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                  is_typeshed_stub: bool, *,
                  aliasing: bool = False,
                  allow_tuple_literal: bool = False,
-                 allow_unnormalized: bool = False) -> None:
+                 allow_unnormalized: bool = False,
+                 third_pass: bool = False) -> None:
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail_func = fail_func
@@ -143,6 +144,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
         self.plugin = plugin
         self.options = options
         self.is_typeshed_stub = is_typeshed_stub
+        self.third_pass = third_pass
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if t.optional:
@@ -256,6 +258,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                     # as a base class -- however, this will fail soon at runtime so the problem
                     # is pretty minor.
                     return AnyType(TypeOfAny.from_unimported_type)
+                if not self.third_pass:
+                    return ForwardRef(t)
                 # Allow unbound type variables when defining an alias
                 if not (self.aliasing and sym.kind == TVAR and
                         self.tvar_scope.get_binding(sym) is None):
@@ -376,6 +380,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
 
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType.make_normalized(self.anal_type(t.item), line=t.line)
+
+    def visit_forwardref_type(self, t: ForwardRef) -> Type:
+        return t
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.named_type('builtins.function')
@@ -580,10 +587,12 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def __init__(self,
                  fail_func: Callable[[str, Context], None],
                  options: Options,
-                 is_typeshed_stub: bool) -> None:
+                 is_typeshed_stub: bool,
+                 sem) -> None:
         self.fail = fail_func
         self.options = options
         self.is_typeshed_stub = is_typeshed_stub
+        self.sem = sem
 
     def visit_instance(self, t: Instance) -> None:
         info = t.type
@@ -710,6 +719,9 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def visit_type_type(self, t: TypeType) -> None:
         pass
 
+    def visit_forwardref_type(self, t: ForwardRef) -> None:
+        if isinstance(t, UnboundType):
+            t.link = self.sem.anal_type(t.link, third_pass=True)
 
 TypeVarList = List[Tuple[str, TypeVarExpr]]
 

@@ -1608,7 +1608,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
     def type_analyzer(self, *,
                       tvar_scope: Optional[TypeVarScope] = None,
                       allow_tuple_literal: bool = False,
-                      aliasing: bool = False) -> TypeAnalyser:
+                      aliasing: bool = False,
+                      third_pass: boll = False) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
         return TypeAnalyser(self.lookup_qualified,
@@ -1620,17 +1621,20 @@ class SemanticAnalyzer(NodeVisitor[None]):
                             self.is_typeshed_stub_file,
                             aliasing=aliasing,
                             allow_tuple_literal=allow_tuple_literal,
-                            allow_unnormalized=self.is_stub_file)
+                            allow_unnormalized=self.is_stub_file,
+                            third_pass=third_pass)
 
     def anal_type(self, t: Type, *,
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
-                  aliasing: bool = False) -> Type:
+                  aliasing: bool = False,
+                  third_pass: bool = False) -> Type:
         if t:
             a = self.type_analyzer(
                 tvar_scope=tvar_scope,
                 aliasing=aliasing,
-                allow_tuple_literal=allow_tuple_literal)
+                allow_tuple_literal=allow_tuple_literal,
+                third_pass=third_pass)
             return t.accept(a)
 
         else:
@@ -4038,9 +4042,10 @@ class ThirdPass(TraverserVisitor):
     straightforward type inference.
     """
 
-    def __init__(self, modules: Dict[str, MypyFile], errors: Errors) -> None:
+    def __init__(self, modules: Dict[str, MypyFile], errors: Errors, sem) -> None:
         self.modules = modules
         self.errors = errors
+        self.sem = sem
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
         self.errors.set_file(fnam, file_node.fullname())
@@ -4184,7 +4189,7 @@ class ThirdPass(TraverserVisitor):
 
     def analyze(self, type: Optional[Type]) -> None:
         if type:
-            analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file)
+            analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file, self.sem)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
 

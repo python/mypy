@@ -1374,6 +1374,25 @@ class TypeType(Type):
         return TypeType.make_normalized(deserialize_type(data['item']))
 
 
+class ForwardRef(Type):
+    """Class to wrap forward references to other types."""
+    link = None  # type: Type # the wrapped type
+
+    def __init__(self, link: Type) -> None:
+        self.link = link
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_forwardref_type(self)
+
+    def __hash__(self) -> int:
+        return hash(self.link)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ForwardRef):
+            return NotImplemented
+        return self.link == other.link
+
+
 #
 # Visitor-related classes
 #
@@ -1448,6 +1467,9 @@ class TypeVisitor(Generic[T]):
     @abstractmethod
     def visit_type_type(self, t: TypeType) -> T:
         pass
+
+    def visit_forwardref_type(self, t: ForwardRef) -> T:
+        raise RuntimeError('Debugging forward ref')
 
 
 class SyntheticTypeVisitor(TypeVisitor[T]):
@@ -1550,6 +1572,9 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType.make_normalized(t.item.accept(self), line=t.line, column=t.column)
+
+    def visit_forwardref_type(self, t: TypeType) -> Type:
+        return t
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
@@ -1706,6 +1731,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_type_type(self, t: TypeType) -> str:
         return 'Type[{}]'.format(t.item.accept(self))
 
+    def visit_forwardref_type(self, t: ForwardRef) -> str:
+        return '~{}'.format(t.link.accept(self))
+
     def list_str(self, a: List[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)
         and join the results with commas.
@@ -1784,6 +1812,9 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_type_type(self, t: TypeType) -> T:
         return t.item.accept(self)
+
+    def visit_forwardref_type(self, t: TypeType) -> T:
+        return t.link.accept(self)
 
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
         return self.strategy([])
