@@ -1461,7 +1461,7 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_forwardref_type(self, t: ForwardRef) -> T:
-        raise RuntimeError('Debugging forward ref')
+        raise RuntimeError('Internal error: unresolved forward reference')
 
 
 class SyntheticTypeVisitor(TypeVisitor[T]):

@@ -112,3 +112,21 @@ EmptyTupleCallable = Callable[[Tuple[()]], None]
 f = None # type: EmptyTupleCallable
 reveal_type(f)  # E: Revealed type is 'def (Tuple[])'
 [builtins fixtures/list.pyi]
+
+[case testForwardTypeAlias]
+def f(p: 'Alias') -> None:
+    pass
+
+reveal_type(f) # E: Revealed type is 'def (p: builtins.int)'
+Alias = int
+[out]
+
+[case testForwardTypeAliasGeneric]
+from typing import TypeVar, Tuple
+def f(p: 'Alias[str]') -> None:
+    pass
+
+reveal_type(f) # E: Revealed type is 'def (p: Tuple[builtins.int, builtins.str])'
+T = TypeVar('T')
+Alias = Tuple[int, T]
+[out]

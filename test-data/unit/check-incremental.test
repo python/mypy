@@ -2951,3 +2951,91 @@ def foo(a: int, b: int) -> str:
 [out1]
 [out2]
 tmp/b.py:2: error: Incompatible return value type (got "int", expected "str")
+
+-- Some crazy selef-referential named tuples and types dicts
+-- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed)
+
+[case testSelfRefNTIncremental1]
+from typing import Tuple, NamedTuple
+
+Node = NamedTuple(
+    'Node',
+    [
+        ('name', str),
+        ('children', Tuple['Node', ...]),
+    ])
+
+n: Node
+[builtins fixtures/tuple.pyi]
+
+
+[case testSelfRefNTIncremental2]
+from typing import Tuple, NamedTuple
+
+Node = NamedTuple(
+    'Node',
+    [
+        ('name', str),
+        ('children', Tuple['Node2', ...]),
+    ])
+
+class Node2(NamedTuple):
+    x: Node
+    y: int
+
+n: Node
+[builtins fixtures/tuple.pyi]
+
+[case testSelfRefNTIncremental3]
+from typing import NamedTuple, Tuple
+
+class Node2(NamedTuple):
+    x: Tuple[Node, int]
+    y: int
+
+Node = NamedTuple(
+    'Node',
+    [
+        ('name', str),
+        ('children', 'Node2'),
+    ])
+
+n: Node2
+m: Node
+lst = [m, n]
+[builtins fixtures/tuple.pyi]
+
+[case testSelfRefNTIncremental4]
+from typing import NamedTuple
+
+class Node2(NamedTuple):
+    x: Node
+    y: int
+
+class Node(NamedTuple):
+    name: str
+    children: Node2
+
+n: Node
+[builtins fixtures/tuple.pyi]
+
+[case testSelfRefNTIncremental5]
+from typing import NamedTuple
+
+Node2 = NamedTuple(
+    'Node2',
+    [
+        ('x', Node),
+        ('y', int),
+    ])
+
+Node = NamedTuple(
+    'Node',
+    [
+        ('name', str),
+        ('children', 'Node2'),
+    ])
+
+n: Node
+def f(m: Node2) -> None: pass
+[builtins fixtures/tuple.pyi]

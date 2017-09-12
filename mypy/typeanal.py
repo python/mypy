@@ -303,6 +303,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                                             fallback=instance)
                 return instance
         else:
+            if self.third_pass:
+                self.fail('Invalid type {}'.format(t), t)
+                return AnyType(TypeOfAny.from_error)
             return AnyType(TypeOfAny.special_form)
 
     def visit_any(self, t: AnyType) -> Type:
@@ -721,13 +724,17 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         self.fail('Invalid type', t)
 
     def visit_type_var(self, t: TypeVarType) -> None:
-        pass
+        if t.upper_bound:
+            t.upper_bound.accept(self)
+        if t.values:
+            for v in t.values:
+                v.accept(self)
 
     def visit_partial_type(self, t: PartialType) -> None:
         pass
 
     def visit_type_type(self, t: TypeType) -> None:
-        pass
+        t.item.accept(self)
 
     def visit_forwardref_type(self, t: ForwardRef) -> None:
         self.indicator['forward'] = True

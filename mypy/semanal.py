@@ -4669,26 +4669,19 @@ class MakeAnyNonExplicit(TypeTranslator):
         return t
 
 
-class TypeReplacer(TypeVisitor[Type]):
-    def visit_unbound_type(self, t: UnboundType) -> UnboundType:
-        return t
+class TypeReplacer(TypeTranslator):
+    def __init__(self):
+        self.seen = []  # type: List[Type]
 
-    def visit_any(self, t: AnyType) -> AnyType:
-        return t
+    def check(self, t: Type) -> bool:
+        if any(t is s for s in self.seen):
+            return True
+        self.seen.append(t)
+        return False
 
-    def visit_none_type(self, t: NoneTyp) -> NoneTyp:
-        return t
-
-    def visit_uninhabited_type(self, t: UninhabitedType) -> UninhabitedType:
-        return t
-
-    def visit_erased_type(self, t: ErasedType) -> ErasedType:
-        return t
-
-    def visit_deleted_type(self, t: DeletedType) -> None:
-        assert False, "Internal error: deleted type in semantic analysis"
-
-    def visit_type_var(self, t: TypeVarType) -> TypeVarType:
+    def visit_type_var(self, t: TypeVarType) -> Type:
+        if self.check(t):
+            return AnyType(TypeOfAny.from_error)
         if t.upper_bound:
             t.upper_bound = t.upper_bound.accept(self)
         if t.values:
@@ -4696,74 +4689,70 @@ class TypeReplacer(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        t.args = [arg.accept(self) for arg in t.args]
-        return t
+        if self.check(t):
+            return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars))
+        return super().visit_instance(t)
 
-    def visit_callable_type(self, t: CallableType) -> CallableType:
+    def visit_callable_type(self, t: CallableType) -> Type:
+        # TODO: Callable and Overloaded are not copied,
+        # check if we could unify this with TypeTranslator.
+        if self.check(t):
+            return AnyType(TypeOfAny.from_error)
         t.arg_types = [tp.accept(self) for tp in t.arg_types]
         t.ret_type = t.ret_type.accept(self)
+        for v in t.variables:
+            if v.upper_bound:
+                v.upper_bound = v.upper_bound.accept(self)
+            if v.values:
+                v.values = [val.accept(self) for val in v.values]
         return t
 
-    def visit_overloaded(self, t: Overloaded) -> Overloaded:
+    def visit_overloaded(self, t: Overloaded) -> Type:
+        if self.check(t):
+            return AnyType(TypeOfAny.from_error)
         t._items = [cast(CallableType, it.accept(self)) for it in t.items()]
         t.fallback.accept(self)
         return t
 
-    def visit_tuple_type(self, t: TupleType) -> TupleType:
-        t.items = [it.accept(self) for it in t.items]
-        t.fallback = cast(Instance, t.fallback.accept(self))
-        return t
+    def visit_tuple_type(self, t: TupleType) -> Type:
+        if self.check(t):
+            return AnyType(TypeOfAny.from_error)
+        return super().visit_tuple_type(t)
 
-    def visit_typeddict_type(self, t: TypedDictType) -> TypedDictType:
-        t.items = OrderedDict([(k, tp.accept(self)) for k, tp in t.items.items()])
-        t.fallback = cast(Instance, t.fallback.accept(self))
-        return t
+    def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        if self.check(t):
+            return AnyType(TypeOfAny.from_error)
+        return super().visit_typeddict_type(t)
 
-    def visit_union_type(self, t: UnionType) -> UnionType:
-        t.items = [it.accept(self) for it in t.items]
-        return t
+    def visit_union_type(self, t: UnionType) -> Type:
+        if self.check(t):
+            return AnyType(TypeOfAny.from_error)
+        return super().visit_union_type(t)
 
-    def visit_partial_type(self, t: PartialType) -> None:
-        assert False, "Internal error: partial type in semantic analysis"
-
-    def visit_type_type(self, t: TypeType) -> TypeType:
-        t.item = t.item.accept(self)
-        return t
+    def visit_type_type(self, t: TypeType) -> Type:
+        if self.check(t):
+            return AnyType(TypeOfAny.from_error)
+        return super().visit_type_type(t)
 
 
 class ForwardRefRemover(TypeReplacer):
-    def __init__(self) -> None:
-        self.seen = []  # type: List[Type]
-
     def visit_forwardref_type(self, t: ForwardRef) -> Type:
-        if not any(s is t for s in self.seen):
-            self.seen.append(t)
-            return t.link.accept(self)
-        return AnyType(TypeOfAny.from_error)
+        return t.link.accept(self)
 
 
-class SyntheticReplacer(TypeReplacer):
-    def __init__(self) -> None:
-        self.seen = []  # type: List[Type]
-
-    def visit_tuple_type(self, t: TupleType) -> TupleType:
-        self.seen.append(t)
-        return super().visit_tuple_type(t)
-
-    def visit_typeddict_type(self, t: TypedDictType) -> TypedDictType:
-        self.seen.append(t)
-        return super().visit_typeddict_type(t)
-
+class SyntheticReplacer(ForwardRefRemover):
     def visit_instance(self, t: Instance) -> Type:
         info = t.type
         if info.replaced and info.replaced.tuple_type:
             tp = info.replaced.tuple_type
-            if any(s is tp for s in self.seen):
+            if any((s is tp) or (s is t) for s in self.seen):
                 return AnyType(TypeOfAny.from_error)
+            self.seen.append(t)
             return tp.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
         if info.replaced and info.replaced.typeddict_type:
             td = info.replaced.typeddict_type
-            if any(s is td for s in self.seen):
+            if any((s is td) or (s is t) for s in self.seen):
                 return AnyType(TypeOfAny.from_error)
+            self.seen.append(t)
             return td.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
         return super().visit_instance(t)
