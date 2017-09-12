@@ -654,13 +654,13 @@ reveal_type(f3()) # E: Revealed type is 'Union[builtins.int, __main__.Node[built
 from typing import TypeVar, Generic
 T = TypeVar('T')
 S = TypeVar('S')
+IntNode = Node[int, S]  # This is on purpose, to test basic forward references to aliases
+AnyNode = Node[S, T]
+
 class Node(Generic[T, S]):
     def __init__(self, x: T, y: S) -> None:
         self.x = x
         self.y = y
-
-IntNode = Node[int, S]
-AnyNode = Node[S, T]
 
 def output() -> IntNode[str]:
     return Node(1, 'x')

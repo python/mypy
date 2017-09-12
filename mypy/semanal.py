@@ -4670,6 +4670,9 @@ class MakeAnyNonExplicit(TypeTranslator):
 
 
 class TypeReplacer(TypeTranslator):
+    """This is very similar TypeTranslator but tracks visited nodes to avoid
+    infinite recursion on potentially circular (self- or mutually-referential) types.
+    """
     def __init__(self):
         self.seen = []  # type: List[Type]
 
@@ -4736,13 +4739,30 @@ class TypeReplacer(TypeTranslator):
 
 
 class ForwardRefRemover(TypeReplacer):
+    """This visitor tracks situations like this:
+
+        x: A # this type is not yet known and therefore wrapped in ForwardRef
+             # it's content is updated in ThirdPass, now we need to unwrap this type.
+        A = NewType('A', int)
+    """
     def visit_forwardref_type(self, t: ForwardRef) -> Type:
         return t.link.accept(self)
 
 
 class SyntheticReplacer(ForwardRefRemover):
+    """This visitor tracks situations like this:
+
+           x: A # when analyzing this type we will get an Instance from FirstPass
+                # now we need to update this to actual analyzed TupleType.
+           class A(NamedTuple):
+               attr: str
+    """
     def visit_instance(self, t: Instance) -> Type:
         info = t.type
+        # Special case, analyzed bases transformed the type into TupleType.
+        if info.tuple_type and not self.seen:
+            return info.tuple_type.copy_modified(fallback=Instance(info, []))
+        # Update forward Instance's to corresponding analyzed types.
         if info.replaced and info.replaced.tuple_type:
             tp = info.replaced.tuple_type
             if any((s is tp) or (s is t) for s in self.seen):

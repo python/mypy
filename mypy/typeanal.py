@@ -605,7 +605,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_instance(self, t: Instance) -> None:
         info = t.type
-        if info.replaced:
+        if info.replaced or info.tuple_type:
             self.indicator['synthetic'] = True
         # Check type argument count.
         if len(t.args) != len(info.type_vars):

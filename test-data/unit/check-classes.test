@@ -3385,6 +3385,16 @@ D = TypeVar('D')
 def mkdict(dict_type: Type[D]) -> D: ...
 reveal_type(mkdict(ExampleDict))  # E: Revealed type is '__main__.ExampleDict*[Any, Any]'
 
+[case testTupleForwardBase]
+from m import a
+a[0]()  # E: "int" not callable
+
+[file m.py]
+from typing import Tuple
+a = None # type: A
+class A(Tuple[int, str]): pass
+[builtins fixtures/tuple.pyi]
+
 -- Synthetic types crashes
 -- -----------------------
 
