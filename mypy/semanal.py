@@ -4114,6 +4114,8 @@ class ThirdPass(TraverserVisitor):
             if tdef.info.is_protocol:
                 add_protocol_members(tdef.info)
         if tdef.analyzed is not None:
+            # Also check synthetic types associated with this ClassDef.
+            # Currently these are TypedDict, and NamedTuple.
             if isinstance(tdef.analyzed, TypedDictExpr):
                 self.analyze(tdef.analyzed.info.typeddict_type, tdef.analyzed)
             elif isinstance(tdef.analyzed, NamedTupleExpr):
@@ -4178,6 +4180,10 @@ class ThirdPass(TraverserVisitor):
                 dec.var.type = sig
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
+        """Traverse the actual assignment statement and synthetic types
+        resulted from this assignment (if any). Currently this includes
+        NewType, TypedDict, and NamedTuple.
+        """
         self.analyze(s.type, s)
         if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
             self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
@@ -4214,6 +4220,7 @@ class ThirdPass(TraverserVisitor):
     # Helpers
 
     def perform_transform(self, node: Node, transform: Callable[[Type], Type]) -> None:
+        """Apply transform to all types associated with node."""
         if isinstance(node, (FuncDef, CastExpr, AssignmentStmt, TypeAliasExpr, Var)):
             node.type = transform(node.type)
         if isinstance(node, NewTypeExpr):
@@ -4228,6 +4235,7 @@ class ThirdPass(TraverserVisitor):
             node.types = [transform(t) for t in node.types]
 
     def analyze(self, type: Optional[Type], node: Optional[Node]) -> None:
+        # Flags appeared during analysis of type are collected in this dict.
         indicator = {}  # type: Dict[str, bool]
         if type:
             analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file,
