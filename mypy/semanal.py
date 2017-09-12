@@ -4234,13 +4234,10 @@ class ThirdPass(TraverserVisitor):
                                          self.sem, indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
-            if indicator.get('forward') and node is not None:
+            if node and (indicator.get('forward') or indicator.get('synthetic')):
                 def patch() -> None:
-                    self.perform_transform(node, lambda tp: tp.accept(ForwardRefRemover()))
-                self.patches.append(patch)
-            if indicator.get('synthetic') and node is not None:
-                def patch() -> None:
-                    self.perform_transform(node, lambda tp: tp.accept(SyntheticReplacer()))
+                    self.perform_transform(node,
+                                           lambda tp: tp.accept(TypeReplacer()))
                 self.patches.append(patch)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
@@ -4682,6 +4679,44 @@ class TypeReplacer(TypeTranslator):
         self.seen.append(t)
         return False
 
+    def visit_forwardref_type(self, t: ForwardRef) -> Type:
+        """This visitor tracks situations like this:
+
+            x: A # this type is not yet known and therefore wrapped in ForwardRef
+                 # it's content is updated in ThirdPass, now we need to unwrap this type.
+            A = NewType('A', int)
+        """
+        return t.link.accept(self)
+
+    def visit_instance(self, t: Instance) -> Type:
+        """This visitor tracks situations like this:
+
+               x: A # when analyzing this type we will get an Instance from FirstPass
+                    # now we need to update this to actual analyzed TupleType.
+               class A(NamedTuple):
+                   attr: str
+        """
+        info = t.type
+        # Special case, analyzed bases transformed the type into TupleType.
+        if info.tuple_type and not self.seen:
+            return info.tuple_type.copy_modified(fallback=Instance(info, []))
+        # Update forward Instance's to corresponding analyzed types.
+        if info.replaced and info.replaced.tuple_type:
+            tp = info.replaced.tuple_type
+            if any((s is tp) or (s is t) for s in self.seen):
+                return AnyType(TypeOfAny.from_error)
+            self.seen.append(t)
+            return tp.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+        if info.replaced and info.replaced.typeddict_type:
+            td = info.replaced.typeddict_type
+            if any((s is td) or (s is t) for s in self.seen):
+                return AnyType(TypeOfAny.from_error)
+            self.seen.append(t)
+            return td.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+        if self.check(t):
+            return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars))
+        return super().visit_instance(t)
+
     def visit_type_var(self, t: TypeVarType) -> Type:
         if self.check(t):
             return AnyType(TypeOfAny.from_error)
@@ -4690,11 +4725,6 @@ class TypeReplacer(TypeTranslator):
         if t.values:
             t.values = [v.accept(self) for v in t.values]
         return t
-
-    def visit_instance(self, t: Instance) -> Type:
-        if self.check(t):
-            return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars))
-        return super().visit_instance(t)
 
     def visit_callable_type(self, t: CallableType) -> Type:
         # TODO: Callable and Overloaded are not copied,
@@ -4736,43 +4766,3 @@ class TypeReplacer(TypeTranslator):
         if self.check(t):
             return AnyType(TypeOfAny.from_error)
         return super().visit_type_type(t)
-
-
-class ForwardRefRemover(TypeReplacer):
-    """This visitor tracks situations like this:
-
-        x: A # this type is not yet known and therefore wrapped in ForwardRef
-             # it's content is updated in ThirdPass, now we need to unwrap this type.
-        A = NewType('A', int)
-    """
-    def visit_forwardref_type(self, t: ForwardRef) -> Type:
-        return t.link.accept(self)
-
-
-class SyntheticReplacer(ForwardRefRemover):
-    """This visitor tracks situations like this:
-
-           x: A # when analyzing this type we will get an Instance from FirstPass
-                # now we need to update this to actual analyzed TupleType.
-           class A(NamedTuple):
-               attr: str
-    """
-    def visit_instance(self, t: Instance) -> Type:
-        info = t.type
-        # Special case, analyzed bases transformed the type into TupleType.
-        if info.tuple_type and not self.seen:
-            return info.tuple_type.copy_modified(fallback=Instance(info, []))
-        # Update forward Instance's to corresponding analyzed types.
-        if info.replaced and info.replaced.tuple_type:
-            tp = info.replaced.tuple_type
-            if any((s is tp) or (s is t) for s in self.seen):
-                return AnyType(TypeOfAny.from_error)
-            self.seen.append(t)
-            return tp.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
-        if info.replaced and info.replaced.typeddict_type:
-            td = info.replaced.typeddict_type
-            if any((s is td) or (s is t) for s in self.seen):
-                return AnyType(TypeOfAny.from_error)
-            self.seen.append(t)
-            return td.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
-        return super().visit_instance(t)
