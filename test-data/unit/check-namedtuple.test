@@ -462,7 +462,7 @@ tmp/b.py:8: error: Revealed type is 'Tuple[Any, fallback=a.X]'
 [case testSelfRefNT1]
 from typing import Tuple, NamedTuple
 
-Node = NamedTuple(
+Node = NamedTuple( # E: Recursive types not fully supported yet, nested types replaced with "Any"
     'Node',
     [
         ('name', str),
@@ -477,29 +477,32 @@ reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, builtins.tuple[Tuple[b
 [case testSelfRefNT2]
 from typing import Tuple, NamedTuple
 
-Node = NamedTuple(
+Node = NamedTuple( # E
     'Node',
     [
         ('name', str),
         ('children', Tuple['Node2', ...]),
     ])
 
-class Node2(NamedTuple):
+class Node2(NamedTuple): # E
     x: Node
     y: int
 
 n: Node
 reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, builtins.tuple[Tuple[Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.Node], builtins.int, fallback=__main__.Node2]], fallback=__main__.Node]'
 [builtins fixtures/tuple.pyi]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:10: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testSelfRefNT3]
 from typing import NamedTuple, Tuple
 
-class Node2(NamedTuple):
+class Node2(NamedTuple): # E
     x: Tuple[Node, int]
     y: int
 
-Node = NamedTuple(
+Node = NamedTuple( # E: Recursive types not fully supported yet, nested types replaced with "Any"
     'Node',
     [
         ('name', str),
@@ -513,33 +516,38 @@ reveal_type(m) # E: Revealed type is 'Tuple[builtins.str, Tuple[Tuple[Tuple[buil
 lst = [m, n]
 reveal_type(lst[0]) # E: Revealed type is 'Tuple[builtins.object, builtins.object]'
 [builtins fixtures/tuple.pyi]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testSelfRefNT4]
 from typing import NamedTuple
 
-class Node2(NamedTuple):
+class Node2(NamedTuple): # E
     x: Node
     y: int
 
-class Node(NamedTuple):
+class Node(NamedTuple): # E
     name: str
     children: Node2
 
 n: Node
 reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, Tuple[Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.Node2], fallback=__main__.Node], builtins.int, fallback=__main__.Node2], fallback=__main__.Node]'
 [builtins fixtures/tuple.pyi]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:7: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testSelfRefNT5]
 from typing import NamedTuple
 
-Node2 = NamedTuple(
+Node2 = NamedTuple( # E: Recursive types not fully supported yet, nested types replaced with "Any"
     'Node2',
     [
         ('x', Node),
         ('y', int),
     ])
 
-Node = NamedTuple(
+Node = NamedTuple( # E: Recursive types not fully supported yet, nested types replaced with "Any"
     'Node',
     [
         ('name', str),

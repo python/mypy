@@ -3401,14 +3401,14 @@ class A(Tuple[int, str]): pass
 [case testCrashOnSelfRecursiveNamedTupleVar]
 from typing import NamedTuple
 
-N = NamedTuple('N', [('x', N)])
+N = NamedTuple('N', [('x', N)]) # E: Recursive types not fully supported yet, nested types replaced with "Any"
 n: N
 [out]
 
 [case testCrashOnSelfRecursiveTypedDictVar]
 from mypy_extensions import TypedDict
 
-A = TypedDict('A', {'a': 'A'})
+A = TypedDict('A', {'a': 'A'})  # type: ignore
 a: A
 [builtins fixtures/isinstancelist.pyi]
 [out]
@@ -3416,16 +3416,15 @@ a: A
 [case testCrashInJoinOfSelfRecursiveNamedTuples]
 from typing import NamedTuple
 
-class N(NamedTuple):
+class N(NamedTuple): # type: ignore
     x: N
-class M(NamedTuple):
+class M(NamedTuple): # type: ignore
     x: M
 
 n: N
 m: M
 lst = [n, m]
 [builtins fixtures/isinstancelist.pyi]
-[out]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
 from mypy_extensions import TypedDict
@@ -3441,6 +3440,8 @@ lst = [n, m]
 reveal_type(lst[0]['x'])  # E: Revealed type is 'TypedDict('__main__.N', {'x': Any})'
 [builtins fixtures/isinstancelist.pyi]
 [out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testCrashInForwardRefToNamedTupleWithIsinstance]
 from typing import Dict, NamedTuple
@@ -3511,7 +3512,8 @@ class A(NamedTuple):
     year: int
 class B(NamedTuple):
     director: str
-
+y: A
+y = x
 reveal_type(x.name.director)  # E: Revealed type is 'builtins.str'
 [out]
 

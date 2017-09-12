@@ -1383,7 +1383,7 @@ _testTypedDictMappingMethods.py:11: error: Revealed type is 'typing.ValuesView[b
 [case testCrashOnComplexCheckWithNamedTupleNext]
 from typing import NamedTuple
 
-MyNamedTuple = NamedTuple('MyNamedTuple', [('parent', 'MyNamedTuple')])
+MyNamedTuple = NamedTuple('MyNamedTuple', [('parent', 'MyNamedTuple')]) # type: ignore
 def foo(mymap) -> MyNamedTuple:
     return next((mymap[key] for key in mymap), None)
 [out]

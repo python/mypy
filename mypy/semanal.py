@@ -945,6 +945,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
                         defn.info.replaced = info
                         defn.info = info
                         defn.analyzed = NamedTupleExpr(info)
+                        defn.analyzed.line = defn.line
+                        defn.analyzed.column = defn.column
                         return info
         return None
 
@@ -1285,6 +1287,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     defn.info.replaced = info
                     node.node = info
                     defn.analyzed = TypedDictExpr(info)
+                    defn.analyzed.line = defn.line
+                    defn.analyzed.column = defn.column
                     return True
                 # Extending/merging existing TypedDicts
                 if any(not isinstance(expr, RefExpr) or
@@ -1318,6 +1322,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 defn.info.replaced = info
                 node.node = info
                 defn.analyzed = TypedDictExpr(info)
+                defn.analyzed.line = defn.line
+                defn.analyzed.column = defn.column
                 return True
         return False
 
@@ -4117,9 +4123,9 @@ class ThirdPass(TraverserVisitor):
             # Also check synthetic types associated with this ClassDef.
             # Currently these are TypedDict, and NamedTuple.
             if isinstance(tdef.analyzed, TypedDictExpr):
-                self.analyze(tdef.analyzed.info.typeddict_type, tdef.analyzed)
+                self.analyze(tdef.analyzed.info.typeddict_type, tdef.analyzed, warn=True)
             elif isinstance(tdef.analyzed, NamedTupleExpr):
-                self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed)
+                self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed, warn=True)
                 for name in tdef.analyzed.info.names:
                     sym = tdef.analyzed.info.names[name]
                     if isinstance(sym.node, (FuncDef, Decorator)):
@@ -4194,9 +4200,9 @@ class ThirdPass(TraverserVisitor):
             if isinstance(analyzed, NewTypeExpr):
                 self.analyze(analyzed.old_type, analyzed)
             if isinstance(analyzed, TypedDictExpr):
-                self.analyze(analyzed.info.typeddict_type, analyzed)
+                self.analyze(analyzed.info.typeddict_type, analyzed, warn=True)
             if isinstance(analyzed, NamedTupleExpr):
-                self.analyze(analyzed.info.tuple_type, analyzed)
+                self.analyze(analyzed.info.tuple_type, analyzed, warn=True)
                 for name in analyzed.info.names:
                     sym = analyzed.info.names[name]
                     if isinstance(sym.node, (FuncDef, Decorator)):
@@ -4234,8 +4240,9 @@ class ThirdPass(TraverserVisitor):
         if isinstance(node, TypeApplication):
             node.types = [transform(t) for t in node.types]
 
-    def analyze(self, type: Optional[Type], node: Optional[Node]) -> None:
-        # Flags appeared during analysis of type are collected in this dict.
+    def analyze(self, type: Optional[Type], node: Optional[Node], warn: bool = False) -> None:
+        # Recursive type warnings are only emitted on type definition 'node's, marked by 'warn'
+        # Flags appeared during analysis of 'type' are collected in this dict.
         indicator = {}  # type: Dict[str, bool]
         if type:
             analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file,
@@ -4245,7 +4252,8 @@ class ThirdPass(TraverserVisitor):
             if node and (indicator.get('forward') or indicator.get('synthetic')):
                 def patch() -> None:
                     self.perform_transform(node,
-                                           lambda tp: tp.accept(TypeReplacer()))
+                                           lambda tp: tp.accept(TypeReplacer(self.fail,
+                                                                             node, warn)))
                 self.patches.append(patch)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
@@ -4678,8 +4686,16 @@ class TypeReplacer(TypeTranslator):
     """This is very similar TypeTranslator but tracks visited nodes to avoid
     infinite recursion on potentially circular (self- or mutually-referential) types.
     """
-    def __init__(self):
+    def __init__(self, fail: Callable[[str, Context], None], start: Node, warn: bool) -> None:
         self.seen = []  # type: List[Type]
+        self.fail = fail
+        self.start = start
+        self.warn = warn
+
+    def warn_recursion(self) -> None:
+        if self.warn:
+            self.fail('Recursive types not fully supported yet,'
+                      ' nested types replaced with "Any"', self.start)
 
     def check(self, t: Type) -> bool:
         if any(t is s for s in self.seen):
@@ -4688,7 +4704,7 @@ class TypeReplacer(TypeTranslator):
         return False
 
     def visit_forwardref_type(self, t: ForwardRef) -> Type:
-        """This visitor tracks situations like this:
+        """This visitor method tracks situations like this:
 
             x: A # this type is not yet known and therefore wrapped in ForwardRef
                  # it's content is updated in ThirdPass, now we need to unwrap this type.
@@ -4697,7 +4713,7 @@ class TypeReplacer(TypeTranslator):
         return t.link.accept(self)
 
     def visit_instance(self, t: Instance) -> Type:
-        """This visitor tracks situations like this:
+        """This visitor method tracks situations like this:
 
                x: A # when analyzing this type we will get an Instance from FirstPass
                     # now we need to update this to actual analyzed TupleType.
@@ -4708,20 +4724,26 @@ class TypeReplacer(TypeTranslator):
         # Special case, analyzed bases transformed the type into TupleType.
         if info.tuple_type and not self.seen:
             return info.tuple_type.copy_modified(fallback=Instance(info, []))
-        # Update forward Instance's to corresponding analyzed types.
+        # Update forward Instance's to corresponding analyzed NamedTuple's.
         if info.replaced and info.replaced.tuple_type:
             tp = info.replaced.tuple_type
             if any((s is tp) or (s is t) for s in self.seen):
+                self.warn_recursion()
+                # The key idea is that when we return to the place where
+                # we already was, we break the cycle and put AnyType as a leaf.
                 return AnyType(TypeOfAny.from_error)
             self.seen.append(t)
             return tp.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+        # Same as above but for TypedDict's.
         if info.replaced and info.replaced.typeddict_type:
             td = info.replaced.typeddict_type
             if any((s is td) or (s is t) for s in self.seen):
+                self.warn_recursion()
                 return AnyType(TypeOfAny.from_error)
             self.seen.append(t)
             return td.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
         if self.check(t):
+            self.warn_recursion()
             return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars))
         return super().visit_instance(t)
 
@@ -4757,11 +4779,13 @@ class TypeReplacer(TypeTranslator):
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         if self.check(t):
+            self.warn_recursion()
             return AnyType(TypeOfAny.from_error)
         return super().visit_tuple_type(t)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         if self.check(t):
+            self.warn_recursion()
             return AnyType(TypeOfAny.from_error)
         return super().visit_typeddict_type(t)
 
