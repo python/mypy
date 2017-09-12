@@ -741,6 +741,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         if isinstance(t.link, UnboundType):
             t.link = self.sem.anal_type(t.link, third_pass=True)
 
+
 TypeVarList = List[Tuple[str, TypeVarExpr]]
 
 
