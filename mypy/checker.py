@@ -1015,13 +1015,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return [(defn, typ)]
 
-    def check_method_override(self, defn: FuncBase) -> None:
+    def check_method_override(self, defn: Union[FuncBase, Decorator]) -> None:
         """Check if function definition is compatible with base classes."""
         # Check against definitions in base classes.
         for base in defn.info.mro[1:]:
             self.check_method_or_accessor_override_for_base(defn, base)
 
-    def check_method_or_accessor_override_for_base(self, defn: FuncBase,
+    def check_method_or_accessor_override_for_base(self, defn: Union[FuncBase, Decorator],
                                                    base: TypeInfo) -> None:
         """Check if method definition is compatible with a base class."""
         if base:
@@ -1041,13 +1041,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                                   base)
 
     def check_method_override_for_base_with_name(
-            self, defn: FuncBase, name: str, base: TypeInfo) -> None:
+            self, defn: Union[FuncBase, Decorator], name: str, base: TypeInfo) -> None:
         base_attr = base.names.get(name)
         if base_attr:
             # The name of the method is defined in the base class.
 
+            # Point errors at the 'def' line (important for backward compatibility
+            # of type ignores).
+            if not isinstance(defn, Decorator):
+                context = defn
+            else:
+                context = defn.func
             # Construct the type of the overriding method.
-            typ = bind_self(self.function_type(defn), self.scope.active_self_type())
+            if isinstance(defn, FuncBase):
+                typ = self.function_type(defn)  # type: Type
+            else:
+                assert defn.var.is_ready
+                assert defn.var.type is not None
+                typ = defn.var.type
+            if isinstance(typ, FunctionLike) and not is_static(context):
+                typ = bind_self(typ, self.scope.active_self_type())
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
@@ -1058,10 +1071,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     original_type = self.function_type(base_attr.node.func)
                 else:
                     assert False, str(base_attr.node)
-            if isinstance(original_type, FunctionLike):
-                original = map_type_from_supertype(
-                    bind_self(original_type, self.scope.active_self_type()),
-                    defn.info, base)
+            if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
+                pass
+            elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
+                if (isinstance(base_attr.node, (FuncBase, Decorator))
+                        and not is_static(base_attr.node)):
+                    bound = bind_self(original_type, self.scope.active_self_type())
+                else:
+                    bound = original_type
+                original = map_type_from_supertype(bound, defn.info, base)
                 # Check that the types are compatible.
                 # TODO overloaded signatures
                 self.check_override(typ,
@@ -1069,12 +1087,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     defn.name(),
                                     name,
                                     base.name(),
-                                    defn)
-            elif isinstance(original_type, AnyType):
+                                    context)
+            elif is_equivalent(original_type, typ):
+                # Assume invariance for a non-callable attribute here. Note
+                # that this doesn't affect read-only properties which can have
+                # covariant overrides.
+                #
+                # TODO: Allow covariance for read-only attributes?
                 pass
             else:
                 self.msg.signature_incompatible_with_supertype(
-                    defn.name(), name, base.name(), defn)
+                    defn.name(), name, base.name(), context)
 
     def check_override(self, override: FunctionLike, original: FunctionLike,
                        name: str, name_in_super: str, supertype: str,
@@ -2364,9 +2387,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     e.var.is_ready = True
                     return
 
-        e.func.accept(self)
+        self.check_func_item(e.func, name=e.func.name())
+
+        # Process decorators from the inside out to determine decorated signature, which
+        # may be different from the declared signature.
         sig = self.function_type(e.func)  # type: Type
-        # Process decorators from the inside out.
         for d in reversed(e.decorators):
             if refers_to_fullname(d, 'typing.overload'):
                 self.fail('Single overload definition, multiple required', e)
@@ -2387,6 +2412,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         e.var.is_ready = True
         if e.func.is_property:
             self.check_incompatible_property_override(e)
+        if e.func.info and not e.func.is_dynamic():
+            self.check_method_override(e)
 
     def check_for_untyped_decorator(self,
                                     func: FuncDef,
@@ -3316,3 +3343,13 @@ def is_untyped_decorator(typ: Optional[Type]) -> bool:
     if not typ or not isinstance(typ, CallableType):
         return True
     return typ.implicit
+
+
+def is_static(func: Union[FuncBase, Decorator]) -> bool:
+    if isinstance(func, Decorator):
+        return is_static(func.func)
+    elif isinstance(func, OverloadedFuncDef):
+        return any(is_static(item) for item in func.items)
+    elif isinstance(func, FuncItem):
+        return func.is_static
+    return False

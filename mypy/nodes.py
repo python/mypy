@@ -565,7 +565,7 @@ class Decorator(SymbolNode, Statement):
     """
 
     func = None  # type: FuncDef                # Decorated function
-    decorators = None  # type: List[Expression] # Decorators, at least one  # XXX Not true
+    decorators = None  # type: List[Expression] # Decorators (may be empty)
     var = None  # type: Var                     # Represents the decorated function obj
     is_overload = False
 
@@ -581,6 +581,10 @@ class Decorator(SymbolNode, Statement):
 
     def fullname(self) -> str:
         return self.func.fullname()
+
+    @property
+    def info(self) -> 'TypeInfo':
+        return self.func.info
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_decorator(self)

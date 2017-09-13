@@ -653,6 +653,42 @@ class A(B):
         x()
 [out]
 
+[case testInvalidOverrideWithImplicitSignatureAndClassMethod1]
+class B:
+    @classmethod
+    def f(cls, x, y): pass
+class A(B):
+    @classmethod
+    def f(cls, x, y, z): pass # No error since no annotations
+[builtins fixtures/classmethod.pyi]
+
+[case testInvalidOverrideWithImplicitSignatureAndClassMethod2]
+class B:
+    @classmethod
+    def f(cls, x: int, y): pass
+class A(B):
+    @classmethod
+    def f(cls, x, y, z): pass # No error since no annotations
+[builtins fixtures/classmethod.pyi]
+
+[case testInvalidOverrideWithImplicitSignatureAndStaticMethod1]
+class B:
+    @staticmethod
+    def f(x, y): pass
+class A(B):
+    @staticmethod
+    def f(x, y, z): pass # No error since no annotations
+[builtins fixtures/classmethod.pyi]
+
+[case testInvalidOverrideWithImplicitSignatureAndStaticMethod2]
+class B:
+    @staticmethod
+    def f(self, x: int, y): pass
+class A(B):
+    @staticmethod
+    def f(self, x, y, z): pass # No error since no annotations
+[builtins fixtures/classmethod.pyi]
+
 
 -- Don't complain about too few/many arguments in dynamic functions
 -- ----------------------------------------------------------------
