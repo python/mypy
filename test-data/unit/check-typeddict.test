@@ -1310,3 +1310,18 @@ x: X
 reveal_type(x) # E: Revealed type is 'TypedDict('__main__.X', {'a': TypedDict('__main__.A', {'b': builtins.int})})'
 reveal_type(x['a']['b']) # E: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
+
+[case testSelfRecursiveTypedDictInheriting]
+from mypy_extensions import TypedDict
+
+class MovieBase(TypedDict):
+    name: str
+    year: int
+
+class Movie(MovieBase): # type: ignore # warning about recursive not fully supported
+    director: 'Movie'
+
+m: Movie
+reveal_type(m['director']['name']) # E: Revealed type is 'builtins.str'
+[builtins fixtures/dict.pyi]
+[out]
