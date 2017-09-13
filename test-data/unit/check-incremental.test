@@ -2981,6 +2981,31 @@ C()[0]
 [builtins fixtures/list.pyi]
 [out]
 
+[case testSerializeRecursiveAliases1]
+from typing import Type, Callable, Union
+
+A = Union[A, int]  # type: ignore
+B = Callable[[B], int] # type: ignore
+C = Type[C] # type: ignore
+[out]
+
+[case testSerializeRecursiveAliases2]
+from typing import Type, Callable, Union
+
+A = Union[B, int]  # type: ignore
+B = Callable[[C], int] # type: ignore
+C = Type[A] # type: ignore
+[out]
+
+[case testSerializeRecursiveAliases3]
+from typing import Type, Callable, Union, NamedTuple
+
+A = Union[B, int]  # type: ignore
+B = Callable[[C], int] # type: ignore
+class C(NamedTuple): # type: ignore
+    x: A
+[out]
+
 [case testGenericTypeAliasesForwardAnyIncremental1]
 from typing import TypeVar, Generic
 T = TypeVar('T')

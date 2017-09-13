@@ -4193,8 +4193,12 @@ class ThirdPass(TraverserVisitor):
         self.analyze(s.type, s)
         if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
             self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
+            if isinstance(s.lvalues[0], NameExpr):
+                node = self.sem.lookup(s.lvalues[0].name, s, suppress_errors=True)
+                if node:
+                    self.analyze(node.type_override, node)
         if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
-            self.analyze(s.rvalue.analyzed.type, s.rvalue.analyzed)
+            self.analyze(s.rvalue.analyzed.type, s.rvalue.analyzed, warn=True)
         if isinstance(s.rvalue, CallExpr):
             analyzed = s.rvalue.analyzed
             if isinstance(analyzed, NewTypeExpr):
@@ -4225,7 +4229,8 @@ class ThirdPass(TraverserVisitor):
 
     # Helpers
 
-    def perform_transform(self, node: Node, transform: Callable[[Type], Type]) -> None:
+    def perform_transform(self, node: Union[Node, SymbolTableNode],
+                          transform: Callable[[Type], Type]) -> None:
         """Apply transform to all types associated with node."""
         if isinstance(node, (FuncDef, CastExpr, AssignmentStmt, TypeAliasExpr, Var)):
             node.type = transform(node.type)
@@ -4239,6 +4244,8 @@ class ThirdPass(TraverserVisitor):
                                         transform(node.info.tuple_type))
         if isinstance(node, TypeApplication):
             node.types = [transform(t) for t in node.types]
+        if isinstance(node, SymbolTableNode):
+            node.type_override = transform(node.type_override)
         if isinstance(node, TypeInfo):
             new_bases = []
             for base in node.bases:
@@ -4253,7 +4260,8 @@ class ThirdPass(TraverserVisitor):
                     new_bases.append(alt_base)
             node.bases = new_bases
 
-    def analyze(self, type: Optional[Type], node: Node, warn: bool = False) -> None:
+    def analyze(self, type: Optional[Type], node: Union[Node, SymbolTableNode],
+                warn: bool = False) -> None:
         # Recursive type warnings are only emitted on type definition 'node's, marked by 'warn'
         # Flags appeared during analysis of 'type' are collected in this dict.
         indicator = {}  # type: Dict[str, bool]
@@ -4699,7 +4707,8 @@ class TypeReplacer(TypeTranslator):
     """This is very similar TypeTranslator but tracks visited nodes to avoid
     infinite recursion on potentially circular (self- or mutually-referential) types.
     """
-    def __init__(self, fail: Callable[[str, Context], None], start: Node, warn: bool) -> None:
+    def __init__(self, fail: Callable[[str, Context], None],
+                 start: Union[Node, SymbolTableNode], warn: bool) -> None:
         self.seen = []  # type: List[Type]
         self.fail = fail
         self.start = start
@@ -4707,11 +4716,13 @@ class TypeReplacer(TypeTranslator):
 
     def warn_recursion(self) -> None:
         if self.warn:
+            assert isinstance(self.start, Node), "Internal error: invalid error context"
             self.fail('Recursive types not fully supported yet,'
                       ' nested types replaced with "Any"', self.start)
 
     def check(self, t: Type) -> bool:
         if any(t is s for s in self.seen):
+            self.warn_recursion()
             return True
         self.seen.append(t)
         return False
@@ -4756,7 +4767,6 @@ class TypeReplacer(TypeTranslator):
             self.seen.append(t)
             return td.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
         if self.check(t):
-            self.warn_recursion()
             return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars))
         return super().visit_instance(t)
 
@@ -4770,35 +4780,30 @@ class TypeReplacer(TypeTranslator):
         return t
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        # TODO: Callable and Overloaded are not copied,
-        # check if we could unify this with TypeTranslator.
         if self.check(t):
             return AnyType(TypeOfAny.from_error)
-        t.arg_types = [tp.accept(self) for tp in t.arg_types]
-        t.ret_type = t.ret_type.accept(self)
-        for v in t.variables:
+        arg_types = [tp.accept(self) for tp in t.arg_types]
+        ret_type = t.ret_type.accept(self)
+        variables = t.variables.copy()
+        for v in variables:
             if v.upper_bound:
                 v.upper_bound = v.upper_bound.accept(self)
             if v.values:
                 v.values = [val.accept(self) for val in v.values]
-        return t
+        return t.copy_modified(arg_types=arg_types, ret_type=ret_type, variables=variables)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         if self.check(t):
             return AnyType(TypeOfAny.from_error)
-        t._items = [cast(CallableType, it.accept(self)) for it in t.items()]
-        t.fallback.accept(self)
-        return t
+        return super().visit_overloaded(t)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         if self.check(t):
-            self.warn_recursion()
             return AnyType(TypeOfAny.from_error)
         return super().visit_tuple_type(t)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         if self.check(t):
-            self.warn_recursion()
             return AnyType(TypeOfAny.from_error)
         return super().visit_typeddict_type(t)
 

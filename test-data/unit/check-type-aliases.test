@@ -130,3 +130,54 @@ reveal_type(f) # E: Revealed type is 'def (p: Tuple[builtins.int, builtins.str])
 T = TypeVar('T')
 Alias = Tuple[int, T]
 [out]
+
+[case testRecursiveAliasesErrors1]
+from typing import Type, Callable, Union
+
+A = Union[A, int]
+B = Callable[[B], int]
+C = Type[C]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testRecursiveAliasesErrors2]
+from typing import Type, Callable, Union
+
+A = Union[B, int]
+B = Callable[[C], int]
+C = Type[A]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testDoubleForwardAlias]
+from typing import List
+x: A
+A = List[B]
+B = List[int]
+reveal_type(x) # E: Revealed type is 'builtins.list[builtins.list[builtins.int]]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testDoubleForwardAliasWithNamedTuple]
+from typing import List, NamedTuple
+x: A
+A = List[B]
+class B(NamedTuple):
+    x: str
+reveal_type(x[0].x) # E: Revealed type is 'builtins.str'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testJSONAliasApproximation]
+from typing import List, Union, Dict
+x: JSON
+JSON = Union[int, str, List[JSON], Dict[str, JSON]] # type: ignore
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[Any], builtins.dict[builtins.str, Any]]'
+if isinstance(x, list):
+    reveal_type(x) # E: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/isinstancelist.pyi]
+[out]

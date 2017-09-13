@@ -1384,6 +1384,15 @@ class ForwardRef(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_forwardref_type(self)
 
+    def serialize(self):
+        if isinstance(self.link, UnboundType):
+            name = self.link.name
+        if isinstance(self.link, Instance):
+            name = self.link.type.name()
+        else:
+            name = self.link.__class__.__name__
+        assert False, "Internal error: Unresolved forward reference to {}".format(name)
+
 
 #
 # Visitor-related classes
