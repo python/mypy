@@ -4106,7 +4106,7 @@ class ThirdPass(TraverserVisitor):
         # check them again here.
         if not tdef.info.is_named_tuple:
             for type in tdef.info.bases:
-                self.analyze(type, None)
+                self.analyze(type, tdef.info)
                 if tdef.info.is_protocol:
                     if not isinstance(type, Instance) or not type.type.is_protocol:
                         if type.type.fullname() != 'builtins.object':
@@ -4239,8 +4239,21 @@ class ThirdPass(TraverserVisitor):
                                         transform(node.info.tuple_type))
         if isinstance(node, TypeApplication):
             node.types = [transform(t) for t in node.types]
+        if isinstance(node, TypeInfo):
+            new_bases = []
+            for base in node.bases:
+                new_base = transform(base)
+                if isinstance(new_base, Instance):
+                    new_bases.append(new_base)
+                else:
+                    # Don't fix the NamedTuple bases, they are Instance's intentionally.
+                    # Patch the 'args' just in case, although generic tuple type are
+                    # not supported yet.
+                    alt_base = Instance(base.type, [transform(a) for a in base.args])
+                    new_bases.append(alt_base)
+            node.bases = new_bases
 
-    def analyze(self, type: Optional[Type], node: Optional[Node], warn: bool = False) -> None:
+    def analyze(self, type: Optional[Type], node: Node, warn: bool = False) -> None:
         # Recursive type warnings are only emitted on type definition 'node's, marked by 'warn'
         # Flags appeared during analysis of 'type' are collected in this dict.
         indicator = {}  # type: Dict[str, bool]
@@ -4249,7 +4262,7 @@ class ThirdPass(TraverserVisitor):
                                          self.sem, indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
-            if node and (indicator.get('forward') or indicator.get('synthetic')):
+            if indicator.get('forward') or indicator.get('synthetic'):
                 def patch() -> None:
                     self.perform_transform(node,
                                            lambda tp: tp.accept(TypeReplacer(self.fail,
