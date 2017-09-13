@@ -456,6 +456,20 @@ def f(x: a.X) -> None:
 tmp/b.py:6: error: Revealed type is 'a.X'
 tmp/b.py:8: error: Revealed type is 'Tuple[Any, fallback=a.X]'
 
+[case testSimpleSelfReferrentialNamedTuple]
+from typing import NamedTuple
+class MyNamedTuple(NamedTuple):
+    parent: 'MyNamedTuple'
+
+def bar(nt: MyNamedTuple) -> MyNamedTuple:
+    return nt
+
+x: MyNamedTuple
+reveal_type(x.parent)
+[out]
+main:2: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:9: error: Revealed type is 'Tuple[Any, fallback=__main__.MyNamedTuple]'
+
 -- Some crazy selef-referential named tuples and types dicts
 -- to be sure that everything works
 
