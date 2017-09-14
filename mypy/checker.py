@@ -1989,7 +1989,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if not self.current_node_deferred:
                             var.type = self.named_generic_type('builtins.dict',
                                                                [full_key_type, full_value_type])
-                        del partial_types[var]
+                            del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
         self.expr_checker.accept(s.expr, allow_none_return=True, always_allow_any=True)
