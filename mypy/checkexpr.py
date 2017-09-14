@@ -21,7 +21,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, EnumCallExpr,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr, SymbolTableNode,
     ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE,
 )
 from mypy.literals import literal
@@ -201,11 +201,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 and len(e.args) == 2):
             for typ in mypy.checker.flatten(e.args[1]):
                 if isinstance(typ, NameExpr):
+                    node = None  # type: Optional[SymbolTableNode]
                     try:
                         node = self.chk.lookup_qualified(typ.name)
                     except KeyError:
                         # Undefined names should already be reported in semantic analysis.
-                        node = None
+                        pass
                 if ((isinstance(typ, IndexExpr)
                         and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr)))
                         # node.kind == TYPE_ALIAS only for aliases like It = Iterable[int].
@@ -217,6 +218,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     elif typ.node.is_newtype:
                         self.msg.fail(messages.CANNOT_ISINSTANCE_NEWTYPE, e)
         self.try_infer_partial_type(e)
+        type_context = None  # type: Optional[CallableType]
         if isinstance(e.callee, LambdaExpr):
             formal_to_actual = map_actuals_to_formals(
                 e.arg_kinds, e.arg_names,
@@ -228,8 +230,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             type_context = CallableType(arg_types, e.callee.arg_kinds, e.callee.arg_names,
                                         ret_type=self.object_type(),
                                         fallback=self.named_type('builtins.function'))
-        else:
-            type_context = None
         callee_type = self.accept(e.callee, type_context, always_allow_any=True)
         if (self.chk.options.disallow_untyped_calls and
                 self.chk.in_checked_function() and
@@ -487,9 +487,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def check_call(self, callee: Type, args: List[Expression],
                    arg_kinds: List[int], context: Context,
-                   arg_names: List[str] = None,
-                   callable_node: Expression = None,
-                   arg_messages: MessageBuilder = None,
+                   arg_names: Optional[List[str]] = None,
+                   callable_node: Optional[Expression] = None,
+                   arg_messages: Optional[MessageBuilder] = None,
                    callable_name: Optional[str] = None,
                    object_type: Optional[Type] = None) -> Tuple[Type, Type]:
         """Type check a call.
@@ -976,8 +976,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                              callee: CallableType,
                              formal_to_actual: List[List[int]],
                              context: Context,
-                             messages: MessageBuilder = None,
-                             check_arg: ArgChecker = None) -> None:
+                             messages: Optional[MessageBuilder] = None,
+                             check_arg: Optional[ArgChecker] = None) -> None:
         """Check argument types against a callable type.
 
         Report errors if the argument types are not compatible.
@@ -1059,7 +1059,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def overload_call_target(self, arg_types: List[Type], arg_kinds: List[int],
                              arg_names: List[str],
                              overload: Overloaded, context: Context,
-                             messages: MessageBuilder = None) -> Type:
+                             messages: Optional[MessageBuilder] = None) -> Type:
         """Infer the correct overload item to call with given argument types.
 
         The return value may be CallableType or AnyType (if an unique item
