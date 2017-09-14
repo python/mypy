@@ -1,7 +1,14 @@
 """Facilities and constants for generating error messages during type checking.
 
-The type checker itself does not deal with message string literals to
-improve code clarity and to simplify localization (in the future)."""
+Don't add any non-trivial message construction logic to the type
+checker, as it can compromise clarity and make messages less
+consistent. Add such logic to this module instead. Literal messages used
+in multiple places should also be defined as constants in this module so
+they won't get out of sync.
+
+Historically we tried to avoid all message string literals in the type
+checker but we are moving away from this convention.
+"""
 
 import re
 import difflib
@@ -29,7 +36,6 @@ NO_RETURN_VALUE_EXPECTED = 'No return value expected'
 MISSING_RETURN_STATEMENT = 'Missing return statement'
 INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'
 INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
-RETURN_ANY = 'Returning Any from function with declared return type "{}"'
 RETURN_VALUE_EXPECTED = 'Return value expected'
 NO_RETURN_EXPECTED = 'Return statement in function which does not return'
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'
@@ -93,6 +99,7 @@ CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
 BARE_GENERIC = 'Missing type parameters for generic type'
 IMPLICIT_GENERIC_ANY_BUILTIN = 'Implicit generic "Any". Use \'{}\' and specify generic parameters'
 INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'
+UNSUPPORTED_ARGUMENT_2_FOR_SUPER = 'Unsupported argument 2 for "super"'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -817,6 +824,15 @@ class MessageBuilder:
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
 
+    def first_argument_for_super_must_be_type(self, actual: Type, context: Context) -> None:
+        if isinstance(actual, Instance):
+            # Don't include type of instance, because it can look confusingly like a type
+            # object.
+            type_str = 'a non-type instance'
+        else:
+            type_str = self.format(actual)
+        self.fail('Argument 1 for "super" must be a type object; got {}'.format(type_str), context)
+
     def too_few_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not enough arguments for format string', context)
 
@@ -1008,6 +1024,11 @@ class MessageBuilder:
         else:
             message = 'Expression type contains "Any" (has type {})'.format(self.format(typ))
         self.fail(message, context)
+
+    def incorrectly_returning_any(self, typ: Type, context: Context) -> None:
+        message = 'Returning Any from function declared to return {}'.format(
+            self.format(typ))
+        self.warn(message, context)
 
     def untyped_decorated_function(self, typ: Type, context: Context) -> None:
         if isinstance(typ, AnyType):

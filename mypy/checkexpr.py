@@ -1,7 +1,7 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
 from collections import OrderedDict
-from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
+from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional, Iterable
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, set_any_tvars
@@ -1076,8 +1076,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if similarity > 0 and similarity >= best_match:
                 if (match and not is_same_type(match[-1].ret_type,
                                                typ.ret_type) and
-                    not mypy.checker.is_more_precise_signature(
-                        match[-1], typ)):
+                    (not mypy.checker.is_more_precise_signature(match[-1], typ)
+                     or (any(isinstance(arg, AnyType) for arg in arg_types)
+                         and any_arg_causes_overload_ambiguity(
+                             match + [typ], arg_types, arg_kinds, arg_names)))):
                     # Ambiguous return type. Either the function overload is
                     # overlapping (which we don't handle very well here) or the
                     # caller has provided some Any argument types; in either
@@ -2066,8 +2068,66 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_super_expr(self, e: SuperExpr) -> Type:
         """Type check a super expression (non-lvalue)."""
+        self.check_super_arguments(e)
         t = self.analyze_super(e, False)
         return t
+
+    def check_super_arguments(self, e: SuperExpr) -> None:
+        """Check arguments in a super(...) call."""
+        if ARG_STAR in e.call.arg_kinds:
+            self.chk.fail('Varargs not supported with "super"', e)
+        elif e.call.args and set(e.call.arg_kinds) != {ARG_POS}:
+            self.chk.fail('"super" only accepts positional arguments', e)
+        elif len(e.call.args) == 1:
+            self.chk.fail('"super" with a single argument not supported', e)
+        elif len(e.call.args) > 2:
+            self.chk.fail('Too many arguments for "super"', e)
+        elif self.chk.options.python_version[0] == 2 and len(e.call.args) == 0:
+            self.chk.fail('Too few arguments for "super"', e)
+        elif len(e.call.args) == 2:
+            type_obj_type = self.accept(e.call.args[0])
+            instance_type = self.accept(e.call.args[1])
+            if isinstance(type_obj_type, FunctionLike) and type_obj_type.is_type_obj():
+                type_info = type_obj_type.type_object()
+            elif isinstance(type_obj_type, TypeType):
+                item = type_obj_type.item
+                if isinstance(item, AnyType):
+                    # Could be anything.
+                    return
+                if isinstance(item, TupleType):
+                    item = item.fallback  # Handle named tuples and other Tuple[...] subclasses.
+                if not isinstance(item, Instance):
+                    # A complicated type object type. Too tricky, give up.
+                    # TODO: Do something more clever here.
+                    self.chk.fail('Unsupported argument 1 for "super"', e)
+                    return
+                type_info = item.type
+            elif isinstance(type_obj_type, AnyType):
+                return
+            else:
+                self.msg.first_argument_for_super_must_be_type(type_obj_type, e)
+                return
+
+            if isinstance(instance_type, (Instance, TupleType, TypeVarType)):
+                if isinstance(instance_type, TypeVarType):
+                    # Needed for generic self.
+                    instance_type = instance_type.upper_bound
+                    if not isinstance(instance_type, (Instance, TupleType)):
+                        # Too tricky, give up.
+                        # TODO: Do something more clever here.
+                        self.chk.fail(messages.UNSUPPORTED_ARGUMENT_2_FOR_SUPER, e)
+                        return
+                if isinstance(instance_type, TupleType):
+                    # Needed for named tuples and other Tuple[...] subclasses.
+                    instance_type = instance_type.fallback
+                if type_info not in instance_type.type.mro:
+                    self.chk.fail('Argument 2 for "super" not an instance of argument 1', e)
+            elif isinstance(instance_type, TypeType) or (isinstance(instance_type, FunctionLike)
+                                                         and instance_type.is_type_obj()):
+                # TODO: Check whether this is a valid type object here.
+                pass
+            elif not isinstance(instance_type, AnyType):
+                self.chk.fail(messages.UNSUPPORTED_ARGUMENT_2_FOR_SUPER, e)
 
     def analyze_super(self, e: SuperExpr, is_lvalue: bool) -> Type:
         """Type check a super expression."""
@@ -2089,9 +2149,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.chk.fail('super() outside of a method is not supported', e)
                         return AnyType(TypeOfAny.from_error)
                     args = self.chk.scope.top_function().arguments
-                    # An empty args with super() is an error; we need something in declared_self
+                    # super() in a function with empty args is an error; we
+                    # need something in declared_self.
                     if not args:
-                        self.chk.fail('super() requires at least one positional argument', e)
+                        self.chk.fail(
+                            'super() requires one or more positional arguments in '
+                            'enclosing function', e)
                         return AnyType(TypeOfAny.from_error)
                     declared_self = args[0].variable.type
                     return analyze_member_access(name=e.name, typ=fill_typevars(e.info), node=e,
@@ -2764,3 +2827,72 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
         return 2
     # Fall back to a conservative equality check for the remaining kinds of type.
     return 2 if is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal)) else 0
+
+
+def any_arg_causes_overload_ambiguity(items: List[CallableType],
+                                      arg_types: List[Type],
+                                      arg_kinds: List[int],
+                                      arg_names: List[Optional[str]]) -> bool:
+    """May an Any actual argument cause ambiguous result type on call to overloaded function?
+
+    Note that this sometimes returns True even if there is no ambiguity, since a correct
+    implementation would be complex (and the call would be imprecisely typed due to Any
+    types anyway).
+
+    Args:
+        items: Overload items matching the actual arguments
+        arg_types: Actual argument types
+        arg_kinds: Actual argument kinds
+        arg_names: Actual argument names
+    """
+    actual_to_formal = [
+        map_formals_to_actuals(
+            arg_kinds, arg_names, item.arg_kinds, item.arg_names, lambda i: arg_types[i])
+        for item in items
+    ]
+
+    for arg_idx, arg_type in enumerate(arg_types):
+        if isinstance(arg_type, AnyType):
+            matching_formals_unfiltered = [(item_idx, lookup[arg_idx])
+                                           for item_idx, lookup in enumerate(actual_to_formal)
+                                           if lookup[arg_idx]]
+            matching_formals = []
+            for item_idx, formals in matching_formals_unfiltered:
+                if len(formals) > 1:
+                    # An actual maps to multiple formals -- give up as too
+                    # complex, just assume it overlaps.
+                    return True
+                matching_formals.append((item_idx, items[item_idx].arg_types[formals[0]]))
+            if (not all_same_types(t for _, t in matching_formals) and
+                    not all_same_types(items[idx].ret_type
+                                       for idx, _ in matching_formals)):
+                # Any maps to multiple different types, and the return types of these items differ.
+                return True
+    return False
+
+
+def all_same_types(types: Iterable[Type]) -> bool:
+    types = list(types)
+    if len(types) == 0:
+        return True
+    return all(is_same_type(t, types[0]) for t in types[1:])
+
+
+def map_formals_to_actuals(caller_kinds: List[int],
+                           caller_names: List[Optional[str]],
+                           callee_kinds: List[int],
+                           callee_names: List[Optional[str]],
+                           caller_arg_type: Callable[[int],
+                                                     Type]) -> List[List[int]]:
+    """Calculate the reverse mapping of map_actuals_to_formals."""
+    formal_to_actual = map_actuals_to_formals(caller_kinds,
+                                              caller_names,
+                                              callee_kinds,
+                                              callee_names,
+                                              caller_arg_type)
+    # Now reverse the mapping.
+    actual_to_formal = [[] for _ in caller_kinds]  # type: List[List[int]]
+    for formal, actuals in enumerate(formal_to_actual):
+        for actual in actuals:
+            actual_to_formal[actual].append(formal)
+    return actual_to_formal

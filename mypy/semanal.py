@@ -3103,6 +3103,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
             self.fail('"super" used outside class', expr)
             return
         expr.info = self.type
+        for arg in expr.call.args:
+            arg.accept(self)
 
     def visit_tuple_expr(self, expr: TupleExpr) -> None:
         for item in expr.items:

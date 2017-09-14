@@ -565,7 +565,7 @@ class Decorator(SymbolNode, Statement):
     """
 
     func = None  # type: FuncDef                # Decorated function
-    decorators = None  # type: List[Expression] # Decorators, at least one  # XXX Not true
+    decorators = None  # type: List[Expression] # Decorators (may be empty)
     var = None  # type: Var                     # Represents the decorated function obj
     is_overload = False
 
@@ -581,6 +581,10 @@ class Decorator(SymbolNode, Statement):
 
     def fullname(self) -> str:
         return self.func.fullname()
+
+    @property
+    def info(self) -> 'TypeInfo':
+        return self.func.info
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_decorator(self)
@@ -1465,9 +1469,11 @@ class SuperExpr(Expression):
 
     name = ''
     info = None  # type: TypeInfo  # Type that contains this super expression
+    call = None  # type: CallExpr  # The expression super(...)
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, call: CallExpr) -> None:
         self.name = name
+        self.call = call
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_super_expr(self)

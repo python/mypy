@@ -3137,3 +3137,21 @@ Node = NamedTuple( # type: ignore
 n: Node
 def f(m: Node2) -> None: pass
 [builtins fixtures/tuple.pyi]
+
+[case testCrashWithPartialGlobalAndCycle]
+import bar
+
+[file foo.py]
+import bar
+my_global_dict = {}  # type: ignore
+def external_func_0() -> None:
+    global my_global_dict
+    bar.external_list
+    my_global_dict[12] = 0
+
+[file bar.py]
+import foo
+
+external_list = [0]
+
+[builtins fixtures/dict.pyi]

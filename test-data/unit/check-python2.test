@@ -308,3 +308,12 @@ class A:
 [out]
 main:2: error: Invalid type for self, or extra argument type in function annotation
 main:2: note: (Hint: typically annotations omit the type for self)
+
+[case testSuper]
+class A:
+    def f(self): # type: () -> None
+        pass
+class B(A):
+    def g(self): # type: () -> None
+        super(B, self).f()
+        super().f() # E: Too few arguments for "super"

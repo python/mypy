@@ -945,19 +945,14 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return False
 
 
-def is_more_precise(t: Type, s: Type) -> bool:
-    """Check if t is a more precise type than s.
+def is_more_precise(left: Type, right: Type) -> bool:
+    """Check if left is a more precise type than right.
 
-    A t is a proper subtype of s, t is also more precise than s. Also, if
-    s is Any, t is more precise than s for any t. Finally, if t is the same
-    type as s, t is more precise than s.
+    A left is a proper subtype of right, left is also more precise than
+    right. Also, if right is Any, left is more precise than right, for
+    any left.
     """
     # TODO Should List[int] be more precise than List[Any]?
-    if isinstance(s, AnyType):
+    if isinstance(right, AnyType):
         return True
-    if isinstance(s, Instance):
-        if isinstance(t, CallableType):
-            # Fall back to subclass check and ignore other properties of the callable.
-            return is_proper_subtype(t.fallback, s)
-        return is_proper_subtype(t, s)
-    return sametypes.is_same_type(t, s)
+    return is_proper_subtype(left, right)

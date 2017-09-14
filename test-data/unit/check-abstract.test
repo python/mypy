@@ -728,13 +728,10 @@ class A(metaclass=ABCMeta):
     def x(self) -> int: pass
 class B(A):
     @property
-    def x(self) -> str: pass # E
+    def x(self) -> str: pass # E: Return type of "x" incompatible with supertype "A"
 b = B()
-b.x() # E
+b.x() # E: "str" not callable
 [builtins fixtures/property.pyi]
-[out]
-main:7: error: Return type of "x" incompatible with supertype "A"
-main:9: error: "str" not callable
 
 [case testCantImplementAbstractPropertyViaInstanceVariable]
 from abc import abstractproperty, ABCMeta
