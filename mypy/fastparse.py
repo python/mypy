@@ -885,7 +885,8 @@ class ASTConverter(ast3.NodeTransformer):
             join_method.set_line(empty_string)
             result_expression = CallExpr(join_method,
                                          [strs_to_join],
-                                         [ARG_POS])
+                                         [ARG_POS],
+                                         [None])
             return result_expression
 
         # FormattedValue(expr value)
@@ -902,7 +903,8 @@ class ASTConverter(ast3.NodeTransformer):
             format_method.set_line(format_string)
             result_expression = CallExpr(format_method,
                                          [exp],
-                                         [ARG_POS])
+                                         [ARG_POS],
+                                         [None])
             return result_expression
 
     # Bytes(bytes s)
