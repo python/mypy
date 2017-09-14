@@ -236,7 +236,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 isinstance(callee_type, CallableType)
                 and callee_type.implicit):
             return self.msg.untyped_function_call(callee_type, e)
-        # Figure out the full name of the callee for plugin loopup.
+        # Figure out the full name of the callee for plugin lookup.
         object_type = None
         if not isinstance(e.callee, RefExpr):
             fullname = None
@@ -260,6 +260,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # Apply plugin signature hook that may generate a better signature.
                     signature_hook = self.plugin.get_method_signature_hook(fullname)
                     if signature_hook:
+                        assert object_type is not None
                         callee_type = self.apply_method_signature_hook(
                             e, callee_type, object_type, signature_hook)
         ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname, object_type)
@@ -1715,7 +1716,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if stride is None:
                 return self.nonliteral_tuple_index_helper(left_type, slic)
 
-        assert begin and stride and end
         return left_type.slice(begin, stride, end)
 
     def nonliteral_tuple_index_helper(self, left_type: TupleType, index: Expression) -> Type:
@@ -1960,6 +1960,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         vtdef = TypeVarDef('VT', -2, [], self.object_type())
         kt = TypeVarType(ktdef)
         vt = TypeVarType(vtdef)
+        rv = None  # type: Optional[Type]
         # Call dict(*args), unless it's empty and stargs is not.
         if args or not stargs:
             # The callable type represents a function like this:
@@ -1976,7 +1977,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             rv = self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
         else:
             # dict(...) will be called below.
-            rv = None
+            pass
         # Call rv.update(arg) for each arg in **stargs,
         # except if rv isn't set yet, then set rv = dict(arg).
         if stargs:
@@ -2176,8 +2177,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             'super() requires one or more positional arguments in '
                             'enclosing function', e)
                         return AnyType(TypeOfAny.from_error)
-                    declared_self = args[0].variable.type
-                    assert declared_self is not None, "Internal error: type of self is None"
+                    declared_self = args[0].variable.type or fill_typevars(e.info)
                     return analyze_member_access(name=e.name, typ=fill_typevars(e.info), node=e,
                                                  is_lvalue=False, is_super=True, is_operator=False,
                                                  builtin_type=self.named_type,
@@ -2836,7 +2836,7 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             item = actual.item
             if formal.type.fullname() in {"builtins.object", "builtins.type"}:
                 return 2
-            elif isinstance(item, Instance):
+            elif isinstance(item, Instance) and item.type.metaclass_type:
                 # FIX: this does not handle e.g. Union of instances
                 return overload_arg_similarity(item.type.metaclass_type, formal)
             else:
@@ -2900,7 +2900,7 @@ def all_same_types(types: Iterable[Type]) -> bool:
 
 
 def map_formals_to_actuals(caller_kinds: List[int],
-                           caller_names: List[Optional[str]],
+                           caller_names: Optional[Sequence[Optional[str]]],
                            callee_kinds: List[int],
                            callee_names: List[Optional[str]],
                            caller_arg_type: Callable[[int],

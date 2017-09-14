@@ -1433,6 +1433,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
 
                 if base_type:
+                    assert base_node is not None
                     if not self.check_compatibility_super(lvalue,
                                                           lvalue_type,
                                                           rvalue,
@@ -1516,6 +1517,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if base_type:
                 if not has_no_typevars(base_type):
                     self_type = self.scope.active_self_type()
+                    assert self_type is not None, "Internal error: base lookup outside class"
                     if isinstance(self_type, TupleType):
                         instance = self_type.fallback
                     else:
@@ -1864,7 +1866,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if context.get_line() in self.errors.ignored_lines[self.errors.file]:
             self.set_inferred_type(var, lvalue, AnyType(TypeOfAny.from_error))
 
-    def check_simple_assignment(self, lvalue_type: Type, rvalue: Expression,
+    def check_simple_assignment(self, lvalue_type: Optional[Type], rvalue: Expression,
                                 context: Context,
                                 msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                 lvalue_name: str = 'variable',
@@ -1880,7 +1882,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if isinstance(lvalue_type, DeletedType):
                 self.msg.deleted_as_lvalue(lvalue_type, context)
-            else:
+            elif lvalue_type:
                 self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                    '{} has type'.format(rvalue_name),
                                    '{} has type'.format(lvalue_name))
@@ -2770,7 +2772,7 @@ def conditional_type_map(expr: Expression,
         return {}, {}
 
 
-def partition_by_callable(type: Optional[Type]) -> Tuple[List[Type], List[Type]]:
+def partition_by_callable(type: Type) -> Tuple[List[Type], List[Type]]:
     """Takes in a type and partitions that type into callable subtypes and
     uncallable subtypes.
 
@@ -2801,7 +2803,7 @@ def partition_by_callable(type: Optional[Type]) -> Tuple[List[Type], List[Type]]
 
     if isinstance(type, Instance):
         method = type.type.get_method('__call__')
-        if method:
+        if method and method.type:
             callables, uncallables = partition_by_callable(method.type)
             if len(callables) and not len(uncallables):
                 # Only consider the type callable if its __call__ method is
