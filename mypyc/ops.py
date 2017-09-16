@@ -75,8 +75,11 @@ class RType:
         """Does the unboxed representation of the type use reference counting?"""
         return True
 
+    def __str__(self) -> str:
+        return self.name
+
     def __repr__(self) -> str:
-        return '<RType %s>' % self.name
+        return '<%s>' % self.__class__.__name__
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, RType) and other.name == self.name
@@ -102,6 +105,9 @@ class IntRType(RType):
     @property
     def c_undefined_value(self) -> str:
         return 'CPY_INT_TAG'
+
+    def __repr__(self) -> str:
+        return '<IntRType>'
 
 
 class BoolRType(RType):
@@ -167,6 +173,12 @@ class TupleRType(RType):
         # max c length is 31 charas, this should be enough entropy to be unique.
         return 'tuple_def_' + self.unique_id
 
+    def __str__(self) -> str:
+        return 'tuple[%s]' % ', '.join(str(typ) for typ in self.types)
+
+    def __repr__(self) -> str:
+        return '<TupleRType %s>' % ', '.join(repr(typ) for typ in self.types)
+
     def __eq__(self, other: object) -> bool:
         return isinstance(other, TupleRType) and self.types == other.types
 
@@ -209,7 +221,7 @@ class ObjectRType(PyObjectRType):
 
 
 class SequenceTupleRType(PyObjectRType):
-    """Uniform tuple (Tuple[x, ...])"""
+    """Uniform tuple"""
 
     def __init__(self) -> None:
         self.name = 'sequence_tuple'
@@ -264,6 +276,9 @@ class OptionalRType(PyObjectRType):
 
     def __repr__(self) -> str:
         return '<OptionalRType %s>' % self.value_type
+
+    def __str__(self) -> str:
+        return 'optional[%s]' % self.value_type
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, OptionalRType) and other.value_type == self.value_type
@@ -341,7 +356,7 @@ class Environment:
             while i + 1 < n and self.types[i + 1] == self.types[i0]:
                 i += 1
             i += 1
-            result.append('%s :: %s' % (', '.join(self.names[i0:i]), self.types[i0].name))
+            result.append('%s :: %s' % (', '.join(self.names[i0:i]), self.types[i0]))
         return result
 
 

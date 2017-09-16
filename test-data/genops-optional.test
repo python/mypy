@@ -9,7 +9,7 @@ def f(x: Optional[A]) -> int:
     return 2
 [out]
 def f(x):
-    x :: optional
+    x :: optional[A]
     r0, r1 :: int
 L0:
     if x is None goto L1 else goto L2 :: object
@@ -31,7 +31,7 @@ def f(x: Optional[A]) -> int:
     return 2
 [out]
 def f(x):
-    x :: optional
+    x :: optional[A]
     r0, r1 :: int
 L0:
     if not x is None goto L1 else goto L2 :: object
@@ -53,7 +53,7 @@ def f(x: Optional[A], y: Optional[A]) -> None:
     x = y
 [out]
 def f(x, y):
-    x, y :: optional
+    x, y :: optional[A]
     r0 :: None
 L0:
     x = None
@@ -75,7 +75,7 @@ def f(x: Optional[A]) -> A:
     return y
 [out]
 def f(x):
-    x :: optional
+    x :: optional[A]
     y, r0 :: A
 L0:
     y = A()

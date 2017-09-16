@@ -425,8 +425,8 @@ def f(x: Tuple[Tuple[int, bool], bool]) -> int:
     return x[0][0]
 [out]
 def f(x):
-    x :: tuple
-    r0 :: tuple
+    x :: tuple[tuple[int, bool], bool]
+    r0 :: tuple[int, bool]
     r1 :: int
 L0:
     r0 = x[0]
@@ -441,7 +441,7 @@ def f() -> int:
     return t[1]
 [out]
 def f():
-    t :: tuple
+    t :: tuple[bool, int]
     r0 :: bool
     r1, r2 :: int
 L0:
@@ -457,7 +457,7 @@ def f(x: Tuple[bool, bool, int]) -> int:
     return len(x)
 [out]
 def f(x):
-    x :: tuple
+    x :: tuple[bool, bool, int]
     r0 :: int
 L0:
     r0 = 3
