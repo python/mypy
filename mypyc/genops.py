@@ -249,10 +249,21 @@ class IRBuilder(NodeVisitor[Register]):
     def visit_assignment_stmt(self, stmt: AssignmentStmt) -> Register:
         assert len(stmt.lvalues) == 1
         lvalue = stmt.lvalues[0]
-        return self.assign(lvalue, stmt.rvalue, declared_type=stmt.type)
+        if stmt.type:
+            lvalue_type = self.type_to_rtype(stmt.type)
+        else:
+            if isinstance(lvalue, IndexExpr):
+                # TODO: This won't be right for user-defined classes. Store the
+                #     lvalue type in mypy and remove this special case.
+                lvalue_type = ObjectRType()
+            else:
+                lvalue_type = self.node_type(lvalue)
+        rvalue_type = self.node_type(stmt.rvalue)
+        return self.assign(lvalue, stmt.rvalue, rvalue_type, lvalue_type,
+                           declare_new=(stmt.type is not None))
 
     def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> Register:
-        target = self.get_assignment_target(stmt.lvalue, None)
+        target = self.get_assignment_target(stmt.lvalue, declare_new=False)
 
         if isinstance(target, AssignmentTargetRegister):
             ltype = self.environment.types[target.register]
@@ -264,12 +275,11 @@ class IRBuilder(NodeVisitor[Register]):
         # NOTE: List index not supported yet for compound assignments.
         assert False, 'Unsupported lvalue: %r'
 
-    def get_assignment_target(self, lvalue: Lvalue,
-                              declared_type: Optional[Type] = None) -> AssignmentTarget:
+    def get_assignment_target(self, lvalue: Lvalue, declare_new: bool) -> AssignmentTarget:
         if isinstance(lvalue, NameExpr):
             # Assign to local variable.
             assert lvalue.kind == LDEF
-            if lvalue.is_def or declared_type is not None:
+            if lvalue.is_def or declare_new:
                 # Define a new variable.
                 assert isinstance(lvalue.node, Var)  # TODO: Can this fail?
                 lvalue_num = self.environment.add_local(lvalue.node, self.node_type(lvalue))
@@ -300,13 +310,20 @@ class IRBuilder(NodeVisitor[Register]):
     def assign_to_target(self,
             target: AssignmentTarget,
             rvalue: Expression,
-            rvalue_type: Optional[RType] = None) -> Register:
+            rvalue_type: RType,
+            needs_box: bool) -> Register:
         rvalue_type = rvalue_type or self.node_type(rvalue)
 
         if isinstance(target, AssignmentTargetRegister):
-            return self.accept(rvalue, target=target.register)
+            if needs_box:
+                unboxed = self.accept(rvalue)
+                return self.box(unboxed, rvalue_type, target=target.register)
+            else:
+                return self.accept(rvalue, target=target.register)
         elif isinstance(target, AssignmentTargetAttr):
             rvalue_reg = self.accept(rvalue)
+            if needs_box:
+                rvalue_reg = self.box(rvalue_reg, rvalue_type)
             self.add(SetAttr(target.obj_reg, target.attr, rvalue_reg, target.obj_type))
             return INVALID_REGISTER
         elif isinstance(target, AssignmentTargetIndex):
@@ -321,10 +338,12 @@ class IRBuilder(NodeVisitor[Register]):
     def assign(self,
                lvalue: Lvalue,
                rvalue: Expression,
-               rvalue_type: Optional[RType] = None,
-               declared_type: Optional[Type] = None) -> Register:
-        target = self.get_assignment_target(lvalue, declared_type)
-        return self.assign_to_target(target, rvalue, rvalue_type)
+               rvalue_type: RType,
+               lvalue_type: RType,
+               declare_new: bool) -> Register:
+        target = self.get_assignment_target(lvalue, declare_new)
+        needs_box = rvalue_type.supports_unbox and not lvalue_type.supports_unbox
+        return self.assign_to_target(target, rvalue, rvalue_type, needs_box)
 
     def visit_if_stmt(self, stmt: IfStmt) -> Register:
         # If statements are normalized
@@ -404,7 +423,7 @@ class IRBuilder(NodeVisitor[Register]):
             end_reg = self.accept(end)
 
             # Initialize loop index to 0.
-            index_reg = self.assign(s.index, IntExpr(0), IntRType())
+            index_reg = self.assign(s.index, IntExpr(0), IntRType(), IntRType(), declare_new=True)
             goto = Goto(INVALID_LABEL)
             self.add(goto)
 
@@ -911,14 +930,19 @@ class IRBuilder(NodeVisitor[Register]):
         mypy_type = self.types[node]
         return self.type_to_rtype(mypy_type)
 
-    def box(self, src: Register, typ: RType) -> Register:
+    def box(self, src: Register, typ: RType, target: Optional[Register] = None) -> Register:
         if typ.supports_unbox:
-            target = self.alloc_temp(ObjectRType())
+            if target is None:
+                target = self.alloc_temp(ObjectRType())
             self.add(Box(target, src, typ))
             return target
         else:
             # Already boxed
-            return src
+            if target is not None:
+                self.add(Assign(target, src))
+                return target
+            else:
+                return src
 
     def unbox_or_cast(self, src: Register, target_type: RType,
                       target: Optional[Register] = None) -> Register:

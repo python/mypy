@@ -501,17 +501,19 @@ def f() -> int:
 [out]
 def f():
     t :: sequence_tuple
-    r0, r1, r2 :: int
-    r3 :: object
-    r4 :: int
+    r0 :: tuple[int, int]
+    r1, r2, r3 :: int
+    r4 :: object
+    r5 :: int
 L0:
-    r0 = 1
-    r1 = 2
-    t = (r0, r1)
-    r2 = 1
-    r3 = t[r2] :: sequence_tuple
-    r4 = unbox(int, r3)
-    return r4
+    r1 = 1
+    r2 = 2
+    r0 = (r1, r2)
+    t = box(tuple[int, int], r0)
+    r3 = 1
+    r4 = t[r3] :: sequence_tuple
+    r5 = unbox(int, r4)
+    return r5
 
 [case testPycall]
 import testmodule

@@ -45,22 +45,64 @@ L2:
 [case testAssignToOptional]
 from typing import Optional
 
-class A: pass
+class A:
+    a: Optional[int]
 
-def f(x: Optional[A], y: Optional[A]) -> None:
+def f(x: Optional[A], y: Optional[A], z: Optional[int]) -> None:
     x = None
     x = A()
     x = y
+    z = 1
+    a = A()
+    a.a = 1
+    a.a = None
 [out]
-def f(x, y):
+def f(x, y, z):
     x, y :: optional[A]
-    r0 :: None
+    z :: optional[int]
+    r0 :: int
+    a :: A
+    r1 :: int
+    r2 :: object
+    r3, r4 :: None
 L0:
     x = None
     x = A()
     x = y
-    r0 = None
-    return r0
+    r0 = 1
+    z = box(int, r0)
+    a = A()
+    r1 = 1
+    r2 = box(int, r1)
+    a.a = r2
+    r3 = None
+    a.a = r3
+    r4 = None
+    return r4
+
+[case testBoxOptionalListItem]
+from typing import List, Optional
+
+def f(x: List[Optional[int]]) -> None:
+    x[0] = 0
+    x[1] = None
+[out]
+def f(x):
+    x :: list
+    r0, r1 :: int
+    r2 :: object
+    r3 :: int
+    r4, r5 :: None
+L0:
+    r0 = 0
+    r1 = 0
+    r2 = box(int, r1)
+    x[r0] = r2 :: list
+    r3 = 1
+    r4 = None
+    x[r3] = r4 :: list
+    r5 = None
+    return r5
 
 [case testNarrowDownFromOptional]
 from typing import Optional

@@ -872,7 +872,7 @@ class Box(RegisterOp):
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = box(%s, %r)', self.dest, self.type.name, self.src)
+        return env.format('%r = box(%s, %r)', self.dest, self.type, self.src)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_box(self)
@@ -895,7 +895,7 @@ class Unbox(RegisterOp):
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = unbox(%s, %r)', self.dest, self.type.name, self.src)
+        return env.format('%r = unbox(%s, %r)', self.dest, self.type, self.src)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_unbox(self)
