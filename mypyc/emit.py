@@ -70,6 +70,11 @@ class Emitter:
     def emit_from_emitter(self, emitter: 'Emitter') -> None:
         self.fragments.extend(emitter.fragments)
 
+    def emit_printf(self, fmt: str, *args: str) -> None:
+        fmt = fmt.replace('\n', '\\n')
+        self.emit_line('printf(%s);' % ', '.join(['"%s"' % fmt] + list(args)))
+        self.emit_line('fflush(stdout);')
+
     def temp_name(self) -> str:
         self.context.temp_counter += 1
         return '__tmp%d' % self.context.temp_counter

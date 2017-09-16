@@ -293,12 +293,6 @@ class FunctionEmitterVisitor(OpVisitor):
     def emit_lines(self, *lines: str) -> None:
         self.emitter.emit_lines(*lines)
 
-    def emit_print(self, args: str) -> None:
-        """Emit printf call (for debugging mypyc)."""
-        self.emit_line(r'printf(%s);' % args)
-        self.emit_line(r'printf("\n");')
-        self.emit_line(r'fflush(stdout);')
-
     def emit_inc_ref(self, dest: str, rtype: RType) -> None:
         self.emitter.emit_inc_ref(dest, rtype)
 
