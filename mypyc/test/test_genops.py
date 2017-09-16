@@ -25,6 +25,7 @@ files = [
     'genops-statements.test',
     'genops-classes.test',
     'genops-optional.test',
+    'genops-tuple.test',
 ]
 
 

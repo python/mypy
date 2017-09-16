@@ -1,0 +1,96 @@
+[case testTupleGet]
+from typing import Tuple
+
+def f(x: Tuple[Tuple[int, bool], bool]) -> int:
+    return x[0][0]
+[out]
+def f(x):
+    x :: tuple[tuple[int, bool], bool]
+    r0 :: tuple[int, bool]
+    r1 :: int
+L0:
+    r0 = x[0]
+    r1 = r0[0]
+    return r1
+
+[case testTupleNew]
+from typing import Tuple
+
+def f() -> int:
+    t = (True, 1)
+    return t[1]
+[out]
+def f():
+    t :: tuple[bool, int]
+    r0 :: bool
+    r1, r2 :: int
+L0:
+    r0 = True
+    r1 = 1
+    t = (r0, r1)
+    r2 = t[1]
+    return r2
+
+[case testTupleLen]
+from typing import Tuple
+def f(x: Tuple[bool, bool, int]) -> int:
+    return len(x)
+[out]
+def f(x):
+    x :: tuple[bool, bool, int]
+    r0 :: int
+L0:
+    r0 = 3
+    return r0
+
+[case testSequenceTuple]
+from typing import List
+def f(x: List[bool]) -> bool:
+    return tuple(x)[1]
+[out]
+def f(x):
+    x :: list
+    r0 :: sequence_tuple
+    r1 :: int
+    r2 :: object
+    r3 :: bool
+L0:
+    r0 = tuple x :: list
+    r1 = 1
+    r2 = r0[r1] :: sequence_tuple
+    r3 = unbox(bool, r2)
+    return r3
+
+[case testSequenceTupleLen]
+from typing import Tuple
+def f(x: Tuple[int, ...]) -> int:
+  return len(x)
+[out]
+def f(x):
+    x :: sequence_tuple
+    r0 :: int
+L0:
+    r0 = len x :: sequence_tuple
+    return r0
+
+[case testSequenceTupleForced]
+from typing import Tuple
+def f() -> int:
+    t = (1, 2) # type: Tuple[int, ...]
+    return t[1]
+[out]
+def f():
+    t :: sequence_tuple
+    r0 :: tuple[int, int]
+    r1, r2, r3 :: int
+    r4 :: object
+    r5 :: int
+L0:
+    r1 = 1
+    r2 = 2
+    r0 = (r1, r2)
+    t = box(tuple[int, int], r0)
+    r3 = 1
+    r4 = t[r3] :: sequence_tuple
+    r5 = unbox(int, r4)
+    return r5
