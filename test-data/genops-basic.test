@@ -578,32 +578,3 @@ L0:
     r5 = cast(None, r2)
     r6 = None
     return r6
-
-[case testIsNone]
-from typing import Optional
-
-class A: pass
-
-def f(x: Optional[A]) -> int:
-    if x is None:
-        return 1
-    if x is not None:
-        return 2
-    return 3
-[out]
-def f(x):
-    x :: optional
-    r0, r1, r2 :: int
-L0:
-    if x is None goto L1 else goto L2 :: object
-L1:
-    r0 = 1
-    return r0
-L2:
-    if not x is None goto L3 else goto L4 :: object
-L3:
-    r1 = 2
-    return r1
-L4:
-    r2 = 3
-    return r2
