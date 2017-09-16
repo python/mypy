@@ -16,28 +16,37 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     name = cl.name
     fullname = '{}.{}'.format(module, name)
     new_name = '{}_new'.format(name)
+    traverse_name = '{}_traverse'.format(name)
+    clear_name = '{}_clear'.format(name)
     dealloc_name = '{}_dealloc'.format(name)
     getseters_name = '{}_getseters'.format(name)
     vtable_name = '{}_vtable'.format(name)
+
+    def emit_line() -> None:
+        emitter.emit_line()
 
     # Use dummy empty __init__ for now.
     # TODO: Use UserRType
     init = FuncIR(cl.name, [], ObjectRType(), [], Environment())
     emitter.emit_line(native_function_header(init) + ';')
-    emitter.emit_line()
+    emit_line()
     generate_object_struct(cl, emitter)
-    emitter.emit_line()
+    emit_line()
     generate_new_for_class(cl, new_name, vtable_name, emitter)
-    emitter.emit_line()
-    generate_dealloc_for_class(cl, dealloc_name, emitter)
-    emitter.emit_line()
+    emit_line()
+    generate_traverse_for_class(cl, traverse_name, emitter)
+    emit_line()
+    generate_clear_for_class(cl, clear_name, emitter)
+    emit_line()
+    generate_dealloc_for_class(cl, dealloc_name, clear_name, emitter)
+    emit_line()
     generate_native_getters_and_setters(cl, emitter)
     generate_vtable(cl, vtable_name, emitter)
-    emitter.emit_line()
+    emit_line()
     generate_getseter_declarations(cl, emitter)
-    emitter.emit_line()
+    emit_line()
     generate_getseters_table(cl, getseters_name, emitter)
-    emitter.emit_line()
+    emit_line()
 
     emitter.emit_line(textwrap.dedent("""\
         static PyTypeObject {type_struct} = {{
@@ -60,10 +69,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             0,                         /* tp_getattro */
             0,                         /* tp_setattro */
             0,                         /* tp_as_buffer */
-            Py_TPFLAGS_DEFAULT,        /* tp_flags */
+            Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC, /* tp_flags */
             0,                         /* tp_doc */
-            0,                         /* tp_traverse */
-            0,                         /* tp_clear */
+            (traverseproc){traverse_name}, /* tp_traverse */
+            (inquiry){clear_name},     /* tp_clear */
             0,                         /* tp_richcompare */
             0,                         /* tp_weaklistoffset */
             0,                         /* tp_iter */
@@ -83,6 +92,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         """).format(type_struct=type_struct_name(cl.name),
                     struct_name=cl.struct_name,
                     fullname=fullname,
+                    traverse_name=traverse_name,
+                    clear_name=clear_name,
                     dealloc_name=dealloc_name,
                     new_name=new_name,
                     getseters_name=getseters_name))
@@ -189,17 +200,41 @@ def generate_new_for_class(cl: ClassIR,
     emitter.emit_line('}')
 
 
-def generate_dealloc_for_class(cl: ClassIR,
-                               func_name: str,
-                               emitter: Emitter) -> None:
-    emitter.emit_line('static void')
+def generate_traverse_for_class(cl: ClassIR,
+                                func_name: str,
+                                emitter: Emitter) -> None:
+    """Emit function that performs cycle GC traversal of an instance."""
+    emitter.emit_line('static int')
+    emitter.emit_line('{}({} *self, visitproc visit, void *arg)'.format(func_name,
+                                                                        cl.struct_name))
+    emitter.emit_line('{')
+    for attr, rtype in cl.attributes:
+        emitter.emit_gc_visit('self->{}'.format(attr), rtype)
+    emitter.emit_line('return 0;')
+    emitter.emit_line('}')
+
+
+def generate_clear_for_class(cl: ClassIR,
+                             func_name: str,
+                             emitter: Emitter) -> None:
+    emitter.emit_line('static int')
     emitter.emit_line('{}({} *self)'.format(func_name, cl.struct_name))
     emitter.emit_line('{')
     for attr, rtype in cl.attributes:
-        if rtype.is_refcounted:
-            emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
-            emitter.emit_dec_ref('self->{}'.format(attr), rtype)
-            emitter.emit_line('}')
+        emitter.emit_gc_clear('self->{}'.format(attr), rtype)
+    emitter.emit_line('return 0;')
+    emitter.emit_line('}')
+
+
+def generate_dealloc_for_class(cl: ClassIR,
+                               dealloc_func_name: str,
+                               clear_func_name: str,
+                               emitter: Emitter) -> None:
+    emitter.emit_line('static void')
+    emitter.emit_line('{}({} *self)'.format(dealloc_func_name, cl.struct_name))
+    emitter.emit_line('{')
+    emitter.emit_line('PyObject_GC_UnTrack(self);')
+    emitter.emit_line('{}(self);'.format(clear_func_name))
     emitter.emit_line('Py_TYPE(self)->tp_free((PyObject *)self);')
     emitter.emit_line('}')
 

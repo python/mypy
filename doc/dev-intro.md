@@ -195,6 +195,9 @@ Here are some hints about how to add support for a new primitive type
 
 * Update `emit_error_check` in `mypyc.emit` for unboxed types.
 
+* Update `emit_gc_visit` and `emit_gc_clear` in `mypyc.emit` if the
+  type has an unboxed representation with pointers.
+
 The above may be enough to allow you to declare variables with the
 type and pass values around. You likely also want to add support for
 some primitive operations for the type (see Built-in Operation for an

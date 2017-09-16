@@ -5,7 +5,7 @@ from typing import List, Set, Dict
 from mypyc.common import REG_PREFIX
 from mypyc.ops import (
     Environment, Label, Register, RType, ObjectRType, TupleRType, UserRType, OptionalRType,
-    type_struct_name
+    IntRType, type_struct_name
 )
 
 
@@ -288,3 +288,49 @@ class Emitter:
         else:
             self.emit_line('if ({}.f0 == {}) {{'.format(value, rtype.types[0].c_error_value))
         self.emit_lines(failure, '}')
+
+    def emit_gc_visit(self, target: str, rtype: RType) -> None:
+        """Emit code for GC visiting a C variable reference.
+
+        Assume that 'target' represents a C expression that refers to a
+        struct member, such as 'self->x'.
+        """
+        if not rtype.is_refcounted:
+            # Not refcounted -> no pointers -> no GC interaction.
+            return
+        elif isinstance(rtype, IntRType):
+            self.emit_line('if (CPyTagged_CheckLong({})) {{'.format(target))
+            self.emit_line('Py_VISIT(CPyTagged_LongAsObject({}));'.format(target))
+            self.emit_line('}')
+        elif isinstance(rtype, TupleRType):
+            for i, item_type in enumerate(rtype.types):
+                self.emit_gc_visit('{}.f{}'.format(target, i), item_type)
+        elif rtype.ctype == 'PyObject *':
+            # The simplest case.
+            self.emit_line('Py_VISIT({});'.format(target))
+        else:
+            assert False, 'emit_gc_visit() not implemented for %s' % repr(rtype)
+
+    def emit_gc_clear(self, target: str, rtype: RType) -> None:
+        """Emit code for clearing a C attribute reference for GC.
+
+        Assume that 'target' represents a C expression that refers to a
+        struct member, such as 'self->x'.
+        """
+        if not rtype.is_refcounted:
+            # Not refcounted -> no pointers -> no GC interaction.
+            return
+        elif isinstance(rtype, IntRType):
+            self.emit_line('if (CPyTagged_CheckLong({})) {{'.format(target))
+            self.emit_line('CPyTagged __tmp = {};'.format(target))
+            self.emit_line('{} = {};'.format(target, rtype.c_undefined_value))
+            self.emit_line('Py_XDECREF(CPyTagged_LongAsObject(__tmp));')
+            self.emit_line('}')
+        elif isinstance(rtype, TupleRType):
+            for i, item_type in enumerate(rtype.types):
+                self.emit_gc_clear('{}.f{}'.format(target, i), item_type)
+        elif rtype.ctype == 'PyObject *' and rtype.c_undefined_value == 'NULL':
+            # The simplest case.
+            self.emit_line('Py_CLEAR({});'.format(target))
+        else:
+            assert False, 'emit_gc_clear() not implemented for %s' % repr(rtype)
