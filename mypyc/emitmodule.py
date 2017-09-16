@@ -26,6 +26,7 @@ class MarkedDeclaration:
 def compile_module_to_c(sources: List[BuildSource], module_name: str, options: Options,
                         alt_lib_path: str) -> str:
     """Compile a Python module to source for a Python C extension module."""
+    assert options.strict_optional, 'strict_optional must be turned on'
     result = build(sources=sources,
                    options=options,
                    alt_lib_path=alt_lib_path)

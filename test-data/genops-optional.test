@@ -6,26 +6,41 @@ class A: pass
 def f(x: Optional[A]) -> int:
     if x is None:
         return 1
-    if x is not None:
-        return 2
-    return 3
+    return 2
 [out]
 def f(x):
     x :: optional
-    r0, r1, r2 :: int
+    r0, r1 :: int
 L0:
     if x is None goto L1 else goto L2 :: object
 L1:
     r0 = 1
     return r0
 L2:
-    if not x is None goto L3 else goto L4 :: object
-L3:
     r1 = 2
     return r1
-L4:
-    r2 = 3
-    return r2
+
+[case testIsNotNone]
+from typing import Optional
+
+class A: pass
+
+def f(x: Optional[A]) -> int:
+    if x is not None:
+        return 1
+    return 2
+[out]
+def f(x):
+    x :: optional
+    r0, r1 :: int
+L0:
+    if not x is None goto L1 else goto L2 :: object
+L1:
+    r0 = 1
+    return r0
+L2:
+    r1 = 2
+    return r1
 
 [case testAssignToOptional]
 from typing import Optional
@@ -46,3 +61,28 @@ L0:
     x = y
     r0 = None
     return r0
+
+[case testNarrowDownFromOptional]
+from typing import Optional
+
+class A: pass
+
+def f(x: Optional[A]) -> A:
+    y = A()
+    if x is not None:
+        y = x
+        return x
+    return y
+[out]
+def f(x):
+    x :: optional
+    y, r0 :: A
+L0:
+    y = A()
+    if not x is None goto L1 else goto L2 :: object
+L1:
+    y = cast(A, x)
+    r0 = cast(A, x)
+    return r0
+L2:
+    return y

@@ -473,7 +473,7 @@ class IRBuilder(NodeVisitor[Register]):
             value_box = self.alloc_temp(ObjectRType())
             self.add(PrimitiveOp(value_box, PrimitiveOp.LIST_GET, expr_reg, index_reg))
 
-            self.unbox(value_box, target_type, target=lvalue_reg)
+            self.unbox_or_cast(value_box, target_type, target=lvalue_reg)
 
             s.body.accept(self)
 
@@ -577,7 +577,7 @@ class IRBuilder(NodeVisitor[Register]):
 
             self.add(PrimitiveOp(tmp, op, base_reg, index_reg))
             target = self.alloc_target(target_type)
-            return self.unbox(tmp, target_type, target)
+            return self.unbox_or_cast(tmp, target_type, target)
 
         elif isinstance(base_rtype, TupleRType):
             base_reg = self.accept(expr.base)
@@ -626,12 +626,26 @@ class IRBuilder(NodeVisitor[Register]):
         assert isinstance(expr.node, Var)
 
         reg = self.environment.lookup(expr.node)
-        if self.targets[-1] < 0:
-            return reg
+        return self.get_using_binder(reg, expr.node, expr)
+
+    def get_using_binder(self, reg: Register, var: Var, expr: Expression) -> Register:
+        var_type = self.type_to_rtype(var.type)
+        target_type = self.node_type(expr)
+        if var_type != target_type:
+            # Cast/unbox to the narrower given by the binder.
+            if self.targets[-1] < 0:
+                target = self.alloc_temp(target_type)
+            else:
+                target = self.targets[-1]
+            return self.unbox_or_cast(reg, target_type, target)
         else:
-            target = self.targets[-1]
-            self.add(Assign(target, reg))
-            return target
+            # Regular register access -- binder is not active.
+            if self.targets[-1] < 0:
+                return reg
+            else:
+                target = self.targets[-1]
+                self.add(Assign(target, reg))
+                return target
 
     def is_module_member_expr(self, expr: MemberExpr):
         return isinstance(expr.expr, RefExpr) and expr.expr.kind == MODULE_REF
@@ -669,7 +683,7 @@ class IRBuilder(NodeVisitor[Register]):
             arg_boxes.append(self.box(arg_reg, self.node_type(arg_expr)))
 
         self.add(PyCall(target_box, function, arg_boxes))
-        return self.unbox(target_box, target_type)
+        return self.unbox_or_cast(target_box, target_type)
 
     def visit_call_expr(self, expr: CallExpr) -> Register:
         if isinstance(expr.callee, MemberExpr):
@@ -906,8 +920,8 @@ class IRBuilder(NodeVisitor[Register]):
             # Already boxed
             return src
 
-    def unbox(self, src: Register, target_type: RType,
-              target: Optional[Register] = None) -> Register:
+    def unbox_or_cast(self, src: Register, target_type: RType,
+                      target: Optional[Register] = None) -> Register:
         if target is None:
             target = self.alloc_temp(target_type)
 

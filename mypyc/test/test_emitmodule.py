@@ -42,6 +42,7 @@ class TestCompiler(DataSuite):
             options = Options()
             options.use_builtins_fixtures = True
             options.show_traceback = True
+            options.strict_optional = True
             source = build.BuildSource('prog.py', 'prog', text)
 
             try:
