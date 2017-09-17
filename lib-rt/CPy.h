@@ -39,7 +39,7 @@ static void CPyDebug_Print(const char *msg) {
     ((void (*)(object_type *, attr_type))((object_type *)obj)->vtable[vtable_index])( \
         (object_type *)obj, value);
 
-static void CPyError_OutOfMemory() {
+static void CPyError_OutOfMemory(void) {
     fprintf(stderr, "fatal: out of memory\n");
     fflush(stderr);
     abort();
