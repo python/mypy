@@ -610,11 +610,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # function. In the first case, set up another reference with the
                 # precise type.
                 if isinstance(item, FuncDef):
-                    fdef = item  # type: Optional[FuncDef]
-                else:
-                    fdef = None
-
-                if fdef:
+                    fdef = item
                     # Check if __init__ has an invalid, non-None return type.
                     if (fdef.info and fdef.name() in ('__init__', '__init_subclass__') and
                             not isinstance(typ.ret_type, NoneTyp) and
@@ -634,6 +630,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     self.msg.unimported_type_becomes_any(prefix, arg_type, fdef)
                     check_for_explicit_any(fdef.type, self.options, self.is_typeshed_stub,
                                            self.msg, context=fdef)
+
                 if name:  # Special method names
                     if name in nodes.reverse_op_method_set:
                         self.check_reverse_op_method(item, typ, name)
@@ -641,6 +638,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.check_getattr_method(typ, defn, name)
                     elif name == '__setattr__':
                         self.check_setattr_method(typ, defn)
+
                 # Refuse contravariant return type variable
                 if isinstance(typ.ret_type, TypeVarType):
                     if typ.ret_type.variance == CONTRAVARIANT:
@@ -1456,7 +1454,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # lvalue had a type defined; this is handled by other
         # parts, and all we have to worry about in that case is
         # that lvalue is compatible with the base class.
-        compare_node = None  # type: Optional[Node]
+        compare_node = None
         if lvalue_type:
             compare_type = lvalue_type
             compare_node = lvalue.node

@@ -21,7 +21,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, EnumCallExpr, SymbolTableNode,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr,
     ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE,
 )
 from mypy.literals import literal
@@ -201,7 +201,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 and len(e.args) == 2):
             for typ in mypy.checker.flatten(e.args[1]):
                 if isinstance(typ, NameExpr):
-                    node = None  # type: Optional[SymbolTableNode]
+                    node = None
                     try:
                         node = self.chk.lookup_qualified(typ.name)
                     except KeyError:
@@ -218,7 +218,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     elif typ.node.is_newtype:
                         self.msg.fail(messages.CANNOT_ISINSTANCE_NEWTYPE, e)
         self.try_infer_partial_type(e)
-        type_context = None  # type: Optional[CallableType]
+        type_context = None
         if isinstance(e.callee, LambdaExpr):
             formal_to_actual = map_actuals_to_formals(
                 e.arg_kinds, e.arg_names,
@@ -677,7 +677,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if callee:
             fixed = min(fixed, callee.max_fixed_args())
 
-        ctx = None  # type: Optional[Type]
+        ctx = None
         for i, arg in enumerate(args):
             if i < fixed:
                 if callee and i < len(callee.arg_types):
@@ -908,7 +908,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Check that there is a value for all required arguments to a function.
 
         Also check that there are no duplicate values for arguments. Report found errors
-        using 'messages' if it's not None.
+        using 'messages' if it's not None. If 'messages' is given, 'context' must also be given.
 
         Return False if there were any errors. Otherwise return True
         """
@@ -1368,7 +1368,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Comparison expressions are type checked consecutive-pair-wise
         That is, 'a < b > c == d' is check as 'a < b and b > c and c == d'
         """
-        result = None  # type: Optional[mypy.types.Type]
+        result = None
 
         # Check each consecutive operand pair and their operator
         for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
@@ -1697,9 +1697,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return result
 
     def visit_tuple_slice_helper(self, left_type: TupleType, slic: SliceExpr) -> Type:
-        begin = None  # type: Optional[int]
-        end = None  # type: Optional[int]
-        stride = None  # type: Optional[int]
+        begin = None
+        end = None
+        stride = None
 
         if slic.begin_index:
             begin = self._get_value(slic.begin_index)
@@ -1960,7 +1960,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         vtdef = TypeVarDef('VT', -2, [], self.object_type())
         kt = TypeVarType(ktdef)
         vt = TypeVarType(vtdef)
-        rv = None  # type: Optional[Type]
+        rv = None
         # Call dict(*args), unless it's empty and stargs is not.
         if args or not stargs:
             # The callable type represents a function like this:
