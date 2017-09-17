@@ -39,6 +39,12 @@ static void CPyDebug_Print(const char *msg) {
     ((void (*)(object_type *, attr_type))((object_type *)obj)->vtable[vtable_index])( \
         (object_type *)obj, value);
 
+static void CPyError_OutOfMemory() {
+    fprintf(stderr, "fatal: out of memory\n");
+    fflush(stderr);
+    abort();
+}
+
 inline int CPyTagged_CheckLong(CPyTagged x) {
     return x & CPY_INT_TAG;
 }
@@ -120,7 +126,7 @@ static PyObject *CPyTagged_AsObject(CPyTagged x) {
     } else {
         value = PyLong_FromLongLong(CPyTagged_ShortAsLongLong(x));
         if (value == NULL) {
-            abort(); // TODO: Better way of dealing with out of memory errors.
+            CPyError_OutOfMemory();
         }
     }
     return value;
@@ -133,7 +139,7 @@ static PyObject *CPyTagged_StealAsObject(CPyTagged x) {
     } else {
         value = PyLong_FromLongLong(CPyTagged_ShortAsLongLong(x));
         if (value == NULL) {
-            abort(); // TODO: Better way of dealing with out of memory errors.
+            CPyError_OutOfMemory();
         }
     }
     return value;
@@ -179,6 +185,9 @@ static CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Add(left_obj, right_obj);
+    if (result == NULL) {
+        CPyError_OutOfMemory();
+    }
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
     return CPyTagged_StealFromObject(result);
@@ -200,6 +209,9 @@ static CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Subtract(left_obj, right_obj);
+    if (result == NULL) {
+        CPyError_OutOfMemory();
+    }
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
     return CPyTagged_StealFromObject(result);
@@ -220,6 +232,9 @@ static CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Multiply(left_obj, right_obj);
+    if (result == NULL) {
+        CPyError_OutOfMemory();
+    }
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
     return CPyTagged_StealFromObject(result);
@@ -246,6 +261,9 @@ static CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_FloorDivide(left_obj, right_obj);
+    if (result == NULL) {
+        CPyError_OutOfMemory();
+    }
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
     return CPyTagged_StealFromObject(result);
@@ -267,6 +285,9 @@ static CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Remainder(left_obj, right_obj);
+    if (result == NULL) {
+        CPyError_OutOfMemory();
+    }
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
     return CPyTagged_StealFromObject(result);
@@ -279,7 +300,7 @@ static bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right) {
         int result = PyObject_RichCompareBool(CPyTagged_LongAsObject(left),
                                               CPyTagged_LongAsObject(right), Py_EQ);
         if (result == -1) {
-            abort(); // TODO
+            CPyError_OutOfMemory();
         }
         return result;
     }
@@ -308,7 +329,7 @@ static bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right) {
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
     if (result == -1) {
-        abort(); // TODO
+        CPyError_OutOfMemory();
     }
     return result;
 }
@@ -413,7 +434,9 @@ static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
 
 static inline PyObject *CPyObject_GetAttrString(PyObject *obj, const char *attr_name) {
     PyObject *result = PyObject_GetAttrString(obj, attr_name);
-    if(result == NULL) abort();
+    if (result == NULL) {
+        abort();
+    }
     return result;
 }
 
