@@ -1,6 +1,6 @@
 """Utilities for type argument inference."""
 
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from mypy.constraints import infer_constraints, infer_constraints_for_callable
 from mypy.types import Type, TypeVarId, CallableType
@@ -9,7 +9,7 @@ from mypy.constraints import SUBTYPE_OF
 
 
 def infer_function_type_arguments(callee_type: CallableType,
-                                  arg_types: List[Optional[Type]],
+                                  arg_types: Sequence[Optional[Type]],
                                   arg_kinds: List[int],
                                   formal_to_actual: List[List[int]],
                                   strict: bool = True) -> List[Optional[Type]]:

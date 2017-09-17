@@ -212,7 +212,7 @@ class ConditionalTypeBinder:
 
     def assign_type(self, expr: Expression,
                     type: Type,
-                    declared_type: Type,
+                    declared_type: Optional[Type],
                     restrict_any: bool = False) -> None:
         if not isinstance(expr, BindableTypes):
             return None

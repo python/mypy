@@ -630,7 +630,7 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
 
     """
     if isinstance(method, Overloaded):
-        return cast(F, Overloaded([bind_self(c, method) for c in method.items()]))
+        return cast(F, Overloaded([bind_self(c, original_type) for c in method.items()]))
     assert isinstance(method, CallableType)
     func = method
     if not func.arg_types:

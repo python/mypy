@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Sequence, Optional
 
 import mypy.subtypes
 from mypy.sametypes import is_same_type
@@ -8,7 +8,7 @@ from mypy.messages import MessageBuilder
 from mypy.nodes import Context
 
 
-def apply_generic_arguments(callable: CallableType, types: List[Type],
+def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optional[Type]],
                             msg: MessageBuilder, context: Context) -> CallableType:
     """Apply generic type arguments to a callable type.
 
@@ -18,10 +18,10 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
     Note that each type can be None; in this case, it will not be applied.
     """
     tvars = callable.variables
-    assert len(tvars) == len(types)
+    assert len(tvars) == len(orig_types)
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.
-    types = types[:]
+    types = list(orig_types)
     for i, type in enumerate(types):
         values = callable.variables[i].values
         if values and type:
@@ -47,8 +47,9 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
     # Create a map from type variable id to target type.
     id_to_type = {}  # type: Dict[TypeVarId, Type]
     for i, tv in enumerate(tvars):
-        if types[i]:
-            id_to_type[tv.id] = types[i]
+        typ = types[i]
+        if typ:
+            id_to_type[tv.id] = typ
 
     # Apply arguments to argument types.
     arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]

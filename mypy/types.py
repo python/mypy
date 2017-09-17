@@ -1011,7 +1011,8 @@ class TupleType(Type):
             items = self.items
         return TupleType(items, fallback, self.line, self.column)
 
-    def slice(self, begin: int, stride: int, end: int) -> 'TupleType':
+    def slice(self, begin: Optional[int], stride: Optional[int],
+              end: Optional[int]) -> 'TupleType':
         return TupleType(self.items[begin:end:stride], self.fallback,
                          self.line, self.column, self.implicit)
 
