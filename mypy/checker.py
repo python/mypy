@@ -1743,9 +1743,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_lvalue(self, lvalue: Lvalue) -> Tuple[Optional[Type],
                                                     Optional[IndexExpr],
                                                     Optional[Var]]:
-        lvalue_type = None  # type: Optional[Type]
-        index_lvalue = None  # type: Optional[IndexExpr]
-        inferred = None  # type: Optional[Var]
+        lvalue_type = None
+        index_lvalue = None
+        inferred = None
 
         if self.is_definition(lvalue):
             if isinstance(lvalue, NameExpr):
@@ -1765,7 +1765,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
-            types = [self.check_lvalue(sub_expr)[0] for sub_expr in lvalue.items]
+            types = [self.check_lvalue(sub_expr)[0] or
+                     # This type will be used as a context for further inference of rvalue
+                     # we put Any if there is no information available from lvalue.
+                     AnyType(TypeOfAny.special_form) for sub_expr in lvalue.items]
             lvalue_type = TupleType(types, self.named_type('builtins.tuple'))
         else:
             lvalue_type = self.expr_checker.accept(lvalue)

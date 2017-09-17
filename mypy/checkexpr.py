@@ -704,8 +704,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Returns the inferred types of *actual arguments*.
         """
-        dummy = None  # type: Any
-        res = [dummy] * len(args)  # type: List[Type]
+        res = [None] * len(args)  # type: List[Optional[Type]]
 
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
@@ -716,7 +715,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for i, t in enumerate(res):
             if not t:
                 res[i] = self.accept(args[i])
-        return res
+        assert all(tp is not None for tp in res)
+        return cast(List[Type], res)
 
     def infer_function_type_arguments_using_context(
             self, callable: CallableType, error_context: Context) -> CallableType:
@@ -2631,7 +2631,7 @@ def is_async_def(t: Type) -> bool:
 def map_actuals_to_formals(caller_kinds: List[int],
                            caller_names: Optional[Sequence[Optional[str]]],
                            callee_kinds: List[int],
-                           callee_names: List[Optional[str]],
+                           callee_names: Sequence[Optional[str]],
                            caller_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
     """Calculate mapping between actual (caller) args and formals.

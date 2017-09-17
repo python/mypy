@@ -5,7 +5,7 @@ from abc import abstractmethod
 from collections import OrderedDict
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable
+    Callable, Sequence
 )
 
 import mypy.nodes
@@ -642,7 +642,7 @@ class CallableType(FunctionLike):
     def __init__(self,
                  arg_types: List[Type],
                  arg_kinds: List[int],
-                 arg_names: List[Optional[str]],
+                 arg_names: Sequence[Optional[str]],
                  ret_type: Type,
                  fallback: Instance,
                  name: Optional[str] = None,
@@ -663,7 +663,7 @@ class CallableType(FunctionLike):
         assert not any(tp is None for tp in arg_types), "No annotation must be Any, not None"
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
-        self.arg_names = arg_names
+        self.arg_names = list(arg_names)
         self.min_args = arg_kinds.count(ARG_POS)
         self.is_var_arg = ARG_STAR in arg_kinds
         self.is_kw_arg = ARG_STAR2 in arg_kinds
