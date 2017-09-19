@@ -33,8 +33,6 @@ List = 0
 Dict = 0
 Set = 0
 
-AnyStr = TypeVar('AnyStr', str, bytes)
-
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
 T_contra = TypeVar('T_contra', contravariant=True)
