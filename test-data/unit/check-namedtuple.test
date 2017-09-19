@@ -453,8 +453,26 @@ def f(x: a.X) -> None:
     x = a.X(1)
     reveal_type(x)
 [out]
-tmp/b.py:6: error: Revealed type is 'a.X'
+tmp/b.py:6: error: Revealed type is 'Tuple[Any, fallback=a.X]'
 tmp/b.py:8: error: Revealed type is 'Tuple[Any, fallback=a.X]'
+
+[case testNamedTupleWithImportCycle2]
+import a
+[file a.py]
+from collections import namedtuple
+from b import f
+
+N = namedtuple('N', 'a')
+[file b.py]
+import a
+
+def f(x: a.N) -> None:
+    reveal_type(x)
+    x = a.N(1)
+    reveal_type(x)
+[out]
+tmp/b.py:4: error: Revealed type is 'Tuple[Any, fallback=a.N]'
+tmp/b.py:6: error: Revealed type is 'Tuple[Any, fallback=a.N]'
 
 [case testSimpleSelfReferrentialNamedTuple]
 from typing import NamedTuple

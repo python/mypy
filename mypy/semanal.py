@@ -4074,6 +4074,7 @@ class ThirdPass(TraverserVisitor):
         self.sem.options = options
         self.patches = patches
         self.is_typeshed_file = self.errors.is_typeshed_file(fnam)
+        self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
             self.accept(file_node)
 
@@ -4752,7 +4753,8 @@ class TypeReplacer(TypeTranslator):
         """
         info = t.type
         # Special case, analyzed bases transformed the type into TupleType.
-        if info.tuple_type and not self.seen:
+        if ((info.tuple_type or info.typeddict_type) and
+                all(not isinstance(s, (TupleType, TypedDictType)) for s in self.seen)):
             return info.tuple_type.copy_modified(fallback=Instance(info, []))
         # Update forward Instance's to corresponding analyzed NamedTuple's.
         if info.replaced and info.replaced.tuple_type:
