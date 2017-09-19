@@ -1,31 +1,19 @@
 """Tests for the mypy parser."""
-
-import os.path
-
 from typing import List
+import typing
 
 from mypy import defaults
-from mypy.myunit import Suite, AssertionFailure
+from mypy.myunit import AssertionFailure
 from mypy.test.helpers import assert_string_arrays_equal
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
-from mypy.test import config
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.parse import parse
 from mypy.errors import CompileError
 from mypy.options import Options
 
 
 class ParserSuite(DataSuite):
-    parse_files = ['parse.test',
-                   'parse-python2.test']
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        # The test case descriptions are stored in data files.
-        c = []  # type: List[DataDrivenTestCase]
-        for f in cls.parse_files:
-            c += parse_test_cases(
-                os.path.join(config.test_data_prefix, f), test_parser)
-        return c
+    files = ['parse.test',
+             'parse-python2.test']  # type: typing.ClassVar[List[str]]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser(testcase)
@@ -62,12 +50,7 @@ INPUT_FILE_NAME = 'file'
 
 
 class ParseErrorSuite(DataSuite):
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        # Test case descriptions are in an external file.
-        return parse_test_cases(os.path.join(config.test_data_prefix,
-                                             'parse-errors.test'),
-                                test_parse_error)
+    files = ['parse-errors.test']  # type: typing.ClassVar[List[str]]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parse_error(testcase)

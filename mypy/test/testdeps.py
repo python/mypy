@@ -2,6 +2,7 @@
 
 import os
 from typing import List, Tuple, Dict, Optional
+import typing
 
 from mypy import build
 from mypy.build import BuildSource
@@ -9,25 +10,16 @@ from mypy.errors import CompileError
 from mypy.nodes import MypyFile, Expression
 from mypy.options import Options
 from mypy.server.deps import get_dependencies
-from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.types import Type
 
-files = [
-    'deps.test'
-]
-
 
 class GetDependenciesSuite(DataSuite):
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
+    files = ['deps.test']  # type: typing.ClassVar[List[str]]
+    base_path = test_temp_dir  # type: typing.ClassVar[str]
+    optional_out = True  # type: typing.ClassVar[bool]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)

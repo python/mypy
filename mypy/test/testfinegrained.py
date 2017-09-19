@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 from typing import List, Tuple, Dict
+import typing
 
 from mypy import build
 from mypy.build import BuildManager, BuildSource, Graph
@@ -29,19 +30,10 @@ from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type
 
 
-files = [
-    'fine-grained.test'
-]
-
-
 class FineGrainedSuite(DataSuite):
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
+    files = ['fine-grained.test']  # type: typing.ClassVar[List[str]]
+    base_path = test_temp_dir  # type: typing.ClassVar[str]
+    optional_out = True  # type: typing.ClassVar[bool]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         main_src = '\n'.join(testcase.input)

@@ -105,30 +105,19 @@ def fail() -> None:
     raise AssertionFailure()
 
 
-class TestCase:
-    def __init__(self, name: str, suite: 'Optional[Suite]' = None,
-                 func: Optional[Callable[[], None]] = None) -> None:
-        self.func = func
+class ProtoTestCase:
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.suite = suite
         self.old_cwd = None  # type: Optional[str]
         self.tmpdir = None  # type: Optional[tempfile.TemporaryDirectory[str]]
-
-    def run(self) -> None:
-        if self.func:
-            self.func()
 
     def set_up(self) -> None:
         self.old_cwd = os.getcwd()
         self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-')
         os.chdir(self.tmpdir.name)
         os.mkdir('tmp')
-        if self.suite:
-            self.suite.set_up()
 
     def tear_down(self) -> None:
-        if self.suite:
-            self.suite.tear_down()
         assert self.old_cwd is not None and self.tmpdir is not None, \
             "test was not properly set up"
         os.chdir(self.old_cwd)
@@ -138,6 +127,28 @@ class TestCase:
             pass
         self.old_cwd = None
         self.tmpdir = None
+
+
+class TestCase(ProtoTestCase):
+    def __init__(self, name: str, suite: 'Optional[Suite]' = None,
+                 func: Optional[Callable[[], None]] = None) -> None:
+        super().__init__(name)
+        self.func = func
+        self.suite = suite
+
+    def run(self) -> None:
+        if self.func:
+            self.func()
+
+    def set_up(self) -> None:
+        super().set_up()
+        if self.suite:
+            self.suite.set_up()
+
+    def tear_down(self) -> None:
+        if self.suite:
+            self.suite.tear_down()
+        super().tear_down()
 
 
 class Suite:
