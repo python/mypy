@@ -1325,3 +1325,21 @@ m: Movie
 reveal_type(m['director']['name']) # E: Revealed type is 'builtins.str'
 [builtins fixtures/dict.pyi]
 [out]
+
+[case testTypedDictWithImportCycleForward]
+import a
+[file a.py]
+from mypy_extensions import TypedDict
+from b import f
+
+N = TypedDict('N', {'a': str})
+[file b.py]
+import a
+
+def f(x: a.N) -> None:
+    reveal_type(x)
+    reveal_type(x['a'])
+[builtins fixtures/dict.pyi]
+[out]
+tmp/b.py:4: error: Revealed type is 'TypedDict('a.N', {'a': builtins.str})'
+tmp/b.py:5: error: Revealed type is 'builtins.str'

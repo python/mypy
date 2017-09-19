@@ -3720,6 +3720,19 @@ class B(object):
 [builtins fixtures/property.pyi]
 [out]
 
+[case testCorrectIsinstanceWithForwardUnion]
+from typing import Union, NamedTuple
+
+ForwardReferenceUnion = Union['SomeTuple', int]
+class SomeTuple(NamedTuple('SomeTuple', [('elem', int)])): pass
+
+def f(x: ForwardReferenceUnion) -> None:
+  reveal_type(x)  # E: Revealed type is 'Union[Tuple[builtins.int, fallback=__main__.SomeTuple], builtins.int]'
+  if isinstance(x, SomeTuple):
+    reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.SomeTuple]'
+[builtins fixtures/isinstance.pyi]
+[out]
+
 [case testCrashInvalidArgsSyntheticClassSyntax]
 from typing import List, NamedTuple
 from mypy_extensions import TypedDict

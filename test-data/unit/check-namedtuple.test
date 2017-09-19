@@ -491,6 +491,27 @@ main:9: error: Revealed type is 'Tuple[Any, fallback=__main__.MyNamedTuple]'
 -- Some crazy selef-referential named tuples and types dicts
 -- to be sure that everything works
 
+[case testCrossFileNamedTupleForwardRefs]
+import a
+[file a.py]
+import b
+from typing import Any, NamedTuple
+
+class A:
+    def a(self, b: 'b.B') -> str:
+        return 'a'
+ATuple = NamedTuple('ATuple', [('a', Any)])
+
+[file b.py]
+import a
+
+class B:
+    def b(self, a: 'a.A') -> str:
+        return 'b'
+    def aWithTuple(self, atuple: 'a.ATuple') -> str:
+        return 'a'
+[out]
+
 [case testSelfRefNT1]
 from typing import Tuple, NamedTuple
 
