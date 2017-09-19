@@ -20,5 +20,5 @@ install:
   - pip install .
 
 script:
-  - python runtests.py -j16 -x lint
+  - python runtests.py -j12 -x lint
   - if [[ $TRAVIS_PYTHON_VERSION == '3.6' ]]; then flake8; fi

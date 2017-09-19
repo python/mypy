@@ -1,6 +1,6 @@
 """Type inference constraints."""
 
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Sequence
 
 from mypy import experiments
 from mypy.types import (
@@ -42,7 +42,7 @@ class Constraint:
 
 
 def infer_constraints_for_callable(
-        callee: CallableType, arg_types: List[Optional[Type]], arg_kinds: List[int],
+        callee: CallableType, arg_types: Sequence[Optional[Type]], arg_kinds: List[int],
         formal_to_actual: List[List[int]]) -> List[Constraint]:
     """Infer type variable constraints for a callable and actual arguments.
 

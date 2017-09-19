@@ -1241,7 +1241,7 @@ class CallExpr(Expression):
                  callee: Expression,
                  args: List[Expression],
                  arg_kinds: List[int],
-                 arg_names: Optional[List[Optional[str]]] = None,
+                 arg_names: List[Optional[str]],
                  analyzed: Optional[Expression] = None) -> None:
         if not arg_names:
             arg_names = [None] * len(args)
@@ -1731,13 +1731,13 @@ class TypeAliasExpr(Expression):
     type = None  # type: mypy.types.Type
     # Simple fallback type for aliases that are invalid in runtime expressions
     # (for example Union, Tuple, Callable).
-    fallback = None  # type: Optional[mypy.types.Type]
+    fallback = None  # type: mypy.types.Type
     # This type alias is subscripted in a runtime expression like Alias[int](42)
     # (not in a type context like type annotation or base class).
     in_runtime = False  # type: bool
 
     def __init__(self, type: 'mypy.types.Type', tvars: List[str],
-                 fallback: 'Optional[mypy.types.Type]' = None, in_runtime: bool = False) -> None:
+                 fallback: 'mypy.types.Type', in_runtime: bool = False) -> None:
         self.type = type
         self.fallback = fallback
         self.in_runtime = in_runtime

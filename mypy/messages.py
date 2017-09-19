@@ -165,7 +165,7 @@ class MessageBuilder:
     def is_errors(self) -> bool:
         return self.errors.is_errors()
 
-    def report(self, msg: str, context: Context, severity: str,
+    def report(self, msg: str, context: Optional[Context], severity: str,
                file: Optional[str] = None, origin: Optional[Context] = None,
                offset: int = 0) -> None:
         """Report an error or note (unless disabled)."""
@@ -175,7 +175,7 @@ class MessageBuilder:
                                msg.strip(), severity=severity, file=file, offset=offset,
                                origin_line=origin.get_line() if origin else None)
 
-    def fail(self, msg: str, context: Context, file: Optional[str] = None,
+    def fail(self, msg: str, context: Optional[Context], file: Optional[str] = None,
              origin: Optional[Context] = None) -> None:
         """Report an error message (unless disabled)."""
         self.report(msg, context, 'error', file=file, origin=origin)
@@ -645,7 +645,7 @@ class MessageBuilder:
             self.format(index_type), base_str, self.format(expected_type)), context)
 
     def too_few_arguments(self, callee: CallableType, context: Context,
-                          argument_names: List[str]) -> None:
+                          argument_names: Optional[Sequence[Optional[str]]]) -> None:
         if (argument_names is not None and not all(k is None for k in argument_names)
                 and len(argument_names) >= 1):
             diff = [k for k in callee.arg_names if k not in argument_names]
@@ -699,7 +699,7 @@ class MessageBuilder:
                   format(capitalize(callable_name(callee)),
                          callee.arg_names[index]), context)
 
-    def does_not_return_value(self, callee_type: Type, context: Context) -> None:
+    def does_not_return_value(self, callee_type: Optional[Type], context: Context) -> None:
         """Report an error about use of an unusable type."""
         name = None  # type: Optional[str]
         if isinstance(callee_type, FunctionLike):
