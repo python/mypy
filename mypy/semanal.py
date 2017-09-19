@@ -1622,7 +1622,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                       third_pass: bool = False) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
-        return TypeAnalyser(self.lookup_qualified,
+        tpan = TypeAnalyser(self.lookup_qualified,
                             self.lookup_fully_qualified,
                             tvar_scope,
                             self.fail,
@@ -1633,6 +1633,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
                             allow_tuple_literal=allow_tuple_literal,
                             allow_unnormalized=self.is_stub_file,
                             third_pass=third_pass)
+        tpan.in_dynamic_func = self.function_stack and self.function_stack[-1].is_dynamic()
+        return tpan
 
     def anal_type(self, t: Type, *,
                   tvar_scope: Optional[TypeVarScope] = None,
@@ -1730,6 +1732,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         qualified type variable names for generic aliases.
         If 'allow_unnormalized' is True, allow types like builtins.list[T].
         """
+        dynamic = self.function_stack and self.function_stack[-1].is_dynamic()
         res = analyze_type_alias(rvalue,
                                  self.lookup_qualified,
                                  self.lookup_fully_qualified,
@@ -1738,7 +1741,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
                                  self.plugin,
                                  self.options,
                                  self.is_typeshed_stub_file,
-                                 allow_unnormalized=True)
+                                 allow_unnormalized=True,
+                                 in_dynamic_func=dynamic)
         if res:
             alias_tvars = [name for (name, _) in
                            res.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]

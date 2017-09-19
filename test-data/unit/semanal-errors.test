@@ -1401,3 +1401,21 @@ class A: ... # E: Name 'A' already defined on line 2
 
 [builtins fixtures/list.pyi]
 [out]
+
+[case testNoInvalidTypeInDynamicFunctions]
+from typing import AnyStr, Dict, TypeVar
+T = TypeVar('T')
+
+def f():  # Note no annotation
+    x: Dict[str, AnyStr] = {}
+    y: T
+    z: x
+    def nested(): pass
+    t: nested
+
+def g() -> None:
+    x: Dict[str, AnyStr] = {}  # E: Invalid type "typing.AnyStr"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[out]

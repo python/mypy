@@ -62,7 +62,8 @@ def analyze_type_alias(node: Expression,
                        plugin: Plugin,
                        options: Options,
                        is_typeshed_stub: bool,
-                       allow_unnormalized: bool = False) -> Optional[Type]:
+                       allow_unnormalized: bool = False,
+                       in_dynamic_func: bool = False) -> Optional[Type]:
     """Return type if node is valid as a type alias rvalue.
 
     Return None otherwise. 'node' must have been semantically analyzed.
@@ -106,6 +107,7 @@ def analyze_type_alias(node: Expression,
         return None
     analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, tvar_scope, fail_func, plugin, options,
                             is_typeshed_stub, aliasing=True, allow_unnormalized=allow_unnormalized)
+    analyzer.in_dynamic_func = in_dynamic_func
     return type.accept(analyzer)
 
 
@@ -122,6 +124,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
 
     Converts unbound types into bound types.
     """
+
+    # Is this called from an untyped function definition
+    in_dynamic_func = False  # type: bool
 
     def __init__(self,
                  lookup_func: Callable[[str, Context], SymbolTableNode],
@@ -264,7 +269,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 # Allow unbound type variables when defining an alias
                 if not (self.aliasing and sym.kind == TVAR and
                         self.tvar_scope.get_binding(sym) is None):
-                    if (not self.third_pass and
+                    if (not self.third_pass and not self.in_dynamic_func and
                             not (isinstance(sym.node, FuncDef) or
                                  isinstance(sym.node, Var) and sym.node.is_ready)):
                         return ForwardRef(t)
