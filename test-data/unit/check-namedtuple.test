@@ -613,6 +613,25 @@ reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, Tuple[Tuple[builtins.s
 reveal_type(f) # E: Revealed type is 'def (m: Tuple[Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.Node2], fallback=__main__.Node], builtins.int, fallback=__main__.Node2])'
 [builtins fixtures/tuple.pyi]
 
+[case testRecursiveNamedTupleInBases]
+from typing import List, NamedTuple, Union
+
+Exp = Union['App', 'Lit']  # E: Recursive types not fully supported yet, nested types replaced with "Any"
+class App(NamedTuple('App', [('subs', List[Exp])])): pass
+class Lit(NamedTuple('Lit', [('val', object)])): pass
+
+def my_eval(exp: Exp) -> int:
+    reveal_type(exp) # E: Revealed type is 'Union[Tuple[builtins.list[Any], fallback=__main__.App], Tuple[builtins.object, fallback=__main__.Lit]]'
+    if isinstance(exp, App):
+        my_eval(exp[0][0])
+        return my_eval(exp.subs[0])
+    if isinstance(exp, Lit):
+        return exp.val  # E: Incompatible return value type (got "object", expected "int")
+
+my_eval(App([Lit(1), Lit(2)])) # OK
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
 [case testForwardReferenceInNamedTuple]
 from typing import NamedTuple
 

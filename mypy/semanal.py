@@ -1046,6 +1046,10 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     defn.has_incompatible_baseclass = True
                 info.tuple_type = base
                 base_types.append(base.fallback)
+                if isinstance(base_expr, CallExpr):
+                    defn.analyzed = NamedTupleExpr(base.fallback.type)
+                    defn.analyzed.line = defn.line
+                    defn.analyzed.column = defn.column
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail("Cannot subclass NewType", defn)
@@ -4198,12 +4202,6 @@ class ThirdPass(TraverserVisitor):
         NewType, TypedDict, and NamedTuple.
         """
         self.analyze(s.type, s)
-        if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
-            self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
-            if isinstance(s.lvalues[0], NameExpr):
-                node = self.sem.lookup(s.lvalues[0].name, s, suppress_errors=True)
-                if node:
-                    self.analyze(node.type_override, node)
         if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
             self.analyze(s.rvalue.analyzed.type, s.rvalue.analyzed, warn=True)
         if isinstance(s.rvalue, CallExpr):
@@ -4220,6 +4218,12 @@ class ThirdPass(TraverserVisitor):
                         self.accept(sym.node)
                     if isinstance(sym.node, Var):
                         self.analyze(sym.node.type, sym.node)
+        if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
+            self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
+            if isinstance(s.lvalues[0], NameExpr):
+                node = self.sem.lookup(s.lvalues[0].name, s, suppress_errors=True)
+                if node:
+                    self.analyze(node.type_override, node)
         super().visit_assignment_stmt(s)
 
     def visit_cast_expr(self, e: CastExpr) -> None:
@@ -4743,7 +4747,7 @@ class TypeReplacer(TypeTranslator):
         """
         return t.link.accept(self)
 
-    def visit_instance(self, t: Instance) -> Type:
+    def visit_instance(self, t: Instance, from_fallback: bool = False) -> Type:
         """This visitor method tracks situations like this:
 
                x: A # when analyzing this type we will get an Instance from FirstPass
@@ -4753,9 +4757,10 @@ class TypeReplacer(TypeTranslator):
         """
         info = t.type
         # Special case, analyzed bases transformed the type into TupleType.
-        if ((info.tuple_type or info.typeddict_type) and
-                all(not isinstance(s, (TupleType, TypedDictType)) for s in self.seen)):
-            return info.tuple_type.copy_modified(fallback=Instance(info, []))
+        if info.tuple_type and not from_fallback:
+            items = [it.accept(self) for it in info.tuple_type.items]
+            info.tuple_type.items = items
+            return TupleType(items, Instance(info, []))
         # Update forward Instance's to corresponding analyzed NamedTuple's.
         if info.replaced and info.replaced.tuple_type:
             tp = info.replaced.tuple_type
@@ -4808,7 +4813,10 @@ class TypeReplacer(TypeTranslator):
     def visit_tuple_type(self, t: TupleType) -> Type:
         if self.check(t):
             return AnyType(TypeOfAny.from_error)
-        return super().visit_tuple_type(t)
+        items = [it.accept(self) for it in t.items]
+        fallback = self.visit_instance(t.fallback, from_fallback=True)
+        assert isinstance(fallback, Instance)
+        return TupleType(items, fallback)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         if self.check(t):
