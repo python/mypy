@@ -217,7 +217,8 @@ PYTEST_FILES = test_path(
 
 SLOW_FILES = test_path(
     'testpythoneval',
-    'testcmdline'
+    'testcmdline',
+    'teststubgen',
 )
 
 MYUNIT_FILES = test_path(
@@ -229,7 +230,7 @@ MYUNIT_FILES = test_path(
     'testreports',
     'testsolve',
     'testsubtypes',
-    'testtypes'
+    'testtypes',
 )
 
 for f in find_files('mypy', prefix='test', suffix='.py'):

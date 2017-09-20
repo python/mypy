@@ -1793,7 +1793,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             node.kind = TYPE_ALIAS
             node.type_override = res
             node.alias_tvars = alias_tvars
-            if isinstance(rvalue, IndexExpr):
+            if isinstance(rvalue, (IndexExpr, CallExpr)):
                 # We only need this for subscripted aliases, since simple aliases
                 # are already processed using aliasing TypeInfo's above.
                 rvalue.analyzed = TypeAliasExpr(res, node.alias_tvars,
@@ -3158,6 +3158,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
         Some call expressions are recognized as special forms, including
         cast(...).
         """
+        if expr.analyzed:
+            return
         expr.callee.accept(self)
         if refers_to_fullname(expr.callee, 'typing.cast'):
             # Special form cast(...).
@@ -3348,6 +3350,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
         expr.expr.accept(self)
 
     def visit_index_expr(self, expr: IndexExpr) -> None:
+        if expr.analyzed:
+            return
         expr.base.accept(self)
         if (isinstance(expr.base, RefExpr)
                 and isinstance(expr.base.node, TypeInfo)
