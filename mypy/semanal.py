@@ -4230,6 +4230,14 @@ class ThirdPass(TraverserVisitor):
                     self.analyze(node.type_override, node)
         super().visit_assignment_stmt(s)
 
+    def visit_for_stmt(self, s: ForStmt) -> None:
+        self.analyze(s.index_type, s)
+        super().visit_for_stmt(s)
+
+    def visit_with_stmt(self, s: WithStmt) -> None:
+        self.analyze(s.target_type, s)
+        super().visit_with_stmt(s)
+
     def visit_cast_expr(self, e: CastExpr) -> None:
         self.analyze(e.type, e)
         super().visit_cast_expr(e)
@@ -4247,6 +4255,14 @@ class ThirdPass(TraverserVisitor):
     def perform_transform(self, node: Union[Node, SymbolTableNode],
                           transform: Callable[[Type], Type]) -> None:
         """Apply transform to all types associated with node."""
+        if isinstance(node, ForStmt):
+            node.index_type = transform(node.index_type)
+            self.transform_types(node.index, transform)
+        if isinstance(node, WithStmt):
+            node.target_type = transform(node.target_type)
+            for n in node.target:
+                if isinstance(n, NameExpr) and isinstance(n.node, Var) and n.node.type:
+                    n.node.type = transform(n.node.type)
         if isinstance(node, (FuncDef, CastExpr, AssignmentStmt, TypeAliasExpr, Var)):
             node.type = transform(node.type)
         if isinstance(node, NewTypeExpr):
@@ -4274,6 +4290,15 @@ class ThirdPass(TraverserVisitor):
                     alt_base = Instance(base.type, [transform(a) for a in base.args])
                     new_bases.append(alt_base)
             node.bases = new_bases
+
+    def transform_types(self, lvalue: Lvalue, transform: Callable[[Type], Type]) -> None:
+        if isinstance(lvalue, RefExpr):
+            if isinstance(lvalue.node, Var):
+                var = lvalue.node
+                var.type = transform(var.type)
+        elif isinstance(lvalue, TupleExpr):
+            for item in lvalue.items:
+                self.transform_types(item, transform)
 
     def analyze(self, type: Optional[Type], node: Union[Node, SymbolTableNode],
                 warn: bool = False) -> None:
