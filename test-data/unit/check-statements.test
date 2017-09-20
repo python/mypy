@@ -1565,3 +1565,28 @@ reveal_type(d['weight0']) # E: Revealed type is 'builtins.float*'
 
 [builtins fixtures/floatdict.pyi]
 
+[case testForwardRefsInForStatement]
+from typing import List, NamedTuple
+lst: List[N]
+
+for i in lst: # type: N
+    a: int = i.x
+    b: str = i[0]
+
+N = NamedTuple('N', [('x', int)])
+[builtins fixtures/list.pyi]
+[out]
+
+[case testForwardRefsInWithStatement]
+from typing import ContextManager
+from mypy_extensions import TypedDict
+cm: ContextManager[N]
+
+with cm as g:  # type: N
+    a: str = g['x']
+
+N = TypedDict('N', {'x': int})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+

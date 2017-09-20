@@ -1326,6 +1326,22 @@ reveal_type(m['director']['name']) # E: Revealed type is 'builtins.str'
 [builtins fixtures/dict.pyi]
 [out]
 
+[case testTypedDictForwardAsUpperBound]
+from typing import TypeVar, Generic
+from mypy_extensions import TypedDict
+T = TypeVar('T', bound='M')
+class G(Generic[T]):
+    x: T
+
+yb: G[int]
+yg: G[M]
+z: int = G().x['x']
+
+class M(TypedDict):
+    x: int
+[builtins fixtures/dict.pyi]
+[out]
+
 [case testTypedDictWithImportCycleForward]
 import a
 [file a.py]

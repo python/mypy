@@ -434,6 +434,20 @@ def f() -> None:
     A = NamedTuple('A', [('x', int)])
 A  # E: Name 'A' is not defined
 
+[case testNamedTupleForwardAsUpperBound]
+from typing import NamedTuple, TypeVar, Generic
+T = TypeVar('T', bound='M')
+class G(Generic[T]):
+    x: T
+
+yb: G[int]
+yg: G[M]
+z: int = G[M]().x.x
+z = G[M]().x[0]
+
+M = NamedTuple('M', [('x', int)])
+[out]
+
 [case testNamedTupleWithImportCycle]
 import a
 [file a.py]
