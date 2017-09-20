@@ -181,3 +181,23 @@ if isinstance(x, list):
     reveal_type(x) # E: Revealed type is 'builtins.list[Any]'
 [builtins fixtures/isinstancelist.pyi]
 [out]
+
+[case testNoneAlias]
+from typing import Union
+void = type(None)
+x: void
+reveal_type(x)  # E: Revealed type is 'builtins.None'
+y: Union[int, void]
+reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+[builtins fixtures/bool.pyi]
+
+[case testNoneAliasStrict]
+# flags: --strict-optional
+from typing import Optional, Union
+void = type(None)
+x: int
+y: Union[int, void]
+z: Optional[int]
+x = y  # E: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+y = z
+[builtins fixtures/bool.pyi]
