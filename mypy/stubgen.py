@@ -74,6 +74,7 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('ignore_errors', bool),
                                  ('recursive', bool),
                                  ('include_private', bool),
+                                 ('output_dir', str),
                                  ])
 
 
@@ -623,8 +624,8 @@ def walk_packages(packages: List[str]) -> Iterator[str]:
 
 def main() -> None:
     options = parse_options(sys.argv[1:])
-    if not os.path.isdir('out'):
-        raise SystemExit('Directory "out" does not exist')
+    if not os.path.isdir(options.output_dir):
+        raise SystemExit('Directory "{}" does not exist'.format(options.output_dir))
     if options.recursive and options.no_import:
         raise SystemExit('recursive stub generation without importing is not currently supported')
     sigs = {}  # type: Any
@@ -641,7 +642,8 @@ def main() -> None:
         class_sigs = dict(find_unique_signatures(all_class_sigs))
     for module in (options.modules if not options.recursive else walk_packages(options.modules)):
         try:
-            generate_stub_for_module(module, 'out',
+            generate_stub_for_module(module,
+                                     output_dir=options.output_dir,
                                      add_header=True,
                                      sigs=sigs,
                                      class_sigs=class_sigs,
@@ -658,6 +660,8 @@ def main() -> None:
 
 
 def parse_options(args: List[str]) -> Options:
+    # TODO: why not use click and reduce the amount of code to maintain
+    # within this module.
     pyversion = defaults.PYTHON3_VERSION
     no_import = False
     recursive = False
@@ -666,8 +670,12 @@ def parse_options(args: List[str]) -> Options:
     search_path = []  # type: List[str]
     interpreter = ''
     include_private = False
+    output_dir = 'out'
     while args and args[0].startswith('-'):
-        if args[0] == '--doc-dir':
+        if args[0] in '-o':
+            output_dir = args[1]
+            args = args[1:]
+        elif args[0] == '--doc-dir':
             doc_dir = args[1]
             args = args[1:]
         elif args[0] == '--search-path':
@@ -697,6 +705,9 @@ def parse_options(args: List[str]) -> Options:
         usage()
     if not interpreter:
         interpreter = sys.executable if pyversion[0] == 3 else default_python2_interpreter()
+    # Create the output folder if it doesn't already exist.
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     return Options(pyversion=pyversion,
                    no_import=no_import,
                    doc_dir=doc_dir,
@@ -705,7 +716,8 @@ def parse_options(args: List[str]) -> Options:
                    modules=args,
                    ignore_errors=ignore_errors,
                    recursive=recursive,
-                   include_private=include_private)
+                   include_private=include_private,
+                   output_dir=output_dir)
 
 
 def default_python2_interpreter() -> str:
@@ -723,7 +735,8 @@ def default_python2_interpreter() -> str:
 def usage() -> None:
     usage = textwrap.dedent("""\
         usage: stubgen [--py2] [--no-import] [--doc-dir PATH]
-                       [--search-path PATH] [-p PATH] MODULE ...
+                       [--search-path PATH] [-p PATH] [-o PATH]
+                       MODULE ...
 
         Generate draft stubs for modules.
 
@@ -748,6 +761,7 @@ def usage() -> None:
                           (currently only used if --no-import is given)
           -p PATH         use Python interpreter at PATH (only works for
                           Python 2 right now)
+          -o PATH         Change the output folder [default: out]
           -h, --help      print this help message and exit
     """.rstrip())
 
