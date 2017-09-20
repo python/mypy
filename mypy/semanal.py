@@ -4120,8 +4120,14 @@ class ThirdPass(TraverserVisitor):
         # NamedTuple base classes are validated in check_namedtuple_classdef; we don't have to
         # check them again here.
         if not tdef.info.is_named_tuple:
+            types = list(tdef.info.bases)  # type: List[Type]
+            for tvar in tdef.type_vars:
+                if tvar.upper_bound:
+                    types.append(tvar.upper_bound)
+                if tvar.values:
+                    types.extend(tvar.values)
+            self.analyze_types(types, tdef.info)
             for type in tdef.info.bases:
-                self.analyze(type, tdef.info)
                 if tdef.info.is_protocol:
                     if not isinstance(type, Instance) or not type.type.is_protocol:
                         if type.type.fullname() != 'builtins.object':
@@ -4212,6 +4218,13 @@ class ThirdPass(TraverserVisitor):
             analyzed = s.rvalue.analyzed
             if isinstance(analyzed, NewTypeExpr):
                 self.analyze(analyzed.old_type, analyzed)
+            if isinstance(analyzed, TypeVarExpr):
+                types = []
+                if analyzed.upper_bound:
+                    types.append(analyzed.upper_bound)
+                if analyzed.values:
+                    types.extend(analyzed.values)
+                self.analyze_types(types, analyzed)
             if isinstance(analyzed, TypedDictExpr):
                 self.analyze(analyzed.info.typeddict_type, analyzed, warn=True)
             if isinstance(analyzed, NamedTupleExpr):
@@ -4267,6 +4280,11 @@ class ThirdPass(TraverserVisitor):
             node.type = transform(node.type)
         if isinstance(node, NewTypeExpr):
             node.old_type = transform(node.old_type)
+        if isinstance(node, TypeVarExpr):
+            if node.upper_bound:
+                node.upper_bound = transform(node.upper_bound)
+            if node.values:
+                node.values = [transform(v) for v in node.values]
         if isinstance(node, TypedDictExpr):
             node.info.typeddict_type = cast(TypedDictType,
                                             transform(node.info.typeddict_type))
@@ -4278,6 +4296,11 @@ class ThirdPass(TraverserVisitor):
         if isinstance(node, SymbolTableNode):
             node.type_override = transform(node.type_override)
         if isinstance(node, TypeInfo):
+            for tvar in node.defn.type_vars:
+                if tvar.upper_bound:
+                    tvar.upper_bound = transform(tvar.upper_bound)
+                if tvar.values:
+                    tvar.values = [transform(v) for v in tvar.values]
             new_bases = []
             for base in node.bases:
                 new_base = transform(base)
@@ -4316,6 +4339,21 @@ class ThirdPass(TraverserVisitor):
                                            lambda tp: tp.accept(TypeReplacer(self.fail,
                                                                              node, warn)))
                 self.patches.append(patch)
+
+    def analyze_types(self, types: List[Type], node: Node) -> None:
+        # Similar to above but for nodes with multiple types.
+        indicator = {}  # type: Dict[str, bool]
+        for type in types:
+            analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file,
+                                         self.sem, indicator)
+            type.accept(analyzer)
+            self.check_for_omitted_generics(type)
+        if indicator.get('forward') or indicator.get('synthetic'):
+            def patch() -> None:
+                self.perform_transform(node,
+                                       lambda tp: tp.accept(TypeReplacer(self.fail,
+                                                                         node, warn=False)))
+            self.patches.append(patch)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
         if 'generics' not in self.options.disallow_any or self.is_typeshed_file:

@@ -440,7 +440,7 @@ T = TypeVar('T', bound='M')
 class G(Generic[T]):
     x: T
 
-yb: G[int]
+yb: G[int] # E: Type argument "builtins.int" of "G" must be a subtype of "Tuple[builtins.int, fallback=__main__.M]"
 yg: G[M]
 z: int = G[M]().x.x
 z = G[M]().x[0]

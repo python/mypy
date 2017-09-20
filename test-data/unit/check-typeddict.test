@@ -1333,9 +1333,9 @@ T = TypeVar('T', bound='M')
 class G(Generic[T]):
     x: T
 
-yb: G[int]
+yb: G[int] # E: Type argument "builtins.int" of "G" must be a subtype of "TypedDict({'x': builtins.int}, fallback=typing.Mapping[builtins.str, builtins.object])"
 yg: G[M]
-z: int = G().x['x']
+z: int = G[M]().x['x']
 
 class M(TypedDict):
     x: int

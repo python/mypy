@@ -660,6 +660,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             t.invalid = True
         elif info.defn.type_vars:
             # Check type argument values.
+            # TODO: Calling is_subtype and is_same_types in semantic analysis is a bad idea
             for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
                 if tvar.values:
                     if isinstance(arg, TypeVarType):
@@ -672,12 +673,28 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     else:
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
+                # TODO: These hacks will be not necessary when this will be moved to later stage.
                 if isinstance(arg, ForwardRef):
                     arg = arg.link
-                if not is_subtype(arg, tvar.upper_bound):
+                bound = tvar.upper_bound
+                if isinstance(bound, ForwardRef):
+                    bound = bound.link
+                if isinstance(bound, Instance) and bound.type.replaced:
+                    replaced = bound.type.replaced
+                    if replaced.tuple_type:
+                        bound = replaced.tuple_type
+                    if replaced.typeddict_type:
+                        bound = replaced.typeddict_type
+                if isinstance(arg, Instance) and arg.type.replaced:
+                    replaced = arg.type.replaced
+                    if replaced.tuple_type:
+                        arg = replaced.tuple_type
+                    if replaced.typeddict_type:
+                        arg = replaced.typeddict_type
+                if not is_subtype(arg, bound):
                     self.fail('Type argument "{}" of "{}" must be '
                               'a subtype of "{}"'.format(
-                                  arg, info.name(), tvar.upper_bound), t)
+                                  arg, info.name(), bound), t)
         for arg in t.args:
             arg.accept(self)
         if info.is_newtype:
