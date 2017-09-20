@@ -447,14 +447,12 @@ class X(N): pass
 import a
 
 def f(x: a.X) -> None:
-    # The type of x is broken (https://github.com/python/mypy/issues/3016) but we need to
-    # do something reasonable here to avoid a regression.
     reveal_type(x)
     x = a.X(1)
     reveal_type(x)
 [out]
+tmp/b.py:4: error: Revealed type is 'Tuple[Any, fallback=a.X]'
 tmp/b.py:6: error: Revealed type is 'Tuple[Any, fallback=a.X]'
-tmp/b.py:8: error: Revealed type is 'Tuple[Any, fallback=a.X]'
 
 [case testNamedTupleWithImportCycle2]
 import a

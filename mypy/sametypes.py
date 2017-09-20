@@ -3,12 +3,13 @@ from typing import Sequence
 from mypy.types import (
     Type, UnboundType, AnyType, NoneTyp, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
-    TypeList, Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, ForwardRef
+    TypeList, Overloaded, PartialType, DeletedType, UninhabitedType, TypeType
 )
 
 
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
+
     if isinstance(right, UnboundType):
         # Make unbound types same as anything else to reduce the number of
         # generated spurious error messages.
