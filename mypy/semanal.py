@@ -4334,8 +4334,14 @@ class ThirdPass(TraverserVisitor):
         # Flags appeared during analysis of 'type' are collected in this dict.
         indicator = {}  # type: Dict[str, bool]
         if type:
-            analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file,
-                                         self.sem, indicator)
+            analyzer = TypeAnalyserPass3(self.sem.lookup_qualified,
+                                         self.sem.lookup_fully_qualified,
+                                         self.fail,
+                                         self.sem.note,
+                                         self.sem.plugin,
+                                         self.options,
+                                         self.is_typeshed_file,
+                                         indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
             if indicator.get('forward') or indicator.get('synthetic'):
@@ -4349,8 +4355,14 @@ class ThirdPass(TraverserVisitor):
         # Similar to above but for nodes with multiple types.
         indicator = {}  # type: Dict[str, bool]
         for type in types:
-            analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file,
-                                         self.sem, indicator)
+            analyzer = TypeAnalyserPass3(self.sem.lookup_qualified,
+                                         self.sem.lookup_fully_qualified,
+                                         self.fail,
+                                         self.sem.note,
+                                         self.sem.plugin,
+                                         self.options,
+                                         self.is_typeshed_file,
+                                         indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
         if indicator.get('forward') or indicator.get('synthetic'):
