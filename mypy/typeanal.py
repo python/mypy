@@ -20,7 +20,8 @@ from mypy.types import (
 from mypy.nodes import (
     TVAR, TYPE_ALIAS, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
-    ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef, CallExpr, NameExpr
+    ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef, CallExpr, NameExpr,
+    Decorator
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.sametypes import is_same_type
@@ -59,11 +60,13 @@ def analyze_type_alias(node: Expression,
                        lookup_fqn_func: Callable[[str], SymbolTableNode],
                        tvar_scope: TypeVarScope,
                        fail_func: Callable[[str, Context], None],
+                       note_func: Callable[[str, Context], None],
                        plugin: Plugin,
                        options: Options,
                        is_typeshed_stub: bool,
                        allow_unnormalized: bool = False,
-                       in_dynamic_func: bool = False) -> Optional[Type]:
+                       in_dynamic_func: bool = False,
+                       global_scope: bool = True) -> Optional[Type]:
     """Return type if node is valid as a type alias rvalue.
 
     Return None otherwise. 'node' must have been semantically analyzed.
@@ -115,9 +118,11 @@ def analyze_type_alias(node: Expression,
     except TypeTranslationError:
         fail_func('Invalid type alias', node)
         return None
-    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, tvar_scope, fail_func, plugin, options,
-                            is_typeshed_stub, aliasing=True, allow_unnormalized=allow_unnormalized)
+    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, tvar_scope, fail_func, note_func,
+                            plugin, options, is_typeshed_stub, aliasing=True,
+                            allow_unnormalized=allow_unnormalized)
     analyzer.in_dynamic_func = in_dynamic_func
+    analyzer.global_scope = global_scope
     return type.accept(analyzer)
 
 
@@ -135,14 +140,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
     Converts unbound types into bound types.
     """
 
-    # Is this called from an untyped function definition
+    # Is this called from an untyped function definition?
     in_dynamic_func = False  # type: bool
+    # Is this called from global scope?
+    global_scope = True  # type: bool
 
     def __init__(self,
                  lookup_func: Callable[[str, Context], SymbolTableNode],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
                  tvar_scope: TypeVarScope,
                  fail_func: Callable[[str, Context], None],
+                 note_func: Callable[[str, Context], None],
                  plugin: Plugin,
                  options: Options,
                  is_typeshed_stub: bool, *,
@@ -153,6 +161,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail_func = fail_func
+        self.note_func = note_func
         self.tvar_scope = tvar_scope
         self.aliasing = aliasing
         self.allow_tuple_literal = allow_tuple_literal
@@ -280,10 +289,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 if not (self.aliasing and sym.kind == TVAR and
                         self.tvar_scope.get_binding(sym) is None):
                     if (not self.third_pass and not self.in_dynamic_func and
-                            not (isinstance(sym.node, FuncDef) or
-                                 isinstance(sym.node, Var) and sym.node.is_ready)):
+                            not (isinstance(sym.node, (FuncDef, Decorator)) or
+                                 isinstance(sym.node, Var) and sym.node.is_ready) and
+                            not (sym.kind == TVAR and tvar_def is None)):
+                        if t.args and not self.global_scope:
+                            self.fail('Unsupported forward reference to "{}"'.format(t.name), t)
+                            return AnyType(TypeOfAny.from_error)
                         return ForwardRef(t)
                     self.fail('Invalid type "{}"'.format(name), t)
+                    if self.third_pass and sym.kind == TVAR:
+                        self.note_func("Forward references to type variables are prohibited", t)
                 return t
             info = sym.node  # type: TypeInfo
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
@@ -319,7 +334,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 return instance
         else:
             if self.third_pass:
-                self.fail('Invalid type {}'.format(t), t)
+                self.fail('Invalid type "{}"'.format(t.name), t)
                 return AnyType(TypeOfAny.from_error)
             return AnyType(TypeOfAny.special_form)
 

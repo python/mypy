@@ -182,6 +182,41 @@ if isinstance(x, list):
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
+[case testProhibitedForwardRefToTypeVar]
+from typing import TypeVar, List
+
+a: List[T]
+
+T = TypeVar('T')
+[builtins fixtures/list.pyi]
+[out]
+main:3: error: Invalid type "__main__.T"
+main:3: note: Forward references to type variables are prohibited
+
+[case testUnsupportedForwardRef]
+from typing import List, TypeVar
+
+T = TypeVar('T')
+
+def f(x: T) -> None:
+    y: A[T]  # E: Unsupported forward reference to "A"
+
+A = List[T]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testUnsupportedForwardRef2]
+from typing import List, TypeVar
+
+def f() -> None:
+    X = List[int]
+    x: A[X]  # E: Unsupported forward reference to "A"
+
+T = TypeVar('T')
+A = List[T]
+[builtins fixtures/list.pyi]
+[out]
+
 [case testNoneAlias]
 from typing import Union
 void = type(None)
