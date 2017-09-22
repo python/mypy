@@ -437,10 +437,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 annotation = ""
             init_stmt = arg_.initialization_statement
             if init_stmt:
-                if isinstance(init_stmt.rvalue, NameExpr) and init_stmt.rvalue.name == 'None':
-                    initializer = 'None'
-                else:
-                    initializer = '...'
+                initializer = '...'
                 if kind in (ARG_NAMED, ARG_NAMED_OPT) and '*' not in args:
                     args.append('*')
                 if not annotation:
