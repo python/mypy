@@ -3704,7 +3704,7 @@ Bar = NewType('Bar', str)
 
 def foo(node: NodeType) -> NodeType:
     x = node
-    return x
+    return Foo(1)
 [out]
 
 [case testCrashOnComplexCheckWithNamedTupleUnion]

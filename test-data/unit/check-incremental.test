@@ -2961,7 +2961,7 @@ class C(List['A']):
     pass
 
 A = List[int]
-C()[0]
+x: int = C()[0][0]
 [builtins fixtures/list.pyi]
 [out]
 
