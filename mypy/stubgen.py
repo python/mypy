@@ -321,6 +321,9 @@ class ImportTracker:
         # required_names is the set of names that are actually used in a type annotation
         self.required_names = set()  # type: Set[str]
 
+        # Names that should be reexported if they come from another module
+        self.reexports = set()  # type: Set[str]
+
     def add_import_from(self, module: str, names: List[Tuple[str, Optional[str]]]) -> None:
         for name, alias in names:
             self.module_for[alias or name] = module
@@ -336,6 +339,16 @@ class ImportTracker:
 
     def require_name(self, name: str) -> None:
         self.required_names.add(name.split('.')[0])
+
+    def reexport(self, name: str) -> None:
+        """
+        Mark a given non qualified name as needed in __all__. This means that in case it
+        comes from a module, it should be imported with an alias even is the alias is the same
+        as the name.
+
+        """
+        self.require_name(name)
+        self.reexports.add(name)
 
     def import_lines(self) -> List[str]:
         """
@@ -359,6 +372,8 @@ class ImportTracker:
                 # Collect the name in the module_map
                 if name in self.reverse_alias:
                     name = '{} as {}'.format(self.reverse_alias[name], name)
+                elif name in self.reexports:
+                    name = '{} as {}'.format(name, name)
                 module_map[m].append(name)
             else:
                 # This name was found in an import ...
@@ -394,7 +409,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.import_tracker.add_import_from("typing", [(t, None) for t in typing_imports])
         # Names in __all__ are required
         for name in _all_ or ():
-            self.import_tracker.require_name(name)
+            self.import_tracker.reexport(name)
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         super().visit_mypy_file(o)
@@ -671,7 +686,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.record_name(target_name)
 
     def get_init(self, lvalue: str, rvalue: Expression,
-                 annotation: Optional[Type]=None) -> Optional[str]:
+                 annotation: Optional[Type] = None) -> Optional[str]:
         """Return initializer for a variable.
 
         Return None if we've generated one already or if the variable is internal.

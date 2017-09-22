@@ -413,7 +413,7 @@ from re import match, search, sub
 __all__ = ['match', 'sub', 'x']
 x = 1
 [out]
-from re import match, sub
+from re import match as match, sub as sub
 
 x: int
 
