@@ -4212,9 +4212,11 @@ class ThirdPass(TraverserVisitor):
                 dec.var.type = sig
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
-        """Traverse the actual assignment statement and synthetic types
+        """Traverse the assignment statement.
+
+        This includes the actual assignment and synthetic types
         resulted from this assignment (if any). Currently this includes
-        NewType, TypedDict, and NamedTuple.
+        NewType, TypedDict, NamedTuple, and TypeVar.
         """
         self.analyze(s.type, s)
         if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
@@ -4240,6 +4242,9 @@ class ThirdPass(TraverserVisitor):
                         self.accept(sym.node)
                     if isinstance(sym.node, Var):
                         self.analyze(sym.node.type, sym.node)
+        # We need to pay additional attention to assignments that define a type alias.
+        # The resulting type is also stored in the 'type_override' attribute of
+        # the corresponding SymbolTableNode.
         if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
             self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
             if isinstance(s.lvalues[0], NameExpr):
@@ -4347,8 +4352,8 @@ class ThirdPass(TraverserVisitor):
             if indicator.get('forward') or indicator.get('synthetic'):
                 def patch() -> None:
                     self.perform_transform(node,
-                                           lambda tp: tp.accept(TypeReplacer(self.fail,
-                                                                             node, warn)))
+                        lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
+                                                                      node, warn)))
                 self.patches.append(patch)
 
     def analyze_types(self, types: List[Type], node: Node) -> None:
@@ -4368,8 +4373,8 @@ class ThirdPass(TraverserVisitor):
         if indicator.get('forward') or indicator.get('synthetic'):
             def patch() -> None:
                 self.perform_transform(node,
-                                       lambda tp: tp.accept(TypeReplacer(self.fail,
-                                                                         node, warn=False)))
+                    lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
+                                                                  node, warn=False)))
             self.patches.append(patch)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
@@ -4798,9 +4803,17 @@ class MakeAnyNonExplicit(TypeTranslator):
         return t
 
 
-class TypeReplacer(TypeTranslator):
-    """This is very similar TypeTranslator but tracks visited nodes to avoid
+class ForwardReferenceResolver(TypeTranslator):
+    """Visitor to replace previously detected forward reference to synthetic types.
+
+    This is similar to TypeTranslator but tracks visited nodes to avoid
     infinite recursion on potentially circular (self- or mutually-referential) types.
+    This visitor:
+    * Fixes forward references by unwrapping the linked type.
+    * Generates errors for unsupported type recursion and breaks recursion by resolving
+      recursive back references to Any types.
+    * Replaces instance types generated from unanalyzed NamedTuple and TypedDict class syntax
+      found in first pass with analyzed TupleType and TypedDictType.
     """
     def __init__(self, fail: Callable[[str, Context], None],
                  start: Union[Node, SymbolTableNode], warn: bool) -> None:
@@ -4809,15 +4822,12 @@ class TypeReplacer(TypeTranslator):
         self.start = start
         self.warn = warn
 
-    def warn_recursion(self) -> None:
-        if self.warn:
-            assert isinstance(self.start, Node), "Internal error: invalid error context"
-            self.fail('Recursive types not fully supported yet,'
-                      ' nested types replaced with "Any"', self.start)
-
-    def check(self, t: Type) -> bool:
+    def check_recursion(self, t: Type) -> bool:
         if any(t is s for s in self.seen):
-            self.warn_recursion()
+            if self.warn:
+                assert isinstance(self.start, Node), "Internal error: invalid error context"
+                self.fail('Recursive types not fully supported yet,'
+                          ' nested types replaced with "Any"', self.start)
             return True
         self.seen.append(t)
         return False
@@ -4825,8 +4835,8 @@ class TypeReplacer(TypeTranslator):
     def visit_forwardref_type(self, t: ForwardRef) -> Type:
         """This visitor method tracks situations like this:
 
-            x: A # this type is not yet known and therefore wrapped in ForwardRef
-                 # it's content is updated in ThirdPass, now we need to unwrap this type.
+            x: A  # This type is not yet known and therefore wrapped in ForwardRef,
+                  # its content is updated in ThirdPass, now we need to unwrap this type.
             A = NewType('A', int)
         """
         return t.link.accept(self)
@@ -4834,10 +4844,13 @@ class TypeReplacer(TypeTranslator):
     def visit_instance(self, t: Instance, from_fallback: bool = False) -> Type:
         """This visitor method tracks situations like this:
 
-               x: A # when analyzing this type we will get an Instance from FirstPass
-                    # now we need to update this to actual analyzed TupleType.
+               x: A  # When analyzing this type we will get an Instance from FirstPass.
+                     # Now we need to update this to actual analyzed TupleType.
                class A(NamedTuple):
                    attr: str
+
+        If from_fallback is True, then we always return an Instance type. This is needed
+        since TupleType and TypedDictType fallbacks are always instances.
         """
         info = t.type
         # Special case, analyzed bases transformed the type into TupleType.
@@ -4845,30 +4858,28 @@ class TypeReplacer(TypeTranslator):
             items = [it.accept(self) for it in info.tuple_type.items]
             info.tuple_type.items = items
             return TupleType(items, Instance(info, []))
-        # Update forward Instance's to corresponding analyzed NamedTuple's.
+        # Update forward Instances to corresponding analyzed NamedTuples.
         if info.replaced and info.replaced.tuple_type:
             tp = info.replaced.tuple_type
-            if any((s is tp) or (s is t) for s in self.seen):
-                self.warn_recursion()
-                # The key idea is that when we return to the place where
-                # we already was, we break the cycle and put AnyType as a leaf.
+            if self.check_recursion(tp):
+                # The key idea is that when we recursively return to a type already traversed,
+                # then we break the cycle and put AnyType as a leaf.
                 return AnyType(TypeOfAny.from_error)
-            self.seen.append(t)
             return tp.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
-        # Same as above but for TypedDict's.
+        # Same as above but for TypedDicts.
         if info.replaced and info.replaced.typeddict_type:
             td = info.replaced.typeddict_type
-            if any((s is td) or (s is t) for s in self.seen):
-                self.warn_recursion()
+            if self.check_recursion(td):
+                # We also break the cycles for TypedDicts as explained above for NamedTuples.
                 return AnyType(TypeOfAny.from_error)
-            self.seen.append(t)
             return td.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
-        if self.check(t):
+        if self.check_recursion(t):
+            # We also need to break a potential cycle with normal (non-synthetic) instance types.
             return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars))
         return super().visit_instance(t)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        if self.check(t):
+        if self.check_recursion(t):
             return AnyType(TypeOfAny.from_error)
         if t.upper_bound:
             t.upper_bound = t.upper_bound.accept(self)
@@ -4877,7 +4888,7 @@ class TypeReplacer(TypeTranslator):
         return t
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        if self.check(t):
+        if self.check_recursion(t):
             return AnyType(TypeOfAny.from_error)
         arg_types = [tp.accept(self) for tp in t.arg_types]
         ret_type = t.ret_type.accept(self)
@@ -4890,12 +4901,12 @@ class TypeReplacer(TypeTranslator):
         return t.copy_modified(arg_types=arg_types, ret_type=ret_type, variables=variables)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
-        if self.check(t):
+        if self.check_recursion(t):
             return AnyType(TypeOfAny.from_error)
         return super().visit_overloaded(t)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        if self.check(t):
+        if self.check_recursion(t):
             return AnyType(TypeOfAny.from_error)
         items = [it.accept(self) for it in t.items]
         fallback = self.visit_instance(t.fallback, from_fallback=True)
@@ -4903,16 +4914,16 @@ class TypeReplacer(TypeTranslator):
         return TupleType(items, fallback)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        if self.check(t):
+        if self.check_recursion(t):
             return AnyType(TypeOfAny.from_error)
         return super().visit_typeddict_type(t)
 
     def visit_union_type(self, t: UnionType) -> Type:
-        if self.check(t):
+        if self.check_recursion(t):
             return AnyType(TypeOfAny.from_error)
         return super().visit_union_type(t)
 
     def visit_type_type(self, t: TypeType) -> Type:
-        if self.check(t):
+        if self.check_recursion(t):
             return AnyType(TypeOfAny.from_error)
         return super().visit_type_type(t)

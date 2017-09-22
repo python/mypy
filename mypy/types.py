@@ -1376,8 +1376,21 @@ class TypeType(Type):
 
 
 class ForwardRef(Type):
-    """Class to wrap forward references to other types."""
-    link = None  # type: Type # the wrapped type
+    """Class to wrap forward references to other types.
+
+    This is used when a forward reference to an (unanalyzed) synthetic type is found,
+    for example:
+
+        x: A
+        A = TypedDict('A', {'x': int})
+
+    To avoid false positives and crashes in such situations, we first wrap the second
+    occurrence of 'A' in ForwardRef. Then, the wrapped UnboundType is updated in the third
+    pass of semantic analysis and ultimately fixed in the patches after the third pass.
+    So that ForwardRefs are temporary and will be completely replaced with the linked types
+    or Any (to avoid cyclic references) before the type checking stage.
+    """
+    link = None  # type: Type  # The wrapped type
 
     def __init__(self, link: Type) -> None:
         self.link = link
@@ -1392,6 +1405,8 @@ class ForwardRef(Type):
             name = self.link.type.name()
         else:
             name = self.link.__class__.__name__
+        # We should never get here since all forward references should be resolved
+        # and removed during semantic analysis.
         assert False, "Internal error: Unresolved forward reference to {}".format(name)
 
 

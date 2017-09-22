@@ -3611,6 +3611,10 @@ NameInfo = NewType('NameInfo', NameInfoBase)
 def parse_ast(name_dict: NameDict) -> None:
     if isinstance(name_dict[''], int):
         pass
+    x = name_dict['']
+    reveal_type(x) # E: Revealed type is '__main__.NameInfo*'
+    x = NameInfo(NameInfoBase()) # OK
+    x = NameInfoBase() # E: Incompatible types in assignment (expression has type "NameInfoBase", variable has type "NameInfo")
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
@@ -3666,12 +3670,13 @@ from typing import Union, NamedTuple
 
 NodeType = Union['Foo', 'Bar']
 class Foo(NamedTuple):
-    pass
+    x: int
 class Bar(NamedTuple):
-    pass
+    x: int
 
-def foo(node: NodeType):
+def foo(node: NodeType) -> int:
     x = node
+    return x.x
 [out]
 
 [case testCrashOnForwardUnionOfTypedDicts]
@@ -3680,12 +3685,13 @@ from typing import Union
 
 NodeType = Union['Foo', 'Bar']
 class Foo(TypedDict):
-    pass
+    x: int
 class Bar(TypedDict):
-    pass
+    x: int
 
-def foo(node: NodeType):
+def foo(node: NodeType) -> int:
     x = node
+    return x['x']
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
@@ -3696,8 +3702,9 @@ NodeType = Union['Foo', 'Bar']
 Foo = NewType('Foo', int)
 Bar = NewType('Bar', str)
 
-def foo(node: NodeType):
+def foo(node: NodeType) -> NodeType:
     x = node
+    return x
 [out]
 
 [case testCrashOnComplexCheckWithNamedTupleUnion]
