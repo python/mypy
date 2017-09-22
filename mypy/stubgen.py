@@ -59,7 +59,7 @@ from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt,
-    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase,
+    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
     ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
@@ -706,7 +706,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             typename = self.print_annotation(annotation)
         else:
             typename = self.get_str_type_of_node(rvalue)
-        return '%s%s: %s\n' % (self._indent, lvalue, typename)
+        has_rhs = not (isinstance(rvalue, TempNode) and rvalue.no_rhs)
+        initializer = " = ..." if has_rhs and not self.is_top_level() else ""
+        return '%s%s: %s%s\n' % (self._indent, lvalue, typename, initializer)
 
     def add(self, string: str) -> None:
         """Add text to generated stub."""

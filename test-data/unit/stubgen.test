@@ -134,7 +134,7 @@ class C:
     x = 1
 [out]
 class C:
-    x: int
+    x: int = ...
 
 [case testSelfAssignment]
 class C:
@@ -143,7 +143,7 @@ class C:
         x.y = 2
 [out]
 class C:
-    x: int
+    x: int = ...
     def __init__(self) -> None: ...
 
 [case testSelfAndClassBodyAssignment]
@@ -157,7 +157,7 @@ class C:
 x: int
 
 class C:
-    x: int
+    x: int = ...
     def __init__(self) -> None: ...
 
 [case testEmptyClass]
@@ -209,7 +209,7 @@ class A:
 _x: int
 
 class A:
-    _y: int
+    _y: int = ...
 
 [case testSpecialInternalVar]
 __all__ = []
@@ -379,7 +379,7 @@ class A:
     def f(self): ...
 [out]
 class A:
-    x: int
+    x: int = ...
     def f(self): ...
 
 [case testSkipMultiplePrivateDefs]
@@ -637,7 +637,7 @@ class A:
 [out]
 class A:
     class B:
-        x: int
+        x: int = ...
         def f(self): ...
     def g(self): ...
 
@@ -687,7 +687,7 @@ class A:
 from typing import Any, Optional
 
 class A:
-    x: Any
+    x: Any = ...
     def __init__(self, a: Optional[Any] = ...) -> None: ...
     def method(self, a: Optional[Any] = ...): ...
 
@@ -823,7 +823,7 @@ class Foo:
 from typing import Any
 
 class Foo:
-    alias: Any
+    alias: Any = ...
 
 [case testAliasExceptions]
 noalias1 = None
