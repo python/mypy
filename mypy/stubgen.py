@@ -121,6 +121,7 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
         else:
             target += '.pyi'
         target = os.path.join(output_dir, target)
+
         generate_stub(module_path, output_dir, module_all,
                       target=target, add_header=add_header, module=module,
                       pyversion=pyversion, include_private=include_private)
@@ -381,6 +382,9 @@ class ImportTracker:
                 if name in self.reverse_alias:
                     name, alias = self.reverse_alias[name], name
                     result.append("import {} as {}\n".format(self.direct_imports[name], alias))
+                elif name in self.reexports:
+                    assert '.' not in name  # Because reexports only has nonqualified names
+                    result.append("import {} as {}\n".format(name, name))
                 else:
                     result.append("import {}\n".format(self.direct_imports[name]))
 

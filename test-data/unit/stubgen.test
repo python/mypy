@@ -423,7 +423,17 @@ __all__ = ['re', 'x']
 x = 1
 y = 2
 [out]
+import re as re
+
+x: int
+
+[case testExportModule_import]
 import re
+__all__ = ['re', 'x']
+x = 1
+y = 2
+[out]
+import re as re
 
 x: int
 
@@ -443,17 +453,12 @@ __all__ = ['p']
 [out]
 import urllib.parse as p
 
-[case testExportModuleInPackageUnsupported_import]
+[case testExportPackageOfAModule_import]
+import urllib.parse
 __all__ = ['urllib']
-[out]
-# Names in __all__ with no definition:
-#   urllib
 
-[case testExportModuleInPackage_import]
-import urllib.parse
-__all__ = ['urllib']
 [out]
-import urllib.parse
+import urllib as urllib
 
 [case testRelativeImportAll]
 from .x import *
