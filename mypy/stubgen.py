@@ -35,7 +35,6 @@ TODO:
  - we don't seem to always detect properties ('closed' in 'io', for example)
 """
 
-import builtins
 import glob
 import importlib
 import json
