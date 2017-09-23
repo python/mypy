@@ -2952,6 +2952,19 @@ def foo(a: int, b: int) -> str:
 [out2]
 tmp/b.py:2: error: Incompatible return value type (got "int", expected "str")
 
+[case testForwardNamedTupleToUnionWithOtherNamedTUple]
+from typing import NamedTuple, Union
+
+class Person(NamedTuple):
+    name: Union[str, "NamePair"]
+
+class NamePair(NamedTuple):
+    first: str
+    last: str
+
+Person(name=NamePair(first="John", last="Doe"))
+[out]
+
 -- Some crazy selef-referential named tuples, types dicts, and aliases
 -- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed)
 
