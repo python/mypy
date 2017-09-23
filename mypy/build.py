@@ -223,10 +223,12 @@ def default_data_dir(bin_dir: Optional[str]) -> str:
             # or .../blah/lib64/python3.N/dist-packages/mypy/build.py (Gentoo)
             # or .../blah/lib/site-packages/mypy/build.py (Windows)
             # blah may be a virtualenv or /usr/local.  We want .../blah/lib/mypy.
+            # On Windows, if the install is .../python/PythonXY/site-packages, we want
+            # .../python/lib/mypy
             lib = parent
             for i in range(2):
                 lib = os.path.dirname(lib)
-                if os.path.basename(lib) in ('lib', 'lib32', 'lib64'):
+                if os.path.basename(lib) in ('lib', 'lib32', 'lib64') or os.path.basename(lib).startswith('python'):
                     return os.path.join(os.path.dirname(lib), 'lib/mypy')
         subdir = os.path.join(parent, 'lib', 'mypy')
         if os.path.isdir(subdir):
@@ -299,9 +301,10 @@ def default_lib_path(data_dir: str,
     if sys.platform != 'win32':
         path.append('/usr/local/lib/mypy')
     if not path:
-        print("Could not resolve typeshed subdirectories. If you are using MyPy"
-              "from source, you need to run \"git submodule --init update\"."
-              "Otherwise your MyPy install is broken.", file=sys.stderr)
+        print("Could not resolve typeshed subdirectories. If you are using MyPy\n"
+              "from source, you need to run \"git submodule --init update\".\n"
+              "Otherwise your MyPy install is broken.\nPython executable is located at "
+              "{0}.\nMypy located at {1}".format(sys.executable, data_dir), file=sys.stderr)
         sys.exit(1)
     return path
 
