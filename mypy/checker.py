@@ -847,7 +847,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 arg_types = list(union_items(arg_type))
             else:
                 return
-            # We check that each method is fine when dispatched on a proper self argument
+            # `info.get_method` in `analyze_member_access` does not handle decorated
+            # functions properly, so we perform it for each item of the union separately.
+            # see #3227
             for arg_type in arg_types:
                 typ2 = self.expr_checker.analyze_external_member_access(
                     other_method, arg_type, defn)

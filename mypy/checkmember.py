@@ -314,7 +314,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # methods: the former to the instance, the latter to the
                 # class.
                 functype = t
-                check_method_type(functype, original_type, var.is_classmethod, node, msg)
+                check_self_arg(functype, original_type, var.is_classmethod, node, msg)
                 signature = bind_self(functype, original_type, var.is_classmethod)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
@@ -370,19 +370,18 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
         return None
 
 
-def check_method_type(functype: FunctionLike, original_type: Type, is_classmethod: bool,
-                      context: Context, msg: MessageBuilder) -> None:
+def check_self_arg(functype: FunctionLike, original_type: Type, is_classmethod: bool,
+                   context: Context, msg: MessageBuilder) -> None:
+    """Check that the the most precise type of the self argument is compatible
+    with the declared type of each of the overloads.
+    """
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
             msg.fail('Attribute function with type %s does not accept self argument'
                      % msg.format(item), context)
         else:
-            # Check that self argument has type 'Any' or valid instance/class type.
             selfarg = item.arg_types[0]
-            # (This is sufficient for the current treatment of @classmethod,
-            # but probably needs to be revisited when we implement Type[C]
-            # or advanced variants of it like Type[<args>, C].)
             if is_classmethod:
                 original_type = TypeType.make_normalized(original_type)
             if not subtypes.is_subtype(original_type, erase_to_bound(selfarg)):
@@ -468,7 +467,7 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
     info = itype.type  # type: TypeInfo
     if isinstance(t, CallableType):
         # TODO: Should we propagate type variable values?
-        tvars = [TypeVarDef(n, i + 1, [], builtin_type('builtins.object'), tv.variance)
+        tvars = [TypeVarDef(n, i + 1, [], tv.upper_bound, tv.variance)
                  for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         if is_classmethod:
             t = bind_self(t, original_type, is_classmethod=True)
