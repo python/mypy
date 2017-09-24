@@ -59,7 +59,8 @@ def analyze_type_alias(node: Expression,
                        plugin: Plugin,
                        options: Options,
                        is_typeshed_stub: bool,
-                       allow_unnormalized: bool = False) -> Optional[Type]:
+                       allow_unnormalized: bool = False,
+                       warn_bound_tvar: bool = False) -> Optional[Type]:
     """Return type if node is valid as a type alias rvalue.
 
     Return None otherwise. 'node' must have been semantically analyzed.
@@ -112,7 +113,8 @@ def analyze_type_alias(node: Expression,
         fail_func('Invalid type alias', node)
         return None
     analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, tvar_scope, fail_func, plugin, options,
-                            is_typeshed_stub, aliasing=True, allow_unnormalized=allow_unnormalized)
+                            is_typeshed_stub, aliasing=True, allow_unnormalized=allow_unnormalized,
+                            warn_bound_tvar=warn_bound_tvar)
     return type.accept(analyzer)
 
 
@@ -140,7 +142,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                  is_typeshed_stub: bool, *,
                  aliasing: bool = False,
                  allow_tuple_literal: bool = False,
-                 allow_unnormalized: bool = False) -> None:
+                 allow_unnormalized: bool = False,
+                 warn_bound_tvar: bool = False) -> None:
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail_func = fail_func
@@ -153,6 +156,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
         self.plugin = plugin
         self.options = options
         self.is_typeshed_stub = is_typeshed_stub
+        self.warn_bound_tvar = warn_bound_tvar
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if t.optional:
@@ -175,7 +179,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                     not sym.normalized and not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname), t)
             tvar_def = self.tvar_scope.get_binding(sym)
-            if sym.kind == TVAR and tvar_def is not None:
+            if self.warn_bound_tvar and sym.kind == TVAR and tvar_def is not None:
+                self.fail('Can\'t use bound type variable "{}"'
+                          ' to define generic alias'.format(t.name), t)
+                return AnyType(TypeOfAny.from_error)
+            elif sym.kind == TVAR and tvar_def is not None:
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(
                         t.name), t)

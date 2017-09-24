@@ -1710,11 +1710,10 @@ class SemanticAnalyzer(NodeVisitor[None]):
         return Instance(fb_info, [])
 
     def analyze_alias(self, rvalue: Expression,
-                      allow_unnormalized: bool) -> Tuple[Optional[Type], List[str]]:
+                      warn_bound_tvar: bool = False) -> Tuple[Optional[Type], List[str]]:
         """Check if 'rvalue' represents a valid type allowed for aliasing
         (e.g. not a type variable). If yes, return the corresponding type and a list of
         qualified type variable names for generic aliases.
-        If 'allow_unnormalized' is True, allow types like builtins.list[T].
         """
         res = analyze_type_alias(rvalue,
                                  self.lookup_qualified,
@@ -1724,7 +1723,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
                                  self.plugin,
                                  self.options,
                                  self.is_typeshed_stub_file,
-                                 allow_unnormalized=True)
+                                 allow_unnormalized=True,
+                                 warn_bound_tvar=warn_bound_tvar)
         if res:
             alias_tvars = [name for (name, _) in
                            res.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]
@@ -1743,11 +1743,12 @@ class SemanticAnalyzer(NodeVisitor[None]):
         lvalue = s.lvalues[0]
         if not isinstance(lvalue, NameExpr):
             return
-        if (len(s.lvalues) == 1 and not self.is_func_scope() and
-                not (self.type and isinstance(s.rvalue, NameExpr) and lvalue.is_def)
+        if (len(s.lvalues) == 1 and
+                not ((self.type or self.is_func_scope()) and
+                     isinstance(s.rvalue, NameExpr) and lvalue.is_def)
                 and not s.type):
             rvalue = s.rvalue
-            res, alias_tvars = self.analyze_alias(rvalue, allow_unnormalized=True)
+            res, alias_tvars = self.analyze_alias(rvalue, warn_bound_tvar=True)
             if not res:
                 return
             node = self.lookup(lvalue.name, lvalue)
@@ -3339,7 +3340,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         elif isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
             # Special form -- subscripting a generic type alias.
             # Perform the type substitution and create a new alias.
-            res, alias_tvars = self.analyze_alias(expr, allow_unnormalized=self.is_stub_file)
+            res, alias_tvars = self.analyze_alias(expr)
             expr.analyzed = TypeAliasExpr(res, alias_tvars, fallback=self.alias_fallback(res),
                                           in_runtime=True)
             expr.analyzed.line = expr.line

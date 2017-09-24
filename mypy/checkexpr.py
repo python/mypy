@@ -635,7 +635,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             res = type_object_type(item.type, self.named_type)
             if isinstance(res, CallableType):
                 res = res.copy_modified(from_type_type=True)
-            return res
+            return expand_type_by_instance(res, item)
         if isinstance(item, UnionType):
             return UnionType([self.analyze_type_type_callee(item, context)
                               for item in item.relevant_items()], item.line)

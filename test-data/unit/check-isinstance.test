@@ -1453,10 +1453,10 @@ def f(x: Union[Type[int], Type[str], Type[List]]) -> None:
     reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
     if issubclass(x, (str, (list,))):
         reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.str], Type[builtins.list[Any]]]'
-        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[<nothing>]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[Any]]'
         x()[1]
     reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
-    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[Any]]'
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclasDestructuringUnions2]
@@ -1475,10 +1475,10 @@ def f(x: Type[Union[int, str, List]]) -> None:
     reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
     if issubclass(x, (str, (list,))):
         reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.str], Type[builtins.list[Any]]]'
-        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[<nothing>]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[Any]]'
         x()[1]
     reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
-    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[Any]]'
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclasDestructuringUnions3]
@@ -1499,10 +1499,10 @@ def f(x: Type[Union[int, str, List]]) -> None:
     reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
     if issubclass(x, (str, (list,))):
         reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.str], Type[builtins.list[Any]]]'
-        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[<nothing>]]'
+        reveal_type(x())  # E: Revealed type is 'Union[builtins.str, builtins.list[Any]]'
         x()[1]
     reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
-    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
+    reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[Any]]'
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclass]
