@@ -228,7 +228,8 @@ def default_data_dir(bin_dir: Optional[str]) -> str:
             lib = parent
             for i in range(2):
                 lib = os.path.dirname(lib)
-                if os.path.basename(lib) in ('lib', 'lib32', 'lib64') or os.path.basename(lib).startswith('python'):
+                if os.path.basename(lib) in ('lib', 'lib32', 'lib64') \
+                        or os.path.basename(lib).startswith('python'):
                     return os.path.join(os.path.dirname(lib), 'lib/mypy')
         subdir = os.path.join(parent, 'lib', 'mypy')
         if os.path.isdir(subdir):
@@ -301,10 +302,10 @@ def default_lib_path(data_dir: str,
     if sys.platform != 'win32':
         path.append('/usr/local/lib/mypy')
     if not path:
-        print("Could not resolve typeshed subdirectories. If you are using MyPy\n"
+        print("Could not resolve typeshed subdirectories. If you are using mypy\n"
               "from source, you need to run \"git submodule --init update\".\n"
-              "Otherwise your MyPy install is broken.\nPython executable is located at "
-              "{0}.\nMypy located at {1}".format(sys.executable, data_dir), file=sys.stderr)
+              "Otherwise your mypy install is broken.\nPython executable is located at "
+              "{0}.\nmypy located at {1}".format(sys.executable, data_dir), file=sys.stderr)
         sys.exit(1)
     return path
 
