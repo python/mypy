@@ -518,6 +518,21 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     return typ
 
 
+def non_method_protocol_members(tp: TypeInfo) -> List[str]:
+    """Find all non-callable members of a protocol."""
+
+    assert tp.is_protocol
+    result = []  # type: List[str]
+    anytype = AnyType(TypeOfAny.special_form)
+    instance = Instance(tp, [anytype] * len(tp.defn.type_vars))
+
+    for member in tp.protocol_members:
+        typ = find_member(member, instance, instance)
+        if not isinstance(typ, CallableType):
+            result.append(member)
+    return result
+
+
 def is_callable_subtype(left: CallableType, right: CallableType,
                         ignore_return: bool = False,
                         ignore_pos_arg_names: bool = False,

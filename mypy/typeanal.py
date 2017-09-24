@@ -718,7 +718,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         pass
 
     def visit_type_type(self, t: TypeType) -> None:
-        pass
+        t.item.accept(self)
 
 
 TypeVarList = List[Tuple[str, TypeVarExpr]]

@@ -2144,3 +2144,28 @@ class PBad(Protocol):
 y: PBad = None  # E: Incompatible types in assignment (expression has type "None", variable has type "PBad")
 [out]
 
+[case testOnlyMethodProtocolUsableWithIsSubclass]
+from typing import Protocol, runtime, Union, Type
+@runtime
+class P(Protocol):
+    def meth(self) -> int:
+        pass
+@runtime
+class PBad(Protocol):
+    x: str
+
+class C:
+    x: str
+    def meth(self) -> int:
+        pass
+class E: pass
+
+cls: Type[Union[C, E]]
+issubclass(cls, PBad)  # E: Only protocols that don't have non-method members can be used with issubclass() \
+                       # N: Protocol "PBad" has non-method member(s): x
+if issubclass(cls, P):
+    reveal_type(cls)  # E: Revealed type is 'Type[__main__.C]'
+else:
+    reveal_type(cls)  # E: Revealed type is 'Type[__main__.E]'
+[builtins fixtures/isinstance.pyi]
+[out]

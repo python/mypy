@@ -1052,6 +1052,15 @@ class MessageBuilder:
         self.fail("Only concrete class can be given where {} is expected"
                   .format(self.format(typ)), context)
 
+    def report_non_method_protocol(self, tp: TypeInfo, members: List[str],
+                                   context: Context) -> None:
+        self.fail("Only protocols that don't have non-method members can be"
+                  " used with issubclass()", context)
+        if len(members) < 3:
+            attrs = ', '.join(members)
+            self.note('Protocol "{}" has non-method member(s): {}'
+                      .format(tp.name(), attrs), context)
+
     def note_call(self, subtype: Type, call: Type, context: Context) -> None:
         self.note('"{}.__call__" has type {}'.format(self.format_bare(subtype),
                                                      self.format(call, verbosity=1)), context)

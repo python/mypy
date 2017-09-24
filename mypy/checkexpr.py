@@ -36,7 +36,7 @@ from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
 from mypy.meet import narrow_declared_type
 from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import is_subtype, is_equivalent, find_member
+from mypy.subtypes import is_subtype, is_equivalent, find_member, non_method_protocol_members
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type, bind_self
@@ -273,6 +273,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         not tp.type_object().runtime_protocol):
                     self.chk.fail('Only @runtime protocols can be used with'
                                   ' instance and class checks', e)
+        if (isinstance(e.callee, RefExpr) and len(e.args) == 2 and
+                e.callee.fullname == 'builtins.issubclass'):
+            for expr in mypy.checker.flatten(e.args[1]):
+                tp = self.chk.type_map[expr]
+                if (isinstance(tp, CallableType) and tp.is_type_obj() and
+                        tp.type_object().is_protocol):
+                    attr_members = non_method_protocol_members(tp.type_object())
+                    if attr_members:
+                        self.chk.msg.report_non_method_protocol(tp.type_object(),
+                                                                attr_members, e)
         if isinstance(ret_type, UninhabitedType):
             self.chk.binder.unreachable()
         if not allow_none_return and isinstance(ret_type, NoneTyp):
