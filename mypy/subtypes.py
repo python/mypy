@@ -123,7 +123,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_none_type(self, left: NoneTyp) -> bool:
         if experiments.STRICT_OPTIONAL:
             return (isinstance(self.right, NoneTyp) or
-                    is_named_instance(self.right, 'builtins.object'))
+                    is_named_instance(self.right, 'builtins.object') or
+                    isinstance(self.right, Instance) and self.right.type.is_protocol and
+                    not self.right.type.protocol_members)
         else:
             return True
 
