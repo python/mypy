@@ -112,7 +112,7 @@ class TestCase:
         self.name = name
         self.suite = suite
         self.old_cwd = None  # type: Optional[str]
-        self.tmpdir = None  # type: Optional[tempfile.TemporaryDirectory]
+        self.tmpdir = None  # type: Optional[tempfile.TemporaryDirectory[str]]
 
     def run(self) -> None:
         if self.func:

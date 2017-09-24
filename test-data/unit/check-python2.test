@@ -34,7 +34,7 @@ class A:
 print >>A(), ''
 print >>None, ''
 print >>1, '' # E: "int" has no attribute "write"
-print >>(None + ''), None # E: Unsupported left operand type for + (None)
+print >>(None + ''), None # E: Unsupported left operand type for + ("None")
 
 [case testDivision]
 class A:
@@ -291,7 +291,7 @@ class A(object):
     __metaclass__ = M
     y = 0
 reveal_type(A.y) # E: Revealed type is 'builtins.int'
-A.x # E: Type[A] has no attribute "x"
+A.x # E: "Type[A]" has no attribute "x"
 
 [case testAnyAsBaseOfMetaclass]
 from typing import Any, Type
@@ -308,3 +308,12 @@ class A:
 [out]
 main:2: error: Invalid type for self, or extra argument type in function annotation
 main:2: note: (Hint: typically annotations omit the type for self)
+
+[case testSuper]
+class A:
+    def f(self): # type: () -> None
+        pass
+class B(A):
+    def g(self): # type: () -> None
+        super(B, self).f()
+        super().f() # E: Too few arguments for "super"

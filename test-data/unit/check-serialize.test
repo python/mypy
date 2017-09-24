@@ -662,7 +662,7 @@ class A: pass
 def f() -> None: pass
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:4: error: Incompatible types in assignment (expression has type Callable[[], None], variable has type "type")
+tmp/a.py:4: error: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "type")
 
 [case testSerializeOverloadedVsTypeObjectDistinction]
 import a

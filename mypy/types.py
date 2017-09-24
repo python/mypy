@@ -274,7 +274,7 @@ class TypeOfAny:
             return x
 
     # Was this Any type was inferred without a type annotation?
-    implicit = TypeOfAny('implicit')
+    unannotated = TypeOfAny('unannotated')
     # Does this Any come from an explicit type annotation?
     explicit = TypeOfAny('explicit')
     # Does this come from an unfollowed import? See --disallow-any=unimported option
@@ -1011,7 +1011,8 @@ class TupleType(Type):
             items = self.items
         return TupleType(items, fallback, self.line, self.column)
 
-    def slice(self, begin: int, stride: int, end: int) -> 'TupleType':
+    def slice(self, begin: Optional[int], stride: Optional[int],
+              end: Optional[int]) -> 'TupleType':
         return TupleType(self.items[begin:end:stride], self.fallback,
                          self.line, self.column, self.implicit)
 
@@ -1893,10 +1894,10 @@ def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
         name = '"{}"'.format(name)
 
     return CallableType(
-        [AnyType(TypeOfAny.implicit)] * len(fdef.arg_names),
+        [AnyType(TypeOfAny.unannotated)] * len(fdef.arg_names),
         fdef.arg_kinds,
         [None if argument_elide_name(n) else n for n in fdef.arg_names],
-        ret_type or AnyType(TypeOfAny.implicit),
+        ret_type or AnyType(TypeOfAny.unannotated),
         fallback,
         name,
         implicit=True,

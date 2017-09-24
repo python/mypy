@@ -69,7 +69,7 @@ class B: pass
 import typing
 def f() -> None:
     a = g()
-    None(a) # E: None not callable
+    None(a) # E: "None" not callable
     a.x()
 
 def g(): pass
@@ -81,7 +81,7 @@ g = None # type: Any
 
 def f(a: Any) -> None:
     b = g
-    None(b) # E: None not callable
+    None(b) # E: "None" not callable
     a.x()
 [out]
 
@@ -126,7 +126,7 @@ a_s = None # type: A[str]
 def f() -> None:
     a_int = A() # type: A[int]
     a = a_int
-    a = a_s # E: Incompatible types in assignment (expression has type A[str], variable has type A[int])
+    a = a_s # E: Incompatible types in assignment (expression has type "A[str]", variable has type "A[int]")
     a = a_i
 [builtins fixtures/tuple.pyi]
 [out]
@@ -480,11 +480,11 @@ ao = None # type: A[object]
 ab = None # type: A[B]
 ac = None # type: A[C]
 
-ab = f(ao) # E: Argument 1 to "f" has incompatible type A[object]; expected A[B]
-ao = f(ab) # E: Argument 1 to "f" has incompatible type A[B]; expected A[object]
-ab = f(ac) # E: Argument 1 to "f" has incompatible type A[C]; expected A[B]
-ab = g(ao) # E: Argument 1 to "g" has incompatible type A[object]; expected A[B]
-ao = g(ab) # E: Argument 1 to "g" has incompatible type A[B]; expected A[object]
+ab = f(ao) # E: Argument 1 to "f" has incompatible type "A[object]"; expected "A[B]"
+ao = f(ab) # E: Argument 1 to "f" has incompatible type "A[B]"; expected "A[object]"
+ab = f(ac) # E: Argument 1 to "f" has incompatible type "A[C]"; expected "A[B]"
+ab = g(ao) # E: Argument 1 to "g" has incompatible type "A[object]"; expected "A[B]"
+ao = g(ab) # E: Argument 1 to "g" has incompatible type "A[B]"; expected "A[object]"
 
 ab = f(ab)
 ac = f(ac)
@@ -648,7 +648,7 @@ def mymap(f: Callable[[t], s], a: List[t]) -> List[s]: pass
 l = mymap(f, [b])
 l = [A()]
 lb = [b]
-l = lb # E: Incompatible types in assignment (expression has type List[bool], variable has type List[A])
+l = lb # E: Incompatible types in assignment (expression has type "List[bool]", variable has type "List[A]")
 [builtins fixtures/for.pyi]
 
 [case testGenericFunctionWithTypeTypeAsCallable]
@@ -676,7 +676,7 @@ f(1, 1)() # E: "int" not callable
 
 def g(x: Union[T, List[T]]) -> List[T]: pass
 def h(x: List[str]) -> None: pass
-g('a')() # E: List[str] not callable
+g('a')() # E: "List[str]" not callable
 
 # The next line is a case where there are multiple ways to satisfy a constraint
 # involving a Union. Either T = List[str] or T = str would turn out to be valid,
@@ -684,7 +684,7 @@ g('a')() # E: List[str] not callable
 # to backtrack later) and defaults to T = <nothing>. The result is an
 # awkward error message. Either a better error message, or simply accepting the
 # call, would be preferable here.
-g(['a']) # E: Argument 1 to "g" has incompatible type List[str]; expected List[<nothing>]
+g(['a']) # E: Argument 1 to "g" has incompatible type "List[str]"; expected "List[<nothing>]"
 
 h(g(['a']))
 
@@ -693,7 +693,7 @@ a = [1]
 b = ['b']
 i(a, a, b)
 i(b, a, b)
-i(a, b, b) # E: Argument 1 to "i" has incompatible type List[int]; expected List[str]
+i(a, b, b) # E: Argument 1 to "i" has incompatible type "List[int]"; expected "List[str]"
 [builtins fixtures/list.pyi]
 
 [case testCallableListJoinInference]
@@ -778,7 +778,7 @@ from typing import TypeVar, Union, List
 T = TypeVar('T')
 def f() -> List[T]: pass
 d1 = f() # type: Union[List[int], str]
-d2 = f() # type: Union[int, str] # E: Incompatible types in assignment (expression has type List[<nothing>], variable has type "Union[int, str]")
+d2 = f() # type: Union[int, str] # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "Union[int, str]")
 def g(x: T) -> List[T]: pass
 d3 = g(1) # type: Union[List[int], List[str]]
 [builtins fixtures/list.pyi]
@@ -792,7 +792,7 @@ def k1(x: int, y: List[T]) -> List[Union[T, int]]: pass
 def k2(x: S, y: List[T]) -> List[Union[T, int]]: pass
 a = k2
 a = k2
-a = k1 # E: Incompatible types in assignment (expression has type Callable[[int, List[T]], List[Union[T, int]]], variable has type Callable[[S, List[T]], List[Union[T, int]]])
+a = k1 # E: Incompatible types in assignment (expression has type "Callable[[int, List[T]], List[Union[T, int]]]", variable has type "Callable[[S, List[T]], List[Union[T, int]]]")
 b = k1
 b = k1
 b = k2
@@ -840,7 +840,7 @@ def d_aa() -> Dict[A, A]: return {}
 a, b = None, None # type: (A, B)
 d = {a:b}
 d = d_ab()
-d = d_aa() # E: Incompatible types in assignment (expression has type Dict[A, A], variable has type Dict[A, B])
+d = d_aa() # E: Incompatible types in assignment (expression has type "Dict[A, A]", variable has type "Dict[A, B]")
 [builtins fixtures/dict.pyi]
 
 [case testSetLiteral]
@@ -851,7 +851,7 @@ def s_s() -> Set[str]: return set()
 s = {a}
 s = {x}
 s = s_i()
-s = s_s() # E: Incompatible types in assignment (expression has type Set[str], variable has type Set[int])
+s = s_s() # E: Incompatible types in assignment (expression has type "Set[str]", variable has type "Set[int]")
 [builtins fixtures/set.pyi]
 
 [case testSetWithStarExpr]
@@ -1074,14 +1074,14 @@ from typing import List, Callable
 li = [1]
 l = lambda: li
 f1 = l # type: Callable[[], List[int]]
-f2 = l # type: Callable[[], List[str]] # E: Incompatible types in assignment (expression has type Callable[[], List[int]], variable has type Callable[[], List[str]])
+f2 = l # type: Callable[[], List[str]] # E: Incompatible types in assignment (expression has type "Callable[[], List[int]]", variable has type "Callable[[], List[str]]")
 [builtins fixtures/list.pyi]
 
 [case testInferLambdaType2]
 from typing import List, Callable
 l = lambda: [B()]
 f1 = l # type: Callable[[], List[B]]
-f2 = l # type: Callable[[], List[A]] # E: Incompatible types in assignment (expression has type Callable[[], List[B]], variable has type Callable[[], List[A]])
+f2 = l # type: Callable[[], List[A]] # E: Incompatible types in assignment (expression has type "Callable[[], List[B]]", variable has type "Callable[[], List[A]]")
 
 class A: pass
 class B: pass
@@ -1119,7 +1119,7 @@ from typing import Callable
 def f(a: Callable[..., None] = lambda *a, **k: None):
     pass
 
-def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible default for argument "a" (default has type Callable[[VarArg(Any), KwArg(Any)], int], argument has type Callable[..., None])
+def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible default for argument "a" (default has type "Callable[[VarArg(Any), KwArg(Any)], int]", argument has type "Callable[..., None]")
     pass
 [builtins fixtures/dict.pyi]
 
@@ -1154,7 +1154,7 @@ a = None # type: List[A]
 o = None # type: List[object]
 a2 = a or []
 a = a2
-a2 = o # E: Incompatible types in assignment (expression has type List[object], variable has type List[A])
+a2 = o # E: Incompatible types in assignment (expression has type "List[object]", variable has type "List[A]")
 class A: pass
 [builtins fixtures/list.pyi]
 
@@ -1194,7 +1194,7 @@ x2 = [B(), A()]
 x3 = [B(), B()]
 a = x1
 a = x2
-a = x3 # E: Incompatible types in assignment (expression has type List[B], variable has type List[A])
+a = x3 # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
 [builtins fixtures/list.pyi]
 
 [case testListWithDucktypeCompatibilityAndTransitivity]
@@ -1210,7 +1210,7 @@ x2 = [C(), A()]
 x3 = [B(), C()]
 a = x1
 a = x2
-a = x3 # E: Incompatible types in assignment (expression has type List[B], variable has type List[A])
+a = x3 # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
 [builtins fixtures/list.pyi]
 
 
@@ -1256,8 +1256,8 @@ a()
 a, b = [], []
 a.append(1)
 b.append('')
-a() # E: List[int] not callable
-b() # E: List[str] not callable
+a() # E: "List[int]" not callable
+b() # E: "List[str]" not callable
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1371,14 +1371,14 @@ a.add('')  # E: Argument 1 to "add" of "set" has incompatible type "str"; expect
 [case testInferDictInitializedToEmpty]
 a = {}
 a[1] = ''
-a() # E: Dict[int, str] not callable
+a() # E: "Dict[int, str]" not callable
 [builtins fixtures/dict.pyi]
 [out]
 
 [case testInferDictInitializedToEmptyUsingUpdate]
 a = {}
 a.update({'': 42})
-a() # E: Dict[str, int] not callable
+a() # E: "Dict[str, int]" not callable
 [builtins fixtures/dict.pyi]
 [out]
 
@@ -1447,7 +1447,7 @@ def f() -> None:
 import typing
 def f() -> None:
     a = None
-    a.x() # E: None has no attribute "x"
+    a.x() # E: "None" has no attribute "x"
 [out]
 
 [case testGvarPartiallyInitializedToNone]
@@ -1504,7 +1504,7 @@ x = None
 def f() -> None:
     x = None
     x = 1
-x()  # E: None not callable
+x()  # E: "None" not callable
 
 [case testAttributePartiallyInitializedToNone]
 class A:
@@ -1523,8 +1523,8 @@ class A:
         self.x = 1
         self.x()
 [out]
-main:6: error: Incompatible types in assignment (expression has type "int", variable has type None)
-main:7: error: None not callable
+main:6: error: Incompatible types in assignment (expression has type "int", variable has type "None")
+main:7: error: "None" not callable
 
 [case testGlobalInitializedToNoneSetFromFunction]
 a = None
@@ -1553,7 +1553,7 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
-main:5: error: None has no attribute "__iter__"
+main:5: error: "None" has no attribute "__iter__"
 
 [case testPartialTypeErrorSpecialCase2]
 # This used to crash.
@@ -1574,7 +1574,7 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
-main:4: error: None has no attribute "__iter__"
+main:4: error: "None" has no attribute "__iter__"
 
 
 -- Multipass
@@ -1680,7 +1680,7 @@ def g(d: Dict[str, int]) -> None: pass
 def f() -> None:
     x = {}
     x[1] = y
-    g(x) # E: Argument 1 to "g" has incompatible type Dict[int, str]; expected Dict[str, int]
+    g(x) # E: Argument 1 to "g" has incompatible type "Dict[int, str]"; expected "Dict[str, int]"
     x[1] = 1 # E: Incompatible types in assignment (expression has type "int", target has type "str")
     x[1] = ''
 y = ''
@@ -1694,7 +1694,7 @@ def f() -> None:
     x = {}
     y
     x[1] = 1
-    g(x) # E: Argument 1 to "g" has incompatible type Dict[int, int]; expected Dict[str, int]
+    g(x) # E: Argument 1 to "g" has incompatible type "Dict[int, int]"; expected "Dict[str, int]"
 y = ''
 [builtins fixtures/dict.pyi]
 [out]
@@ -1713,7 +1713,7 @@ def f() -> None:
     y = o
     x = []
     x.append(y)
-    x() # E: List[int] not callable
+    x() # E: "List[int]" not callable
 o = 1
 [builtins fixtures/list.pyi]
 [out]
@@ -1723,7 +1723,7 @@ def f() -> None:
     y = o
     x = {}
     x[''] = y
-    x() # E: Dict[str, int] not callable
+    x() # E: "Dict[str, int]" not callable
 o = 1
 [builtins fixtures/dict.pyi]
 [out]
@@ -1825,20 +1825,20 @@ a2.foo2()
 [case testUnificationEmptyListLeft]
 def f(): pass
 a = [] if f() else [0]
-a() # E: List[int] not callable
+a() # E: "List[int]" not callable
 [builtins fixtures/list.pyi]
 
 [case testUnificationEmptyListRight]
 def f(): pass
 a = [0] if f() else []
-a() # E: List[int] not callable
+a() # E: "List[int]" not callable
 [builtins fixtures/list.pyi]
 
 [case testUnificationEmptyListLeftInContext]
 from typing import List
 def f(): pass
 a = [] if f() else [0] # type: List[int]
-a() # E: List[int] not callable
+a() # E: "List[int]" not callable
 [builtins fixtures/list.pyi]
 
 [case testUnificationEmptyListRightInContext]
@@ -1846,37 +1846,37 @@ a() # E: List[int] not callable
 from typing import List
 def f(): pass
 a = [0] if f() else [] # type: List[int]
-a() # E: List[int] not callable
+a() # E: "List[int]" not callable
 [builtins fixtures/list.pyi]
 
 [case testUnificationEmptySetLeft]
 def f(): pass
 a = set() if f() else {0}
-a() # E: Set[int] not callable
+a() # E: "Set[int]" not callable
 [builtins fixtures/set.pyi]
 
 [case testUnificationEmptyDictLeft]
 def f(): pass
 a = {} if f() else {0: 0}
-a() # E: Dict[int, int] not callable
+a() # E: "Dict[int, int]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testUnificationEmptyDictRight]
 def f(): pass
 a = {0: 0} if f() else {}
-a() # E: Dict[int, int] not callable
+a() # E: "Dict[int, int]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testUnificationDictWithEmptyListLeft]
 def f(): pass
 a = {0: []} if f() else {0: [0]}
-a() # E: Dict[int, List[int]] not callable
+a() # E: "Dict[int, List[int]]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testUnificationDictWithEmptyListRight]
 def f(): pass
 a = {0: [0]} if f() else {0: []}
-a() # E: Dict[int, List[int]] not callable
+a() # E: "Dict[int, List[int]]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testMisguidedSetItem]

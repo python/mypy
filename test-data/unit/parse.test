@@ -2480,7 +2480,7 @@ class Foo(metaclass=Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
-    Metaclass(Bar)
+    Metaclass(NameExpr(Bar))
     PassStmt:1()))
 
 [case testQualifiedMetaclass]
@@ -2489,7 +2489,9 @@ class Foo(metaclass=foo.Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
-    Metaclass(foo.Bar)
+    Metaclass(MemberExpr:1(
+      NameExpr(foo)
+      Bar))
     PassStmt:1()))
 
 [case testBaseAndMetaclass]
@@ -2498,7 +2500,7 @@ class Foo(foo.bar[x], metaclass=Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
-    Metaclass(Bar)
+    Metaclass(NameExpr(Bar))
     BaseTypeExpr(
       IndexExpr:1(
         MemberExpr:1(
@@ -2521,7 +2523,7 @@ class Foo(_root=None, metaclass=Bar): pass
 MypyFile:1(
   ClassDef:1(
     Foo
-    Metaclass(Bar)
+    Metaclass(NameExpr(Bar))
     PassStmt:1()))
 
 [case testClassKeywordArgsAfterMeta]
@@ -2530,7 +2532,7 @@ class Foo(metaclass=Bar, _root=None): pass
 MypyFile:1(
   ClassDef:1(
     Foo
-    Metaclass(Bar)
+    Metaclass(NameExpr(Bar))
     PassStmt:1()))
 
 [case testNamesThatAreNoLongerKeywords]

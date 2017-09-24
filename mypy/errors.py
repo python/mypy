@@ -530,7 +530,7 @@ def remove_path_prefix(path: str, prefix: str) -> str:
         return path
 
 
-def report_internal_error(err: Exception, file: str, line: int,
+def report_internal_error(err: Exception, file: Optional[str], line: int,
                           errors: Errors, options: Options) -> None:
     """Report internal error and exit.
 
@@ -545,13 +545,16 @@ def report_internal_error(err: Exception, file: str, line: int,
         print("Failed to dump errors:", repr(e), file=sys.stderr)
 
     # Compute file:line prefix for official-looking error messages.
-    if line:
-        prefix = '{}:{}'.format(file, line)
+    if file:
+        if line:
+            prefix = '{}:{}: '.format(file, line)
+        else:
+            prefix = '{}: '.format(file)
     else:
-        prefix = file
+        prefix = ''
 
     # Print "INTERNAL ERROR" message.
-    print('{}: error: INTERNAL ERROR --'.format(prefix),
+    print('{}error: INTERNAL ERROR --'.format(prefix),
           'please report a bug at https://github.com/python/mypy/issues',
           'version: {}'.format(mypy_version),
           file=sys.stderr)

@@ -77,7 +77,7 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
 
         # Go through the constructor args to get its name and type.
         name = None
-        default_type = AnyType(TypeOfAny.implicit)
+        default_type = AnyType(TypeOfAny.unannotated)
         typ = default_type  # type: Type
         for i, arg in enumerate(expr.args):
             if expr.arg_names[i] is not None:

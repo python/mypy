@@ -20,7 +20,7 @@ with yield_id(1) as x:
 
 f = yield_id
 def g(x, y): pass
-f = g # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[T], GeneratorContextManager[T]])
+f = g # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[T], GeneratorContextManager[T]]")
 [typing fixtures/typing-full.pyi]
 
 [case testContextManagerWithUnspecifiedArguments]
