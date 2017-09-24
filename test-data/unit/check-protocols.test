@@ -2118,6 +2118,12 @@ main:10: note:         def other(self, *args: Any, hint: Optional[str] = ..., **
 main:10: note:     Got:
 main:10: note:         def other(self) -> int
 
+[case testObjectAllowedInProtocolBases]
+from typing import Protocol
+class P(Protocol, object):
+    pass
+[out]
+
 [case testNoneSubtypeOfEmptyProtocol]
 from typing import Protocol
 class P(Protocol):

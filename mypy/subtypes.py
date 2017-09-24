@@ -388,7 +388,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
                 is_compat = is_proper_subtype(subtype, supertype)
             if not is_compat:
                 return False
-            if isinstance(subtype, NoneTyp) and member.startswith('__') and member.endswith('__'):
+            if isinstance(subtype, NoneTyp) and isinstance(supertype, CallableType):
                 # We want __hash__ = None idiom to work even without --strict-optional
                 return False
             subflags = get_member_flags(member, left.type)
