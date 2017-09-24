@@ -2126,7 +2126,7 @@ class A(Generic[T]):
     def __init__(self, x: T) -> None:
         self.x = x
 class B(Generic[T]):
-    a: Type[A[T]]
+    a: Type[A[T]] = A
 
 reveal_type(B[int]().a) # E: Revealed type is 'Type[__main__.A[builtins.int*]]'
 B[int]().a('hi') # E: Argument 1 to "A" has incompatible type "str"; expected "int"
