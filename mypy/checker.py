@@ -1685,7 +1685,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         def append_types_for_inference(lvs: List[Expression], rv_types: List[Type]) -> None:
             for lv, rv_type in zip(lvs, rv_types):
                 sub_lvalue_type, index_expr, inferred = self.check_lvalue(lv)
-                if sub_lvalue_type:
+                if sub_lvalue_type and not isinstance(sub_lvalue_type, PartialType):
                     type_parameters.append(sub_lvalue_type)
                 else:  # index lvalue
                     # TODO Figure out more precise type context, probably
@@ -1696,7 +1696,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if star_lv:
             sub_lvalue_type, index_expr, inferred = self.check_lvalue(star_lv.expr)
-            if sub_lvalue_type:
+            if sub_lvalue_type and not isinstance(sub_lvalue_type, PartialType):
                 type_parameters.extend([sub_lvalue_type] * len(star_rv_types))
             else:  # index lvalue
                 # TODO Figure out more precise type context, probably
