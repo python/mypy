@@ -110,6 +110,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     dynamic_funcs = None  # type: List[bool]
     # Stack of collections of variables with partial types
     partial_types = None  # type: List[Dict[Var, Context]]
+    # Vars for which partial type errors are already reported
+    # (to avoid logically duplicate errors with different error context).
+    partial_reported = None  # type: Set[Var]
     globals = None  # type: SymbolTable
     modules = None  # type: Dict[str, MypyFile]
     # Nodes that couldn't be checked because some types weren't available. We'll run
@@ -157,6 +160,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.return_types = []
         self.dynamic_funcs = []
         self.partial_types = []
+        self.partial_reported = set()
         self.deferred_nodes = []
         self.type_map = {}
         self.module_refs = set()
@@ -1845,8 +1849,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             var.is_inferred = True
             if isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None:
                 # Store inferred attribute type so that we can check consistency afterwards.
-                assert lvalue.def_var is not None
-                self.inferred_attribute_types[lvalue.def_var] = type
+                if lvalue.def_var is not None:
+                    self.inferred_attribute_types[lvalue.def_var] = type
             self.store_type(lvalue, type)
 
     def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type,
@@ -2655,9 +2659,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(var.type, PartialType) and var.type.type is None:
                     # None partial type: assume variable is intended to have type None
                     var.type = NoneTyp()
-                else:
+                elif var not in self.partial_reported:
                     self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
                     var.type = AnyType(TypeOfAny.from_error)
+                    self.partial_reported.add(var)
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
         for partial_types in reversed(self.partial_types):

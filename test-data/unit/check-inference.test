@@ -1887,3 +1887,11 @@ C[0] = 0
 [out]
 main:4: error: Type expected within [...]
 main:4: error: Unsupported target for indexed assignment
+
+[case testNoCrashOnPartialMember]
+class C:
+    x = None
+    def __init__(self) -> None:
+        self.x = []  # E: Need type annotation for variable
+[builtins fixtures/list.pyi]
+[out]
