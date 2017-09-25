@@ -215,7 +215,8 @@ def default_data_dir(bin_dir: Optional[str]) -> str:
     """
     if not bin_dir:
         if os.name == 'nt':
-            for parent in map(os.path.join, (sys.prefix, 'Lib'), (site.getuserbase(), 'lib')):
+            prefixes = os.path.join(sys.prefix, 'Lib'), os.path.join(site.getuserbase(), 'lib')
+            for parent in prefixes:
                     data_dir = os.path.join(parent, 'mypy')
                     if os.path.exists(data_dir):
                         return data_dir
