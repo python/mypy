@@ -38,7 +38,8 @@ Here is a small example to whet your appetite:
 from typing import Iterator
 
 def fib(n: int) -> Iterator[int]:
-    a, b = 0, 1
+    a: int = 0
+    b: int = 1
     while a < n:
         yield a
         a, b = b, a + b
@@ -49,14 +50,21 @@ See 'Development status' below.
 
 Annotations
 -----------
-You can add type hints to your Python programs using the standard for type
-annotations introduced in Python 3.5 ([PEP 484](https://www.python.org/dev/peps/pep-0484/)).
-The type annotation standard has also been backported to earlier
-Python 3.x versions.  Mypy supports Python 3.3 and later.
-XML based reports do not work on Python 3.3 and 3.4 on Windows.
+For Python 3, you can add type hints to your Python programs using the standard for type
+annotations ([PEP 484](https://www.python.org/dev/peps/pep-0484/)).
 
 For Python 2.7, you can add annotations as comments (this is also
-specified in [PEP 484](https://www.python.org/dev/peps/pep-0484/)).
+specified in [PEP 484](https://www.python.org/dev/peps/pep-0484/)):
+```python
+from typing import Iterator
+
+def fib(n):  # type: int -> Iterator[int]
+    a = 0  # type: int
+    b = 1  # type: int
+    while a < n:
+        yield a
+        a, b = b, a + b
+```
 
 
 Requirements
@@ -160,7 +168,8 @@ In Windows, the script is generally installed in
     C:\>\Python34\python \Python34\Scripts\mypy PROGRAM
 
 If you are on Windows using Python 3.3 or 3.4, and would like to use XML reports
-download LXML from [PyPi](https://pypi.python.org/pypi/lxml).
+download LXML from [PyPi](https://pypi.python.org/pypi/lxml). 
+XML based reports do not work on Python 3.3 and 3.4 on Windows.
 
 ### Working with `virtualenv`
 
