@@ -38,34 +38,23 @@ Here is a small example to whet your appetite:
 from typing import Iterator
 
 def fib(n: int) -> Iterator[int]:
-    a: int = 0
-    b: int = 1
+    a, b = 0, 1
     while a < n:
         yield a
         a, b = b, a + b
 ```
+This example uses Python 3 style of the standard type annotations, defined in [PEP 484](https://www.python.org/dev/peps/pep-0484/). 
+
+For Python 2.7, the standard annotations are written as comments:
+```python
+def reverse(s):  # type: str -> str
+    return s[::-1]
+```
+
+See [the documentation](http://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
 
 Mypy is in development; some features are missing and there are bugs.
 See 'Development status' below.
-
-Annotations
------------
-For Python 3, you can add type hints to your Python programs using the standard for type
-annotations ([PEP 484](https://www.python.org/dev/peps/pep-0484/)).
-
-For Python 2.7, you can add annotations as comments (this is also
-specified in [PEP 484](https://www.python.org/dev/peps/pep-0484/)):
-```python
-from typing import Iterator
-
-def fib(n):  # type: int -> Iterator[int]
-    a = 0  # type: int
-    b = 1  # type: int
-    while a < n:
-        yield a
-        a, b = b, a + b
-```
-
 
 Requirements
 ------------
