@@ -17,6 +17,7 @@ import hashlib
 import json
 import os.path
 import re
+import site
 import sys
 import time
 from os.path import dirname, basename
@@ -213,6 +214,11 @@ def default_data_dir(bin_dir: Optional[str]) -> str:
       bin_dir: directory containing the mypy script
     """
     if not bin_dir:
+        if os.name == 'nt':
+            for parent in map(os.path.join, (sys.prefix, 'Lib'), (site.getuserbase(), 'lib')):
+                    data_dir = os.path.join(parent, 'mypy')
+                    if os.path.exists(data_dir):
+                        return data_dir
         mypy_package = os.path.dirname(__file__)
         parent = os.path.dirname(mypy_package)
         if (os.path.basename(parent) == 'site-packages' or
@@ -223,13 +229,10 @@ def default_data_dir(bin_dir: Optional[str]) -> str:
             # or .../blah/lib64/python3.N/dist-packages/mypy/build.py (Gentoo)
             # or .../blah/lib/site-packages/mypy/build.py (Windows)
             # blah may be a virtualenv or /usr/local.  We want .../blah/lib/mypy.
-            # On Windows, if the install is .../python/PythonXY/site-packages, we want
-            # .../python/lib/mypy
             lib = parent
             for i in range(2):
                 lib = os.path.dirname(lib)
-                if os.path.basename(lib) in ('lib', 'lib32', 'lib64') \
-                        or os.path.basename(lib).startswith('python'):
+                if os.path.basename(lib) in ('lib', 'lib32', 'lib64'):
                     return os.path.join(os.path.dirname(lib), 'lib/mypy')
         subdir = os.path.join(parent, 'lib', 'mypy')
         if os.path.isdir(subdir):
