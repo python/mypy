@@ -835,28 +835,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Check for the issue described above.
             other_method = nodes.normal_from_reverse_op[method]
             arg_type = typ.arg_types[1]
-            arg_types = [arg_type]
-            if isinstance(arg_type, Instance):
-                if not arg_type.type.has_readable_member(other_method):
-                    return
-            elif isinstance(arg_type, AnyType):
+            if not (isinstance(arg_type, (Instance, UnionType))
+                    and arg_type.has_readable_member(other_method)):
                 return
-            elif isinstance(arg_type, UnionType):
-                if not arg_type.has_readable_member(other_method):
-                    return
-                arg_types = list(union_items(arg_type))
-            else:
-                return
-            # `info.get_method` in `analyze_member_access` does not handle decorated
-            # functions properly, so we perform it for each item of the union separately.
-            # see #3227
-            for arg_type in arg_types:
-                typ2 = self.expr_checker.analyze_external_member_access(
-                    other_method, arg_type, defn)
-                self.check_overlapping_op_methods(
-                    typ, method, defn.info,
-                    typ2, other_method, cast(Instance, arg_type),
-                    defn)
+            typ2 = self.expr_checker.analyze_external_member_access(
+                other_method, arg_type, defn)
+            self.check_overlapping_op_methods(
+                typ, method, defn.info,
+                typ2, other_method, cast(Instance, arg_type),
+                defn)
 
     def check_overlapping_op_methods(self,
                                      reverse_type: CallableType,

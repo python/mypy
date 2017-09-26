@@ -381,3 +381,21 @@ class A:
     # def g(self: None) -> None: ... see in check-python2.test
 [out]
 main:3: error: Self argument missing for a non-static method (or an invalid type for self)
+
+[case testUnionPropertyField]
+from typing import Union
+
+class A:
+    x: int
+
+class B:
+    @property
+    def x(self) -> int: return 1
+
+class C:
+    @property
+    def x(self) -> int: return 1
+
+ab: Union[A, B, C]
+reveal_type(ab.x)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/property.pyi]

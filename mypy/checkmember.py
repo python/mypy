@@ -20,6 +20,7 @@ from mypy.typevars import fill_typevars
 from mypy.plugin import Plugin, AttributeContext
 from mypy import messages
 from mypy import subtypes
+from mypy import meet
 MYPY = False
 if MYPY:  # import for forward declaration only
     import mypy.checker
@@ -314,7 +315,9 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # methods: the former to the instance, the latter to the
                 # class.
                 functype = t
-                check_self_arg(functype, original_type, var.is_classmethod, node, msg)
+                # Use meet to simulate dispatch - e.g. reduce Union[A, B] to A on dispatch to A
+                dispatched_type = meet.meet_types(original_type, itype)
+                check_self_arg(functype, dispatched_type, var.is_classmethod, node, msg)
                 signature = bind_self(functype, original_type, var.is_classmethod)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
