@@ -25,23 +25,15 @@ What is mypy?
 -------------
 
 Mypy is an optional static type checker for Python.  You can add type
-hints to your Python programs using the standard for type
-annotations introduced in Python 3.5 ([PEP 484](https://www.python.org/dev/peps/pep-0484/)), and use mypy to
-type check them statically. Find bugs in your programs without even
-running them!
-
-The type annotation standard has also been backported to earlier
-Python 3.x versions.  Mypy supports Python 3.3 and later.
-XML based reports do not work on Python 3.3 and 3.4 on Windows.
-
-For Python 2.7, you can add annotations as comments (this is also
-specified in [PEP 484](https://www.python.org/dev/peps/pep-0484/)).
+hints ([PEP 484](https://www.python.org/dev/peps/pep-0484/)) to your
+Python programs, and use mypy to type check them statically.
+Find bugs in your programs without even running them!
 
 You can mix dynamic and static typing in your programs. You can always
 fall back to dynamic typing when static typing is not convenient, such
 as for legacy code.
 
-Here is a small example to whet your appetite:
+Here is a small example to whet your appetite (Python 3):
 
 ```python
 from typing import Iterator
@@ -52,10 +44,19 @@ def fib(n: int) -> Iterator[int]:
         yield a
         a, b = b, a + b
 ```
+See [the documentation](http://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
+
+For Python 2.7, the standard annotations are written as comments:
+```python
+def is_palindrome(s):
+    # type: (str) -> bool
+    return s == s[::-1]
+```
+
+See [the documentation for Python 2 support](http://mypy.readthedocs.io/en/latest/python2.html).
 
 Mypy is in development; some features are missing and there are bugs.
 See 'Development status' below.
-
 
 Requirements
 ------------
@@ -156,9 +157,6 @@ In Windows, the script is generally installed in
 `\Python34` with your Python installation path):
 
     C:\>\Python34\python \Python34\Scripts\mypy PROGRAM
-
-If you are on Windows using Python 3.3 or 3.4, and would like to use XML reports
-download LXML from [PyPi](https://pypi.python.org/pypi/lxml).
 
 ### Working with `virtualenv`
 
