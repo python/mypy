@@ -807,31 +807,30 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 (isinstance(stmt, ExpressionStmt) and
                  isinstance(stmt.expr, EllipsisExpr)))
 
-    def check_reverse_op_method(self, defn: FuncItem, typ: CallableType,
-                                method: str) -> None:
+    def check_reverse_op_method(self, defn: FuncItem, typ: CallableType, method: str) -> None:
         """Check a reverse operator method such as __radd__."""
         # Decides whether it's worth calling check_overlapping_op_methods().
 
         if method in ('__eq__', '__ne__'):
             # These are defined for all objects => can't cause trouble.
             return
-        if len(typ.arg_types) > 2:
+        if len(typ.arg_types) != 2:
             # Plausibly the method could have too few arguments, which would result
             # in an error elsewhere.
             return
 
         other_method = nodes.normal_from_reverse_op[method]
         arg_type = typ.arg_types[1]
+        # TODO: arg_type = arg_type.fallback, e.g. for TupleType
         if not (isinstance(arg_type, (Instance, UnionType))
                 and arg_type.has_readable_member(other_method)):
             return
 
-        typ2 = self.expr_checker.analyze_external_member_access(
-            other_method, arg_type, defn)
-        self.check_overlapping_op_methods(
-            typ, method, defn.info,
-            typ2, other_method, cast(Instance, arg_type),
-            defn)
+        typ2 = self.expr_checker.analyze_external_member_access(other_method, arg_type, defn)
+        for t in union_items(arg_type):
+            assert isinstance(t, Instance)
+            self.check_overlapping_op_methods(typ, method, defn.info,
+                                              typ2, other_method, t, defn)
 
     def check_overlapping_op_methods(self,
                                      reverse_type: CallableType,
