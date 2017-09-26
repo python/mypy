@@ -593,7 +593,7 @@ class ASTConverter(ast27.NodeTransformer):
             elif isinstance(item.name, ast27.Name):
                 vs.append(NameExpr(item.name.id))
             else:
-                self.fail("Sorry, `except <expr>, (<tuple>)` is not supported",
+                self.fail("Sorry, `except <expr>, <tuple or list>` is not supported",
                           item.lineno, item.col_offset)
                 vs.append(None)
         types = [self.visit(h.type) for h in handlers]
