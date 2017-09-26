@@ -25,14 +25,14 @@ What is mypy?
 -------------
 
 Mypy is an optional static type checker for Python.  You can add type
-hints to your Python programs, and use mypy to type check them statically.
+hints ([PEP 484](https://www.python.org/dev/peps/pep-0484/)) to your Python programs, and use mypy to type check them statically.
 Find bugs in your programs without even running them!
 
 You can mix dynamic and static typing in your programs. You can always
 fall back to dynamic typing when static typing is not convenient, such
 as for legacy code.
 
-Here is a small example to whet your appetite:
+Here is a small example to whet your appetite (Python 3):
 
 ```python
 from typing import Iterator
@@ -43,15 +43,16 @@ def fib(n: int) -> Iterator[int]:
         yield a
         a, b = b, a + b
 ```
-This example uses Python 3 style of the standard type annotations, defined in [PEP 484](https://www.python.org/dev/peps/pep-0484/). 
+See [the documentation](http://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
 
 For Python 2.7, the standard annotations are written as comments:
 ```python
-def reverse(s):  # type: str -> str
+def reverse(s):
+    # type: str -> str
     return s[::-1]
 ```
 
-See [the documentation](http://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
+See [the documentation for Python 2 support](http://mypy.readthedocs.io/en/latest/python2.html).
 
 Mypy is in development; some features are missing and there are bugs.
 See 'Development status' below.
