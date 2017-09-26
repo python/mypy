@@ -207,9 +207,9 @@ from typing import Tuple
 t = None # type: Tuple[A, B]
 n = 0
 
-t[0] = A() # E: Unsupported target for indexed assignment
-t[2] = A() # E: Unsupported target for indexed assignment
-t[n] = A() # E: Unsupported target for indexed assignment
+t[0] = A() # E: Unsupported target of type Tuple[Any, ...] for indexed assignment
+t[2] = A() # E: Unsupported target of type Tuple[Any, ...] for indexed assignment
+t[n] = A() # E: Unsupported target of type Tuple[Any, ...] for indexed assignment
 
 class A: pass
 class B: pass

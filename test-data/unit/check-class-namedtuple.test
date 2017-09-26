@@ -538,7 +538,7 @@ class Base(NamedTuple):
     def good_override(self) -> int:
         reveal_type(self)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.Base]'
         reveal_type(self[0])  # E: Revealed type is 'builtins.int'
-        self[0] = 3  # E: Unsupported target for indexed assignment
+        self[0] = 3  # E: Unsupported target of type "Base" for indexed assignment
         reveal_type(self.x)  # E: Revealed type is 'builtins.int'
         self.x = 3  # E: Property "x" defined in "Base" is read-only
         self[1]  # E: Tuple index out of range
@@ -551,7 +551,7 @@ class Child(Base):
     def new_method(self) -> int:
         reveal_type(self)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.Child]'
         reveal_type(self[0])  # E: Revealed type is 'builtins.int'
-        self[0] = 3  # E: Unsupported target for indexed assignment
+        self[0] = 3  # E: Unsupported target of type "Child" for indexed assignment
         reveal_type(self.x)  # E: Revealed type is 'builtins.int'
         self.x = 3  # E: Property "x" defined in "Child" is read-only
         self[1]  # E: Tuple index out of range
