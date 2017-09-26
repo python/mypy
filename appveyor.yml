@@ -19,7 +19,7 @@ install:
 build: off
 
 test_script:
-    # Ignore lint (it's run in Travis)
+    # Ignore lint and mypy self check (both run in Travis)
     - "%PYTHON%\\python.exe runtests.py -x lint -x package"
 
 skip_commits:
