@@ -317,7 +317,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 functype = t
                 # Use meet to simulate dispatch - e.g. reduce Union[A, B] to A on dispatch to A
                 dispatched_type = meet.meet_types(original_type, itype)
-                check_self_arg(functype, dispatched_type, var.is_classmethod, node, msg)
+                check_self_arg(functype, dispatched_type, var.is_classmethod, node, name, msg)
                 signature = bind_self(functype, original_type, var.is_classmethod)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
@@ -374,7 +374,7 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
 
 
 def check_self_arg(functype: FunctionLike, original_type: Type, is_classmethod: bool,
-                   context: Context, msg: MessageBuilder) -> None:
+                   context: Context, name: str, msg: MessageBuilder) -> None:
     """Check that the the most precise type of the self argument is compatible
     with the declared type of each of the overloads.
     """
@@ -388,7 +388,7 @@ def check_self_arg(functype: FunctionLike, original_type: Type, is_classmethod: 
             if is_classmethod:
                 original_type = TypeType.make_normalized(original_type)
             if not subtypes.is_subtype(original_type, erase_to_bound(selfarg)):
-                msg.invalid_method_type(original_type, item, is_classmethod, context)
+                msg.invalid_method_type(name, original_type, item, is_classmethod, context)
 
 
 def analyze_class_attribute_access(itype: Instance,
