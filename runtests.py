@@ -410,6 +410,7 @@ def main() -> None:
         pyt_arglist.extend(['-v'] * verbosity)
     elif verbosity < 0:
         pyt_arglist.extend(['-q'] * (-verbosity))
+    print("parallel_limit =", parallel_limit)
     if parallel_limit:
         if '-n' not in pyt_arglist:
             pyt_arglist.append('-n{}'.format(parallel_limit))
