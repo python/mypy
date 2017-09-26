@@ -704,23 +704,8 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
                 # TODO: These hacks will be not necessary when this will be moved to later stage.
-                if isinstance(arg, ForwardRef):
-                    arg = arg.link
-                bound = tvar.upper_bound
-                if isinstance(bound, ForwardRef):
-                    bound = bound.link
-                if isinstance(bound, Instance) and bound.type.replaced:
-                    replaced = bound.type.replaced
-                    if replaced.tuple_type:
-                        bound = replaced.tuple_type
-                    if replaced.typeddict_type:
-                        bound = replaced.typeddict_type
-                if isinstance(arg, Instance) and arg.type.replaced:
-                    replaced = arg.type.replaced
-                    if replaced.tuple_type:
-                        arg = replaced.tuple_type
-                    if replaced.typeddict_type:
-                        arg = replaced.typeddict_type
+                arg = self.update_type(arg)
+                bound = self.update_type(tvar.upper_bound)
                 if not is_subtype(arg, bound):
                     self.fail('Type argument "{}" of "{}" must be '
                               'a subtype of "{}"'.format(
@@ -734,8 +719,9 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
                               valids: List[Type], arg_number: int, context: Context) -> None:
         for actual in actuals:
+            actual = self.update_type(actual)
             if (not isinstance(actual, AnyType) and
-                    not any(is_same_type(actual, value) for value in valids)):
+                    not any(is_same_type(actual, self.update_type(value)) for value in valids)):
                 if len(actuals) > 1 or not isinstance(actual, Instance):
                     self.fail('Invalid type argument value for "{}"'.format(
                         type.name()), context)
@@ -744,6 +730,19 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     actual_type_name = '"{}"'.format(actual.type.name())
                     self.fail(messages.INCOMPATIBLE_TYPEVAR_VALUE.format(
                         arg_name, class_name, actual_type_name), context)
+
+    def update_type(self, tp: Type) -> Type:
+        # This helper is only needed while is_subtype and is_same_type are
+        # called in third pass. This can be removed when TODO in visit_instance is fixed.
+        if isinstance(tp, ForwardRef):
+            tp = tp.link
+        if isinstance(tp, Instance) and tp.type.replaced:
+            replaced = tp.type.replaced
+            if replaced.tuple_type:
+                tp = replaced.tuple_type
+            if replaced.typeddict_type:
+                tp = replaced.typeddict_type
+        return tp
 
     def visit_callable_type(self, t: CallableType) -> None:
         t.ret_type.accept(self)

@@ -1384,7 +1384,7 @@ class ForwardRef(Type):
         x: A
         A = TypedDict('A', {'x': int})
 
-    To avoid false positives and crashes in such situations, we first wrap the second
+    To avoid false positives and crashes in such situations, we first wrap the first
     occurrence of 'A' in ForwardRef. Then, the wrapped UnboundType is updated in the third
     pass of semantic analysis and ultimately fixed in the patches after the third pass.
     So that ForwardRefs are temporary and will be completely replaced with the linked types

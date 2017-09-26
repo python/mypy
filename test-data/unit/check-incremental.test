@@ -3067,6 +3067,18 @@ IntNode = Node[int, S]
 AnyNode = Node[S, T]
 [out]
 
+[case testNamedTupleForwardAsUpperBoundSerialization]
+from typing import NamedTuple, TypeVar, Generic
+T = TypeVar('T', bound='M')
+class G(Generic[T]):
+    x: T
+
+yg: G[M]
+z: int = G[M]().x.x
+z = G[M]().x[0]
+M = NamedTuple('M', [('x', int)])
+[out]
+
 [case testSelfRefNTIncremental1]
 from typing import Tuple, NamedTuple
 

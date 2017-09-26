@@ -4280,7 +4280,7 @@ class ThirdPass(TraverserVisitor):
         """Apply transform to all types associated with node."""
         if isinstance(node, ForStmt):
             node.index_type = transform(node.index_type)
-            self.transform_types(node.index, transform)
+            self.transform_types_in_lvalue(node.index, transform)
         if isinstance(node, WithStmt):
             node.target_type = transform(node.target_type)
             for n in node.target:
@@ -4324,14 +4324,15 @@ class ThirdPass(TraverserVisitor):
                     new_bases.append(alt_base)
             node.bases = new_bases
 
-    def transform_types(self, lvalue: Lvalue, transform: Callable[[Type], Type]) -> None:
+    def transform_types_in_lvalue(self, lvalue: Lvalue,
+                                  transform: Callable[[Type], Type]) -> None:
         if isinstance(lvalue, RefExpr):
             if isinstance(lvalue.node, Var):
                 var = lvalue.node
                 var.type = transform(var.type)
         elif isinstance(lvalue, TupleExpr):
             for item in lvalue.items:
-                self.transform_types(item, transform)
+                self.transform_types_in_lvalue(item, transform)
 
     def analyze(self, type: Optional[Type], node: Union[Node, SymbolTableNode],
                 warn: bool = False) -> None:
@@ -4339,14 +4340,7 @@ class ThirdPass(TraverserVisitor):
         # Flags appeared during analysis of 'type' are collected in this dict.
         indicator = {}  # type: Dict[str, bool]
         if type:
-            analyzer = TypeAnalyserPass3(self.sem.lookup_qualified,
-                                         self.sem.lookup_fully_qualified,
-                                         self.fail,
-                                         self.sem.note,
-                                         self.sem.plugin,
-                                         self.options,
-                                         self.is_typeshed_file,
-                                         indicator)
+            analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
             if indicator.get('forward') or indicator.get('synthetic'):
@@ -4360,14 +4354,7 @@ class ThirdPass(TraverserVisitor):
         # Similar to above but for nodes with multiple types.
         indicator = {}  # type: Dict[str, bool]
         for type in types:
-            analyzer = TypeAnalyserPass3(self.sem.lookup_qualified,
-                                         self.sem.lookup_fully_qualified,
-                                         self.fail,
-                                         self.sem.note,
-                                         self.sem.plugin,
-                                         self.options,
-                                         self.is_typeshed_file,
-                                         indicator)
+            analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
         if indicator.get('forward') or indicator.get('synthetic'):
@@ -4376,6 +4363,16 @@ class ThirdPass(TraverserVisitor):
                     lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
                                                                   node, warn=False)))
             self.patches.append(patch)
+
+    def make_type_analyzer(self, indicator: Dict[str, bool]) -> TypeAnalyserPass3:
+        return TypeAnalyserPass3(self.sem.lookup_qualified,
+                                 self.sem.lookup_fully_qualified,
+                                 self.fail,
+                                 self.sem.note,
+                                 self.sem.plugin,
+                                 self.options,
+                                 self.is_typeshed_file,
+                                 indicator)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
         if 'generics' not in self.options.disallow_any or self.is_typeshed_file:
@@ -4911,12 +4908,18 @@ class ForwardReferenceResolver(TypeTranslator):
         items = [it.accept(self) for it in t.items]
         fallback = self.visit_instance(t.fallback, from_fallback=True)
         assert isinstance(fallback, Instance)
-        return TupleType(items, fallback)
+        return TupleType(items, fallback, t.line, t.column)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         if self.check_recursion(t):
             return AnyType(TypeOfAny.from_error)
-        return super().visit_typeddict_type(t)
+        items = OrderedDict([
+            (item_name, item_type.accept(self))
+            for (item_name, item_type) in t.items.items()
+        ])
+        fallback = self.visit_instance(t.fallback, from_fallback=True)
+        assert isinstance(fallback, Instance)
+        return TypedDictType(items, t.required_keys, fallback, t.line, t.column)
 
     def visit_union_type(self, t: UnionType) -> Type:
         if self.check_recursion(t):

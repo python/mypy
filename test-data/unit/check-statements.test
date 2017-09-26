@@ -1570,8 +1570,8 @@ from typing import List, NamedTuple
 lst: List[N]
 
 for i in lst:
-    a: int = i.x
-    b: str = i[0] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    reveal_type(i.x)  # E: Revealed type is 'builtins.int'
+    a: str = i[0] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 N = NamedTuple('N', [('x', int)])
 [builtins fixtures/list.pyi]
@@ -1582,8 +1582,8 @@ from typing import List, NamedTuple
 lst: List[M]
 
 for i in lst: # type: N
-    a: int = i.x
-    b: str = i[0] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    reveal_type(i.x)  # E: Revealed type is 'builtins.int'
+    a: str = i[0] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 N = NamedTuple('N', [('x', int)])
 class M(N): pass

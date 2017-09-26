@@ -442,8 +442,8 @@ class G(Generic[T]):
 
 yb: G[int] # E: Type argument "builtins.int" of "G" must be a subtype of "Tuple[builtins.int, fallback=__main__.M]"
 yg: G[M]
-z: int = G[M]().x.x
-z = G[M]().x[0]
+reveal_type(G[M]().x.x)  # E: Revealed type is 'builtins.int'
+reveal_type(G[M]().x[0])  # E: Revealed type is 'builtins.int'
 
 M = NamedTuple('M', [('x', int)])
 [out]
