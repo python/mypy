@@ -354,16 +354,21 @@ class E:
 [case testSelfTypeProperty]
 from typing import TypeVar
 
-T = TypeVar('T', bound='A')
+Q = TypeVar('Q')
+T = TypeVar('T', bound='X')
 
-class A:
+class X:
     @property
-    def member(self: T) -> T:
-        pass
+    def __members__(self: Q) -> Q: return self
+
+class A(X):
+    @property
+    def member(self: T) -> T: return self
 
 class B(A):
     pass
 
+reveal_type(X().__members__)  # E: Revealed type is '__main__.X*'
 reveal_type(A().member)  # E: Revealed type is '__main__.A*'
 reveal_type(B().member)  # E: Revealed type is '__main__.B*'
 
@@ -376,3 +381,21 @@ class A:
     # def g(self: None) -> None: ... see in check-python2.test
 [out]
 main:3: error: Self argument missing for a non-static method (or an invalid type for self)
+
+[case testUnionPropertyField]
+from typing import Union
+
+class A:
+    x: int
+
+class B:
+    @property
+    def x(self) -> int: return 1
+
+class C:
+    @property
+    def x(self) -> int: return 1
+
+ab: Union[A, B, C]
+reveal_type(ab.x)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/property.pyi]
