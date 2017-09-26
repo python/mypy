@@ -142,6 +142,7 @@ class Waiter:
                 # Note: only count CPUs we are allowed to use. It is a
                 # major mistake to count *all* CPUs on the machine.
                 limit = len(sched_getaffinity(0))
+        print("Waiter: limit =", limit)
         self.limit = limit
         self.lf = lf
         self.ff = ff
