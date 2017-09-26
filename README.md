@@ -47,9 +47,9 @@ See [the documentation](http://mypy.readthedocs.io/en/stable/introduction.html) 
 
 For Python 2.7, the standard annotations are written as comments:
 ```python
-def reverse(s):
-    # type: str -> str
-    return s[::-1]
+def is_palindrome(s):
+    # type: (str) -> str
+    return s == s[::-1]
 ```
 
 See [the documentation for Python 2 support](http://mypy.readthedocs.io/en/latest/python2.html).
