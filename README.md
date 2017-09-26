@@ -25,7 +25,8 @@ What is mypy?
 -------------
 
 Mypy is an optional static type checker for Python.  You can add type
-hints ([PEP 484](https://www.python.org/dev/peps/pep-0484/)) to your Python programs, and use mypy to type check them statically.
+hints ([PEP 484](https://www.python.org/dev/peps/pep-0484/)) to your
+Python programs, and use mypy to type check them statically.
 Find bugs in your programs without even running them!
 
 You can mix dynamic and static typing in your programs. You can always
