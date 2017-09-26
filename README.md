@@ -48,7 +48,7 @@ See [the documentation](http://mypy.readthedocs.io/en/stable/introduction.html) 
 For Python 2.7, the standard annotations are written as comments:
 ```python
 def is_palindrome(s):
-    # type: (str) -> str
+    # type: (str) -> bool
     return s == s[::-1]
 ```
 
