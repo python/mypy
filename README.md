@@ -157,9 +157,6 @@ In Windows, the script is generally installed in
 
     C:\>\Python34\python \Python34\Scripts\mypy PROGRAM
 
-If you are on Windows using Python 3.3 or 3.4, and would like to use XML reports
-download LXML from [PyPi](https://pypi.python.org/pypi/lxml).
-
 ### Working with `virtualenv`
 
 If you are using [`virtualenv`](https://virtualenv.pypa.io/en/stable/),
