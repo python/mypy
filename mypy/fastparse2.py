@@ -586,15 +586,15 @@ class ASTConverter(ast27.NodeTransformer):
                     orelse: List[ast27.stmt],
                     finalbody: List[ast27.stmt],
                     lineno: int) -> TryStmt:
-        def produce_name(item: ast27.ExceptHandler) -> Optional[NameExpr]:
+        vs = []
+        for item in handlers:
             if item.name is None:
-                return None
+                vs.append(None)
             elif isinstance(item.name, ast27.Name):
-                return NameExpr(item.name.id)
+                vs.append(NameExpr(item.name.id))
             else:
-                raise RuntimeError("'{}' has non-Name name.".format(ast27.dump(item)))
-
-        vs = [produce_name(h) for h in handlers]
+                self.fail("Sorry, `except <expr>, (<tuple>)` is not supported", item.lineno, item.col_offset)
+                vs.append(None)
         types = [self.visit(h.type) for h in handlers]
         handlers_ = [self.as_required_block(h.body, h.lineno) for h in handlers]
 
