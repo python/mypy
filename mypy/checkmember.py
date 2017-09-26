@@ -20,6 +20,8 @@ from mypy.typevars import fill_typevars
 from mypy.plugin import Plugin, AttributeContext
 from mypy import messages
 from mypy import subtypes
+from mypy import meet
+
 MYPY = False
 if MYPY:  # import for forward declaration only
     import mypy.checker
@@ -314,7 +316,9 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # methods: the former to the instance, the latter to the
                 # class.
                 functype = t
-                check_method_type(functype, itype, var.is_classmethod, node, msg)
+                # Use meet to simulate dispatch - e.g. reduce Union[A, B] to A on dispatch to A
+                dispatched_type = meet.meet_types(original_type, itype)
+                check_self_arg(functype, dispatched_type, var.is_classmethod, node, name, msg)
                 signature = bind_self(functype, original_type, var.is_classmethod)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
@@ -370,33 +374,22 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
         return None
 
 
-def check_method_type(functype: FunctionLike, itype: Instance, is_classmethod: bool,
-                      context: Context, msg: MessageBuilder) -> None:
+def check_self_arg(functype: FunctionLike, original_type: Type, is_classmethod: bool,
+                   context: Context, name: str, msg: MessageBuilder) -> None:
+    """Check that the the most precise type of the self argument is compatible
+    with the declared type of each of the overloads.
+    """
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
-            msg.invalid_method_type(item, context)
-        elif not is_classmethod:
-            # Check that self argument has type 'Any' or valid instance type.
-            selfarg = item.arg_types[0]
-            # If this is a method of a tuple class, correct for the fact that
-            # we passed to typ.fallback in analyze_member_access. See #1432.
-            if isinstance(selfarg, TupleType):
-                selfarg = selfarg.fallback
-            if not subtypes.is_subtype(selfarg, itype):
-                msg.invalid_method_type(item, context)
+            msg.fail('Attribute function with type %s does not accept self argument'
+                     % msg.format(item), context)
         else:
-            # Check that cls argument has type 'Any' or valid class type.
-            # (This is sufficient for the current treatment of @classmethod,
-            # but probably needs to be revisited when we implement Type[C]
-            # or advanced variants of it like Type[<args>, C].)
-            clsarg = item.arg_types[0]
-            if isinstance(clsarg, CallableType) and clsarg.is_type_obj():
-                if not subtypes.is_equivalent(clsarg.ret_type, itype):
-                    msg.invalid_class_method_type(item, context)
-            else:
-                if not subtypes.is_equivalent(clsarg, AnyType(TypeOfAny.special_form)):
-                    msg.invalid_class_method_type(item, context)
+            selfarg = item.arg_types[0]
+            if is_classmethod:
+                original_type = TypeType.make_normalized(original_type)
+            if not subtypes.is_subtype(original_type, erase_to_bound(selfarg)):
+                msg.invalid_method_type(name, original_type, item, is_classmethod, context)
 
 
 def analyze_class_attribute_access(itype: Instance,

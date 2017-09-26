@@ -2105,7 +2105,7 @@ class B:
     a = A
     bad = lambda: 42
 
-B().bad() # E: Invalid method type
+B().bad() # E: Attribute function with type "Callable[[], int]" does not accept self argument
 reveal_type(B.a) # E: Revealed type is 'def () -> __main__.A'
 reveal_type(B().a) # E: Revealed type is 'def () -> __main__.A'
 reveal_type(B().a()) # E: Revealed type is '__main__.A'
