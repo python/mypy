@@ -2659,10 +2659,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(var.type, PartialType) and var.type.type is None:
                     # None partial type: assume variable is intended to have type None
                     var.type = NoneTyp()
-                elif var not in self.partial_reported:
-                    self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                else:
+                    if var not in self.partial_reported:
+                        self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                        self.partial_reported.add(var)
                     var.type = AnyType(TypeOfAny.from_error)
-                    self.partial_reported.add(var)
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
         for partial_types in reversed(self.partial_types):
