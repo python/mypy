@@ -1,5 +1,4 @@
--- Test cases for type checking mypy programs using full stubs and running
--- using CPython.
+-- Test cases for type checking mypy programs using full stubs
 --
 -- These are mostly regression tests -- no attempt is made to make these
 -- complete.
@@ -9,7 +8,6 @@
 import typing
 print('hello, world')
 [out]
-hello, world
 
 -- Skipped because different typing package versions have different repr()s.
 [case testAbstractBaseClasses-skip]
@@ -33,13 +31,6 @@ def f():
 
 f()
 [out]
-'x' <class 'collections.abc.Sized'> True
-[1] typing.Sequence True
-{1: 3} typing.Sequence False
-<str_iterator object at 0x...> typing.Iterator True
-'x' typing.Iterable True
-{} typing.Mapping True
-{1} typing.AbstractSet True
 
 [case testSized]
 from typing import Sized
@@ -47,7 +38,6 @@ class A(Sized):
     def __len__(self): return 5
 print(len(A()))
 [out]
-5
 
 [case testReversed]
 from typing import Reversible
@@ -59,11 +49,6 @@ print(list(reversed([1,2,3])))
 print(list(reversed('abc')))
 print(list(reversed(A())))
 [out]
--- Duplicate [ at line beginning.
-[[4, 3, 2, 1, 0]
-[[3, 2, 1]
-[['c', 'b', 'a']
-[['f', 'o', 'o']
 
 [case testIntAndFloatConversion]
 from typing import SupportsInt, SupportsFloat
@@ -79,13 +64,6 @@ print(int(A()))
 print(float(-9))
 print(float(B()))
 [out]
-1
-6
-3
-4
-5
--9.0
-1.2
 
 [case testAbs]
 from typing import SupportsAbs
@@ -96,9 +74,6 @@ print(abs(-1))
 print(abs(-1.2))
 print(abs(A()))
 [out]
-1
-1.2
-5.5
 
 [case testAbs2]
 
@@ -120,15 +95,11 @@ print(round(1.6))
 print(round(A()))
 print(round(A(), 2))
 [out]
-2
-x0
-x2
 
 [case testCallMethodViaTypeObject]
 import typing
 print(list.__add__([1, 2], [3, 4]))
 [out]
-[[1, 2, 3, 4]
 
 [case testClassDataAttribute]
 import typing
@@ -138,8 +109,6 @@ print(A.x)
 A.x += 1
 print(A.x)
 [out]
-0
-1
 
 [case testInheritedClassAttribute]
 import typing
@@ -151,8 +120,6 @@ class B(A):
 B.f(None)
 print(B.x)
 [out]
-f
-1
 
 [case testFunctionDecorator]
 from typing import TypeVar, cast
@@ -173,14 +140,6 @@ def foo(s: str) -> str:
 print(foo('y'))
 print(foo('x'))
 [out]
-enter foo
-foo y
-exit foo
-y!
-enter foo
-foo x
-exit foo
-x!
 
 [case testModuleAttributes]
 import math
@@ -190,10 +149,6 @@ print(type(math.__dict__))
 print(type(math.__doc__ or ''))
 print(math.__class__)
 [out]
-math
-<class 'dict'>
-<class 'str'>
-<class 'module'>
 
 [case testSpecialAttributes]
 import typing
@@ -201,8 +156,6 @@ class A: pass
 print(object().__doc__)
 print(A().__class__)
 [out]
-The most base type
-<class '__main__.A'>
 
 [case testFunctionAttributes]
 import typing
@@ -211,9 +164,6 @@ print(type(ord.__doc__ + ''))
 print(ord.__name__)
 print(ord.__module__)
 [out]
-<class 'str'>
-ord
-builtins
 
 [case testTypeAttributes]
 import typing
@@ -223,11 +173,6 @@ print(str.__name__)
 print(str.__module__)
 print(str.__dict__ is not None)
 [out]
-<class 'type'>
-<class 'str'>
-str
-builtins
-True
 
 [case testBoolCompatibilityWithInt]
 import typing
@@ -236,8 +181,6 @@ x = True
 print(bool('x'))
 print(bool(''))
 [out]
-True
-False
 
 [case testCallBuiltinTypeObjectsWithoutArguments]
 import typing
@@ -247,11 +190,6 @@ print(repr(bytes()))
 print(float())
 print(bool())
 [out]
-0
-''
-b''
-0.0
-False
 
 [case testIntegerDivision]
 import typing
@@ -267,8 +205,6 @@ class A:
 print(A.f('12'))
 print(A().f('34'))
 [out]
-12
-34
 
 [case testClassmethod]
 import typing
@@ -278,8 +214,6 @@ class A:
 print(A.f('12'))
 print(A().f('34'))
 [out]
-12
-34
 
 [case testIntMethods]
 import typing
@@ -289,10 +223,6 @@ print(n.from_bytes(b'ac', 'big'))
 print(n.from_bytes([2, 3], 'big'))
 print(n.to_bytes(2, 'big'))
 [out]
-24930
-24931
-515
-b'\x00\x00'
 
 [case testFloatMethods]
 import typing
@@ -301,10 +231,6 @@ print(1.5.hex())
 print(2.0.is_integer())
 print(float.fromhex('0x1.8'))
 [out]
-(3, 2)
-0x1.8000000000000p+0
-True
-1.5
 
 [case testArray]
 import typing
@@ -328,7 +254,6 @@ class A:
         return self.x + 1
 print(A().f)
 [out]
-3
 
 [case testIsinstanceWithTuple]
 from typing import cast, Any
@@ -336,7 +261,6 @@ x = cast(Any, (1, 'x'))
 if isinstance(x, tuple):
     print(x[0], x[1])
 [out]
-1 x
 
 [case testTypevarValues]
 from typing import TypeVar
@@ -349,8 +273,6 @@ def f(x: T) -> T:
 print(f(''))
 print(f(b''))
 [out]
-foo
-b'bar'
 
 [case testAnyStr]
 from typing import AnyStr
@@ -362,8 +284,6 @@ def f(x: AnyStr) -> AnyStr:
 print(f(''))
 print(f(b''))
 [out]
-foo
-b'zar'
 
 [case testNameNotImportedFromTyping]
 import typing
@@ -436,7 +356,6 @@ b = None  # type: Pattern[bytes]
 b = re.compile(b'foo*')
 print(p.match('fooo').group(0))
 [out]
-fooo
 
 [case testGenericMatch]
 from typing import Match
@@ -445,7 +364,6 @@ def f(m: Match[bytes]) -> None:
     print(m.group(0))
 f(re.match(b'x*', b'xxy'))
 [out]
-b'xx'
 
 [case testMultipleTypevarsWithValues]
 from typing import TypeVar
@@ -463,7 +381,6 @@ _program.py:7: error: Unsupported operand types for + ("str" and "int")
 import typing
 print(SystemExit(5).code)
 [out]
-5
 
 [case testIntFloatDucktyping]
 
@@ -480,8 +397,6 @@ import typing
 print(1.5 + 1.5)
 print(1.5 + 1)
 [out]
-3.0
-2.5
 
 [case testMathFunctionWithIntArgument]
 import typing
@@ -516,8 +431,6 @@ import typing
 print(2 / 0.5)
 print(' ', 2 * [3, 4])
 [out]
-4.0
-  [3, 4, 3, 4]
 
 [case testNotImplemented]
 import typing
@@ -532,8 +445,6 @@ class B:
 print(A() + 1)
 print(A() + B())
 [out]
-2
-x
 
 [case testMappingMethods]
 # Regression test
@@ -542,8 +453,6 @@ x = {'x': 'y'} # type: Mapping[str, str]
 print('x' in x)
 print('y' in x)
 [out]
-True
-False
 
 [case testOverlappingOperatorMethods]
 
@@ -567,8 +476,6 @@ import typing
 print(b'ab' < bytearray(b'b'))
 print(bytearray(b'ab') < b'a')
 [out]
-True
-False
 
 [case testBytesAndBytearrayComparisons2]
 import typing
@@ -588,8 +495,6 @@ a = [1]
 print('', a.__iadd__([2]))
 print('', a)
 [out]
- [1, 2]
- [1, 2]
 
 [case testListInplaceAdd]
 import typing
@@ -597,7 +502,6 @@ a = [1]
 a += iter([2, 3])
 print(tuple(a))
 [out]
-(1, 2, 3)
 
 [case testListConcatenateWithIterable]
 import typing
@@ -612,11 +516,6 @@ a = [['x', 'x'], 'fo', s, iter('foo'), {'aa'}]
 for i, x in enumerate(a):
     print(i, next(iter(x)))
 [out]
-0 x
-1 f
-2 x
-3 f
-4 aa
 
 [case testTextIOProperties]
 import typing
@@ -627,8 +526,6 @@ sys.stdin.line_buffering
 sys.stdin.buffer
 sys.stdin.newlines
 [out]
-<class 'str'>
-<class 'str'>
 
 [case testIOProperties]
 import typing
@@ -636,27 +533,22 @@ import sys
 print(sys.stdin.name)
 print(sys.stdin.buffer.mode)
 [out]
-<stdin>
-rb
 
 [case testSetUnion]
 import typing
 s = {'x', 'y'}
 print('>', sorted(s.union('foo')))
 [out]
-> ['f', 'o', 'x', 'y']
 
 [case testFromFuturePrintFunction]
 from __future__ import print_function
 print('a', 'b')
 [out]
-a b
 
 [case testLenOfTuple]
 import typing
 print(len((1, 'x')))
 [out]
-2
 
 [case testListMethods]
 import typing
@@ -699,15 +591,6 @@ m.sort(reverse=False)
 m.sort(key=lambda x: -x, reverse=True)
 print('>', m)
 [out]
-> [0]
-> [0, 1, 2, 3, 4]
-0
-0
-0
-> [1, 0]
-1
-0
-> [1, 2, 3, 4]
 
 [case testListOperators]
 import typing
@@ -734,24 +617,6 @@ l[:3] = []
 print('setslice', l)
 print('reversed', list(reversed(l)))
 [out]
-+ [0, 1, 2]
-* [0, 1, 0, 1]
-* [0, 1, 0, 1]
-in True
-== False
-!= True
-> False
->= False
-< True
-<= True
->[0] 0
-+= [0, 1, 2]
-*= [0, 1, 2, 0, 1, 2]
-iter [0, 1, 2, 0, 1, 2]
-len 6
-repr [0, 1, 2, 0, 1, 2]
-setslice [0, 1, 2]
-reversed [2, 1, 0]
 
 [case testTupleAsSubtypeOfSequence]
 from typing import TypeVar, Sequence
@@ -759,7 +624,6 @@ T = TypeVar('T')
 def f(a: Sequence[T]) -> None: print(a)
 f(tuple())
 [out]
-()
 
 [case testMapWithLambdaSpecialCase-skip]
 # TODO: Fix this; this was broken at some point but not sure why.
@@ -768,7 +632,6 @@ a = [[1], [3]]
 b = map(lambda y: y[0], a)
 print('>', list(b))
 [out]
-> [1, 3]
 
 [case testInternalBuiltinDefinition]
 import typing
@@ -801,7 +664,6 @@ X = namedtuple('X', ['a', 'b'])
 x = X(a=1, b='s')
 print(x.a, x.b)
 [out]
-1 s
 
 [case testNamedTupleShortSyntax]
 import typing
@@ -810,7 +672,6 @@ X = namedtuple('X', ' a  b ')
 x = X(a=1, b='s')
 print(x.a, x.b)
 [out]
-1 s
 
 [case testNamedTupleError]
 import typing
@@ -833,10 +694,6 @@ print(x.index(1))
 print(x.count(1))
 print(x + x)
 [out]
-2
-0
-1
-(1, 's', 1, 's')
 
 [case testNamedTupleWithTypes]
 from typing import NamedTuple
@@ -847,9 +704,6 @@ a, b = n
 print(a, b)
 print(n[0])
 [out]
-N(a=1, b='x')
-1 x
-1
 
 [case testRelativeImport]
 import typing
@@ -860,7 +714,6 @@ from .n import x
 [file m/n.py]
 x = 1
 [out]
-1
 
 [case testRelativeImport2]
 import typing
@@ -872,7 +725,6 @@ from .nn import x
 [file m/nn.py]
 x = 2
 [out]
-2
 
 [case testPyiTakesPrecedenceOverPy]
 import m
@@ -902,9 +754,6 @@ print(5 + 8j)
 print(3j * 2.0)
 print(4J / 2.0)
 [out]
-(5+8j)
-6j
-2j
 
 [case testComplexArithmetic2]
 import typing
@@ -949,7 +798,6 @@ class MyType(type):
 class A(metaclass=MyType): pass
 print(type(A()).__name__)
 [out]
-Ax
 
 [case testSequenceIndexAndCount]
 from typing import Sequence
@@ -958,15 +806,11 @@ def f(x: Sequence[int]) -> None:
     print(x.count(1))
 f([0, 0, 1, 1, 1])
 [out]
-2
-3
 
 [case testEscapeInTripleQuotedStrLiteral]
 print('''\'''')
 print(r"""\"""$""")
 [out]
-'
-\"""$
 
 [case testSubclassBothGenericAndNonGenericABC]
 from typing import Generic, TypeVar
@@ -1001,7 +845,6 @@ print('a')
 exit(2)
 print('b')
 [out]
-a
 
 [case testTypeVariableTypeComparability]
 from typing import TypeVar
@@ -1014,8 +857,6 @@ def eq(x: T, y: T, z: T) -> T:
 print(eq(1, 2, 3))
 print(eq('x', 'x', 'z'))
 [out]
-3
-x
 
 [case testIntDecimalCompatibility]
 import typing
@@ -1026,11 +867,6 @@ print(1 + Decimal('2.34'))
 print(1 - Decimal('2.34'))
 print(2 * Decimal('2.34'))
 [out]
-3
--1
-3.34
--1.34
-4.68
 
 [case testInstantiateBuiltinTypes]
 from typing import Dict, Set, List
@@ -1053,9 +889,6 @@ def p(t: Tuple[int, ...]) -> None:
         print(n)
 p((1, 3, 2))
 [out]
-1
-3
-2
 
 [case testVariableLengthTupleError]
 from typing import Tuple
@@ -1223,7 +1056,6 @@ class B(metaclass=A):
 
 print(getattr(B(), 'x'))
 [out]
-7
 
 [case testSortedNoError]
 from typing import Iterable, Callable, TypeVar, List, Dict
@@ -1244,7 +1076,6 @@ class B(A):
 b = B()
 print(b.x + 1)
 [out]
-4
 
 [case testInferenceWithLambda]
 from typing import TypeVar, Iterable, Iterator, List
