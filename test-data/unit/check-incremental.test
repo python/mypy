@@ -3083,26 +3083,20 @@ M = NamedTuple('M', [('x', int)])
 [case testSelfRefNTIncremental1]
 from typing import Tuple, NamedTuple
 
-Node = NamedTuple( # type: ignore
-    'Node',
-    [
+Node = NamedTuple('Node', [ # type: ignore
         ('name', str),
         ('children', Tuple['Node', ...]),
     ])
-
 n: Node
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental2]
 from typing import Tuple, NamedTuple
 
-A = NamedTuple( # type: ignore
-    'A',
-    [
+A = NamedTuple('A', [ # type: ignore
         ('x', str),
         ('y', Tuple['B', ...]),
     ])
-
 class B(NamedTuple): # type: ignore
     x: A
     y: int
@@ -3116,14 +3110,10 @@ from typing import NamedTuple, Tuple
 class B(NamedTuple): # type: ignore
     x: Tuple[A, int]
     y: int
-
-A = NamedTuple( # type: ignore
-    'A',
-    [
+A = NamedTuple('A', [ # type: ignore
         ('x', str),
         ('y', 'B'),
     ])
-
 n: B
 m: A
 lst = [m, n]
@@ -3135,7 +3125,6 @@ from typing import NamedTuple
 class B(NamedTuple): # type: ignore
     x: A
     y: int
-
 class A(NamedTuple): # type: ignore
     x: str
     y: B
@@ -3146,20 +3135,14 @@ n: A
 [case testSelfRefNTIncremental5]
 from typing import NamedTuple
 
-B = NamedTuple( # type: ignore
-    'B',
-    [
+B = NamedTuple('B', [ # type: ignore
         ('x', A),
         ('y', int),
     ])
-
-A = NamedTuple( # type: ignore
-    'A',
-    [
+A = NamedTuple('A', [ # type: ignore
         ('x', str),
         ('y', 'B'),
     ])
-
 n: A
 def f(m: B) -> None: pass
 [builtins fixtures/tuple.pyi]
