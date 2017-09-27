@@ -20,7 +20,7 @@ from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
     UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
-    UninhabitedType, TypeOfAny
+    UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
@@ -194,7 +194,7 @@ class MessageBuilder:
         """Quotes a type representation for use in messages."""
         no_quote_regex = r'^<(tuple|union): \d+ items>$'
         if (type_string in ['Module', 'overloaded function', '<nothing>', '<deleted>']
-                or re.match(no_quote_regex, type_string) is not None):
+                or re.match(no_quote_regex, type_string) is not None or type_string.endswith('?')):
             # Messages are easier to read if these aren't quoted.  We use a
             # regex to match strings with variable contents.
             return type_string
@@ -309,6 +309,8 @@ class MessageBuilder:
                 return '<nothing>'
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(self.format_bare(typ.item, verbosity))
+        elif isinstance(typ, ForwardRef):  # may appear in semanal.py
+            return self.format_bare(typ.link, verbosity)
         elif isinstance(typ, FunctionLike):
             func = typ
             if func.is_type_obj():
@@ -350,6 +352,8 @@ class MessageBuilder:
                 # function types may result in long and difficult-to-read
                 # error messages.
                 return 'overloaded function'
+        elif isinstance(typ, UnboundType):
+            return str(typ)
         elif typ is None:
             raise RuntimeError('Type is None')
         else:
