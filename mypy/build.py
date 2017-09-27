@@ -307,7 +307,7 @@ def default_lib_path(data_dir: str,
         path.append('/usr/local/lib/mypy')
     if not path:
         print("Could not resolve typeshed subdirectories. If you are using mypy\n"
-              "from source, you need to run \"git submodule --init update\".\n"
+              "from source, you need to run \"git submodule update --init\".\n"
               "Otherwise your mypy install is broken.\nPython executable is located at "
               "{0}.\nMypy located at {1}".format(sys.executable, data_dir), file=sys.stderr)
         sys.exit(1)
