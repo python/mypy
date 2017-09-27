@@ -1887,3 +1887,43 @@ C[0] = 0
 [out]
 main:4: error: Type expected within [...]
 main:4: error: Unsupported target for indexed assignment
+
+[case testNoCrashOnPartialMember]
+class C:
+    x = None
+    def __init__(self) -> None:
+        self.x = []  # E: Need type annotation for variable
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoCrashOnPartialVariable]
+from typing import Tuple, TypeVar
+T = TypeVar('T', bound=str)
+
+def f(x: T) -> Tuple[T]:
+    ...
+x = None
+(x,) = f('')
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[out]
+
+[case testNoCrashOnPartialVariable2]
+from typing import Tuple, TypeVar
+T = TypeVar('T', bound=str)
+
+def f() -> Tuple[T]:
+    ...
+x = None
+(x,) = f()
+[out]
+
+[case testNoCrashOnPartialVariable3]
+from typing import Tuple, TypeVar
+T = TypeVar('T')
+
+def f(x: T) -> Tuple[T, T]:
+    ...
+x = None
+(x, x) = f('')
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[out]

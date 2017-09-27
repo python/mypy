@@ -77,6 +77,21 @@ except BaseException, e:
     e() # E: "BaseException" not callable
 [builtins_py2 fixtures/exception.pyi]
 
+[case testTryExceptUnsupported]
+try:
+    pass
+except BaseException, (e, f):  # E: Sorry, `except <expr>, <anything but a name>` is not supported
+    pass
+try:
+    pass
+except BaseException, [e, f, g]:  # E: Sorry, `except <expr>, <anything but a name>` is not supported
+    pass
+try:
+    pass
+except BaseException, e[0]:  # E: Sorry, `except <expr>, <anything but a name>` is not supported
+    pass
+[builtins_py2 fixtures/exception.pyi]
+
 [case testAlternateNameSuggestions]
 class Foo(object):
     def say_hello(self):
