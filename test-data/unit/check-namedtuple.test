@@ -542,19 +542,19 @@ reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, builtins.tuple[Tuple[b
 [case testSelfRefNT2]
 from typing import Tuple, NamedTuple
 
-Node = NamedTuple( # E
-    'Node',
+A = NamedTuple( # E
+    'A',
     [
-        ('name', str),
-        ('children', Tuple['Node2', ...]),
+        ('x', str),
+        ('y', Tuple['B', ...]),
     ])
 
-class Node2(NamedTuple): # E
-    x: Node
+class B(NamedTuple): # E
+    x: A
     y: int
 
-n: Node
-reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, builtins.tuple[Tuple[Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.Node], builtins.int, fallback=__main__.Node2]], fallback=__main__.Node]'
+n: A
+reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, builtins.tuple[Tuple[Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.A], builtins.int, fallback=__main__.B]], fallback=__main__.A]'
 [builtins fixtures/tuple.pyi]
 [out]
 main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
@@ -563,21 +563,21 @@ main:10: error: Recursive types not fully supported yet, nested types replaced w
 [case testSelfRefNT3]
 from typing import NamedTuple, Tuple
 
-class Node2(NamedTuple): # E
-    x: Tuple[Node, int]
+class B(NamedTuple): # E
+    x: Tuple[A, int]
     y: int
 
-Node = NamedTuple( # E: Recursive types not fully supported yet, nested types replaced with "Any"
-    'Node',
+A = NamedTuple( # E: Recursive types not fully supported yet, nested types replaced with "Any"
+    'A',
     [
-        ('name', str),
-        ('children', 'Node2'),
+        ('x', str),
+        ('y', 'B'),
     ])
 
-n: Node2
-m: Node
-reveal_type(n) # E: Revealed type is 'Tuple[Tuple[Tuple[builtins.str, Tuple[Tuple[Any, builtins.int], builtins.int, fallback=__main__.Node2], fallback=__main__.Node], builtins.int], builtins.int, fallback=__main__.Node2]'
-reveal_type(m) # E: Revealed type is 'Tuple[builtins.str, Tuple[Tuple[Tuple[builtins.str, Tuple[Tuple[Any, builtins.int], builtins.int, fallback=__main__.Node2], fallback=__main__.Node], builtins.int], builtins.int, fallback=__main__.Node2], fallback=__main__.Node]'
+n: B
+m: A
+reveal_type(n.x) # E: Revealed type is 'Tuple[Tuple[builtins.str, Tuple[Tuple[Any, builtins.int], builtins.int, fallback=__main__.B], fallback=__main__.A], builtins.int]'
+reveal_type(m[0]) # E: Revealed type is 'builtins.str'
 lst = [m, n]
 reveal_type(lst[0]) # E: Revealed type is 'Tuple[builtins.object, builtins.object]'
 [builtins fixtures/tuple.pyi]
@@ -587,16 +587,16 @@ main:3: error: Recursive types not fully supported yet, nested types replaced wi
 [case testSelfRefNT4]
 from typing import NamedTuple
 
-class Node2(NamedTuple): # E
-    x: Node
+class B(NamedTuple): # E
+    x: A
     y: int
 
-class Node(NamedTuple): # E
-    name: str
-    children: Node2
+class A(NamedTuple): # E
+    x: str
+    y: B
 
-n: Node
-reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, Tuple[Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.Node2], fallback=__main__.Node], builtins.int, fallback=__main__.Node2], fallback=__main__.Node]'
+n: A
+reveal_type(n.y[0]) # E: Revealed type is 'Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A]'
 [builtins fixtures/tuple.pyi]
 [out]
 main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
@@ -605,42 +605,42 @@ main:7: error: Recursive types not fully supported yet, nested types replaced wi
 [case testSelfRefNT5]
 from typing import NamedTuple
 
-Node2 = NamedTuple( # E: Recursive types not fully supported yet, nested types replaced with "Any"
-    'Node2',
+B = NamedTuple( # E: Recursive types not fully supported yet, nested types replaced with "Any"
+    'B',
     [
-        ('x', Node),
+        ('x', A),
         ('y', int),
     ])
 
-Node = NamedTuple( # E: Recursive types not fully supported yet, nested types replaced with "Any"
-    'Node',
+A = NamedTuple( # E: Recursive types not fully supported yet, nested types replaced with "Any"
+    'A',
     [
-        ('name', str),
-        ('children', 'Node2'),
+        ('x', str),
+        ('y', 'B'),
     ])
 
-n: Node
-def f(m: Node2) -> None: pass
-reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, Tuple[Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.Node2], fallback=__main__.Node], builtins.int, fallback=__main__.Node2], fallback=__main__.Node]'
-reveal_type(f) # E: Revealed type is 'def (m: Tuple[Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.Node2], fallback=__main__.Node], builtins.int, fallback=__main__.Node2])'
+n: A
+def f(m: B) -> None: pass
+reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, Tuple[Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A], builtins.int, fallback=__main__.B], fallback=__main__.A]'
+reveal_type(f) # E: Revealed type is 'def (m: Tuple[Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A], builtins.int, fallback=__main__.B])'
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveNamedTupleInBases]
 from typing import List, NamedTuple, Union
 
-Exp = Union['App', 'Lit']  # E: Recursive types not fully supported yet, nested types replaced with "Any"
-class App(NamedTuple('App', [('subs', List[Exp])])): pass
-class Lit(NamedTuple('Lit', [('val', object)])): pass
+Exp = Union['A', 'B']  # E: Recursive types not fully supported yet, nested types replaced with "Any"
+class A(NamedTuple('A', [('attr', List[Exp])])): pass
+class B(NamedTuple('B', [('val', object)])): pass
 
 def my_eval(exp: Exp) -> int:
-    reveal_type(exp) # E: Revealed type is 'Union[Tuple[builtins.list[Any], fallback=__main__.App], Tuple[builtins.object, fallback=__main__.Lit]]'
-    if isinstance(exp, App):
+    reveal_type(exp) # E: Revealed type is 'Union[Tuple[builtins.list[Any], fallback=__main__.A], Tuple[builtins.object, fallback=__main__.B]]'
+    if isinstance(exp, A):
         my_eval(exp[0][0])
-        return my_eval(exp.subs[0])
-    if isinstance(exp, Lit):
+        return my_eval(exp.attr[0])
+    if isinstance(exp, B):
         return exp.val  # E: Incompatible return value type (got "object", expected "int")
 
-my_eval(App([Lit(1), Lit(2)])) # OK
+my_eval(A([B(1), B(2)])) # OK
 [builtins fixtures/isinstancelist.pyi]
 [out]
 

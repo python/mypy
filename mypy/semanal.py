@@ -2366,7 +2366,12 @@ class SemanticAnalyzer(NodeVisitor[None]):
         class_def.fullname = self.qualified_name(name)
 
         info = TypeInfo(SymbolTable(), class_def, self.cur_mod_id)
-        info.mro = [info] + basetype_or_fallback.type.mro
+        class_def.info = info
+        mro = basetype_or_fallback.type.mro
+        if mro is None:
+            # Forward reference, MRO should be recalculated in third pass.
+            mro = [basetype_or_fallback.type, self.object_type().type]
+        info.mro = [info] + mro
         info.bases = [basetype_or_fallback]
         return info
 
@@ -4225,6 +4230,9 @@ class ThirdPass(TraverserVisitor):
             analyzed = s.rvalue.analyzed
             if isinstance(analyzed, NewTypeExpr):
                 self.analyze(analyzed.old_type, analyzed)
+                if analyzed.info and analyzed.info.mro:
+                    analyzed.info.mro = []  # Force recomputation
+                    calculate_class_mro(analyzed.info.defn, self.fail_blocker)
             if isinstance(analyzed, TypeVarExpr):
                 types = []
                 if analyzed.upper_bound:

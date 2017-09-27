@@ -3583,6 +3583,7 @@ class NameInfo(NamedTuple):
 def parse_ast(name_dict: NameDict) -> None:
     if isinstance(name_dict[''], int):
         pass
+    reveal_type(name_dict['test']) # E: Revealed type is 'Tuple[builtins.bool, fallback=__main__.NameInfo]'
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
@@ -3597,6 +3598,7 @@ class NameInfo(TypedDict):
 def parse_ast(name_dict: NameDict) -> None:
     if isinstance(name_dict[''], int):
         pass
+    reveal_type(name_dict['']['ast'])  # E: Revealed type is 'builtins.bool'
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
@@ -3604,22 +3606,24 @@ def parse_ast(name_dict: NameDict) -> None:
 from typing import Dict, NewType
 
 NameDict = Dict[str, 'NameInfo']
-class NameInfoBase:
+class Base:
     ast: bool
-NameInfo = NewType('NameInfo', NameInfoBase)
+NameInfo = NewType('NameInfo', Base)
 
 def parse_ast(name_dict: NameDict) -> None:
     if isinstance(name_dict[''], int):
         pass
     x = name_dict['']
     reveal_type(x) # E: Revealed type is '__main__.NameInfo*'
-    x = NameInfo(NameInfoBase()) # OK
-    x = NameInfoBase() # E: Incompatible types in assignment (expression has type "NameInfoBase", variable has type "NameInfo")
+    x = NameInfo(Base()) # OK
+    x = Base() # E: Incompatible types in assignment (expression has type "Base", variable has type "NameInfo")
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
 [case testCorrectAttributeInForwardRefToNamedTuple]
 from typing import NamedTuple
+proc: Process
+reveal_type(proc.state)  # E: Revealed type is 'builtins.int'
 
 def get_state(proc: 'Process') -> int:
     return proc.state
@@ -3629,6 +3633,8 @@ class Process(NamedTuple):
 
 [case testCorrectItemTypeInForwardRefToTypedDict]
 from mypy_extensions import TypedDict
+proc: Process
+reveal_type(proc['state'])  # E: Revealed type is 'builtins.int'
 
 def get_state(proc: 'Process') -> int:
     return proc['state']
@@ -3642,13 +3648,13 @@ from typing import NamedTuple
 
 x: A
 class A(NamedTuple):
-    name: 'B'
-    year: int
+    one: 'B'
+    other: int
 class B(NamedTuple):
-    director: str
+    attr: str
 y: A
 y = x
-reveal_type(x.name.director)  # E: Revealed type is 'builtins.str'
+reveal_type(x.one.attr)  # E: Revealed type is 'builtins.str'
 [out]
 
 [case testCrashOnDoubleForwardTypedDict]
@@ -3656,26 +3662,27 @@ from mypy_extensions import TypedDict
 
 x: A
 class A(TypedDict):
-    name: 'B'
-    year: int
+    one: 'B'
+    other: int
 class B(TypedDict):
-    director: str
+    attr: str
 
-reveal_type(x['name']['director'])  # E: Revealed type is 'builtins.str'
+reveal_type(x['one']['attr'])  # E: Revealed type is 'builtins.str'
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
 [case testCrashOnForwardUnionOfNamedTuples]
 from typing import Union, NamedTuple
 
-NodeType = Union['Foo', 'Bar']
+Node = Union['Foo', 'Bar']
 class Foo(NamedTuple):
     x: int
 class Bar(NamedTuple):
     x: int
 
-def foo(node: NodeType) -> int:
+def foo(node: Node) -> int:
     x = node
+    reveal_type(node) # E: Revealed type is 'Union[Tuple[builtins.int, fallback=__main__.Foo], Tuple[builtins.int, fallback=__main__.Bar]]'
     return x.x
 [out]
 
@@ -3697,46 +3704,64 @@ def foo(node: NodeType) -> int:
 
 [case testSupportForwardUnionOfNewTypes]
 from typing import Union, NewType
+x: Node
+reveal_type(x.x) # E: Revealed type is 'builtins.int'
 
-NodeType = Union['Foo', 'Bar']
-Foo = NewType('Foo', int)
-Bar = NewType('Bar', str)
+class A:
+    x: int
+class B:
+    x: int
 
-def foo(node: NodeType) -> NodeType:
+Node = Union['Foo', 'Bar']
+Foo = NewType('Foo', A)
+Bar = NewType('Bar', B)
+
+def foo(node: Node) -> Node:
     x = node
-    return Foo(1)
+    return Foo(A())
 [out]
 
-[case testCrashOnComplexCheckWithNamedTupleUnion]
+[case testForwardReferencesInNewTypeMRORecomputed]
+from typing import NewType
+x: Foo
+Foo = NewType('Foo', B)
+class A:
+    x: int
+class B(A):
+    pass
+
+reveal_type(x.x) # E: Revealed type is 'builtins.int'
+[out]
+
+[case testCrashOnComplexNamedTupleUnionProperty]
 from typing import NamedTuple, Union
 
+x: AOrB
 AOrB = Union['A', 'B']
 class A(NamedTuple):
-    lat: int
-    lng: int
+    x: int
 
 class B(object):
     def __init__(self, a: AOrB) -> None:
         self.a = a
     @property
-    def lat(self) -> int:
-        return self.a.lat
-    @property
-    def lng(self) -> int:
-        return self.a.lng
+    def x(self) -> int:
+        return self.a.x
+
+reveal_type(x.x) # E: Revealed type is 'builtins.int'
 [builtins fixtures/property.pyi]
 [out]
 
 [case testCorrectIsinstanceWithForwardUnion]
 from typing import Union, NamedTuple
 
-ForwardReferenceUnion = Union['SomeTuple', int]
-class SomeTuple(NamedTuple('SomeTuple', [('elem', int)])): pass
+ForwardUnion = Union['TP', int]
+class TP(NamedTuple('TP', [('x', int)])): pass
 
-def f(x: ForwardReferenceUnion) -> None:
-  reveal_type(x)  # E: Revealed type is 'Union[Tuple[builtins.int, fallback=__main__.SomeTuple], builtins.int]'
-  if isinstance(x, SomeTuple):
-    reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.SomeTuple]'
+def f(x: ForwardUnion) -> None:
+  reveal_type(x)  # E: Revealed type is 'Union[Tuple[builtins.int, fallback=__main__.TP], builtins.int]'
+  if isinstance(x, TP):
+    reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.TP]'
 [builtins fixtures/isinstance.pyi]
 [out]
 

@@ -2956,17 +2956,18 @@ tmp/b.py:2: error: Incompatible return value type (got "int", expected "str")
 from typing import NamedTuple, Union
 
 class Person(NamedTuple):
-    name: Union[str, "NamePair"]
+    name: Union[str, "Pair"]
 
-class NamePair(NamedTuple):
+class Pair(NamedTuple):
     first: str
     last: str
 
-Person(name=NamePair(first="John", last="Doe"))
+Person(name=Pair(first="John", last="Doe"))
 [out]
 
 -- Some crazy selef-referential named tuples, types dicts, and aliases
--- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed)
+-- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed).
+-- For this reason errors are silenced (tests with # type: ignore have equivalents in other files)
 
 [case testForwardTypeAliasInBase1]
 from typing import List
@@ -3095,72 +3096,72 @@ n: Node
 [case testSelfRefNTIncremental2]
 from typing import Tuple, NamedTuple
 
-Node = NamedTuple( # type: ignore
-    'Node',
+A = NamedTuple( # type: ignore
+    'A',
     [
-        ('name', str),
-        ('children', Tuple['Node2', ...]),
+        ('x', str),
+        ('y', Tuple['B', ...]),
     ])
 
-class Node2(NamedTuple): # type: ignore
-    x: Node
+class B(NamedTuple): # type: ignore
+    x: A
     y: int
 
-n: Node
+n: A
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental3]
 from typing import NamedTuple, Tuple
 
-class Node2(NamedTuple): # type: ignore
-    x: Tuple[Node, int]
+class B(NamedTuple): # type: ignore
+    x: Tuple[A, int]
     y: int
 
-Node = NamedTuple( # type: ignore
-    'Node',
+A = NamedTuple( # type: ignore
+    'A',
     [
-        ('name', str),
-        ('children', 'Node2'),
+        ('x', str),
+        ('y', 'B'),
     ])
 
-n: Node2
-m: Node
+n: B
+m: A
 lst = [m, n]
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental4]
 from typing import NamedTuple
 
-class Node2(NamedTuple): # type: ignore
-    x: Node
+class B(NamedTuple): # type: ignore
+    x: A
     y: int
 
-class Node(NamedTuple): # type: ignore
-    name: str
-    children: Node2
+class A(NamedTuple): # type: ignore
+    x: str
+    y: B
 
-n: Node
+n: A
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental5]
 from typing import NamedTuple
 
-Node2 = NamedTuple( # type: ignore
-    'Node2',
+B = NamedTuple( # type: ignore
+    'B',
     [
-        ('x', Node),
+        ('x', A),
         ('y', int),
     ])
 
-Node = NamedTuple( # type: ignore
-    'Node',
+A = NamedTuple( # type: ignore
+    'A',
     [
-        ('name', str),
-        ('children', 'Node2'),
+        ('x', str),
+        ('y', 'B'),
     ])
 
-n: Node
-def f(m: Node2) -> None: pass
+n: A
+def f(m: B) -> None: pass
 [builtins fixtures/tuple.pyi]
 
 [case testCrashWithPartialGlobalAndCycle]
