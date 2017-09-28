@@ -151,6 +151,112 @@ concrete. As with normal overrides, a dynamically typed method can
 implement a statically typed abstract method defined in an abstract
 base class.
 
+.. _metaclasses:
+
+Metaclasses
+***********
+A `metaclass <https://docs.python.org/3/reference/datamodel.html#metaclasses>`_
+is a class that describes the construction and behavior of other classes,
+similarly to how classes describe the construction and behavior of objects.
+The default metaclass is ``type``, but it's possible to use other metaclasses.
+Metaclasses allows one to create "a different kind of class", such as Enums,
+NamedTuples and singletons.
+
+Mypy has some special understanding of ``ABCMeta``, ``EnumMeta``,
+``NamedTupleMeta`` and of course ``GenericMeta``.
+
+Defining a metaclass
+********************
+
+.. code-block:: python
+
+    class M(type):
+
+    class A(metaclass=M):
+        pass
+
+In Python 2, the syntax for defining a metaclass different:
+
+.. code-block:: python
+
+    class A(object):
+        __metaclass__ = M
+
+Mypy also supports using the `six <https://pythonhosted.org/six/#six.with_metaclass>`_
+library to define metaclass in a portable way:
+
+.. code-block:: python
+    
+    import six
+    
+    class A(six.with_metaclass(M)):
+        pass
+
+    @six.add_metaclass(M)
+    class C(object):
+        pass
+
+Metaclass usage example
+***********************
+
+Mypy supports the lookup of attributes in the metaclass:
+
+.. code-block:: python
+
+    from typing import Type, TypeVar, ClassVar
+    T = TypeVar('T')
+
+    class M(type):
+        count: ClassVar[int] = 0
+
+        def make(cls: Type[T]) -> T:
+            M.count += 1
+            return cls()
+    
+    class A(metaclass=M):
+        pass
+    
+    a = A.make()  # make is looked up at M
+    print(A.count)
+    
+    class B(A):
+        pass
+    
+    b = B.make()  # metaclasses are inherited
+    print(B.count)
+
+Limitations of metaclass support
+********************************
+
+Note that metaclasses pose some requirement on the inheritance structure,
+so it's better not to combine metaclasses and class hierarchies:
+
+.. code-block:: python
+    
+    class M1(type): pass
+    class M2(type): pass
+    
+    class A1(metaclass=M1): pass
+    class A2(metaclass=M2): pass
+    
+    class B1(A1, metaclass=M2): pass  # Mypy Error: Inconsistent metaclass structure for 'B1'
+    # At runtime the above definition raises an exception
+    # TypeError: metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+    
+    # Same runtime error as in B1, but mypy does not catch it yet
+    class B12(A1, A2): pass
+    
+* Mypy does not understand dynamically-computed metaclasses,
+  such as ``class A(metaclass=f()): ...``
+* Mypy does not and cannot understand arbitrary metaclass code. Precise support
+  for metaclasses requires writing a mypy plugin.
+* Mypy only recognizes classes that inherit from `type` as potential metaclasses.
+* Inner class ``__metaclass__`` are not supported yet.
+
+It is often possible to use decorators as an alternative to metaclasses.
+Support for decorators is even more limited, but they do not cause trouble with
+inheritance.
+
 .. _protocol-types:
 
 Protocols and structural subtyping
