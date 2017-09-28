@@ -264,31 +264,36 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         callee_type = self.apply_method_signature_hook(
                             e, callee_type, object_type, signature_hook)
         ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname, object_type)
-        if (isinstance(e.callee, RefExpr) and len(e.args) == 2 and
-                e.callee.fullname in ('builtins.isinstance', 'builtins.issubclass')):
-            for expr in mypy.checker.flatten(e.args[1]):
-                tp = self.chk.type_map[expr]
-                if (isinstance(tp, CallableType) and tp.is_type_obj() and
-                        tp.type_object().is_protocol and
-                        not tp.type_object().runtime_protocol):
-                    self.chk.fail('Only @runtime protocols can be used with'
-                                  ' instance and class checks', e)
-        if (isinstance(e.callee, RefExpr) and len(e.args) == 2 and
-                e.callee.fullname == 'builtins.issubclass'):
-            for expr in mypy.checker.flatten(e.args[1]):
-                tp = self.chk.type_map[expr]
-                if (isinstance(tp, CallableType) and tp.is_type_obj() and
-                        tp.type_object().is_protocol):
-                    attr_members = non_method_protocol_members(tp.type_object())
-                    if attr_members:
-                        self.chk.msg.report_non_method_protocol(tp.type_object(),
-                                                                attr_members, e)
+        if isinstance(e.callee, RefExpr) and len(e.args) == 2:
+            if e.callee.fullname in ('builtins.isinstance', 'builtins.issubclass'):
+                self.check_runtime_protocol_test(e)
+            if e.callee.fullname == 'builtins.issubclass':
+                self.check_protocol_issubclass(e)
         if isinstance(ret_type, UninhabitedType):
             self.chk.binder.unreachable()
         if not allow_none_return and isinstance(ret_type, NoneTyp):
             self.chk.msg.does_not_return_value(callee_type, e)
             return AnyType(TypeOfAny.from_error)
         return ret_type
+
+    def check_runtime_protocol_test(self, e: CallExpr) -> None:
+        for expr in mypy.checker.flatten(e.args[1]):
+            tp = self.chk.type_map[expr]
+            if (isinstance(tp, CallableType) and tp.is_type_obj() and
+                    tp.type_object().is_protocol and
+                    not tp.type_object().runtime_protocol):
+                self.chk.fail('Only @runtime protocols can be used with'
+                              ' instance and class checks', e)
+
+    def check_protocol_issubclass(self, e: CallExpr) -> None:
+        for expr in mypy.checker.flatten(e.args[1]):
+            tp = self.chk.type_map[expr]
+            if (isinstance(tp, CallableType) and tp.is_type_obj() and
+                    tp.type_object().is_protocol):
+                attr_members = non_method_protocol_members(tp.type_object())
+                if attr_members:
+                    self.chk.msg.report_non_method_protocol(tp.type_object(),
+                                                            attr_members, e)
 
     def check_typeddict_call(self, callee: TypedDictType,
                              arg_kinds: List[int],

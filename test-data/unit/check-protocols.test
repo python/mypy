@@ -2132,6 +2132,16 @@ class P(Protocol):
 x: P = None
 [out]
 
+[case testNoneSubtypeOfAllProtocolsWithoutStrictOptional]
+from typing import Protocol
+class P(Protocol):
+    attr: int
+    def meth(self, arg: str) -> str:
+        pass
+
+x: P = None
+[out]
+
 [case testNoneSubtypeOfEmptyProtocolStrict]
 # flags: --strict-optional
 from typing import Protocol
