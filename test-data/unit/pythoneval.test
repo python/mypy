@@ -1380,6 +1380,14 @@ _testTypedDictMappingMethods.py:9: error: Revealed type is 'typing.AbstractSet[b
 _testTypedDictMappingMethods.py:10: error: Revealed type is 'typing.AbstractSet[Tuple[builtins.str*, builtins.int*]]'
 _testTypedDictMappingMethods.py:11: error: Revealed type is 'typing.ValuesView[builtins.int*]'
 
+[case testCrashOnComplexCheckWithNamedTupleNext]
+from typing import NamedTuple
+
+MyNamedTuple = NamedTuple('MyNamedTuple', [('parent', 'MyNamedTuple')]) # type: ignore
+def foo(mymap) -> MyNamedTuple:
+    return next((mymap[key] for key in mymap), None)
+[out]
+
 [case testCanConvertTypedDictToAnySuperclassOfMapping]
 from mypy_extensions import TypedDict
 from typing import Sized, Iterable, Container
