@@ -215,14 +215,14 @@ Mypy supports the lookup of attributes in the metaclass:
     class A(metaclass=M):
         pass
     
-    a = A.make()  # make is looked up at M
+    a: A = A.make()  # make() is looked up at M; the result is an object of type A
     print(A.count)
     
     class B(A):
         pass
     
-    b = B.make()  # metaclasses are inherited
-    print(B.count)
+    b: B = B.make()  # metaclasses are inherited
+    print(B.count + " objects were created")  # Error: Unsupported operand types for + ("int" and "str")
 
 Gotchas and limitations of metaclass support
 ********************************************
@@ -247,8 +247,7 @@ so it's better not to combine metaclasses and class hierarchies:
     
 * Mypy does not understand dynamically-computed metaclasses,
   such as ``class A(metaclass=f()): ...``
-* Mypy does not and cannot understand arbitrary metaclass code. Precise support
-  for metaclasses requires writing a mypy plugin.
+* Mypy does not and cannot understand arbitrary metaclass code.
 * Mypy only recognizes classes are subclasses of `type` as potential metaclasses.
 * Inner class ``__metaclass__`` are not supported yet.
 
