@@ -162,8 +162,7 @@ The default metaclass is ``type``, but it's possible to use other metaclasses.
 Metaclasses allows one to create "a different kind of class", such as Enums,
 NamedTuples and singletons.
 
-Mypy has some special understanding of ``ABCMeta``, ``EnumMeta``,
-``NamedTupleMeta`` and of course ``GenericMeta``.
+Mypy has some special understanding of ``ABCMeta`` and ``EnumMeta``.
 
 Defining a metaclass
 ********************
@@ -225,8 +224,8 @@ Mypy supports the lookup of attributes in the metaclass:
     b = B.make()  # metaclasses are inherited
     print(B.count)
 
-Limitations of metaclass support
-********************************
+Gotchas and limitations of metaclass support
+********************************************
 
 Note that metaclasses pose some requirement on the inheritance structure,
 so it's better not to combine metaclasses and class hierarchies:
@@ -250,12 +249,8 @@ so it's better not to combine metaclasses and class hierarchies:
   such as ``class A(metaclass=f()): ...``
 * Mypy does not and cannot understand arbitrary metaclass code. Precise support
   for metaclasses requires writing a mypy plugin.
-* Mypy only recognizes classes that inherit from `type` as potential metaclasses.
+* Mypy only recognizes classes are subclasses of `type` as potential metaclasses.
 * Inner class ``__metaclass__`` are not supported yet.
-
-It is often possible to use decorators as an alternative to metaclasses.
-Support for decorators is even more limited, but they do not cause trouble with
-inheritance.
 
 .. _protocol-types:
 
