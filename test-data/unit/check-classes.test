@@ -1416,8 +1416,6 @@ class B(A):
     def __add__(self, x: str) -> A: pass
     @overload
     def __add__(self, x: type) -> A: pass
-[out]
-tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
 
 [case testReverseOperatorMethodArgumentType]
 from typing import Any
