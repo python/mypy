@@ -3164,3 +3164,23 @@ import foo
 external_list = [0]
 
 [builtins fixtures/dict.pyi]
+
+[case testIncrementalCrashOnTypeWithFunction]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import x
+
+[file b.py]
+from typing import TypeVar, Type
+T = TypeVar('T')
+
+def tp(arg: T) -> Type[T]:
+    pass
+def func(x: int) -> int:
+    pass
+
+x = tp(func)
+[out]
+[out2]

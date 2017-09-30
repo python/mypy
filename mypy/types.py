@@ -717,8 +717,7 @@ class CallableType(FunctionLike):
         )
 
     def is_type_obj(self) -> bool:
-        t = self.fallback.type
-        return t is not None and t.is_metaclass()
+        return self.fallback.type.is_metaclass()
 
     def is_concrete_type_obj(self) -> bool:
         return self.is_type_obj() and self.is_classmethod_class
@@ -1341,10 +1340,7 @@ class TypeType(Type):
         type UnionType must be handled through make_normalized static method.
         """
         super().__init__(line, column)
-        if isinstance(item, CallableType) and item.is_type_obj():
-            self.item = item.fallback
-        else:
-            self.item = item
+        self.item = item
 
     @staticmethod
     def make_normalized(item: Type, *, line: int = -1, column: int = -1) -> Type:

@@ -177,26 +177,35 @@ def analyze_member_access(name: str,
     elif isinstance(typ, TypeType):
         # Similar to FunctionLike + is_type_obj() above.
         item = None
+        fallback = builtin_type('builtins.type')
+        ignore_messages = msg.copy()
+        ignore_messages.disable_errors()
         if isinstance(typ.item, Instance):
             item = typ.item
         elif isinstance(typ.item, AnyType):
-            fallback = builtin_type('builtins.type')
-            ignore_messages = msg.copy()
-            ignore_messages.disable_errors()
             return analyze_member_access(name, fallback, node, is_lvalue, is_super,
                                      is_operator, builtin_type, not_ready_callback,
                                      ignore_messages, original_type=original_type, chk=chk)
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound
+        elif isinstance(typ.item, FunctionLike) and typ.item.is_type_obj():
+            item = typ.item.fallback
+        elif isinstance(typ.item, TypeType):
+            # Access member on metaclass object via Type[Type[C]]
+            if isinstance(typ.item.item, Instance):
+                item = typ.item.item.type.metaclass_type
         if item and not is_operator:
             # See comment above for why operators are skipped
             result = analyze_class_attribute_access(item, name, node, is_lvalue,
                                                     builtin_type, not_ready_callback, msg,
                                                     original_type=original_type)
             if result:
-                return result
-        fallback = builtin_type('builtins.type')
+                if not (isinstance(result, AnyType) and item.type.fallback_to_any):
+                    return result
+                else:
+                    # We don't want errors on metaclass lookup for classes with Any fallback
+                    msg = ignore_messages
         if item is not None:
             fallback = item.type.metaclass_type or fallback
         return analyze_member_access(name, fallback, node, is_lvalue, is_super,

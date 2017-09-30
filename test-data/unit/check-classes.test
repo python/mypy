@@ -3995,3 +3995,33 @@ class E(metaclass=t.M): pass
 class F(six.with_metaclass(t.M)): pass
 @six.add_metaclass(t.M)
 class G: pass
+
+[case testMetaclassMemberAccessViaType]
+from typing import Type
+class M(type):
+    def m(cls, x: int) -> int:
+        pass
+
+class C(metaclass=M):
+    pass
+x = C
+y: Type[C] = C
+
+reveal_type(type(C).m) # E: Revealed type is 'def (cls: __main__.M, x: builtins.int) -> builtins.int'
+reveal_type(type(x).m) # E: Revealed type is 'def (cls: __main__.M, x: builtins.int) -> builtins.int'
+reveal_type(type(y).m) # E: Revealed type is 'def (cls: __main__.M, x: builtins.int) -> builtins.int'
+[out]
+
+[case testMetaclassMemberAccessViaType2]
+from typing import Any, Type
+class M(type):
+    def m(cls, x: int) -> int:
+        pass
+B: Any
+class C(B, metaclass=M):
+    pass
+
+x: Type[C]
+reveal_type(x.m) # E: Revealed type is 'def (x: builtins.int) -> builtins.int'
+reveal_type(x.whatever) # E: Revealed type is 'Any'
+[out]
