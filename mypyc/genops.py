@@ -21,7 +21,7 @@ from mypy.nodes import (
     IfStmt, Node, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
     ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef, TypeInfo,
-    Import, ImportFrom, ImportAll, ARG_POS, MODULE_REF
+    Import, ImportFrom, ImportAll, DictExpr, ARG_POS, MODULE_REF
 )
 from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, UnionType
 from mypy.visitor import NodeVisitor
@@ -32,7 +32,7 @@ from mypyc.ops import (
     PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRType,
     Unreachable, TupleGet, ClassIR, UserRType, ModuleIR, GetAttr, SetAttr, LoadStatic,
     PyGetAttr, PyCall, IntRType, BoolRType, ListRType, SequenceTupleRType, ObjectRType, NoneRType,
-    OptionalRType, c_module_name, INVALID_REGISTER, INVALID_LABEL
+    OptionalRType, DictRType, c_module_name, INVALID_REGISTER, INVALID_LABEL
 )
 
 
@@ -59,6 +59,8 @@ class Mapper:
                 return BoolRType()
             elif typ.type.fullname() == 'builtins.list':
                 return ListRType()
+            elif typ.type.fullname() == 'builtins.dict':
+                return DictRType()
             elif typ.type.fullname() == 'builtins.tuple':
                 return SequenceTupleRType()
             elif typ.type in self.type_to_ir:
@@ -89,9 +91,10 @@ class AssignmentTargetRegister(AssignmentTarget):
 
 
 class AssignmentTargetIndex(AssignmentTarget):
-    def __init__(self, base_reg: Register, index_reg: Register) -> None:
+    def __init__(self, base_reg: Register, index_reg: Register, rtype: RType) -> None:
         self.base_reg = base_reg
         self.index_reg = index_reg
+        self.rtype = rtype
 
 
 class AssignmentTargetAttr(AssignmentTarget):
@@ -293,11 +296,15 @@ class IRBuilder(NodeVisitor[Register]):
             # Indexed assignment x[y] = e
             base_type = self.node_type(lvalue.base)
             index_type = self.node_type(lvalue.index)
-            if base_type.name == 'list' and index_type.name == 'int':
+            base_reg = self.accept(lvalue.base)
+            index_reg = self.accept(lvalue.index)
+            if isinstance(base_type, ListRType) and isinstance(index_type, IntRType):
                 # Indexed list set
-                base_reg = self.accept(lvalue.base)
-                index_reg = self.accept(lvalue.index)
-                return AssignmentTargetIndex(base_reg, index_reg)
+                return AssignmentTargetIndex(base_reg, index_reg, base_type)
+            elif isinstance(base_type, DictRType):
+                # Indexed dict set
+                boxed_index = self.box(index_reg, index_type)
+                return AssignmentTargetIndex(base_reg, boxed_index, base_type)
         elif isinstance(lvalue, MemberExpr):
             # Attribute assignment x.y = e
             obj_type = self.node_type(lvalue.expr)
@@ -329,8 +336,13 @@ class IRBuilder(NodeVisitor[Register]):
         elif isinstance(target, AssignmentTargetIndex):
             item_reg = self.accept(rvalue)
             boxed_item_reg = self.box(item_reg, rvalue_type)
-            self.add(PrimitiveOp(None, PrimitiveOp.LIST_SET, target.base_reg, target.index_reg,
-                                 boxed_item_reg))
+            if isinstance(target.rtype, ListRType):
+                op = PrimitiveOp.LIST_SET
+            elif isinstance(target.rtype, DictRType):
+                op = PrimitiveOp.DICT_SET
+            else:
+                assert False, target.rtype
+            self.add(PrimitiveOp(None, op, target.base_reg, target.index_reg, boxed_item_reg))
             return INVALID_REGISTER
 
         assert False, 'Unsupported assignment target'
@@ -562,7 +574,7 @@ class IRBuilder(NodeVisitor[Register]):
             if target is None:
                 target = self.alloc_target(IntRType())
             op = self.int_binary_ops[expr_op]
-        elif ltype.name == 'list' or rtype.name == 'list':
+        elif (ltype.name == 'list' or rtype.name == 'list') and expr_op == '*':
             if rtype.name == 'list':
                 ltype, rtype = rtype, ltype
                 lreg, rreg = rreg, lreg
@@ -571,6 +583,14 @@ class IRBuilder(NodeVisitor[Register]):
             if target is None:
                 target = self.alloc_target(ListRType())
             op = PrimitiveOp.LIST_REPEAT
+        elif isinstance(rtype, DictRType):
+            if expr_op == 'in':
+                if target is None:
+                    target = self.alloc_target(BoolRType())
+                lreg = self.box(lreg, ltype)
+                op = PrimitiveOp.DICT_CONTAINS
+            else:
+                assert False, 'Unsupported binary operation'
         else:
             assert False, 'Unsupported binary operation'
         self.add(PrimitiveOp(target, op, lreg, rreg))
@@ -578,32 +598,28 @@ class IRBuilder(NodeVisitor[Register]):
 
     def visit_index_expr(self, expr: IndexExpr) -> Register:
         base_rtype = self.node_type(expr.base)
+        base_reg = self.accept(expr.base)
+        target_type = self.node_type(expr)
 
-        if base_rtype.name == 'list' or base_rtype.name == 'sequence_tuple':
-            index_type = self.types[expr.index]
-            if not is_named_instance(index_type, 'builtins.int'):
-                assert False, 'Unsupported indexing operation'
-
-            base_reg = self.accept(expr.base)
-            index_reg = self.accept(expr.index)
-            target_type = self.node_type(expr)
-            tmp = self.alloc_temp(ObjectRType())
-
-            if base_rtype.name == 'list':
+        if isinstance(base_rtype, (ListRType, SequenceTupleRType, DictRType)):
+            index_type = self.node_type(expr.index)
+            if not isinstance(base_rtype, DictRType):
+                assert isinstance(index_type, IntRType), 'Unsupported indexing operation'  # TODO
+            if isinstance(base_rtype, ListRType):
                 op = PrimitiveOp.LIST_GET
+            elif isinstance(base_rtype, DictRType):
+                op = PrimitiveOp.DICT_GET
             else:
                 op = PrimitiveOp.HOMOGENOUS_TUPLE_GET
-
+            index_reg = self.accept(expr.index)
+            if isinstance(base_rtype, DictRType):
+                index_reg = self.box(index_reg, index_type)
+            tmp = self.alloc_temp(ObjectRType())
             self.add(PrimitiveOp(tmp, op, base_reg, index_reg))
             target = self.alloc_target(target_type)
             return self.unbox_or_cast(tmp, target_type, target)
-
         elif isinstance(base_rtype, TupleRType):
-            base_reg = self.accept(expr.base)
-            target_type = self.node_type(expr)
-
-            assert isinstance(expr.index, IntExpr)
-
+            assert isinstance(expr.index, IntExpr)  # TODO
             target = self.alloc_target(target_type)
             self.add(TupleGet(target, base_reg, expr.index.value,
                               base_rtype.types[expr.index.value]))
@@ -806,6 +822,12 @@ class IRBuilder(NodeVisitor[Register]):
         self.add(PrimitiveOp(target, PrimitiveOp.NEW_TUPLE, *items))
         return target
 
+    def visit_dict_expr(self, expr: DictExpr):
+        assert not expr.items  # TODO
+        target = self.alloc_target(DictRType())
+        self.add(PrimitiveOp(target, PrimitiveOp.NEW_DICT))
+        return target
+
     # Conditional expressions
 
     int_relative_ops = {
@@ -829,10 +851,22 @@ class IRBuilder(NodeVisitor[Register]):
                 opcode = self.int_relative_ops[op]
                 branch = Branch(left, right, INVALID_LABEL, INVALID_LABEL, opcode)
             elif op in ['is', 'is not']:
+                # TODO: check if right operand is None
                 left = self.accept(e.operands[0])
                 branch = Branch(left, INVALID_REGISTER, INVALID_LABEL, INVALID_LABEL,
                                 Branch.IS_NONE)
                 if op == 'is not':
+                    branch.negated = True
+            elif op in ['in', 'not in']:
+                left = self.accept(e.operands[0])
+                ltype = self.node_type(e.operands[0])
+                right = self.accept(e.operands[1])
+                rtype = self.node_type(e.operands[1])
+                target = self.alloc_temp(self.node_type(e))
+                self.binary_op(ltype, left, rtype, right, 'in', target=target)
+                branch = Branch(target, INVALID_REGISTER, INVALID_LABEL, INVALID_LABEL,
+                                Branch.BOOL_EXPR)
+                if op == 'not in':
                     branch.negated = True
             else:
                 assert False, "unsupported comparison epxression"

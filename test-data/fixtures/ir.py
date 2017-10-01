@@ -4,6 +4,7 @@
 from typing import TypeVar, Generic, List, Iterator, Iterable, Sized
 
 T = TypeVar('T')
+S = TypeVar('S')
 
 class object:
     def __init__(self) -> None: pass
@@ -46,6 +47,11 @@ class list(Generic[T], Iterable[T], Sized):
     def __iter__(self) -> Iterator[T]: pass
     def __len__(self) -> int: pass
     def append(self, x: T) -> None: pass
+
+class dict(Generic[T, S]):
+    def __getitem__(self, x: T) -> S: pass
+    def __setitem__(self, x: T, y: S) -> None: pass
+    def __contains__(self, x: T) -> bool: pass
 
 def len(o: Sized) -> int: pass
 def print(*object) -> None: pass

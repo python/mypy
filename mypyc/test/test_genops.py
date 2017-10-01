@@ -22,6 +22,7 @@ from mypyc.test.testutil import ICODE_GEN_BUILTINS, use_custom_builtins
 files = [
     'genops-basic.test',
     'genops-lists.test',
+    'genops-dict.test',
     'genops-statements.test',
     'genops-classes.test',
     'genops-optional.test',

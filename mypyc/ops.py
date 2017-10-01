@@ -237,6 +237,11 @@ class ListRType(PyObjectRType):
         self.name = 'list'
 
 
+class DictRType(PyObjectRType):
+    def __init__(self) -> None:
+        self.name = 'dict'
+
+
 class UserRType(PyObjectRType):
     """Instance of user-defined class."""
 
@@ -689,6 +694,12 @@ class PrimitiveOp(RegisterOp):
     NEW_LIST = make_op('new', VAR_ARG, 'list', format_str='{dest} = [{comma_args}]')
     LIST_APPEND = make_op('append', 2, 'list',
                           is_void=True, format_str='{args[0]}.append({args[1]})')
+
+    # Dict
+    DICT_GET = make_op('[]', 2, 'dict', kind=OP_BINARY)
+    DICT_SET = make_op('[]=', 3, 'dict', is_void=True)
+    NEW_DICT = make_op('new', 0, 'dict', format_str='{dest} = {{}}')
+    DICT_CONTAINS = make_op('in', 2, 'dict', kind=OP_BINARY)
 
     # Sequence Tuple
     HOMOGENOUS_TUPLE_GET = make_op('[]', 2, 'sequence_tuple', kind=OP_BINARY)

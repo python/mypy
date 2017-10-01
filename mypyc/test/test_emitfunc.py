@@ -6,7 +6,8 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ops import (
     Environment, BasicBlock, FuncIR, RuntimeArg, RType, Goto, Return, LoadInt, Assign,
     PrimitiveOp, IncRef, DecRef, Branch, Call, Unbox, Box, TupleRType, TupleGet, GetAttr,
-    ClassIR, UserRType, SetAttr, Op, Label, IntRType, ListRType, ObjectRType, BoolRType
+    ClassIR, UserRType, SetAttr, Op, Label, IntRType, ListRType, ObjectRType, BoolRType,
+    DictRType
 )
 from mypyc.emit import Emitter, EmitterContext
 from mypyc.emitfunc import generate_native_function, FunctionEmitterVisitor
@@ -21,6 +22,9 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.l = self.env.add_local(Var('l'), ListRType())
         self.ll = self.env.add_local(Var('ll'), ListRType())
         self.o = self.env.add_local(Var('o'), ObjectRType())
+        self.o2 = self.env.add_local(Var('o2'), ObjectRType())
+        self.d = self.env.add_local(Var('d'), DictRType())
+        self.b = self.env.add_local(Var('b'), BoolRType())
         self.context = EmitterContext()
         self.emitter = Emitter(self.context, self.env)
         self.declarations = Emitter(self.context, self.env)
@@ -184,6 +188,35 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         rtype = UserRType(ir)
         self.assert_emit(SetAttr(self.n, 'y', self.m, rtype),
                          """CPY_SET_ATTR(cpy_r_n, 3, cpy_r_m, AObject, CPyTagged);""")
+
+    def test_dict_get_item(self) -> None:
+        self.assert_emit(PrimitiveOp(self.o, PrimitiveOp.DICT_GET, self.d, self.o2),
+                         """cpy_r_o = PyDict_GetItem(cpy_r_d, cpy_r_o2);
+                            if (!cpy_r_o)
+                                abort();
+                            Py_INCREF(cpy_r_o);
+                         """)
+
+    def test_dict_set_item(self) -> None:
+        self.assert_emit(PrimitiveOp(None, PrimitiveOp.DICT_SET, self.d, self.o, self.o2),
+                         """if (PyDict_SetItem(cpy_r_d, cpy_r_o, cpy_r_o2) < 0)
+                                abort();
+                         """)
+
+    def test_new_dict(self) -> None:
+        self.assert_emit(PrimitiveOp(self.d, PrimitiveOp.NEW_DICT),
+                         """cpy_r_d = PyDict_New();
+                            if (!cpy_r_d)
+                                abort();
+                         """)
+
+    def test_dict_contains(self) -> None:
+        self.assert_emit(PrimitiveOp(self.b, PrimitiveOp.DICT_CONTAINS, self.o, self.d),
+                         """int __tmp1 = PyDict_Contains(cpy_r_d, cpy_r_o);
+                            if (__tmp1 < 0)
+                                abort();
+                            cpy_r_b = __tmp1;
+                         """)
 
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []

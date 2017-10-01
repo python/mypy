@@ -1,0 +1,106 @@
+[case testDictGet]
+from typing import Dict
+def f(d: Dict[int, bool]) -> bool:
+    return d[0]
+[out]
+def f(d):
+    d :: dict
+    r0 :: int
+    r1, r2 :: object
+    r3 :: bool
+L0:
+    r0 = 0
+    r1 = box(int, r0)
+    r2 = d[r1] :: dict
+    r3 = unbox(bool, r2)
+    return r3
+
+[case testDictSet]
+from typing import Dict
+def f(d: Dict[int, bool]) -> None:
+    d[0] = False
+[out]
+def f(d):
+    d :: dict
+    r0 :: int
+    r1 :: object
+    r2 :: bool
+    r3 :: object
+    r4 :: None
+L0:
+    r0 = 0
+    r1 = box(int, r0)
+    r2 = False
+    r3 = box(bool, r2)
+    d[r1] = r3 :: dict
+    r4 = None
+    return r4
+
+[case testNewEmptyDict]
+from typing import Dict
+def f() -> None:
+    d = {}  # type: Dict[bool, int]
+[out]
+def f():
+    d :: dict
+    r0 :: None
+L0:
+    d = {}
+    r0 = None
+    return r0
+
+[case testInDict]
+from typing import Dict
+def f(d: Dict[int, int]) -> bool:
+    if 4 in d:
+        return True
+    else:
+        return False
+[out]
+def f(d):
+    d :: dict
+    r0 :: int
+    r1 :: bool
+    r2 :: object
+    r3, r4 :: bool
+L0:
+    r0 = 4
+    r2 = box(int, r0)
+    r1 = r2 in d :: dict
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r3 = True
+    return r3
+L2:
+    r4 = False
+    return r4
+L3:
+    unreachable
+
+[case testNotInDict]
+from typing import Dict
+def f(d: Dict[int, int]) -> bool:
+    if 4 not in d:
+        return True
+    else:
+        return False
+[out]
+def f(d):
+    d :: dict
+    r0 :: int
+    r1 :: bool
+    r2 :: object
+    r3, r4 :: bool
+L0:
+    r0 = 4
+    r2 = box(int, r0)
+    r1 = r2 in d :: dict
+    if not r1 goto L1 else goto L2 :: bool
+L1:
+    r3 = True
+    return r3
+L2:
+    r4 = False
+    return r4
+L3:
+    unreachable

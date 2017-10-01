@@ -141,11 +141,17 @@ class Emitter:
         """
         # TODO: Verify refcount handling.
         failure = '    ' + failure
-        if typ.name == 'list':
+        if typ.name in ('list', 'dict'):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
+            if typ.name == 'list':
+                prefix = 'PyList'
+            elif typ.name == 'dict':
+                prefix = 'PyDict'
+            else:
+                assert False, prefix
             self.emit_lines(
-                'if (PyList_Check({}))'.format(src),
+                'if ({}_Check({}))'.format(prefix, src),
                 '    {} = {};'.format(dest, src),
                 'else',
                 failure)

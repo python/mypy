@@ -120,6 +120,11 @@ class FunctionEmitterVisitor(OpVisitor):
                 self.emit_lines('%s = CPyList_GetItem(%s, %s);' % (dest, left, right),
                                 'if (!%s)' % dest,
                                 '    abort();')
+            elif op.desc is PrimitiveOp.DICT_GET:
+                self.emit_lines('%s = PyDict_GetItem(%s, %s);' % (dest, left, right),
+                                'if (!%s)' % dest,
+                                '    abort();',
+                                'Py_INCREF(%s);' % dest)
             elif op.desc is PrimitiveOp.LIST_REPEAT:
                 temp = self.temp_name()
                 self.declarations.emit_line('long long %s;' % temp)
@@ -134,6 +139,12 @@ class FunctionEmitterVisitor(OpVisitor):
                 self.emit_lines('%s = CPySequenceTuple_GetItem(%s, %s);' % (dest, left, right),
                                 'if (!%s)' % dest,
                                 '    abort();')
+            elif op.desc is PrimitiveOp.DICT_CONTAINS:
+                temp = self.temp_name()
+                self.emit_lines('int %s = PyDict_Contains(%s, %s);' % (temp, right, left),
+                                'if (%s < 0)' % temp,
+                                '    abort();',
+                                '%s = %s;' % (dest, temp))
             else:
                 assert False, op.desc
 
@@ -142,6 +153,13 @@ class FunctionEmitterVisitor(OpVisitor):
             self.emit_lines('if (!CPyList_SetItem(%s, %s, %s))' % (self.reg(op.args[0]),
                                                                    self.reg(op.args[1]),
                                                                    self.reg(op.args[2])),
+                            '    abort();')
+
+        elif op.desc is PrimitiveOp.DICT_SET:
+            assert dest is None
+            self.emit_lines('if (PyDict_SetItem(%s, %s, %s) < 0)' % (self.reg(op.args[0]),
+                                                                     self.reg(op.args[1]),
+                                                                     self.reg(op.args[2])),
                             '    abort();')
 
         elif op.desc is PrimitiveOp.NONE:
@@ -170,6 +188,11 @@ class FunctionEmitterVisitor(OpVisitor):
             for i, arg in enumerate(op.args):
                 self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(arg)))
             self.emit_inc_ref(dest, tuple_type)
+
+        elif op.desc is PrimitiveOp.NEW_DICT:
+            self.emit_lines('%s = PyDict_New();' % dest,
+                            'if (!%s)' % dest,
+                            '    abort();')
 
         elif op.desc is PrimitiveOp.LIST_APPEND:
             self.emit_lines(
