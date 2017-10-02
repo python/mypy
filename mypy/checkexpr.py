@@ -2817,10 +2817,10 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             # Since Type[T] is covariant, check if actual = Type[A] is
             # a subtype of formal = Type[F].
             return overload_arg_similarity(actual.item, formal.item)
-        elif isinstance(actual, CallableType) and actual.is_type_obj():
+        elif isinstance(actual, FunctionLike) and actual.is_type_obj():
             # Check if the actual is a constructor of some sort.
             # Note that this is this unsound, since we don't check the __init__ signature.
-            return overload_arg_similarity(actual.ret_type, formal.item)
+            return overload_arg_similarity(actual.items()[0].ret_type, formal.item)
         else:
             return 0
     if isinstance(actual, TypedDictType):
