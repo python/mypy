@@ -1146,7 +1146,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # variables. If an argument or return type of override
                 # does not have the correct subtyping relationship
                 # with the original type even after these variables
-                # are erased, then it is definitely an incompatiblity.
+                # are erased, then it is definitely an incompatibility.
 
                 override_ids = override.type_var_ids()
 

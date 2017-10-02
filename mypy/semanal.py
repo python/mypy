@@ -156,7 +156,7 @@ TYPE_PROMOTIONS_PYTHON2.update({
 # nested functions. In the first phase we add the function to the symbol table
 # but don't process body. In the second phase we process function body. This
 # way we can have mutually recursive nested functions.
-FUNCTION_BOTH_PHASES = 0  # Everthing in one go
+FUNCTION_BOTH_PHASES = 0  # Everything in one go
 FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone body
 FUNCTION_SECOND_PHASE = 2  # Only analyze body
 
