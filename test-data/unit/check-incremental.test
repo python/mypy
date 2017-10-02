@@ -2800,6 +2800,61 @@ b.x.y
 tmp/c.py:2: error: Revealed type is '<stale cache: consider running mypy without --quick>'
 tmp/c.py:5: error: "<stale cache: consider running mypy without --quick>" has no attribute "y"
 
+[case testCacheDeletedAfterErrorsFound]
+import a
+[file a.py]
+from b import x
+[file b.py]
+from c import x
+[file c.py]
+x = 1
+[file c.py.2]
+1 + 1
+[file a.py.3]
+from b import x
+1 + 1
+[out]
+[out2]
+tmp/b.py:1: error: Module 'c' has no attribute 'x'
+[out3]
+tmp/b.py:1: error: Module 'c' has no attribute 'x'
+tmp/a.py:1: error: Module 'b' has no attribute 'x'
+
+[case testCacheDeletedAfterErrorsFound2]
+import a
+[file a.py]
+from b import x
+[file b.py]
+from c import C
+x: C
+[file c.py]
+class C: pass
+[file c.py.2]
+def C(): pass
+[file a.py.3]
+from b import x
+1 + 1
+[out]
+[out2]
+tmp/b.py:2: error: Invalid type "c.C"
+[out3]
+tmp/b.py:2: error: Invalid type "c.C"
+
+[case testCacheDeletedAfterErrorsFound3]
+import a
+[file a.py]
+import b
+b.f()
+[file b.py]
+def f() -> None: pass
+[file b.py.2]
+def f(x) -> None: pass
+[out]
+[out2]
+tmp/a.py:2: error: Too few arguments for "f"
+[out3]
+tmp/a.py:2: error: Too few arguments for "f"
+
 [case testNoCrashOnDoubleImportAliasQuick]
 # cmd: mypy -m e
 # cmd2: mypy -m c

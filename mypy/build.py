@@ -1165,6 +1165,24 @@ def write_cache(id: str, path: str, tree: MypyFile,
     return interface_hash
 
 
+def delete_cache(id: str, path: str, manager: BuildManager) -> None:
+    """Delete cache files for a module.
+
+    The cache files for a module are deleted when mypy finds errors there.
+    This avoids inconsistent states with cache files from different mypy runs,
+    see #4043 for an example.
+    """
+    path = os.path.abspath(path)
+    meta_json, data_json = get_cache_names(id, path, manager)
+    manager.log('Deleting {} {} {} {}'.format(id, path, meta_json, data_json))
+
+    for filename in [data_json, meta_json]:
+        try:
+            os.remove(filename)
+        except OSError:
+            manager.log("Error deleting cache file {}".format(filename))
+
+
 """Dependency manager.
 
 Design
@@ -1813,6 +1831,7 @@ class State:
         else:
             is_errors = self.manager.errors.is_errors()
         if is_errors:
+            delete_cache(self.id, self.path, self.manager)
             return
         dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
         new_interface_hash = write_cache(
