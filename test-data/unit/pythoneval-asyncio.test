@@ -1,5 +1,4 @@
--- Test cases for type checking mypy programs using full stubs and running
--- using CPython.
+-- Test cases for type checking mypy programs using full stubs
 --
 -- These are mostly regression tests -- no attempt is made to make these
 -- complete.
@@ -10,7 +9,6 @@
 import asyncio
 print('Imported')
 [out]
-Imported
 
 [case testSimpleCoroutineSleep]
 from typing import Any, Generator
@@ -32,16 +30,6 @@ try:
 finally:
     loop.close()
 [out]
-Prev 0
-After 0
-Prev 1
-After 1
-Prev 2
-After 2
-Prev 3
-After 3
-Prev 4
-After 4
 
 [case testCoroutineCallingOtherCoroutine]
 from typing import Generator, Any
@@ -63,8 +51,6 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(print_sum(1, 2))
 loop.close()
 [out]
-Compute 1 + 2 ...
-1 + 2 = 3
 
 [case testCoroutineChangingFuture]
 from typing import Generator, Any
@@ -83,7 +69,6 @@ loop.run_until_complete(future)
 print(future.result())
 loop.close()
 [out]
-Future is done!
 
 [case testFunctionAssignedAsCallback]
 import typing
@@ -109,7 +94,6 @@ try:
 finally:
     loop.close()
 [out]
-Callback works!
 
 [case testMultipleTasks]
 import typing
@@ -133,16 +117,6 @@ tasks = [
 loop.run_until_complete(asyncio.wait(tasks))
 loop.close()
 [out]
-Task A: Compute factorial(2)...
-Task B: Compute factorial(2)...
-Task C: Compute factorial(2)...
-Task A: factorial(2) = 2
-Task B: Compute factorial(3)...
-Task C: Compute factorial(3)...
-Task B: factorial(3) = 6
-Task C: Compute factorial(4)...
-Task C: factorial(4) = 24
-
 
 [case testConcatenatedCoroutines]
 import typing
@@ -179,10 +153,6 @@ loop.run_until_complete(h())
 print("Outside %s" % future.result())
 loop.close()
 [out]
-h3: 42
-h2: 42
-h: 42
-Outside 42
 
 [case testConcatenatedCoroutinesReturningFutures]
 import typing
@@ -222,11 +192,6 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(h())
 loop.close()
 [out]
-Before
-42
-Future<result=42>
-Future<result=Future<result=42>>
-
 
 [case testCoroutineWithOwnClass]
 import typing
@@ -250,9 +215,6 @@ loop.run_until_complete(h())
 print("Outside %s" % future.result().x)
 loop.close()
 [out]
-h: 42
-Outside 42
-
 
 -- Errors
 

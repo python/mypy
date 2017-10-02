@@ -1,5 +1,4 @@
--- Test cases for type checking mypy programs using full stubs and running
--- using CPython (Python 2 mode).
+-- Test cases for type checking mypy programs using full stubs
 --
 -- These are mostly regression tests -- no attempt is made to make these
 -- complete.
@@ -22,8 +21,6 @@ print x
 x = u'foo'
 print repr(x)
 [out]
-xyz
-u'foo'
 
 [case testXrangeAndRange_python2]
 for i in xrange(2):
@@ -31,18 +28,12 @@ for i in xrange(2):
 for i in range(3):
     print i
 [out]
-0
-1
-0
-1
-2
 
 [case testIterator_python2]
 import typing, sys
 x = iter('bar')
 print x.next(), x.next()
 [out]
-b a
 
 [case testEncodeAndDecode_python2]
 print 'a'.encode('latin1')
@@ -50,18 +41,12 @@ print 'b'.decode('latin1')
 print u'c'.encode('latin1')
 print u'd'.decode('latin1')
 [out]
-a
-b
-c
-d
 
 [case testHasKey_python2]
 d = {1: 'x'}
 print d.has_key(1)
 print d.has_key(2)
 [out]
-True
-False
 
 [case testIntegerDivision_python2]
 x = 1 / 2
@@ -86,8 +71,6 @@ def f(x): # type: (AnyStr) -> AnyStr
 print f('')
 print f(u'')
 [out]
-foo
-zar
 
 [case testGenericPatterns_python2]
 from typing import Pattern
@@ -98,7 +81,6 @@ b = None  # type: Pattern[str]
 b = re.compile('foo*')
 print(p.match(u'fooo').group(0))
 [out]
-fooo
 
 [case testGenericMatch_python2]
 from typing import Match
@@ -107,26 +89,22 @@ def f(m): # type: (Match[str]) -> None
     print(m.group(0))
 f(re.match('x*', 'xxy'))
 [out]
-xx
 
 [case testVariableLengthTuple_python2]
 from typing import Tuple, cast
 x = cast(Tuple[int, ...], ())
 print(x)
 [out]
-()
 
 [case testFromFuturePrintFunction_python2]
 from __future__ import print_function
 print('a', 'b')
 [out]
-a b
 
 [case testFromFutureImportUnicodeLiterals_python2]
 from __future__ import unicode_literals
 print '>', ['a', b'b', u'c']
 [out]
-> [u'a', 'b', u'c']
 
 [case testUnicodeLiteralsKwargs_python2]
 from __future__ import unicode_literals
@@ -182,7 +160,6 @@ def f(a): # type: (Sequence[T]) -> None
     print a
 f(tuple())
 [out]
-()
 
 [case testReadOnlyProperty_python2]
 import typing
@@ -192,7 +169,6 @@ class A:
         return 1
 print(A().foo + 2)
 [out]
-3
 
 [case testIOTypes_python2]
 from typing import IO, TextIO, BinaryIO, Any
@@ -219,7 +195,6 @@ if 1 == 2: # Don't want to run the code below, since it would create a file.
     f.close()
 print('ok')
 [out]
-ok
 
 [case testStringIO_python2]
 import typing
@@ -228,7 +203,6 @@ c = io.StringIO()
 c.write(u'\x89')
 print(repr(c.getvalue()))
 [out]
-u'\x89'
 
 [case testBytesIO_python2]
 import typing
@@ -237,7 +211,6 @@ c = io.BytesIO()
 c.write('\x89')
 print(repr(c.getvalue()))
 [out]
-'\x89'
 
 [case testTextIOWrapper_python2]
 import typing
@@ -246,7 +219,6 @@ b = io.BytesIO(u'\xab'.encode('utf8'))
 w = io.TextIOWrapper(b, encoding='utf8')
 print(repr(w.read()))
 [out]
-u'\xab'
 
 [case testIoOpen_python2]
 import typing
@@ -257,7 +229,6 @@ if 1 == 2: # Only type check, do not execute
     f.close()
 print 'ok'
 [out]
-ok
 
 [case testUnionType_python2]
 from typing import Union
@@ -269,8 +240,6 @@ def f(x): # type: (Union[int, str]) -> str
 print f(12)
 print f('ab')
 [out]
-12
-ab
 
 [case testStrAdd_python2]
 import typing
@@ -301,7 +270,6 @@ X = namedtuple('X', ['a', 'b'])
 x = X(a=1, b='s')
 print x.a, x.b
 [out]
-1 s
 
 [case testNamedTupleError_python2]
 import typing
@@ -328,9 +296,6 @@ print 5 + 8j
 print 3j * 2.0
 print 4j / 2.0
 [out]
-(5+8j)
-6j
-2j
 
 [case testNamedTupleWithTypes_python2]
 from typing import NamedTuple
@@ -341,9 +306,6 @@ a, b = n
 print a, b
 print n[0]
 [out]
-N(a=1, b='x')
-1 x
-1
 
 [case testUnionTypeAlias_python2]
 from typing import Union
@@ -363,7 +325,6 @@ class A(object):
     __metaclass__ = MyType
 print(type(A()).__name__)
 [out]
-Ax
 
 [case testSequenceIndexAndCount_python2]
 from typing import Sequence
@@ -372,8 +333,6 @@ def f(x): # type: (Sequence[int]) -> None
     print(x.count(1))
 f([0, 0, 1, 1, 1])
 [out]
-2
-3
 
 [case testOptional_python2]
 from typing import Optional
@@ -419,7 +378,6 @@ class B(A):
 b = B()
 print b.x + 1
 [out]
-4
 
 [case testReModuleBytesPython2]
 # Regression tests for various overloads in the re module -- bytes version
