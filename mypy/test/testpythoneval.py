@@ -84,8 +84,11 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     # Type check the program.
     out, err, returncode = api.run(mypy_cmdline)
     # split lines, remove newlines, and remove directory of test case
-    output.extend([s.rstrip('\r\n')[len(test_temp_dir + os.sep):]
-                   for s in (out + err).splitlines()])
+    for line in (out + err).splitlines():
+        if line.startswith(test_temp_dir + os.sep):
+            output.append(line[len(test_temp_dir + os.sep):].rstrip("\r\n"))
+        else:
+            output.append(line.rstrip("\r\n"))
     if returncode == 0:
         # Execute the program.
         returncode, interp_out = run([interpreter, program])
