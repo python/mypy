@@ -21,6 +21,7 @@ import site
 import sys
 import time
 from os.path import dirname, basename
+import errno
 
 from typing import (AbstractSet, Dict, Iterable, Iterator, List, cast, Any,
                     NamedTuple, Optional, Set, Tuple, Union, Callable)
@@ -469,7 +470,7 @@ class BuildManager:
       all_types:       Map {Expression: Type} collected from all modules
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
-      stale_modules:   Set of modules that needed to be rechecked
+      stale_modules:   Set of modules that needed to be rechecked (only used by tests)
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
@@ -1180,7 +1181,7 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
         try:
             os.remove(filename)
         except OSError as e:
-            if e.errno != os.errno.ENOENT:
+            if e.errno != errno.ENOENT:
                 manager.log("Error deleting cache file {}: {}".format(filename, e.strerror))
 
 
@@ -1553,11 +1554,12 @@ class State:
         """Marks this module as having been fully re-analyzed by the type-checker."""
         self.manager.rechecked_modules.add(self.id)
 
-    def mark_interface_stale(self) -> None:
+    def mark_interface_stale(self, *, on_errors: bool = False) -> None:
         """Marks this module as having a stale public interface, and discards the cache data."""
         self.meta = None
         self.externally_same = False
-        self.manager.stale_modules.add(self.id)
+        if not on_errors:
+            self.manager.stale_modules.add(self.id)
 
     def check_blockers(self) -> None:
         """Raise CompileError if a blocking error is detected."""
@@ -1833,7 +1835,7 @@ class State:
             is_errors = self.manager.errors.is_errors()
         if is_errors:
             delete_cache(self.id, self.path, self.manager)
-            self.mark_interface_stale()
+            self.mark_interface_stale(on_errors=True)
             return
         dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
         new_interface_hash = write_cache(
