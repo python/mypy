@@ -46,8 +46,8 @@ flagged as an error.
   .. code-block:: python
 
       def foo(a: str) -> str:
-          return '(' + a.split() + ')'
-      # error: Unsupported operand types for + ("str" and List[str])
+          return '(' + a.split() + ')'  # error: Unsupported operand types
+                                        # for + ("str" and List[str])
 
   If you don't know what types to add, you can use ``Any``, but beware:
 
@@ -98,7 +98,7 @@ module:
 
 .. code-block:: python
 
-    import frobnicate  # Error: No module "frobnicate"
+    import frobnicate  # error: No module "frobnicate"
     frobnicate.start()
 
 You can add a ``# type: ignore`` comment to tell mypy to ignore this
@@ -123,14 +123,17 @@ Types of empty collections
 --------------------------
 
 You often need to specify the type when you assign an empty list or
-dict to a new variable, as mentioned earlier:
+dict to a new variable:
 
 .. code-block:: python
 
-   a = []  # type: List[int]
+   a = []  # error: Need type annotation for variable
 
-Without the annotation mypy can't always figure out the
-precise type of ``a``.
+Without an annotation mypy can't always figure out the precise type of ``a``.
+
+.. code-block:: python
+
+   a = [] # type: List[int]
 
 You can use a simple empty list literal in a dynamically typed function (as the
 type of ``a`` would be implicitly ``Any`` and need not be inferred), if type
@@ -161,7 +164,8 @@ with the ``Any`` type.
    def f() -> None:
        n = 1
        ...
-       n = 'x'        # Type error: n has type int
+       n = 'x'  # error: Incompatible types in assignment (expression
+                # has type "str", variable has type "int")
 
 .. note::
 
@@ -197,7 +201,8 @@ unexpected errors when combined with type inference. For example:
 
    lst = [A(), A()]  # Inferred type is List[A]
    new_lst = [B(), B()]  # inferred type is List[B]
-   lst = new_lst  # mypy will complain about this, because List is invariant
+   lst = new_lst  # error: Incompatible types in assignment (expression
+                  # has type List[B], variable has type List[A])
 
 Possible strategies in such situations are:
 
@@ -205,7 +210,7 @@ Possible strategies in such situations are:
 
   .. code-block:: python
 
-     new_lst: List[A] = [B(), B()]
+     new_lst = [B(), B()] # type: List[A]
      lst = new_lst  # OK
 
 * Make a copy of the right hand side:
@@ -220,7 +225,8 @@ Possible strategies in such situations are:
 
      def f_bad(x: List[A]) -> A:
          return x[0]
-     f_bad(new_lst) # Fails
+     f_bad(new_lst)  # error: Argument 1 to "f_bad" has incompatible
+                     # type List[B]; expected List[A]
 
      def f_good(x: Sequence[A]) -> A:
          return x[0]
@@ -280,17 +286,18 @@ of a name (assume here that ``Shape`` is the base class of both
 
    shape = Circle()    # Infer shape to be Circle
    ...
-   shape = Triangle()  # Type error: Triangle is not a Circle
+   shape = Triangle()  # error: Incompatible types in assignment
+                       # (expression has type "Triangle", variable has
+                       # type "Circle")
 
-You can just give an explicit type for the variable in cases such the
-above example:
+You can give an explicit type for the variable in cases such the above example:
 
 .. code-block:: python
 
-   shape = Circle() # type: Shape   # The variable s can be any Shape,
-                                    # not just Circle
+   shape = Circle() # type: Shape  # The variable s can be any Shape,
+                                   # not just Circle
    ...
-   shape = Triangle()               # OK
+   shape = Triangle()  # OK
 
 Complex type tests
 ------------------
@@ -304,7 +311,8 @@ explicit type cast:
    def f(o: object) -> None:
        if type(o) is int:
            o = cast(int, o)
-           g(o + 1)    # This would be an error without the cast
+           g(o + 1)  # This would be an error without the cast:
+                     # error: Unsupported operand types for + ("object" and "int")
            ...
        else:
            ...
@@ -327,11 +335,11 @@ style anyway).  We can write the above code without a cast by using
 
    def f(o: object) -> None:
        if isinstance(o, int):  # Mypy understands isinstance checks
-           g(o + 1)        # Okay; type of o is inferred as int here
+           g(o + 1)            # Okay; type of o is inferred as int here
            ...
 
 Type inference in mypy is designed to work well in common cases, to be
-predictable and to let the type checker give useful error
+predictable, and to let the type checker give useful error
 messages. More powerful type inference strategies often have complex
 and difficult-to-predict failure modes and could result in very
 confusing error messages. The tradeoff is that you as a programmer
@@ -410,9 +418,9 @@ understand how mypy handles a particular piece of code. Example:
 .. note::
 
    ``reveal_type`` is only understood by mypy and doesn't exist
-   in Python, if you try to run your program. You'll have to remove
-   any ``reveal_type`` calls before you can run your code.
-   ``reveal_type`` is always available and you don't need to import it.
+   in Python. You'll have to remove any ``reveal_type`` calls before you run
+   your code. ``reveal_type`` is always available and you don't need to import
+   it.
 
 .. _import-cycles:
 

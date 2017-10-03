@@ -17,19 +17,19 @@ initialized within the class. Mypy infers the types of attributes:
 
    a = A(1)
    a.x = 2       # OK
-   a.y = 3       # Error: A has no attribute y
+   a.y = 3       # error: "A" has no attribute "y"
 
 This is a bit like each class having an implicitly defined
 ``__slots__`` attribute. This is only enforced during type
 checking and not when your program is running.
 
-You can declare types of variables in the class body explicitly using
-a type comment:
+You can declare types of variables in the class body explicitly in the same way
+as variables outside of a class body by using a type comment:
 
 .. code-block:: python
 
    class A:
-       x = None  # type: List[int]  # Declare attribute x of type List[int]
+       x = None  # type: List[int]
 
    a = A()
    a.x = [1]     # OK
@@ -58,7 +58,7 @@ to it explicitly using ``self``:
        def __init__(self) -> None:
            self.y = 1   # Define y
            a = self
-           a.x = 1      # Error: x not defined
+           a.x = 1      # error: "A" has no attribute "x"
 
 Overriding statically typed methods
 ***********************************
@@ -68,16 +68,19 @@ override has a compatible signature:
 
 .. code-block:: python
 
+
+
+
    class A:
        def f(self, x: int) -> None:
            ...
 
    class B(A):
-       def f(self, x: str) -> None:   # Error: type of x incompatible
+       def f(self, x: str) -> None:  # error: Argument 1 of "f" incompatible with supertype "A"
            ...
 
    class C(A):
-       def f(self, x: int, y: int) -> None:  # Error: too many arguments
+       def f(self, x: int, y: int) -> None:  # error: Signature of "f" incompatible with supertype "A"
            ...
 
    class D(A):

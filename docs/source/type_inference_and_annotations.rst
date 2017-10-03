@@ -34,7 +34,8 @@ compatible with ``List[object]``:
 .. code-block:: python
 
    def f(l: List[object], k: List[int]) -> None:
-       l = k       # Type check error: incompatible types in assignment
+       l = k  # error: Incompatible types in assignment
+              # (expression has type List[int], variable has type List[object])
 
 The reason why the above assignment is disallowed is that allowing the
 assignment could result in non-int values stored in a list of ``int``:
@@ -66,6 +67,8 @@ special type comment after an assignment statement:
 .. code-block:: python
 
    x = 1  # type: Union[int, str]
+   # or, as of Python 3.6:
+   x: Union[int, str] = 1
 
 Without the type comment, the type of ``x`` would be just ``int``. We
 use an annotation to give it a more general type ``Union[int, str]``.
@@ -76,7 +79,9 @@ type:
 
 .. code-block:: python
 
-   x = 1.1  # type: Union[int, str]  # Error!
+   x = 1.1  # type: Union[int, str]
+            # error: Incompatible types in assignment
+            # (expression has type "float", variable has type "Union[int, str]")
 
 .. note::
 
@@ -134,7 +139,7 @@ right-hand side of an assignment, but not always:
 .. code-block:: python
 
     a, *bs = 1, 2, 3   # OK
-    p, q, *rs = 1, 2   # Error: Type of rs cannot be inferred
+    p, q, *rs = 1, 2   # error: Need type annotation for variable
 
 On first line, the type of ``bs`` is inferred to be
 ``List[int]``. However, on the second line, mypy cannot infer the type

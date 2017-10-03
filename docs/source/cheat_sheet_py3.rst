@@ -78,7 +78,7 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
    def quux(__x: int) -> None:
        pass
    quux(3)  # Fine
-   quux(__x=3)  # Error
+   quux(__x=3)  # error: Unexpected keyword argument "__x" for "quux"
 
    # This is how you annotate a function value.
    x = f # type: Callable[[int, float], float]
@@ -113,7 +113,7 @@ When you're puzzled or when things are complicated
    # To find out what type mypy infers for an expression anywhere in
    # your program, wrap it in reveal_type.  Mypy will print an error
    # message with the type; remove it again before running the code.
-   reveal_type(1)  # -> error: Revealed type is 'builtins.int'
+   reveal_type(1)  # error: Revealed type is 'builtins.int'
 
    # Use Union when something could be one of a few types.
    x = [3, 5, "test", "fun"]  # type: List[Union[int, str]]
@@ -139,8 +139,8 @@ When you're puzzled or when things are complicated
    a = [4]
    b = cast(List[int], a)  # passes fine
    c = cast(List[str], a)  # passes fine (no runtime check)
-   reveal_type(c)  # -> error: Revealed type is 'builtins.list[builtins.str]'
-   print(c)  # -> [4] the object is not cast
+   reveal_type(c)  # error: Revealed type is 'builtins.list[builtins.str]'
+   print(c)  # [4] the object is not cast
 
    # if you want dynamic attributes on your class, have it override __setattr__ or __getattr__
    # in a stub or in your source code.
@@ -203,8 +203,6 @@ Classes
        def my_method(self, num: int, str1: str) -> str:
            return num * str1
 
-
-
    # User-defined classes are written with just their own names.
    x = MyClass() # type: MyClass
 
@@ -241,7 +239,7 @@ Other stuff
 
    # forward references are useful if you want to reference a class before it is designed
    
-   def f(foo: A) -> int:  # this will fail
+   def f(foo: A) -> int:  # this will fail at runtime
        ...
    
    class A:
@@ -266,7 +264,7 @@ Mypy brings limited support for PEP 526 annotations.
    name: str = "Eric Idle"
    
    # class instances can be annotated as follows
-   mc : MyClass = MyClass()
+   mc: MyClass = MyClass()
    
    # tuple packing can be done as follows
    tu: Tuple[str, ...] = ('a', 'b', 'c')

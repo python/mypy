@@ -45,7 +45,7 @@ Using ``Stack`` is similar to built-in container types:
    stack = Stack[int]()
    stack.push(2)
    stack.pop()
-   stack.push('x')        # Type error
+   stack.push('x')  # error: Argument 1 to "push" of "Stack" has incompatible type "str"; expected "int"
 
 Type inference works for user-defined generic types as well:
 
@@ -337,7 +337,8 @@ Let us illustrate this by few simple examples:
   .. code-block:: python
 
      class Shape:
-         pass
+         ...
+
      class Circle(Shape):
          def rotate(self):
              ...
@@ -347,7 +348,7 @@ Let us illustrate this by few simple examples:
 
      my_things: List[Circle] = []
      add_one(my_things)     # This may appear safe, but...
-     my_things[0].rotate()  # ...this will fail
+     my_things[0].rotate()  # error: Argument 1 to "add_one" has incompatible type List[Circle]; expected List[Shape]
 
   Another example of invariant type is ``Dict``, most mutable containers
   are invariant.
@@ -404,14 +405,14 @@ argument types:
 
    concat('a', 'b')    # Okay
    concat(b'a', b'b')  # Okay
-   concat(1, 2)        # Error!
+   concat(1, 2)        # error: Type argument 1 of "concat" has incompatible value "int"
 
 Note that this is different from a union type, since combinations
 of ``str`` and ``bytes`` are not accepted:
 
 .. code-block:: python
 
-   concat('string', b'bytes')   # Error!
+   concat('string', b'bytes')  # error: Type argument 1 of "concat" has incompatible value "object"
 
 In this case, this is exactly what we want, since it's not possible
 to concatenate a string and a bytes object! The type checker
@@ -420,7 +421,7 @@ will reject this function:
 .. code-block:: python
 
    def union_concat(x: Union[str, bytes], y: Union[str, bytes]) -> Union[str, bytes]:
-       return x + y  # Error: can't concatenate str and bytes
+       return x + y  # error: Unsupported operand types for + (likely involving Union)
 
 Another interesting special case is calling ``concat()`` with a
 subtype of ``str``:
@@ -483,7 +484,8 @@ above,
 
    largest_in_absolute_value(-3.5, 2)   # Okay, has type float.
    largest_in_absolute_value(5+6j, 7)   # Okay, has type complex.
-   largest_in_absolute_value('a', 'b')  # Error: 'str' is not a subtype of SupportsAbs[float].
+   largest_in_absolute_value('a', 'b')  # error: Type argument 1 of "largest_in_absolute_value" has
+                                        # incompatible value "str"
 
 Type parameters of generic classes may also have upper bounds, which
 restrict the valid values for the type parameter in the same way.
@@ -595,7 +597,7 @@ regardless of that signature. Here's a complete example:
    reveal_type(a)  # str
    b = bar(3.14, 0)
    reveal_type(b)  # Tuple[float, float, bool]
-   foo('x')    # Type check error: incompatible type "str"; expected "int"
+   foo('x')  # error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
 From the final block we see that the signatures of the decorated
 functions ``foo()`` and ``bar()`` are the same as those of the original
