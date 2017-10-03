@@ -74,9 +74,13 @@ class DependencyVisitor(TraverserVisitor):
         self.add_dependency(make_trigger(target))
         old_is_class = self.is_class
         self.is_class = True
-        # TODO: Add dependencies based on MRO and other attributes.
+        # Add dependencies to type variables of a generic class.
         for tv in o.type_vars:
             self.add_dependency(make_trigger(tv.fullname))
+        # Add dependencies to base types.
+        for base in o.info.bases:
+            self.add_type_dependencies(base)
+        # TODO: Add dependencies based on remaining attributes.
         super().visit_class_def(o)
         self.is_class = old_is_class
         info = o.info
@@ -173,6 +177,10 @@ class DependencyVisitor(TraverserVisitor):
             # anyway.
             return
         self.map.setdefault(trigger, set()).add(target)
+
+    def add_type_dependencies(self, typ: Type) -> None:
+        for trigger in get_type_dependencies(typ):
+            self.add_dependency(trigger)
 
     def push(self, component: str) -> str:
         target = '%s.%s' % (self.current(), component)

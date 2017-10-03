@@ -79,3 +79,31 @@ class A:
 [out]
 <m.A> -> m.A
 <m.T> -> <m.A.f>, m.A.f
+
+[case testGenericBaseClass]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]): pass
+class B(A[C]): pass
+class C: pass
+[out]
+<m.A.__init__> -> <m.B.__init__>
+<m.A> -> m.A, m.B
+<m.B> -> m.B
+<m.C> -> m.B, m.C
+<m.T> -> m.A
+
+[case testGenericBaseClass2]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]): pass
+class B(A[T]): pass
+[out]
+<m.A.__init__> -> <m.B.__init__>
+<m.A> -> m.A, m.B
+<m.B> -> m.B
+<m.T> -> m.A, m.B

@@ -39,12 +39,14 @@ class A: pass
 <m.A> -> m.A, m.f
 
 [case testAccessModuleAttribute]
-x = 1
+class A: pass
+x = A()
 def f() -> None:
     x
 [out]
+<m.A.__init__> -> m
+<m.A> -> m, m.A
 <m.x> -> m, m.f
-<builtins.int> -> m
 
 [case testAccessModuleAttribute2]
 import n
@@ -215,13 +217,15 @@ class A:
 
 [case testConstructor]
 class A:
-    def __init__(self, x: int) -> None: pass
+    def __init__(self, x: C) -> None: pass
+class C: pass
 def f() -> None:
-    A(1)
+    A(C())
 [out]
 <m.A.__init__> -> m.f
 <m.A> -> m.A, m.f
-<builtins.int> -> <m.A.__init__>, m.A.__init__
+<m.C.__init__> -> m.f
+<m.C> -> <m.A.__init__>, m.A.__init__, m.C, m.f
 
 [case testImportFrom]
 from n import f
