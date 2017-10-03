@@ -113,7 +113,7 @@ def adapt_output(testcase: DataDrivenTestCase) -> List[str]:
 
 def run(
     cmdline: List[str], *, env: Optional[Dict[str, str]] = None, timeout: int = 300
-    ) -> Tuple[int, List[str]]:
+) -> Tuple[int, List[str]]:
     """A poor man's subprocess.run() for 3.3 and 3.4 compatibility."""
     process = subprocess.Popen(
         cmdline,
