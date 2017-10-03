@@ -1179,8 +1179,9 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     for filename in [data_json, meta_json]:
         try:
             os.remove(filename)
-        except OSError:
-            manager.log("Error deleting cache file {}".format(filename))
+        except OSError as e:
+            if e.errno != os.errno.ENOENT:
+                manager.log("Error deleting cache file {}: {}".format(filename, e.strerror))
 
 
 """Dependency manager.
@@ -1832,6 +1833,7 @@ class State:
             is_errors = self.manager.errors.is_errors()
         if is_errors:
             delete_cache(self.id, self.path, self.manager)
+            self.mark_interface_stale()
             return
         dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
         new_interface_hash = write_cache(

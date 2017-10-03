@@ -2816,6 +2816,7 @@ from b import x
 [out]
 [out2]
 tmp/b.py:1: error: Module 'c' has no attribute 'x'
+tmp/a.py:1: error: Module 'b' has no attribute 'x'
 [out3]
 tmp/b.py:1: error: Module 'c' has no attribute 'x'
 tmp/a.py:1: error: Module 'b' has no attribute 'x'
@@ -2854,6 +2855,31 @@ def f(x) -> None: pass
 tmp/a.py:2: error: Too few arguments for "f"
 [out3]
 tmp/a.py:2: error: Too few arguments for "f"
+
+[case testCacheDeletedAfterErrorsFound4]
+import a
+[file a.py]
+from b import x
+[file b.py]
+from c import x
+[file c.py]
+from d import x
+[file d.py]
+x = 1
+[file d.py.2]
+1 + 1
+[file a.py.3]
+from b import x
+1 + 1
+[out]
+[out2]
+tmp/c.py:1: error: Module 'd' has no attribute 'x'
+tmp/b.py:1: error: Module 'c' has no attribute 'x'
+tmp/a.py:1: error: Module 'b' has no attribute 'x'
+[out3]
+tmp/c.py:1: error: Module 'd' has no attribute 'x'
+tmp/b.py:1: error: Module 'c' has no attribute 'x'
+tmp/a.py:1: error: Module 'b' has no attribute 'x'
 
 [case testNoCrashOnDoubleImportAliasQuick]
 # cmd: mypy -m e
