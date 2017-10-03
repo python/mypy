@@ -10,7 +10,7 @@ T = TypeVar('T')
 
 ENCODING_RE = re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')
 
-default_python2_interpreter = ['python2', 'python', '/usr/bin/python']
+default_python2_interpreter = ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']
 
 
 def split_module_names(mod_name: str) -> List[str]:
