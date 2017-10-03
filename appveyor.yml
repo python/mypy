@@ -22,7 +22,7 @@ build: off
 test_script:
     # Ignore lint and mypy self check (both run in Travis)
     - "%PYTHON%\\python.exe runtests.py -x lint -x package -x pytest"
-    - "%PYTHON%\\ python.exe runtests.py pytest -p -k -p 'not _python2eval'"
+    - "%PYTHON%\\python.exe runtests.py pytest -p -k -p 'not _python2eval'"
 
 skip_commits:
   files:
