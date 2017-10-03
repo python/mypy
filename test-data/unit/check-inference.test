@@ -1927,3 +1927,18 @@ x = None
 (x, x) = f('')
 reveal_type(x) # E: Revealed type is 'builtins.str'
 [out]
+
+[case testInferenceNestedTuplesFromGenericIterable]
+from typing import Tuple, TypeVar
+
+T = TypeVar('T')
+
+def make_tuple(elem: T) -> Tuple[T]:
+    return (elem,)
+
+def main() -> None:
+    ((a, b),) = make_tuple((1, 2))
+    reveal_type(a) # E: Revealed type is 'builtins.int'
+    reveal_type(b) # E: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
+[out]
