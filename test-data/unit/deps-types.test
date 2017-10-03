@@ -34,6 +34,19 @@ def f() -> None:
 <m.A> -> m.A, m.f
 <m.B> -> m.B, m.f
 
+[case testCallableType]
+from typing import Callable
+
+class A: pass
+class B: pass
+
+def f() -> None:
+    x: Callable[[int, A], None]
+    y: Callable[[int, str], B]
+[out]
+<m.A> -> m.A, m.f
+<m.B> -> m.B, m.f
+
 [case testTypeType]
 from typing import Type
 
@@ -44,3 +57,17 @@ def f() -> None:
     y: Type[int]
 [out]
 <m.A> -> m.A, m.f
+
+[case testComplexNestedType]
+from typing import Union, Callable, Type
+
+class A: pass
+class B: pass
+class C: pass
+
+def f() -> None:
+    x: Union[int, Callable[[Type[A]], B], C]
+[out]
+<m.A> -> m.A, m.f
+<m.B> -> m.B, m.f
+<m.C> -> m.C, m.f
