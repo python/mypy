@@ -5,7 +5,7 @@
 -- complete.
 
 
-[case testAbs2_python2eval]
+[case testAbs2_python2]
 n = None  # type: int
 f = None  # type: float
 n = abs(1)
@@ -16,7 +16,7 @@ abs(1.1) + 'x'  # Error
 _program.py:4: error: Unsupported operand types for + ("int" and "str")
 _program.py:6: error: Unsupported operand types for + ("float" and "str")
 
-[case testUnicode_python2eval]
+[case testUnicode_python2]
 x = unicode('xyz', 'latin1')
 print x
 x = u'foo'
@@ -25,7 +25,7 @@ print repr(x)
 xyz
 u'foo'
 
-[case testXrangeAndRange_python2eval]
+[case testXrangeAndRange_python2]
 for i in xrange(2):
     print i
 for i in range(3):
@@ -37,14 +37,14 @@ for i in range(3):
 1
 2
 
-[case testIterator_python2eval]
+[case testIterator_python2]
 import typing, sys
 x = iter('bar')
 print x.next(), x.next()
 [out]
 b a
 
-[case testEncodeAndDecode_python2eval]
+[case testEncodeAndDecode_python2]
 print 'a'.encode('latin1')
 print 'b'.decode('latin1')
 print u'c'.encode('latin1')
@@ -55,7 +55,7 @@ b
 c
 d
 
-[case testHasKey_python2eval]
+[case testHasKey_python2]
 d = {1: 'x'}
 print d.has_key(1)
 print d.has_key(2)
@@ -63,20 +63,20 @@ print d.has_key(2)
 True
 False
 
-[case testIntegerDivision_python2eval]
+[case testIntegerDivision_python2]
 x = 1 / 2
 x()
 [out]
 _program.py:2: error: "int" not callable
 
-[case testFloatDivision_python2eval]
+[case testFloatDivision_python2]
 x = 1.0 / 2.0
 x = 1.0 / 2
 x = 1 / 2.0
 x = 1.5
 [out]
 
-[case testAnyStr_python2eval]
+[case testAnyStr_python2]
 from typing import AnyStr
 def f(x): # type: (AnyStr) -> AnyStr
     if isinstance(x, str):
@@ -89,7 +89,7 @@ print f(u'')
 foo
 zar
 
-[case testGenericPatterns_python2eval]
+[case testGenericPatterns_python2]
 from typing import Pattern
 import re
 p = None  # type: Pattern[unicode]
@@ -100,7 +100,7 @@ print(p.match(u'fooo').group(0))
 [out]
 fooo
 
-[case testGenericMatch_python2eval]
+[case testGenericMatch_python2]
 from typing import Match
 import re
 def f(m): # type: (Match[str]) -> None
@@ -109,26 +109,26 @@ f(re.match('x*', 'xxy'))
 [out]
 xx
 
-[case testVariableLengthTuple_python2eval]
+[case testVariableLengthTuple_python2]
 from typing import Tuple, cast
 x = cast(Tuple[int, ...], ())
 print(x)
 [out]
 ()
 
-[case testFromFuturePrintFunction_python2eval]
+[case testFromFuturePrintFunction_python2]
 from __future__ import print_function
 print('a', 'b')
 [out]
 a b
 
-[case testFromFutureImportUnicodeLiterals_python2eval]
+[case testFromFutureImportUnicodeLiterals_python2]
 from __future__ import unicode_literals
 print '>', ['a', b'b', u'c']
 [out]
 > [u'a', 'b', u'c']
 
-[case testUnicodeLiteralsKwargs_python2eval]
+[case testUnicodeLiteralsKwargs_python2]
 from __future__ import unicode_literals
 def f(**kwargs):  # type: (...) -> None
   pass
@@ -136,21 +136,21 @@ params = {'a': 'b'}
 f(**params)
 [out]
 
-[case testUnicodeStringKwargs_python2eval]
+[case testUnicodeStringKwargs_python2]
 def f(**kwargs):  # type: (...) -> None
   pass
 params = {u'a': 'b'}
 f(**params)
 [out]
 
-[case testStrKwargs_python2eval]
+[case testStrKwargs_python2]
 def f(**kwargs):  # type: (...) -> None
   pass
 params = {'a': 'b'}
 f(**params)
 [out]
 
-[case testFromFutureImportUnicodeLiterals2_python2eval]
+[case testFromFutureImportUnicodeLiterals2_python2]
 from __future__ import unicode_literals
 def f(x): # type: (str) -> None
   pass
@@ -161,7 +161,7 @@ f('')
 _program.py:5: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
 _program.py:6: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
 
-[case testStrUnicodeCompatibility_python2eval]
+[case testStrUnicodeCompatibility_python2]
 import typing
 def f(s): # type: (unicode) -> None
     pass
@@ -169,13 +169,13 @@ f(u'')
 f('')
 [out]
 
-[case testStrUnicodeCompatibilityInBuiltins_python2eval]
+[case testStrUnicodeCompatibilityInBuiltins_python2]
 import typing
 'x'.count('x')
 'x'.count(u'x')
 [out]
 
-[case testTupleAsSubtypeOfSequence_python2eval]
+[case testTupleAsSubtypeOfSequence_python2]
 from typing import TypeVar, Sequence
 T = TypeVar('T')
 def f(a): # type: (Sequence[T]) -> None
@@ -184,7 +184,7 @@ f(tuple())
 [out]
 ()
 
-[case testReadOnlyProperty_python2eval]
+[case testReadOnlyProperty_python2]
 import typing
 class A:
     @property
@@ -194,14 +194,14 @@ print(A().foo + 2)
 [out]
 3
 
-[case testIOTypes_python2eval]
+[case testIOTypes_python2]
 from typing import IO, TextIO, BinaryIO, Any
 class X(IO[str]): pass
 class Y(TextIO): pass
 class Z(BinaryIO): pass
 [out]
 
-[case testOpenReturnType_python2eval]
+[case testOpenReturnType_python2]
 import typing
 f = open('/tmp/xyz', 'w')
 f.write(u'foo')
@@ -210,7 +210,7 @@ f.close()
 [out]
 _program.py:3: error: Argument 1 to "write" of "IO" has incompatible type "unicode"; expected "str"
 
-[case testPrintFunctionWithFileArg_python2eval]
+[case testPrintFunctionWithFileArg_python2]
 from __future__ import print_function
 import typing
 if 1 == 2: # Don't want to run the code below, since it would create a file.
@@ -221,7 +221,7 @@ print('ok')
 [out]
 ok
 
-[case testStringIO_python2eval]
+[case testStringIO_python2]
 import typing
 import io
 c = io.StringIO()
@@ -230,7 +230,7 @@ print(repr(c.getvalue()))
 [out]
 u'\x89'
 
-[case testBytesIO_python2eval]
+[case testBytesIO_python2]
 import typing
 import io
 c = io.BytesIO()
@@ -239,7 +239,7 @@ print(repr(c.getvalue()))
 [out]
 '\x89'
 
-[case testTextIOWrapper_python2eval]
+[case testTextIOWrapper_python2]
 import typing
 import io
 b = io.BytesIO(u'\xab'.encode('utf8'))
@@ -248,7 +248,7 @@ print(repr(w.read()))
 [out]
 u'\xab'
 
-[case testIoOpen_python2eval]
+[case testIoOpen_python2]
 import typing
 import io
 if 1 == 2: # Only type check, do not execute
@@ -259,7 +259,7 @@ print 'ok'
 [out]
 ok
 
-[case testUnionType_python2eval]
+[case testUnionType_python2]
 from typing import Union
 y = None  # type: Union[int, str]
 def f(x): # type: (Union[int, str]) -> str
@@ -272,7 +272,7 @@ print f('ab')
 12
 ab
 
-[case testStrAdd_python2eval]
+[case testStrAdd_python2]
 import typing
 s = ''
 u = u''
@@ -283,7 +283,7 @@ s = s + u'' # E
 _program.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 _program.py:6: error: Incompatible types in assignment (expression has type "unicode", variable has type "str")
 
-[case testStrJoin_python2eval]
+[case testStrJoin_python2]
 import typing
 s = ''
 u = u''
@@ -294,7 +294,7 @@ s = ''.join([u''])  # Error
 _program.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 _program.py:6: error: Incompatible types in assignment (expression has type "unicode", variable has type "str")
 
-[case testNamedTuple_python2eval]
+[case testNamedTuple_python2]
 import typing
 from collections import namedtuple
 X = namedtuple('X', ['a', 'b'])
@@ -303,7 +303,7 @@ print x.a, x.b
 [out]
 1 s
 
-[case testNamedTupleError_python2eval]
+[case testNamedTupleError_python2]
 import typing
 from collections import namedtuple
 X = namedtuple('X', ['a', 'b'])
@@ -312,7 +312,7 @@ x.c
 [out]
 _program.py:5: error: "X" has no attribute "c"
 
-[case testAssignToComplexReal_python2eval]
+[case testAssignToComplexReal_python2]
 import typing
 x = 4j
 y = x.real
@@ -322,7 +322,7 @@ x.imag = 2.0  # Error
 _program.py:4: error: Incompatible types in assignment (expression has type "complex", variable has type "float")
 _program.py:5: error: Property "imag" defined in "complex" is read-only
 
-[case testComplexArithmetic_python2eval]
+[case testComplexArithmetic_python2]
 import typing
 print 5 + 8j
 print 3j * 2.0
@@ -332,7 +332,7 @@ print 4j / 2.0
 6j
 2j
 
-[case testNamedTupleWithTypes_python2eval]
+[case testNamedTupleWithTypes_python2]
 from typing import NamedTuple
 N = NamedTuple('N', [('a', int), ('b', str)])
 n = N(1, 'x')
@@ -345,7 +345,7 @@ N(a=1, b='x')
 1 x
 1
 
-[case testUnionTypeAlias_python2eval]
+[case testUnionTypeAlias_python2]
 from typing import Union
 U = Union[int, str]
 u = 1 # type: U
@@ -353,7 +353,7 @@ u = 1.1
 [out]
 _program.py:4: error: Incompatible types in assignment (expression has type "float", variable has type "Union[int, str]")
 
-[case testSuperNew_python2eval]
+[case testSuperNew_python2]
 from typing import Dict, Any
 class MyType(type):
     def __new__(cls, name, bases, namespace):
@@ -365,7 +365,7 @@ print(type(A()).__name__)
 [out]
 Ax
 
-[case testSequenceIndexAndCount_python2eval]
+[case testSequenceIndexAndCount_python2]
 from typing import Sequence
 def f(x): # type: (Sequence[int]) -> None
     print(x.index(1))
@@ -375,7 +375,7 @@ f([0, 0, 1, 1, 1])
 2
 3
 
-[case testOptional_python2eval]
+[case testOptional_python2]
 from typing import Optional
 def f(): # type: () -> Optional[int]
     pass
@@ -383,7 +383,7 @@ x = f()
 y = 1
 y = x
 
-[case testUnicodeAndOverloading_python2eval]
+[case testUnicodeAndOverloading_python2]
 from m import f
 f(1)
 f('')
@@ -400,12 +400,12 @@ def f(x): # type: (bytearray) -> int
 [out]
 _program.py:2: error: No overload variant of "f" matches argument types [builtins.int]
 
-[case testByteArrayStrCompatibility_python2eval]
+[case testByteArrayStrCompatibility_python2]
 def f(x): # type: (str) -> None
     pass
 f(bytearray('foo'))
 
-[case testAbstractProperty_python2eval]
+[case testAbstractProperty_python2]
 from abc import abstractproperty, ABCMeta
 class A:
     __metaclass__ = ABCMeta
@@ -421,7 +421,7 @@ print b.x + 1
 [out]
 4
 
-[case testReModuleBytes_python2eval]
+[case testReModuleBytesPython2]
 # Regression tests for various overloads in the re module -- bytes version
 import re
 if False:
@@ -444,7 +444,7 @@ if False:
     re.subn(bpat, lambda m: b'', b'')[0] + b''
 [out]
 
-[case testReModuleString_python2eval]
+[case testReModuleStringPython2]
 # Regression tests for various overloads in the re module -- string version
 import re
 ure = u'a+'
@@ -466,7 +466,7 @@ re.subn(ure, lambda m: u'', u'')[0] + u''
 re.subn(upat, lambda m: u'', u'')[0] + u''
 [out]
 
-[case testYieldRegressionTypingAwaitable_python2eval]
+[case testYieldRegressionTypingAwaitable_python2]
 # Make sure we don't reference typing.Awaitable in Python 2 mode.
 def g():  # type: () -> int
     yield
