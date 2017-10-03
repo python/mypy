@@ -1,0 +1,33 @@
+-- Test cases for generating fine-grained dependencies involving generics.
+--
+-- The dependencies are used for fined-grained incremental checking.
+
+[case testGenericFunction]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+class A: pass
+
+def f(x: T) -> T:
+    y: T
+    z: A
+    return x
+[out]
+<m.A> -> m.A, m.f
+<m.T> -> <m.f>, m.f
+
+[case testGenericClass]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]): pass
+class B: pass
+
+def f() -> None:
+    a: A[B]
+[out]
+<m.A> -> m.A, m.f
+<m.B> -> m.B, m.f
+<m.T> -> m.A

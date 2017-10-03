@@ -106,6 +106,7 @@ class TypeVarDef(mypy.nodes.Context):
     """Definition of a single type variable."""
 
     name = ''
+    fullname = None  # type: Optional[str]
     id = None  # type: TypeVarId
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type
@@ -113,10 +114,11 @@ class TypeVarDef(mypy.nodes.Context):
 
     def __init__(self, name: str, id: Union[TypeVarId, int], values: List[Type],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1,
-                 column: int = -1) -> None:
+                 column: int = -1, fullname: Optional[str] = None) -> None:
         super().__init__(line, column)
         assert values is not None, "No restrictions must be represented by empty list"
         self.name = name
+        self.fullname = fullname
         if isinstance(id, int):
             id = TypeVarId(id)
         self.id = id
@@ -528,6 +530,7 @@ class TypeVarType(Type):
     """
 
     name = ''  # Name of the type variable (for messages and debugging)
+    fullname = None  # type: Optional[str]
     id = None  # type: TypeVarId
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type   # Upper bound for values
@@ -536,6 +539,7 @@ class TypeVarType(Type):
 
     def __init__(self, binder: TypeVarDef, line: int = -1, column: int = -1) -> None:
         self.name = binder.name
+        self.fullname = binder.fullname
         self.id = binder.id
         self.values = binder.values
         self.upper_bound = binder.upper_bound

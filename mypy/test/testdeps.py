@@ -17,6 +17,7 @@ from mypy.types import Type
 files = [
     'deps.test',
     'deps-types.test',
+    'deps-generics.test',
 ]
 
 

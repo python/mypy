@@ -59,10 +59,13 @@ class TypeVarScope:
         else:
             self.func_id -= 1
             i = self.func_id
-        tvar_def = TypeVarDef(
-            name, i, values=tvar_expr.values,
-            upper_bound=tvar_expr.upper_bound, variance=tvar_expr.variance,
-            line=tvar_expr.line, column=tvar_expr.column)
+        tvar_def = TypeVarDef(name, i,
+                              values=tvar_expr.values,
+                              upper_bound=tvar_expr.upper_bound,
+                              variance=tvar_expr.variance,
+                              line=tvar_expr.line,
+                              column=tvar_expr.column,
+                              fullname=tvar_expr.fullname())
         self.scope[tvar_expr.fullname()] = tvar_def
         return tvar_def
 

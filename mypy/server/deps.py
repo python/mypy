@@ -75,6 +75,8 @@ class DependencyVisitor(TraverserVisitor):
         old_is_class = self.is_class
         self.is_class = True
         # TODO: Add dependencies based on MRO and other attributes.
+        for tv in o.type_vars:
+            self.add_dependency(make_trigger(tv.fullname))
         super().visit_class_def(o)
         self.is_class = old_is_class
         info = o.info
@@ -105,10 +107,14 @@ class DependencyVisitor(TraverserVisitor):
             self.add_dependency(make_trigger(o.id + '.' + name))
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
-        super().visit_assignment_stmt(o)
-        if o.type:
-            for trigger in get_type_dependencies(o.type):
-                self.add_dependency(trigger)
+        if isinstance(o.rvalue, CallExpr) and o.rvalue.analyzed:
+            analyzed = o.rvalue.analyzed
+            # TODO: handle various cases
+        else:
+            super().visit_assignment_stmt(o)
+            if o.type:
+                for trigger in get_type_dependencies(o.type):
+                    self.add_dependency(trigger)
 
     # Expressions
 
@@ -230,8 +236,11 @@ class TypeDependenciesVisitor(TypeVisitor[List[str]]):
         assert False, 'Internal error: Leaked forward reference object {}'.format(typ)
 
     def visit_type_var(self, typ: TypeVarType) -> List[str]:
-        # TODO: replace with actual implementation
-        return []
+        # TODO: bound (values?)
+        triggers = []
+        if typ.fullname:
+            triggers.append(make_trigger(typ.fullname))
+        return triggers
 
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:
         raise NotImplementedError
