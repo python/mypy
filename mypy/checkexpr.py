@@ -2773,7 +2773,7 @@ def has_uninhabited_component(t: Optional[Type]) -> bool:
 
 
 class HasUninhabitedComponentsQuery(types.TypeQuery[bool]):
-    """Visitor for querying whether a type has an erased component."""
+    """Visitor for querying whether a type has an UninhabitedType component."""
     def __init__(self) -> None:
         super().__init__(any)
 
