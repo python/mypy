@@ -12,6 +12,7 @@ install:
     - "git config core.symlinks true"
     - "git reset --hard"
     - "%PYTHON%\\python.exe -m pip install -r test-requirements.txt"
+    - "C:\\Python27\\python.exe -m pip install typing"
     - "git submodule update --init typeshed"
     - "cd typeshed && git config core.symlinks true && git reset --hard && cd .."
     - "%PYTHON%\\python.exe -m pip install ."
