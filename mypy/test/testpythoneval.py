@@ -66,7 +66,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
         os.path.join(testcase.old_cwd, 'scripts', 'mypy'),
         '--show-traceback',
     ]
-    py2 = testcase.name.lower().endswith('python2')
+    py2 = 'python2' in testcase.name.lower()
     if py2:
         mypy_cmdline.append('--py2')
         interpreter = try_find_python2_interpreter()
