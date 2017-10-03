@@ -1,0 +1,46 @@
+-- Test cases for generating fine-grained dependencies between types.
+--
+-- The dependencies are used for fined-grained incremental checking.
+
+[case testFilterOutBuiltInTypes]
+class A: pass
+
+def f(x: int, y: str, z: A) -> None:
+    pass
+[out]
+<m.A> -> <m.f>, m.A, m.f
+
+[case testTupleType]
+from typing import Tuple
+
+class A: pass
+class B: pass
+
+def f(x: Tuple[A, B]) -> None:
+    pass
+[out]
+<m.A> -> <m.f>, m.A, m.f
+<m.B> -> <m.f>, m.B, m.f
+
+[case testUnionType]
+from typing import Union
+
+class A: pass
+class B: pass
+
+def f() -> None:
+    x: Union[int, A, B]
+[out]
+<m.A> -> m.A, m.f
+<m.B> -> m.B, m.f
+
+[case testTypeType]
+from typing import Type
+
+class A: pass
+
+def f() -> None:
+    x: Type[A]
+    y: Type[int]
+[out]
+<m.A> -> m.A, m.f

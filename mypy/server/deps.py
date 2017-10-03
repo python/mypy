@@ -154,8 +154,18 @@ class DependencyVisitor(TraverserVisitor):
     # Helpers
 
     def add_dependency(self, trigger: str, target: Optional[str] = None) -> None:
+        """Add depedency from trigger to a target.
+
+        If the target is not given explicitly, use the current target.
+        """
         if target is None:
             target = self.current()
+        if trigger.startswith(('<builtins.', '<typing.')):
+            # Don't track dependencies to certain builtins to keep the size of
+            # the dependencies manageable. These dependencies should only
+            # change on mypy version updates, which will require a full rebuild
+            # anyway.
+            return
         self.map.setdefault(trigger, set()).add(target)
 
     def push(self, component: str) -> str:
@@ -167,6 +177,7 @@ class DependencyVisitor(TraverserVisitor):
         self.stack.pop()
 
     def current(self) -> str:
+        """Return the current target."""
         return self.stack[-1]
 
 
@@ -206,11 +217,14 @@ class TypeDependenciesVisitor(TypeVisitor[List[str]]):
         assert False, "Should not see a partial type here"
 
     def visit_tuple_type(self, typ: TupleType) -> List[str]:
-        raise NotImplementedError
+        triggers = []
+        for item in typ.items:
+            triggers.extend(get_type_dependencies(item))
+        triggers.extend(get_type_dependencies(typ.fallback))
+        return triggers
 
     def visit_type_type(self, typ: TypeType) -> List[str]:
-        # TODO: replace with actual implementation
-        return []
+        return get_type_dependencies(typ.item)
 
     def visit_forwardref_type(self, typ: ForwardRef) -> List[str]:
         assert False, 'Internal error: Leaked forward reference object {}'.format(typ)
@@ -229,7 +243,10 @@ class TypeDependenciesVisitor(TypeVisitor[List[str]]):
         return []
 
     def visit_union_type(self, typ: UnionType) -> List[str]:
-        raise NotImplementedError
+        triggers = []
+        for item in typ.items:
+            triggers.extend(get_type_dependencies(item))
+        return triggers
 
 
 def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:

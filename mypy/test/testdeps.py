@@ -15,7 +15,8 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypy.types import Type
 
 files = [
-    'deps.test'
+    'deps.test',
+    'deps-types.test',
 ]
 
 
