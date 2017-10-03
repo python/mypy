@@ -59,6 +59,7 @@ from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
 from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
+from mypy.sharedparse import MAGIC_METHODS_ALLOWING_KWARGS
 
 from mypy import experiments
 
@@ -1029,9 +1030,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Check if method definition is compatible with a base class."""
         if base:
             name = defn.name()
-            if name not in ('__init__', '__new__', '__init_subclass__'):
+            if name not in MAGIC_METHODS_ALLOWING_KWARGS:
                 # Check method override
-                # (__init__, __new__, __init_subclass__ are special).
                 self.check_method_override_for_base_with_name(defn, name, base)
                 if name in nodes.inplace_operator_methods:
                     # Figure out the name of the corresponding operator method.
