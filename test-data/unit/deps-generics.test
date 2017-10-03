@@ -31,3 +31,18 @@ def f() -> None:
 <m.A> -> m.A, m.f
 <m.B> -> m.B, m.f
 <m.T> -> m.A
+
+[case testGenericClassWithMembers]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    def g(self, a: T) -> None:
+        self.x = a
+    def f(self) -> T:
+        return self.x
+[out]
+<m.A.x> -> m.A.f, m.A.g
+<m.A> -> m.A
+<m.T> -> <m.A.f>, <m.A.g>, m.A, m.A.f, m.A.g
