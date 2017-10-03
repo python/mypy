@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Mypy test runner."""
 
-from typing import Dict, List, Optional, Set, Iterable
+from typing import Dict, List, Optional, Set, Iterable, Tuple
 
 from mypy.waiter import Waiter, LazySubprocess
 from mypy import util
@@ -89,8 +89,9 @@ class Driver:
     def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         self.add_mypy_cmd(name, ['-c'] + list(args), cwd=cwd)
 
-    def add_pytest(self, pytest_files: List[str], coverage: bool = True) -> None:
-        pytest_files = [name for name in pytest_files if self.allow(name[4:])]
+    def add_pytest(self, files: List[Tuple[str, str]], coverage: bool = True) -> None:
+        pytest_files = [name for kind, name in files
+                        if self.allow('pytest {} {}'.format(kind, name))]
         if not pytest_files:
             return
         pytest_args = pytest_files + self.arglist + self.pyt_arglist
@@ -99,7 +100,8 @@ class Driver:
         else:
             args = [sys.executable, '-m', 'pytest'] + pytest_args
 
-        self.waiter.add(LazySubprocess('pytest', args, env=self.env, passthrough=self.verbosity),
+        self.waiter.add(LazySubprocess('pytest', args, env=self.env,
+                                       passthrough=self.verbosity),
                         sequential=True)
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
@@ -210,14 +212,17 @@ PYTEST_FILES = test_path(
     'testtransform',
     'testtypegen',
     'testparse',
-    'testsemanal',
+    'testsemanal'
+)
+
+SLOW_FILES = test_path(
     'testpythoneval',
-    'testcmdline'
+    'testcmdline',
+    'teststubgen',
 )
 
 MYUNIT_FILES = test_path(
-    'teststubgen',  # contains data-driven suite
-
+    'teststubgen',
     'testargs',
     'testgraph',
     'testinfer',
@@ -225,21 +230,22 @@ MYUNIT_FILES = test_path(
     'testreports',
     'testsolve',
     'testsubtypes',
-    'testtypes'
+    'testtypes',
 )
 
 for f in find_files('mypy', prefix='test', suffix='.py'):
-    assert f in PYTEST_FILES + MYUNIT_FILES, f
+    assert f in PYTEST_FILES + SLOW_FILES + MYUNIT_FILES, f
 
 
 def add_pytest(driver: Driver) -> None:
-    driver.add_pytest(PYTEST_FILES)
+    driver.add_pytest([('unit-test', name) for name in PYTEST_FILES] +
+                      [('integration', name) for name in SLOW_FILES])
 
 
 def add_myunit(driver: Driver) -> None:
     for f in MYUNIT_FILES:
         mod = file_to_module(f)
-        driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod,
+        driver.add_python_mod('myunit unit-test %s' % mod, 'mypy.myunit', '-m', mod,
                               *driver.arglist, coverage=True)
 
 
@@ -289,8 +295,12 @@ def usage(status: int) -> None:
     print()
     print('Examples:')
     print('  %s unit-test  (run unit tests only)' % sys.argv[0])
-    print('  %s unit-test -a "*tuple*"' % sys.argv[0])
-    print('       (run all unit tests with "tuple" in test name)')
+    print('  %s testcheck  (run type checking unit tests only)' % sys.argv[0])
+    print('  %s "pytest unit-test" -a -k -a Tuple' % sys.argv[0])
+    print('       (run all pytest unit tests with "Tuple" in test name)')
+    print()
+    print('You can also run pytest directly without using %s:' % sys.argv[0])
+    print('  pytest mypy/test/testcheck.py -k Tuple')
     print()
     print('Options:')
     print('  -h, --help             show this help')

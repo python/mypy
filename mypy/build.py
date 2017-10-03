@@ -17,6 +17,7 @@ import hashlib
 import json
 import os.path
 import re
+import site
 import sys
 import time
 from os.path import dirname, basename
@@ -213,6 +214,12 @@ def default_data_dir(bin_dir: Optional[str]) -> str:
       bin_dir: directory containing the mypy script
     """
     if not bin_dir:
+        if os.name == 'nt':
+            prefixes = [os.path.join(sys.prefix, 'Lib'), os.path.join(site.getuserbase(), 'lib')]
+            for parent in prefixes:
+                    data_dir = os.path.join(parent, 'mypy')
+                    if os.path.exists(data_dir):
+                        return data_dir
         mypy_package = os.path.dirname(__file__)
         parent = os.path.dirname(mypy_package)
         if (os.path.basename(parent) == 'site-packages' or
@@ -299,9 +306,10 @@ def default_lib_path(data_dir: str,
     if sys.platform != 'win32':
         path.append('/usr/local/lib/mypy')
     if not path:
-        print("Could not resolve typeshed subdirectories. If you are using MyPy"
-              "from source, you need to run \"git submodule --init update\"."
-              "Otherwise your MyPy install is broken.", file=sys.stderr)
+        print("Could not resolve typeshed subdirectories. If you are using mypy\n"
+              "from source, you need to run \"git submodule update --init\".\n"
+              "Otherwise your mypy install is broken.\nPython executable is located at "
+              "{0}.\nMypy located at {1}".format(sys.executable, data_dir), file=sys.stderr)
         sys.exit(1)
     return path
 
@@ -491,7 +499,7 @@ class BuildManager:
         self.semantic_analyzer = SemanticAnalyzer(self.modules, self.missing_modules,
                                                   lib_path, self.errors, self.plugin)
         self.modules = self.semantic_analyzer.modules
-        self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
+        self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors, self.semantic_analyzer)
         self.all_types = {}  # type: Dict[Expression, Type]
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
@@ -1722,10 +1730,13 @@ class State:
 
     def semantic_analysis_pass_three(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
+        patches = []  # type: List[Callable[[], None]]
         with self.wrap_context():
-            self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath, self.options)
+            self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath,
+                                                            self.options, patches)
             if self.options.dump_type_stats:
                 dump_type_stats(self.tree, self.xpath)
+        self.patches = patches + self.patches
 
     def semantic_analysis_apply_patches(self) -> None:
         for patch_func in self.patches:

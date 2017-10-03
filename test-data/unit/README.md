@@ -93,7 +93,9 @@ To run all tests, run the script `runtests.py` in the mypy repository:
 Note that some tests will be disabled for older python versions.
 
 This will run all tests, including integration and regression tests,
-and will type check mypy and verify that all stubs are valid.
+and will type check mypy and verify that all stubs are valid. This may
+take several minutes to run, so you don't want to use this all the time
+while doing development.
 
 You can run a subset of test suites by passing positive or negative
 filters:
@@ -102,20 +104,25 @@ filters:
 
 For example, to run unit tests only, which run pretty quickly:
 
-    $ ./runtests.py unit-test pytest
+    $ ./runtests.py unit-test
 
-The unit test suites are driven by a mixture of test frameworks: mypy's own
-`myunit` framework, and `pytest`, which we're in the process of migrating to.
-Test suites for individual components are in the files `mypy/test/test*.py`.
-You can run many of these individually by doing `runtests.py testfoobar`. For
-finer control over which unit tests are run and how, you can run `py.test` or
-`scripts/myunit` directly, or pass inferior arguments via `-a`:
+You can get a list of available test suites through the `-l` option
+(though this doesn't show all available subtasks):
+
+    $ ./runtests.py -l
+
+The unit test suites are driven by a mixture of test frameworks: `pytest` and
+mypy's own `myunit` framework, which we're in the process of migrating away
+from. Test suites for individual components are in the files
+`mypy/test/test*.py`. You can run many of these individually by doing
+`runtests.py testfoobar`. For finer control over which unit tests are run and
+how, you can run `pytest` directly:
 
     $ py.test mypy/test/testcheck.py -v -k MethodCall
-    $ ./runtests.py -v 'pytest mypy/test/testcheck' -a -v -a -k -a MethodCall
 
-    $ PYTHONPATH=$PWD scripts/myunit -m mypy.test.testlex -v '*backslash*'
-    $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
+You can pass inferior arguments to pytest via `-a` when using `runtests.py`:
+
+    $ ./runtests.py pytest -a -v -a -k -a MethodCall
 
 You can also run the type checker for manual testing without
 installing it by setting up the Python module search path suitably:
@@ -163,8 +170,7 @@ the number of processes to use. The default (set in `./pytest.ini`) is the
 number of logical cores; this can be overridden using `-n` option.
 
 Note that running more processes than logical cores is likely to
-significantly decrease performance; the relevant count is the number of
-processes used by `runtests.py` plus those used by `pytest`.
+significantly decrease performance.
 
 
 Coverage reports

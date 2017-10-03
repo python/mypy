@@ -36,7 +36,7 @@ from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
 from mypy.meet import narrow_declared_type
 from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import is_subtype, is_equivalent, find_member
+from mypy.subtypes import is_subtype, is_equivalent, find_member, non_method_protocol_members
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type, bind_self
@@ -66,7 +66,7 @@ def extract_refexpr_names(expr: RefExpr) -> Set[str]:
     while expr.kind == MODULE_REF or expr.fullname is not None:
         if expr.kind == MODULE_REF and expr.fullname is not None:
             # If it's None, something's wrong (perhaps due to an
-            # import cycle or a supressed error).  For now we just
+            # import cycle or a suppressed error).  For now we just
             # skip it.
             output.add(expr.fullname)
 
@@ -264,21 +264,36 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         callee_type = self.apply_method_signature_hook(
                             e, callee_type, object_type, signature_hook)
         ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname, object_type)
-        if (isinstance(e.callee, RefExpr) and len(e.args) == 2 and
-                e.callee.fullname in ('builtins.isinstance', 'builtins.issubclass')):
-            for expr in mypy.checker.flatten(e.args[1]):
-                tp = self.chk.type_map[expr]
-                if (isinstance(tp, CallableType) and tp.is_type_obj() and
-                        tp.type_object().is_protocol and
-                        not tp.type_object().runtime_protocol):
-                    self.chk.fail('Only @runtime protocols can be used with'
-                                  ' instance and class checks', e)
+        if isinstance(e.callee, RefExpr) and len(e.args) == 2:
+            if e.callee.fullname in ('builtins.isinstance', 'builtins.issubclass'):
+                self.check_runtime_protocol_test(e)
+            if e.callee.fullname == 'builtins.issubclass':
+                self.check_protocol_issubclass(e)
         if isinstance(ret_type, UninhabitedType):
             self.chk.binder.unreachable()
         if not allow_none_return and isinstance(ret_type, NoneTyp):
             self.chk.msg.does_not_return_value(callee_type, e)
             return AnyType(TypeOfAny.from_error)
         return ret_type
+
+    def check_runtime_protocol_test(self, e: CallExpr) -> None:
+        for expr in mypy.checker.flatten(e.args[1]):
+            tp = self.chk.type_map[expr]
+            if (isinstance(tp, CallableType) and tp.is_type_obj() and
+                    tp.type_object().is_protocol and
+                    not tp.type_object().runtime_protocol):
+                self.chk.fail('Only @runtime protocols can be used with'
+                              ' instance and class checks', e)
+
+    def check_protocol_issubclass(self, e: CallExpr) -> None:
+        for expr in mypy.checker.flatten(e.args[1]):
+            tp = self.chk.type_map[expr]
+            if (isinstance(tp, CallableType) and tp.is_type_obj() and
+                    tp.type_object().is_protocol):
+                attr_members = non_method_protocol_members(tp.type_object())
+                if attr_members:
+                    self.chk.msg.report_non_method_protocol(tp.type_object(),
+                                                            attr_members, e)
 
     def check_typeddict_call(self, callee: TypedDictType,
                              arg_kinds: List[int],
@@ -704,7 +719,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Returns the inferred types of *actual arguments*.
         """
-        res = [None] * len(args)  # type: List[Optional[Type]]
+        dummy = None  # type: Any
+        res = [dummy] * len(args)  # type: List[Type]
 
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
@@ -2802,10 +2818,10 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             # Since Type[T] is covariant, check if actual = Type[A] is
             # a subtype of formal = Type[F].
             return overload_arg_similarity(actual.item, formal.item)
-        elif isinstance(actual, CallableType) and actual.is_type_obj():
+        elif isinstance(actual, FunctionLike) and actual.is_type_obj():
             # Check if the actual is a constructor of some sort.
             # Note that this is this unsound, since we don't check the __init__ signature.
-            return overload_arg_similarity(actual.ret_type, formal.item)
+            return overload_arg_similarity(actual.items()[0].ret_type, formal.item)
         else:
             return 0
     if isinstance(actual, TypedDictType):

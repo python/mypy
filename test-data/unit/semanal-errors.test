@@ -1401,3 +1401,20 @@ class A: ... # E: Name 'A' already defined on line 2
 
 [builtins fixtures/list.pyi]
 [out]
+
+[case testNoInvalidTypeInDynamicFunctions]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+
+def f():  # Note no annotation
+    x: Dict[str, T] = {}
+    y: T
+    z: x
+    def nested(): pass
+    t: nested
+
+def g() -> None:
+    x: Dict[str, T] = {}  # E: Invalid type "__main__.T"
+
+[builtins fixtures/dict.pyi]
+[out]

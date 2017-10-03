@@ -1,8 +1,6 @@
-#!/usr/bin/env python
-
 # NOTE: This package must support Python 2.7 in addition to Python 3.x
 
-from distutils.core import setup
+from setuptools import setup
 
 version = '0.3.0'
 description = 'Experimental type system extensions for programs checked with the mypy typechecker.'

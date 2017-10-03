@@ -1976,6 +1976,12 @@ class TypeInfo(SymbolNode):
     # Is this a newtype type?
     is_newtype = False
 
+    # If during analysis of ClassDef associated with this TypeInfo a syntethic
+    # type (NamedTuple or TypedDict) was generated, store the corresponding
+    # TypeInfo here. (This attribute does not need to be serialized, it is only
+    # needed during the semantic passes.)
+    replaced = None  # type: TypeInfo
+
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol'

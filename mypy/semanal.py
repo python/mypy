@@ -80,7 +80,8 @@ from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TypeType, TupleType, UnionType, StarType, function_type,
     TypedDictType, NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    TypeTranslator, TypeOfAny
+    TypeTranslator, TypeOfAny, TypeVisitor, UninhabitedType, ErasedType, DeletedType,
+    PartialType, ForwardRef
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -155,7 +156,7 @@ TYPE_PROMOTIONS_PYTHON2.update({
 # nested functions. In the first phase we add the function to the symbol table
 # but don't process body. In the second phase we process function body. This
 # way we can have mutually recursive nested functions.
-FUNCTION_BOTH_PHASES = 0  # Everthing in one go
+FUNCTION_BOTH_PHASES = 0  # Everything in one go
 FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone body
 FUNCTION_SECOND_PHASE = 2  # Only analyze body
 
@@ -941,8 +942,11 @@ class SemanticAnalyzer(NodeVisitor[None]):
                         info = self.build_namedtuple_typeinfo(
                             defn.name, items, types, default_items)
                         node.node = info
+                        defn.info.replaced = info
                         defn.info = info
                         defn.analyzed = NamedTupleExpr(info)
+                        defn.analyzed.line = defn.line
+                        defn.analyzed.column = defn.column
                         return info
         return None
 
@@ -1042,6 +1046,10 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     defn.has_incompatible_baseclass = True
                 info.tuple_type = base
                 base_types.append(base.fallback)
+                if isinstance(base_expr, CallExpr):
+                    defn.analyzed = NamedTupleExpr(base.fallback.type)
+                    defn.analyzed.line = defn.line
+                    defn.analyzed.column = defn.column
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail("Cannot subclass NewType", defn)
@@ -1280,8 +1288,11 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     # Building a new TypedDict
                     fields, types, required_keys = self.check_typeddict_classdef(defn)
                     info = self.build_typeddict_typeinfo(defn.name, fields, types, required_keys)
+                    defn.info.replaced = info
                     node.node = info
                     defn.analyzed = TypedDictExpr(info)
+                    defn.analyzed.line = defn.line
+                    defn.analyzed.column = defn.column
                     return True
                 # Extending/merging existing TypedDicts
                 if any(not isinstance(expr, RefExpr) or
@@ -1312,8 +1323,11 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 types.extend(new_types)
                 required_keys.update(new_required_keys)
                 info = self.build_typeddict_typeinfo(defn.name, keys, types, required_keys)
+                defn.info.replaced = info
                 node.node = info
                 defn.analyzed = TypedDictExpr(info)
+                defn.analyzed.line = defn.line
+                defn.analyzed.column = defn.column
                 return True
         return False
 
@@ -1608,29 +1622,37 @@ class SemanticAnalyzer(NodeVisitor[None]):
     def type_analyzer(self, *,
                       tvar_scope: Optional[TypeVarScope] = None,
                       allow_tuple_literal: bool = False,
-                      aliasing: bool = False) -> TypeAnalyser:
+                      aliasing: bool = False,
+                      third_pass: bool = False) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
-        return TypeAnalyser(self.lookup_qualified,
+        tpan = TypeAnalyser(self.lookup_qualified,
                             self.lookup_fully_qualified,
                             tvar_scope,
                             self.fail,
+                            self.note,
                             self.plugin,
                             self.options,
                             self.is_typeshed_stub_file,
                             aliasing=aliasing,
                             allow_tuple_literal=allow_tuple_literal,
-                            allow_unnormalized=self.is_stub_file)
+                            allow_unnormalized=self.is_stub_file,
+                            third_pass=third_pass)
+        tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
+        tpan.global_scope = not self.type and not self.function_stack
+        return tpan
 
     def anal_type(self, t: Type, *,
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
-                  aliasing: bool = False) -> Type:
+                  aliasing: bool = False,
+                  third_pass: bool = False) -> Type:
         if t:
             a = self.type_analyzer(
                 tvar_scope=tvar_scope,
                 aliasing=aliasing,
-                allow_tuple_literal=allow_tuple_literal)
+                allow_tuple_literal=allow_tuple_literal,
+                third_pass=third_pass)
             return t.accept(a)
 
         else:
@@ -1716,15 +1738,20 @@ class SemanticAnalyzer(NodeVisitor[None]):
         qualified type variable names for generic aliases.
         If 'allow_unnormalized' is True, allow types like builtins.list[T].
         """
+        dynamic = bool(self.function_stack and self.function_stack[-1].is_dynamic())
+        global_scope = not self.type and not self.function_stack
         res = analyze_type_alias(rvalue,
                                  self.lookup_qualified,
                                  self.lookup_fully_qualified,
                                  self.tvar_scope,
                                  self.fail,
+                                 self.note,
                                  self.plugin,
                                  self.options,
                                  self.is_typeshed_stub_file,
-                                 allow_unnormalized=True)
+                                 allow_unnormalized=True,
+                                 in_dynamic_func=dynamic,
+                                 global_scope=global_scope)
         if res:
             alias_tvars = [name for (name, _) in
                            res.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]
@@ -1775,7 +1802,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             node.kind = TYPE_ALIAS
             node.type_override = res
             node.alias_tvars = alias_tvars
-            if isinstance(rvalue, IndexExpr):
+            if isinstance(rvalue, (IndexExpr, CallExpr)):
                 # We only need this for subscripted aliases, since simple aliases
                 # are already processed using aliasing TypeInfo's above.
                 rvalue.analyzed = TypeAliasExpr(res, node.alias_tvars,
@@ -1971,7 +1998,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
         else:
             message = "Argument 2 to NewType(...) must be subclassable (got {})"
-            self.fail(message.format(old_type), s)
+            self.fail(message.format(self.msg.format(old_type)), s)
             return
 
         check_for_explicit_any(old_type, self.options, self.is_typeshed_stub_file, self.msg,
@@ -2339,7 +2366,12 @@ class SemanticAnalyzer(NodeVisitor[None]):
         class_def.fullname = self.qualified_name(name)
 
         info = TypeInfo(SymbolTable(), class_def, self.cur_mod_id)
-        info.mro = [info] + basetype_or_fallback.type.mro
+        class_def.info = info
+        mro = basetype_or_fallback.type.mro
+        if mro is None:
+            # Forward reference, MRO should be recalculated in third pass.
+            mro = [basetype_or_fallback.type, self.object_type().type]
+        info.mro = [info] + mro
         info.bases = [basetype_or_fallback]
         return info
 
@@ -2353,11 +2385,6 @@ class SemanticAnalyzer(NodeVisitor[None]):
         # Actual signature should return OrderedDict[str, Union[types]]
         ordereddictype = (self.named_type_or_none('builtins.dict', [strtype, implicit_any])
                           or self.object_type())
-        # 'builtins.tuple' has only one type parameter.
-        #
-        # TODO: The corresponding type argument in the fallback instance should be a join of
-        #       all item types, but we can't do joins during this pass of semantic analysis
-        #       and we are using Any as a workaround.
         fallback = self.named_type('__builtins__.tuple', [implicit_any])
         # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
         # but it can't be expressed. 'new' and 'len' should be callable types.
@@ -2367,6 +2394,15 @@ class SemanticAnalyzer(NodeVisitor[None]):
         info = self.basic_new_typeinfo(name, fallback)
         info.is_named_tuple = True
         info.tuple_type = TupleType(types, fallback)
+
+        def patch() -> None:
+            # Calculate the correct value type for the fallback Mapping.
+            fallback.args[0] = join.join_type_list(list(info.tuple_type.items))
+
+        # We can't calculate the complete fallback type until after semantic
+        # analysis, since otherwise MROs might be incomplete. Postpone a callback
+        # function that patches the fallback.
+        self.patches.append(patch)
 
         def add_field(var: Var, is_initialized_in_class: bool = False,
                       is_property: bool = False) -> None:
@@ -2587,19 +2623,18 @@ class SemanticAnalyzer(NodeVisitor[None]):
         fallback = (self.named_type_or_none('typing.Mapping',
                                             [self.str_type(), self.object_type()])
                     or self.object_type())
+        info = self.basic_new_typeinfo(name, fallback)
+        info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), required_keys,
+                                            fallback)
 
         def patch() -> None:
             # Calculate the correct value type for the fallback Mapping.
-            fallback.args[1] = join.join_type_list(types)
+            fallback.args[1] = join.join_type_list(list(info.typeddict_type.items.values()))
 
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise MROs might be incomplete. Postpone a callback
         # function that patches the fallback.
         self.patches.append(patch)
-
-        info = self.basic_new_typeinfo(name, fallback)
-        info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), required_keys,
-                                            fallback)
         return info
 
     def check_classvar(self, s: AssignmentStmt) -> None:
@@ -3137,6 +3172,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
         Some call expressions are recognized as special forms, including
         cast(...).
         """
+        if expr.analyzed:
+            return
         expr.callee.accept(self)
         if refers_to_fullname(expr.callee, 'typing.cast'):
             # Special form cast(...).
@@ -3327,6 +3364,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
         expr.expr.accept(self)
 
     def visit_index_expr(self, expr: IndexExpr) -> None:
+        if expr.analyzed:
+            return
         expr.base.accept(self)
         if (isinstance(expr.base, RefExpr)
                 and isinstance(expr.base.node, TypeInfo)
@@ -4040,14 +4079,20 @@ class ThirdPass(TraverserVisitor):
     straightforward type inference.
     """
 
-    def __init__(self, modules: Dict[str, MypyFile], errors: Errors) -> None:
+    def __init__(self, modules: Dict[str, MypyFile], errors: Errors,
+                 sem: SemanticAnalyzer) -> None:
         self.modules = modules
         self.errors = errors
+        self.sem = sem
 
-    def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
+    def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
+                   patches: List[Callable[[], None]]) -> None:
         self.errors.set_file(fnam, file_node.fullname())
         self.options = options
+        self.sem.options = options
+        self.patches = patches
         self.is_typeshed_file = self.errors.is_typeshed_file(fnam)
+        self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
             self.accept(file_node)
 
@@ -4077,7 +4122,7 @@ class ThirdPass(TraverserVisitor):
 
     def visit_func_def(self, fdef: FuncDef) -> None:
         self.errors.push_function(fdef.name())
-        self.analyze(fdef.type)
+        self.analyze(fdef.type, fdef)
         super().visit_func_def(fdef)
         self.errors.pop_function()
 
@@ -4085,8 +4130,14 @@ class ThirdPass(TraverserVisitor):
         # NamedTuple base classes are validated in check_namedtuple_classdef; we don't have to
         # check them again here.
         if not tdef.info.is_named_tuple:
+            types = list(tdef.info.bases)  # type: List[Type]
+            for tvar in tdef.type_vars:
+                if tvar.upper_bound:
+                    types.append(tvar.upper_bound)
+                if tvar.values:
+                    types.extend(tvar.values)
+            self.analyze_types(types, tdef.info)
             for type in tdef.info.bases:
-                self.analyze(type)
                 if tdef.info.is_protocol:
                     if not isinstance(type, Instance) or not type.type.is_protocol:
                         if type.type.fullname() != 'builtins.object':
@@ -4100,10 +4151,18 @@ class ThirdPass(TraverserVisitor):
             if tdef.info.is_protocol:
                 add_protocol_members(tdef.info)
         if tdef.analyzed is not None:
+            # Also check synthetic types associated with this ClassDef.
+            # Currently these are TypedDict, and NamedTuple.
             if isinstance(tdef.analyzed, TypedDictExpr):
-                self.analyze(tdef.analyzed.info.typeddict_type)
+                self.analyze(tdef.analyzed.info.typeddict_type, tdef.analyzed, warn=True)
             elif isinstance(tdef.analyzed, NamedTupleExpr):
-                self.analyze(tdef.analyzed.info.tuple_type)
+                self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed, warn=True)
+                for name in tdef.analyzed.info.names:
+                    sym = tdef.analyzed.info.names[name]
+                    if isinstance(sym.node, (FuncDef, Decorator)):
+                        self.accept(sym.node)
+                    if isinstance(sym.node, Var):
+                        self.analyze(sym.node.type, sym.node)
         super().visit_class_def(tdef)
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -4158,20 +4217,60 @@ class ThirdPass(TraverserVisitor):
                 dec.var.type = sig
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
-        self.analyze(s.type)
+        """Traverse the assignment statement.
+
+        This includes the actual assignment and synthetic types
+        resulted from this assignment (if any). Currently this includes
+        NewType, TypedDict, NamedTuple, and TypeVar.
+        """
+        self.analyze(s.type, s)
         if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
-            self.analyze(s.rvalue.analyzed.type)
+            self.analyze(s.rvalue.analyzed.type, s.rvalue.analyzed, warn=True)
         if isinstance(s.rvalue, CallExpr):
-            if isinstance(s.rvalue.analyzed, NewTypeExpr):
-                self.analyze(s.rvalue.analyzed.old_type)
-            if isinstance(s.rvalue.analyzed, TypedDictExpr):
-                self.analyze(s.rvalue.analyzed.info.typeddict_type)
-            if isinstance(s.rvalue.analyzed, NamedTupleExpr):
-                self.analyze(s.rvalue.analyzed.info.tuple_type)
+            analyzed = s.rvalue.analyzed
+            if isinstance(analyzed, NewTypeExpr):
+                self.analyze(analyzed.old_type, analyzed)
+                if analyzed.info and analyzed.info.mro:
+                    analyzed.info.mro = []  # Force recomputation
+                    calculate_class_mro(analyzed.info.defn, self.fail_blocker)
+            if isinstance(analyzed, TypeVarExpr):
+                types = []
+                if analyzed.upper_bound:
+                    types.append(analyzed.upper_bound)
+                if analyzed.values:
+                    types.extend(analyzed.values)
+                self.analyze_types(types, analyzed)
+            if isinstance(analyzed, TypedDictExpr):
+                self.analyze(analyzed.info.typeddict_type, analyzed, warn=True)
+            if isinstance(analyzed, NamedTupleExpr):
+                self.analyze(analyzed.info.tuple_type, analyzed, warn=True)
+                for name in analyzed.info.names:
+                    sym = analyzed.info.names[name]
+                    if isinstance(sym.node, (FuncDef, Decorator)):
+                        self.accept(sym.node)
+                    if isinstance(sym.node, Var):
+                        self.analyze(sym.node.type, sym.node)
+        # We need to pay additional attention to assignments that define a type alias.
+        # The resulting type is also stored in the 'type_override' attribute of
+        # the corresponding SymbolTableNode.
+        if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
+            self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
+            if isinstance(s.lvalues[0], NameExpr):
+                node = self.sem.lookup(s.lvalues[0].name, s, suppress_errors=True)
+                if node:
+                    self.analyze(node.type_override, node)
         super().visit_assignment_stmt(s)
 
+    def visit_for_stmt(self, s: ForStmt) -> None:
+        self.analyze(s.index_type, s)
+        super().visit_for_stmt(s)
+
+    def visit_with_stmt(self, s: WithStmt) -> None:
+        self.analyze(s.target_type, s)
+        super().visit_with_stmt(s)
+
     def visit_cast_expr(self, e: CastExpr) -> None:
-        self.analyze(e.type)
+        self.analyze(e.type, e)
         super().visit_cast_expr(e)
 
     def visit_reveal_type_expr(self, e: RevealTypeExpr) -> None:
@@ -4179,16 +4278,109 @@ class ThirdPass(TraverserVisitor):
 
     def visit_type_application(self, e: TypeApplication) -> None:
         for type in e.types:
-            self.analyze(type)
+            self.analyze(type, e)
         super().visit_type_application(e)
 
     # Helpers
 
-    def analyze(self, type: Optional[Type]) -> None:
+    def perform_transform(self, node: Union[Node, SymbolTableNode],
+                          transform: Callable[[Type], Type]) -> None:
+        """Apply transform to all types associated with node."""
+        if isinstance(node, ForStmt):
+            node.index_type = transform(node.index_type)
+            self.transform_types_in_lvalue(node.index, transform)
+        if isinstance(node, WithStmt):
+            node.target_type = transform(node.target_type)
+            for n in node.target:
+                if isinstance(n, NameExpr) and isinstance(n.node, Var) and n.node.type:
+                    n.node.type = transform(n.node.type)
+        if isinstance(node, (FuncDef, CastExpr, AssignmentStmt, TypeAliasExpr, Var)):
+            node.type = transform(node.type)
+        if isinstance(node, NewTypeExpr):
+            node.old_type = transform(node.old_type)
+        if isinstance(node, TypeVarExpr):
+            if node.upper_bound:
+                node.upper_bound = transform(node.upper_bound)
+            if node.values:
+                node.values = [transform(v) for v in node.values]
+        if isinstance(node, TypedDictExpr):
+            node.info.typeddict_type = cast(TypedDictType,
+                                            transform(node.info.typeddict_type))
+        if isinstance(node, NamedTupleExpr):
+            node.info.tuple_type = cast(TupleType,
+                                        transform(node.info.tuple_type))
+        if isinstance(node, TypeApplication):
+            node.types = [transform(t) for t in node.types]
+        if isinstance(node, SymbolTableNode):
+            node.type_override = transform(node.type_override)
+        if isinstance(node, TypeInfo):
+            for tvar in node.defn.type_vars:
+                if tvar.upper_bound:
+                    tvar.upper_bound = transform(tvar.upper_bound)
+                if tvar.values:
+                    tvar.values = [transform(v) for v in tvar.values]
+            new_bases = []
+            for base in node.bases:
+                new_base = transform(base)
+                if isinstance(new_base, Instance):
+                    new_bases.append(new_base)
+                else:
+                    # Don't fix the NamedTuple bases, they are Instance's intentionally.
+                    # Patch the 'args' just in case, although generic tuple type are
+                    # not supported yet.
+                    alt_base = Instance(base.type, [transform(a) for a in base.args])
+                    new_bases.append(alt_base)
+            node.bases = new_bases
+
+    def transform_types_in_lvalue(self, lvalue: Lvalue,
+                                  transform: Callable[[Type], Type]) -> None:
+        if isinstance(lvalue, RefExpr):
+            if isinstance(lvalue.node, Var):
+                var = lvalue.node
+                var.type = transform(var.type)
+        elif isinstance(lvalue, TupleExpr):
+            for item in lvalue.items:
+                self.transform_types_in_lvalue(item, transform)
+
+    def analyze(self, type: Optional[Type], node: Union[Node, SymbolTableNode],
+                warn: bool = False) -> None:
+        # Recursive type warnings are only emitted on type definition 'node's, marked by 'warn'
+        # Flags appeared during analysis of 'type' are collected in this dict.
+        indicator = {}  # type: Dict[str, bool]
         if type:
-            analyzer = TypeAnalyserPass3(self.fail, self.options, self.is_typeshed_file)
+            analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
+            if indicator.get('forward') or indicator.get('synthetic'):
+                def patch() -> None:
+                    self.perform_transform(node,
+                        lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
+                                                                      node, warn)))
+                self.patches.append(patch)
+
+    def analyze_types(self, types: List[Type], node: Node) -> None:
+        # Similar to above but for nodes with multiple types.
+        indicator = {}  # type: Dict[str, bool]
+        for type in types:
+            analyzer = self.make_type_analyzer(indicator)
+            type.accept(analyzer)
+            self.check_for_omitted_generics(type)
+        if indicator.get('forward') or indicator.get('synthetic'):
+            def patch() -> None:
+                self.perform_transform(node,
+                    lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
+                                                                  node, warn=False)))
+            self.patches.append(patch)
+
+    def make_type_analyzer(self, indicator: Dict[str, bool]) -> TypeAnalyserPass3:
+        return TypeAnalyserPass3(self.sem.lookup_qualified,
+                                 self.sem.lookup_fully_qualified,
+                                 self.fail,
+                                 self.sem.note,
+                                 self.sem.plugin,
+                                 self.options,
+                                 self.is_typeshed_file,
+                                 indicator)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
         if 'generics' not in self.options.disallow_any or self.is_typeshed_file:
@@ -4614,3 +4806,135 @@ class MakeAnyNonExplicit(TypeTranslator):
         if t.type_of_any == TypeOfAny.explicit:
             return t.copy_modified(TypeOfAny.special_form)
         return t
+
+
+class ForwardReferenceResolver(TypeTranslator):
+    """Visitor to replace previously detected forward reference to synthetic types.
+
+    This is similar to TypeTranslator but tracks visited nodes to avoid
+    infinite recursion on potentially circular (self- or mutually-referential) types.
+    This visitor:
+    * Fixes forward references by unwrapping the linked type.
+    * Generates errors for unsupported type recursion and breaks recursion by resolving
+      recursive back references to Any types.
+    * Replaces instance types generated from unanalyzed NamedTuple and TypedDict class syntax
+      found in first pass with analyzed TupleType and TypedDictType.
+    """
+    def __init__(self, fail: Callable[[str, Context], None],
+                 start: Union[Node, SymbolTableNode], warn: bool) -> None:
+        self.seen = []  # type: List[Type]
+        self.fail = fail
+        self.start = start
+        self.warn = warn
+
+    def check_recursion(self, t: Type) -> bool:
+        if any(t is s for s in self.seen):
+            if self.warn:
+                assert isinstance(self.start, Node), "Internal error: invalid error context"
+                self.fail('Recursive types not fully supported yet,'
+                          ' nested types replaced with "Any"', self.start)
+            return True
+        self.seen.append(t)
+        return False
+
+    def visit_forwardref_type(self, t: ForwardRef) -> Type:
+        """This visitor method tracks situations like this:
+
+            x: A  # This type is not yet known and therefore wrapped in ForwardRef,
+                  # its content is updated in ThirdPass, now we need to unwrap this type.
+            A = NewType('A', int)
+        """
+        return t.link.accept(self)
+
+    def visit_instance(self, t: Instance, from_fallback: bool = False) -> Type:
+        """This visitor method tracks situations like this:
+
+               x: A  # When analyzing this type we will get an Instance from FirstPass.
+                     # Now we need to update this to actual analyzed TupleType.
+               class A(NamedTuple):
+                   attr: str
+
+        If from_fallback is True, then we always return an Instance type. This is needed
+        since TupleType and TypedDictType fallbacks are always instances.
+        """
+        info = t.type
+        # Special case, analyzed bases transformed the type into TupleType.
+        if info.tuple_type and not from_fallback:
+            items = [it.accept(self) for it in info.tuple_type.items]
+            info.tuple_type.items = items
+            return TupleType(items, Instance(info, []))
+        # Update forward Instances to corresponding analyzed NamedTuples.
+        if info.replaced and info.replaced.tuple_type:
+            tp = info.replaced.tuple_type
+            if self.check_recursion(tp):
+                # The key idea is that when we recursively return to a type already traversed,
+                # then we break the cycle and put AnyType as a leaf.
+                return AnyType(TypeOfAny.from_error)
+            return tp.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+        # Same as above but for TypedDicts.
+        if info.replaced and info.replaced.typeddict_type:
+            td = info.replaced.typeddict_type
+            if self.check_recursion(td):
+                # We also break the cycles for TypedDicts as explained above for NamedTuples.
+                return AnyType(TypeOfAny.from_error)
+            return td.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+        if self.check_recursion(t):
+            # We also need to break a potential cycle with normal (non-synthetic) instance types.
+            return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars))
+        return super().visit_instance(t)
+
+    def visit_type_var(self, t: TypeVarType) -> Type:
+        if self.check_recursion(t):
+            return AnyType(TypeOfAny.from_error)
+        if t.upper_bound:
+            t.upper_bound = t.upper_bound.accept(self)
+        if t.values:
+            t.values = [v.accept(self) for v in t.values]
+        return t
+
+    def visit_callable_type(self, t: CallableType) -> Type:
+        if self.check_recursion(t):
+            return AnyType(TypeOfAny.from_error)
+        arg_types = [tp.accept(self) for tp in t.arg_types]
+        ret_type = t.ret_type.accept(self)
+        variables = t.variables.copy()
+        for v in variables:
+            if v.upper_bound:
+                v.upper_bound = v.upper_bound.accept(self)
+            if v.values:
+                v.values = [val.accept(self) for val in v.values]
+        return t.copy_modified(arg_types=arg_types, ret_type=ret_type, variables=variables)
+
+    def visit_overloaded(self, t: Overloaded) -> Type:
+        if self.check_recursion(t):
+            return AnyType(TypeOfAny.from_error)
+        return super().visit_overloaded(t)
+
+    def visit_tuple_type(self, t: TupleType) -> Type:
+        if self.check_recursion(t):
+            return AnyType(TypeOfAny.from_error)
+        items = [it.accept(self) for it in t.items]
+        fallback = self.visit_instance(t.fallback, from_fallback=True)
+        assert isinstance(fallback, Instance)
+        return TupleType(items, fallback, t.line, t.column)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        if self.check_recursion(t):
+            return AnyType(TypeOfAny.from_error)
+        items = OrderedDict([
+            (item_name, item_type.accept(self))
+            for (item_name, item_type) in t.items.items()
+        ])
+        fallback = self.visit_instance(t.fallback, from_fallback=True)
+        assert isinstance(fallback, Instance)
+        return TypedDictType(items, t.required_keys, fallback, t.line, t.column)
+
+    def visit_union_type(self, t: UnionType) -> Type:
+        if self.check_recursion(t):
+            return AnyType(TypeOfAny.from_error)
+        return super().visit_union_type(t)
+
+    def visit_type_type(self, t: TypeType) -> Type:
+        if self.check_recursion(t):
+            return AnyType(TypeOfAny.from_error)
+        return super().visit_type_type(t)

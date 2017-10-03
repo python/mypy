@@ -1375,6 +1375,41 @@ class TypeType(Type):
         return TypeType.make_normalized(deserialize_type(data['item']))
 
 
+class ForwardRef(Type):
+    """Class to wrap forward references to other types.
+
+    This is used when a forward reference to an (unanalyzed) synthetic type is found,
+    for example:
+
+        x: A
+        A = TypedDict('A', {'x': int})
+
+    To avoid false positives and crashes in such situations, we first wrap the first
+    occurrence of 'A' in ForwardRef. Then, the wrapped UnboundType is updated in the third
+    pass of semantic analysis and ultimately fixed in the patches after the third pass.
+    So that ForwardRefs are temporary and will be completely replaced with the linked types
+    or Any (to avoid cyclic references) before the type checking stage.
+    """
+    link = None  # type: Type  # The wrapped type
+
+    def __init__(self, link: Type) -> None:
+        self.link = link
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_forwardref_type(self)
+
+    def serialize(self):
+        if isinstance(self.link, UnboundType):
+            name = self.link.name
+        if isinstance(self.link, Instance):
+            name = self.link.type.name()
+        else:
+            name = self.link.__class__.__name__
+        # We should never get here since all forward references should be resolved
+        # and removed during semantic analysis.
+        assert False, "Internal error: Unresolved forward reference to {}".format(name)
+
+
 #
 # Visitor-related classes
 #
@@ -1449,6 +1484,9 @@ class TypeVisitor(Generic[T]):
     @abstractmethod
     def visit_type_type(self, t: TypeType) -> T:
         pass
+
+    def visit_forwardref_type(self, t: ForwardRef) -> T:
+        raise RuntimeError('Internal error: unresolved forward reference')
 
 
 class SyntheticTypeVisitor(TypeVisitor[T]):
@@ -1551,6 +1589,9 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType.make_normalized(t.item.accept(self), line=t.line, column=t.column)
+
+    def visit_forwardref_type(self, t: ForwardRef) -> Type:
+        return t
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
@@ -1707,6 +1748,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_type_type(self, t: TypeType) -> str:
         return 'Type[{}]'.format(t.item.accept(self))
 
+    def visit_forwardref_type(self, t: ForwardRef) -> str:
+        return '~{}'.format(t.link.accept(self))
+
     def list_str(self, a: List[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)
         and join the results with commas.
@@ -1785,6 +1829,9 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_type_type(self, t: TypeType) -> T:
         return t.item.accept(self)
+
+    def visit_forwardref_type(self, t: ForwardRef) -> T:
+        return t.link.accept(self)
 
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
         return self.strategy([])
