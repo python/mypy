@@ -1,0 +1,122 @@
+-- Test cases for generating fine-grained dependencies for expressions.
+--
+-- The dependencies are used for fined-grained incremental checking.
+
+[case testListExpr]
+def f() -> int: pass
+def g() -> None:
+    a = [f()]
+[builtins fixtures/list.pyi]
+[out]
+<m.f> -> m.g
+
+[case testDictExpr]
+def f1() -> int: pass
+def f2() -> int: pass
+def g() -> None:
+    a = {f1(): 1, 2: f2()}
+[builtins fixtures/dict.pyi]
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testSetExpr]
+def f() -> int: pass
+def g() -> None:
+    a = {f()}
+[builtins fixtures/set.pyi]
+[out]
+<m.f> -> m.g
+
+[case testTupleExpr]
+def f1() -> int: pass
+def f2() -> int: pass
+def g() -> None:
+    a = (f1(), f2())
+[builtins fixtures/tuple.pyi]
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testListComprehension]
+from typing import List
+def f1() -> int: pass
+def f2() -> List[int]: pass
+def f3() -> int: pass
+def g() -> None:
+    a = [f1() for x in f2() if f3()]
+[builtins fixtures/list.pyi]
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testSetComprehension]
+from typing import Set
+def f1() -> int: pass
+def f2() -> Set[int]: pass
+def f3() -> int: pass
+def g() -> None:
+    a = {f1() for x in f2() if f3()}
+[builtins fixtures/set.pyi]
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testDictComprehension]
+from typing import Dict
+def f1() -> int: pass
+def f2() -> int: pass
+def f3() -> Dict[int, int]: pass
+def f4() -> int: pass
+def g() -> None:
+    a = {f1(): f2() for x in f3() if f4()}
+[builtins fixtures/dict.pyi]
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+<m.f4> -> m.g
+
+[case testGeneratorExpr]
+from typing import List
+def f1() -> int: pass
+def f2() -> List[int]: pass
+def f3() -> int: pass
+def g() -> None:
+    a = (f1() for x in f2() if f3())
+[builtins fixtures/list.pyi]
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testConditionalExpr]
+def f1() -> int: pass
+def f2() -> int: pass
+def f3() -> int: pass
+def g() -> None:
+    a = f1() if f2() else f3()
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testAwaitExpr]
+def f(): pass
+async def g() -> None:
+    x = await f()
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+<m.f> -> m.g
+
+[case testStarExpr]
+from typing import List
+def f() -> List[int]: pass
+def g() -> None:
+    a = [*f()]
+[builtins fixtures/list.pyi]
+[out]
+<m.f> -> m.g
