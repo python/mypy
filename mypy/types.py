@@ -357,6 +357,7 @@ class UninhabitedType(Type):
     can_be_true = False
     can_be_false = False
     is_noreturn = False  # Does this come from a NoReturn?  Purely for error messages.
+    ambiguous = False  # Is this a result of inference for a variable without constraints?
 
     def __init__(self, is_noreturn: bool = False, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
