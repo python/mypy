@@ -149,11 +149,11 @@ class LineCountReporter(AbstractReporter):
         imputed_annotated_lines = (physical_lines * annotated_funcs // total_funcs
                                    if total_funcs else physical_lines)
 
-        self.counts[tree._fullname] = (imputed_annotated_lines, physical_lines,
-                                       annotated_funcs, total_funcs)
+        self.counts[tree.fullname()] = (imputed_annotated_lines, physical_lines,
+                                        annotated_funcs, total_funcs)
         for option in self.breakdowns:
             if getattr(options, option):
-                self.breakdown_counts[option][tree._fullname] = (
+                self.breakdown_counts[option][tree.fullname()] = (
                     imputed_annotated_lines, physical_lines, annotated_funcs, total_funcs
                 )
 
