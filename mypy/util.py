@@ -69,10 +69,11 @@ def try_find_python2_interpreter() -> Optional[str]:
         return _python2_interpreter
     for interpreter in default_python2_interpreter:
         try:
-            process = subprocess.Popen([interpreter, '-V'], stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT)
-            stdout, stderr = process.communicate()
-            if b'Python 2.7' in stdout:
+            retcode = subprocess.Popen([
+                interpreter, '-c',
+                'import sys, typing; assert sys.version_info[:2] == (2, 7)'
+            ]).wait()
+            if not retcode:
                 _python2_interpreter = interpreter
                 return interpreter
         except OSError:
