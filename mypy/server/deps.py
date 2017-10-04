@@ -154,14 +154,7 @@ class DependencyVisitor(TraverserVisitor):
         else:
             # Reference to a non-module attribute
             typ = self.type_map[e.expr]
-            if isinstance(typ, Instance):
-                member = '%s.%s' % (typ.type.fullname(), e.name)
-                self.add_dependency(make_trigger(member))
-            elif isinstance(typ, (AnyType, NoneTyp)):
-                pass  # No dependency needed
-            elif isinstance(typ, FunctionLike) and typ.is_type_obj():
-                member = '%s.%s' % (typ.type_object().fullname(), e.name)
-                self.add_dependency(make_trigger(member))
+            self.add_attribute_dependency(typ, e.name)
 
     def visit_call_expr(self, e: CallExpr) -> None:
         print('call')
@@ -224,9 +217,13 @@ class DependencyVisitor(TraverserVisitor):
 
     def add_operator_method_dependency(self, e: Expression, method: str) -> None:
         typ = self.type_map.get(e)
-        if typ is None:
-            return
+        if typ is not None:
+            self.add_operator_method_dependency_for_type(typ, method)
+
+    def add_operator_method_dependency_for_type(self, typ: Type, method: str) -> None:
+        # Note that we operator methods can't be (non-metaclass) methods of type objects.
         # TODO: TypedDict
+        # TODO: metaclasses
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
         if isinstance(typ, TupleType):
@@ -234,6 +231,9 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(typ, Instance):
             trigger = make_trigger(typ.type.fullname() + '.' +  method)
             self.add_dependency(trigger)
+        elif isinstance(typ, UnionType):
+            for item in typ.items:
+                self.add_operator_method_dependency_for_type(item, method)
 
     # Helpers
 
@@ -255,6 +255,21 @@ class DependencyVisitor(TraverserVisitor):
     def add_type_dependencies(self, typ: Type) -> None:
         for trigger in get_type_dependencies(typ):
             self.add_dependency(trigger)
+
+    def add_attribute_dependency(self, typ: Type, name: str) -> None:
+        if isinstance(typ, TypeVarType):
+            typ = typ.upper_bound
+        if isinstance(typ, TupleType):
+            typ = typ.fallback
+        if isinstance(typ, Instance):
+            member = '%s.%s' % (typ.type.fullname(), name)
+            self.add_dependency(make_trigger(member))
+        elif isinstance(typ, FunctionLike) and typ.is_type_obj():
+            member = '%s.%s' % (typ.type_object().fullname(), name)
+            self.add_dependency(make_trigger(member))
+        elif isinstance(typ, UnionType):
+            for item in typ.items:
+                self.add_attribute_dependency(item, name)
 
     def push(self, component: str) -> str:
         target = '%s.%s' % (self.current(), component)

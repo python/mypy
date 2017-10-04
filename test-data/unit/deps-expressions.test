@@ -322,3 +322,19 @@ def f() -> None:
 <m.C> -> m.C, m.f
 <m.D.__rand__> -> m.f
 <m.D> -> <m.C.__and__>, m.C.__and__, m.D, m.f
+
+[case testUnionTypeOperation]
+from typing import Union
+
+class A:
+    def __add__(self, x: str) -> int: pass
+class B:
+    def __add__(self, x: str) -> int: pass
+
+def f(a: Union[A, B]) -> int:
+    return a + ''
+[out]
+<m.A.__add__> -> m.f
+<m.A> -> <m.f>, m.A, m.f
+<m.B.__add__> -> m.f
+<m.B> -> <m.f>, m.B, m.f

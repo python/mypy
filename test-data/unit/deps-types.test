@@ -71,3 +71,38 @@ def f() -> None:
 <m.A> -> m.A, m.f
 <m.B> -> m.B, m.f
 <m.C> -> m.C, m.f
+
+[case testUnionTypeAttributeAccess]
+from typing import Union
+
+class A:
+    def f(self) -> None:
+        self.x = 0
+
+class B:
+    def f(self) -> None:
+        self.x = ''
+
+def f(a: Union[A, B]) -> None:
+    a.x
+    a.f()
+[out]
+<m.A.f> -> m.f
+<m.A.x> -> m.A.f, m.f
+<m.A> -> <m.f>, m.A, m.f
+<m.B.f> -> m.f
+<m.B.x> -> m.B.f, m.f
+<m.B> -> <m.f>, m.B, m.f
+
+[case testTupleTypeAttributeAccess]
+from typing import Tuple
+
+class C(Tuple[int, str]):
+    def f(self) -> None: pass
+
+def f(c: C) -> None:
+    c.f()
+[builtins fixtures/tuple.pyi]
+[out]
+<m.C.f> -> m.f
+<m.C> -> <m.f>, m.C, m.f
