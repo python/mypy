@@ -5,7 +5,7 @@ from typing import Dict, List, Set, Optional
 from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
-    ImportFrom, CallExpr, TypeInfo, Var, LDEF
+    ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, TypeInfo, Var, LDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -111,9 +111,9 @@ class DependencyVisitor(TraverserVisitor):
             self.add_dependency(make_trigger(o.id + '.' + name))
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
-        if isinstance(o.rvalue, CallExpr) and o.rvalue.analyzed:
+        if isinstance(o.rvalue, CallExpr) and isinstance(o.rvalue.analyzed, TypeVarExpr):
             analyzed = o.rvalue.analyzed
-            # TODO: handle various cases
+            # TODO: implement
         else:
             super().visit_assignment_stmt(o)
             if o.type:
@@ -160,6 +160,15 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(callee_type, FunctionLike) and callee_type.is_type_obj():
             class_name = callee_type.type_object().fullname()
             self.add_dependency(make_trigger(class_name + '.__init__'))
+
+    def visit_cast_expr(self, e: CastExpr) -> None:
+        super().visit_cast_expr(e)
+        self.add_type_dependencies(e.type)
+
+    def visit_type_application(self, e: TypeApplication) -> None:
+        super().visit_type_application(e)
+        for typ in e.types:
+            self.add_type_dependencies(typ)
 
     # Helpers
 
