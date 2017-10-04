@@ -203,3 +203,22 @@ def g(a: A) -> None:
 <m.f1> -> m.g
 <m.f2> -> m.g
 <m.f3> -> m.g
+
+[case testUnaryExpr]
+class A:
+    def __neg__(self) -> int: pass
+    def __pos__(self) -> int: pass
+
+def f1() -> A: pass
+def f2() -> A: pass
+
+def g1() -> int:
+    return +f1()
+def g2() -> int:
+    return -f2()
+[out]
+<m.A.__neg__> -> m.g2
+<m.A.__pos__> -> m.g1
+<m.A> -> <m.f1>, <m.f2>, m.A, m.f1, m.f2
+<m.f1> -> m.g1
+<m.f2> -> m.g2

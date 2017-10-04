@@ -5,7 +5,8 @@ from typing import Dict, List, Set, Optional
 from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
-    ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, TypeInfo, Var, LDEF
+    ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, TypeInfo,
+    Var, LDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -183,15 +184,28 @@ class DependencyVisitor(TraverserVisitor):
         self.add_indexing_method_dependency(e, lvalue=False)
 
     def add_indexing_method_dependency(self, e: IndexExpr, lvalue: bool) -> None:
-        typ = self.type_map.get(e.base)
+        method = '__setitem__' if lvalue else '__getitem__'
+        self.add_operator_method_dependency(e.base, method)
+
+    def visit_unary_expr(self, e: UnaryExpr) -> None:
+        super().visit_unary_expr(e)
+        if e.op == '-':
+            method = '__neg__'
+        elif e.op == '+':
+            method = '__pos__'
+        else:
+            return
+        self.add_operator_method_dependency(e.expr, method)
+
+    def add_operator_method_dependency(self, e: Expression, method: str) -> None:
+        typ = self.type_map.get(e)
         if typ is None:
             return
-        # TODO: What if a tuple subclass has overridden __getitem__?
+        # TODO: What if a tuple subclass has overridden the method?
         # TODO: TypedDict
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
         if isinstance(typ, Instance):
-            method = '__setitem__' if lvalue else '__getitem__'
             trigger = make_trigger(typ.type.fullname() + '.' +  method)
             self.add_dependency(trigger)
 
