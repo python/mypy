@@ -61,7 +61,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     """
     assert testcase.old_cwd is not None, "test was not properly set up"
     mypy_cmdline = ['--show-traceback']
-    py2 = 'python2' in testcase.name.lower()
+    py2 = testcase.name.lower().endswith('python2')
     if py2:
         mypy_cmdline.append('--py2')
         interpreter = try_find_python2_interpreter()
