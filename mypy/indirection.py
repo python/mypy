@@ -101,3 +101,6 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
 
     def visit_type_type(self, t: types.TypeType) -> Set[str]:
         return self._visit(t.item)
+
+    def visit_forwardref_type(self, t: types.ForwardRef) -> Set[str]:
+        return self._visit(t.link)

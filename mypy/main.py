@@ -28,7 +28,7 @@ class InvalidPackageName(Exception):
     """Exception indicating that a package name was invalid."""
 
 
-def main(script_path: Optional[str], args: List[str] = None) -> None:
+def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     """Main entry point to the type checker.
 
     Args:
@@ -38,7 +38,7 @@ def main(script_path: Optional[str], args: List[str] = None) -> None:
     """
     t0 = time.time()
     if script_path:
-        bin_dir = find_bin_directory(script_path)
+        bin_dir = find_bin_directory(script_path)  # type: Optional[str]
     else:
         bin_dir = None
     sys.setrecursionlimit(2 ** 14)
@@ -53,6 +53,11 @@ def main(script_path: Optional[str], args: List[str] = None) -> None:
         a = e.messages
         if not e.use_stdout:
             serious = True
+    if options.warn_unused_configs and options.unused_configs:
+        print("Warning: unused section(s) in %s: %s" %
+              (options.config_file,
+               ", ".join("[mypy-%s]" % glob for glob in options.unused_configs.values())),
+              file=sys.stderr)
     if options.junit_xml:
         t1 = time.time()
         util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
@@ -90,8 +95,9 @@ def readlinkabs(link: str) -> str:
     return os.path.join(os.path.dirname(link), path)
 
 
-def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) -> BuildResult:
-    # Type-check the program and dependencies and translate to Python.
+def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
+                    options: Options) -> BuildResult:
+    # Type-check the program and dependencies.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
                        options=options)
@@ -152,9 +158,10 @@ def parse_version(v: str) -> Tuple[int, int]:
             raise argparse.ArgumentTypeError(
                 "Python 2.{} is not supported (must be 2.7)".format(minor))
     elif major == 3:
-        if minor <= 2:
+        if minor < defaults.PYTHON3_VERSION_MIN[1]:
             raise argparse.ArgumentTypeError(
-                "Python 3.{} is not supported (must be 3.3 or higher)".format(minor))
+                "Python 3.{0} is not supported (must be {1}.{2} or higher)".format(minor,
+                                                                    *defaults.PYTHON3_VERSION_MIN))
     else:
         raise argparse.ArgumentTypeError(
             "Python major version '{}' out of range (must be 2 or 3)".format(major))
@@ -163,7 +170,7 @@ def parse_version(v: str) -> Tuple[int, int]:
 
 # Make the help output a little less jarring.
 class AugmentedHelpFormatter(argparse.HelpFormatter):
-    def __init__(self, prog: Optional[str]) -> None:
+    def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
 
@@ -204,9 +211,9 @@ def process_options(args: List[str],
 
     def add_invertible_flag(flag: str,
                             *,
-                            inverse: str = None,
+                            inverse: Optional[str] = None,
                             default: bool,
-                            dest: str = None,
+                            dest: Optional[str] = None,
                             help: str,
                             strict_flag: bool = False
                             ) -> None:
@@ -226,6 +233,7 @@ def process_options(args: List[str],
                                   dest=dest,
                                   help=argparse.SUPPRESS)
         if strict_flag:
+            assert dest is not None
             strict_flag_names.append(flag)
             strict_flag_assignments.append((dest, not default))
 
@@ -258,6 +266,8 @@ def process_options(args: List[str],
     add_invertible_flag('--disallow-untyped-defs', default=False, strict_flag=True,
                         help="disallow defining functions without type annotations"
                         " or with incomplete type annotations")
+    add_invertible_flag('--disallow-incomplete-defs', default=False, strict_flag=True,
+                        help="disallow defining functions with incomplete type annotations")
     add_invertible_flag('--check-untyped-defs', default=False, strict_flag=True,
                         help="type check the interior of functions without type annotations")
     add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
@@ -265,6 +275,8 @@ def process_options(args: List[str],
     add_invertible_flag('--warn-incomplete-stub', default=False,
                         help="warn if missing type annotation in typeshed, only relevant with"
                         " --check-untyped-defs enabled")
+    add_invertible_flag('--disallow-untyped-decorators', default=False, strict_flag=True,
+                        help="disallow decorating typed functions with untyped decorators")
     add_invertible_flag('--warn-redundant-casts', default=False, strict_flag=True,
                         help="warn about casting an expression to its inferred type")
     add_invertible_flag('--no-warn-no-return', dest='warn_no_return', default=True,
@@ -274,6 +286,8 @@ def process_options(args: List[str],
                              " from non-Any typed functions")
     add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
                         help="warn about unneeded '# type: ignore' comments")
+    add_invertible_flag('--warn-unused-configs', default=False, strict_flag=True,
+                        help="warn about unnused '[mypy-<pattern>]' config sections")
     add_invertible_flag('--show-error-context', default=False,
                         dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
@@ -454,6 +468,7 @@ def process_options(args: List[str],
         experiments.STRICT_OPTIONAL = True
     if special_opts.find_occurrences:
         experiments.find_occurrences = special_opts.find_occurrences.split('.')
+        assert experiments.find_occurrences is not None
         if len(experiments.find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
         if len(experiments.find_occurrences) != 2:
@@ -634,9 +649,8 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
     If filename is None, fall back to default config file and then
     to setup.cfg.
     """
-    config_files = None  # type: Tuple[str, ...]
     if filename is not None:
-        config_files = (filename,)
+        config_files = (filename,)  # type: Tuple[str, ...]
     else:
         config_files = (defaults.CONFIG_FILE,) + SHARED_CONFIG_FILES
 
@@ -651,6 +665,7 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
             print("%s: %s" % (config_file, err), file=sys.stderr)
         else:
             file_read = config_file
+            options.config_file = file_read
             break
     else:
         return
@@ -687,6 +702,7 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
                     glob = glob.replace(os.altsep, '.')
                 pattern = re.compile(fnmatch.translate(glob))
                 options.per_module_options[pattern] = updates
+                options.unused_configs[pattern] = glob
 
 
 def parse_section(prefix: str, template: Options,
@@ -698,6 +714,7 @@ def parse_section(prefix: str, template: Options,
     results = {}  # type: Dict[str, object]
     report_dirs = {}  # type: Dict[str, str]
     for key in section:
+        orig_key = key
         key = key.replace('-', '_')
         if key in config_types:
             ct = config_types[key]
@@ -707,12 +724,12 @@ def parse_section(prefix: str, template: Options,
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
                     if report_type in reporter_classes:
-                        report_dirs[report_type] = section.get(key)
+                        report_dirs[report_type] = section[orig_key]
                     else:
-                        print("%s: Unrecognized report type: %s" % (prefix, key),
+                        print("%s: Unrecognized report type: %s" % (prefix, orig_key),
                               file=sys.stderr)
                     continue
-                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
+                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
                       file=sys.stderr)
                 continue
             ct = type(dv)

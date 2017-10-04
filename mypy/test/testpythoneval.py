@@ -10,23 +10,20 @@ Note: These test cases are *not* included in the main test suite, as including
       this suite would slow down the main suite too much.
 """
 
-from contextlib import contextmanager
-import errno
 import os
 import os.path
 import re
 import subprocess
 import sys
 
-import typing
+import pytest  # type: ignore  # no pytest in typeshed
 from typing import Dict, List, Tuple, Optional
 
-from mypy.myunit import Suite, SkipTestCaseException
 from mypy.test.config import test_data_prefix, test_temp_dir
-from mypy.test.data import DataDrivenTestCase, parse_test_cases
+from mypy.test.data import DataDrivenTestCase, parse_test_cases, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.util import try_find_python2_interpreter
-
+from mypy import api
 
 # Files which contain test case descriptions.
 python_eval_files = ['pythoneval.test',
@@ -39,8 +36,9 @@ python3_path = sys.executable
 program_re = re.compile(r'\b_program.py\b')
 
 
-class PythonEvaluationSuite(Suite):
-    def cases(self) -> List[DataDrivenTestCase]:
+class PythonEvaluationSuite(DataSuite):
+    @classmethod
+    def cases(cls) -> List[DataDrivenTestCase]:
         c = []  # type: List[DataDrivenTestCase]
         for f in python_eval_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
@@ -51,6 +49,9 @@ class PythonEvaluationSuite(Suite):
                     test_python_evaluation, test_temp_dir, True)
         return c
 
+    def run_case(self, testcase: DataDrivenTestCase):
+        test_python_evaluation(testcase)
+
 
 def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     """Runs Mypy in a subprocess.
@@ -59,38 +60,42 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     version.
     """
     assert testcase.old_cwd is not None, "test was not properly set up"
-    mypy_cmdline = [
-        python3_path,
-        os.path.join(testcase.old_cwd, 'scripts', 'mypy'),
-        '--show-traceback',
-    ]
+    mypy_cmdline = ['--show-traceback']
     py2 = testcase.name.lower().endswith('python2')
     if py2:
         mypy_cmdline.append('--py2')
         interpreter = try_find_python2_interpreter()
-        if not interpreter:
+        if interpreter is None:
             # Skip, can't find a Python 2 interpreter.
-            raise SkipTestCaseException()
+            pytest.skip()
+            # placate the type checker
+            return
     else:
         interpreter = python3_path
 
     # Write the program to a file.
     program = '_' + testcase.name + '.py'
-    mypy_cmdline.append(program)
     program_path = os.path.join(test_temp_dir, program)
+    mypy_cmdline.append(program_path)
     with open(program_path, 'w') as file:
         for s in testcase.input:
             file.write('{}\n'.format(s))
+    output = []
     # Type check the program.
-    # This uses the same PYTHONPATH as the current process.
-    returncode, out = run(mypy_cmdline)
+    out, err, returncode = api.run(mypy_cmdline)
+    # split lines, remove newlines, and remove directory of test case
+    for line in (out + err).splitlines():
+        if line.startswith(test_temp_dir + os.sep):
+            output.append(line[len(test_temp_dir + os.sep):].rstrip("\r\n"))
+        else:
+            output.append(line.rstrip("\r\n"))
     if returncode == 0:
         # Execute the program.
         returncode, interp_out = run([interpreter, program])
-        out += interp_out
+        output.extend(interp_out)
     # Remove temp file.
     os.remove(program_path)
-    assert_string_arrays_equal(adapt_output(testcase), out,
+    assert_string_arrays_equal(adapt_output(testcase), output,
                                'Invalid output ({}, line {})'.format(
                                    testcase.file, testcase.line))
 
@@ -111,7 +116,7 @@ def adapt_output(testcase: DataDrivenTestCase) -> List[str]:
 
 
 def run(
-    cmdline: List[str], *, env: Optional[Dict[str, str]] = None, timeout: int = 30
+    cmdline: List[str], *, env: Optional[Dict[str, str]] = None, timeout: int = 300
 ) -> Tuple[int, List[str]]:
     """A poor man's subprocess.run() for 3.3 and 3.4 compatibility."""
     process = subprocess.Popen(

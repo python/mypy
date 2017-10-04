@@ -9,7 +9,7 @@ of commits to find the expected result, then rewinds back to the first commit an
 re-runs mypy on the commits with incremental mode enabled to make sure it returns
 the same results.
 
-This script will download and test the offical mypy repo by default. Running:
+This script will download and test the official mypy repo by default. Running:
 
     python3 misc/incremental_checker.py last 30
 

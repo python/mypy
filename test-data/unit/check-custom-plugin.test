@@ -118,7 +118,7 @@ from mypy_extensions import DefaultArg
 from m import Signal
 s: Signal[[int, DefaultArg(str, 'x')]] = Signal()
 reveal_type(s) # E: Revealed type is 'm.Signal[def (builtins.int, x: builtins.str =)]'
-s.x # E: Signal[Callable[[int, str], None]] has no attribute "x"
+s.x # E: "Signal[Callable[[int, str], None]]" has no attribute "x"
 ss: Signal[int, str] # E: Invalid "Signal" type (expected "Signal[[t, ...]]")
 [file m.py]
 from typing import TypeVar, Generic, Callable

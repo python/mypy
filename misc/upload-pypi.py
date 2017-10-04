@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build and upload mypy packages for Linux and macOS to PyPI.
 
-Note: This should be run on macOS using offical python.org Python 3.6 or
+Note: This should be run on macOS using official python.org Python 3.6 or
       later, as this is the only tested configuration. Use --force to
       run anyway.
 

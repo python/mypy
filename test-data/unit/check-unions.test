@@ -616,3 +616,22 @@ reveal_type(xs)  # E: Revealed type is 'builtins.list[builtins.int]'
 reveal_type(a2)  # E: Revealed type is 'builtins.int'
 
 [builtins fixtures/list.pyi]
+
+[case testLongUnionFormatting]
+from typing import Any, Generic, TypeVar, Union
+
+T = TypeVar('T')
+
+class ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes(Generic[T]):
+    pass
+
+x: Union[ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[int],
+         ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[object],
+         ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[float],
+         ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[str],
+         ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[Any],
+         ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[bytes]]
+
+def takes_int(arg: int) -> None: pass
+
+takes_int(x)  # E: Argument 1 to "takes_int" has incompatible type <union: 6 items>; expected "int"
