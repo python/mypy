@@ -6,20 +6,18 @@ from typing import Dict, List
 
 from mypy import build
 from mypy.build import BuildSource
-from mypy.myunit import Suite
 from mypy.test.helpers import (
     assert_string_arrays_equal, testfile_pyversion, normalize_error_messages
 )
-from mypy.test.data import parse_test_cases, DataDrivenTestCase
+from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.errors import CompileError
-from mypy.nodes import TypeInfo
 from mypy.treetransform import TransformVisitor
 from mypy.types import Type
 from mypy.options import Options
 
 
-class TransformSuite(Suite):
+class TransformSuite(DataSuite):
     # Reuse semantic analysis test cases.
     transform_files = ['semanal-basic.test',
                        'semanal-expressions.test',
@@ -30,14 +28,18 @@ class TransformSuite(Suite):
                        'semanal-abstractclasses.test',
                        'semanal-python2.test']
 
-    def cases(self) -> List[DataDrivenTestCase]:
+    @classmethod
+    def cases(cls) -> List[DataDrivenTestCase]:
         c = []  # type: List[DataDrivenTestCase]
-        for f in self.transform_files:
+        for f in cls.transform_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   test_transform,
                                   base_path=test_temp_dir,
                                   native_sep=True)
         return c
+
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
+        test_transform(testcase)
 
 
 def test_transform(testcase: DataDrivenTestCase) -> None:

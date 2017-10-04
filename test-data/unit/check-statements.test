@@ -377,7 +377,7 @@ import typing
 assert None + None # Fail
 assert None
 [out]
-main:2: error: Unsupported left operand type for + (None)
+main:2: error: Unsupported left operand type for + ("None")
 
 
 -- Exception handling
@@ -594,14 +594,14 @@ else:
     def f3() -> None: pass
 [builtins fixtures/exception.pyi]
 [out]
-main:7: error: Incompatible redefinition (redefinition with type Callable[[], str], original type Callable[[], None])
+main:7: error: Incompatible redefinition (redefinition with type "Callable[[], str]", original type "Callable[[], None]")
 
 [case testExceptWithoutType]
 import typing
 try:
-    -None # E: Unsupported operand type for unary - (None)
+    -None # E: Unsupported operand type for unary - ("None")
 except:
-    ~None # E: Unsupported operand type for ~ (None)
+    ~None # E: Unsupported operand type for ~ ("None")
 [builtins fixtures/exception.pyi]
 
 [case testRaiseWithoutArgument]
@@ -1050,7 +1050,7 @@ while x == 5: ...  # E: Trying to read deleted variable 'x'
 from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
-    yield '' # E: Incompatible types in yield (actual type "str", expected type "int")
+    yield '' # E: Incompatible types in "yield" (actual type "str", expected type "int")
 [builtins fixtures/for.pyi]
 [out]
 
@@ -1136,9 +1136,8 @@ def f() -> Iterator[None]:
 
 -- Yield from statement
 -- --------------------
-
--- Iterables
--- ----------
+--
+-- (It's not really a statement, but don't want to move the tests.)
 
 [case testSimpleYieldFromWithIterator]
 from typing import Iterator
@@ -1189,7 +1188,7 @@ def g() -> Iterator[List[int]]:
     yield [2, 3, 4]
 def f() -> Iterator[List[int]]:
     yield from g()
-    yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type List[int])
+    yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type "List[int]")
 [builtins fixtures/for.pyi]
 [out]
 
@@ -1215,6 +1214,15 @@ def f(a):
     b = yield from a
     return b
 [out]
+
+[case testYieldFromGenericCall]
+from typing import Generator, TypeVar
+T = TypeVar('T')
+def f(a: T) -> Generator[int, str, T]: pass
+def g() -> Generator[int, str, float]:
+    r = yield from f('')
+    reveal_type(r)  # E: Revealed type is 'builtins.str*'
+    return 3.14
 
 -- With statement
 -- --------------
@@ -1429,7 +1437,7 @@ y = 1
 from typing import List
 bs, cs = None, None # type: List[A], List[B]
 *bs, b = bs
-*bs, c = cs  # E: Incompatible types in assignment (expression has type List[B], variable has type List[A])
+*bs, c = cs  # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
 *ns, c = cs
 nc = cs
 
@@ -1556,4 +1564,55 @@ d['weight0'] *= object()  # E: Unsupported operand types for * ("float" and "obj
 reveal_type(d['weight0']) # E: Revealed type is 'builtins.float*'
 
 [builtins fixtures/floatdict.pyi]
+
+[case testForwardRefsInForStatementImplicit]
+from typing import List, NamedTuple
+lst: List[N]
+
+for i in lst:
+    reveal_type(i.x)  # E: Revealed type is 'builtins.int'
+    a: str = i[0] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+N = NamedTuple('N', [('x', int)])
+[builtins fixtures/list.pyi]
+[out]
+
+[case testForwardRefsInForStatement]
+from typing import List, NamedTuple
+lst: List[M]
+
+for i in lst: # type: N
+    reveal_type(i.x)  # E: Revealed type is 'builtins.int'
+    a: str = i[0] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+N = NamedTuple('N', [('x', int)])
+class M(N): pass
+[builtins fixtures/list.pyi]
+[out]
+
+[case testForwardRefsInWithStatementImplicit]
+from typing import ContextManager, Any
+from mypy_extensions import TypedDict
+cm: ContextManager[N]
+
+with cm as g:
+    a: int = g['x']
+
+N = TypedDict('N', {'x': int})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+
+[case testForwardRefsInWithStatement]
+from typing import ContextManager, Any
+from mypy_extensions import TypedDict
+cm: ContextManager[Any]
+
+with cm as g:  # type: N
+    a: str = g['x']  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+N = TypedDict('N', {'x': int})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
 

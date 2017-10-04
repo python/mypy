@@ -3,14 +3,13 @@
 import os
 from abc import abstractmethod
 from collections import OrderedDict
-
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable,
 )
 
 import mypy.strconv
-from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
 from mypy.util import short_type
+from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
 
 
 class Context:
@@ -130,10 +129,6 @@ nongen_builtins.update(reverse_type_aliases)
 nongen_builtins.update(reverse_collection_aliases)
 
 
-# See [Note Literals and literal_hash] below
-Key = tuple
-
-
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
 
@@ -155,9 +150,6 @@ class Statement(Node):
 
 class Expression(Node):
     """An expression node."""
-    literal = LITERAL_NO
-    literal_hash = None  # type: Optional[Key]
-
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
 
@@ -167,44 +159,6 @@ class Expression(Node):
 #                'TupleExpr', 'ListExpr']; see #1783.
 Lvalue = Expression
 
-
-# [Note Literals and literal_hash]
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# Mypy uses the term "literal" to refer to any expression built out of
-# the following:
-#
-# * Plain literal expressions, like `1` (integer, float, string, etc.)
-#
-# * Compound literal expressions, like `(lit1, lit2)` (list, dict,
-#   set, or tuple)
-#
-# * Operator expressions, like `lit1 + lit2`
-#
-# * Variable references, like `x`
-#
-# * Member references, like `lit.m`
-#
-# * Index expressions, like `lit[0]`
-#
-# A typical "literal" looks like `x[(i,j+1)].m`.
-#
-# An expression that is a literal has a `literal_hash`, with the
-# following properties.
-#
-# * `literal_hash` is a Key: a tuple containing basic data types and
-#   possibly other Keys. So it can be used as a key in a dictionary
-#   that will be compared by value (as opposed to the Node itself,
-#   which is compared by identity).
-#
-# * Two expressions have equal `literal_hash`es if and only if they
-#   are syntactically equal expressions. (NB: Actually, we also
-#   identify as equal expressions like `3` and `3.0`; is this a good
-#   idea?)
-#
-# * The elements of `literal_hash` that are tuples are exactly the
-#   subexpressions of the original expression (e.g. the base and index
-#   of an index expression, or the operands of an operator expression).
 
 class SymbolNode(Node):
     # Nodes that can be stored in a symbol table.
@@ -611,7 +565,7 @@ class Decorator(SymbolNode, Statement):
     """
 
     func = None  # type: FuncDef                # Decorated function
-    decorators = None  # type: List[Expression] # Decorators, at least one  # XXX Not true
+    decorators = None  # type: List[Expression] # Decorators (may be empty)
     var = None  # type: Var                     # Represents the decorated function obj
     is_overload = False
 
@@ -627,6 +581,10 @@ class Decorator(SymbolNode, Statement):
 
     def fullname(self) -> str:
         return self.func.fullname()
+
+    @property
+    def info(self) -> 'TypeInfo':
+        return self.func.info
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_decorator(self)
@@ -669,6 +627,7 @@ class Var(SymbolNode):
     is_property = False
     is_settable_property = False
     is_classvar = False
+    is_abstract_var = False
     # Set to true when this variable refers to a module we were unable to
     # parse for some reason (eg a silenced module)
     is_suppressed_import = False
@@ -676,7 +635,7 @@ class Var(SymbolNode):
     FLAGS = [
         'is_self', 'is_ready', 'is_initialized_in_class', 'is_staticmethod',
         'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
-        'is_classvar'
+        'is_classvar', 'is_abstract_var'
     ]
 
     def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
@@ -729,7 +688,7 @@ class ClassDef(Statement):
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs = None  # type: List[Expression]
     info = None  # type: TypeInfo  # Related TypeInfo
-    metaclass = ''  # type: Optional[str]
+    metaclass = None  # type: Optional[Expression]
     decorators = None  # type: List[Expression]
     keywords = None  # type: OrderedDict[str, Expression]
     analyzed = None  # type: Optional[Expression]
@@ -740,7 +699,7 @@ class ClassDef(Statement):
                  defs: 'Block',
                  type_vars: Optional[List['mypy.types.TypeVarDef']] = None,
                  base_type_exprs: Optional[List[Expression]] = None,
-                 metaclass: Optional[str] = None,
+                 metaclass: Optional[Expression] = None,
                  keywords: Optional[List[Tuple[str, Expression]]] = None) -> None:
         self.name = name
         self.defs = defs
@@ -757,12 +716,12 @@ class ClassDef(Statement):
         return self.info.is_generic()
 
     def serialize(self) -> JsonDict:
-        # Not serialized: defs, base_type_exprs, decorators, analyzed (for named tuples etc.)
+        # Not serialized: defs, base_type_exprs, metaclass, decorators,
+        # analyzed (for named tuples etc.)
         return {'.class': 'ClassDef',
                 'name': self.name,
                 'fullname': self.fullname,
                 'type_vars': [v.serialize() for v in self.type_vars],
-                'metaclass': self.metaclass,
                 }
 
     @classmethod
@@ -771,7 +730,6 @@ class ClassDef(Statement):
         res = ClassDef(data['name'],
                        Block([]),
                        [mypy.types.TypeVarDef.deserialize(v) for v in data['type_vars']],
-                       metaclass=data['metaclass'],
                        )
         res.fullname = data['fullname']
         return res
@@ -1079,11 +1037,9 @@ class IntExpr(Expression):
     """Integer literal"""
 
     value = 0
-    literal = LITERAL_YES
 
     def __init__(self, value: int) -> None:
         self.value = value
-        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_int_expr(self)
@@ -1104,11 +1060,9 @@ class StrExpr(Expression):
     """String literal"""
 
     value = ''
-    literal = LITERAL_YES
 
     def __init__(self, value: str) -> None:
         self.value = value
-        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -1118,11 +1072,9 @@ class BytesExpr(Expression):
     """Bytes literal"""
 
     value = ''  # TODO use bytes
-    literal = LITERAL_YES
 
     def __init__(self, value: str) -> None:
         self.value = value
-        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
@@ -1132,11 +1084,9 @@ class UnicodeExpr(Expression):
     """Unicode literal (Python 2.x)"""
 
     value = ''  # TODO use bytes
-    literal = LITERAL_YES
 
     def __init__(self, value: str) -> None:
         self.value = value
-        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_unicode_expr(self)
@@ -1146,11 +1096,9 @@ class FloatExpr(Expression):
     """Float literal"""
 
     value = 0.0
-    literal = LITERAL_YES
 
     def __init__(self, value: float) -> None:
         self.value = value
-        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_float_expr(self)
@@ -1160,11 +1108,9 @@ class ComplexExpr(Expression):
     """Complex literal"""
 
     value = 0.0j
-    literal = LITERAL_YES
 
     def __init__(self, value: complex) -> None:
         self.value = value
-        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_complex_expr(self)
@@ -1184,8 +1130,6 @@ class StarExpr(Expression):
 
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
-        self.literal = self.expr.literal
-        self.literal_hash = ('Star', expr.literal_hash,)
 
         # Whether this starred expression is used in a tuple/list and as lvalue
         self.valid = False
@@ -1216,11 +1160,8 @@ class NameExpr(RefExpr):
 
     name = None  # type: str      # Name referred to (may be qualified)
 
-    literal = LITERAL_TYPE
-
     def __init__(self, name: str) -> None:
         self.name = name
-        self.literal_hash = ('Var', name,)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
@@ -1234,7 +1175,6 @@ class NameExpr(RefExpr):
                 'fullname': self.fullname,
                 'is_def': self.is_def,
                 'name': self.name,
-                'literal': self.literal,
                 }
 
     @classmethod
@@ -1245,7 +1185,6 @@ class NameExpr(RefExpr):
         ret.node = None if data['node'] is None else SymbolNode.deserialize(data['node'])
         ret.fullname = data['fullname']
         ret.is_def = data['is_def']
-        ret.literal = data['literal']
         return ret
 
 
@@ -1261,8 +1200,6 @@ class MemberExpr(RefExpr):
     def __init__(self, expr: Expression, name: str) -> None:
         self.expr = expr
         self.name = name
-        self.literal = self.expr.literal
-        self.literal_hash = ('Member', expr.literal_hash, name)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_member_expr(self)
@@ -1304,7 +1241,7 @@ class CallExpr(Expression):
                  callee: Expression,
                  args: List[Expression],
                  arg_kinds: List[int],
-                 arg_names: Optional[List[Optional[str]]] = None,
+                 arg_names: List[Optional[str]],
                  analyzed: Optional[Expression] = None) -> None:
         if not arg_names:
             arg_names = [None] * len(args)
@@ -1357,10 +1294,6 @@ class IndexExpr(Expression):
         self.base = base
         self.index = index
         self.analyzed = None
-        if self.index.literal == LITERAL_YES:
-            self.literal = self.base.literal
-            self.literal_hash = ('Index', base.literal_hash,
-                                 index.literal_hash)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
@@ -1377,8 +1310,6 @@ class UnaryExpr(Expression):
     def __init__(self, op: str, expr: Expression) -> None:
         self.op = op
         self.expr = expr
-        self.literal = self.expr.literal
-        self.literal_hash = ('Unary', op, expr.literal_hash)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_unary_expr(self)
@@ -1464,8 +1395,6 @@ class OpExpr(Expression):
         self.op = op
         self.left = left
         self.right = right
-        self.literal = min(self.left.literal, self.right.literal)
-        self.literal_hash = ('Binary', op, left.literal_hash, right.literal_hash)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
@@ -1483,9 +1412,6 @@ class ComparisonExpr(Expression):
         self.operators = operators
         self.operands = operands
         self.method_types = []
-        self.literal = min(o.literal for o in self.operands)
-        self.literal_hash = ((cast(Any, 'Comparison'),) + tuple(operators) +
-                             tuple(o.literal_hash for o in operands))
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
@@ -1543,9 +1469,11 @@ class SuperExpr(Expression):
 
     name = ''
     info = None  # type: TypeInfo  # Type that contains this super expression
+    call = None  # type: CallExpr  # The expression super(...)
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, call: CallExpr) -> None:
         self.name = name
+        self.call = call
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_super_expr(self)
@@ -1575,9 +1503,6 @@ class ListExpr(Expression):
 
     def __init__(self, items: List[Expression]) -> None:
         self.items = items
-        if all(x.literal == LITERAL_YES for x in items):
-            self.literal = LITERAL_YES
-            self.literal_hash = (cast(Any, 'List'),) + tuple(x.literal_hash for x in items)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_list_expr(self)
@@ -1590,13 +1515,6 @@ class DictExpr(Expression):
 
     def __init__(self, items: List[Tuple[Expression, Expression]]) -> None:
         self.items = items
-        # key is None for **item, e.g. {'a': 1, **x} has
-        # keys ['a', None] and values [1, x].
-        if all(x[0] and x[0].literal == LITERAL_YES and x[1].literal == LITERAL_YES
-               for x in items):
-            self.literal = LITERAL_YES
-            self.literal_hash = (cast(Any, 'Dict'),) + tuple(
-                (x[0].literal_hash, x[1].literal_hash) for x in items)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
@@ -1609,9 +1527,6 @@ class TupleExpr(Expression):
 
     def __init__(self, items: List[Expression]) -> None:
         self.items = items
-        if all(x.literal == LITERAL_YES for x in items):
-            self.literal = LITERAL_YES
-            self.literal_hash = (cast(Any, 'Tuple'),) + tuple(x.literal_hash for x in items)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_tuple_expr(self)
@@ -1624,9 +1539,6 @@ class SetExpr(Expression):
 
     def __init__(self, items: List[Expression]) -> None:
         self.items = items
-        if all(x.literal == LITERAL_YES for x in items):
-            self.literal = LITERAL_YES
-            self.literal_hash = (cast(Any, 'Set'),) + tuple(x.literal_hash for x in items)
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_set_expr(self)
@@ -1819,13 +1731,13 @@ class TypeAliasExpr(Expression):
     type = None  # type: mypy.types.Type
     # Simple fallback type for aliases that are invalid in runtime expressions
     # (for example Union, Tuple, Callable).
-    fallback = None  # type: Optional[mypy.types.Type]
+    fallback = None  # type: mypy.types.Type
     # This type alias is subscripted in a runtime expression like Alias[int](42)
     # (not in a type context like type annotation or base class).
     in_runtime = False  # type: bool
 
     def __init__(self, type: 'mypy.types.Type', tvars: List[str],
-                 fallback: 'Optional[mypy.types.Type]' = None, in_runtime: bool = False) -> None:
+                 fallback: 'mypy.types.Type', in_runtime: bool = False) -> None:
         self.type = type
         self.fallback = fallback
         self.in_runtime = in_runtime
@@ -1932,9 +1844,13 @@ class TempNode(Expression):
     """
 
     type = None  # type: mypy.types.Type
+    # Is this TempNode used to indicate absence of a right hand side in an annotated assignment?
+    # (e.g. for 'x: int' the rvalue is TempNode(AnyType(TypeOfAny.special_form), no_rhs=True))
+    no_rhs = False  # type: bool
 
-    def __init__(self, typ: 'mypy.types.Type') -> None:
+    def __init__(self, typ: 'mypy.types.Type', no_rhs: bool = False) -> None:
         self.type = typ
+        self.no_rhs = no_rhs
 
     def __repr__(self) -> str:
         return 'TempNode(%s)' % str(self.type)
@@ -1972,7 +1888,53 @@ class TypeInfo(SymbolNode):
     subtypes = None  # type: Set[TypeInfo] # Direct subclasses encountered so far
     names = None  # type: SymbolTable      # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
+    is_protocol = False                    # Is this a protocol class?
+    runtime_protocol = False               # Does this protocol support isinstance checks?
     abstract_attributes = None  # type: List[str]
+    # Protocol members are names of all attributes/methods defined in a protocol
+    # and in all its supertypes (except for 'object').
+    protocol_members = None  # type: List[str]
+
+    # The attributes 'assuming' and 'assuming_proper' represent structural subtype matrices.
+    #
+    # In languages with structural subtyping, one can keep a global subtype matrix like this:
+    #   . A B C .
+    #   A 1 0 0
+    #   B 1 1 1
+    #   C 1 0 1
+    #   .
+    # where 1 indicates that the type in corresponding row is a subtype of the type
+    # in corresponding column. This matrix typically starts filled with all 1's and
+    # a typechecker tries to "disprove" every subtyping relation using atomic (or nominal) types.
+    # However, we don't want to keep this huge global state. Instead, we keep the subtype
+    # information in the form of list of pairs (subtype, supertype) shared by all 'Instance's
+    # with given supertype's TypeInfo. When we enter a subtype check we push a pair in this list
+    # thus assuming that we started with 1 in corresponding matrix element. Such algorithm allows
+    # to treat recursive and mutually recursive protocols and other kinds of complex situations.
+    #
+    # If concurrent/parallel type checking will be added in future,
+    # then there should be one matrix per thread/process to avoid false negatives
+    # during the type checking phase.
+    assuming = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
+    assuming_proper = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
+    # Ditto for temporary 'inferring' stack of recursive constraint inference.
+    # It contains Instance's of protocol types that appeared as an argument to
+    # constraints.infer_constraints(). We need 'inferring' to avoid infinite recursion for
+    # recursive and mutually recursive protocols.
+    #
+    # We make 'assuming' and 'inferring' attributes here instead of passing they as kwargs,
+    # since this would require to pass them in many dozens of calls. In particular,
+    # there is a dependency infer_constraint -> is_subtype -> is_callable_subtype ->
+    # -> infer_constraints.
+    inferring = None  # type: List[mypy.types.Instance]
+    # '_cache' and '_cache_proper' are subtype caches, implemented as sets of pairs
+    # of (subtype, supertype), where supertypes are instances of given TypeInfo.
+    # We need the caches, since subtype checks for structural types are very slow.
+    _cache = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
+    _cache_proper = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
+    # 'inferring' and 'assuming' can't be also made sets, since we need to use
+    # is_same_type to correctly treat unions.
+
     # Classes inheriting from Enum shadow their true members with a __getattr__, so we
     # have to treat them as a special case.
     is_enum = False
@@ -2014,9 +1976,15 @@ class TypeInfo(SymbolNode):
     # Is this a newtype type?
     is_newtype = False
 
+    # If during analysis of ClassDef associated with this TypeInfo a syntethic
+    # type (NamedTuple or TypedDict) was generated, store the corresponding
+    # TypeInfo here. (This attribute does not need to be serialized, it is only
+    # needed during the semantic passes.)
+    replaced = None  # type: TypeInfo
+
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
-        'is_newtype'
+        'is_newtype', 'is_protocol', 'runtime_protocol'
     ]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
@@ -2032,6 +2000,11 @@ class TypeInfo(SymbolNode):
         self._fullname = defn.fullname
         self.is_abstract = False
         self.abstract_attributes = []
+        self.assuming = []
+        self.assuming_proper = []
+        self.inferring = []
+        self._cache = set()
+        self._cache_proper = set()
         self.add_type_vars()
 
     def add_type_vars(self) -> None:
@@ -2051,6 +2024,9 @@ class TypeInfo(SymbolNode):
         return len(self.type_vars) > 0
 
     def get(self, name: str) -> 'Optional[SymbolTableNode]':
+        if self.mro is None:  # Might be because of a previous error.
+            return None
+
         for cls in self.mro:
             n = cls.names.get(name)
             if n:
@@ -2062,6 +2038,21 @@ class TypeInfo(SymbolNode):
             if name in cls.names:
                 return cls
         return None
+
+    def record_subtype_cache_entry(self, left: 'mypy.types.Instance',
+                                   right: 'mypy.types.Instance',
+                                   proper_subtype: bool = False) -> None:
+        if proper_subtype:
+            self._cache_proper.add((left, right))
+        else:
+            self._cache.add((left, right))
+
+    def is_cached_subtype_check(self, left: 'mypy.types.Instance',
+                                right: 'mypy.types.Instance',
+                                proper_subtype: bool = False) -> bool:
+        if not proper_subtype:
+            return (left, right) in self._cache
+        return (left, right) in self._cache_proper
 
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
@@ -2203,6 +2194,7 @@ class TypeInfo(SymbolNode):
                 'names': self.names.serialize(self.fullname()),
                 'defn': self.defn.serialize(),
                 'abstract_attributes': self.abstract_attributes,
+                'protocol_members': self.protocol_members,
                 'type_vars': self.type_vars,
                 'bases': [b.serialize() for b in self.bases],
                 '_promote': None if self._promote is None else self._promote.serialize(),
@@ -2226,6 +2218,7 @@ class TypeInfo(SymbolNode):
         ti._fullname = data['fullname']
         # TODO: Is there a reason to reconstruct ti.subtypes?
         ti.abstract_attributes = data['abstract_attributes']
+        ti.protocol_members = data['protocol_members']
         ti.type_vars = data['type_vars']
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None

@@ -684,7 +684,7 @@ while bool():
         x + 'a'
         break
     x + [1]
-    x + 'a'           # E: Unsupported operand types for + (List[int] and "str")
+    x + 'a'           # E: Unsupported operand types for + ("List[int]" and "str")
 x + [1]               # E: Unsupported operand types for + (likely involving Union)
 [builtins fixtures/isinstancelist.pyi]
 
@@ -1446,10 +1446,10 @@ def f(x: Union[Type[int], Type[str], Type[List]]) -> None:
         reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str]'
         x()[1]  # E: Value of type "Union[int, str]" is not indexable
     else:
-        reveal_type(x)  # E: Revealed type is 'Type[builtins.list]'
+        reveal_type(x)  # E: Revealed type is 'Type[builtins.list[Any]]'
         reveal_type(x())  # E: Revealed type is 'builtins.list[<nothing>]'
         x()[1]
-    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list]]'
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
     reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
     if issubclass(x, (str, (list,))):
         reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.str], Type[builtins.list[Any]]]'
@@ -1468,10 +1468,10 @@ def f(x: Type[Union[int, str, List]]) -> None:
         reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str]'
         x()[1]  # E: Value of type "Union[int, str]" is not indexable
     else:
-        reveal_type(x)  # E: Revealed type is 'Type[builtins.list]'
+        reveal_type(x)  # E: Revealed type is 'Type[builtins.list[Any]]'
         reveal_type(x())  # E: Revealed type is 'builtins.list[<nothing>]'
         x()[1]
-    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list]]'
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
     reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
     if issubclass(x, (str, (list,))):
         reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.str], Type[builtins.list[Any]]]'
@@ -1485,17 +1485,17 @@ def f(x: Type[Union[int, str, List]]) -> None:
 from typing import Union, List, Tuple, Dict, Type
 
 def f(x: Type[Union[int, str, List]]) -> None:
-    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list]]'
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
     reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
     if issubclass(x, (str, (int,))):
         reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str]]'
         reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str]'
         x()[1]  # E: Value of type "Union[int, str]" is not indexable
     else:
-        reveal_type(x)  # E: Revealed type is 'Type[builtins.list]'
+        reveal_type(x)  # E: Revealed type is 'Type[builtins.list[Any]]'
         reveal_type(x())  # E: Revealed type is 'builtins.list[<nothing>]'
         x()[1]
-    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list]]'
+    reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.int], Type[builtins.str], Type[builtins.list[Any]]]'
     reveal_type(x())  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[<nothing>]]'
     if issubclass(x, (str, (list,))):
         reveal_type(x)  # E: Revealed type is 'Union[Type[builtins.str], Type[builtins.list[Any]]]'
@@ -1526,7 +1526,7 @@ def test_issubclass(cls: Type[Goblin]) -> None:
     else:
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.Goblin]'
         cls.level
-        cls.job  # E: Type[Goblin] has no attribute "job"
+        cls.job  # E: "Type[Goblin]" has no attribute "job"
         g = cls()
         g.level = 15
         g.job  # E: "Goblin" has no attribute "job"
@@ -1547,7 +1547,7 @@ def test_issubclass(cls: Type[Mob]) -> None:
     if issubclass(cls, Goblin):
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.Goblin]'
         cls.level
-        cls.job  # E: Type[Goblin] has no attribute "job"
+        cls.job  # E: "Type[Goblin]" has no attribute "job"
         g = cls()
         g.level = 15
         g.job  # E: "Goblin" has no attribute "job"
@@ -1561,8 +1561,8 @@ def test_issubclass(cls: Type[Mob]) -> None:
             g.job = 'Warrior' # E: Cannot assign to class variable "job" via instance
     else:
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.Mob]'
-        cls.job  # E: Type[Mob] has no attribute "job"
-        cls.level  # E: Type[Mob] has no attribute "level"
+        cls.job  # E: "Type[Mob]" has no attribute "job"
+        cls.level  # E: "Type[Mob]" has no attribute "level"
         m = cls()
         m.level = 15  # E: "Mob" has no attribute "level"
         m.job  # E: "Mob" has no attribute "job"
@@ -1603,7 +1603,7 @@ def test_issubclass(cls: Type[Mob]) -> None:
     if issubclass(cls, (Goblin, GoblinAmbusher)):
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.Goblin]'
         cls.level
-        cls.job  # E: Type[Goblin] has no attribute "job"
+        cls.job  # E: "Type[Goblin]" has no attribute "job"
         g = cls()
         g.level = 15
         g.job  # E: "Goblin" has no attribute "job"
@@ -1617,8 +1617,8 @@ def test_issubclass(cls: Type[Mob]) -> None:
             ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
     else:
         reveal_type(cls)  # E: Revealed type is 'Type[__main__.Mob]'
-        cls.job  # E: Type[Mob] has no attribute "job"
-        cls.level  # E: Type[Mob] has no attribute "level"
+        cls.job  # E: "Type[Mob]" has no attribute "job"
+        cls.level  # E: "Type[Mob]" has no attribute "level"
         m = cls()
         m.level = 15  # E: "Mob" has no attribute "level"
         m.job  # E: "Mob" has no attribute "job"

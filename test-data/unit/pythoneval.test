@@ -391,7 +391,7 @@ txt(sys.stdout)
 bin(sys.stdout)
 [out]
 _program.py:5: error: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
-_program.py:10: error: Argument 1 to "bin" has incompatible type "TextIO"; expected IO[bytes]
+_program.py:10: error: Argument 1 to "bin" has incompatible type "TextIO"; expected "IO[bytes]"
 
 [case testBuiltinOpen]
 f = open('x')
@@ -603,7 +603,7 @@ print(tuple(a))
 import typing
 [1] + iter([2, 3])
 [out]
-_program.py:2: error: Unsupported operand types for + (List[int] and Iterator[int])
+_program.py:2: error: Unsupported operand types for + ("List[int]" and "Iterator[int]")
 
 [case testInferHeterogeneousListOfIterables]
 from typing import Sequence
@@ -784,7 +784,7 @@ def f(*args: str) -> str: return args[0]
 map(f, ['x'])
 map(f, [1])
 [out]
-_program.py:4: error: Argument 1 to "map" has incompatible type Callable[[VarArg(str)], str]; expected Callable[[int], str]
+_program.py:4: error: Argument 1 to "map" has incompatible type "Callable[[VarArg(str)], str]"; expected "Callable[[int], str]"
 
 [case testMapStr]
 import typing
@@ -792,7 +792,7 @@ x = range(3)
 a = list(map(str, x))
 a + 1
 [out]
-_program.py:4: error: Unsupported operand types for + (List[str] and "int")
+_program.py:4: error: Unsupported operand types for + ("List[str]" and "int")
 
 [case testNamedTuple]
 import typing
@@ -994,7 +994,7 @@ def f(*x: int) -> None:
     x.append(1)
 f(1)
 [out]
-_program.py:3: error: Tuple[int, ...] has no attribute "append"
+_program.py:3: error: "Tuple[int, ...]" has no attribute "append"
 
 [case testExit]
 print('a')
@@ -1075,14 +1075,14 @@ n = 4
 t = ('',) * n
 t + 1
 [out]
-_program.py:3: error: Unsupported operand types for + (Tuple[str, ...] and "int")
+_program.py:3: error: Unsupported operand types for + ("Tuple[str, ...]" and "int")
 
 [case testMultiplyTupleByIntegerReverse]
 n = 4
 t = n * ('',)
 t + 1
 [out]
-_program.py:3: error: Unsupported operand types for + (Tuple[str, ...] and "int")
+_program.py:3: error: Unsupported operand types for + ("Tuple[str, ...]" and "int")
 
 [case testDictWithKeywordArgs]
 from typing import Dict, Any, List
@@ -1094,7 +1094,7 @@ d4 = dict(a=1, b='') # type: Dict[str, Any]
 result = dict(x=[], y=[]) # type: Dict[str, List[str]]
 [out]
 _program.py:3: error: Dict entry 1 has incompatible type "str": "str"; expected "str": "int"
-_program.py:5: error: Dict[str, int] has no attribute "xyz"
+_program.py:5: error: "Dict[str, int]" has no attribute "xyz"
 
 [case testDefaultDict]
 import typing as t
@@ -1122,11 +1122,11 @@ class MyDDict(t.DefaultDict[int,T], t.Generic[T]):
 MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
-_program.py:6: error: Argument 1 to "defaultdict" has incompatible type Type[List[Any]]; expected Callable[[], str]
-_program.py:9: error: Invalid index type "str" for defaultdict[int, str]; expected type "int"
+_program.py:6: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Callable[[], str]"
+_program.py:9: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
 _program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
-_program.py:19: error: Dict entry 0 has incompatible type "str": List[<nothing>]; expected "int": List[<nothing>]
-_program.py:23: error: Invalid index type "str" for MyDDict[Dict[_KT, _VT]]; expected type "int"
+_program.py:19: error: Dict entry 0 has incompatible type "str": "List[<nothing>]"; expected "int": "List[<nothing>]"
+_program.py:23: error: Invalid index type "str" for "MyDDict[Dict[_KT, _VT]]"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
 import collections
@@ -1148,7 +1148,7 @@ def f(d: collections.defaultdict[int, str]) -> None:
 _program.py:5: error: "defaultdict" is not subscriptable
 _program.py:6: error: "Counter" is not subscriptable
 _program.py:9: error: "defaultdict" is not subscriptable
-_program.py:12: error: Invalid index type "int" for defaultdict[str, int]; expected type "str"
+_program.py:12: error: Invalid index type "int" for "defaultdict[str, int]"; expected type "str"
 _program.py:14: error: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
 
 [case testCollectionsAliases]
@@ -1176,7 +1176,7 @@ reveal_type(o6)
 
 [out]
 _testCollectionsAliases.py:5: error: Revealed type is 'collections.Counter[builtins.int]'
-_testCollectionsAliases.py:6: error: Invalid index type "str" for Counter[int]; expected type "int"
+_testCollectionsAliases.py:6: error: Invalid index type "str" for "Counter[int]"; expected type "int"
 _testCollectionsAliases.py:9: error: Revealed type is 'collections.ChainMap[builtins.int, builtins.str]'
 _testCollectionsAliases.py:12: error: Revealed type is 'collections.deque[builtins.int]'
 _testCollectionsAliases.py:15: error: Revealed type is 'collections.Counter[builtins.int*]'
@@ -1380,6 +1380,14 @@ _testTypedDictMappingMethods.py:9: error: Revealed type is 'typing.AbstractSet[b
 _testTypedDictMappingMethods.py:10: error: Revealed type is 'typing.AbstractSet[Tuple[builtins.str*, builtins.int*]]'
 _testTypedDictMappingMethods.py:11: error: Revealed type is 'typing.ValuesView[builtins.int*]'
 
+[case testCrashOnComplexCheckWithNamedTupleNext]
+from typing import NamedTuple
+
+MyNamedTuple = NamedTuple('MyNamedTuple', [('parent', 'MyNamedTuple')]) # type: ignore
+def foo(mymap) -> MyNamedTuple:
+    return next((mymap[key] for key in mymap), None)
+[out]
+
 [case testCanConvertTypedDictToAnySuperclassOfMapping]
 from mypy_extensions import TypedDict
 from typing import Sized, Iterable, Container
@@ -1393,4 +1401,19 @@ c: Container[str] = p
 o: object = p
 it2: Iterable[int] = p
 [out]
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type Iterable[int])
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
+
+[case testAsyncioGatherPreciseType]
+import asyncio
+from typing import Tuple
+
+async def get_location(arg: str) -> Tuple[str, str]:
+    return arg, arg
+
+async def main() -> None:
+    ((a_x, a_y),) = await asyncio.gather(get_location('start'))
+    reveal_type(a_x)
+    reveal_type(a_y)
+[out]
+_testAsyncioGatherPreciseType.py:9: error: Revealed type is 'builtins.str'
+_testAsyncioGatherPreciseType.py:10: error: Revealed type is 'builtins.str'

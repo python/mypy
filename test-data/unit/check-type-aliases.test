@@ -112,3 +112,127 @@ EmptyTupleCallable = Callable[[Tuple[()]], None]
 f = None # type: EmptyTupleCallable
 reveal_type(f)  # E: Revealed type is 'def (Tuple[])'
 [builtins fixtures/list.pyi]
+
+[case testForwardTypeAlias]
+def f(p: 'Alias') -> None:
+    pass
+
+reveal_type(f) # E: Revealed type is 'def (p: builtins.int)'
+Alias = int
+[out]
+
+[case testForwardTypeAliasGeneric]
+from typing import TypeVar, Tuple
+def f(p: 'Alias[str]') -> None:
+    pass
+
+reveal_type(f) # E: Revealed type is 'def (p: Tuple[builtins.int, builtins.str])'
+T = TypeVar('T')
+Alias = Tuple[int, T]
+[out]
+
+[case testRecursiveAliasesErrors1]
+from typing import Type, Callable, Union
+
+A = Union[A, int]
+B = Callable[[B], int]
+C = Type[C]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testRecursiveAliasesErrors2]
+from typing import Type, Callable, Union
+
+A = Union[B, int]
+B = Callable[[C], int]
+C = Type[A]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testDoubleForwardAlias]
+from typing import List
+x: A
+A = List[B]
+B = List[int]
+reveal_type(x) # E: Revealed type is 'builtins.list[builtins.list[builtins.int]]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testDoubleForwardAliasWithNamedTuple]
+from typing import List, NamedTuple
+x: A
+A = List[B]
+class B(NamedTuple):
+    x: str
+reveal_type(x[0].x) # E: Revealed type is 'builtins.str'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testJSONAliasApproximation]
+from typing import List, Union, Dict
+x: JSON
+JSON = Union[int, str, List[JSON], Dict[str, JSON]] # type: ignore
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[Any], builtins.dict[builtins.str, Any]]'
+if isinstance(x, list):
+    reveal_type(x) # E: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testProhibitedForwardRefToTypeVar]
+from typing import TypeVar, List
+
+a: List[T]
+
+T = TypeVar('T')
+[builtins fixtures/list.pyi]
+[out]
+main:3: error: Invalid type "__main__.T"
+main:3: note: Forward references to type variables are prohibited
+
+[case testUnsupportedForwardRef]
+from typing import List, TypeVar
+
+T = TypeVar('T')
+
+def f(x: T) -> None:
+    y: A[T]  # E: Unsupported forward reference to "A"
+
+A = List[T]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testUnsupportedForwardRef2]
+from typing import List, TypeVar
+
+def f() -> None:
+    X = List[int]
+    x: A[X]  # E: Unsupported forward reference to "A"
+
+T = TypeVar('T')
+A = List[T]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoneAlias]
+from typing import Union
+void = type(None)
+x: void
+reveal_type(x)  # E: Revealed type is 'builtins.None'
+y: Union[int, void]
+reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+[builtins fixtures/bool.pyi]
+
+[case testNoneAliasStrict]
+# flags: --strict-optional
+from typing import Optional, Union
+void = type(None)
+x: int
+y: Union[int, void]
+z: Optional[int]
+x = y  # E: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+y = z
+[builtins fixtures/bool.pyi]

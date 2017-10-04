@@ -91,7 +91,7 @@ from typing import Tuple
 t1 = None # type: Tuple[A, A]
 t2 = None # type: tuple
 
-t1 = t2 # E: Incompatible types in assignment (expression has type Tuple[Any, ...], variable has type "Tuple[A, A]")
+t1 = t2 # E: Incompatible types in assignment (expression has type "Tuple[Any, ...]", variable has type "Tuple[A, A]")
 t2 = t1
 
 class A: pass
@@ -388,7 +388,7 @@ aa, bb, *cc = t  # E: Need type annotation for variable
 from typing import List
 li, lo = None, None # type: List[int], List[object]
 a, b, *c = 1, 2  # type: int, int, List[int]
-c = lo  # E: Incompatible types in assignment (expression has type List[object], variable has type List[int])
+c = lo  # E: Incompatible types in assignment (expression has type "List[object]", variable has type "List[int]")
 c = li
 [builtins fixtures/list.pyi]
 
@@ -450,14 +450,14 @@ class A: pass
 [out]
 main:6: error: List item 0 has incompatible type "A"; expected "int"
 main:6: error: List item 1 has incompatible type "A"; expected "int"
-main:9: error: Incompatible types in assignment (expression has type "A", variable has type List[A])
+main:9: error: Incompatible types in assignment (expression has type "A", variable has type "List[A]")
 
 [case testAssignmentToStarFromTupleInference]
 from typing import List
 li = None # type: List[int]
 la = None # type: List[A]
 a, *l = A(), A()
-l = li  # E: Incompatible types in assignment (expression has type List[int], variable has type List[A])
+l = li  # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[A]")
 l = la
 
 class A: pass
@@ -469,7 +469,7 @@ from typing import List
 li = None # type: List[int]
 la = None # type: List[A]
 a, *l = [A(), A()]
-l = li  # E: Incompatible types in assignment (expression has type List[int], variable has type List[A])
+l = li  # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[A]")
 l = la
 
 class A: pass
@@ -482,7 +482,7 @@ li = None # type: List[int]
 la = None # type: List[A]
 ta = None # type: Tuple[A, A, A]
 a, *l = ta
-l = li  # E: Incompatible types in assignment (expression has type List[int], variable has type List[A])
+l = li  # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[A]")
 l = la
 
 class A: pass
@@ -494,7 +494,7 @@ from typing import List
 li = None # type: List[int]
 la = None # type: List[A]
 a, *l = la
-l = li  # E: Incompatible types in assignment (expression has type List[int], variable has type List[A])
+l = li  # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[A]")
 l = la
 
 class A: pass
@@ -579,7 +579,7 @@ class LongTypeName:
     def __add__(self, x: 'LongTypeName') -> 'LongTypeName': pass
 [builtins fixtures/tuple.pyi]
 [out]
-main:3: error: Unsupported operand types for + ("LongTypeName" and tuple(length 50))
+main:3: error: Unsupported operand types for + ("LongTypeName" and <tuple: 50 items>)
 
 
 -- Tuple methods
@@ -704,18 +704,17 @@ from typing import Tuple
 class A(tuple): pass
 [out]
 
-[case testTupleBaseClass2-skip]
+[case testTupleBaseClass2]
 import m
 [file m.pyi]
-# This doesn't work correctly -- no errors are reported (#867)
 from typing import Tuple
 a = None # type: A
 class A(Tuple[int, str]): pass
 x, y = a
-x() # Expected: "int" not callable
-y() # Expected: "str" not callable
+x() # E: "int" not callable
+y() # E: "str" not callable
+[builtins fixtures/tuple.pyi]
 [out]
-(should fail)
 
 [case testGenericClassWithTupleBaseClass]
 from typing import TypeVar, Generic, Tuple
@@ -750,7 +749,7 @@ tb = () # type: Tuple[B, ...]
 fa(ta)
 fa(tb)
 fb(tb)
-fb(ta) # E: Argument 1 to "fb" has incompatible type Tuple[A, ...]; expected Tuple[B, ...]
+fb(ta) # E: Argument 1 to "fb" has incompatible type "Tuple[A, ...]"; expected "Tuple[B, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testSubtypingFixedAndVariableLengthTuples]
@@ -766,8 +765,8 @@ fa(aa)
 fa(ab)
 fa(bb)
 fb(bb)
-fb(ab) # E: Argument 1 to "fb" has incompatible type "Tuple[A, B]"; expected Tuple[B, ...]
-fb(aa) # E: Argument 1 to "fb" has incompatible type "Tuple[A, A]"; expected Tuple[B, ...]
+fb(ab) # E: Argument 1 to "fb" has incompatible type "Tuple[A, B]"; expected "Tuple[B, ...]"
+fb(aa) # E: Argument 1 to "fb" has incompatible type "Tuple[A, A]"; expected "Tuple[B, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testSubtypingTupleIsContainer]
@@ -913,7 +912,7 @@ def f(a: Tuple) -> None: pass
 f(())
 f((1,))
 f(('', ''))
-f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected Tuple[Any, ...]
+f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleSingleton]

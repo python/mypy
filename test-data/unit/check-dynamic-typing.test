@@ -302,7 +302,7 @@ h = None # type: Callable[[A], None]
 
 f()     # E: Too few arguments for "f"
 f(x, x) # E: Too many arguments for "f"
-g = f   # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[], None])
+g = f   # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
 f(a)
 f(x)
 a = f(a)
@@ -319,10 +319,10 @@ g1 = None # type: Callable[[A], None]
 g2 = None # type: Callable[[A, A], None]
 a = None # type: A
 
-g1 = f0 # E: Incompatible types in assignment (expression has type Callable[[], Any], variable has type Callable[[A], None])
-g2 = f0 # E: Incompatible types in assignment (expression has type Callable[[], Any], variable has type Callable[[A, A], None])
-g0 = f2 # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[], None])
-g1 = f2 # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[A], None])
+g1 = f0 # E: Incompatible types in assignment (expression has type "Callable[[], Any]", variable has type "Callable[[A], None]")
+g2 = f0 # E: Incompatible types in assignment (expression has type "Callable[[], Any]", variable has type "Callable[[A, A], None]")
+g0 = f2 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[], None]")
+g1 = f2 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[A], None]")
 
 g0 = g0
 g2 = f2
@@ -373,9 +373,9 @@ class B: pass
 main:10: error: Too many arguments for "f01"
 main:11: error: Too few arguments for "f13"
 main:12: error: Too many arguments for "f13"
-main:13: error: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[A, A], None])
-main:14: error: Incompatible types in assignment (expression has type Callable[[Any, Any, Any], Any], variable has type Callable[[], None])
-main:15: error: Incompatible types in assignment (expression has type Callable[[Any, Any, Any], Any], variable has type Callable[[A, A, A, A], None])
+main:13: error: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[A, A], None]")
+main:14: error: Incompatible types in assignment (expression has type "Callable[[Any, Any, Any], Any]", variable has type "Callable[[], None]")
+main:15: error: Incompatible types in assignment (expression has type "Callable[[Any, Any, Any], Any]", variable has type "Callable[[A, A, A, A], None]")
 
 [case testSkipTypeCheckingWithImplicitSignature]
 
@@ -407,9 +407,9 @@ g1 = None # type: Callable[[A], None]
 g2 = None # type: Callable[[A, A], None]
 a = None # type: A
 
-g0 = a.f # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[], None])
-g2 = a.f # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[A, A], None])
-a = a.f  # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type "A")
+g0 = a.f # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
+g2 = a.f # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[A, A], None]")
+a = a.f  # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "A")
 
 class A:
     def g(self) -> None:
@@ -434,7 +434,7 @@ g0 = None # type: Callable[[], None]
 g1 = None # type: Callable[[A], None]
 a = None # type: A
 
-g0 = a.f # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[], None])
+g0 = a.f # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
 
 g1 = a.f
 a = a.f(a)
@@ -485,7 +485,7 @@ class A:
   def __init__(self, a, b): pass
 [out]
 main:6: error: Too few arguments for "A"
-main:7: error: Incompatible types in assignment (expression has type Type[A], variable has type Callable[[A], A])
+main:7: error: Incompatible types in assignment (expression has type "Type[A]", variable has type "Callable[[A], A]")
 
 [case testUsingImplicitTypeObjectWithIs]
 
@@ -571,7 +571,7 @@ from typing import Any, Callable
 f1 = None # type: Callable[[Any], None]
 f2 = None # type: Callable[[Any, Any], None]
 
-f1 = f2 # E: Incompatible types in assignment (expression has type Callable[[Any, Any], None], variable has type Callable[[Any], None])
+f1 = f2 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], None]", variable has type "Callable[[Any], None]")
 
 
 -- Overriding
@@ -652,6 +652,42 @@ class A(B):
     def f(self, x, y) -> None: # E: Signature of "f" incompatible with supertype "B"
         x()
 [out]
+
+[case testInvalidOverrideWithImplicitSignatureAndClassMethod1]
+class B:
+    @classmethod
+    def f(cls, x, y): pass
+class A(B):
+    @classmethod
+    def f(cls, x, y, z): pass # No error since no annotations
+[builtins fixtures/classmethod.pyi]
+
+[case testInvalidOverrideWithImplicitSignatureAndClassMethod2]
+class B:
+    @classmethod
+    def f(cls, x: int, y): pass
+class A(B):
+    @classmethod
+    def f(cls, x, y, z): pass # No error since no annotations
+[builtins fixtures/classmethod.pyi]
+
+[case testInvalidOverrideWithImplicitSignatureAndStaticMethod1]
+class B:
+    @staticmethod
+    def f(x, y): pass
+class A(B):
+    @staticmethod
+    def f(x, y, z): pass # No error since no annotations
+[builtins fixtures/classmethod.pyi]
+
+[case testInvalidOverrideWithImplicitSignatureAndStaticMethod2]
+class B:
+    @staticmethod
+    def f(self, x: int, y): pass
+class A(B):
+    @staticmethod
+    def f(self, x, y, z): pass # No error since no annotations
+[builtins fixtures/classmethod.pyi]
 
 
 -- Don't complain about too few/many arguments in dynamic functions

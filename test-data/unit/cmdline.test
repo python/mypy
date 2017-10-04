@@ -806,7 +806,7 @@ Baz = NewType('Baz', Any)  # this error does not come from `--disallow-any=expli
 Bar = NewType('Bar', List[Any])
 
 [out]
-m.py:3: error: Argument 2 to NewType(...) must be subclassable (got Any)
+m.py:3: error: Argument 2 to NewType(...) must be subclassable (got "Any")
 m.py:4: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitTypedDictSimple]
@@ -1031,6 +1031,30 @@ m.py:4: error: Missing type parameters for generic type
 m.py:5: error: Missing type parameters for generic type
 m.py:6: error: Missing type parameters for generic type
 m.py:7: error: Missing type parameters for generic type
+
+[case testDisallowSubclassingAny]
+# cmd: mypy m.py y.py
+[file mypy.ini]
+[[mypy]
+disallow_subclassing_any = True
+[[mypy-m]
+disallow_subclassing_any = False
+
+[file m.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldBeFine(x): ...
+
+[file y.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldNotBeFine(x): ...
+[out]
+y.py:5: error: Class cannot subclass 'x' (has type 'Any')
 
 [case testDeterministicSectionOrdering]
 # cmd: mypy a

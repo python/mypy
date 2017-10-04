@@ -177,7 +177,7 @@ class TransformVisitor(NodeVisitor[Node]):
                        self.block(node.defs),
                        node.type_vars,
                        self.expressions(node.base_type_exprs),
-                       node.metaclass)
+                       self.optional_expr(node.metaclass))
         new.fullname = node.fullname
         new.info = node.info
         new.decorators = [self.expr(decorator)
@@ -392,7 +392,9 @@ class TransformVisitor(NodeVisitor[Node]):
         return RevealTypeExpr(self.expr(node.expr))
 
     def visit_super_expr(self, node: SuperExpr) -> SuperExpr:
-        new = SuperExpr(node.name)
+        call = self.expr(node.call)
+        assert isinstance(call, CallExpr)
+        new = SuperExpr(node.name, call)
         new.info = node.info
         return new
 

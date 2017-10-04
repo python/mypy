@@ -1501,6 +1501,99 @@ class MyClass:
 [rechecked]
 [stale]
 
+[case testIncrementalWorksWithBasicProtocols]
+import a
+[file a.py]
+from b import P
+
+x: int
+y: P[int]
+x = y.meth()
+
+class C:
+    def meth(self) -> int:
+        pass
+y = C()
+
+[file a.py.2]
+from b import P
+
+x: str
+y: P[str]
+x = y.meth()
+
+class C:
+    def meth(self) -> str:
+        pass
+y = C()
+[file b.py]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T', covariant=True)
+class P(Protocol[T]):
+    def meth(self) -> T:
+        pass
+
+[case testIncrementalSwitchFromNominalToStructural]
+import a
+[file a.py]
+from b import B, fun
+class C(B):
+    def x(self) -> int: pass
+    def y(self) -> int: pass
+fun(C())
+
+[file b.py]
+from typing import Protocol
+class B:
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[file b.py.2]
+from typing import Protocol
+class B(Protocol):
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[file a.py.3]
+from b import fun
+class C:
+    def x(self) -> int: pass
+    def y(self) -> int: pass
+fun(C())
+[out1]
+[out2]
+[out3]
+
+[case testIncrementalSwitchFromStructuralToNominal]
+import a
+[file a.py]
+from b import fun
+class C:
+    def x(self) -> int: pass
+    def y(self) -> int: pass
+fun(C())
+
+[file b.py]
+from typing import Protocol
+class B(Protocol):
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[file b.py.2]
+from typing import Protocol
+class B:
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[out1]
+[out2]
+tmp/a.py:5: error: Argument 1 to "fun" has incompatible type "C"; expected "B"
+
 [case testIncrementalWorksWithNamedTuple]
 import foo
 
@@ -2840,3 +2933,234 @@ foo.bar(b"test")
 [out]
 [out2]
 tmp/mod.py:7: error: Revealed type is 'builtins.bytes'
+
+[case testIncrementalWithSilentImports]
+# cmd: mypy -m a
+# cmd2: mypy -m b
+# flags: --follow-imports=silent
+# flags2: --follow-imports=silent
+[file a.py]
+import b
+
+b.foo(1, 2)
+
+[file b.py]
+def foo(a: int, b: int) -> str:
+    return a + b
+
+[out1]
+[out2]
+tmp/b.py:2: error: Incompatible return value type (got "int", expected "str")
+
+[case testForwardNamedTupleToUnionWithOtherNamedTUple]
+from typing import NamedTuple, Union
+
+class Person(NamedTuple):
+    name: Union[str, "Pair"]
+
+class Pair(NamedTuple):
+    first: str
+    last: str
+
+Person(name=Pair(first="John", last="Doe"))
+[out]
+
+-- Some crazy selef-referential named tuples, types dicts, and aliases
+-- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed).
+-- For this reason errors are silenced (tests with # type: ignore have equivalents in other files)
+
+[case testForwardTypeAliasInBase1]
+from typing import List
+class C(List['A']):
+    pass
+
+A = List[int]
+x: int = C()[0][0]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testForwardTypeAliasInBase2]
+from typing import List, Generic, TypeVar, NamedTuple
+T = TypeVar('T')
+
+class C(A, B): #type: ignore
+    pass
+class G(Generic[T]): pass
+A = G[C]
+class B(NamedTuple):
+    x: int
+
+C().x
+C()[0]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testSerializeRecursiveAliases1]
+from typing import Type, Callable, Union
+
+A = Union[A, int]  # type: ignore
+B = Callable[[B], int] # type: ignore
+C = Type[C] # type: ignore
+[out]
+
+[case testSerializeRecursiveAliases2]
+from typing import Type, Callable, Union
+
+A = Union[B, int]  # type: ignore
+B = Callable[[C], int] # type: ignore
+C = Type[A] # type: ignore
+[out]
+
+[case testSerializeRecursiveAliases3]
+from typing import Type, Callable, Union, NamedTuple
+
+A = Union[B, int]  # type: ignore
+B = Callable[[C], int] # type: ignore
+class C(NamedTuple): # type: ignore
+    x: A
+[out]
+
+[case testGenericTypeAliasesForwardAnyIncremental1]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+IntNode = Node[int, S]
+AnyNode = Node[S, T]
+
+class Node(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        self.x = x
+        self.y = y
+
+def output() -> IntNode[str]:
+    return Node(1, 'x')
+x = output() # type: IntNode
+
+y = None # type: IntNode
+y.x = 1
+y.y = 1
+y.y = 'x'
+
+z = Node(1, 'x') # type: AnyNode
+[out]
+
+[case testGenericTypeAliasesForwardAnyIncremental2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+
+class Node(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        self.x = x
+        self.y = y
+
+def output() -> IntNode[str]:
+    return Node(1, 'x')
+x = output() # type: IntNode
+
+y = None # type: IntNode
+y.x = 1
+y.y = 1
+y.y = 'x'
+
+z = Node(1, 'x') # type: AnyNode
+IntNode = Node[int, S]
+AnyNode = Node[S, T]
+[out]
+
+[case testNamedTupleForwardAsUpperBoundSerialization]
+from typing import NamedTuple, TypeVar, Generic
+T = TypeVar('T', bound='M')
+class G(Generic[T]):
+    x: T
+
+yg: G[M]
+z: int = G[M]().x.x
+z = G[M]().x[0]
+M = NamedTuple('M', [('x', int)])
+[out]
+
+[case testSelfRefNTIncremental1]
+from typing import Tuple, NamedTuple
+
+Node = NamedTuple('Node', [ # type: ignore
+        ('name', str),
+        ('children', Tuple['Node', ...]),
+    ])
+n: Node
+[builtins fixtures/tuple.pyi]
+
+[case testSelfRefNTIncremental2]
+from typing import Tuple, NamedTuple
+
+A = NamedTuple('A', [ # type: ignore
+        ('x', str),
+        ('y', Tuple['B', ...]),
+    ])
+class B(NamedTuple): # type: ignore
+    x: A
+    y: int
+
+n: A
+[builtins fixtures/tuple.pyi]
+
+[case testSelfRefNTIncremental3]
+from typing import NamedTuple, Tuple
+
+class B(NamedTuple): # type: ignore
+    x: Tuple[A, int]
+    y: int
+A = NamedTuple('A', [ # type: ignore
+        ('x', str),
+        ('y', 'B'),
+    ])
+n: B
+m: A
+lst = [m, n]
+[builtins fixtures/tuple.pyi]
+
+[case testSelfRefNTIncremental4]
+from typing import NamedTuple
+
+class B(NamedTuple): # type: ignore
+    x: A
+    y: int
+class A(NamedTuple): # type: ignore
+    x: str
+    y: B
+
+n: A
+[builtins fixtures/tuple.pyi]
+
+[case testSelfRefNTIncremental5]
+from typing import NamedTuple
+
+B = NamedTuple('B', [ # type: ignore
+        ('x', A),
+        ('y', int),
+    ])
+A = NamedTuple('A', [ # type: ignore
+        ('x', str),
+        ('y', 'B'),
+    ])
+n: A
+def f(m: B) -> None: pass
+[builtins fixtures/tuple.pyi]
+
+[case testCrashWithPartialGlobalAndCycle]
+import bar
+
+[file foo.py]
+import bar
+my_global_dict = {}  # type: ignore
+def external_func_0() -> None:
+    global my_global_dict
+    bar.external_list
+    my_global_dict[12] = 0
+
+[file bar.py]
+import foo
+
+external_list = [0]
+
+[builtins fixtures/dict.pyi]

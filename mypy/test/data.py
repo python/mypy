@@ -38,10 +38,10 @@ def parse_test_cases(
     if not include_path:
         include_path = os.path.dirname(path)
     with open(path, encoding='utf-8') as f:
-        l = f.readlines()
-    for i in range(len(l)):
-        l[i] = l[i].rstrip('\n')
-    p = parse_test_data(l, path)
+        lst = f.readlines()
+    for i in range(len(lst)):
+        lst[i] = lst[i].rstrip('\n')
+    p = parse_test_data(lst, path)
     out = []  # type: List[DataDrivenTestCase]
 
     # Process the parsed items. Each item has a header of form [id args],

@@ -325,7 +325,7 @@ main:17: error: Enum() with dict literal requires string literals
 main:18: error: Unexpected arguments to Enum()
 main:19: error: Unexpected arguments to Enum()
 main:20: error: Unexpected arguments to Enum()
-main:22: error: Type[W] has no attribute "c"
+main:22: error: "Type[W]" has no attribute "c"
 
 [case testFunctionalEnumFlag]
 from enum import Flag, IntFlag
@@ -359,6 +359,24 @@ y = B.E.a
 x = y
 [out]
 main:8: error: Incompatible types in assignment (expression has type "__main__.B.E", variable has type "__main__.A.E")
+
+[case testEnumWorkWithForward]
+from enum import Enum
+a: E = E.x
+class E(Enum):
+    x = 1
+    y = 2
+[out]
+
+[case testEnumWorkWithForward2]
+from enum import Enum
+b: F
+F = Enum('F', {'x': 1, 'y': 2})
+
+def fn(x: F) -> None:
+    pass
+fn(b)
+[out]
 
 [case testFunctionalEnum_python2]
 from enum import Enum

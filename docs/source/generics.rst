@@ -1,6 +1,8 @@
 Generics
 ========
 
+.. _generic-classes:
+
 Defining generic classes
 ************************
 
@@ -326,9 +328,9 @@ Let us illustrate this by few simple examples:
      def salaries(staff: List[Manager],
                   accountant: Callable[[Manager], int]) -> List[int]: ...
 
-  this function needs a callable that can calculate a salary for managers, and
+  This function needs a callable that can calculate a salary for managers, and
   if we give it a callable that can calculate a salary for an arbitrary
-  employee, then it is still safe.
+  employee, it's still safe.
 * ``List`` is an invariant generic type. Naively, one would think
   that it is covariant, but let us consider this code:
 
@@ -336,6 +338,7 @@ Let us illustrate this by few simple examples:
 
      class Shape:
          pass
+
      class Circle(Shape):
          def rotate(self):
              ...
@@ -347,7 +350,7 @@ Let us illustrate this by few simple examples:
      add_one(my_things)     # This may appear safe, but...
      my_things[0].rotate()  # ...this will fail
 
-  Another example of invariant type is ``Dict``, most mutable containers
+  Another example of invariant type is ``Dict``. Most mutable containers
   are invariant.
 
 By default, mypy assumes that all user-defined generics are invariant.
@@ -358,15 +361,18 @@ type variables defined with special keyword arguments ``covariant`` or
 .. code-block:: python
 
    from typing import Generic, TypeVar
+
    T_co = TypeVar('T_co', covariant=True)
 
    class Box(Generic[T_co]):  # this type is declared covariant
        def __init__(self, content: T_co) -> None:
            self._content = content
+
        def get_content(self) -> T_co:
            return self._content
 
    def look_into(box: Box[Animal]): ...
+
    my_box = Box(Cat())
    look_into(my_box)  # OK, but mypy would complain here for an invariant type
 
@@ -539,3 +545,94 @@ Also note that the ``wrapper()`` function is not type-checked. Wrapper
 functions are typically small enough that this is not a big
 problem. This is also the reason for the ``cast()`` call in the
 ``return`` statement in ``my_decorator()``. See :ref:`casts`.
+
+Generic protocols
+*****************
+
+Mypy supports generic protocols (see also :ref:`protocol-types`). Generic
+protocols mostly follow the normal rules for generic classes. Example:
+
+.. code-block:: python
+
+   from typing import TypeVar
+   from typing_extensions import Protocol
+
+   T = TypeVar('T')
+
+   class Box(Protocol[T]):
+       content: T
+
+   def do_stuff(one: Box[str], other: Box[bytes]) -> None:
+       ...
+
+   class StringWrapper:
+       def __init__(self, content: str) -> None:
+           self.content = content
+
+   class BytesWrapper:
+       def __init__(self, content: bytes) -> None:
+           self.content = content
+
+   do_stuff(StringWrapper('one'), BytesWrapper(b'other'))  # OK
+
+   x: Box[float] = ...
+   y: Box[int] = ...
+   x = y  # Error -- Box is invariant
+
+The main difference between generic protocols and ordinary generic
+classes is that mypy checks that the declared variances of generic
+type variables in a protocol match how they are used in the protocol
+definition.  The protocol in this example is rejected, since the type
+variable ``T`` is used covariantly as a return type, but the type
+variable is invariant:
+
+.. code-block:: python
+
+   from typing import TypeVar
+   from typing_extensions import Protocol
+
+   T = TypeVar('T')
+
+   class ReadOnlyBox(Protocol[T]):  # Error: covariant type variable expected
+       def content(self) -> T: ...
+
+This example correctly uses a covariant type variable:
+
+.. code-block:: python
+
+   from typing import TypeVar
+   from typing_extensions import Protocol
+
+   T_co = TypeVar('T_co', covariant=True)
+
+   class ReadOnlyBox(Protocol[T_co]):  # OK
+       def content(self) -> T_co: ...
+
+   ax: ReadOnlyBox[float] = ...
+   ay: ReadOnlyBox[int] = ...
+   ax = ay  # OK -- ReadOnlyBox is covariant
+
+See :ref:`variance-of-generics` for more about variance.
+
+Generic protocols can also be recursive. Example:
+
+.. code-block:: python
+
+   T = TypeVar('T')
+
+   class Linked(Protocol[T]):
+       val: T
+       def next(self) -> 'Linked[T]': ...
+
+   class L:
+       val: int
+
+       ...  # details omitted
+
+       def next(self) -> 'L':
+           ...  # details omitted
+
+   def last(seq: Linked[T]) -> T:
+       ...  # implementation omitted
+
+   result = last(L())  # Inferred type of 'result' is 'int'

@@ -3,7 +3,7 @@ import fnmatch
 import pprint
 import sys
 
-from typing import Mapping, MutableMapping, Optional, Tuple, List, Pattern, Dict
+from typing import Dict, List, Mapping, MutableMapping, Optional, Pattern, Set, Tuple
 
 from mypy import defaults
 
@@ -21,6 +21,7 @@ class Options:
         "ignore_missing_imports",
         "follow_imports",
         "disallow_any",
+        "disallow_subclassing_any",
         "disallow_untyped_calls",
         "disallow_untyped_defs",
         "check_untyped_defs",
@@ -33,6 +34,7 @@ class Options:
         "strict_boolean",
         "no_implicit_optional",
         "strict_optional",
+        "disallow_untyped_decorators",
     }
 
     OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS | {"quick_and_dirty", "platform"})
@@ -63,6 +65,9 @@ class Options:
         # Type check unannotated functions
         self.check_untyped_defs = False
 
+        # Disallow decorating typed functions with untyped decorators
+        self.disallow_untyped_decorators = False
+
         # Disallow subclassing values of type 'Any'
         self.disallow_subclassing_any = False
 
@@ -81,6 +86,9 @@ class Options:
 
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
+
+        # Warn about unused '[mypy-<pattern>] config sections
+        self.warn_unused_configs = False
 
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
@@ -126,6 +134,8 @@ class Options:
         # Per-module options (raw)
         pm_opts = OrderedDict()  # type: OrderedDict[Pattern[str], Dict[str, object]]
         self.per_module_options = pm_opts
+        # Map pattern back to glob
+        self.unused_configs = OrderedDict()  # type: OrderedDict[Pattern[str], str]
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
@@ -162,6 +172,8 @@ class Options:
         updates = {}
         for pattern in self.per_module_options:
             if self.module_matches_pattern(module, pattern):
+                if pattern in self.unused_configs:
+                    del self.unused_configs[pattern]
                 updates.update(self.per_module_options[pattern])
         if not updates:
             return self
