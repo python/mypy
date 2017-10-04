@@ -226,10 +226,11 @@ class DependencyVisitor(TraverserVisitor):
         typ = self.type_map.get(e)
         if typ is None:
             return
-        # TODO: What if a tuple subclass has overridden the method?
         # TODO: TypedDict
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
+        if isinstance(typ, TupleType):
+            typ = typ.fallback
         if isinstance(typ, Instance):
             trigger = make_trigger(typ.type.fullname() + '.' +  method)
             self.add_dependency(trigger)

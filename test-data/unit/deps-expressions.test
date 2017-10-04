@@ -301,3 +301,24 @@ def f() -> int:
 <m.C.__ge__> -> m.f
 <m.C.__init__> -> m.f
 <m.C> -> m.C, m.f
+
+[case testOperatorWithTupleOperand]
+from typing import Tuple
+
+class C(Tuple[int, str]):
+    def __and__(self, x: D) -> int: pass
+    def __neg__(self) -> int: pass
+class D: pass
+
+def f() -> None:
+    c: C
+    d: D
+    x = c & d
+    y = -c
+[builtins fixtures/tuple.pyi]
+[out]
+<m.C.__and__> -> m.f
+<m.C.__neg__> -> m.f
+<m.C> -> m.C, m.f
+<m.D.__rand__> -> m.f
+<m.D> -> <m.C.__and__>, m.C.__and__, m.D, m.f
