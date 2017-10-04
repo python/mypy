@@ -5,7 +5,7 @@ from typing import Dict, List, Set, Optional
 from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
-    ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, TypeInfo, Var, LDEF
+    ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, TypeInfo, Var, LDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -116,9 +116,17 @@ class DependencyVisitor(TraverserVisitor):
             # TODO: implement
         else:
             super().visit_assignment_stmt(o)
+            for lvalue in o.lvalues:
+                self.process_lvalue(lvalue)
             if o.type:
                 for trigger in get_type_dependencies(o.type):
                     self.add_dependency(trigger)
+
+    def process_lvalue(self, lvalue: Expression) -> None:
+        if isinstance(lvalue, IndexExpr):
+            self.add_indexing_method_dependency(lvalue, lvalue=True)
+        # TODO: tuple and list lvalue
+        # TODO: star lvalue
 
     # Expressions
 
@@ -169,6 +177,23 @@ class DependencyVisitor(TraverserVisitor):
         super().visit_type_application(e)
         for typ in e.types:
             self.add_type_dependencies(typ)
+
+    def visit_index_expr(self, e: IndexExpr) -> None:
+        super().visit_index_expr(e)
+        self.add_indexing_method_dependency(e, lvalue=False)
+
+    def add_indexing_method_dependency(self, e: IndexExpr, lvalue: bool) -> None:
+        typ = self.type_map.get(e.base)
+        if typ is None:
+            return
+        # TODO: What if a tuple subclass has overridden __getitem__?
+        # TODO: TypedDict
+        if isinstance(typ, TypeVarType):
+            typ = typ.upper_bound
+        if isinstance(typ, Instance):
+            method = '__setitem__' if lvalue else '__getitem__'
+            trigger = make_trigger(typ.type.fullname() + '.' +  method)
+            self.add_dependency(trigger)
 
     # Helpers
 

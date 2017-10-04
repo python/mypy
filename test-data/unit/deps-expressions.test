@@ -154,3 +154,52 @@ def g() -> None:
 <m.S> -> m.A
 <m.T> -> m.A
 <m.f> -> m.g
+
+[case testIndexExpr]
+class A:
+    def __getitem__(self, x: int) -> int: pass
+
+def f1() -> A: pass
+def f2() -> int: pass
+
+def g(a: A) -> int:
+    return f1()[f2()]
+[out]
+<m.A.__getitem__> -> m.g
+<m.A> -> <m.f1>, <m.g>, m.A, m.f1, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testIndexExpr]
+class A:
+    def __getitem__(self, x: int) -> int: pass
+
+def f1() -> A: pass
+def f2() -> int: pass
+
+def g(a: A) -> int:
+    return f1()[f2()]
+[out]
+<m.A.__getitem__> -> m.g
+<m.A> -> <m.f1>, <m.g>, m.A, m.f1, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testIndexExprLvalue]
+class A:
+    def __setitem__(self, x: int, y: int) -> None: pass
+
+def f1() -> A: pass
+def f2() -> int: pass
+def f3() -> int: pass
+
+def g(a: A) -> None:
+    f1()[f2()] = f3()
+[out]
+-- __getitem__ dependency is redundant but harmless
+<m.A.__getitem__> -> m.g
+<m.A.__setitem__> -> m.g
+<m.A> -> <m.f1>, <m.g>, m.A, m.f1, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
