@@ -4025,3 +4025,14 @@ x: Type[C]
 reveal_type(x.m) # E: Revealed type is 'def (x: builtins.int) -> builtins.int'
 reveal_type(x.whatever) # E: Revealed type is 'Any'
 [out]
+
+[case testMetaclassMemberAccessViaType3]
+from typing import Any, Type, TypeVar
+T = TypeVar('T')
+class C(Any):
+    def bar(self: T) -> Type[T]: pass
+    def foo(self) -> None:
+        reveal_type(self.bar()) # E: Revealed type is 'Type[__main__.C*]'
+        reveal_type(self.bar().__name__) # E: Revealed type is 'builtins.str'
+[builtins fixtures/type.pyi]
+[out]
