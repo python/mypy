@@ -6,7 +6,8 @@ from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
-    ComparisonExpr, TypeInfo, Var, LDEF, op_methods, reverse_op_methods
+    ComparisonExpr, GeneratorExpr, DictionaryComprehension, TypeInfo, Var, LDEF, op_methods,
+    reverse_op_methods
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -235,6 +236,16 @@ class DependencyVisitor(TraverserVisitor):
             for item in typ.items:
                 self.add_operator_method_dependency_for_type(item, method)
 
+    def visit_generator_expr(self, e: GeneratorExpr) -> None:
+        super().visit_generator_expr(e)
+        for seq in e.sequences:
+            self.add_iter_dependency(seq)
+
+    def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> None:
+        super().visit_dictionary_comprehension(e)
+        for seq in e.sequences:
+            self.add_iter_dependency(seq)
+
     # Helpers
 
     def add_dependency(self, trigger: str, target: Optional[str] = None) -> None:
@@ -270,6 +281,11 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(typ, UnionType):
             for item in typ.items:
                 self.add_attribute_dependency(item, name)
+
+    def add_iter_dependency(self, node: Expression) -> None:
+        typ = self.type_map.get(node)
+        if typ:
+            self.add_attribute_dependency(typ, '__iter__')
 
     def push(self, component: str) -> str:
         target = '%s.%s' % (self.current(), component)
