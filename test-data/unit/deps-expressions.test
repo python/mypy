@@ -222,3 +222,82 @@ def g2() -> int:
 <m.A> -> <m.f1>, <m.f2>, m.A, m.f1, m.f2
 <m.f1> -> m.g1
 <m.f2> -> m.g2
+
+[case testOpExpr]
+class A:
+    def __add__(self, x: 'B') -> int: pass
+class B: pass
+
+def f() -> int:
+    a: A
+    b: B
+    return a + b
+[out]
+<m.A.__add__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.__radd__> -> m.f
+<m.B> -> <m.A.__add__>, m.A.__add__, m.B, m.f
+
+[case testComparisonExpr]
+class A:
+    def __lt__(self, x: 'B') -> int: pass
+class B: pass
+
+def f() -> int:
+    return A() < B()
+[out]
+<m.A.__init__> -> m.f
+<m.A.__lt__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.__gt__> -> m.f
+<m.B.__init__> -> m.f
+<m.B> -> <m.A.__lt__>, m.A.__lt__, m.B, m.f
+
+[case testIsOp-skip]
+class A: pass
+class B: pass
+
+def f() -> bool:
+    return A() is B()
+[builtins fixtures/bool.pyi]
+[out]
+-- fails because of https://github.com/python/mypy/issues/4055
+<m.A.__init__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.__init__> -> m.f
+<m.B> -> m.B, m.f
+
+[case testInOp]
+class A:
+    def __contains__(self, x: B) -> int: pass
+class B: pass
+
+def f() -> int:
+    return B() in A()
+[out]
+<m.A.__contains__> -> m.f
+<m.A.__init__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.__init__> -> m.f
+<m.B> -> <m.A.__contains__>, m.A.__contains__, m.B, m.f
+
+[case testComparisonExprWithMultipleOperands]
+class A:
+    def __lt__(self, x: 'B') -> int: pass
+class B: pass
+class C:
+    def __ge__(self, x: 'B') -> int: pass
+
+def f() -> int:
+    return A() < B() <= C()
+[out]
+<m.A.__init__> -> m.f
+<m.A.__lt__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.__gt__> -> m.f
+<m.B.__init__> -> m.f
+<m.B.__le__> -> m.f
+<m.B> -> <m.A.__lt__>, <m.C.__ge__>, m.A.__lt__, m.B, m.C.__ge__, m.f
+<m.C.__ge__> -> m.f
+<m.C.__init__> -> m.f
+<m.C> -> m.C, m.f

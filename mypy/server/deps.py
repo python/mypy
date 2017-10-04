@@ -5,8 +5,8 @@ from typing import Dict, List, Set, Optional
 from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
-    ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, TypeInfo,
-    Var, LDEF
+    ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
+    ComparisonExpr, TypeInfo, Var, LDEF, op_methods, reverse_op_methods
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -164,8 +164,10 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(make_trigger(member))
 
     def visit_call_expr(self, e: CallExpr) -> None:
+        print('call')
         super().visit_call_expr(e)
         callee_type = self.type_map.get(e.callee)
+        print(callee_type)
         if isinstance(callee_type, FunctionLike) and callee_type.is_type_obj():
             class_name = callee_type.type_object().fullname()
             self.add_dependency(make_trigger(class_name + '.__init__'))
@@ -196,6 +198,29 @@ class DependencyVisitor(TraverserVisitor):
         else:
             return
         self.add_operator_method_dependency(e.expr, method)
+
+    def visit_op_expr(self, e: OpExpr) -> None:
+        super().visit_op_expr(e)
+        self.process_binary_op(e.op, e.left, e.right)
+
+    def visit_comparison_expr(self, e: ComparisonExpr) -> None:
+        print(e)
+        super().visit_comparison_expr(e)
+        for i, op in enumerate(e.operators):
+            left = e.operands[i]
+            right = e.operands[i + 1]
+            self.process_binary_op(op, left, right)
+
+    def process_binary_op(self, op: str, left: Expression, right: Expression) -> None:
+        method = op_methods.get(op)
+        if method:
+            if op != 'in':
+                self.add_operator_method_dependency(left, method)
+            else:
+                self.add_operator_method_dependency(right, method)
+            rev_method = reverse_op_methods.get(method)
+            if rev_method:
+                self.add_operator_method_dependency(right, rev_method)
 
     def add_operator_method_dependency(self, e: Expression, method: str) -> None:
         typ = self.type_map.get(e)
