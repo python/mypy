@@ -36,15 +36,18 @@ class GetDependenciesSuite(DataSuite):
         src = '\n'.join(testcase.input)
         messages, files, type_map = self.build(src)
         a = messages
-        assert files is not None and type_map is not None, ('cases where CompileError'
-                                                            ' occurred should not be run')
-        deps = get_dependencies('__main__', files['__main__'], type_map)
+        if files is None or type_map is None:
+            # Likely syntax error.
+            if not a:
+                a = ['Unknown compile error']
+        else:
+            deps = get_dependencies('__main__', files['__main__'], type_map)
 
-        for source, targets in sorted(deps.items()):
-            line = '%s -> %s' % (source, ', '.join(sorted(targets)))
-            # Clean up output a bit
-            line = line.replace('__main__', 'm')
-            a.append(line)
+            for source, targets in sorted(deps.items()):
+                line = '%s -> %s' % (source, ', '.join(sorted(targets)))
+                # Clean up output a bit
+                line = line.replace('__main__', 'm')
+                a.append(line)
 
         assert_string_arrays_equal(
             testcase.output, a,
