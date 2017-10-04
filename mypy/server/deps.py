@@ -6,8 +6,8 @@ from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
-    ComparisonExpr, GeneratorExpr, DictionaryComprehension, TypeInfo, Var, LDEF, op_methods,
-    reverse_op_methods
+    ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, TypeInfo, Var, LDEF,
+    op_methods, reverse_op_methods
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -245,6 +245,10 @@ class DependencyVisitor(TraverserVisitor):
         super().visit_dictionary_comprehension(e)
         for seq in e.sequences:
             self.add_iter_dependency(seq)
+
+    def visit_star_expr(self, e: StarExpr) -> None:
+        super().visit_star_expr(e)
+        self.add_iter_dependency(e.expr)
 
     # Helpers
 

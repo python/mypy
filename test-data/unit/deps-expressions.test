@@ -123,13 +123,18 @@ async def g() -> None:
 <m.f> -> m.g
 
 [case testStarExpr]
-from typing import List
-def f() -> List[int]: pass
+from typing import Iterator
+
+class A:
+    def __iter__(self) -> Iterator[int]: pass
+
 def g() -> None:
-    a = [*f()]
+    a = [*A()]
 [builtins fixtures/list.pyi]
 [out]
-<m.f> -> m.g
+<m.A.__init__> -> m.g
+<m.A.__iter__> -> m.g
+<m.A> -> m.A, m.g
 
 [case testCast]
 from typing import cast
