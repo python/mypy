@@ -53,7 +53,7 @@ from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
-from mypy.join import join_types
+from mypy.join import join_types, join_type_list
 from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
@@ -1604,12 +1604,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_multi_assignment(self, lvalues: List[Lvalue],
                                rvalue: Expression,
                                context: Context,
-                               infer_lvalue_type: bool = True) -> None:
+                               infer_lvalue_type: bool = True,
+                               rv_type: Optional[Type] = None,
+                               undefined_rvalue: bool = False) -> None:
         """Check the assignment of one rvalue to a number of lvalues."""
 
         # Infer the type of an ordinary rvalue expression.
-        rvalue_type = self.expr_checker.accept(rvalue)  # TODO maybe elsewhere; redundant
-        undefined_rvalue = False
+        # TODO: maybe elsewhere; redundant.
+        rvalue_type = rv_type or self.expr_checker.accept(rvalue)
 
         if isinstance(rvalue_type, UnionType):
             # If this is an Optional type in non-strict Optional code, unwrap it.
@@ -1628,10 +1630,36 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_multi_assignment_from_tuple(lvalues, rvalue, rvalue_type,
                                                    context, undefined_rvalue, infer_lvalue_type)
         elif isinstance(rvalue_type, UnionType):
-            self.check_multi_assignment_from_union(lvalues, rvalue, context, infer_lvalue_type)
+            self.check_multi_assignment_from_union(lvalues, rvalue, rvalue_type, context,
+                                                   infer_lvalue_type)
         else:
             self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
                                                       context, infer_lvalue_type)
+
+    def check_multi_assignment_from_union(self, lvalues: List[Expression], rvalue: Expression,
+                                          rvalue_type: UnionType, context: Context,
+                                          infer_lvalue_type: bool) -> None:
+        transposed = tuple([] for _ in lvalues)  # type: Tuple[List[Type], ...]
+        with self.binder.accumulate_type_assignments() as assignments:
+            for item in rvalue_type.items:
+                self.check_multi_assignment(lvalues, rvalue, context,
+                                            infer_lvalue_type=infer_lvalue_type,
+                                            rv_type=item, undefined_rvalue=True)
+                for t, lv in zip(transposed, lvalues):
+                    t.append(self.type_map.get(lv, AnyType(TypeOfAny.special_form)))
+        union_types = tuple(join_type_list(col) for col in transposed)
+        for expr, items in assignments.items():
+            types, declared_types = zip(*items)
+            self.binder.assign_type(expr,
+                                    join_type_list(types),
+                                    join_type_list(declared_types),
+                                    False)
+        for union, lv in zip(union_types, lvalues):
+            _1, _2, inferred = self.check_lvalue(lv)
+            if inferred:
+                self.set_inferred_type(inferred, lv, union)
+            else:
+                self.store_type(lv, union)
 
     def check_multi_assignment_from_tuple(self, lvalues: List[Lvalue], rvalue: Expression,
                                           rvalue_type: TupleType, context: Context,
@@ -1820,7 +1848,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             # Make the type more general (strip away function names etc.).
             init_type = strip_type(init_type)
-
             self.set_inferred_type(name, lvalue, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
@@ -2698,7 +2725,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         iterable = map_instance_to_supertype(
             instance,
             self.lookup_typeinfo('typing.Iterable'))
-        return iterable.args[0]
+        item_type = iterable.args[0]
+        if not isinstance(item_type, AnyType):
+            return item_type
+        # Try also structural typing
+        iter_type = find_member('__iter__', instance, instance)
+        if (iter_type and isinstance(iter_type, CallableType) and
+                isinstance(iter_type.ret_type, Instance)):
+            iterator = map_instance_to_supertype(iter_type.ret_type,
+                                                 self.lookup_typeinfo('typing.Iterator'))
+            item_type = iterator.args[0]
+        return item_type
 
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type('builtins.function'))
