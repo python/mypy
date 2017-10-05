@@ -6,8 +6,8 @@ from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
-    ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, TypeInfo, Var, LDEF,
-    op_methods, reverse_op_methods
+    ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, TypeInfo, Var,
+    LDEF, op_methods, reverse_op_methods
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -135,6 +135,11 @@ class DependencyVisitor(TraverserVisitor):
         # TODO: tuple and list lvalue
         # TODO: star lvalue
 
+    def visit_print_stmt(self, o: PrintStmt) -> None:
+        super().visit_print_stmt(o)
+        if o.target:
+            self.add_attribute_dependency_for_expr(o.target, 'write')
+
     # Expressions
 
     # TODO
@@ -163,10 +168,8 @@ class DependencyVisitor(TraverserVisitor):
             self.add_attribute_dependency(typ, e.name)
 
     def visit_call_expr(self, e: CallExpr) -> None:
-        print('call')
         super().visit_call_expr(e)
         callee_type = self.type_map.get(e.callee)
-        print(callee_type)
         if isinstance(callee_type, FunctionLike) and callee_type.is_type_obj():
             class_name = callee_type.type_object().fullname()
             self.add_dependency(make_trigger(class_name + '.__init__'))
@@ -292,6 +295,11 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(typ, UnionType):
             for item in typ.items:
                 self.add_attribute_dependency(item, name)
+
+    def add_attribute_dependency_for_expr(self, e: Expression, name: str) -> None:
+        typ = self.type_map.get(e)
+        if typ is not None:
+            self.add_attribute_dependency(typ, name)
 
     def add_iter_dependency(self, node: Expression) -> None:
         typ = self.type_map.get(node)
