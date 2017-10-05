@@ -1,0 +1,79 @@
+-- Test cases for generating fine-grained dependencies for statements.
+--
+-- The dependencies are used for fined-grained incremental checking.
+
+[case testIfStmt]
+def f1() -> int: pass
+def f2() -> None: pass
+def f3() -> int: pass
+def f4() -> None: pass
+def f5() -> None: pass
+
+def g() -> None:
+    if f1():
+        f2()
+    elif f3():
+        f4()
+    else:
+        f5()
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+<m.f4> -> m.g
+<m.f5> -> m.g
+
+[case testWhileStmt]
+def f1() -> int: pass
+def f2() -> None: pass
+def f3() -> None: pass
+
+def g() -> None:
+    while f1():
+        f2()
+    else:
+        f3()
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testAssertStmt]
+def f1() -> int: pass
+def f2() -> str: pass
+def f3() -> int: pass
+
+def g() -> None:
+    assert f1(), f2()
+    assert f3()
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testRaiseStmt]
+def f1() -> BaseException: pass
+def f2() -> BaseException: pass
+
+def g1() -> None:
+    raise f1()
+
+def g2() -> None:
+    raise f1() from f2()
+[builtins fixtures/exception.pyi]
+[out]
+<m.f1> -> m.g1, m.g2
+<m.f2> -> m.g2
+
+[case testTryFinallyStmt]
+def f1() -> None: pass
+def f2() -> None: pass
+
+def g() -> None:
+    try:
+        f1()
+    finally:
+        f2()
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
