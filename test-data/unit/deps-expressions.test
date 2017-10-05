@@ -383,3 +383,47 @@ def g(a, b): # type: (A, B) -> None
 <m.B.__eq__> -> m.f
 <m.B.__gt__> -> m.g
 <m.B> -> <m.A.__cmp__>, <m.f>, <m.g>, m.A.__cmp__, m.B, m.f, m.g
+
+[case testSliceExpr]
+class A:
+    def __getitem__(self, x) -> None: pass
+
+def f1() -> int: pass
+def f2() -> int: pass
+def f3() -> int: pass
+def f4() -> int: pass
+def f5() -> int: pass
+
+def f() -> None:
+    a: A
+    a[f1():f2():f3()]
+    a[f4():]
+    a[::f5()]
+[builtins fixtures/slice.pyi]
+[out]
+<m.A.__getitem__> -> m.f
+<m.A> -> m.A, m.f
+<m.f1> -> m.f
+<m.f2> -> m.f
+<m.f3> -> m.f
+<m.f4> -> m.f
+<m.f5> -> m.f
+
+[case testRevealTypeExpr]
+def f1() -> int: pass
+def f() -> None:
+    reveal_type(f1())  # type: ignore
+[out]
+<m.f1> -> m.f
+
+[case testLambdaExpr]
+from typing import Callable
+
+def f1(c: Callable[[int], str]) -> None: pass
+def f2() -> str: pass
+
+def g() -> None:
+    f1(lambda x: f2())
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
