@@ -150,7 +150,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             result = function_type(node, self.named_type('builtins.function'))
-        elif isinstance(node, OverloadedFuncDef):
+        elif isinstance(node, OverloadedFuncDef) and node.type is not None:
+            # node.type is None when there are multiple definitions of a function
+            # and it's decorated by somthing that is not typing.overload
             result = node.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.

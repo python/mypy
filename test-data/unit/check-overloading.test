@@ -1,4 +1,26 @@
 -- Test cases for function overloading
+[case testOverloadNotImportedNoCrash]
+@overload
+def f(a): pass
+@overload
+def f(a): pass
+def f(a): pass
+f(0)
+
+@overload  # E: Name 'overload' is not defined
+def g(a:int): pass
+def g(a): pass  # E: Name 'g' already defined
+g(0)
+
+@something  # E: Name 'something' is not defined
+def r(a:int): pass
+def r(a): pass  # E: Name 'r' already defined
+r(0)
+[out]
+main:1: error: Name 'overload' is not defined
+main:3: error: Name 'f' already defined
+main:3: error: Name 'overload' is not defined
+main:5: error: Name 'f' already defined
 
 [case testTypeCheckOverloadWithImplementation]
 from typing import overload, Any
