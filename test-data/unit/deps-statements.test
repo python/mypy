@@ -196,3 +196,89 @@ def g() -> None:
 <m.B> -> m.B, m.g
 <m.f1> -> m.g
 <m.f2> -> m.g
+
+[case testWithStmt]
+from typing import Any
+class A:
+    def __enter__(self) -> 'B': pass
+    def __exit__(self, a, b, c) -> None: pass
+
+class B:
+    def f(self) -> None: pass
+
+def g() -> None:
+    a: A
+    with a as x:
+        x.f()
+[out]
+<m.A.__enter__> -> m.g
+<m.A.__exit__> -> m.g
+<m.A> -> m.A, m.g
+<m.B.f> -> m.g
+<m.B> -> <m.A.__enter__>, m.A.__enter__, m.B
+
+[case testWithStmt2]
+from typing import Any
+class A:
+    def __enter__(self) -> 'C': pass
+    def __exit__(self, a, b, c) -> None: pass
+class B:
+    def __enter__(self) -> 'D': pass
+    def __exit__(self, a, b, c) -> None: pass
+
+class C: pass
+class D: pass
+
+def g() -> None:
+    a: A
+    b: B
+    with a as x, b as y:
+        pass
+[out]
+<m.A.__enter__> -> m.g
+<m.A.__exit__> -> m.g
+<m.A> -> m.A, m.g
+<m.B.__enter__> -> m.g
+<m.B.__exit__> -> m.g
+<m.B> -> m.B, m.g
+<m.C> -> <m.A.__enter__>, m.A.__enter__, m.C
+<m.D> -> <m.B.__enter__>, m.B.__enter__, m.D
+
+[case testWithStmtAnnotation]
+from typing import Any
+class A:
+    def __enter__(self) -> Any: pass
+    def __exit__(self, a, b, c) -> None: pass
+
+class B: pass
+
+def f(b: B) -> None: pass
+
+def g() -> None:
+    a: A
+    with a as x: # type: B
+        f(x)
+[out]
+<m.A.__enter__> -> m.g
+<m.A.__exit__> -> m.g
+<m.A> -> m.A, m.g
+<m.B> -> <m.f>, m.B, m.f, m.g
+<m.f> -> m.g
+
+[case testForStmtAnnotation]
+class A:
+    def __iter__(self): pass
+
+class B:
+    def f(self) -> None: pass
+
+def g() -> None:
+    a: A
+    for x in a: # type: B
+        x.f()
+[builtins fixtures/list.pyi]
+[out]
+<m.A.__iter__> -> m.g
+<m.A> -> m.A, m.g
+<m.B.f> -> m.g
+<m.B> -> m.B, m.g
