@@ -127,3 +127,72 @@ def g3(): # type: () -> None
 <m.f1> -> m.g1, m.g2, m.g3
 <m.f2> -> m.g2, m.g3
 <m.f3> -> m.g3
+
+[case testForStmt]
+from typing import Iterator
+
+class A:
+    def __iter__(self) -> Iterator[int]: pass
+
+def f1() -> None: pass
+def f2() -> None: pass
+
+def g() -> None:
+    a: A
+    for x in a:
+        f1()
+    else:
+        f2()
+[builtins fixtures/list.pyi]
+[out]
+<m.A.__iter__> -> m.g
+<m.A> -> m.A, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testTryExceptStmt]
+class A(BaseException): pass
+class B(BaseException):
+    def f(self) -> None: pass
+
+def f1() -> None: pass
+def f2() -> None: pass
+def f3() -> None: pass
+
+def g() -> None:
+    try:
+        f1()
+    except A:
+        f2()
+    except B as e:
+        e.f()
+    else:
+        f3()
+[builtins fixtures/exception.pyi]
+[out]
+<m.A> -> m.A, m.g
+<m.B.f> -> m.g
+<m.B> -> m.B, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testTryExceptStmt2]
+class A(BaseException): pass
+class B(BaseException):
+    def f(self) -> None: pass
+
+def f1() -> None: pass
+def f2() -> None: pass
+
+def g() -> None:
+    try:
+        f1()
+    except (A, B):
+        f2()
+[builtins fixtures/exception.pyi]
+[out]
+<m.A> -> m.A, m.g
+<m.B> -> m.B, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g

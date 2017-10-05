@@ -6,8 +6,8 @@ from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
-    ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, TypeInfo, Var,
-    LDEF, op_methods, reverse_op_methods
+    ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, TypeInfo,
+    Var, LDEF, op_methods, reverse_op_methods
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -134,6 +134,10 @@ class DependencyVisitor(TraverserVisitor):
             self.add_indexing_method_dependency(lvalue, lvalue=True)
         # TODO: tuple and list lvalue
         # TODO: star lvalue
+
+    def visit_for_stmt(self, o: ForStmt) -> None:
+        super().visit_for_stmt(o)
+        self.add_attribute_dependency_for_expr(o.expr, '__iter__')
 
     def visit_print_stmt(self, o: PrintStmt) -> None:
         super().visit_print_stmt(o)
