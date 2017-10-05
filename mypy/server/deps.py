@@ -7,7 +7,7 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
-    TypeInfo, Var, LDEF, op_methods, reverse_op_methods
+    TupleExpr, ListExpr, TypeInfo, Var, LDEF, op_methods, reverse_op_methods
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -120,11 +120,17 @@ class DependencyVisitor(TraverserVisitor):
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         if isinstance(o.rvalue, CallExpr) and isinstance(o.rvalue.analyzed, TypeVarExpr):
             analyzed = o.rvalue.analyzed
-            # TODO: implement
+            # TODO: implement special forms
         else:
             super().visit_assignment_stmt(o)
             for lvalue in o.lvalues:
                 self.process_lvalue(lvalue)
+            items = o.lvalues + [o.rvalue]
+            for i in range(len(items) - 1):
+                lvalue = items[i]
+                rvalue = items[i + 1]
+                if isinstance(lvalue, (TupleExpr, ListExpr)):
+                    self.add_attribute_dependency_for_expr(rvalue, '__iter__')
             if o.type:
                 for trigger in get_type_dependencies(o.type):
                     self.add_dependency(trigger)
@@ -132,12 +138,20 @@ class DependencyVisitor(TraverserVisitor):
     def process_lvalue(self, lvalue: Expression) -> None:
         if isinstance(lvalue, IndexExpr):
             self.add_indexing_method_dependency(lvalue, lvalue=True)
-        # TODO: tuple and list lvalue
+        elif isinstance(lvalue, (ListExpr, TupleExpr)):
+            for item in lvalue.items:
+                self.process_lvalue(item)
         # TODO: star lvalue
 
     def visit_for_stmt(self, o: ForStmt) -> None:
         super().visit_for_stmt(o)
         self.add_attribute_dependency_for_expr(o.expr, '__iter__')
+        self.process_lvalue(o.index)
+        if isinstance(o.index, (TupleExpr, ListExpr)):
+            # Process multiple assignment to index variables.
+            item_type = o.inferred_item_type
+            if item_type:
+                self.add_attribute_dependency(item_type, '__iter__')
         if o.index_type:
             self.add_type_dependencies(o.index_type)
 

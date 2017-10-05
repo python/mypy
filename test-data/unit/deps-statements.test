@@ -282,3 +282,107 @@ def g() -> None:
 <m.A> -> m.A, m.g
 <m.B.f> -> m.g
 <m.B> -> m.B, m.g
+
+[case testMultipleAssignment]
+from typing import Iterator
+class A:
+    def __iter__(self) -> Iterator[int]: pass
+
+def f() -> None:
+    a: A
+    x, y = a
+[out]
+<m.A.__iter__> -> m.f
+<m.A> -> m.A, m.f
+
+[case testMultipleLvalues]
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.y = 1
+
+def g() -> None:
+    a: A
+    a.x = a.y = 1
+[out]
+<m.A.x> -> m.A.f, m.g
+<m.A.y> -> m.A.f, m.g
+<m.A> -> m.A, m.g
+
+[case testNestedLvalues]
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.y = ''
+
+def g() -> None:
+    a: A
+    a.x, a.y = 1, ''
+[out]
+<m.A.x> -> m.A.f, m.g
+<m.A.y> -> m.A.f, m.g
+<m.A> -> m.A, m.g
+
+[case testForAndSetItem]
+class A:
+    def __setitem__(self, x: int, y: int) -> None: pass
+
+def f(): pass
+
+def g() -> None:
+    a: A
+    for a[0] in f():
+        pass
+[builtins fixtures/list.pyi]
+[out]
+<m.A.__getitem__> -> m.g
+<m.A.__setitem__> -> m.g
+<m.A> -> m.A, m.g
+<m.f> -> m.g
+
+[case testMultipleAssignmentAndFor]
+from typing import Iterator, Iterable
+
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.y = 1
+
+class B:
+    def __iter__(self) -> Iterator[int]: pass
+
+def f() -> Iterable[B]: pass
+
+def g() -> None:
+    a: A
+    for a.x, a.y in f():
+        pass
+[builtins fixtures/list.pyi]
+[out]
+<m.A.x> -> m.A.f, m.g
+<m.A.y> -> m.A.f, m.g
+<m.A> -> m.A, m.g
+<m.B.__iter__> -> m.g
+<m.B> -> <m.f>, m.B, m.f
+<m.f> -> m.g
+
+[case testNestedSetItem]
+class A:
+    def __setitem__(self, x: int, y: int) -> None: pass
+class B:
+    def __setitem__(self, x: int, y: int) -> None: pass
+
+def f(): pass
+
+def g() -> None:
+    a: A
+    b: B
+    a[0], b[0] = f()
+[out]
+<m.A.__getitem__> -> m.g
+<m.A.__setitem__> -> m.g
+<m.A> -> m.A, m.g
+<m.B.__getitem__> -> m.g
+<m.B.__setitem__> -> m.g
+<m.B> -> m.B, m.g
+<m.f> -> m.g

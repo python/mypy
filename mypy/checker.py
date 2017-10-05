@@ -2389,6 +2389,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             item_type = self.analyze_async_iterable_item_type(s.expr)
         else:
             item_type = self.analyze_iterable_item_type(s.expr)
+        s.inferred_item_type = item_type
         self.analyze_index_variables(s.index, item_type, s.index_type is None, s)
         self.accept_loop(s.body, s.else_body)
 
