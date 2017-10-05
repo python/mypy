@@ -386,3 +386,47 @@ def g() -> None:
 <m.B.__setitem__> -> m.g
 <m.B> -> m.B, m.g
 <m.f> -> m.g
+
+[case testOperatorAssignmentStmt]
+class A:
+    def __add__(self, other: 'B') -> 'A': pass
+
+class B: pass
+
+def f() -> B: pass
+
+def g() -> None:
+    a: A
+    a += f()
+[out]
+<m.A.__add__> -> m.g
+<m.A.__iadd__> -> m.g
+<m.A> -> <m.A.__add__>, m.A, m.A.__add__, m.g
+<m.B> -> <m.A.__add__>, <m.f>, m.A.__add__, m.B, m.f
+<m.f> -> m.g
+
+[case testOperatorAssignmentStmtSetItem]
+class A:
+    def __add__(self, other: 'B') -> 'A': pass
+
+class B: pass
+
+class C:
+    def __getitem__(self, x: int) -> A: pass
+    def __setitem__(self, x: int, y: A) -> None: pass
+
+def f() -> int: pass
+
+def g() -> None:
+    b: B
+    c: C
+    c[f()] += b
+[out]
+<m.A.__add__> -> m.g
+<m.A.__iadd__> -> m.g
+<m.A> -> <m.A.__add__>, <m.C.__getitem__>, <m.C.__setitem__>, m.A, m.A.__add__, m.C.__getitem__, m.C.__setitem__
+<m.B> -> <m.A.__add__>, m.A.__add__, m.B, m.g
+<m.C.__getitem__> -> m.g
+<m.C.__setitem__> -> m.g
+<m.C> -> m.C, m.g
+<m.f> -> m.g

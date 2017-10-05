@@ -7,7 +7,8 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
-    TupleExpr, ListExpr, TypeInfo, Var, LDEF, op_methods, reverse_op_methods
+    TupleExpr, ListExpr, OperatorAssignmentStmt, TypeInfo, Var, LDEF, op_methods, reverse_op_methods,
+    ops_with_inplace_method
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -142,6 +143,15 @@ class DependencyVisitor(TraverserVisitor):
             for item in lvalue.items:
                 self.process_lvalue(item)
         # TODO: star lvalue
+
+    def visit_operator_assignment_stmt(self, o: OperatorAssignmentStmt) -> None:
+        super().visit_operator_assignment_stmt(o)
+        self.process_lvalue(o.lvalue)
+        method = op_methods[o.op]
+        self.add_attribute_dependency_for_expr(o.lvalue, method)
+        if o.op in ops_with_inplace_method:
+            inplace_method = '__i' + method[2:]
+            self.add_attribute_dependency_for_expr(o.lvalue, inplace_method)
 
     def visit_for_stmt(self, o: ForStmt) -> None:
         super().visit_for_stmt(o)
