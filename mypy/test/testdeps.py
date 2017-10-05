@@ -3,7 +3,7 @@
 import os
 from typing import List, Tuple, Dict, Optional
 
-from mypy import build
+from mypy import build, defaults
 from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.nodes import MypyFile, Expression
@@ -34,7 +34,8 @@ class GetDependenciesSuite(DataSuite):
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)
-        messages, files, type_map = self.build(src)
+        python2 = testcase.name.endswith('python2')
+        messages, files, type_map = self.build(src, python2)
         a = messages
         if files is None or type_map is None:
             # Likely syntax error.
@@ -54,13 +55,15 @@ class GetDependenciesSuite(DataSuite):
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
 
-    def build(self, source: str) -> Tuple[List[str],
-                                          Optional[Dict[str, MypyFile]],
-                                          Optional[Dict[Expression, Type]]]:
+    def build(self, source: str, python2: bool) -> Tuple[List[str],
+                                                         Optional[Dict[str, MypyFile]],
+                                                         Optional[Dict[Expression, Type]]]:
         options = Options()
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull
+        if python2:
+            options.python_version = defaults.PYTHON2_VERSION
         try:
             result = build.build(sources=[BuildSource('main', None, source)],
                                  options=options,

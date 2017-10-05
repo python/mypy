@@ -50,6 +50,7 @@ class DependencyVisitor(TraverserVisitor):
     #   decorated functions
     #   overloads
     #   from m import *
+    #   await
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         # TODO: Do we need to anything here?

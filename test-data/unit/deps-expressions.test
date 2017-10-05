@@ -353,3 +353,11 @@ def f(a: Union[A, B]) -> int:
 <m.A> -> <m.f>, m.A, m.f
 <m.B.__add__> -> m.f
 <m.B> -> <m.f>, m.B, m.f
+
+[case testBackquoteExpr_python2]
+def g(): # type: () -> int
+    pass
+def f(): # type: () -> str
+    return `g()`
+[out]
+<m.g> -> m.f
