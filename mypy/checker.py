@@ -53,7 +53,7 @@ from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
-from mypy.join import join_types, join_type_list
+from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
@@ -1646,13 +1646,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                             infer_lvalue_type=infer_lvalue_type,
                                             rv_type=item, undefined_rvalue=True)
                 for t, lv in zip(transposed, lvalues):
-                    t.append(self.type_map.get(lv, AnyType(TypeOfAny.special_form)))
-        union_types = tuple(join_type_list(col) for col in transposed)
+                    t.append(self.type_map.pop(lv, AnyType(TypeOfAny.special_form)))
+        union_types = tuple(UnionType.make_simplified_union(col) for col in transposed)
         for expr, items in assignments.items():
             types, declared_types = zip(*items)
             self.binder.assign_type(expr,
-                                    join_type_list(types),
-                                    join_type_list(declared_types),
+                                    UnionType.make_simplified_union(types),
+                                    UnionType.make_simplified_union(declared_types),
                                     False)
         for union, lv in zip(union_types, lvalues):
             _1, _2, inferred = self.check_lvalue(lv)
@@ -1925,7 +1925,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 rvalue: Expression, context: Context) -> Tuple[Type, bool]:
         """Type member assigment.
 
-        This is defers to check_simple_assignment, unless the member expression
+        This defers to check_simple_assignment, unless the member expression
         is a descriptor, in which case this checks descriptor semantics as well.
 
         Return the inferred rvalue_type and whether to infer anything about the attribute type

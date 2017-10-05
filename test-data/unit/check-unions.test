@@ -500,28 +500,31 @@ reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
 [case testUnionMultiassign1]
 from typing import Union, Tuple, Any
 
-b = None  # type: Union[Tuple[int], Tuple[float]]
+a: Union[Tuple[int], Tuple[float]]
+(a1,) = a
+reveal_type(a1)  # E: Revealed type is 'builtins.float'
+
+b: Union[Tuple[int], Tuple[str]]
 (b1,) = b
-reveal_type(b1)  # E: Revealed type is 'builtins.float'
+reveal_type(b1)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
 
 [case testUnionMultiassign2]
 from typing import Union, Tuple
 
-c = None  # type: Union[Tuple[int, int], Tuple[int, str]]
-q = None  # type: Tuple[int, float]
+c: Union[Tuple[int, int], Tuple[int, float]]
 (c1, c2) = c
 reveal_type(c1)  # E: Revealed type is 'builtins.int'
-reveal_type(c2)  # E: Revealed type is 'builtins.object'
+reveal_type(c2)  # E: Revealed type is 'builtins.float'
 
 [case testUnionMultiassignAny]
 from typing import Union, Tuple, Any
 
-d = None  # type: Union[Any, Tuple[float, float]]
+d: Union[Any, Tuple[float, float]]
 (d1, d2) = d
-reveal_type(d1)  # E: Revealed type is 'Any'
-reveal_type(d2)  # E: Revealed type is 'Any'
+reveal_type(d1)  # E: Revealed type is 'Union[Any, builtins.float]'
+reveal_type(d2)  # E: Revealed type is 'Union[Any, builtins.float]'
 
-e = None  # type: Union[Any, Tuple[float, float], int]
+e: Union[Any, Tuple[float, float], int]
 (e1, e2) = e  # E: 'builtins.int' object is not iterable
 
 [case testUnionMultiassignJoin]
@@ -530,9 +533,9 @@ from typing import Union, List
 class A: pass
 class B(A): pass
 class C(A): pass
-a = None  # type: Union[List[B], List[C]]
+a: Union[List[B], List[C]]
 x, y = a
-reveal_type(x)  # E: Revealed type is '__main__.A'
+reveal_type(x)  # E: Revealed type is 'Union[__main__.B*, __main__.C*]'
 
 [builtins fixtures/list.pyi]
 [case testUnionMultiassignRebind]
@@ -541,12 +544,11 @@ from typing import Union, List
 class A: pass
 class B(A): pass
 class C(A): pass
-obj = None  # type: object
-c = None  # type: object
-a = None  # type: Union[List[B], List[C]]
+obj: object
+a: Union[List[B], List[C]]
 obj, new = a
-reveal_type(obj)  # E: Revealed type is '__main__.A'
-reveal_type(new)  # E: Revealed type is '__main__.A'
+reveal_type(obj)  # E: Revealed type is 'Union[__main__.B*, __main__.C*]'
+reveal_type(new)  # E: Revealed type is 'Union[__main__.B*, __main__.C*]'
 
 obj = 1
 reveal_type(obj)  # E: Revealed type is 'builtins.int'
@@ -556,29 +558,28 @@ reveal_type(obj)  # E: Revealed type is 'builtins.int'
 [case testUnionMultiassignAlreadyDeclared]
 from typing import Union, Tuple
 
-a = None  # type: Union[Tuple[int, int], Tuple[int, float]]
-a1 = None  # type: object
-a2 = None  # type: int
+a: Union[Tuple[int, int], Tuple[int, float]]
+a1: object
+a2: int
 
 (a1, a2) = a  # E: Incompatible types in assignment (expression has type "float", variable has type "int")
 
-b = None  # type: Union[Tuple[float, int], Tuple[int, int]]
-b1 = None  # type: object
-b2 = None  # type: int
+b: Union[Tuple[float, int], Tuple[int, int]]
+b1: object
+b2: int
 
-# Binder should act last
-(b1, b2) = a  # QUESTIONABLE: Incompatible types in assignment (expression has type "float", variable has type "int")
+(b1, b2) = b
 
-c = None  # type: Union[Tuple[int, int], Tuple[int, int]]
-c1 = None  # type: object
-c2 = None  # type: int
+c: Union[Tuple[int, int], Tuple[int, int]]
+c1: object
+c2: int
 
 (c1, c2) = c
 reveal_type(c1)  # E: Revealed type is 'builtins.int'
 reveal_type(c2)  # E: Revealed type is 'builtins.int'
 
-d = None  # type: Union[Tuple[int, int], Tuple[int, float]]
-d1 = None  # type: object
+d: Union[Tuple[int, int], Tuple[int, float]]
+d1: object
 
 (d1, d2) = d
 reveal_type(d1)  # E: Revealed type is 'builtins.int'
@@ -588,12 +589,12 @@ reveal_type(d2)  # E: Revealed type is 'builtins.float'
 from typing import Union, Tuple, List
 
 class B:
-    x = None  # type: object
+    x: object
 
-x = None  # type: List[int]
-b = None  # type: B
+x: List[int]
+b: B
 
-a = None  # type: Union[Tuple[int, int], Tuple[int, object]]
+a: Union[Tuple[int, int], Tuple[int, object]]
 (x[0], b.x) = a
 
 reveal_type(x[0])  # E: Revealed type is 'builtins.int*'
@@ -604,11 +605,11 @@ reveal_type(b.x)  # E: Revealed type is 'builtins.object'
 [case testUnionMultiassignPacked]
 from typing import Union, Tuple, List
 
-a = None  # type: Union[Tuple[int, int, int], Tuple[int, int, str]]
-a1 = None  # type: int
-a2 = None  # type: object
+a: Union[Tuple[int, int, int], Tuple[int, int, str]]
+a1: int
+a2: object
 --FIX: allow proper rebinding of packed
-xs = None  # type: List[int]
+xs: List[int]
 (a1, *xs, a2) = a
 
 reveal_type(a1)  # E: Revealed type is 'builtins.int'
