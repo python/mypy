@@ -430,3 +430,48 @@ def g() -> None:
 <m.C.__setitem__> -> m.g
 <m.C> -> m.C, m.g
 <m.f> -> m.g
+
+[case testYieldStmt]
+from typing import Iterator
+
+class A: pass
+
+def f1() -> A: pass
+
+def g() -> Iterator[A]:
+    yield f1()
+[builtins fixtures/list.pyi]
+[out]
+<m.A> -> <m.f1>, <m.g>, m.A, m.f1, m.g
+<m.f1> -> m.g
+
+[case testDelStmt]
+class A:
+    def f(self) -> None:
+        self.x = 1
+
+def f() -> A: pass
+
+def g() -> None:
+    del f().x
+[out]
+<m.A.x> -> m.A.f, m.g
+<m.A> -> <m.f>, m.A, m.f
+<m.f> -> m.g
+
+[case testDelStmtWithIndexing]
+class A:
+    def __delitem__(self, x: int) -> None: pass
+
+def f1() -> A: pass
+def f2() -> int: pass
+
+def g() -> None:
+    del f1()[f2()]
+[out]
+<m.A.__delitem__> -> m.g
+-- __getitem__ is redundant but harmless
+<m.A.__getitem__> -> m.g
+<m.A> -> <m.f1>, m.A, m.f1
+<m.f1> -> m.g
+<m.f2> -> m.g

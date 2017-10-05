@@ -7,8 +7,8 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
-    TupleExpr, ListExpr, OperatorAssignmentStmt, TypeInfo, Var, LDEF, op_methods, reverse_op_methods,
-    ops_with_inplace_method
+    TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, TypeInfo, Var, LDEF, op_methods,
+    reverse_op_methods, ops_with_inplace_method
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -177,6 +177,11 @@ class DependencyVisitor(TraverserVisitor):
         super().visit_print_stmt(o)
         if o.target:
             self.add_attribute_dependency_for_expr(o.target, 'write')
+
+    def visit_del_stmt(self, o: DelStmt) -> None:
+        super().visit_del_stmt(o)
+        if isinstance(o.expr, IndexExpr):
+            self.add_attribute_dependency_for_expr(o.expr.base, '__delitem__')
 
     # Expressions
 
