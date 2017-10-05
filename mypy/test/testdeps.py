@@ -34,15 +34,18 @@ class GetDependenciesSuite(DataSuite):
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)
-        python2 = testcase.name.endswith('python2')
-        messages, files, type_map = self.build(src, python2)
+        if testcase.name.endswith('python2'):
+            python_version = defaults.PYTHON2_VERSION
+        else:
+            python_version = defaults.PYTHON3_VERSION
+        messages, files, type_map = self.build(src, python_version)
         a = messages
         if files is None or type_map is None:
             # Likely syntax error.
             if not a:
                 a = ['Unknown compile error']
         else:
-            deps = get_dependencies('__main__', files['__main__'], type_map)
+            deps = get_dependencies('__main__', files['__main__'], type_map, python_version)
 
             for source, targets in sorted(deps.items()):
                 line = '%s -> %s' % (source, ', '.join(sorted(targets)))
@@ -55,15 +58,16 @@ class GetDependenciesSuite(DataSuite):
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
 
-    def build(self, source: str, python2: bool) -> Tuple[List[str],
-                                                         Optional[Dict[str, MypyFile]],
-                                                         Optional[Dict[Expression, Type]]]:
+    def build(self,
+              source: str,
+              python_version: Tuple[int, int]) -> Tuple[List[str],
+                                                        Optional[Dict[str, MypyFile]],
+                                                        Optional[Dict[Expression, Type]]]:
         options = Options()
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull
-        if python2:
-            options.python_version = defaults.PYTHON2_VERSION
+        options.python_version = python_version
         try:
             result = build.build(sources=[BuildSource('main', None, source)],
                                  options=options,

@@ -1,6 +1,6 @@
 """Generate fine-grained dependencies for AST nodes."""
 
-from typing import Dict, List, Set, Optional
+from typing import Dict, List, Set, Optional, Tuple
 
 from mypy.checkmember import bind_self
 from mypy.nodes import (
@@ -19,17 +19,19 @@ from mypy.server.trigger import make_trigger
 
 
 def get_dependencies(prefix: str, node: Node,
-                     type_map: Dict[Expression, Type]) -> Dict[str, Set[str]]:
+                     type_map: Dict[Expression, Type],
+                     python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get all dependencies of a node, recursively."""
-    visitor = DependencyVisitor(prefix, type_map)
+    visitor = DependencyVisitor(prefix, type_map, python_version)
     node.accept(visitor)
     return visitor.map
 
 
 def get_dependencies_of_target(prefix: str, node: Node,
-                               type_map: Dict[Expression, Type]) -> Dict[str, Set[str]]:
+                               type_map: Dict[Expression, Type],
+                               python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get dependencies of a target -- don't recursive into nested targets."""
-    visitor = DependencyVisitor(prefix, type_map)
+    visitor = DependencyVisitor(prefix, type_map, python_version)
     if isinstance(node, MypyFile):
         for defn in node.defs:
             if not isinstance(defn, (ClassDef, FuncDef)):
@@ -40,9 +42,11 @@ def get_dependencies_of_target(prefix: str, node: Node,
 
 
 class DependencyVisitor(TraverserVisitor):
-    def __init__(self, prefix: str, type_map: Dict[Expression, Type]) -> None:
+    def __init__(self, prefix: str, type_map: Dict[Expression, Type],
+                 python_version: Tuple[int, int]) -> None:
         self.stack = [prefix]
         self.type_map = type_map
+        self.python2 = python_version[0] == 2
         self.map = {}  # type: Dict[str, Set[str]]
         self.is_class = False
 
@@ -199,12 +203,14 @@ class DependencyVisitor(TraverserVisitor):
         self.process_binary_op(e.op, e.left, e.right)
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> None:
-        print(e)
         super().visit_comparison_expr(e)
         for i, op in enumerate(e.operators):
             left = e.operands[i]
             right = e.operands[i + 1]
             self.process_binary_op(op, left, right)
+            if self.python2 and op in ('==', '!=', '<', '<=', '>', '>='):
+                self.add_operator_method_dependency(left, '__cmp__')
+                self.add_operator_method_dependency(right, '__cmp__')
 
     def process_binary_op(self, op: str, left: Expression, right: Expression) -> None:
         method = op_methods.get(op)
