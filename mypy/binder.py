@@ -1,6 +1,10 @@
-from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, DefaultDict, cast
+from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from contextlib import contextmanager
 from collections import defaultdict
+
+MYPY = False
+if MYPY:
+    from typing import DefaultDict
 
 from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny
 from mypy.subtypes import is_subtype
@@ -38,7 +42,8 @@ class DeclarationsFrame(Dict[Key, Optional[Type]]):
         self.unreachable = False
 
 
-Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
+if MYPY:
+    Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
 
 
 class ConditionalTypeBinder:
@@ -216,7 +221,7 @@ class ConditionalTypeBinder:
         return result
 
     @contextmanager
-    def accumulate_type_assignments(self) -> Iterator[Assigns]:
+    def accumulate_type_assignments(self) -> 'Iterator[Assigns]':
         self.type_assignments = defaultdict(list)
         yield self.type_assignments
         self.type_assignments = None
