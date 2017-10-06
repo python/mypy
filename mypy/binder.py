@@ -38,6 +38,9 @@ class DeclarationsFrame(Dict[Key, Optional[Type]]):
         self.unreachable = False
 
 
+Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
+
+
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables.
 
@@ -58,7 +61,7 @@ class ConditionalTypeBinder:
     reveal_type(lst[0].a) # str
     ```
     """
-    type_assignments = None  # type: Optional[DefaultDict[Expression, List[Tuple[Type, Type]]]]
+    type_assignments = None  # type: Optional[Assigns]
 
     def __init__(self) -> None:
         # The stack of frames currently used.  These map
@@ -213,8 +216,7 @@ class ConditionalTypeBinder:
         return result
 
     @contextmanager
-    def accumulate_type_assignments(self) -> Iterator[DefaultDict[Expression,
-                                                                  List[Tuple[Type, Type]]]]:
+    def accumulate_type_assignments(self) -> Iterator[Assigns]:
         self.type_assignments = defaultdict(list)
         yield self.type_assignments
         self.type_assignments = None

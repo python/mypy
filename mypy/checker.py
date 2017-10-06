@@ -1683,7 +1683,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     relevant_items = reinferred_rvalue_type.relevant_items()
                     if len(relevant_items) == 1:
                         reinferred_rvalue_type = relevant_items[0]
-
+                if isinstance(reinferred_rvalue_type, UnionType):
+                    self.check_multi_assignment_from_union(lvalues, rvalue,
+                                                           reinferred_rvalue_type, context,
+                                                           infer_lvalue_type)
+                    return
                 assert isinstance(reinferred_rvalue_type, TupleType)
                 rvalue_type = reinferred_rvalue_type
 
@@ -1745,7 +1749,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         returns in: ([1,2], [3,4,5], [6,7])
         """
         nr_right_of_star = length - star_index - 1
-        right_index = nr_right_of_star if -nr_right_of_star != 0 else len(items)
+        right_index = -nr_right_of_star if nr_right_of_star != 0 else len(items)
         left = items[:star_index]
         star = items[star_index:right_index]
         right = items[right_index:]

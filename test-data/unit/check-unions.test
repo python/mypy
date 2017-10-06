@@ -608,15 +608,43 @@ from typing import Union, Tuple, List
 a: Union[Tuple[int, int, int], Tuple[int, int, str]]
 a1: int
 a2: object
---FIX: allow proper rebinding of packed
-xs: List[int]
 (a1, *xs, a2) = a
 
 reveal_type(a1)  # E: Revealed type is 'builtins.int'
-reveal_type(xs)  # E: Revealed type is 'builtins.list[builtins.int]'
-reveal_type(a2)  # E: Revealed type is 'builtins.int'
+reveal_type(xs)  # E: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(a2)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
 
 [builtins fixtures/list.pyi]
+
+[case testUnpackingUnionOfListsInFunction]
+from typing import Union, List
+
+def f(x: bool) -> Union[List[int], List[str]]:
+    if x:
+        return [1, 1]
+    else:
+        return ['a', 'a']
+
+def g(x: bool) -> None:
+    a, b = f(x)
+    reveal_type(a) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+    reveal_type(b) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+[builtins fixtures/list.pyi]
+
+[case testUnionOfVariableLengthTupleUnpacking]
+from typing import Tuple, Union
+VarTuple = Union[Tuple[int, int], Tuple[int, int, int]]
+
+def make_tuple() -> VarTuple:
+    pass
+x = make_tuple()
+
+a, b = x # E: Too many values to unpack (2 expected, 3 provided)
+a, b, c = x # E: Need more than 2 values to unpack (3 expected)
+c, *d = x
+reveal_type(c) # E: Revealed type is 'builtins.int'
+reveal_type(d) # E: Revealed type is 'builtins.list[builtins.int*]'
+[builtins fixtures/tuple.pyi]
 
 [case testLongUnionFormatting]
 from typing import Any, Generic, TypeVar, Union
