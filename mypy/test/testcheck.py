@@ -171,7 +171,7 @@ class TypeCheckSuite(DataSuite):
         if incremental_step:
             options.incremental = True
         else:
-            options.cache_dir = os.devnull  # Dont waste time writing cache
+            options.cache_dir = os.devnull  # Don't waste time writing cache
 
         sources = []
         for module_name, program_path, program_text in module_data:

@@ -3515,8 +3515,255 @@ D = TypeVar('D')
 def mkdict(dict_type: Type[D]) -> D: ...
 reveal_type(mkdict(ExampleDict))  # E: Revealed type is '__main__.ExampleDict*[Any, Any]'
 
+[case testTupleForwardBase]
+from m import a
+a[0]()  # E: "int" not callable
+
+[file m.py]
+from typing import Tuple
+a = None # type: A
+class A(Tuple[int, str]): pass
+[builtins fixtures/tuple.pyi]
+
 -- Synthetic types crashes
 -- -----------------------
+
+[case testCrashOnSelfRecursiveNamedTupleVar]
+from typing import NamedTuple
+
+N = NamedTuple('N', [('x', N)]) # E: Recursive types not fully supported yet, nested types replaced with "Any"
+n: N
+[out]
+
+[case testCrashOnSelfRecursiveTypedDictVar]
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'a': 'A'})  # type: ignore
+a: A
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCrashInJoinOfSelfRecursiveNamedTuples]
+from typing import NamedTuple
+
+class N(NamedTuple): # type: ignore
+    x: N
+class M(NamedTuple): # type: ignore
+    x: M
+
+n: N
+m: M
+lst = [n, m]
+[builtins fixtures/isinstancelist.pyi]
+
+[case testCorrectJoinOfSelfRecursiveTypedDicts]
+from mypy_extensions import TypedDict
+
+class N(TypedDict):
+    x: N
+class M(TypedDict):
+    x: M
+
+n: N
+m: M
+lst = [n, m]
+reveal_type(lst[0]['x'])  # E: Revealed type is 'TypedDict('__main__.N', {'x': Any})'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testCrashInForwardRefToNamedTupleWithIsinstance]
+from typing import Dict, NamedTuple
+
+NameDict = Dict[str, 'NameInfo']
+class NameInfo(NamedTuple):
+    ast: bool
+
+def parse_ast(name_dict: NameDict) -> None:
+    if isinstance(name_dict[''], int):
+        pass
+    reveal_type(name_dict['test']) # E: Revealed type is 'Tuple[builtins.bool, fallback=__main__.NameInfo]'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCrashInForwardRefToTypedDictWithIsinstance]
+from mypy_extensions import TypedDict
+from typing import Dict
+
+NameDict = Dict[str, 'NameInfo']
+class NameInfo(TypedDict):
+    ast: bool
+
+def parse_ast(name_dict: NameDict) -> None:
+    if isinstance(name_dict[''], int):
+        pass
+    reveal_type(name_dict['']['ast'])  # E: Revealed type is 'builtins.bool'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCorrectIsinstanceInForwardRefToNewType]
+from typing import Dict, NewType
+
+NameDict = Dict[str, 'NameInfo']
+class Base:
+    ast: bool
+NameInfo = NewType('NameInfo', Base)
+
+def parse_ast(name_dict: NameDict) -> None:
+    if isinstance(name_dict[''], int):
+        pass
+    x = name_dict['']
+    reveal_type(x) # E: Revealed type is '__main__.NameInfo*'
+    x = NameInfo(Base()) # OK
+    x = Base() # E: Incompatible types in assignment (expression has type "Base", variable has type "NameInfo")
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCorrectAttributeInForwardRefToNamedTuple]
+from typing import NamedTuple
+proc: Process
+reveal_type(proc.state)  # E: Revealed type is 'builtins.int'
+
+def get_state(proc: 'Process') -> int:
+    return proc.state
+class Process(NamedTuple):
+     state: int
+[out]
+
+[case testCorrectItemTypeInForwardRefToTypedDict]
+from mypy_extensions import TypedDict
+proc: Process
+reveal_type(proc['state'])  # E: Revealed type is 'builtins.int'
+
+def get_state(proc: 'Process') -> int:
+    return proc['state']
+class Process(TypedDict):
+     state: int
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCorrectDoubleForwardNamedTuple]
+from typing import NamedTuple
+
+x: A
+class A(NamedTuple):
+    one: 'B'
+    other: int
+class B(NamedTuple):
+    attr: str
+y: A
+y = x
+reveal_type(x.one.attr)  # E: Revealed type is 'builtins.str'
+[out]
+
+[case testCrashOnDoubleForwardTypedDict]
+from mypy_extensions import TypedDict
+
+x: A
+class A(TypedDict):
+    one: 'B'
+    other: int
+class B(TypedDict):
+    attr: str
+
+reveal_type(x['one']['attr'])  # E: Revealed type is 'builtins.str'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCrashOnForwardUnionOfNamedTuples]
+from typing import Union, NamedTuple
+
+Node = Union['Foo', 'Bar']
+class Foo(NamedTuple):
+    x: int
+class Bar(NamedTuple):
+    x: int
+
+def foo(node: Node) -> int:
+    x = node
+    reveal_type(node) # E: Revealed type is 'Union[Tuple[builtins.int, fallback=__main__.Foo], Tuple[builtins.int, fallback=__main__.Bar]]'
+    return x.x
+[out]
+
+[case testCrashOnForwardUnionOfTypedDicts]
+from mypy_extensions import TypedDict
+from typing import Union
+
+NodeType = Union['Foo', 'Bar']
+class Foo(TypedDict):
+    x: int
+class Bar(TypedDict):
+    x: int
+
+def foo(node: NodeType) -> int:
+    x = node
+    return x['x']
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testSupportForwardUnionOfNewTypes]
+from typing import Union, NewType
+x: Node
+reveal_type(x.x) # E: Revealed type is 'builtins.int'
+
+class A:
+    x: int
+class B:
+    x: int
+
+Node = Union['Foo', 'Bar']
+Foo = NewType('Foo', A)
+Bar = NewType('Bar', B)
+
+def foo(node: Node) -> Node:
+    x = node
+    return Foo(A())
+[out]
+
+[case testForwardReferencesInNewTypeMRORecomputed]
+from typing import NewType
+x: Foo
+Foo = NewType('Foo', B)
+class A:
+    x: int
+class B(A):
+    pass
+
+reveal_type(x.x) # E: Revealed type is 'builtins.int'
+[out]
+
+[case testCrashOnComplexNamedTupleUnionProperty]
+from typing import NamedTuple, Union
+
+x: AOrB
+AOrB = Union['A', 'B']
+class A(NamedTuple):
+    x: int
+
+class B(object):
+    def __init__(self, a: AOrB) -> None:
+        self.a = a
+    @property
+    def x(self) -> int:
+        return self.a.x
+
+reveal_type(x.x) # E: Revealed type is 'builtins.int'
+[builtins fixtures/property.pyi]
+[out]
+
+[case testCorrectIsinstanceWithForwardUnion]
+from typing import Union, NamedTuple
+
+ForwardUnion = Union['TP', int]
+class TP(NamedTuple('TP', [('x', int)])): pass
+
+def f(x: ForwardUnion) -> None:
+  reveal_type(x)  # E: Revealed type is 'Union[Tuple[builtins.int, fallback=__main__.TP], builtins.int]'
+  if isinstance(x, TP):
+    reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.TP]'
+[builtins fixtures/isinstance.pyi]
+[out]
 
 [case testCrashInvalidArgsSyntheticClassSyntax]
 from typing import List, NamedTuple

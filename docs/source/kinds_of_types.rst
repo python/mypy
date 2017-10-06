@@ -977,7 +977,7 @@ a value, you should use the
 Note that unlike many other generics in the typing module, the ``SendType`` of
 ``Generator`` behaves contravariantly, not covariantly or invariantly.
 
-If you do not plan on recieving or returning values, then set the ``SendType``
+If you do not plan on receiving or returning values, then set the ``SendType``
 or ``ReturnType`` to ``None``, as appropriate. For example, we could have
 annotated the first example as the following:
 

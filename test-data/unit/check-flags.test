@@ -668,7 +668,7 @@ main:5: error: Constraint 2 becomes "List[Any]" due to an unfollowed import
 from typing import NewType, List
 from missing import Unchecked
 
-Baz = NewType('Baz', Unchecked)  # E: Argument 2 to NewType(...) must be subclassable (got Any)
+Baz = NewType('Baz', Unchecked)  # E: Argument 2 to NewType(...) must be subclassable (got "Any")
 Bar = NewType('Bar', List[Unchecked])  # E: Argument 2 to NewType(...) becomes "List[Any]" due to an unfollowed import
 
 [builtins fixtures/list.pyi]

@@ -23,6 +23,7 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
     # values and bounds.  Also, promote subtype values to allowed values.
     types = list(orig_types)
     for i, type in enumerate(types):
+        assert not isinstance(type, PartialType), "Internal error: must never apply partial type"
         values = callable.variables[i].values
         if values and type:
             if isinstance(type, AnyType):
@@ -34,14 +35,13 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
                        for v1 in type.values):
                     continue
             for value in values:
-                if isinstance(type, PartialType) or mypy.subtypes.is_subtype(type, value):
+                if mypy.subtypes.is_subtype(type, value):
                     types[i] = value
                     break
             else:
                 msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
         upper_bound = callable.variables[i].upper_bound
-        if (type and not isinstance(type, PartialType) and
-                not mypy.subtypes.is_subtype(type, upper_bound)):
+        if type and not mypy.subtypes.is_subtype(type, upper_bound):
             msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
 
     # Create a map from type variable id to target type.

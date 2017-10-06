@@ -123,7 +123,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_none_type(self, left: NoneTyp) -> bool:
         if experiments.STRICT_OPTIONAL:
             return (isinstance(self.right, NoneTyp) or
-                    is_named_instance(self.right, 'builtins.object'))
+                    is_named_instance(self.right, 'builtins.object') or
+                    isinstance(self.right, Instance) and self.right.type.is_protocol and
+                    not self.right.type.protocol_members)
         else:
             return True
 
@@ -386,7 +388,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
                 is_compat = is_proper_subtype(subtype, supertype)
             if not is_compat:
                 return False
-            if isinstance(subtype, NoneTyp) and member.startswith('__') and member.endswith('__'):
+            if isinstance(subtype, NoneTyp) and isinstance(supertype, CallableType):
                 # We want __hash__ = None idiom to work even without --strict-optional
                 return False
             subflags = get_member_flags(member, left.type)
@@ -514,6 +516,21 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     itype = map_instance_to_supertype(itype, node.info)
     typ = expand_type_by_instance(typ, itype)
     return typ
+
+
+def non_method_protocol_members(tp: TypeInfo) -> List[str]:
+    """Find all non-callable members of a protocol."""
+
+    assert tp.is_protocol
+    result = []  # type: List[str]
+    anytype = AnyType(TypeOfAny.special_form)
+    instance = Instance(tp, [anytype] * len(tp.defn.type_vars))
+
+    for member in tp.protocol_members:
+        typ = find_member(member, instance, instance)
+        if not isinstance(typ, CallableType):
+            result.append(member)
+    return result
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,

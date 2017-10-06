@@ -110,6 +110,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     dynamic_funcs = None  # type: List[bool]
     # Stack of collections of variables with partial types
     partial_types = None  # type: List[Dict[Var, Context]]
+    # Vars for which partial type errors are already reported
+    # (to avoid logically duplicate errors with different error context).
+    partial_reported = None  # type: Set[Var]
     globals = None  # type: SymbolTable
     modules = None  # type: Dict[str, MypyFile]
     # Nodes that couldn't be checked because some types weren't available. We'll run
@@ -157,6 +160,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.return_types = []
         self.dynamic_funcs = []
         self.partial_types = []
+        self.partial_reported = set()
         self.deferred_nodes = []
         self.type_map = {}
         self.module_refs = set()
@@ -1142,7 +1146,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # variables. If an argument or return type of override
                 # does not have the correct subtyping relationship
                 # with the original type even after these variables
-                # are erased, then it is definitely an incompatiblity.
+                # are erased, then it is definitely an incompatibility.
 
                 override_ids = override.type_var_ids()
 
@@ -1681,7 +1685,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         def append_types_for_inference(lvs: List[Expression], rv_types: List[Type]) -> None:
             for lv, rv_type in zip(lvs, rv_types):
                 sub_lvalue_type, index_expr, inferred = self.check_lvalue(lv)
-                if sub_lvalue_type:
+                if sub_lvalue_type and not isinstance(sub_lvalue_type, PartialType):
                     type_parameters.append(sub_lvalue_type)
                 else:  # index lvalue
                     # TODO Figure out more precise type context, probably
@@ -1692,7 +1696,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if star_lv:
             sub_lvalue_type, index_expr, inferred = self.check_lvalue(star_lv.expr)
-            if sub_lvalue_type:
+            if sub_lvalue_type and not isinstance(sub_lvalue_type, PartialType):
                 type_parameters.extend([sub_lvalue_type] * len(star_rv_types))
             else:  # index lvalue
                 # TODO Figure out more precise type context, probably
@@ -1765,7 +1769,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
-            types = [self.check_lvalue(sub_expr)[0] for sub_expr in lvalue.items]
+            types = [self.check_lvalue(sub_expr)[0] or
+                     # This type will be used as a context for further inference of rvalue,
+                     # we put Uninhabited if there is no information available from lvalue.
+                     UninhabitedType() for sub_expr in lvalue.items]
             lvalue_type = TupleType(types, self.named_type('builtins.tuple'))
         else:
             lvalue_type = self.expr_checker.accept(lvalue)
@@ -1845,8 +1852,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             var.is_inferred = True
             if isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None:
                 # Store inferred attribute type so that we can check consistency afterwards.
-                assert lvalue.def_var is not None
-                self.inferred_attribute_types[lvalue.def_var] = type
+                if lvalue.def_var is not None:
+                    self.inferred_attribute_types[lvalue.def_var] = type
             self.store_type(lvalue, type)
 
     def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type,
@@ -2656,7 +2663,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # None partial type: assume variable is intended to have type None
                     var.type = NoneTyp()
                 else:
-                    self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                    if var not in self.partial_reported:
+                        self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                        self.partial_reported.add(var)
                     var.type = AnyType(TypeOfAny.from_error)
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:

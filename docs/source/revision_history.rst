@@ -3,6 +3,20 @@ Revision history
 
 List of major changes:
 
+- October 2017
+    * Publish ``mypy`` version 0.530 on PyPI.
+
+- August-September 2017
+    * Add :ref:`protocol-types`.
+
+    * Other updates to :ref:`command-line`:
+
+      * Add ``--warn-unused-configs``.
+
+      * Add ``--disallow-untyped-decorators``.
+
+      * Add ``--disallow-incomplete-defs``.
+
 - July 2017
     * Publish ``mypy`` version 0.521 on PyPI.
 
