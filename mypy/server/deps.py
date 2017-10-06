@@ -7,8 +7,8 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
-    TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, TypeInfo, Var, LDEF, op_methods,
-    reverse_op_methods, ops_with_inplace_method
+    TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, TypeInfo, Var, LDEF,
+    op_methods, reverse_op_methods, ops_with_inplace_method
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -240,6 +240,8 @@ class DependencyVisitor(TraverserVisitor):
             method = '__neg__'
         elif e.op == '+':
             method = '__pos__'
+        elif e.op == '~':
+            method = '__invert__'
         else:
             return
         self.add_operator_method_dependency(e.expr, method)
@@ -301,6 +303,10 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_star_expr(self, e: StarExpr) -> None:
         super().visit_star_expr(e)
+        self.add_iter_dependency(e.expr)
+
+    def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
+        super().visit_yield_from_expr(e)
         self.add_iter_dependency(e.expr)
 
     # Helpers

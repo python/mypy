@@ -475,3 +475,14 @@ def g() -> None:
 <m.A> -> <m.f1>, m.A, m.f1
 <m.f1> -> m.g
 <m.f2> -> m.g
+
+[case testYieldFrom]
+from typing import Iterator
+class A:
+    def __iter__(self) -> Iterator[int]: pass
+def f() -> Iterator[int]:
+    yield from A()
+[out]
+<m.A.__init__> -> m.f
+<m.A.__iter__> -> m.f
+<m.A> -> m.A, m.f
