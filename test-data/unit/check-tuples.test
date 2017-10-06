@@ -704,18 +704,17 @@ from typing import Tuple
 class A(tuple): pass
 [out]
 
-[case testTupleBaseClass2-skip]
+[case testTupleBaseClass2]
 import m
 [file m.pyi]
-# This doesn't work correctly -- no errors are reported (#867)
 from typing import Tuple
 a = None # type: A
 class A(Tuple[int, str]): pass
 x, y = a
-x() # Expected: "int" not callable
-y() # Expected: "str" not callable
+x() # E: "int" not callable
+y() # E: "str" not callable
+[builtins fixtures/tuple.pyi]
 [out]
-(should fail)
 
 [case testGenericClassWithTupleBaseClass]
 from typing import TypeVar, Generic, Tuple

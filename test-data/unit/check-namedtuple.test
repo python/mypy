@@ -415,7 +415,7 @@ b = B._make([''])  # type: B
 [case testNamedTupleIncompatibleRedefinition]
 from typing import NamedTuple
 class Crash(NamedTuple):
-    count: int  # E: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[Any, ...], Any], int]")
+    count: int  # E: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], Any], int]")
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleInClassNamespace]
@@ -434,6 +434,20 @@ def f() -> None:
     A = NamedTuple('A', [('x', int)])
 A  # E: Name 'A' is not defined
 
+[case testNamedTupleForwardAsUpperBound]
+from typing import NamedTuple, TypeVar, Generic
+T = TypeVar('T', bound='M')
+class G(Generic[T]):
+    x: T
+
+yb: G[int] # E: Type argument "builtins.int" of "G" must be a subtype of "Tuple[builtins.int, fallback=__main__.M]"
+yg: G[M]
+reveal_type(G[M]().x.x)  # E: Revealed type is 'builtins.int'
+reveal_type(G[M]().x[0])  # E: Revealed type is 'builtins.int'
+
+M = NamedTuple('M', [('x', int)])
+[out]
+
 [case testNamedTupleWithImportCycle]
 import a
 [file a.py]
@@ -447,14 +461,173 @@ class X(N): pass
 import a
 
 def f(x: a.X) -> None:
-    # The type of x is broken (https://github.com/python/mypy/issues/3016) but we need to
-    # do something reasonable here to avoid a regression.
     reveal_type(x)
     x = a.X(1)
     reveal_type(x)
 [out]
-tmp/b.py:6: error: Revealed type is 'a.X'
-tmp/b.py:8: error: Revealed type is 'Tuple[Any, fallback=a.X]'
+tmp/b.py:4: error: Revealed type is 'Tuple[Any, fallback=a.X]'
+tmp/b.py:6: error: Revealed type is 'Tuple[Any, fallback=a.X]'
+
+[case testNamedTupleWithImportCycle2]
+import a
+[file a.py]
+from collections import namedtuple
+from b import f
+
+N = namedtuple('N', 'a')
+[file b.py]
+import a
+
+def f(x: a.N) -> None:
+    reveal_type(x)
+    x = a.N(1)
+    reveal_type(x)
+[out]
+tmp/b.py:4: error: Revealed type is 'Tuple[Any, fallback=a.N]'
+tmp/b.py:6: error: Revealed type is 'Tuple[Any, fallback=a.N]'
+
+[case testSimpleSelfReferrentialNamedTuple]
+from typing import NamedTuple
+class MyNamedTuple(NamedTuple):
+    parent: 'MyNamedTuple'
+
+def bar(nt: MyNamedTuple) -> MyNamedTuple:
+    return nt
+
+x: MyNamedTuple
+reveal_type(x.parent)
+[out]
+main:2: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:9: error: Revealed type is 'Tuple[Any, fallback=__main__.MyNamedTuple]'
+
+-- Some crazy selef-referential named tuples and types dicts
+-- to be sure that everything works
+
+[case testCrossFileNamedTupleForwardRefs]
+import a
+[file a.py]
+import b
+from typing import Any, NamedTuple
+
+class A:
+    def a(self, b: 'b.B') -> str:
+        return 'a'
+ATuple = NamedTuple('ATuple', [('a', Any)])
+
+[file b.py]
+import a
+
+class B:
+    def b(self, a: 'a.A') -> str:
+        return 'b'
+    def aWithTuple(self, atuple: 'a.ATuple') -> str:
+        return 'a'
+[out]
+
+[case testSelfRefNT1]
+from typing import Tuple, NamedTuple
+
+Node = NamedTuple('Node', [ # E: Recursive types not fully supported yet, nested types replaced with "Any"
+        ('name', str),
+        ('children', Tuple['Node', ...]),
+    ])
+n: Node
+reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, builtins.tuple[Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.Node]], fallback=__main__.Node]'
+[builtins fixtures/tuple.pyi]
+
+
+[case testSelfRefNT2]
+from typing import Tuple, NamedTuple
+
+A = NamedTuple('A', [ # E
+        ('x', str),
+        ('y', Tuple['B', ...]),
+    ])
+class B(NamedTuple): # E
+    x: A
+    y: int
+
+n: A
+reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, builtins.tuple[Tuple[Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.A], builtins.int, fallback=__main__.B]], fallback=__main__.A]'
+[builtins fixtures/tuple.pyi]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:7: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testSelfRefNT3]
+from typing import NamedTuple, Tuple
+
+class B(NamedTuple): # E
+    x: Tuple[A, int]
+    y: int
+
+A = NamedTuple('A', [ # E: Recursive types not fully supported yet, nested types replaced with "Any"
+        ('x', str),
+        ('y', 'B'),
+    ])
+n: B
+m: A
+reveal_type(n.x) # E: Revealed type is 'Tuple[Tuple[builtins.str, Tuple[Tuple[Any, builtins.int], builtins.int, fallback=__main__.B], fallback=__main__.A], builtins.int]'
+reveal_type(m[0]) # E: Revealed type is 'builtins.str'
+lst = [m, n]
+reveal_type(lst[0]) # E: Revealed type is 'Tuple[builtins.object, builtins.object]'
+[builtins fixtures/tuple.pyi]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testSelfRefNT4]
+from typing import NamedTuple
+
+class B(NamedTuple): # E
+    x: A
+    y: int
+
+class A(NamedTuple): # E
+    x: str
+    y: B
+
+n: A
+reveal_type(n.y[0]) # E: Revealed type is 'Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A]'
+[builtins fixtures/tuple.pyi]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:7: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testSelfRefNT5]
+from typing import NamedTuple
+
+B = NamedTuple('B', [ # E: Recursive types not fully supported yet, nested types replaced with "Any"
+        ('x', A),
+        ('y', int),
+    ])
+A = NamedTuple('A', [ # E: Recursive types not fully supported yet, nested types replaced with "Any"
+        ('x', str),
+        ('y', 'B'),
+    ])
+n: A
+def f(m: B) -> None: pass
+reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, Tuple[Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A], builtins.int, fallback=__main__.B], fallback=__main__.A]'
+reveal_type(f) # E: Revealed type is 'def (m: Tuple[Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A], builtins.int, fallback=__main__.B])'
+[builtins fixtures/tuple.pyi]
+
+[case testRecursiveNamedTupleInBases]
+from typing import List, NamedTuple, Union
+
+Exp = Union['A', 'B']  # E: Recursive types not fully supported yet, nested types replaced with "Any"
+class A(NamedTuple('A', [('attr', List[Exp])])): pass
+class B(NamedTuple('B', [('val', object)])): pass
+
+def my_eval(exp: Exp) -> int:
+    reveal_type(exp) # E: Revealed type is 'Union[Tuple[builtins.list[Any], fallback=__main__.A], Tuple[builtins.object, fallback=__main__.B]]'
+    if isinstance(exp, A):
+        my_eval(exp[0][0])
+        return my_eval(exp.attr[0])
+    if isinstance(exp, B):
+        return exp.val  # E: Incompatible return value type (got "object", expected "int")
+
+my_eval(A([B(1), B(2)])) # OK
+[builtins fixtures/isinstancelist.pyi]
+[out]
 
 [case testForwardReferenceInNamedTuple]
 from typing import NamedTuple
