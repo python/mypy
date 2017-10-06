@@ -1440,7 +1440,7 @@ _testNoCrashOnGenericUnionUnpacking2.py:5: error: Revealed type is 'Union[builti
 
 [case testCorrectItemIteratorUnionDict]
 from typing import Union, Dict
-x : Union[Dict[int, int], Dict[str, str]] = dict(a='b')
+x: Union[Dict[int, int], Dict[str, str]] = dict(a='b')
 for a, b in x.items():
     reveal_type(a)
     reveal_type(b)

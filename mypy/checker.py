@@ -1852,6 +1852,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             # Make the type more general (strip away function names etc.).
             init_type = strip_type(init_type)
+
             self.set_inferred_type(name, lvalue, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
