@@ -450,7 +450,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                         leading_type = fill_typevars(self.type)
                     func.type = replace_implicit_first_type(functype, leading_type)
 
-    def set_original_def(self, previous: Node, new: FuncDef) -> bool:
+    def set_original_def(self, previous: Optional[Node], new: FuncDef) -> bool:
         """If 'new' conditionally redefine 'previous', set 'previous' as original
 
         We reject straight redefinitions of functions, as they are usually
@@ -2650,7 +2650,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         lvalue = s.lvalues[0]
         if len(s.lvalues) != 1 or not isinstance(lvalue, RefExpr):
             return
-        if not self.is_classvar(s.type):
+        if not s.type or not self.is_classvar(s.type):
             return
         if self.is_class_scope() and isinstance(lvalue, NameExpr):
             node = lvalue.node
@@ -2661,7 +2661,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             # Other kinds of member assignments should be already reported
             self.fail_invalid_classvar(lvalue)
 
-    def is_classvar(self, typ: Optional[Type]) -> bool:
+    def is_classvar(self, typ: Type) -> bool:
         if not isinstance(typ, UnboundType):
             return False
         sym = self.lookup_qualified(typ.name, typ)
@@ -3710,12 +3710,13 @@ class SemanticAnalyzer(NodeVisitor[None]):
     def add_symbol(self, name: str, node: SymbolTableNode,
                    context: Context) -> None:
         if self.is_func_scope():
-            if name in self.locals[-1]:
+            localns = self.locals[-1]
+            assert localns is not None
+            if name in localns:
                 # Flag redefinition unless this is a reimport of a module.
-                if not (node.kind == MODULE_REF and
-                        self.locals[-1][name].node == node.node):
+                if not (node.kind == MODULE_REF and localns[name].node == node.node):
                     self.name_already_defined(name, context)
-            self.locals[-1][name] = node
+            localns[name] = node
         elif self.type:
             self.type.names[name] = node
         else:
@@ -3733,11 +3734,13 @@ class SemanticAnalyzer(NodeVisitor[None]):
             self.globals[name] = node
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
+        localns = self.locals[-1]
+        assert localns is not None, "Should not add locals outside a function"
         name = node.name()
-        if name in self.locals[-1]:
+        if name in localns:
             self.name_already_defined(name, ctx)
         node._fullname = name
-        self.locals[-1][name] = SymbolTableNode(LDEF, node)
+        localns[name] = SymbolTableNode(LDEF, node)
 
     def add_exports(self, *exps: Expression) -> None:
         for exp in exps:
@@ -4203,7 +4206,7 @@ class ThirdPass(TraverserVisitor):
         for expr in dec.decorators:
             preserve_type = False
             if isinstance(expr, RefExpr) and isinstance(expr.node, FuncDef):
-                if is_identity_signature(expr.node.type):
+                if expr.node.type and is_identity_signature(expr.node.type):
                     preserve_type = True
             if not preserve_type:
                 decorator_preserves_type = False
@@ -4297,14 +4300,17 @@ class ThirdPass(TraverserVisitor):
                           transform: Callable[[Type], Type]) -> None:
         """Apply transform to all types associated with node."""
         if isinstance(node, ForStmt):
-            node.index_type = transform(node.index_type)
+            if node.index_type:
+                node.index_type = transform(node.index_type)
             self.transform_types_in_lvalue(node.index, transform)
         if isinstance(node, WithStmt):
-            node.target_type = transform(node.target_type)
+            if node.target_type:
+                node.target_type = transform(node.target_type)
             for n in node.target:
                 if isinstance(n, NameExpr) and isinstance(n.node, Var) and n.node.type:
                     n.node.type = transform(n.node.type)
         if isinstance(node, (FuncDef, CastExpr, AssignmentStmt, TypeAliasExpr, Var)):
+            assert node.type, "Scheduled patch for non-existent type"
             node.type = transform(node.type)
         if isinstance(node, NewTypeExpr):
             node.old_type = transform(node.old_type)
@@ -4314,14 +4320,17 @@ class ThirdPass(TraverserVisitor):
             if node.values:
                 node.values = [transform(v) for v in node.values]
         if isinstance(node, TypedDictExpr):
+            assert node.info.typeddict_type, "Scheduled patch for non-existent type"
             node.info.typeddict_type = cast(TypedDictType,
                                             transform(node.info.typeddict_type))
         if isinstance(node, NamedTupleExpr):
+            assert node.info.tuple_type, "Scheduled patch for non-existent type"
             node.info.tuple_type = cast(TupleType,
                                         transform(node.info.tuple_type))
         if isinstance(node, TypeApplication):
             node.types = [transform(t) for t in node.types]
         if isinstance(node, SymbolTableNode):
+            assert node.type_override, "Scheduled patch for non-existent type"
             node.type_override = transform(node.type_override)
         if isinstance(node, TypeInfo):
             for tvar in node.defn.type_vars:
@@ -4347,7 +4356,8 @@ class ThirdPass(TraverserVisitor):
         if isinstance(lvalue, RefExpr):
             if isinstance(lvalue.node, Var):
                 var = lvalue.node
-                var.type = transform(var.type)
+                if var.type:
+                    var.type = transform(var.type)
         elif isinstance(lvalue, TupleExpr):
             for item in lvalue.items:
                 self.transform_types_in_lvalue(item, transform)

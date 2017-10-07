@@ -2702,12 +2702,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type('builtins.function'))
 
-    # TODO: These next two functions should refer to TypeMap below
-    def find_isinstance_check(self, n: Expression) -> Tuple[Optional[Dict[Expression, Type]],
-                                                            Optional[Dict[Expression, Type]]]:
+    def find_isinstance_check(self, n: Expression) -> 'Tuple[TypeMap, TypeMap]':
         return find_isinstance_check(n, self.type_map)
 
-    def push_type_map(self, type_map: Optional[Dict[Expression, Type]]) -> None:
+    def push_type_map(self, type_map: 'TypeMap') -> None:
         if type_map is None:
             self.binder.unreachable()
         else:
@@ -2874,6 +2872,16 @@ def remove_optional(typ: Type) -> Type:
         return typ
 
 
+def is_non_optional_container(tp: Type) -> bool:
+    # This is only safe for built-in containers, where we know the behavior of __contains__.
+    if not isinstance(tp, Instance):
+        return False
+    if tp.type.fullname() not in ['builtins.list', 'builtins.dict',
+                                  'builtins.set', 'builtins.frozenfet']:
+        return False
+    return not is_optional(tp.args[0])
+
+
 def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     """Calculate what information we can learn from the truth of (e1 and e2)
     in terms of the information that we can learn from the truth of e1 and
@@ -3020,6 +3028,11 @@ def find_isinstance_check(node: Expression,
                     optional_expr = node.operands[1]
                 if is_overlapping_types(optional_type, comp_type):
                     return {optional_expr: remove_optional(optional_type)}, {}
+        elif node.operators == ['in']:
+            item_type = type_map[node.operands[0]]
+            cont_type = type_map[node.operands[1]]
+            if is_optional(item_type) and is_non_optional_container(cont_type):
+                return {node.operands[0]: remove_optional(item_type)}, {}
     elif isinstance(node, RefExpr):
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
