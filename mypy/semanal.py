@@ -906,7 +906,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             return tvars
         return None
 
-    def analyze_unbound_tvar(self, t: Type) -> Tuple[str, TypeVarExpr]:
+    def analyze_unbound_tvar(self, t: Type) -> Optional[Tuple[str, TypeVarExpr]]:
         if not isinstance(t, UnboundType):
             return None
         unbound = t
@@ -1249,7 +1249,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         else:
             return leading_type
 
-    def named_type(self, qualified_name: str, args: List[Type] = None) -> Instance:
+    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, None)
         assert sym, "Internal error: attempted to construct unknown type"
         node = sym.node
@@ -1259,7 +1259,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
             return Instance(node, args)
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
-    def named_type_or_none(self, qualified_name: str, args: List[Type] = None) -> Instance:
+    def named_type_or_none(self, qualified_name: str,
+                           args: Optional[List[Type]] = None) -> Optional[Instance]:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
         if not sym:
             return None
@@ -1337,9 +1338,9 @@ class SemanticAnalyzer(NodeVisitor[None]):
         return False
 
     def check_typeddict_classdef(self, defn: ClassDef,
-                                 oldfields: List[str] = None) -> Tuple[List[str],
-                                                                       List[Type],
-                                                                       Set[str]]:
+                                 oldfields: Optional[List[str]] = None) -> Tuple[List[str],
+                                                                                 List[Type],
+                                                                                 Set[str]]:
         TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
                               'expected "field_name: field_type"')
         if self.options.python_version < (3, 6):
@@ -1622,7 +1623,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             self.accept(s)
         self.block_depth[-1] -= 1
 
-    def visit_block_maybe(self, b: Block) -> None:
+    def visit_block_maybe(self, b: Optional[Block]) -> None:
         if b:
             self.visit_block(b)
 
@@ -1654,16 +1655,11 @@ class SemanticAnalyzer(NodeVisitor[None]):
                   allow_tuple_literal: bool = False,
                   aliasing: bool = False,
                   third_pass: bool = False) -> Type:
-        if t:
-            a = self.type_analyzer(
-                tvar_scope=tvar_scope,
-                aliasing=aliasing,
-                allow_tuple_literal=allow_tuple_literal,
-                third_pass=third_pass)
-            return t.accept(a)
-
-        else:
-            return None
+        a = self.type_analyzer(tvar_scope=tvar_scope,
+                               aliasing=aliasing,
+                               allow_tuple_literal=allow_tuple_literal,
+                               third_pass=third_pass)
+        return t.accept(a)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
@@ -2260,7 +2256,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
         node.kind = GDEF   # TODO locally defined namedtuple
         node.node = named_tuple
 
-    def check_namedtuple(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
+    def check_namedtuple(self, node: Expression,
+                         var_name: Optional[str] = None) -> Optional[TypeInfo]:
         """Check if a call defines a namedtuple.
 
         The optional var_name argument is the name of the variable to
@@ -2280,6 +2277,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         fullname = callee.fullname
         if fullname not in ('collections.namedtuple', 'typing.NamedTuple'):
             return None
+        assert fullname
         items, types, ok = self.parse_namedtuple_args(call, fullname)
         if not ok:
             # Error. Construct dummy return value.
@@ -2440,7 +2438,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         def add_method(funcname: str,
                        ret: Type,
                        args: List[Argument],
-                       name: str = None,
+                       name: Optional[str] = None,
                        is_classmethod: bool = False,
                        ) -> None:
             if is_classmethod:
@@ -2513,7 +2511,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
             node.kind = GDEF   # TODO locally defined TypedDict
             node.node = typed_dict
 
-    def check_typeddict(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
+    def check_typeddict(self, node: Expression,
+                        var_name: Optional[str] = None) -> Optional[TypeInfo]:
         """Check if a call defines a TypedDict.
 
         The optional var_name argument is the name of the variable to
@@ -2533,7 +2532,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         fullname = callee.fullname
         if fullname != 'mypy_extensions.TypedDict':
             return None
-        items, types, total, ok = self.parse_typeddict_args(call, fullname)
+        items, types, total, ok = self.parse_typeddict_args(call)
         if not ok:
             # Error. Construct dummy return value.
             info = self.build_typeddict_typeinfo('TypedDict', [], [], set())
@@ -2559,8 +2558,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         call.analyzed.set_line(call.line, call.column)
         return info
 
-    def parse_typeddict_args(self, call: CallExpr,
-                             fullname: str) -> Tuple[List[str], List[Type], bool, bool]:
+    def parse_typeddict_args(self, call: CallExpr) -> Tuple[List[str], List[Type], bool, bool]:
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
@@ -2663,7 +2661,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             # Other kinds of member assignments should be already reported
             self.fail_invalid_classvar(lvalue)
 
-    def is_classvar(self, typ: Type) -> bool:
+    def is_classvar(self, typ: Optional[Type]) -> bool:
         if not isinstance(typ, UnboundType):
             return False
         sym = self.lookup_qualified(typ.name, typ)
@@ -2749,7 +2747,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
             node.kind = GDEF   # TODO locally defined Enum
             node.node = enum_call
 
-    def check_enum_call(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
+    def check_enum_call(self, node: Expression,
+                        var_name: Optional[str] = None) -> Optional[TypeInfo]:
         """Check if a call defines an Enum.
 
         Example:
@@ -4407,7 +4406,7 @@ class ThirdPass(TraverserVisitor):
     def fail_blocker(self, msg: str, ctx: Context) -> None:
         self.fail(msg, ctx, blocker=True)
 
-    def builtin_type(self, name: str, args: List[Type] = None) -> Instance:
+    def builtin_type(self, name: str, args: Optional[List[Type]] = None) -> Instance:
         names = self.modules['builtins']
         sym = names.names[name]
         node = sym.node
@@ -4472,7 +4471,7 @@ def calculate_class_mro(defn: ClassDef, fail: Callable[[str, Context], None]) ->
     defn.info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in defn.info.mro)
 
 
-def find_duplicate(list: List[T]) -> T:
+def find_duplicate(list: List[T]) -> Optional[T]:
     """If the list has duplicates, return one of the duplicates.
 
     Otherwise, return None.

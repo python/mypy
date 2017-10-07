@@ -719,8 +719,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Returns the inferred types of *actual arguments*.
         """
-        dummy = None  # type: Any
-        res = [dummy] * len(args)  # type: List[Type]
+        res = [None] * len(args)  # type: List[Optional[Type]]
 
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
