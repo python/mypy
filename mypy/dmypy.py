@@ -86,8 +86,7 @@ def do_start(args: argparse.Namespace) -> None:
     try:
         pid, sockname = get_status()
     except SystemExit as err:
-        daemonize(server, args.flags)
-        print("Daemon started")
+        daemonize(Server(args.flags).serve)
     else:
         sys.exit("Daemon is still alive")
 
@@ -151,8 +150,7 @@ def do_restart(args: argparse.Namespace) -> None:
             sys.exit("Status: %s" % str(status))
         else:
             print("Daemon stopped")
-    daemonize(server, args.flags)
-    print("Daemon started")
+    daemonize(Server(args.flags).serve)
 
 
 @action(check_parser)
@@ -210,9 +208,8 @@ def request(command: str, **kwds: object) -> Dict[str, Any]:
     sock.connect(sockname)
     sock.sendall(data.encode('utf8'))
     sock.shutdown(socket.SHUT_WR)
-    bdata = receive(sock)
+    response = receive(sock)
     sock.close()
-    response = json.loads(bdata)  # JSON accepts bytes too
     return response
 
 
@@ -226,25 +223,28 @@ def get_status() -> Tuple[int, str]:
     if not os.path.isfile(STATUS_FILE):
         raise SystemExit("No status file found")
     with open(STATUS_FILE) as f:
-        data = json.load(f)
+        try:
+            data = json.load(f)
+        except Exception as err:
+            raise SystemExit("Malformed status file")
     if not isinstance(data, dict) or 'pid' not in data:
-        raise SystemExit("Malformed status file")
+        raise SystemExit("Invalid status file")
     pid = data['pid']
     sockname = data['sockname']
     try:
         os.kill(pid, 0)
     except OSError as err:
-        print("%s: %s" % (err.__class__.__name__, err))
         raise SystemExit("Daemon has died")
     return pid, sockname
 
 
 DEBUG = False
 
-def daemonize(func: Callable[[Sequence[str]], NoReturn], flags: Sequence[str]) -> None:
+def daemonize(func: Callable[[], NoReturn]) -> None:
     """Arrange to call func() in a grandchild of the current process."""
     pid = os.fork()
     if pid:
+        print("Daemon started")
         return
     # Child
     try:
@@ -255,11 +255,11 @@ def daemonize(func: Callable[[Sequence[str]], NoReturn], flags: Sequence[str]) -
             os.dup2(devnull, 1)
             os.dup2(devnull, 2)
             os.close(devnull)
-        pid = os.fork()
-        if pid:
-            os._exit(0)
+            pid = os.fork()
+            if pid:
+                os._exit(0)
         # Grandchild
-        func(flags)
+        func()
     finally:
         # Make sure we never get back into the caller.
         os._exit(1)
@@ -267,62 +267,11 @@ def daemonize(func: Callable[[Sequence[str]], NoReturn], flags: Sequence[str]) -
 
 # Server code.
 
-mypy_flags = None
-
-def server(flags: Sequence[str]) -> NoReturn:
-    global mypy_flags
-    mypy_flags = list(flags)
-    sock = create_listening_socket()
-    with open(STATUS_FILE, 'w') as f:
-        json.dump({'pid': os.getpid(), 'sockname': sock.getsockname()}, f)
-        f.write('\n')  # I like my JSON with trailing newline
-    while True:
-        conn, addr = sock.accept()
-        bdata = receive(conn)
-        data = json.loads(bdata)
-        resp = None  # type: Dict[str, Any]
-        if 'command' not in data:
-            resp = {'error': "No command found in request"}
-        else:
-            command = data['command']
-            if not isinstance(command, str):
-                resp = {'error': "Command is not a string"}
-            else:
-                command = data.pop('command')
-            resp = run_command(command, data)
-        conn.sendall(json.dumps(resp).encode('utf8'))
-        conn.close()
-        if command == 'stop':
-            break
-    sock.close()
-    sys.exit(0)
-
-
 SOCKET_NAME = 'dmypy.sock'  # In current directory.
-
-def create_listening_socket() -> socket.socket:
-    """Create the socket and set it up for listening."""
-    sockname = os.path.abspath(SOCKET_NAME)
-    if os.path.exists(sockname):
-        os.unlink(sockname)
-    sock = socket.socket(socket.AF_UNIX)
-    sock.bind(sockname)
-    sock.listen(1)
-    return sock
-
 
 CommandFunction = Callable[..., Dict[str, Any]]
 
 command_registry = {}  # type: Dict[str, CommandFunction]
-
-def run_command(command: str, data: Mapping[str, object]) -> Dict[str, object]:
-    """Run a specific command from the registry."""
-    key = 'cmd_' + command
-    if key in command_registry:
-        return command_registry[key](**data)
-    else:
-        return {'error': "Unrecognized command '%s'" % command}
-
 
 F = TypeVar('F', bound=CommandFunction)
 
@@ -333,51 +282,99 @@ def command(func: F) -> F:
     return func
 
 
-# Command functions (run in the server via RPC).
+class Server:
 
-@command
-def cmd_status() -> Dict[str, object]:
-    """Return daemon status."""
-    return {'status': "I'm alive!"}
+    mypy_flags = None
+
+    def __init__(self, flags: Sequence[str]) -> None:
+        """Initialize the server with the desired mypy flags."""
+        self.mypy_flags = list(flags)
+
+    def serve(self) -> NoReturn:
+        """Serve a single request, synchronously (no thread or fork)."""
+        sock = self.create_listening_socket()
+        with open(STATUS_FILE, 'w') as f:
+            json.dump({'pid': os.getpid(), 'sockname': sock.getsockname()}, f)
+            f.write('\n')  # I like my JSON with trailing newline
+        while True:
+            conn, addr = sock.accept()
+            data = receive(conn)
+            resp = None  # type: Dict[str, Any]
+            if 'command' not in data:
+                resp = {'error': "No command found in request"}
+            else:
+                command = data['command']
+                if not isinstance(command, str):
+                    resp = {'error': "Command is not a string"}
+                else:
+                    command = data.pop('command')
+                resp = self.run_command(command, data)
+            conn.sendall(json.dumps(resp).encode('utf8'))
+            conn.close()
+            if command == 'stop':
+                sock.close()
+                sys.exit(0)
+
+    def create_listening_socket(self) -> socket.socket:
+        """Create the socket and set it up for listening."""
+        self.sockname = os.path.abspath(SOCKET_NAME)
+        if os.path.exists(self.sockname):
+            os.unlink(self.sockname)
+        sock = socket.socket(socket.AF_UNIX)
+        sock.bind(self.sockname)
+        sock.listen(1)
+        return sock
+
+    def run_command(self, command: str, data: Mapping[str, object]) -> Dict[str, object]:
+        """Run a specific command from the registry."""
+        key = 'cmd_' + command
+        if key in command_registry:
+            return command_registry[key](self, **data)
+        else:
+            return {'error': "Unrecognized command '%s'" % command}
+
+    # Command functions (run in the server via RPC).
+
+    @command
+    def cmd_status(self) -> Dict[str, object]:
+        """Return daemon status."""
+        return {'status': "I'm alive!"}
 
 
-@command
-def cmd_stop() -> Dict[str, object]:
-    """Stop daemon."""
-    return {}
+    @command
+    def cmd_stop(self) -> Dict[str, object]:
+        """Stop daemon."""
+        os.unlink(self.sockname)
+        os.unlink(STATUS_FILE)
+        return {}
 
+    last_args = None
 
-last_args = None
+    @command
+    def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
+        """Check a list of files."""
+        self.last_args = ['--incremental'] + self.mypy_flags + ['--'] + list(files)
+        stdout, stderr, status = mypy.api.run(self.last_args)
+        return {'out': stdout, 'err': stderr, 'status': status}
 
-@command
-def cmd_check(files: Sequence[str]) -> Dict[str, object]:
-    """Check a list of files."""
-    global last_args
-    last_args = ['--incremental'] + mypy_flags + ['--'] + list(files)
-    stdout, stderr, status = mypy.api.run(last_args)
-    return {'out': stdout, 'err': stderr, 'status': status}
+    @command
+    def cmd_recheck(self) -> Dict[str, object]:
+        """Check the same list of files we checked most recently."""
+        if not self.last_args:
+            return {'error': "Command 'recheck' is only valid after a 'check' command"}
+        stdout, stderr, status = mypy.api.run(self.last_args)
+        return {'out': stdout, 'err': stderr, 'status': status}
 
-
-@command
-def cmd_recheck() -> Dict[str, object]:
-    """Check the same list of files we checked most recently."""
-    global last_args
-    if not last_args:
-        return {'error': "Command 'recheck' is only valid after a 'check' command"}
-    stdout, stderr, status = mypy.api.run(last_args)
-    return {'out': stdout, 'err': stderr, 'status': status}
-
-
-@command
-def cmd_hang() -> Dict[str, object]:
-    """Hang for 100 seconds, as a debug hack."""
-    time.sleep(100)
-    return {}
+    @command
+    def cmd_hang(self) -> Dict[str, object]:
+        """Hang for 100 seconds, as a debug hack."""
+        time.sleep(100)
+        return {}
 
 
 # Network utilities.
 
-def receive(sock: socket.socket) -> bytes:
+def receive(sock: socket.socket) -> Any:
     """Receive data from a socket until EOF."""
     bdata = bytearray()
     while True:
@@ -385,7 +382,7 @@ def receive(sock: socket.socket) -> bytes:
         if not more:
             break
         bdata.extend(more)
-    return bdata
+    return json.loads(bdata)
 
 
 # Run main().
