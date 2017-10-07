@@ -395,6 +395,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 self.prepare_method_signature(defn)
             elif self.is_func_scope():
                 # Nested function
+                assert self.locals[-1] is not None, "No locals at function scope"
                 if not defn.is_decorated and not defn.is_overload:
                     if defn.name() in self.locals[-1]:
                         # Redefinition. Conditional redefinition is okay.
@@ -430,7 +431,9 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     # has external return type `Awaitable[T]`.
                     defn.type = defn.type.copy_modified(
                         ret_type = self.named_type_or_none('typing.Awaitable',
-                                                           [defn.type.ret_type]))
+                                                           [defn.type.ret_type]) or
+                        # We are running tests
+                        self.named_type('typing_full.Awaitable', [defn.type.ret_type]))
             self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef) -> None:
@@ -649,9 +652,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
             self.function_stack.pop()
 
     def check_classvar_in_signature(self, typ: Type) -> None:
-        t = None  # type: Type
         if isinstance(typ, Overloaded):
-            for t in typ.items():
+            for t in typ.items():  # type: Type
                 self.check_classvar_in_signature(t)
             return
         if not isinstance(typ, CallableType):
@@ -710,8 +712,10 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     if prohibited in named_tuple_info.names:
                         if nt_names.get(prohibited) is named_tuple_info.names[prohibited]:
                             continue
+                        ctx = named_tuple_info.names[prohibited].node
+                        assert ctx is not None
                         self.fail('Cannot overwrite NamedTuple attribute "{}"'.format(prohibited),
-                                  named_tuple_info.names[prohibited].node)
+                                  ctx)
 
                 # Restore the names in the original symbol table. This ensures that the symbol
                 # table contains the field objects created by build_namedtuple_typeinfo. Exclude
@@ -779,7 +783,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     # check arbitrarily the first overload item. If the
                     # different items have a different abstract status, there
                     # should be an error reported elsewhere.
-                    func = node.items[0]  # type: Node
+                    func = node.items[0]  # type: Optional[Node]
                 else:
                     func = node
                 if isinstance(func, Decorator):
@@ -799,7 +803,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
 
         This includes things like 'int' being compatible with 'float'.
         """
-        promote_target = None  # type: Type
+        promote_target = None  # type: Optional[Type]
         for decorator in defn.decorators:
             if isinstance(decorator, CallExpr):
                 analyzed = decorator.analyzed
@@ -913,7 +917,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is None or sym.kind != TVAR:
             return None
-        elif not self.tvar_scope.allow_binding(sym.fullname):
+        elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
             # It's bound by our type variable scope
             return None
         else:
@@ -1158,6 +1162,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 # Some form of namedtuple is the only valid type that looks like a call
                 # expression. This isn't a valid type.
                 raise TypeTranslationError()
+            assert info.tuple_type, "NamedTuple without tuple type"
             fallback = Instance(info, [])
             return TupleType(info.tuple_type.items, fallback=fallback)
         typ = expr_to_unanalyzed_type(expr)
@@ -1198,11 +1203,12 @@ class SemanticAnalyzer(NodeVisitor[None]):
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
         if defn.metaclass:
+            metaclass_name = None
             if isinstance(defn.metaclass, NameExpr):
                 metaclass_name = defn.metaclass.name
             elif isinstance(defn.metaclass, MemberExpr):
                 metaclass_name = get_member_expr_fullname(defn.metaclass)
-            else:
+            if metaclass_name is None:
                 self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn.metaclass)
                 return
             sym = self.lookup_qualified(metaclass_name, defn.metaclass)
@@ -1250,7 +1256,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             return leading_type
 
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
-        sym = self.lookup_qualified(qualified_name, None)
+        sym = self.lookup_qualified(qualified_name, Context())
         assert sym, "Internal error: attempted to construct unknown type"
         node = sym.node
         assert isinstance(node, TypeInfo)
@@ -1378,7 +1384,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 elif not isinstance(stmt.rvalue, TempNode):
                     # x: int assigns rvalue to TempNode(AnyType())
                     self.fail('Right hand side values are not supported in TypedDict', stmt)
-        total = True
+        total = True  # type: Optional[bool]
         if 'total' in defn.keywords:
             total = self.parse_bool(defn.keywords['total'])
             if total is None:
@@ -1845,7 +1851,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 # Since the is_def flag is set, this must have been analyzed
                 # already in the first pass and added to the symbol table.
                 assert lval.node.name() in self.globals
-            elif (self.is_func_scope() and lval.name not in self.locals[-1] and
+            elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
                   lval.name not in self.global_decls[-1] and
                   lval.name not in self.nonlocal_decls[-1]):
                 # Define new local name.
@@ -2279,7 +2285,6 @@ class SemanticAnalyzer(NodeVisitor[None]):
         fullname = callee.fullname
         if fullname not in ('collections.namedtuple', 'typing.NamedTuple'):
             return None
-        assert fullname
         items, types, ok = self.parse_namedtuple_args(call, fullname)
         if not ok:
             # Error. Construct dummy return value.
@@ -3718,13 +3723,12 @@ class SemanticAnalyzer(NodeVisitor[None]):
     def add_symbol(self, name: str, node: SymbolTableNode,
                    context: Context) -> None:
         if self.is_func_scope():
-            localns = self.locals[-1]
-            assert localns is not None
-            if name in localns:
+            assert self.locals[-1] is not None
+            if name in self.locals[-1]:
                 # Flag redefinition unless this is a reimport of a module.
-                if not (node.kind == MODULE_REF and localns[name].node == node.node):
+                if not (node.kind == MODULE_REF and self.locals[-1][name].node == node.node):
                     self.name_already_defined(name, context)
-            localns[name] = node
+            self.locals[-1][name] = node
         elif self.type:
             self.type.names[name] = node
         else:
@@ -3742,13 +3746,12 @@ class SemanticAnalyzer(NodeVisitor[None]):
             self.globals[name] = node
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
-        localns = self.locals[-1]
-        assert localns is not None, "Should not add locals outside a function"
+        assert self.locals[-1] is not None, "Should not add locals outside a function"
         name = node.name()
-        if name in localns:
+        if name in self.locals[-1]:
             self.name_already_defined(name, ctx)
         node._fullname = name
-        localns[name] = SymbolTableNode(LDEF, node)
+        self.locals[-1][name] = SymbolTableNode(LDEF, node)
 
     def add_exports(self, *exps: Expression) -> None:
         for exp in exps:
