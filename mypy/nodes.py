@@ -1808,11 +1808,11 @@ class PromoteExpr(Expression):
 class NewTypeExpr(Expression):
     """NewType expression NewType(...)."""
     name = None  # type: str
-    old_type = None  # type: mypy.types.Type
+    old_type = None  # type: Optional[mypy.types.Type]
 
     info = None  # type: Optional[TypeInfo]
 
-    def __init__(self, name: str, old_type: 'mypy.types.Type', line: int) -> None:
+    def __init__(self, name: str, old_type: 'Optional[mypy.types.Type]', line: int) -> None:
         self.name = name
         self.old_type = old_type
 

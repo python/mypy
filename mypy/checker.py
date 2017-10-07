@@ -2874,12 +2874,19 @@ def remove_optional(typ: Type) -> Type:
 
 def is_non_optional_container(tp: Type) -> bool:
     # This is only safe for built-in containers, where we know the behavior of __contains__.
-    if not isinstance(tp, Instance):
-        return False
-    if tp.type.fullname() not in ['builtins.list', 'builtins.dict',
-                                  'builtins.set', 'builtins.frozenfet']:
-        return False
-    return not is_optional(tp.args[0])
+    if isinstance(tp, Instance) and tp.type.fullname() in ['builtins.list', 'builtins.tuple',
+                                                           'builtins.dict', 'builtins.set',
+                                                           'builtins.frozenfet']:
+        if not tp.args:
+            # TODO: make lib-stub contain generic tuple.
+            return False
+        return not is_optional(tp.args[0]) and not isinstance(tp.args[0], AnyType)
+    if isinstance(tp, TupleType):
+        return all(not is_optional(it) and not isinstance(it, AnyType) for it in tp.items)
+    if isinstance(tp, TypedDictType):
+        # TypedDict always has non-optional string keys.
+        return True
+    return False
 
 
 def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
@@ -3033,6 +3040,11 @@ def find_isinstance_check(node: Expression,
             cont_type = type_map[node.operands[1]]
             if is_optional(item_type) and is_non_optional_container(cont_type):
                 return {node.operands[0]: remove_optional(item_type)}, {}
+        elif node.operators == ['not in']:
+            item_type = type_map[node.operands[0]]
+            cont_type = type_map[node.operands[1]]
+            if is_optional(item_type) and is_non_optional_container(cont_type):
+                return {}, {node.operands[0]: remove_optional(item_type)}
     elif isinstance(node, RefExpr):
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively

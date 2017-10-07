@@ -1945,7 +1945,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
         node = memberexpr.expr.node
         return isinstance(node, Var) and node.is_self
 
-    def check_lvalue_validity(self, node: Union[Expression, SymbolNode], ctx: Context) -> None:
+    def check_lvalue_validity(self, node: Union[Expression, SymbolNode, None],
+                              ctx: Context) -> None:
         if isinstance(node, TypeVarExpr):
             self.fail('Invalid assignment target', ctx)
         elif isinstance(node, TypeInfo):
@@ -2139,6 +2140,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         assert node is not None
+        assert node.fullname is not None
         node.kind = TVAR
         TypeVar = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
         TypeVar.line = call.line
@@ -2405,7 +2407,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
         info.tuple_type = TupleType(types, fallback)
 
         def patch() -> None:
-            # Calculate the correct value type for the fallback Mapping.
+            # Calculate the correct value type for the fallback tuple.
+            assert info.tuple_type, "TupleType type deleted before calling the patch"
             fallback.args[0] = join.join_type_list(list(info.tuple_type.items))
 
         # We can't calculate the complete fallback type until after semantic
@@ -2450,7 +2453,9 @@ class SemanticAnalyzer(NodeVisitor[None]):
             types = [arg.type_annotation for arg in args]
             items = [arg.variable.name() for arg in args]
             arg_kinds = [arg.kind for arg in args]
-            signature = CallableType(types, arg_kinds, items, ret, function_type,
+            assert None not in types
+            signature = CallableType(cast(List[Type], types), arg_kinds, items, ret,
+                                     function_type,
                                      name=name or info.name() + '.' + funcname)
             signature.variables = [tvd]
             func = FuncDef(funcname, args, Block([]), typ=signature)
@@ -2577,7 +2582,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         if not isinstance(args[1], DictExpr):
             return self.fail_typeddict_arg(
                 "TypedDict() expects a dictionary literal as the second argument", call)
-        total = True
+        total = True  # type: Optional[bool]
         if len(args) == 3:
             total = self.parse_bool(call.args[2])
             if total is None:
@@ -2593,6 +2598,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             for t in types:
                 if has_any_from_unimported_type(t):
                     self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, dictexpr)
+        assert total is not None
         return items, types, total, ok
 
     def parse_bool(self, expr: Expression) -> Optional[bool]:
@@ -2638,6 +2644,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
 
         def patch() -> None:
             # Calculate the correct value type for the fallback Mapping.
+            assert info.typeddict_type, "TypedDict type deleted before calling the patch"
             fallback.args[1] = join.join_type_list(list(info.typeddict_type.items.values()))
 
         # We can't calculate the complete fallback type until after semantic
@@ -3253,7 +3260,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             for a in call.args:
                 a.accept(self)
             return None
-        expr = DictExpr([(StrExpr(key), value)
+        expr = DictExpr([(StrExpr(cast(str, key)), value)  # since they are all ARG_NAMED
                          for key, value in zip(call.arg_names, call.args)])
         expr.set_line(call)
         expr.accept(self)
@@ -3385,6 +3392,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             # Special form -- subscripting a generic type alias.
             # Perform the type substitution and create a new alias.
             res, alias_tvars = self.analyze_alias(expr, allow_unnormalized=self.is_stub_file)
+            assert res is not None, "Failed analyzing already defined alias"
             expr.analyzed = TypeAliasExpr(res, alias_tvars, fallback=self.alias_fallback(res),
                                           in_runtime=True)
             expr.analyzed.line = expr.line
@@ -4313,6 +4321,7 @@ class ThirdPass(TraverserVisitor):
             assert node.type, "Scheduled patch for non-existent type"
             node.type = transform(node.type)
         if isinstance(node, NewTypeExpr):
+            assert node.old_type, "Scheduled patch for non-existent type"
             node.old_type = transform(node.old_type)
         if isinstance(node, TypeVarExpr):
             if node.upper_bound:
