@@ -238,10 +238,13 @@ def get_status() -> Tuple[int, str]:
     return pid, sockname
 
 
-DEBUG = False
+DEBUG = False  # If True, daemon is not a true daemon process, so we'll see its output.
 
 def daemonize(func: Callable[[], NoReturn]) -> None:
     """Arrange to call func() in a grandchild of the current process."""
+    # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
+    sys.stdout.flush()
+    sys.stderr.flush()
     pid = os.fork()
     if pid:
         print("Daemon started")
