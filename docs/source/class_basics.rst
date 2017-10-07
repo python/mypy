@@ -158,30 +158,32 @@ Protocols and structural subtyping
 
 .. note::
 
-   The support for structural subtyping is still experimental. Some features
-   might be not yet implemented, mypy could pass unsafe code or reject
-   working code.
+   Structural subtyping is experimental. Some things may not
+   work as expected. Mypy may pass unsafe code or it can reject
+   valid code.
 
-There are two main type systems with respect to subtyping: nominal subtyping
-and structural subtyping. The *nominal* subtyping is based on class hierarchy,
-so that if class ``D`` inherits from class ``C``, then it is a subtype
-of ``C``. This type system is primarily used in mypy since it allows
-to produce clear and concise error messages, and since Python provides native
-``isinstance()`` checks based on class hierarchy. The *structural* subtyping
-however has its own advantages. In this system class ``D`` is a subtype
-of class ``C`` if the former has all attributes of the latter with
-compatible types.
+Mypy supports two ways of deciding whether two classes are compatible
+as types: nominal subtyping and structural subtyping. *Nominal*
+subtyping is strictly based on the class hierarchy. If class ``D``
+inherits class ``C``, it's also a subtype of ``C``. This form of
+subtyping is used by default in mypy, since it's easy to understand
+and produces clear and concise error messages, and since it matches
+how the native ``isinstance()`` check works -- based on class
+hierarchy. *Structural* subtyping can also be useful. Class ``D`` is
+a structural subtype of class ``C`` if the former has all attributes
+and methods of the latter, and with compatible types.
 
-This type system is a static equivalent of duck typing, well known by Python
-programmers. Mypy provides an opt-in support for structural subtyping via
-protocol classes described in this section.
-See `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ for
-specification of protocols and structural subtyping in Python.
+Structural subtyping can be seen as a static equivalent of duck
+typing, which is well known to Python programmers. Mypy provides an
+opt-in support for structural subtyping via protocol classes described
+below.  See `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ for
+the detailed specification of protocols and structural subtyping in
+Python.
 
-User defined protocols
-**********************
+Simple user-defined protocols
+*****************************
 
-To define a protocol class, one must inherit the special
+You can define a protocol class by inheriting the special
 ``typing_extensions.Protocol`` class:
 
 .. code-block:: python
@@ -191,37 +193,42 @@ To define a protocol class, one must inherit the special
 
    class SupportsClose(Protocol):
        def close(self) -> None:
-          ...
+          ...  # Explicit '...'
 
-   class Resource:  # Note, this class does not have 'SupportsClose' base.
-       # some methods
+   class Resource:  # No SupportsClose base class!
+       # ... some methods ...
+
        def close(self) -> None:
           self.resource.release()
 
-   def close_all(things: Iterable[SupportsClose]) -> None:
-       for thing in things:
-           thing.close()
+   def close_all(items: Iterable[SupportsClose]) -> None:
+       for item in items:
+           item.close()
 
-   close_all([Resource(), open('some/file')])  # This passes type check
+   close_all([Resource(), open('some/file')])  # Okay!
+
+``Resource`` is a subtype of the ``SupportClose`` protocol since it defines
+a compatible ``close`` method. Regular file objects returned by ``open()`` are
+similarly compatible with the protocol, as they support ``close()``.
 
 .. note::
 
-   The ``Protocol`` base class is currently provided in ``typing_extensions``
-   package. When structural subtyping is mature and
-   `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ is accepted,
-   ``Protocol`` will be included in the ``typing`` module. As well, several
-   types such as ``typing.Sized``, ``typing.Iterable`` etc. will be made
-   protocols.
+   The ``Protocol`` base class is currently provided in the ``typing_extensions``
+   package. Once structural subtyping is mature and
+   `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ has been accepted,
+   ``Protocol`` will be included in the ``typing`` module. Several library
+   types such as ``typing.Sized`` and ``typing.Iterable`` will also be changed
+   into protocols. They are currently treated as regular ABCs by mypy.
 
 Defining subprotocols
 *********************
 
-Subprotocols are also supported. Existing protocols can be extended
-and merged using multiple inheritance. For example:
+You can also define subprotocols. Existing protocols can be extended
+and merged using multiple inheritance. Example:
 
 .. code-block:: python
 
-   # continuing from previous example
+   # ... continuing from the previous example
 
    class SupportsRead(Protocol):
        def read(self, amount: int) -> bytes: ...
@@ -232,20 +239,19 @@ and merged using multiple inheritance. For example:
    class AdvancedResource(Resource):
        def __init__(self, label: str) -> None:
            self.label = label
+
        def read(self, amount: int) -> bytes:
            # some implementation
            ...
 
-   resource = None  # type: TaggedReadableResource
-
-   # some code
-
+   resource: TaggedReadableResource
    resource = AdvancedResource('handle with care')  # OK
 
-Note that inheriting from existing protocols does not automatically turn
-a subclass into a protocol, it just creates a usual (non-protocol) ABC that
-implements given protocols. The ``typing_extensions.Protocol`` base must always
-be explicitly present:
+Note that inheriting from an existing protocol does not automatically
+turn the subclass into a protocol -- it just creates a regular
+(non-protocol) ABC that implements the given protocol (or
+protocols). The ``typing_extensions.Protocol`` base class must always
+be explicitly present if you are defining a protocol:
 
 .. code-block:: python
 
@@ -253,25 +259,27 @@ be explicitly present:
        new_attr: int
 
    class Concrete:
-      new_attr = None  # type: int
+      new_attr: int = 0
+
       def close(self) -> None:
           ...
-   # Below is an error, since nominal subtyping is used by default
-   x = Concrete()  # type: NewProtocol  # Error!
+
+   # Error: nominal subtyping used by default
+   x: NewProtocol = Concrete()  # Error!
 
 .. note::
 
-   The `PEP 526 <https://www.python.org/dev/peps/pep-0526/>`_ variable
-   annotations can be used to declare protocol attributes. However, protocols
-   are also supported on Python 2.7 and Python 3.3+ with the help of type
-   comments and properties, see
-   `backwards compatibility in PEP 544 <https://www.python.org/dev/peps/pep-0544/#backwards-compatibility>`_.
+   You can use Python 3.6 variable annotations (`PEP 526
+   <https://www.python.org/dev/peps/pep-0526/>`_)
+   to declare protocol attributes.  On Python 2.7 and earlier Python 3
+   versions you can use type comments and properties.
 
 Recursive protocols
 *******************
 
-Protocols can be recursive and mutually recursive. This could be useful for
-declaring abstract recursive collections such as trees and linked lists:
+Protocols can be recursive (self-referential) and mutually
+recursive. This is useful for declaring abstract recursive collections
+such as trees and linked lists:
 
 .. code-block:: python
 
@@ -280,8 +288,10 @@ declaring abstract recursive collections such as trees and linked lists:
 
    class TreeLike(Protocol):
        value: int
+
        @property
        def left(self) -> Optional['TreeLike']: ...
+
        @property
        def right(self) -> Optional['TreeLike']: ...
 
@@ -296,9 +306,9 @@ declaring abstract recursive collections such as trees and linked lists:
 Using ``isinstance()`` with protocols
 *************************************
 
-To use a protocol class with ``isinstance()``, one needs to decorate it with
-a special ``typing_extensions.runtime`` decorator. It will add support for
-basic runtime structural checks:
+You can use a protocol class with ``isinstance()`` if you decorate it
+with the ``typing_extensions.runtime`` class decorator. The decorator
+adds support for basic runtime structural checks:
 
 .. code-block:: python
 
@@ -314,11 +324,9 @@ basic runtime structural checks:
 
    mug = Mug()
    if isinstance(mug, Portable):
-      use(mug.handles)  # Works statically and at runtime.
+      use(mug.handles)  # Works statically and at runtime
 
 .. note::
-   ``isinstance()`` is with protocols not completely safe at runtime.
+   ``isinstance()`` with protocols is not completely safe at runtime.
    For example, signatures of methods are not checked. The runtime
-   implementation only checks the presence of all protocol members
-   in object's MRO.
-
+   implementation only checks that all protocol members are defined.

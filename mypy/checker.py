@@ -1770,9 +1770,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             types = [self.check_lvalue(sub_expr)[0] or
-                     # This type will be used as a context for further inference of rvalue
-                     # we put Any if there is no information available from lvalue.
-                     AnyType(TypeOfAny.special_form) for sub_expr in lvalue.items]
+                     # This type will be used as a context for further inference of rvalue,
+                     # we put Uninhabited if there is no information available from lvalue.
+                     UninhabitedType() for sub_expr in lvalue.items]
             lvalue_type = TupleType(types, self.named_type('builtins.tuple'))
         else:
             lvalue_type = self.expr_checker.accept(lvalue)

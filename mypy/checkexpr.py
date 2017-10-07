@@ -770,7 +770,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Only substitute non-Uninhabited and non-erased types.
         new_args = []  # type: List[Optional[Type]]
         for arg in args:
-            if isinstance(arg, UninhabitedType) or has_erased_component(arg):
+            if has_uninhabited_component(arg) or has_erased_component(arg):
                 new_args.append(None)
             else:
                 new_args.append(arg)
@@ -2766,6 +2766,19 @@ class HasErasedComponentsQuery(types.TypeQuery[bool]):
         super().__init__(any)
 
     def visit_erased_type(self, t: ErasedType) -> bool:
+        return True
+
+
+def has_uninhabited_component(t: Optional[Type]) -> bool:
+    return t is not None and t.accept(HasUninhabitedComponentsQuery())
+
+
+class HasUninhabitedComponentsQuery(types.TypeQuery[bool]):
+    """Visitor for querying whether a type has an UninhabitedType component."""
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return True
 
 

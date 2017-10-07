@@ -204,13 +204,13 @@ class SemanticAnalyzer(NodeVisitor[None]):
     # Names declated using "nonlocal" (separate set for each scope)
     nonlocal_decls = None  # type: List[Set[str]]
     # Local names of function scopes; None for non-function scopes.
-    locals = None  # type: List[SymbolTable]
+    locals = None  # type: List[Optional[SymbolTable]]
     # Nested block depths of scopes
     block_depth = None  # type: List[int]
     # TypeInfo of directly enclosing class (or None)
     type = None  # type: Optional[TypeInfo]
     # Stack of outer classes (the second tuple item contains tvars).
-    type_stack = None  # type: List[TypeInfo]
+    type_stack = None  # type: List[Optional[TypeInfo]]
     # Type variables that are bound by the directly enclosing class
     bound_tvars = None  # type: List[SymbolTableNode]
     # Type variables bound by the current scope, be it class or function
@@ -289,6 +289,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             for name in implicit_module_attrs:
                 v = self.globals[name].node
                 if isinstance(v, Var):
+                    assert v.type is not None, "Type of implicit attribute not set"
                     v.type = self.anal_type(v.type)
                     v.is_ready = True
 
@@ -381,6 +382,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             #   be a win.
             if self.is_class_scope():
                 # Method definition
+                assert self.type is not None, "Type not set at class scope"
                 defn.info = self.type
                 if not defn.is_decorated and not defn.is_overload:
                     if (defn.name() in self.type.names and
@@ -433,6 +435,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
     def prepare_method_signature(self, func: FuncDef) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
         # Only non-static methods are special.
+        assert self.type is not None, "This method should be only called inside a class"
         functype = func.type
         if not func.is_static:
             if not func.arguments:
@@ -546,7 +549,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 assert defn.impl is defn.items[-1]
                 defn.items = defn.items[:-1]
             elif not self.is_stub_file and not non_overload_indexes:
-                if not (self.is_class_scope() and self.type.is_protocol):
+                if not (self.type and not self.is_func_scope() and self.type.is_protocol):
                     self.fail(
                         "An overloaded function outside a stub file must have an implementation",
                         defn)
@@ -566,7 +569,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             # redfinitions already.
             return
 
-        if self.is_class_scope():
+        if self.type and not self.is_func_scope():
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn,
                                                            typ=defn.type)
             defn.info = self.type
@@ -1778,9 +1781,10 @@ class SemanticAnalyzer(NodeVisitor[None]):
             if not res:
                 return
             node = self.lookup(lvalue.name, lvalue)
+            assert node is not None
             if not lvalue.is_def:
                 # Only a definition can create a type alias, not regular assignment.
-                if node and node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo):
+                if node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo):
                     self.fail('Cannot assign multiple types to name "{}"'
                               ' without an explicit "Type[...]" annotation'
                               .format(lvalue.name), lvalue)
@@ -1916,6 +1920,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
     def analyze_member_lvalue(self, lval: MemberExpr) -> None:
         lval.accept(self)
         if self.is_self_member_ref(lval):
+            assert self.type, "Self member outside a class"
             node = self.type.get(lval.name)
             if node is None or isinstance(node.node, Var) and node.node.is_abstract_var:
                 if self.type.is_protocol and node is None:
@@ -2133,6 +2138,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                                    context=s)
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
+        assert node is not None
         node.kind = TVAR
         TypeVar = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
         TypeVar.line = call.line
@@ -3549,7 +3555,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     self.name_not_defined(name, ctx)
                 return None
         # 2. Class attributes (if within class definition)
-        if self.is_class_scope() and name in self.type.names:
+        if self.type and not self.is_func_scope() and name in self.type.names:
             node = self.type.names[name]
             if not node.implicit:
                 return node
