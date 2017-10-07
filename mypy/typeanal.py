@@ -53,7 +53,7 @@ ARG_KINDS_BY_CONSTRUCTOR = {
 
 
 def analyze_type_alias(node: Expression,
-                       lookup_func: Callable[[str, Context], SymbolTableNode],
+                       lookup_func: Callable[[str, Context], Optional[SymbolTableNode]],
                        lookup_fqn_func: Callable[[str], SymbolTableNode],
                        tvar_scope: TypeVarScope,
                        fail_func: Callable[[str, Context], None],
@@ -143,7 +143,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
     global_scope = True  # type: bool
 
     def __init__(self,
-                 lookup_func: Callable[[str, Context], SymbolTableNode],
+                 lookup_func: Callable[[str, Context], Optional[SymbolTableNode]],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
                  tvar_scope: Optional[TypeVarScope],
                  fail_func: Callable[[str, Context], None],
@@ -548,7 +548,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             return []  # We are in third pass, nothing new here
         if fun_type.variables:
             for var in fun_type.variables:
-                var_expr = self.lookup(var.name, var).node
+                var_node = self.lookup(var.name, var)
+                assert var_node, "Binding for function type variable not found within function"
+                var_expr = var_node.node
                 assert isinstance(var_expr, TypeVarExpr)
                 self.tvar_scope.bind(var.name, var_expr)
             return fun_type.variables
@@ -568,8 +570,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
         return defs
 
     def is_defined_type_var(self, tvar: str, context: Context) -> bool:
-        return (self.tvar_scope is not None and
-                self.tvar_scope.get_binding(self.lookup(tvar, context)) is not None)
+        if self.tvar_scope is None:
+            return False
+        tvar_node = self.lookup(tvar, context)
+        if not tvar_node:
+            return False
+        return self.tvar_scope.get_binding(tvar_node) is not None
 
     def anal_array(self, a: List[Type], nested: bool = True) -> List[Type]:
         res = []  # type: List[Type]
@@ -631,7 +637,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     """
 
     def __init__(self,
-                 lookup_func: Callable[[str, Context], SymbolTableNode],
+                 lookup_func: Callable[[str, Context], Optional[SymbolTableNode]],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
                  fail_func: Callable[[str, Context], None],
                  note_func: Callable[[str, Context], None],
@@ -867,7 +873,7 @@ def flatten_tvars(ll: Iterable[List[T]]) -> List[T]:
 class TypeVariableQuery(TypeQuery[TypeVarList]):
 
     def __init__(self,
-                 lookup: Callable[[str, Context], SymbolTableNode],
+                 lookup: Callable[[str, Context], Optional[SymbolTableNode]],
                  scope: 'TypeVarScope',
                  *,
                  include_callables: bool = True,

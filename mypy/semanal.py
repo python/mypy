@@ -407,6 +407,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 # Top-level function
                 if not defn.is_decorated and not defn.is_overload:
                     symbol = self.globals.get(defn.name())
+                    assert symbol, "Global function not found in globals"
                     if isinstance(symbol.node, FuncDef) and symbol.node != defn:
                         # This is redefinition. Conditional redefinition is okay.
                         if not self.set_original_def(symbol.node, defn):
@@ -1250,6 +1251,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
 
     def named_type(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, None)
+        assert sym, "Internal error: attempted to construct unknown type"
         node = sym.node
         assert isinstance(node, TypeInfo)
         if args:
@@ -1521,25 +1523,26 @@ class SemanticAnalyzer(NodeVisitor[None]):
         return False
 
     def normalize_type_alias(self, node: SymbolTableNode,
-                             ctx: Context) -> SymbolTableNode:
+                             ctx: Context) -> Optional[SymbolTableNode]:
         normalized = False
         fullname = node.fullname
         if fullname in type_aliases:
             # Node refers to an aliased type such as typing.List; normalize.
-            node = self.lookup_qualified(type_aliases[fullname], ctx)
-            if node is None:
+            new_node = self.lookup_qualified(type_aliases[fullname], ctx)
+            if new_node is None:
                 self.add_fixture_note(fullname, ctx)
                 return None
             normalized = True
         if fullname in collections_type_aliases:
             # Similar, but for types from the collections module like typing.DefaultDict
             self.add_module_symbol('collections', '__mypy_collections__', False, ctx)
-            node = self.lookup_qualified(collections_type_aliases[fullname], ctx)
+            new_node = self.lookup_qualified(collections_type_aliases[fullname], ctx)
             normalized = True
         if normalized:
-            node = SymbolTableNode(node.kind, node.node,
-                                   node.mod_id, node.type_override,
-                                   normalized=True, alias_tvars=node.alias_tvars)
+            assert new_node is not None, "Collection node not found"
+            node = SymbolTableNode(new_node.kind, new_node.node,
+                                   new_node.mod_id, new_node.type_override,
+                                   normalized=True, alias_tvars=new_node.alias_tvars)
         return node
 
     def add_fixture_note(self, fullname: str, ctx: Context) -> None:
@@ -1572,21 +1575,22 @@ class SemanticAnalyzer(NodeVisitor[None]):
             m = self.modules[i_id]
             self.add_submodules_to_parent_modules(i_id, True)
             for name, node in m.names.items():
-                node = self.normalize_type_alias(node, i)
+                new_node = self.normalize_type_alias(node, i)
                 # if '__all__' exists, all nodes not included have had module_public set to
                 # False, and we can skip checking '_' because it's been explicitly included.
-                if node.module_public and (not name.startswith('_') or '__all__' in m.names):
+                if (new_node and new_node.module_public and
+                        (not name.startswith('_') or '__all__' in m.names)):
                     existing_symbol = self.globals.get(name)
                     if existing_symbol:
                         # Import can redefine a variable. They get special treatment.
                         if self.process_import_over_existing_name(
-                                name, existing_symbol, node, i):
+                                name, existing_symbol, new_node, i):
                             continue
-                    self.add_symbol(name, SymbolTableNode(node.kind, node.node,
+                    self.add_symbol(name, SymbolTableNode(new_node.kind, new_node.node,
                                                           self.cur_mod_id,
-                                                          node.type_override,
-                                                          normalized=node.normalized,
-                                                          alias_tvars=node.alias_tvars), i)
+                                                          new_node.type_override,
+                                                          normalized=new_node.normalized,
+                                                          alias_tvars=new_node.alias_tvars), i)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
@@ -2252,6 +2256,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             return
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
         node = self.lookup(name, s)
+        assert node is not None
         node.kind = GDEF   # TODO locally defined namedtuple
         node.node = named_tuple
 
@@ -3655,13 +3660,13 @@ class SemanticAnalyzer(NodeVisitor[None]):
             next_sym = n.names[parts[i]]
             assert isinstance(next_sym.node, MypyFile)
             n = next_sym.node
-        return n.names.get(parts[-1])
+        return n.names[parts[-1]]
 
     def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
         """Lookup a fully qualified name.
 
-        Assume that the name is defined. This happens in the global namespace -- the local
-        module namespace is ignored.
+        Don't assume that the name is defined. This happens in the global namespace --
+        the local module namespace is ignored.
         """
         assert '.' in name
         parts = name.split('.')
