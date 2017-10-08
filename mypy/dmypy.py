@@ -7,6 +7,7 @@ rather than having to read it back from disk on each run.
 """
 
 import argparse
+import io
 import json
 import os
 import signal
@@ -14,7 +15,7 @@ import socket
 import sys
 import time
 
-from typing import Any, Callable, Dict, Mapping, Sequence, Tuple, TypeVar
+from typing import Any, Callable, Dict, List, Mapping, Sequence, Tuple, TypeVar
 from mypy_extensions import NoReturn
 
 import mypy.build
@@ -305,7 +306,7 @@ class Server:
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
-    def __init__(self, flags: Sequence[str]) -> None:
+    def __init__(self, flags: List[str]) -> None:
         """Initialize the server with the desired mypy flags."""
         sources, options = mypy.main.process_options(flags + ['-i'], False)
         if sources:
@@ -386,7 +387,18 @@ class Server:
         return self.check()
 
     def check(self) -> Dict[str, object]:
-        sources = [mypy.build.BuildSource(arg, None, None) for arg in self.last_args]
+        # Capture stdout/stderr and catch SystemExit while processing the source list.
+        save_stdout = sys.stdout
+        save_stderr = sys.stderr
+        try:
+            sys.stdout = stdout = io.StringIO()
+            sys.stderr = stderr = io.StringIO()
+            sources = mypy.main.create_source_list(self.last_args, self.options)
+        except SystemExit as err:
+            return {'out': stdout.getvalue(), 'err': stderr.getvalue(), 'status': err.code}
+        finally:
+            sys.stdout = save_stdout
+            sys.stderr = save_stderr
         try:
             res = mypy.main.type_check_only(sources, None, self.options)
             msgs = res.errors

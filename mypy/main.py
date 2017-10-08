@@ -505,26 +505,31 @@ def process_options(args: List[str],
         targets = [BuildSource(None, None, '\n'.join(special_opts.command))]
         return targets, options
     else:
-        targets = []
-        for f in special_opts.files:
-            if f.endswith(PY_EXTENSIONS):
-                try:
-                    targets.append(BuildSource(f, crawl_up(f)[1], None))
-                except InvalidPackageName as e:
-                    fail(str(e))
-            elif os.path.isdir(f):
-                try:
-                    sub_targets = expand_dir(f)
-                except InvalidPackageName as e:
-                    fail(str(e))
-                if not sub_targets:
-                    fail("There are no .py[i] files in directory '{}'"
-                         .format(f))
-                targets.extend(sub_targets)
-            else:
-                mod = os.path.basename(f) if options.scripts_are_modules else None
-                targets.append(BuildSource(f, mod, None))
+        targets = create_source_list(special_opts.files, options)
         return targets, options
+
+
+def create_source_list(files: List[str], options: Options) -> List[BuildSource]:
+    targets = []
+    for f in files:
+        if f.endswith(PY_EXTENSIONS):
+            try:
+                targets.append(BuildSource(f, crawl_up(f)[1], None))
+            except InvalidPackageName as e:
+                fail(str(e))
+        elif os.path.isdir(f):
+            try:
+                sub_targets = expand_dir(f)
+            except InvalidPackageName as e:
+                fail(str(e))
+            if not sub_targets:
+                fail("There are no .py[i] files in directory '{}'"
+                     .format(f))
+            targets.extend(sub_targets)
+        else:
+            mod = os.path.basename(f) if options.scripts_are_modules else None
+            targets.append(BuildSource(f, mod, None))
+    return targets
 
 
 def keyfunc(name: str) -> Tuple[int, str]:
