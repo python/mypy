@@ -259,15 +259,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         node = self.scope.top_function()
-        if (self.pass_num < LAST_PASS and node is not None
-                and isinstance(node, (FuncDef, LambdaExpr))):
+        if self.pass_num < LAST_PASS and isinstance(node, (FuncDef, LambdaExpr)):
             # Don't report an error yet. Just defer.
             if self.errors.type_name:
                 type_name = self.errors.type_name[-1]
             else:
                 type_name = None
             # Shouldn't we freeze the entire scope?
-            active_class = self.scope.active_class()
+            active_class = self.scope.enclosing_class()
             self.deferred_nodes.append(DeferredNode(node, type_name, active_class))
             # Set a marker so that we won't infer additional types in this
             # function. Any inferred types could be bogus, because there's at
@@ -3321,6 +3320,15 @@ class Scope:
     def active_class(self) -> Optional[TypeInfo]:
         if isinstance(self.stack[-1], TypeInfo):
             return self.stack[-1]
+        return None
+
+    def enclosing_class(self) -> Optional[TypeInfo]:
+        top = self.top_function()
+        assert top, "This method must be called from inside a function"
+        index = self.stack.index(top)
+        for e in reversed(self.stack[:index]):
+            if isinstance(e, TypeInfo):
+                return e
         return None
 
     def active_self_type(self) -> Optional[Union[Instance, TupleType]]:

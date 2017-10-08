@@ -3995,3 +3995,29 @@ class E(metaclass=t.M): pass
 class F(six.with_metaclass(t.M)): pass
 @six.add_metaclass(t.M)
 class G: pass
+
+[case testCorrectEnclosingClassPushedInDeferred]
+class C:
+    def __getattr__(self, attr: str) -> int:
+        x: F
+        return x.f
+
+class F:
+    def __init__(self, f: int) -> None:
+        self.f = f
+[out]
+
+[case testCorrectEnclosingClassPushedInDeferred2]
+from typing import TypeVar
+T = TypeVar('T', bound=C)
+class C:
+    def m(self: T) -> T:
+        class Inner:
+            x: F
+            f = x.f
+        return self
+
+class F:
+    def __init__(self, f: int) -> None:
+        self.f = f
+[out]
