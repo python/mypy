@@ -429,11 +429,11 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 else:
                     # A coroutine defined as `async def foo(...) -> T: ...`
                     # has external return type `Awaitable[T]`.
-                    defn.type = defn.type.copy_modified(
-                        ret_type = self.named_type_or_none('typing.Awaitable',
-                                                           [defn.type.ret_type]) or
-                        # We are running tests
-                        self.named_type('typing_full.Awaitable', [defn.type.ret_type]))
+                    ret_type = self.named_type_or_none('typing.Awaitable', [defn.type.ret_type])
+                    if ret_type is None:
+                        # We are running tests.
+                        ret_type = self.named_type('typing_full.Awaitable', [defn.type.ret_type])
+                    defn.type = defn.type.copy_modified(ret_type=ret_type)
             self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef) -> None:

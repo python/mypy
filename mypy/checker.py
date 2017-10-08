@@ -2876,7 +2876,7 @@ def builtin_item_type(tp: Type) -> Optional[Type]:
     # This is only OK for built-in containers, where we know the behavior of __contains__.
     if isinstance(tp, Instance):
         if tp.type.fullname() in ['builtins.list', 'builtins.tuple', 'builtins.dict',
-                                  'builtins.set', 'builtins.frozenfet']:
+                                  'builtins.set', 'builtins.frozenset']:
             if not tp.args:
                 # TODO: make lib-stub/builtins.pyi define generic tuple.
                 return None
