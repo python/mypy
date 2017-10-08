@@ -16,6 +16,7 @@ class list(Generic[T]):
     @overload
     def __init__(self, x: Iterable[T]) -> None: pass
     def __iter__(self) -> Iterator[T]: pass
+    def __contains__(self, item: object) -> bool: pass
     def __add__(self, x: list[T]) -> list[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
     def __getitem__(self, x: int) -> T: pass

@@ -3011,7 +3011,9 @@ def find_isinstance_check(node: Expression,
         expr = node.operands[0]
         cont_type = type_map[node.operands[1]]
         item_type = builtin_item_type(cont_type)
-        if item_type and literal(expr) == LITERAL_TYPE and not is_literal_none(expr):
+        if (item_type and literal(expr) == LITERAL_TYPE and not is_literal_none(expr) and
+                is_overlapping_types(item_type, type_map[expr]) and
+                not isinstance(type_map[expr], AnyType)):
             if node.operators == ['in']:
                 return {expr: item_type}, {}
             if node.operators == ['not in']:

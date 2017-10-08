@@ -1771,17 +1771,17 @@ def narrow_any_to_str_then_reassign_to_int() -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowTypeAfterInList]
-from typing import List, Any
+from typing import List
 
 x: List[int]
-y: Any
+y: object
 
 if y in x:
     reveal_type(y)  # E: Revealed type is 'builtins.int'
 else:
-    reveal_type(y)  # E: Revealed type is 'Any'
+    reveal_type(y)  # E: Revealed type is 'builtins.object'
 if y not in x:
-    reveal_type(y)  # E: Revealed type is 'Any'
+    reveal_type(y)  # E: Revealed type is 'builtins.object'
 else:
     reveal_type(y)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/list.pyi]
@@ -1840,22 +1840,43 @@ else:
 [out]
 
 [case testNarrowTypeAfterInList_python2]
-from typing import List, Any
+from typing import List
 
 x = None  # type: List[int]
-y = None  # type: Any
+y = None  # type: object
 
 # TODO: Fix running tests on Python 2: "Iterator[int]" has no attribute "next"
 if y in x:  # type: ignore
     reveal_type(y)  # E: Revealed type is 'builtins.int'
 else:
-    reveal_type(y)  # E: Revealed type is 'Any'
+    reveal_type(y)  # E: Revealed type is 'builtins.object'
 if y not in x:  # type: ignore
-    reveal_type(y)  # E: Revealed type is 'Any'
+    reveal_type(y)  # E: Revealed type is 'builtins.object'
 else:
     reveal_type(y)  # E: Revealed type is 'builtins.int'
 
 [builtins_py2 fixtures/python2.pyi]
+[out]
+
+[case testNarrowTypeAfterInNoPromotionsOrAny]
+from typing import Any, List
+x: List[int]
+
+y: Any
+# We never narrow down from Any
+if y in x:
+    reveal_type(y) # E: Revealed type is 'Any'
+else:
+    reveal_type(y) # E: Revealed type is 'Any'
+
+z: float
+# We never use promotions
+if z not in x:
+    reveal_type(z) # E: Revealed type is 'builtins.float'
+else:
+    reveal_type(z) # E: Revealed type is 'builtins.float'
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testNarrowTypeAfterInUserDefined]
