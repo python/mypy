@@ -395,32 +395,13 @@ class Argument(Node):
     type_annotation = None  # type: Optional[mypy.types.Type]
     initializer = None  # type: Optional[Expression]
     kind = None  # type: int  # must be an ARG_* constant
-    initialization_statement = None  # type: Optional[AssignmentStmt]
 
     def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
-            initializer: Optional[Expression], kind: int,
-            initialization_statement: 'Optional[AssignmentStmt]' = None) -> None:
+                 initializer: Optional[Expression], kind: int) -> None:
         self.variable = variable
-
         self.type_annotation = type_annotation
         self.initializer = initializer
-
-        self.initialization_statement = initialization_statement
-        if not self.initialization_statement:
-            self.initialization_statement = self._initialization_statement()
-
         self.kind = kind
-
-    def _initialization_statement(self) -> 'Optional[AssignmentStmt]':
-        """Convert the initializer into an assignment statement.
-        """
-        if not self.initializer:
-            return None
-
-        rvalue = self.initializer
-        lvalue = NameExpr(self.variable.name())
-        assign = AssignmentStmt([lvalue], rvalue)
-        return assign
 
     def set_line(self, target: Union[Context, int], column: Optional[int] = None) -> None:
         super().set_line(target, column)
@@ -429,10 +410,6 @@ class Argument(Node):
             self.initializer.set_line(self.line, self.column)
 
         self.variable.set_line(self.line, self.column)
-
-        if self.initialization_statement:
-            self.initialization_statement.set_line(self.line, self.column)
-            self.initialization_statement.lvalues[0].set_line(self.line, self.column)
 
 
 class FuncItem(FuncBase):

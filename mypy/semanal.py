@@ -618,10 +618,6 @@ class SemanticAnalyzer(NodeVisitor[None]):
             self.enter()
             for arg in defn.arguments:
                 self.add_local(arg.variable, defn)
-            for arg in defn.arguments:
-                if arg.initialization_statement:
-                    lvalue = arg.initialization_statement.lvalues[0]
-                    lvalue.accept(self)
 
             # The first argument of a non-static, non-class method is like 'self'
             # (though the name could be different), having the enclosing class's
