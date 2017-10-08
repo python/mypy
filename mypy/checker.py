@@ -266,8 +266,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 type_name = None
             # Shouldn't we freeze the entire scope?
-            active_class = self.scope.enclosing_class()
-            self.deferred_nodes.append(DeferredNode(node, type_name, active_class))
+            enclosing_class = self.scope.enclosing_class()
+            self.deferred_nodes.append(DeferredNode(node, type_name, enclosing_class))
             # Set a marker so that we won't infer additional types in this
             # function. Any inferred types could be bogus, because there's at
             # least one type that we don't know.
