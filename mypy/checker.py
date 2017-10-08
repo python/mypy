@@ -2884,7 +2884,7 @@ def builtin_item_type(tp: Type) -> Optional[Type]:
                 return tp.args[0]
     elif isinstance(tp, TupleType) and all(not isinstance(it, AnyType) for it in tp.items):
         return join_type_list(tp.items)
-    elif isinstance(tp, TypedDictType) and tp.fallback.type.fullname() == 'typing.Mapping':
+    elif isinstance(tp, TypedDictType):
         # TypedDict always has non-optional string keys.
         if tp.fallback.type.fullname() == 'typing.Mapping':
             return tp.fallback.args[0]
