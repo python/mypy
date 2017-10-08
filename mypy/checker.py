@@ -53,7 +53,7 @@ from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
-from mypy.join import join_types
+from mypy.join import join_types, join_type_list
 from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
@@ -2874,6 +2874,27 @@ def remove_optional(typ: Type) -> Type:
         return typ
 
 
+def builtin_item_type(tp: Type) -> Optional[Type]:
+    # This is only OK for built-in containers, where we know the behavior of __contains__.
+    if isinstance(tp, Instance):
+        if tp.type.fullname() in ['builtins.list', 'builtins.tuple', 'builtins.dict',
+                                  'builtins.set', 'builtins.frozenset']:
+            if not tp.args:
+                # TODO: make lib-stub/builtins.pyi define generic tuple.
+                return None
+            if not isinstance(tp.args[0], AnyType):
+                return tp.args[0]
+    elif isinstance(tp, TupleType) and all(not isinstance(it, AnyType) for it in tp.items):
+        return join_type_list(tp.items)
+    elif isinstance(tp, TypedDictType):
+        # TypedDict always has non-optional string keys.
+        if tp.fallback.type.fullname() == 'typing.Mapping':
+            return tp.fallback.args[0]
+        elif tp.fallback.type.bases[0].type.fullname() == 'typing.Mapping':
+            return tp.fallback.type.bases[0].args[0]
+    return None
+
+
 def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     """Calculate what information we can learn from the truth of (e1 and e2)
     in terms of the information that we can learn from the truth of e1 and
@@ -2986,6 +3007,15 @@ def find_isinstance_check(node: Expression,
             if literal(expr) == LITERAL_TYPE:
                 vartype = type_map[expr]
                 return conditional_callable_type_map(expr, vartype)
+    elif isinstance(node, ComparisonExpr) and node.operators in [['in'], ['not in']]:
+        expr = node.operands[0]
+        cont_type = type_map[node.operands[1]]
+        item_type = builtin_item_type(cont_type)
+        if item_type and literal(expr) == LITERAL_TYPE and not is_literal_none(expr):
+            if node.operators == ['in']:
+                return {expr: item_type}, {}
+            if node.operators == ['not in']:
+                return {}, {expr: item_type}
     elif isinstance(node, ComparisonExpr) and experiments.STRICT_OPTIONAL:
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']

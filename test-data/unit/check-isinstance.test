@@ -1757,7 +1757,6 @@ if isinstance(x, str, 1): # E: Too many arguments for "isinstance"
     reveal_type(x) # E: Revealed type is 'builtins.int'
 [builtins fixtures/isinstancelist.pyi]
 
-
 [case testIsinstanceNarrowAny]
 from typing import Any
 
@@ -1770,3 +1769,147 @@ def narrow_any_to_str_then_reassign_to_int() -> None:
         reveal_type(v)  # E: Revealed type is 'Any'
 
 [builtins fixtures/isinstance.pyi]
+
+[case testNarrowTypeAfterInList]
+from typing import List, Any
+
+x: List[int]
+y: Any
+
+if y in x:
+    reveal_type(y)  # E: Revealed type is 'builtins.int'
+else:
+    reveal_type(y)  # E: Revealed type is 'Any'
+if y not in x:
+    reveal_type(y)  # E: Revealed type is 'Any'
+else:
+    reveal_type(y)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNarrowTypeAfterInTuple]
+class A: pass
+class B(A): pass
+class C(A): pass
+
+y: object
+if y in (B(), C()):
+    reveal_type(y) # E: Revealed type is '__main__.A'
+else:
+    reveal_type(y) # E: Revealed type is 'builtins.object'
+if y not in (B(), C()):
+    reveal_type(y) # E: Revealed type is 'builtins.object'
+else:
+    reveal_type(y) # E: Revealed type is '__main__.A'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testNarrowTypeAfterInNamedTuple]
+from typing import NamedTuple
+class NT(NamedTuple):
+    x: int
+    y: int
+nt: NT
+
+y: object
+if y in nt:
+    reveal_type(y) # E: Revealed type is 'builtins.int'
+else:
+    reveal_type(y) # E: Revealed type is 'builtins.object'
+if y not in nt:
+    reveal_type(y) # E: Revealed type is 'builtins.object'
+else:
+    reveal_type(y) # E: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testNarrowTypeAfterInDict]
+from typing import Dict, Union
+x: Dict[str, str]
+y: Union[int, str]
+
+if y in x:
+    reveal_type(y) # E: Revealed type is 'builtins.str'
+else:
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+if y not in x:
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+else:
+    reveal_type(y) # E: Revealed type is 'builtins.str'
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testNarrowTypeAfterInList_python2]
+from typing import List, Any
+
+x = None  # type: List[int]
+y = None  # type: Any
+
+# TODO: Fix running tests on Python 2: "Iterator[int]" has no attribute "next"
+if y in x:  # type: ignore
+    reveal_type(y)  # E: Revealed type is 'builtins.int'
+else:
+    reveal_type(y)  # E: Revealed type is 'Any'
+if y not in x:  # type: ignore
+    reveal_type(y)  # E: Revealed type is 'Any'
+else:
+    reveal_type(y)  # E: Revealed type is 'builtins.int'
+
+[builtins_py2 fixtures/python2.pyi]
+[out]
+
+[case testNarrowTypeAfterInUserDefined]
+from typing import Container, Union
+
+class C(Container[int]):
+    def __contains__(self, item: object) -> bool:
+        return item is 'surprise'
+
+y: Union[int, str]
+# We never trust user defined types
+if y in C():
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+else:
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+if y not in C():
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+else:
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNarrowTypeAfterInStrictOptional]
+# flags: --strict-optional
+from typing import Optional, Set
+s: Set[str]
+
+y: Optional[str]
+if y in {'a', 'b', 'c'}:
+    reveal_type(y) # E: Revealed type is 'builtins.str'
+else:
+    reveal_type(y) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+if y not in s:
+    reveal_type(y) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+else:
+    reveal_type(y) # E: Revealed type is 'builtins.str'
+[builtins fixtures/set.pyi]
+[out]
+
+[case testNarrowTypeAfterInStrictOptional2]
+# flags: --strict-optional
+from typing import Optional
+from mypy_extensions import TypedDict
+class TD(TypedDict):
+    a: int
+    b: str
+td: TD
+
+def f() -> None:
+    x: Optional[str]
+    if x not in td:
+        return
+    reveal_type(x) # E: Revealed type is 'builtins.str'
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dict.pyi]
+[out]
