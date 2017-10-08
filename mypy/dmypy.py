@@ -17,7 +17,9 @@ import time
 from typing import Any, Callable, Dict, Mapping, Sequence, Tuple, TypeVar
 from mypy_extensions import NoReturn
 
-import mypy.api
+import mypy.build
+import mypy.errors
+import mypy.main
 
 # Argument parser.  Subparsers are tied to action functions by the
 # @action(subparse) decorator.
@@ -47,7 +49,11 @@ check_parser.add_argument('files', metavar='FILE', nargs='+', help="File (or dir
 recheck_parser = subparsers.add_parser('recheck',
     help="Check the same files as the most previous  check run (requires running daemon)")
 
-hang_parser =  subparsers.add_parser('hang', help="Hang for 100 seconds")
+hang_parser = subparsers.add_parser('hang', help="Hang for 100 seconds")
+
+daemon_parser = subparsers.add_parser('daemon', help="Run daemon in foreground")
+daemon_parser.add_argument('flags', metavar='FLAG', nargs='*', type=str,
+                           help="Regular mypy flags (precede with --)")
 
 help_parser = subparsers.add_parser('help')
 
@@ -187,6 +193,12 @@ def do_hang(args: argparse.Namespace) -> None:
     request('hang')
 
 
+@action(daemon_parser)
+def do_daemon(args: argparse.Namespace) -> None:
+    """Serve requests in the foreground."""
+    Server(args.flags).serve()
+
+
 @action(help_parser)
 def do_help(args: argparse.Namespace) -> None:
     """Print full help (same as dmypy --help)."""
@@ -208,9 +220,14 @@ def request(command: str, **kwds: object) -> Dict[str, Any]:
     sock.connect(sockname)
     sock.sendall(data.encode('utf8'))
     sock.shutdown(socket.SHUT_WR)
-    response = receive(sock)
-    sock.close()
-    return response
+    try:
+        response = receive(sock)
+    except OSError as err:
+        return {'error': str(err)}
+    else:
+        return response
+    finally:
+        sock.close()
 
 
 def get_status() -> Tuple[int, str]:
@@ -238,8 +255,6 @@ def get_status() -> Tuple[int, str]:
     return pid, sockname
 
 
-DEBUG = False  # If True, daemon is not a true daemon process, so we'll see its output.
-
 def daemonize(func: Callable[[], NoReturn]) -> None:
     """Arrange to call func() in a grandchild of the current process."""
     # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
@@ -251,16 +266,16 @@ def daemonize(func: Callable[[], NoReturn]) -> None:
         return
     # Child
     try:
-        if not DEBUG:
-            os.setsid()  # Detach controlling terminal
-            devnull = os.open('/dev/null', os.O_RDWR)
-            os.dup2(devnull, 0)
-            os.dup2(devnull, 1)
-            os.dup2(devnull, 2)
-            os.close(devnull)
-            pid = os.fork()
-            if pid:
-                os._exit(0)
+        os.setsid()  # Detach controlling terminal
+        os.umask(0o27)
+        devnull = os.open('/dev/null', os.O_RDWR)
+        os.dup2(devnull, 0)
+        os.dup2(devnull, 1)
+        os.dup2(devnull, 2)
+        os.close(devnull)
+        pid = os.fork()
+        if pid:
+            os._exit(0)
         # Grandchild
         func()
     finally:
@@ -287,11 +302,15 @@ def command(func: F) -> F:
 
 class Server:
 
-    mypy_flags = None
+    # NOTE: the instance is constructed in the parent process but
+    # serve() is called in the grandchild (by daemonize()).
 
     def __init__(self, flags: Sequence[str]) -> None:
         """Initialize the server with the desired mypy flags."""
-        self.mypy_flags = list(flags)
+        sources, options = mypy.main.process_options(flags + ['-i'], False)
+        if sources:
+            sys.exit("dmypy: start/restart does not accept sources")
+        self.options = options
 
     def serve(self) -> NoReturn:
         """Serve a single request, synchronously (no thread or fork)."""
@@ -356,17 +375,28 @@ class Server:
     @command
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
-        self.last_args = ['--incremental'] + self.mypy_flags + ['--'] + list(files)
-        stdout, stderr, status = mypy.api.run(self.last_args)
-        return {'out': stdout, 'err': stderr, 'status': status}
+        self.last_args = list(files)
+        return self.check()
 
     @command
     def cmd_recheck(self) -> Dict[str, object]:
         """Check the same list of files we checked most recently."""
         if not self.last_args:
             return {'error': "Command 'recheck' is only valid after a 'check' command"}
-        stdout, stderr, status = mypy.api.run(self.last_args)
-        return {'out': stdout, 'err': stderr, 'status': status}
+        return self.check()
+
+    def check(self) -> Dict[str, object]:
+        sources = [mypy.build.BuildSource(arg, None, None) for arg in self.last_args]
+        try:
+            res = mypy.main.type_check_only(sources, None, self.options)
+            msgs = res.errors
+        except mypy.errors.CompileError as err:
+            msgs = err.messages
+        if msgs:
+            msgs.append("")
+            return {'out': "\n".join(msgs), 'err': "", 'status': 1}
+        else:
+            return {'out': "", 'err': "", 'status': 0}
 
     @command
     def cmd_hang(self) -> Dict[str, object]:
@@ -385,6 +415,8 @@ def receive(sock: socket.socket) -> Any:
         if not more:
             break
         bdata.extend(more)
+    if not bdata:
+        raise OSError("No data received")
     return json.loads(bdata)
 
 
