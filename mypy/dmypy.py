@@ -288,19 +288,6 @@ def daemonize(func: Callable[[], NoReturn]) -> None:
 
 SOCKET_NAME = 'dmypy.sock'  # In current directory.
 
-CommandFunction = Callable[..., Dict[str, Any]]
-
-command_registry = {}  # type: Dict[str, CommandFunction]
-
-F = TypeVar('F', bound=CommandFunction)
-
-def command(func: F) -> F:
-    """Decorator to register a command function."""
-    assert func.__name__.startswith('cmd_')
-    command_registry[func.__name__] = func
-    return func
-
-
 class Server:
 
     # NOTE: the instance is constructed in the parent process but
@@ -351,20 +338,19 @@ class Server:
     def run_command(self, command: str, data: Mapping[str, object]) -> Dict[str, object]:
         """Run a specific command from the registry."""
         key = 'cmd_' + command
-        if key in command_registry:
-            return command_registry[key](self, **data)
-        else:
+        method = getattr(self.__class__, key, None)
+        if method is None:
             return {'error': "Unrecognized command '%s'" % command}
+        else:
+            return method(self, **data)
 
     # Command functions (run in the server via RPC).
 
-    @command
     def cmd_status(self) -> Dict[str, object]:
         """Return daemon status."""
         return {'status': "I'm alive!"}
 
 
-    @command
     def cmd_stop(self) -> Dict[str, object]:
         """Stop daemon."""
         os.unlink(self.sockname)
@@ -373,13 +359,11 @@ class Server:
 
     last_args = None
 
-    @command
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
         self.last_args = list(files)
         return self.check()
 
-    @command
     def cmd_recheck(self) -> Dict[str, object]:
         """Check the same list of files we checked most recently."""
         if not self.last_args:
@@ -410,7 +394,6 @@ class Server:
         else:
             return {'out': "", 'err': "", 'status': 0}
 
-    @command
     def cmd_hang(self) -> Dict[str, object]:
         """Hang for 100 seconds, as a debug hack."""
         time.sleep(100)
