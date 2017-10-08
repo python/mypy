@@ -3726,7 +3726,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
             assert self.locals[-1] is not None
             if name in self.locals[-1]:
                 # Flag redefinition unless this is a reimport of a module.
-                if not (node.kind == MODULE_REF and self.locals[-1][name].node == node.node):
+                if not (node.kind == MODULE_REF and
+                        self.locals[-1][name].node == node.node):
                     self.name_already_defined(name, context)
             self.locals[-1][name] = node
         elif self.type:

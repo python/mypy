@@ -53,7 +53,7 @@ from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
-from mypy.join import join_types
+from mypy.join import join_types, join_type_list
 from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
@@ -2872,21 +2872,22 @@ def remove_optional(typ: Type) -> Type:
         return typ
 
 
-def is_non_optional_container(tp: Type) -> bool:
-    # This is only safe for built-in containers, where we know the behavior of __contains__.
-    if isinstance(tp, Instance) and tp.type.fullname() in ['builtins.list', 'builtins.tuple',
-                                                           'builtins.dict', 'builtins.set',
-                                                           'builtins.frozenfet']:
-        if not tp.args:
-            # TODO: make lib-stub contain generic tuple.
-            return False
-        return not is_optional(tp.args[0]) and not isinstance(tp.args[0], AnyType)
-    if isinstance(tp, TupleType):
-        return all(not is_optional(it) and not isinstance(it, AnyType) for it in tp.items)
-    if isinstance(tp, TypedDictType):
+def builtin_item_type(tp: Type) -> Optional[Type]:
+    # This is only OK for built-in containers, where we know the behavior of __contains__.
+    if isinstance(tp, Instance):
+        if tp.type.fullname() in ['builtins.list', 'builtins.tuple', 'builtins.dict',
+                                  'builtins.set', 'builtins.frozenfet']:
+            if not tp.args:
+                # TODO: make lib-stub/builtins.pyi define generic tuple.
+                return None
+            if not isinstance(tp.args[0], AnyType):
+                return tp.args[0]
+    elif isinstance(tp, TupleType) and all(not isinstance(it, AnyType) for it in tp.items):
+        return join_type_list(tp.items)
+    elif isinstance(tp, TypedDictType) and tp.fallback.type.fullname() == 'typing.Mapping':
         # TypedDict always has non-optional string keys.
-        return True
-    return False
+        return tp.fallback.args[0]
+    return None
 
 
 def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
@@ -3001,6 +3002,15 @@ def find_isinstance_check(node: Expression,
             if literal(expr) == LITERAL_TYPE:
                 vartype = type_map[expr]
                 return conditional_callable_type_map(expr, vartype)
+    elif isinstance(node, ComparisonExpr) and node.operators in [['in'], ['not in']]:
+        expr = node.operands[0]
+        cont_type = type_map[node.operands[1]]
+        item_type = builtin_item_type(cont_type)
+        if item_type and literal(expr) == LITERAL_TYPE and not is_literal_none(expr):
+            if node.operators == ['in']:
+                return {expr: item_type}, {}
+            if node.operators == ['not in']:
+                return {}, {expr: item_type}
     elif isinstance(node, ComparisonExpr) and experiments.STRICT_OPTIONAL:
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']
@@ -3035,16 +3045,6 @@ def find_isinstance_check(node: Expression,
                     optional_expr = node.operands[1]
                 if is_overlapping_types(optional_type, comp_type):
                     return {optional_expr: remove_optional(optional_type)}, {}
-        elif node.operators == ['in']:
-            item_type = type_map[node.operands[0]]
-            cont_type = type_map[node.operands[1]]
-            if is_optional(item_type) and is_non_optional_container(cont_type):
-                return {node.operands[0]: remove_optional(item_type)}, {}
-        elif node.operators == ['not in']:
-            item_type = type_map[node.operands[0]]
-            cont_type = type_map[node.operands[1]]
-            if is_optional(item_type) and is_non_optional_container(cont_type):
-                return {}, {node.operands[0]: remove_optional(item_type)}
     elif isinstance(node, RefExpr):
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
