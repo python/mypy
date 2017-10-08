@@ -2886,7 +2886,10 @@ def builtin_item_type(tp: Type) -> Optional[Type]:
         return join_type_list(tp.items)
     elif isinstance(tp, TypedDictType) and tp.fallback.type.fullname() == 'typing.Mapping':
         # TypedDict always has non-optional string keys.
-        return tp.fallback.args[0]
+        if tp.fallback.type.fullname() == 'typing.Mapping':
+            return tp.fallback.args[0]
+        elif tp.fallback.type.bases[0].type.fullname() == 'typing.Mapping':
+            return tp.fallback.type.bases[0].args[0]
     return None
 
 
