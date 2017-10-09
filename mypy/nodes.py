@@ -395,32 +395,13 @@ class Argument(Node):
     type_annotation = None  # type: Optional[mypy.types.Type]
     initializer = None  # type: Optional[Expression]
     kind = None  # type: int  # must be an ARG_* constant
-    initialization_statement = None  # type: Optional[AssignmentStmt]
 
     def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
-            initializer: Optional[Expression], kind: int,
-            initialization_statement: 'Optional[AssignmentStmt]' = None) -> None:
+                 initializer: Optional[Expression], kind: int) -> None:
         self.variable = variable
-
         self.type_annotation = type_annotation
         self.initializer = initializer
-
-        self.initialization_statement = initialization_statement
-        if not self.initialization_statement:
-            self.initialization_statement = self._initialization_statement()
-
         self.kind = kind
-
-    def _initialization_statement(self) -> 'Optional[AssignmentStmt]':
-        """Convert the initializer into an assignment statement.
-        """
-        if not self.initializer:
-            return None
-
-        rvalue = self.initializer
-        lvalue = NameExpr(self.variable.name())
-        assign = AssignmentStmt([lvalue], rvalue)
-        return assign
 
     def set_line(self, target: Union[Context, int], column: Optional[int] = None) -> None:
         super().set_line(target, column)
@@ -429,10 +410,6 @@ class Argument(Node):
             self.initializer.set_line(self.line, self.column)
 
         self.variable.set_line(self.line, self.column)
-
-        if self.initialization_statement:
-            self.initialization_statement.set_line(self.line, self.column)
-            self.initialization_statement.lvalues[0].set_line(self.line, self.column)
 
 
 class FuncItem(FuncBase):
@@ -1808,8 +1785,9 @@ class PromoteExpr(Expression):
 class NewTypeExpr(Expression):
     """NewType expression NewType(...)."""
     name = None  # type: str
+    # The base type (the second argument to NewType)
     old_type = None  # type: Optional[mypy.types.Type]
-
+    # The synthesized class representing the new type (inherits old_type)
     info = None  # type: Optional[TypeInfo]
 
     def __init__(self, name: str, old_type: 'Optional[mypy.types.Type]', line: int) -> None:
@@ -1885,7 +1863,6 @@ class TypeInfo(SymbolNode):
     declared_metaclass = None  # type: Optional[mypy.types.Instance]
     metaclass_type = None  # type: Optional[mypy.types.Instance]
 
-    subtypes = None  # type: Set[TypeInfo] # Direct subclasses encountered so far
     names = None  # type: SymbolTable      # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
     is_protocol = False                    # Is this a protocol class?
@@ -1992,7 +1969,6 @@ class TypeInfo(SymbolNode):
         self.names = names
         self.defn = defn
         self.module_name = module_name
-        self.subtypes = set()
         self.type_vars = []
         self.bases = []
         # Leave self.mro uninitialized until we compute it for real,
@@ -2269,8 +2245,6 @@ class SymbolTableNode:
     # AST node of definition (FuncDef/Var/TypeInfo/Decorator/TypeVarExpr,
     # or None for a bound type variable).
     node = None  # type: Optional[SymbolNode]
-    # Module id (e.g. "foo.bar") or None
-    mod_id = ''  # type: Optional[str]
     # If this not None, override the type of the 'node' attribute.
     type_override = None  # type: Optional[mypy.types.Type]
     # For generic aliases this stores the (qualified) names of type variables.
@@ -2292,7 +2266,6 @@ class SymbolTableNode:
     def __init__(self,
                  kind: int,
                  node: Optional[SymbolNode],
-                 mod_id: Optional[str] = None,
                  typ: 'Optional[mypy.types.Type]' = None,
                  module_public: bool = True,
                  normalized: bool = False,
@@ -2302,7 +2275,6 @@ class SymbolTableNode:
         self.kind = kind
         self.node = node
         self.type_override = typ
-        self.mod_id = mod_id
         self.module_hidden = module_hidden
         self.module_public = module_public
         self.normalized = normalized
@@ -2332,8 +2304,8 @@ class SymbolTableNode:
 
     def __str__(self) -> str:
         s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
-        if self.mod_id is not None:
-            s += ' ({})'.format(self.mod_id)
+        if isinstance(self.node, SymbolNode):
+            s += ' ({})'.format(self.node.fullname())
         # Include declared type of variables and functions.
         if self.type is not None:
             s += ' : {}'.format(self.type)

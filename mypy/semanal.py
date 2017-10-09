@@ -283,8 +283,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
 
         with experiments.strict_optional_set(options.strict_optional):
             if 'builtins' in self.modules:
-                self.globals['__builtins__'] = SymbolTableNode(
-                    MODULE_REF, self.modules['builtins'], self.cur_mod_id)
+                self.globals['__builtins__'] = SymbolTableNode(MODULE_REF,
+                                                               self.modules['builtins'])
 
             for name in implicit_module_attrs:
                 v = self.globals[name].node
@@ -625,10 +625,6 @@ class SemanticAnalyzer(NodeVisitor[None]):
             self.enter()
             for arg in defn.arguments:
                 self.add_local(arg.variable, defn)
-            for arg in defn.arguments:
-                if arg.initialization_statement:
-                    lvalue = arg.initialization_statement.lvalues[0]
-                    lvalue.accept(self)
 
             # The first argument of a non-static, non-class method is like 'self'
             # (though the name could be different), having the enclosing class's
@@ -1425,7 +1421,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             if parent_mod and child not in parent_mod.names:
                 child_mod = self.modules.get(id)
                 if child_mod:
-                    sym = SymbolTableNode(MODULE_REF, child_mod, parent,
+                    sym = SymbolTableNode(MODULE_REF, child_mod,
                                           module_public=module_public)
                     parent_mod.names[child] = sym
             id = parent
@@ -1434,7 +1430,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                           context: Context, module_hidden: bool = False) -> None:
         if id in self.modules:
             m = self.modules[id]
-            self.add_symbol(as_id, SymbolTableNode(MODULE_REF, m, self.cur_mod_id,
+            self.add_symbol(as_id, SymbolTableNode(MODULE_REF, m,
                                                    module_public=module_public,
                                                    module_hidden=module_hidden), context)
         else:
@@ -1454,7 +1450,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             if not node or node.kind == UNBOUND_IMPORTED:
                 mod = self.modules.get(possible_module_id)
                 if mod is not None:
-                    node = SymbolTableNode(MODULE_REF, mod, import_id)
+                    node = SymbolTableNode(MODULE_REF, mod)
                     self.add_submodules_to_parent_modules(possible_module_id, True)
                 elif possible_module_id in self.missing_modules:
                     missing = True
@@ -1472,7 +1468,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                     else:
                         name = id
                     ast_node = Var(name, type=typ)
-                    symbol = SymbolTableNode(GDEF, ast_node, name)
+                    symbol = SymbolTableNode(GDEF, ast_node)
                     self.add_symbol(name, symbol, imp)
                     return
             if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
@@ -1490,7 +1486,6 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 module_public = not self.is_stub_file or as_id is not None
                 module_hidden = not module_public and possible_module_id not in self.modules
                 symbol = SymbolTableNode(node.kind, node.node,
-                                         self.cur_mod_id,
                                          node.type_override,
                                          module_public=module_public,
                                          normalized=node.normalized,
@@ -1547,8 +1542,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             normalized = True
         if normalized:
             assert new_node is not None, "Collection node not found"
-            node = SymbolTableNode(new_node.kind, new_node.node,
-                                   new_node.mod_id, new_node.type_override,
+            node = SymbolTableNode(new_node.kind, new_node.node, new_node.type_override,
                                    normalized=True, alias_tvars=new_node.alias_tvars)
         return node
 
@@ -1594,7 +1588,6 @@ class SemanticAnalyzer(NodeVisitor[None]):
                                 name, existing_symbol, new_node, i):
                             continue
                     self.add_symbol(name, SymbolTableNode(new_node.kind, new_node.node,
-                                                          self.cur_mod_id,
                                                           new_node.type_override,
                                                           normalized=new_node.normalized,
                                                           alias_tvars=new_node.alias_tvars), i)
@@ -1615,7 +1608,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             any_type = AnyType(TypeOfAny.from_error)
         var.type = any_type
         var.is_suppressed_import = is_import
-        self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
+        self.add_symbol(name, SymbolTableNode(GDEF, var), context)
 
     #
     # Statements
@@ -1845,8 +1838,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
                 lval.is_def = True
                 lval.kind = GDEF
                 lval.fullname = v._fullname
-                self.globals[lval.name] = SymbolTableNode(GDEF, v,
-                                                          self.cur_mod_id)
+                self.globals[lval.name] = SymbolTableNode(GDEF, v)
             elif isinstance(lval.node, Var) and lval.is_def:
                 # Since the is_def flag is set, this must have been analyzed
                 # already in the first pass and added to the symbol table.
@@ -2296,7 +2288,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         info = self.build_namedtuple_typeinfo(name, items, types, {})
         # Store it as a global just in case it would remain anonymous.
         # (Or in the nearest class if there is one.)
-        stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
+        stnode = SymbolTableNode(GDEF, info)
         if self.type:
             self.type.names[name] = stnode
         else:
@@ -2559,7 +2551,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
             info = self.build_typeddict_typeinfo(name, items, types, required_keys)
             # Store it as a global just in case it would remain anonymous.
             # (Or in the nearest class if there is one.)
-            stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
+            stnode = SymbolTableNode(GDEF, info)
             if self.type:
                 self.type.names[name] = stnode
             else:
@@ -2793,7 +2785,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
         info = self.build_enum_call_typeinfo(name, items, fullname)
         # Store it as a global just in case it would remain anonymous.
         # (Or in the nearest class if there is one.)
-        stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
+        stnode = SymbolTableNode(GDEF, info)
         if self.type:
             self.type.names[name] = stnode
         else:
@@ -3880,7 +3872,7 @@ class FirstPass(NodeVisitor[None]):
                     typ = UnboundType(t)
                 v = Var(name, typ)
                 v._fullname = self.sem.qualified_name(name)
-                self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
+                self.sem.globals[name] = SymbolTableNode(GDEF, v)
 
             for d in defs:
                 d.accept(self)
@@ -3915,7 +3907,7 @@ class FirstPass(NodeVisitor[None]):
                 for name, typ in literal_types:
                     v = Var(name, typ)
                     v._fullname = self.sem.qualified_name(name)
-                    self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
+                    self.sem.globals[name] = SymbolTableNode(GDEF, v)
 
             del self.sem.options
 
@@ -3949,7 +3941,7 @@ class FirstPass(NodeVisitor[None]):
                 sem.check_no_global(func.name(), func)
         else:
             if at_module:
-                sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
+                sem.globals[func.name()] = SymbolTableNode(GDEF, func)
             # Also analyze the function body (in case there are conditional imports).
             sem.function_stack.append(func)
             sem.errors.push_function(func.name())
@@ -3965,7 +3957,7 @@ class FirstPass(NodeVisitor[None]):
             self.sem.check_no_global(func.name(), func, True)
         func._fullname = self.sem.qualified_name(func.name())
         if kind == GDEF:
-            self.sem.globals[func.name()] = SymbolTableNode(kind, func, self.sem.cur_mod_id)
+            self.sem.globals[func.name()] = SymbolTableNode(kind, func)
         if func.impl:
             impl = func.impl
             # Also analyze the function body (in case there are conditional imports).
@@ -3998,7 +3990,7 @@ class FirstPass(NodeVisitor[None]):
         info.set_line(cdef.line, cdef.column)
         cdef.info = info
         if kind == GDEF:
-            self.sem.globals[cdef.name] = SymbolTableNode(kind, info, self.sem.cur_mod_id)
+            self.sem.globals[cdef.name] = SymbolTableNode(kind, info)
         self.process_nested_classes(cdef)
 
     def process_nested_classes(self, outer_def: ClassDef) -> None:
