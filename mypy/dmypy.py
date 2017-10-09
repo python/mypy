@@ -25,7 +25,8 @@ import mypy.main
 # Argument parser.  Subparsers are tied to action functions by the
 # @action(subparse) decorator.
 
-parser = argparse.ArgumentParser(description="Client for mymy daemon mode")
+parser = argparse.ArgumentParser(description="Client for mymy daemon mode",
+                                 fromfile_prefix_chars='@')
 parser.set_defaults(action=None)
 subparsers = parser.add_subparsers()
 
@@ -319,7 +320,10 @@ class Server:
                 else:
                     command = data.pop('command')
                 resp = self.run_command(command, data)
-            conn.sendall(json.dumps(resp).encode('utf8'))
+            try:
+                conn.sendall(json.dumps(resp).encode('utf8'))
+            except OSError as err:
+                pass  # Maybe the client hung up
             conn.close()
             if command == 'stop':
                 sock.close()
@@ -384,7 +388,7 @@ class Server:
             sys.stdout = save_stdout
             sys.stderr = save_stderr
         try:
-            res = mypy.main.type_check_only(sources, None, self.options)
+            res = mypy.build.build(sources, self.options)
             msgs = res.errors
         except mypy.errors.CompileError as err:
             msgs = err.messages
