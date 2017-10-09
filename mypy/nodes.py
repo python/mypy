@@ -2246,8 +2246,6 @@ class SymbolTableNode:
     # AST node of definition (FuncDef/Var/TypeInfo/Decorator/TypeVarExpr,
     # or None for a bound type variable).
     node = None  # type: Optional[SymbolNode]
-    # Module id (e.g. "foo.bar") or None
-    mod_id = ''  # type: Optional[str]
     # If this not None, override the type of the 'node' attribute.
     type_override = None  # type: Optional[mypy.types.Type]
     # For generic aliases this stores the (qualified) names of type variables.
@@ -2269,7 +2267,6 @@ class SymbolTableNode:
     def __init__(self,
                  kind: int,
                  node: Optional[SymbolNode],
-                 mod_id: Optional[str] = None,
                  typ: 'Optional[mypy.types.Type]' = None,
                  module_public: bool = True,
                  normalized: bool = False,
@@ -2279,7 +2276,6 @@ class SymbolTableNode:
         self.kind = kind
         self.node = node
         self.type_override = typ
-        self.mod_id = mod_id
         self.module_hidden = module_hidden
         self.module_public = module_public
         self.normalized = normalized
@@ -2309,8 +2305,8 @@ class SymbolTableNode:
 
     def __str__(self) -> str:
         s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
-        if self.mod_id is not None:
-            s += ' ({})'.format(self.mod_id)
+        if isinstance(self.node, SymbolNode):
+            s += ' ({})'.format(self.node.fullname())
         # Include declared type of variables and functions.
         if self.type is not None:
             s += ' : {}'.format(self.type)
