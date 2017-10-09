@@ -1862,7 +1862,6 @@ class TypeInfo(SymbolNode):
     declared_metaclass = None  # type: Optional[mypy.types.Instance]
     metaclass_type = None  # type: Optional[mypy.types.Instance]
 
-    subtypes = None  # type: Set[TypeInfo] # Direct subclasses encountered so far
     names = None  # type: SymbolTable      # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
     is_protocol = False                    # Is this a protocol class?
@@ -1969,7 +1968,6 @@ class TypeInfo(SymbolNode):
         self.names = names
         self.defn = defn
         self.module_name = module_name
-        self.subtypes = set()
         self.type_vars = []
         self.bases = []
         # Leave self.mro uninitialized until we compute it for real,

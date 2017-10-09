@@ -54,9 +54,6 @@ class NodeFixer(NodeVisitor[None]):
                 info.defn.accept(self)
             if info.names:
                 self.visit_symbol_table(info.names)
-            if info.subtypes:
-                for st in info.subtypes:
-                    self.visit_type_info(st)
             if info.bases:
                 for base in info.bases:
                     base.accept(self.type_fixer)
