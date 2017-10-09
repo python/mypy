@@ -283,7 +283,8 @@ class SemanticAnalyzer(NodeVisitor[None]):
 
         with experiments.strict_optional_set(options.strict_optional):
             if 'builtins' in self.modules:
-                self.globals['__builtins__'] = SymbolTableNode(MODULE_REF, self.modules['builtins'])
+                self.globals['__builtins__'] = SymbolTableNode(MODULE_REF,
+                                                               self.modules['builtins'])
 
             for name in implicit_module_attrs:
                 v = self.globals[name].node
