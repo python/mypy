@@ -367,35 +367,34 @@ class Server:
         os.unlink(STATUS_FILE)
         return {}
 
-    last_args = None
+    last_sources = None
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
-        self.last_args = list(files)
-        return self.check()
-
-    def cmd_recheck(self) -> Dict[str, object]:
-        """Check the same list of files we checked most recently."""
-        if not self.last_args:
-            return {'error': "Command 'recheck' is only valid after a 'check' command"}
-        return self.check()
-
-    def check(self) -> Dict[str, object]:
         # Capture stdout/stderr and catch SystemExit while processing the source list.
         save_stdout = sys.stdout
         save_stderr = sys.stderr
         try:
             sys.stdout = stdout = io.StringIO()
             sys.stderr = stderr = io.StringIO()
-            sources = mypy.main.create_source_list(self.last_args, self.options)
+            self.last_sources = mypy.main.create_source_list(files, self.options)
         except SystemExit as err:
             return {'out': stdout.getvalue(), 'err': stderr.getvalue(), 'status': err.code}
         finally:
             sys.stdout = save_stdout
             sys.stderr = save_stderr
+        return self.check()
+
+    def cmd_recheck(self) -> Dict[str, object]:
+        """Check the same list of files we checked most recently."""
+        if not self.last_sources:
+            return {'error': "Command 'recheck' is only valid after a 'check' command"}
+        return self.check()
+
+    def check(self) -> Dict[str, object]:
         try:
             # TODO: This is where we can start reusing the graph.
-            res = mypy.build.build(sources, self.options)
+            res = mypy.build.build(self.last_sources, self.options)
             msgs = res.errors
         except mypy.errors.CompileError as err:
             msgs = err.messages

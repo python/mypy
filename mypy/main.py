@@ -8,7 +8,7 @@ import re
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from mypy import build
 from mypy import defaults
@@ -509,7 +509,7 @@ def process_options(args: List[str],
         return targets, options
 
 
-def create_source_list(files: List[str], options: Options) -> List[BuildSource]:
+def create_source_list(files: Sequence[str], options: Options) -> List[BuildSource]:
     targets = []
     for f in files:
         if f.endswith(PY_EXTENSIONS):
