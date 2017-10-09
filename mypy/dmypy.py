@@ -296,9 +296,15 @@ class Server:
 
     def __init__(self, flags: List[str]) -> None:
         """Initialize the server with the desired mypy flags."""
-        sources, options = mypy.main.process_options(flags + ['-i'], False)
+        sources, options = mypy.main.process_options(['-i'] + flags, False)
         if sources:
             sys.exit("dmypy: start/restart does not accept sources")
+        if options.report_dirs:
+            sys.exit("dmypy: start/restart cannot generate reports")
+        if not options.incremental:
+            sys.exit("dmypy: start/restart should not disable incremental mode")
+        if options.quick_and_dirty:
+            sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
         self.options = options
 
     def serve(self) -> NoReturn:
@@ -388,6 +394,7 @@ class Server:
             sys.stdout = save_stdout
             sys.stderr = save_stderr
         try:
+            # TODO: This is where we can start reusing the graph.
             res = mypy.build.build(sources, self.options)
             msgs = res.errors
         except mypy.errors.CompileError as err:
