@@ -1086,5 +1086,7 @@ a/b/c/d/e/__init__.py:1: error: "int" not callable
 disallow_untyped_defs = True
 disallow_any = generics
 [file a.py]
-def get_tasks(self):  # E: Function is missing a type annotation
+def get_tasks(self):
     return 'whatever'
+[out]
+a.py:1: error: Function is missing a type annotation
