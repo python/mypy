@@ -1398,7 +1398,7 @@ class ForwardRef(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_forwardref_type(self)
 
-    def serialize(self):
+    def serialize(self) -> str:
         if isinstance(self.link, UnboundType):
             name = self.link.name
         if isinstance(self.link, Instance):
