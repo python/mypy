@@ -1417,3 +1417,14 @@ async def main() -> None:
 [out]
 _testAsyncioGatherPreciseType.py:9: error: Revealed type is 'builtins.str'
 _testAsyncioGatherPreciseType.py:10: error: Revealed type is 'builtins.str'
+
+[case testMultipleInheritanceWorksWithTupleTypeGeneric]
+from typing import SupportsAbs, NamedTuple
+
+class Point(NamedTuple('Point', [('x', int), ('y', int)]), SupportsAbs[int]):
+    def __abs__(p) -> int:
+        return abs(p.x) + abs(p.y)
+
+def test(a: Point) -> bool:
+    return abs(a) == 2
+[out]
