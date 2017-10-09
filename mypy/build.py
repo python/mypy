@@ -999,6 +999,9 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
     # TODO: Share stat() outcome with find_module()
     path = os.path.abspath(path)
+    if not os.path.isfile(path):
+        manager.log('Metadata abandoned for {}: file {} does not exist'.format(id, path))
+        return None
     st = manager.get_stat(path)  # TODO: Errors
     size = st.st_size
     if size != meta.size:
