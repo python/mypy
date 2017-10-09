@@ -2295,9 +2295,9 @@ class SymbolTableNode:
     # For deserialized MODULE_REF nodes, the referenced module name;
     # for other nodes, optionally the name of the referenced object.
     cross_ref = None  # type: Optional[str]
-    # Was this node created by normalіze_type_alias?
-    #
-    # TODO: Write a better comment, this is confusing
+    # Used to distinguish between 'typing.List' and 'builtins.list'.  This is
+    # True when the former has been normalized to the latter, and it allow us
+    # to reject 'list[str]' and similar.
     normalized = False  # type: bool
     # Was this defined by assignment to self attribute?
     implicit = False  # type: bool
