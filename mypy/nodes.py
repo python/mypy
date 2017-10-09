@@ -1785,8 +1785,9 @@ class PromoteExpr(Expression):
 class NewTypeExpr(Expression):
     """NewType expression NewType(...)."""
     name = None  # type: str
+    # The base type (the second argument to NewType)
     old_type = None  # type: mypy.types.Type
-
+    # The synthesized class representing the new type (inherits old_type)
     info = None  # type: Optional[TypeInfo]
 
     def __init__(self, name: str, old_type: 'mypy.types.Type', line: int) -> None:
