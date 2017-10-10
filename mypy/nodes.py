@@ -255,7 +255,7 @@ class MypyFile(SymbolNode):
 class ImportBase(Statement):
     """Base class for all import statements."""
 
-    is_unreachable = False  # Set by semanal.FirstPass if inside `if False` etc.
+    is_unreachable = False  # Set by semanal.SemanticAnalyzerPass1 if inside `if False` etc.
     is_top_level = False  # Ditto if outside any class or def
     is_mypy_only = False  # Ditto if inside `if TYPE_CHECKING` or `if MYPY`
 
@@ -2433,7 +2433,7 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         for key, value in self.items():
             # Skip __builtins__: it's a reference to the builtins
             # module that gets added to every module by
-            # SemanticAnalyzer.visit_file(), but it shouldn't be
+            # SemanticAnalyzerPass2.visit_file(), but it shouldn't be
             # accessed by users of the module.
             if key == '__builtins__':
                 continue
