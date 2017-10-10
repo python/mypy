@@ -704,8 +704,8 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
                 # TODO: These hacks will be not necessary when this will be moved to later stage.
-                arg = self.update_type(arg)
-                bound = self.update_type(tvar.upper_bound)
+                arg = self.resolve_type(arg)
+                bound = self.resolve_type(tvar.upper_bound)
                 if not is_subtype(arg, bound):
                     self.fail('Type argument "{}" of "{}" must be '
                               'a subtype of "{}"'.format(
@@ -719,9 +719,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
                               valids: List[Type], arg_number: int, context: Context) -> None:
         for actual in actuals:
-            actual = self.update_type(actual)
+            actual = self.resolve_type(actual)
             if (not isinstance(actual, AnyType) and
-                    not any(is_same_type(actual, self.update_type(value)) for value in valids)):
+                    not any(is_same_type(actual, self.resolve_type(value))
+                            for value in valids)):
                 if len(actuals) > 1 or not isinstance(actual, Instance):
                     self.fail('Invalid type argument value for "{}"'.format(
                         type.name()), context)
@@ -731,11 +732,13 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     self.fail(messages.INCOMPATIBLE_TYPEVAR_VALUE.format(
                         arg_name, class_name, actual_type_name), context)
 
-    def update_type(self, tp: Type) -> Type:
+    def resolve_type(self, tp: Type) -> Type:
         # This helper is only needed while is_subtype and is_same_type are
         # called in third pass. This can be removed when TODO in visit_instance is fixed.
         if isinstance(tp, ForwardRef):
-            tp = tp.link
+            if tp.resolved is None:
+                return tp.unbound
+            tp = tp.resolved
         if isinstance(tp, Instance) and tp.type.replaced:
             replaced = tp.type.replaced
             if replaced.tuple_type:
@@ -799,8 +802,9 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_forwardref_type(self, t: ForwardRef) -> None:
         self.indicator['forward'] = True
-        if isinstance(t.link, UnboundType):
-            t.link = self.anal_type(t.link)
+        if t.resolved is None:
+            resolved = self.anal_type(t.unbound)
+            t.resolve(resolved)
 
     def anal_type(self, tp: UnboundType) -> Type:
         tpan = TypeAnalyser(self.lookup_func,

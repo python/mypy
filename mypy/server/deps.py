@@ -213,7 +213,7 @@ class TypeDependenciesVisitor(TypeVisitor[List[str]]):
         return []
 
     def visit_forwardref_type(self, typ: ForwardRef) -> List[str]:
-        return get_type_dependencies(typ.link)
+        assert False, 'Internal error: Leaked forward reference object {}'.format(typ)
 
     def visit_type_var(self, typ: TypeVarType) -> List[str]:
         # TODO: replace with actual implementation
