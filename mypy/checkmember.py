@@ -288,6 +288,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
 
     This is conceptually part of analyze_member_access and the arguments are similar.
 
+    itype is the class object in which var is dedined
     original_type is the type of E in the expression E.var
     """
     # Found a member variable.
@@ -312,17 +313,21 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                     msg.cant_assign_to_method(node)
 
             if not var.is_staticmethod:
-                # Class-level function objects and classmethods become bound
-                # methods: the former to the instance, the latter to the
-                # class.
+                # Class-level function objects and classmethods become bound methods:
+                # the former to the instance, the latter to the class.
                 functype = t
-                # Use meet to simulate dispatch - e.g. reduce Union[A, B] to A on dispatch to A
+                # Use meet to narrow original_type to the dispatched type.
+                # For example, assume
+                # * A.f: Callable[[A1], None] where A1 <: A (maybe A1 == A)
+                # * B.f: Callable[[B1], None] where B1 <: B (maybe B1 == B)
+                # * x: Union[A1, B1]
+                # In `x.f`, when checking `x` against A1 we assume x is compatible with A
+                # and similarly for B1 when checking agains B
                 dispatched_type = meet.meet_types(original_type, itype)
                 check_self_arg(functype, dispatched_type, var.is_classmethod, node, name, msg)
                 signature = bind_self(functype, original_type, var.is_classmethod)
                 if var.is_property:
-                    # A property cannot have an overloaded type => the cast
-                    # is fine.
+                    # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(signature, CallableType)
                     result = signature.ret_type
                 else:
