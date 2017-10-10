@@ -507,7 +507,7 @@ class A:
     f = x # type: Callable[[], None]
     g = x # type: Callable[[B], None]
 a = None # type: A
-a.f() # E: Attribute function with type "Callable[[], None]" does not accept self argument
+a.f() # E: Attribute function "f" with type "Callable[[], None]" does not accept self argument
 a.g() # E: Invalid self argument "A" to attribute function "g" with type "Callable[[B], None]"
 
 [case testMethodWithDynamicallyTypedMethodAsDataAttribute]

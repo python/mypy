@@ -393,8 +393,7 @@ def check_self_arg(functype: FunctionLike, dispatched_arg_type: Type, is_classme
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
-            msg.fail('Attribute function with type %s does not accept self argument'
-                     % msg.format(item), context)
+            msg.no_formal_self(name, item, context)
         else:
             selfarg = item.arg_types[0]
             if is_classmethod:
