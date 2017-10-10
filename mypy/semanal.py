@@ -4836,7 +4836,9 @@ class ForwardReferenceResolver(TypeTranslator):
                   # its content is updated in ThirdPass, now we need to unwrap this type.
             A = NewType('A', int)
         """
-        return t.link.accept(self)
+        assert t.resolved, 'Internal error: Unresolved forward reference: {}'.format(
+            t.unbound.name)
+        return t.resolved.accept(self)
 
     def visit_instance(self, t: Instance, from_fallback: bool = False) -> Type:
         """This visitor method tracks situations like this:
