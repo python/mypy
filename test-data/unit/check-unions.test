@@ -609,6 +609,23 @@ reveal_type(x[0])  # E: Revealed type is 'builtins.int*'
 reveal_type(b.x)  # E: Revealed type is 'builtins.object'
 [builtins fixtures/list.pyi]
 
+[case testUnionMultiassignIndexedWithError]
+from typing import Union, Tuple, List
+
+class A: pass
+class B:
+    x: int
+
+x: List[A]
+b: B
+
+a: Union[Tuple[int, int], Tuple[int, object]]
+(x[0], b.x) = a  # E: Incompatible types in assignment (expression has type "int", target has type "A") \
+                 # E: Incompatible types in assignment (expression has type "object", variable has type "int")
+reveal_type(x[0])  # E: Revealed type is '__main__.A*'
+reveal_type(b.x)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/list.pyi]
+
 [case testUnionMultiassignPacked]
 from typing import Union, Tuple, List
 
@@ -651,6 +668,155 @@ c, *d = x
 reveal_type(c) # E: Revealed type is 'builtins.int'
 reveal_type(d) # E: Revealed type is 'builtins.list[builtins.int*]'
 [builtins fixtures/tuple.pyi]
+
+[case testUnionOfNonIterableUnpacking]
+from typing import Union
+bad: Union[int, str]
+
+x, y = bad # E: 'builtins.int' object is not iterable \
+           # E: 'builtins.str' object is not iterable
+reveal_type(x) # E: Revealed type is 'Any'
+reveal_type(y) # E: Revealed type is 'Any'
+[out]
+
+[case testUnionAlwaysTooMany]
+from typing import Union, Tuple
+bad: Union[Tuple[int, int, int], Tuple[str, str, str]]
+
+x, y = bad # E: Too many values to unpack (2 expected, 3 provided)
+reveal_type(x) # E: Revealed type is 'Any'
+reveal_type(y) # E: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUnionAlwaysTooFew]
+from typing import Union, Tuple
+bad: Union[Tuple[int, int, int], Tuple[str, str, str]]
+
+x, y, z, w = bad # E: Need more than 3 values to unpack (4 expected)
+reveal_type(x) # E: Revealed type is 'Any'
+reveal_type(y) # E: Revealed type is 'Any'
+reveal_type(z) # E: Revealed type is 'Any'
+reveal_type(w) # E: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUnionUnpackingChainedTuple]
+from typing import Union, Tuple
+good: Union[Tuple[int, int], Tuple[str, str]]
+
+x, y = t = good
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(t) # E: Revealed type is 'Union[Tuple[builtins.int, builtins.int], Tuple[builtins.str, builtins.str]]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUnionUnpackingChainedTuple2]
+from typing import Union, Tuple
+good: Union[Tuple[int, int], Tuple[str, str]]
+
+t = x, y = good
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(t) # E: Revealed type is 'Union[Tuple[builtins.int, builtins.int], Tuple[builtins.str, builtins.str]]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUnionUnpackingChainedTuple3]
+from typing import Union, Tuple
+good: Union[Tuple[int, int], Tuple[str, str]]
+
+x, y = a, b = good
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(a) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(b) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUnionUnpackingChainedList]
+from typing import Union, List
+good: Union[List[int], List[str]]
+
+lst = x, y = good
+reveal_type(x) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+reveal_type(lst) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testUnionUnpackingChainedList2]
+from typing import Union, List
+good: Union[List[int], List[str]]
+
+x, *y, z = lst = good
+reveal_type(x) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
+reveal_type(z) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+reveal_type(lst) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testUnionUnpackingInForTuple]
+from typing import Union, Tuple, NamedTuple
+class NTInt(NamedTuple):
+    x: int
+    y: int
+class NTStr(NamedTuple):
+    x: str
+    y: str
+
+nt: Union[NTInt, NTStr]
+for nx in nt:
+    reveal_type(nx) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+
+t: Union[Tuple[int, int], Tuple[str, str]]
+for x in t:
+    # TODO(Ivan): This will be OK when tuple fallback patches are added (like above)
+    reveal_type(x) # E: Revealed type is 'Any'
+[builtins fixtures/for.pyi]
+[out]
+
+[case testUnionUnpackingInForList]
+from typing import Union, List, Tuple
+
+t: Union[List[Tuple[int, int]], List[Tuple[str, str]]]
+for x, y in t:
+    reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+t2: List[Union[Tuple[int, int], Tuple[str, str]]]
+for x2, y2 in t2:
+    reveal_type(x2) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    reveal_type(y2) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/for.pyi]
+[out]
+
+[case testUnionUnpackingDoubleBinder]
+from typing import Union, Tuple
+
+x: object
+y: object
+class A: pass
+class B: pass
+
+t1: Union[Tuple[A, A], Tuple[B, B]]
+t2: Union[Tuple[int, int], Tuple[str, str]]
+
+x, y = t1
+reveal_type(x) # E: Revealed type is 'Union[__main__.A, __main__.B]'
+reveal_type(y) # E: Revealed type is 'Union[__main__.A, __main__.B]'
+
+x, y = t2
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+x, y = object(), object()
+reveal_type(x) # E: Revealed type is 'builtins.object'
+reveal_type(y) # E: Revealed type is 'builtins.object'
+[builtins fixtures/tuple.pyi]
+[out]
 
 [case testLongUnionFormatting]
 from typing import Any, Generic, TypeVar, Union

@@ -1419,31 +1419,26 @@ _testAsyncioGatherPreciseType.py:9: error: Revealed type is 'builtins.str'
 _testAsyncioGatherPreciseType.py:10: error: Revealed type is 'builtins.str'
 
 [case testNoCrashOnGenericUnionUnpacking]
+from typing import Union, Dict
+
 TEST = {'key': ('a', 'b')}
 def test() -> None:
     a, b = TEST.get('foo', ('x', 'y'))
     reveal_type(a)
     reveal_type(b)
-[out]
-_testNoCrashOnGenericUnionUnpacking.py:4: error: Revealed type is 'builtins.str'
-_testNoCrashOnGenericUnionUnpacking.py:5: error: Revealed type is 'builtins.str'
-
-[case testNoCrashOnGenericUnionUnpacking2]
-TEST = {'key': ('a', 'b')}
-def test() -> None:
+def test2() -> None:
     a, b = TEST.get('foo', (1, 2))
     reveal_type(a)
     reveal_type(b)
-[out]
-_testNoCrashOnGenericUnionUnpacking2.py:4: error: Revealed type is 'Union[builtins.str, builtins.int]'
-_testNoCrashOnGenericUnionUnpacking2.py:5: error: Revealed type is 'Union[builtins.str, builtins.int]'
 
-[case testCorrectItemIteratorUnionDict]
-from typing import Union, Dict
 x: Union[Dict[int, int], Dict[str, str]] = dict(a='b')
 for a, b in x.items():
     reveal_type(a)
     reveal_type(b)
 [out]
-_testCorrectItemIteratorUnionDict.py:4: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
-_testCorrectItemIteratorUnionDict.py:5: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
+_testNoCrashOnGenericUnionUnpacking.py:6: error: Revealed type is 'builtins.str'
+_testNoCrashOnGenericUnionUnpacking.py:7: error: Revealed type is 'builtins.str'
+_testNoCrashOnGenericUnionUnpacking.py:10: error: Revealed type is 'Union[builtins.str, builtins.int]'
+_testNoCrashOnGenericUnionUnpacking.py:11: error: Revealed type is 'Union[builtins.str, builtins.int]'
+_testNoCrashOnGenericUnionUnpacking.py:15: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
+_testNoCrashOnGenericUnionUnpacking.py:16: error: Revealed type is 'Union[builtins.int*, builtins.str*]'

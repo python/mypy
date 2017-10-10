@@ -1646,15 +1646,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                             infer_lvalue_type=infer_lvalue_type,
                                             rv_type=item, undefined_rvalue=True)
                 for t, lv in zip(transposed, lvalues):
+                    if isinstance(lv, StarExpr):
+                        lv = lv.expr
                     t.append(self.type_map.pop(lv, AnyType(TypeOfAny.special_form)))
         union_types = tuple(UnionType.make_simplified_union(col) for col in transposed)
         for expr, items in assignments.items():
+            if isinstance(expr, StarExpr):
+                expr = expr.expr
             types, declared_types = zip(*items)
             self.binder.assign_type(expr,
                                     UnionType.make_simplified_union(types),
                                     UnionType.make_simplified_union(declared_types),
                                     False)
         for union, lv in zip(union_types, lvalues):
+            if isinstance(lv, StarExpr):
+                lv = lv.expr
             _1, _2, inferred = self.check_lvalue(lv)
             if inferred:
                 self.set_inferred_type(inferred, lv, union)
