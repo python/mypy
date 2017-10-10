@@ -379,11 +379,17 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
         return None
 
 
-def check_self_arg(functype: FunctionLike, original_type: Type, is_classmethod: bool,
+def check_self_arg(functype: FunctionLike, dispatched_arg_type: Type, is_classmethod: bool,
                    context: Context, name: str, msg: MessageBuilder) -> None:
-    """Check that the the most precise type of the self argument is compatible
-    with the declared type of each of the overloads.
+    """For x.f where A.f: A1 -> T, check that meet(type(x), A) <: A1 for each overload.
+
+    dispatched_arg_type is meet(B, A) in the following example
+        class A:
+            f: Callable[[A1], None]
+
+        def g(x: B): x.f
     """
+    # TODO: this is too strict. We can return filtered overloads for matching definitions
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
@@ -392,9 +398,9 @@ def check_self_arg(functype: FunctionLike, original_type: Type, is_classmethod: 
         else:
             selfarg = item.arg_types[0]
             if is_classmethod:
-                original_type = TypeType.make_normalized(original_type)
-            if not subtypes.is_subtype(original_type, erase_to_bound(selfarg)):
-                msg.invalid_method_type(name, original_type, item, is_classmethod, context)
+                dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
+            if not subtypes.is_subtype(dispatched_arg_type, erase_to_bound(selfarg)):
+                msg.incompatible_self_argument(name, dispatched_arg_type, item, is_classmethod, context)
 
 
 def analyze_class_attribute_access(itype: Instance,
