@@ -21,6 +21,7 @@ import site
 import sys
 import time
 from os.path import dirname, basename
+import errno
 
 from typing import (AbstractSet, Dict, Iterable, Iterator, List, cast, Any,
                     NamedTuple, Optional, Set, Tuple, Union, Callable)
@@ -30,7 +31,7 @@ if MYPY:
     from typing import Deque
 
 from mypy.nodes import (MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
-from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
+from mypy.semanal import SemanticAnalyzerPass1, SemanticAnalyzerPass2, SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, DecodeError, report_internal_error
@@ -307,7 +308,7 @@ def default_lib_path(data_dir: str,
         path.append('/usr/local/lib/mypy')
     if not path:
         print("Could not resolve typeshed subdirectories. If you are using mypy\n"
-              "from source, you need to run \"git submodule --init update\".\n"
+              "from source, you need to run \"git submodule update --init\".\n"
               "Otherwise your mypy install is broken.\nPython executable is located at "
               "{0}.\nMypy located at {1}".format(sys.executable, data_dir), file=sys.stderr)
         sys.exit(1)
@@ -469,7 +470,7 @@ class BuildManager:
       all_types:       Map {Expression: Type} collected from all modules
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
-      stale_modules:   Set of modules that needed to be rechecked
+      stale_modules:   Set of modules that needed to be rechecked (only used by tests)
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
@@ -496,10 +497,11 @@ class BuildManager:
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
         self.plugin = plugin
-        self.semantic_analyzer = SemanticAnalyzer(self.modules, self.missing_modules,
+        self.semantic_analyzer = SemanticAnalyzerPass2(self.modules, self.missing_modules,
                                                   lib_path, self.errors, self.plugin)
         self.modules = self.semantic_analyzer.modules
-        self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
+        self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
+                                                             self.semantic_analyzer)
         self.all_types = {}  # type: Dict[Expression, Type]
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
@@ -1165,6 +1167,25 @@ def write_cache(id: str, path: str, tree: MypyFile,
     return interface_hash
 
 
+def delete_cache(id: str, path: str, manager: BuildManager) -> None:
+    """Delete cache files for a module.
+
+    The cache files for a module are deleted when mypy finds errors there.
+    This avoids inconsistent states with cache files from different mypy runs,
+    see #4043 for an example.
+    """
+    path = os.path.abspath(path)
+    meta_json, data_json = get_cache_names(id, path, manager)
+    manager.log('Deleting {} {} {} {}'.format(id, path, meta_json, data_json))
+
+    for filename in [data_json, meta_json]:
+        try:
+            os.remove(filename)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                manager.log("Error deleting cache file {}: {}".format(filename, e.strerror))
+
+
 """Dependency manager.
 
 Design
@@ -1534,11 +1555,12 @@ class State:
         """Marks this module as having been fully re-analyzed by the type-checker."""
         self.manager.rechecked_modules.add(self.id)
 
-    def mark_interface_stale(self) -> None:
+    def mark_interface_stale(self, *, on_errors: bool = False) -> None:
         """Marks this module as having a stale public interface, and discards the cache data."""
         self.meta = None
         self.externally_same = False
-        self.manager.stale_modules.add(self.id)
+        if not on_errors:
+            self.manager.stale_modules.add(self.id)
 
     def check_blockers(self) -> None:
         """Raise CompileError if a blocking error is detected."""
@@ -1584,7 +1606,7 @@ class State:
         """
         In Python, if a and a.b are both modules, running `import a.b` will
         modify not only the current module's namespace, but a's namespace as
-        well -- see SemanticAnalyzer.add_submodules_to_parent_modules for more
+        well -- see SemanticAnalyzerPass2.add_submodules_to_parent_modules for more
         details.
 
         However, this patching process can occur after `a` has been parsed and
@@ -1668,13 +1690,13 @@ class State:
         # definitions in the file to the symbol table.  We must do
         # this before processing imports, since this may mark some
         # import statements as unreachable.
-        first = FirstPass(manager.semantic_analyzer)
+        first = SemanticAnalyzerPass1(manager.semantic_analyzer)
         with self.wrap_context():
             first.visit_file(self.tree, self.xpath, self.id, self.options)
 
         # Initialize module symbol table, which was populated by the
         # semantic analyzer.
-        # TODO: Why can't FirstPass .analyze() do this?
+        # TODO: Why can't SemanticAnalyzerPass1 .analyze() do this?
         self.tree.names = manager.semantic_analyzer.globals
 
         # Compute (direct) dependencies.
@@ -1730,10 +1752,13 @@ class State:
 
     def semantic_analysis_pass_three(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
+        patches = []  # type: List[Callable[[], None]]
         with self.wrap_context():
-            self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath, self.options)
+            self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath,
+                                                            self.options, patches)
             if self.options.dump_type_stats:
                 dump_type_stats(self.tree, self.xpath)
+        self.patches = patches + self.patches
 
     def semantic_analysis_apply_patches(self) -> None:
         for patch_func in self.patches:
@@ -1810,6 +1835,8 @@ class State:
         else:
             is_errors = self.manager.errors.is_errors()
         if is_errors:
+            delete_cache(self.id, self.path, self.manager)
+            self.mark_interface_stale(on_errors=True)
             return
         dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
         new_interface_hash = write_cache(

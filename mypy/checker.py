@@ -1146,7 +1146,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # variables. If an argument or return type of override
                 # does not have the correct subtyping relationship
                 # with the original type even after these variables
-                # are erased, then it is definitely an incompatiblity.
+                # are erased, then it is definitely an incompatibility.
 
                 override_ids = override.type_var_ids()
 
@@ -1769,7 +1769,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
-            types = [self.check_lvalue(sub_expr)[0] for sub_expr in lvalue.items]
+            types = [self.check_lvalue(sub_expr)[0] or
+                     # This type will be used as a context for further inference of rvalue,
+                     # we put Uninhabited if there is no information available from lvalue.
+                     UninhabitedType() for sub_expr in lvalue.items]
             lvalue_type = TupleType(types, self.named_type('builtins.tuple'))
         else:
             lvalue_type = self.expr_checker.accept(lvalue)
@@ -2659,10 +2662,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(var.type, PartialType) and var.type.type is None:
                     # None partial type: assume variable is intended to have type None
                     var.type = NoneTyp()
-                elif var not in self.partial_reported:
-                    self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                else:
+                    if var not in self.partial_reported:
+                        self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                        self.partial_reported.add(var)
                     var.type = AnyType(TypeOfAny.from_error)
-                    self.partial_reported.add(var)
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
         for partial_types in reversed(self.partial_types):

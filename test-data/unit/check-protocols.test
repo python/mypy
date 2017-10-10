@@ -2118,3 +2118,64 @@ main:10: note:         def other(self, *args: Any, hint: Optional[str] = ..., **
 main:10: note:     Got:
 main:10: note:         def other(self) -> int
 
+[case testObjectAllowedInProtocolBases]
+from typing import Protocol
+class P(Protocol, object):
+    pass
+[out]
+
+[case testNoneSubtypeOfEmptyProtocol]
+from typing import Protocol
+class P(Protocol):
+    pass
+
+x: P = None
+[out]
+
+[case testNoneSubtypeOfAllProtocolsWithoutStrictOptional]
+from typing import Protocol
+class P(Protocol):
+    attr: int
+    def meth(self, arg: str) -> str:
+        pass
+
+x: P = None
+[out]
+
+[case testNoneSubtypeOfEmptyProtocolStrict]
+# flags: --strict-optional
+from typing import Protocol
+class P(Protocol):
+    pass
+x: P = None
+
+class PBad(Protocol):
+    x: int
+y: PBad = None  # E: Incompatible types in assignment (expression has type "None", variable has type "PBad")
+[out]
+
+[case testOnlyMethodProtocolUsableWithIsSubclass]
+from typing import Protocol, runtime, Union, Type
+@runtime
+class P(Protocol):
+    def meth(self) -> int:
+        pass
+@runtime
+class PBad(Protocol):
+    x: str
+
+class C:
+    x: str
+    def meth(self) -> int:
+        pass
+class E: pass
+
+cls: Type[Union[C, E]]
+issubclass(cls, PBad)  # E: Only protocols that don't have non-method members can be used with issubclass() \
+                       # N: Protocol "PBad" has non-method member(s): x
+if issubclass(cls, P):
+    reveal_type(cls)  # E: Revealed type is 'Type[__main__.C]'
+else:
+    reveal_type(cls)  # E: Revealed type is 'Type[__main__.E]'
+[builtins fixtures/isinstance.pyi]
+[out]

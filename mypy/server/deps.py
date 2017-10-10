@@ -11,7 +11,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, Instance, AnyType, NoneTyp, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    FunctionLike
+    FunctionLike, ForwardRef
 )
 from mypy.server.trigger import make_trigger
 
@@ -211,6 +211,9 @@ class TypeDependenciesVisitor(TypeVisitor[List[str]]):
     def visit_type_type(self, typ: TypeType) -> List[str]:
         # TODO: replace with actual implementation
         return []
+
+    def visit_forwardref_type(self, typ: ForwardRef) -> List[str]:
+        assert False, 'Internal error: Leaked forward reference object {}'.format(typ)
 
     def visit_type_var(self, typ: TypeVarType) -> List[str]:
         # TODO: replace with actual implementation

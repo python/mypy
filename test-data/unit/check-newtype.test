@@ -276,17 +276,17 @@ f = NewType('f', tp=int)  # E: NewType(...) expects exactly two positional argum
 
 [case testNewTypeWithAnyFails]
 from typing import NewType, Any
-A = NewType('A', Any)  # E: Argument 2 to NewType(...) must be subclassable (got Any)
+A = NewType('A', Any)  # E: Argument 2 to NewType(...) must be subclassable (got "Any")
 [out]
 
 [case testNewTypeWithUnionsFails]
 from typing import NewType, Union
-Foo = NewType('Foo', Union[int, float])  # E: Argument 2 to NewType(...) must be subclassable (got Union[builtins.int, builtins.float])
+Foo = NewType('Foo', Union[int, float])  # E: Argument 2 to NewType(...) must be subclassable (got "Union[int, float]")
 [out]
 
 [case testNewTypeWithTypeTypeFails]
 from typing import NewType, Type
-Foo = NewType('Foo', Type[int])  # E: Argument 2 to NewType(...) must be subclassable (got Type[builtins.int])
+Foo = NewType('Foo', Type[int])  # E: Argument 2 to NewType(...) must be subclassable (got "Type[int]")
 a = Foo(type(3))
 [builtins fixtures/args.pyi]
 [out]

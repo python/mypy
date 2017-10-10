@@ -1565,3 +1565,54 @@ reveal_type(d['weight0']) # E: Revealed type is 'builtins.float*'
 
 [builtins fixtures/floatdict.pyi]
 
+[case testForwardRefsInForStatementImplicit]
+from typing import List, NamedTuple
+lst: List[N]
+
+for i in lst:
+    reveal_type(i.x)  # E: Revealed type is 'builtins.int'
+    a: str = i[0] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+N = NamedTuple('N', [('x', int)])
+[builtins fixtures/list.pyi]
+[out]
+
+[case testForwardRefsInForStatement]
+from typing import List, NamedTuple
+lst: List[M]
+
+for i in lst: # type: N
+    reveal_type(i.x)  # E: Revealed type is 'builtins.int'
+    a: str = i[0] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+N = NamedTuple('N', [('x', int)])
+class M(N): pass
+[builtins fixtures/list.pyi]
+[out]
+
+[case testForwardRefsInWithStatementImplicit]
+from typing import ContextManager, Any
+from mypy_extensions import TypedDict
+cm: ContextManager[N]
+
+with cm as g:
+    a: int = g['x']
+
+N = TypedDict('N', {'x': int})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+
+[case testForwardRefsInWithStatement]
+from typing import ContextManager, Any
+from mypy_extensions import TypedDict
+cm: ContextManager[Any]
+
+with cm as g:  # type: N
+    a: str = g['x']  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+N = TypedDict('N', {'x': int})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+

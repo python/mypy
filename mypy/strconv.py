@@ -58,27 +58,24 @@ class StrConv(NodeVisitor[str]):
         array with information specific to methods, global functions or
         anonymous functions.
         """
-        args = []  # type: List[mypy.nodes.Var]
-        init = []  # type: List[Optional[mypy.nodes.AssignmentStmt]]
+        args = []  # type: List[Union[mypy.nodes.Var, Tuple[str, List[mypy.nodes.Node]]]]
         extra = []  # type: List[Tuple[str, List[mypy.nodes.Var]]]
-        for i, arg in enumerate(o.arguments):
+        for arg in o.arguments:
             kind = arg.kind  # type: int
             if kind in (mypy.nodes.ARG_POS, mypy.nodes.ARG_NAMED):
-                args.append(o.arguments[i].variable)
+                args.append(arg.variable)
             elif kind in (mypy.nodes.ARG_OPT, mypy.nodes.ARG_NAMED_OPT):
-                args.append(o.arguments[i].variable)
-                init.append(o.arguments[i].initialization_statement)
+                assert arg.initializer is not None
+                args.append(('default', [arg.variable, arg.initializer]))
             elif kind == mypy.nodes.ARG_STAR:
-                extra.append(('VarArg', [o.arguments[i].variable]))
+                extra.append(('VarArg', [arg.variable]))
             elif kind == mypy.nodes.ARG_STAR2:
-                extra.append(('DictVarArg', [o.arguments[i].variable]))
+                extra.append(('DictVarArg', [arg.variable]))
         a = []  # type: List[Any]
         if args:
             a.append(('Args', args))
         if o.type:
             a.append(o.type)
-        if init:
-            a.append(('Init', init))
         if o.is_generator:
             a.append('Generator')
         a.extend(extra)

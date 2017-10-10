@@ -76,26 +76,11 @@ class TransformVisitor(NodeVisitor[Node]):
         return ImportAll(node.id, node.relative)
 
     def copy_argument(self, argument: Argument) -> Argument:
-        init_stmt = None  # type: Optional[AssignmentStmt]
-
-        if argument.initialization_statement:
-            init_lvalue = cast(
-                NameExpr,
-                self.expr(argument.initialization_statement.lvalues[0]),
-            )
-            init_lvalue.set_line(argument.line)
-            init_stmt = AssignmentStmt(
-                [init_lvalue],
-                self.expr(argument.initialization_statement.rvalue),
-                self.optional_type(argument.initialization_statement.type),
-            )
-
         arg = Argument(
             self.visit_var(argument.variable),
             argument.type_annotation,
             argument.initializer,
             argument.kind,
-            init_stmt,
         )
 
         # Refresh lines of the inner things

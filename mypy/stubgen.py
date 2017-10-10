@@ -455,13 +455,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 annotation = ": {}".format(self.print_annotation(annotated_type))
             else:
                 annotation = ""
-            init_stmt = arg_.initialization_statement
-            if init_stmt:
+            if arg_.initializer:
                 initializer = '...'
                 if kind in (ARG_NAMED, ARG_NAMED_OPT) and '*' not in args:
                     args.append('*')
                 if not annotation:
-                    typename = self.get_str_type_of_node(init_stmt.rvalue, True)
+                    typename = self.get_str_type_of_node(arg_.initializer, True)
                     annotation = ': {} = ...'.format(typename)
                 else:
                     annotation += '={}'.format(initializer)

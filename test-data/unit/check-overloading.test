@@ -1,4 +1,26 @@
 -- Test cases for function overloading
+[case testOverloadNotImportedNoCrash]
+@overload
+def f(a): pass
+@overload
+def f(a): pass
+def f(a): pass
+f(0)
+
+@overload  # E: Name 'overload' is not defined
+def g(a:int): pass
+def g(a): pass  # E: Name 'g' already defined
+g(0)
+
+@something  # E: Name 'something' is not defined
+def r(a:int): pass
+def r(a): pass  # E: Name 'r' already defined
+r(0)
+[out]
+main:1: error: Name 'overload' is not defined
+main:3: error: Name 'f' already defined
+main:3: error: Name 'overload' is not defined
+main:5: error: Name 'f' already defined
 
 [case testTypeCheckOverloadWithImplementation]
 from typing import overload, Any
@@ -1272,3 +1294,28 @@ a: Any
 # The return type is not ambiguous so Any arguments cause no ambiguity.
 reveal_type(f(a, 1, 1)) # E: Revealed type is 'builtins.str'
 reveal_type(f(1, *a))  # E: Revealed type is 'builtins.str'
+
+[case testOverloadOnOverloadWithType]
+from typing import Any, Type, TypeVar, overload
+from mod import MyInt
+T = TypeVar('T')
+
+@overload
+def make(cls: Type[T]) -> T: pass
+@overload
+def make() -> Any: pass
+
+def make(*args):
+    pass
+
+c = make(MyInt)
+reveal_type(c) # E: Revealed type is 'mod.MyInt*'
+
+[file mod.pyi]
+from typing import overload
+class MyInt:
+    @overload
+    def __init__(self, x: str) -> None: pass
+    @overload
+    def __init__(self, x: str, y: int) -> None: pass
+[out]

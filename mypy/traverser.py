@@ -35,7 +35,7 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_func(self, o: FuncItem) -> None:
         for arg in o.arguments:
-            init = arg.initialization_statement
+            init = arg.initializer
             if init is not None:
                 init.accept(self)
 
