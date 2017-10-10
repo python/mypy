@@ -556,16 +556,15 @@ def outer(x: T) -> T:
 
 [case testClassMemberTypeVarInFunctionBody]
 from typing import TypeVar, List
+S = TypeVar('S')
 class C:
     T = TypeVar('T', bound=int)
     def f(self, x: T) -> T:
-        L = List[C.T] # this creates a variable, not an alias
-        reveal_type(L)  # E: Revealed type is 'Overload(def () -> builtins.list[T`-1], def (x: typing.Iterable[T`-1]) -> builtins.list[T`-1])'
-        y: C.T = x
-        L().append(x)
+        L = List[S]
+        y: L[C.T] = [x]
         C.T  # E: Type variable "C.T" cannot be used as an expression
         A = C.T  # E: Type variable "C.T" cannot be used as an expression
-        return L()[0]
+        return y[0]
 
 [builtins fixtures/list.pyi]
 
