@@ -10,26 +10,27 @@ Here semantic analysis would detect that the assignment 'x = 1'
 defines a new variable, the type of which is to be inferred (in a
 later pass; type inference or type checking is not part of semantic
 analysis).  Also, it would bind both references to 'x' to the same
-module-level variable node.  The second assignment would also be
-analyzed, and the type of 'y' marked as being inferred.
+module-level variable (Var) node.  The second assignment would also
+be analyzed, and the type of 'y' marked as being inferred.
 
 Semantic analysis is the first analysis pass after parsing, and it is
 subdivided into three passes:
 
- * FirstPass looks up externally visible names defined in a module but
-   ignores imports and local definitions.  It helps enable (some)
-   cyclic references between modules, such as module 'a' that imports
-   module 'b' and used names defined in b *and* vice versa.  The first
-   pass can be performed before dependent modules have been processed.
+ * SemanticAnalyzerPass1 looks up externally visible names defined in a
+   module but ignores imports and local definitions.  It helps enable
+   (some) cyclic references between modules, such as module 'a' that
+   imports module 'b' and used names defined in b *and* vice versa.  The
+   first pass can be performed before dependent modules have been
+   processed.
 
- * SemanticAnalyzer is the second pass.  It does the bulk of the work.
+ * SemanticAnalyzerPass2 is the second pass.  It does the bulk of the work.
    It assumes that dependent modules have been semantically analyzed,
    up to the second pass, unless there is a import cycle.
 
- * ThirdPass checks that type argument counts are valid; for example,
-   it will reject Dict[int].  We don't do this in the second pass,
-   since we infer the type argument counts of classes during this
-   pass, and it is possible to refer to classes defined later in a
+ * SemanticAnalyzerPass3 checks that type argument counts are valid;
+   for example, it will reject Dict[int].  We don't do this in the
+   second pass, since we infer the type argument counts of classes during
+   this pass, and it is possible to refer to classes defined later in a
    file, which would not have the type argument count set yet. This
    pass also recomputes the method resolution order of each class, in
    case one of its bases belongs to a module involved in an import
@@ -183,7 +184,7 @@ SUGGESTED_TEST_FIXTURES = {
 }
 
 
-class SemanticAnalyzer(NodeVisitor[None]):
+class SemanticAnalyzerPass2(NodeVisitor[None]):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a
@@ -1078,7 +1079,7 @@ class SemanticAnalyzer(NodeVisitor[None]):
 
         # Calculate the MRO. It might be incomplete at this point if
         # the bases of defn include classes imported from other
-        # modules in an import loop. We'll recompute it in ThirdPass.
+        # modules in an import loop. We'll recompute it in SemanticAnalyzerPass3.
         if not self.verify_base_classes(defn):
             # Give it an MRO consisting of just the class itself and object.
             defn.info.mro = [defn.info, self.object_type().type]
@@ -3807,13 +3808,13 @@ class SemanticAnalyzer(NodeVisitor[None]):
             report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
 
 
-class FirstPass(NodeVisitor[None]):
+class SemanticAnalyzerPass1(NodeVisitor[None]):
     """First phase of semantic analysis.
 
     See docstring of 'analyze()' below for a description of what this does.
     """
 
-    def __init__(self, sem: SemanticAnalyzer) -> None:
+    def __init__(self, sem: SemanticAnalyzerPass2) -> None:
         self.sem = sem
 
     def visit_file(self, file: MypyFile, fnam: str, mod_id: str, options: Options) -> None:
@@ -4076,7 +4077,7 @@ class FirstPass(NodeVisitor[None]):
             assert False, "Couldn't determine scope"
 
 
-class ThirdPass(TraverserVisitor):
+class SemanticAnalyzerPass3(TraverserVisitor):
     """The third and final pass of semantic analysis.
 
     Check type argument counts and values of generic types, and perform some
@@ -4084,7 +4085,7 @@ class ThirdPass(TraverserVisitor):
     """
 
     def __init__(self, modules: Dict[str, MypyFile], errors: Errors,
-                 sem: SemanticAnalyzer) -> None:
+                 sem: SemanticAnalyzerPass2) -> None:
         self.modules = modules
         self.errors = errors
         self.sem = sem
@@ -4845,7 +4846,8 @@ class ForwardReferenceResolver(TypeTranslator):
         """This visitor method tracks situations like this:
 
             x: A  # This type is not yet known and therefore wrapped in ForwardRef,
-                  # its content is updated in ThirdPass, now we need to unwrap this type.
+                  # its content is updated in SemanticAnalyzerPass3, now we need to unwrap
+                  # this type.
             A = NewType('A', int)
         """
         assert t.resolved, 'Internal error: Unresolved forward reference: {}'.format(
@@ -4855,7 +4857,7 @@ class ForwardReferenceResolver(TypeTranslator):
     def visit_instance(self, t: Instance, from_fallback: bool = False) -> Type:
         """This visitor method tracks situations like this:
 
-               x: A  # When analyzing this type we will get an Instance from FirstPass.
+               x: A  # When analyzing this type we will get an Instance from SemanticAnalyzerPass1.
                      # Now we need to update this to actual analyzed TupleType.
                class A(NamedTuple):
                    attr: str
