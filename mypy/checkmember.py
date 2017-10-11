@@ -384,10 +384,10 @@ def check_self_arg(functype: FunctionLike, dispatched_arg_type: Type, is_classme
     """For x.f where A.f: A1 -> T, check that meet(type(x), A) <: A1 for each overload.
 
     dispatched_arg_type is meet(B, A) in the following example
-        class A:
-            f: Callable[[A1], None]
 
         def g(x: B): x.f
+        class A:
+            f: Callable[[A1], None]
     """
     # TODO: this is too strict. We can return filtered overloads for matching definitions
     for item in functype.items():
@@ -399,7 +399,8 @@ def check_self_arg(functype: FunctionLike, dispatched_arg_type: Type, is_classme
             if is_classmethod:
                 dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
             if not subtypes.is_subtype(dispatched_arg_type, erase_to_bound(selfarg)):
-                msg.incompatible_self_argument(name, dispatched_arg_type, item, is_classmethod, context)
+                msg.incompatible_self_argument(name, dispatched_arg_type, item,
+                                               is_classmethod, context)
 
 
 def analyze_class_attribute_access(itype: Instance,
