@@ -818,6 +818,49 @@ reveal_type(y) # E: Revealed type is 'builtins.object'
 [builtins fixtures/tuple.pyi]
 [out]
 
+[case testUnionUnpackingFromNestedTuples]
+from typing import Union, Tuple
+
+t: Union[Tuple[int, Tuple[int, int]], Tuple[str, Tuple[str, str]]]
+x, (y, z) = t
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(z) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testNestedUnionUnpackingFromNestedTuples]
+from typing import Union, Tuple
+
+class A: pass
+class B: pass
+
+t: Union[Tuple[int, Union[Tuple[int, int], Tuple[A, A]]], Tuple[str, Union[Tuple[str, str], Tuple[B, B]]]]
+x, (y, z) = t
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, __main__.A, builtins.str, __main__.B]'
+reveal_type(z) # E: Revealed type is 'Union[builtins.int, __main__.A, builtins.str, __main__.B]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testNestedUnionUnpackingFromNestedTuplesBinder]
+from typing import Union, Tuple
+
+class A: pass
+class B: pass
+
+x: object
+y: object
+z: object
+
+t: Union[Tuple[int, Union[Tuple[int, int], Tuple[A, A]]], Tuple[str, Union[Tuple[str, str], Tuple[B, B]]]]
+x, (y, z) = t
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, __main__.A, builtins.str, __main__.B]'
+reveal_type(z) # E: Revealed type is 'Union[builtins.int, __main__.A, builtins.str, __main__.B]'
+[builtins fixtures/tuple.pyi]
+[out]
+
 [case testLongUnionFormatting]
 from typing import Any, Generic, TypeVar, Union
 

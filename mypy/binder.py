@@ -232,9 +232,12 @@ class ConditionalTypeBinder:
         the union are processed (a union of collected items is later bound
         manually by the caller).
         """
+        old_assignments = None
+        if self.type_assignments is not None:
+            old_assignments = self.type_assignments
         self.type_assignments = defaultdict(list)
         yield self.type_assignments
-        self.type_assignments = None
+        self.type_assignments = old_assignments
 
     def assign_type(self, expr: Expression,
                     type: Type,

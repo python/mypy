@@ -1639,7 +1639,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_multi_assignment_from_union(self, lvalues: List[Expression], rvalue: Expression,
                                           rvalue_type: UnionType, context: Context,
                                           infer_lvalue_type: bool) -> None:
-        """Check assignment to multiple lavlue targets when rvalue type is a Union[...].
+        """Check assignment to multiple lvalue targets when rvalue type is a Union[...].
         For example:
 
             t: Union[Tuple[int, int], Tuple[str, str]]
@@ -1651,7 +1651,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         inferred types for first assignments, 'assignments' contains the narrowed types
         for binder.
         """
-        transposed = tuple([] for _ in lvalues)  # type: Tuple[List[Type], ...]
+        transposed = tuple([] for _ in
+                           self.flatten_lvalues(lvalues))  # type: Tuple[List[Type], ...]
         # Notify binder that we want to defer bindings and instead collect types.
         with self.binder.accumulate_type_assignments() as assignments:
             for item in rvalue_type.items:
@@ -1660,10 +1661,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_multi_assignment(lvalues, rvalue, context,
                                             infer_lvalue_type=infer_lvalue_type,
                                             rv_type=item, undefined_rvalue=True)
-                for t, lv in zip(transposed, lvalues):
-                    if isinstance(lv, StarExpr):
-                        # Unwrap StarExpr, since it is unwrapped by other helpers.
-                        lv = lv.expr
+                for t, lv in zip(transposed, self.flatten_lvalues(lvalues)):
                     t.append(self.type_map.pop(lv, AnyType(TypeOfAny.special_form)))
         union_types = tuple(UnionType.make_simplified_union(col) for col in transposed)
         for expr, items in assignments.items():
@@ -1675,15 +1673,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     UnionType.make_simplified_union(types),
                                     UnionType.make_simplified_union(declared_types),
                                     False)
-        for union, lv in zip(union_types, lvalues):
+        for union, lv in zip(union_types, self.flatten_lvalues(lvalues)):
             # Properly store the inferred types.
-            if isinstance(lv, StarExpr):
-                lv = lv.expr
             _1, _2, inferred = self.check_lvalue(lv)
             if inferred:
                 self.set_inferred_type(inferred, lv, union)
             else:
                 self.store_type(lv, union)
+
+    def flatten_lvalues(self, lvalues: List[Expression]) -> List[Expression]:
+        res = []  # type: List[Expression]
+        for lv in lvalues:
+            if isinstance(lv, (TupleExpr, ListExpr)):
+                res.extend(self.flatten_lvalues(lv.items))
+            if isinstance(lv, StarExpr):
+                # Unwrap StarExpr, since it is unwrapped by other helpers.
+                lv = lv.expr
+            res.append(lv)
+        return res
 
     def check_multi_assignment_from_tuple(self, lvalues: List[Lvalue], rvalue: Expression,
                                           rvalue_type: TupleType, context: Context,
