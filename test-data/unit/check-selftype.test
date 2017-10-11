@@ -470,11 +470,11 @@ b: B[str]
 reveal_type(a.g)  # E: Revealed type is 'builtins.int'
 --reveal_type(a.gt)  # E: Revealed type is 'builtins.int'
 reveal_type(a.f())  # E: Revealed type is 'builtins.int'
---reveal_type(a.ft())  # E: Revealed type is '__main__.A*[builtins.int]'
+reveal_type(a.ft())  # E: Revealed type is '__main__.A*[builtins.int]'
 reveal_type(b.g)  # E: Revealed type is 'builtins.int'
 --reveal_type(b.gt)  # E: Revealed type is '__main__.B*[builtins.str]'
 reveal_type(b.f())  # E: Revealed type is 'builtins.int'
---reveal_type(b.ft())  # E: Revealed type is '__main__.B*[builtins.str]'
+reveal_type(b.ft())  # E: Revealed type is '__main__.B*[builtins.str]'
 
 [builtins fixtures/property.pyi]
 
