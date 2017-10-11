@@ -1216,6 +1216,8 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     path = os.path.abspath(path)
     meta_json, data_json = get_cache_names(id, path, manager)
     manager.log('Deleting {} {} {} {}'.format(id, path, meta_json, data_json))
+    if id in manager.saved_cache:
+        del manager.saved_cache[id]
 
     for filename in [data_json, meta_json]:
         try:
@@ -2145,7 +2147,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             fresh_scc_queue.append(scc)
         else:
             if len(fresh_scc_queue) > 0:
-                manager.log("Processing {} queued SCCs".format(len(fresh_scc_queue)))
+                manager.log("Processing {} queued fresh SCCs".format(len(fresh_scc_queue)))
                 # Defer processing fresh SCCs until we actually run into a stale SCC
                 # and need the earlier modules to be loaded.
                 #
