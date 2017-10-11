@@ -16,7 +16,6 @@ import sys
 import time
 
 from typing import Any, Callable, Dict, List, Mapping, Sequence, Tuple, TypeVar
-from mypy_extensions import NoReturn
 
 import mypy.build
 import mypy.errors
@@ -70,6 +69,7 @@ def main() -> None:
 
 
 ActionFunction = Callable[[argparse.Namespace], None]
+
 
 def action(subparser: argparse.ArgumentParser) -> Callable[[ActionFunction], None]:
     """Decorator to tie an action function to a subparser."""
@@ -211,6 +211,7 @@ def do_help(args: argparse.Namespace) -> None:
 
 STATUS_FILE = 'dmypy.json'
 
+
 def request(command: str, **kwds: object) -> Dict[str, Any]:
     """Send a request to the daemon."""
     args = dict(kwds)
@@ -257,7 +258,7 @@ def get_status() -> Tuple[int, str]:
     return pid, sockname
 
 
-def daemonize(func: Callable[[], NoReturn]) -> None:
+def daemonize(func: Callable[[], None]) -> None:
     """Arrange to call func() in a grandchild of the current process."""
     # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
     sys.stdout.flush()
@@ -289,6 +290,7 @@ def daemonize(func: Callable[[], NoReturn]) -> None:
 
 SOCKET_NAME = 'dmypy.sock'  # In current directory.
 
+
 class Server:
 
     # NOTE: the instance is constructed in the parent process but
@@ -306,9 +308,8 @@ class Server:
         if options.quick_and_dirty:
             sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
         self.options = options
-        ## os.stat = mypy.main.stat_proxy  # XXX
 
-    def serve(self) -> NoReturn:
+    def serve(self) -> None:
         """Serve a single request, synchronously (no thread or fork)."""
         sock = self.create_listening_socket()
         with open(STATUS_FILE, 'w') as f:
@@ -317,7 +318,7 @@ class Server:
         while True:
             conn, addr = sock.accept()
             data = receive(conn)
-            resp = None  # type: Dict[str, Any]
+            resp = {}  # type: Dict[str, Any]
             if 'command' not in data:
                 resp = {'error': "No command found in request"}
             else:
@@ -361,7 +362,6 @@ class Server:
         """Return daemon status."""
         return {'status': "I'm alive!"}
 
-
     def cmd_stop(self) -> Dict[str, object]:
         """Stop daemon."""
         os.unlink(self.sockname)
@@ -396,6 +396,7 @@ class Server:
     saved_cache = {}  # type: mypy.build.SavedCache
 
     def check(self) -> Dict[str, object]:
+        assert self.last_sources
         try:
             # saved_cache is mutated in place.
             res = mypy.build.build(self.last_sources, self.options, saved_cache=self.saved_cache)

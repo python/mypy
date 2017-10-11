@@ -30,6 +30,7 @@ class InvalidPackageName(Exception):
 
 orig_stat = os.stat
 
+
 def stat_proxy(path: str) -> os.stat_result:
     try:
         st = orig_stat(path)
@@ -51,7 +52,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         be used.
     """
     t0 = time.time()
-    ## os.stat = stat_proxy
+    # To log stat() calls: os.stat = stat_proxy
     if script_path:
         bin_dir = find_bin_directory(script_path)  # type: Optional[str]
     else:

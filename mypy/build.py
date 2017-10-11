@@ -1091,7 +1091,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
                 old_interface_hash: str, source_hash: str,
-                ignore_all: bool, manager: BuildManager) -> Tuple[str, CacheMeta]:
+                ignore_all: bool, manager: BuildManager) -> Tuple[str, Optional[CacheMeta]]:
     """Write cache files for a module.
 
     Note that this mypy's behavior is still correct when any given
@@ -1912,7 +1912,7 @@ def preserve_cache(graph: Graph) -> SavedCache:
     saved_cache = {}
     for id, state in graph.items():
         assert state.id == id
-        if state.meta is not None:
+        if state.meta is not None and state.tree is not None:
             saved_cache[id] = (state.meta, state.tree)
     return saved_cache
 
