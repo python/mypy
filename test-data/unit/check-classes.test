@@ -4022,6 +4022,15 @@ class F:
         self.f = f
 [out]
 
+[case testCorrectEnclosingClassPushedInDeferred3]
+class A:
+    def f(self) -> None:
+        def g(x: int) -> int:
+            return y
+
+y = int()
+[out]
+
 [case testMetaclassMemberAccessViaType]
 from typing import Type
 class M(type):

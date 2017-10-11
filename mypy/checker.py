@@ -3326,9 +3326,10 @@ class Scope:
         top = self.top_function()
         assert top, "This method must be called from inside a function"
         index = self.stack.index(top)
-        for e in reversed(self.stack[:index]):
-            if isinstance(e, TypeInfo):
-                return e
+        assert index
+        enclosing = self.stack[index - 1]
+        if isinstance(enclosing, TypeInfo):
+            return enclosing
         return None
 
     def active_self_type(self) -> Optional[Union[Instance, TupleType]]:
