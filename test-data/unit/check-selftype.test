@@ -367,10 +367,11 @@ reveal_type(x.f)  # E: Revealed type is 'builtins.int'
 
 [case testSelfTypeProperSupertypeAttribute]
 from typing import Callable, TypeVar
-T = TypeVar('T', bound=object)
-class A:
+class K: pass
+T = TypeVar('T', bound=K)
+class A(K):
     @property
-    def g(self: object) -> int: return 0
+    def g(self: K) -> int: return 0
     @property
     def gt(self: T) -> T: return self
     f: Callable[[object], int]
@@ -392,7 +393,7 @@ reveal_type(B().ft())  # E: Revealed type is '__main__.B*'
 
 [case testSelfTypeProperSupertypeAttributeTuple]
 from typing import Callable, TypeVar, Tuple
-T = TypeVar('T', bound=object)
+T = TypeVar('T')
 class A(Tuple[int, int]):
     @property
     def g(self: object) -> int: return 0
@@ -417,7 +418,7 @@ reveal_type(B().ft())  # E: Revealed type is 'Tuple[builtins.int, builtins.int, 
 
 [case testSelfTypeProperSupertypeAttributeMeta]
 from typing import Callable, TypeVar, Type
-T = TypeVar('T', bound=object)
+T = TypeVar('T')
 class A(type):
     @property
     def g(cls: object) -> int: return 0
@@ -429,17 +430,18 @@ class A(type):
 class B(A):
     pass
 
-class X(metaclass=B): pass
+class X(metaclass=B):
+    def __init__(self, x: int) -> None: pass
 class Y(X): pass
 X1: Type[X]
 reveal_type(X.g)  # E: Revealed type is 'builtins.int'
-reveal_type(X.gt)  # E: Revealed type is 'def () -> __main__.X'
+reveal_type(X.gt)  # E: Revealed type is 'def (x: builtins.int) -> __main__.X'
 reveal_type(X.f())  # E: Revealed type is 'builtins.int'
-reveal_type(X.ft())  # E: Revealed type is 'def () -> __main__.X'
+reveal_type(X.ft())  # E: Revealed type is 'def (x: builtins.int) -> __main__.X'
 reveal_type(Y.g)  # E: Revealed type is 'builtins.int'
-reveal_type(Y.gt)  # E: Revealed type is 'def () -> __main__.Y'
+reveal_type(Y.gt)  # E: Revealed type is 'def (x: builtins.int) -> __main__.Y'
 reveal_type(Y.f())  # E: Revealed type is 'builtins.int'
-reveal_type(Y.ft())  # E: Revealed type is 'def () -> __main__.Y'
+reveal_type(Y.ft())  # E: Revealed type is 'def (x: builtins.int) -> __main__.Y'
 reveal_type(X1.g)  # E: Revealed type is 'builtins.int'
 reveal_type(X1.gt)  # E: Revealed type is 'Type[__main__.X]'
 reveal_type(X1.f())  # E: Revealed type is 'builtins.int'
