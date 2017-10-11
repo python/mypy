@@ -662,7 +662,10 @@ class BuildManager:
 
     def log(self, *message: str) -> None:
         if self.options.verbosity >= 1:
-            print('LOG: ', *message, file=sys.stderr)
+            if message:
+                print('LOG: ', *message, file=sys.stderr)
+            else:
+                print(file=sys.stderr)
             sys.stderr.flush()
 
     def trace(self, *message: str) -> None:
@@ -1889,7 +1892,7 @@ class State:
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
-    manager.log("")
+    manager.log()
     manager.log("Mypy version %s" % __version__)
     graph = load_graph(sources, manager)
     if not graph:
@@ -2142,7 +2145,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             fresh_scc_queue.append(scc)
         else:
             if len(fresh_scc_queue) > 0:
-                manager.log("Processing the last {} queued SCCs".format(len(fresh_scc_queue)))
+                manager.log("Processing {} queued SCCs".format(len(fresh_scc_queue)))
                 # Defer processing fresh SCCs until we actually run into a stale SCC
                 # and need the earlier modules to be loaded.
                 #
