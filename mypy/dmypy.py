@@ -306,6 +306,7 @@ class Server:
         if options.quick_and_dirty:
             sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
         self.options = options
+        ## os.stat = mypy.main.stat_proxy  # XXX
 
     def serve(self) -> NoReturn:
         """Serve a single request, synchronously (no thread or fork)."""
@@ -371,6 +372,7 @@ class Server:
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
+        # TODO: Move this into check(), in case one of the args is a directory.
         # Capture stdout/stderr and catch SystemExit while processing the source list.
         save_stdout = sys.stdout
         save_stderr = sys.stderr
@@ -391,10 +393,12 @@ class Server:
             return {'error': "Command 'recheck' is only valid after a 'check' command"}
         return self.check()
 
+    saved_cache = {}  # type: mypy.build.SavedCache
+
     def check(self) -> Dict[str, object]:
         try:
-            # TODO: This is where we can start reusing the graph.
-            res = mypy.build.build(self.last_sources, self.options)
+            # saved_cache is mutated in place.
+            res = mypy.build.build(self.last_sources, self.options, saved_cache=self.saved_cache)
             msgs = res.errors
         except mypy.errors.CompileError as err:
             msgs = err.messages

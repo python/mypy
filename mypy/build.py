@@ -122,7 +122,9 @@ class BuildSourceSet:
 def build(sources: List[BuildSource],
           options: Options,
           alt_lib_path: Optional[str] = None,
-          bin_dir: Optional[str] = None) -> BuildResult:
+          bin_dir: Optional[str] = None,
+          saved_cache: Optional['SavedCache'] = None,
+          ) -> BuildResult:
     """Analyze a program.
 
     A single call to build performs parsing, semantic analysis and optionally
@@ -195,7 +197,8 @@ def build(sources: List[BuildSource],
                            options=options,
                            version_id=__version__,
                            plugin=plugin,
-                           errors=errors)
+                           errors=errors,
+                           saved_cache=saved_cache)
 
     try:
         graph = dispatch(sources, manager)
@@ -452,6 +455,9 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     return -1
 
 
+SavedCache = Dict[str, Tuple[CacheMeta, MypyFile]]
+
+
 # TODO: Get rid of all_types.  It's not used except for one log message.
 #       Maybe we could instead publish a map from module ID to its type_map.
 class BuildManager:
@@ -476,7 +482,14 @@ class BuildManager:
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
+      saved_cache:     Dict with saved cache state for dmypy (read-write!)
     """
+
+    # Counters for various cache-related events
+    fresh_metas = 0
+    fresh_trees = 0
+    reused_metas = 0
+    reused_trees = 0
 
     def __init__(self, data_dir: str,
                  lib_path: List[str],
@@ -486,7 +499,9 @@ class BuildManager:
                  options: Options,
                  version_id: str,
                  plugin: Plugin,
-                 errors: Errors) -> None:
+                 errors: Errors,
+                 saved_cache: Optional[SavedCache] = None,
+                 ) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = errors
@@ -501,7 +516,6 @@ class BuildManager:
         self.plugin = plugin
         self.semantic_analyzer = SemanticAnalyzerPass2(self.modules, self.missing_modules,
                                                   lib_path, self.errors, self.plugin)
-        self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
                                                              self.semantic_analyzer)
         self.all_types = {}  # type: Dict[Expression, Type]
@@ -509,6 +523,7 @@ class BuildManager:
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
         self.plugin = plugin
+        self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
 
     def maybe_swap_for_shadow_path(self, path: str) -> str:
         if (self.options.shadow_file and
@@ -880,6 +895,14 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
       A CacheMeta instance if the cache data was found and appears
       valid; otherwise None.
     """
+    saved_cache = manager.saved_cache
+    if id in saved_cache:
+        m, t = saved_cache[id]
+        manager.reused_metas += 1
+        manager.trace("Reusing saved metadata for %s" % id)
+        # Note: it could still be skipped if the mtime/size/hash mismatches.
+        return m
+
     # TODO: May need to take more build options into account
     meta_json, data_json = get_cache_names(id, path, manager)
     manager.trace('Looking for {} at {}'.format(id, meta_json))
@@ -948,6 +971,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
                                   .format(key, cached_options.get(key), current_options.get(key)))
         return None
 
+    manager.fresh_metas += 1
     return m
 
 
@@ -999,6 +1023,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
     # TODO: Share stat() outcome with find_module()
     path = os.path.abspath(path)
+    # TODO: Don't use isfile() but check st.st_mode
     if not os.path.isfile(path):
         manager.log('Metadata abandoned for {}: file {} does not exist'.format(id, path))
         return None
@@ -1047,7 +1072,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
             return meta
 
     # It's a match on (id, path, size, hash, mtime).
-    manager.log('Metadata fresh for {}: file {}'.format(id, path))
+    manager.trace('Metadata fresh for {}: file {}'.format(id, path))
     return meta
 
 
@@ -1596,6 +1621,7 @@ class State:
         # TODO: Assert data file wasn't changed.
         self.tree = MypyFile.deserialize(data)
         self.manager.modules[self.id] = self.tree
+        self.manager.fresh_trees += 1
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -1858,6 +1884,7 @@ class State:
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
+    manager.log("")
     manager.log("Mypy version %s" % __version__)
     graph = load_graph(sources, manager)
     if not graph:
@@ -1871,7 +1898,18 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.warn_unused_ignores:
         # TODO: This could also be a per-module option.
         manager.errors.generate_unused_ignore_notes()
+    # TODO: What about cache entries deleted because of errors?
+    manager.saved_cache.update(preserve_cache(graph))
     return graph
+
+
+def preserve_cache(graph: Graph) -> SavedCache:
+    saved_cache = {}
+    for id, state in graph.items():
+        assert state.id == id
+        if state.meta is not None:
+            saved_cache[id] = (state.meta, state.tree)
+    return saved_cache
 
 
 class NodeInfo:
@@ -2095,7 +2133,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
         scc_str = " ".join(scc)
         if fresh:
-            manager.log("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
+            manager.trace("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
             fresh_scc_queue.append(scc)
         else:
             if len(fresh_scc_queue) > 0:
@@ -2110,7 +2148,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 # TODO: see if it's possible to determine if we need to process only a
                 # _subset_ of the past SCCs instead of having to process them all.
                 for prev_scc in fresh_scc_queue:
-                    process_fresh_scc(graph, prev_scc)
+                    process_fresh_scc(graph, prev_scc, manager)
                 fresh_scc_queue = []
             size = len(scc)
             if size == 1:
@@ -2119,9 +2157,14 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
             process_stale_scc(graph, scc, manager)
 
+    manager.log("Stats: fresh_metas=%d, fresh_trees=%d, reused_metas=%d, reused_trees=%d" %
+                (manager.fresh_metas, manager.fresh_trees,
+                 manager.reused_metas, manager.reused_trees))
     sccs_left = len(fresh_scc_queue)
     if sccs_left:
-        manager.log("{} fresh SCCs left in queue (and will remain unprocessed)".format(sccs_left))
+        nodes_left = sum(len(scc) for scc in fresh_scc_queue)
+        manager.log("{} fresh SCCs ({} nodes) left in queue (and will remain unprocessed)"
+                    .format(sccs_left, nodes_left))
         manager.trace(str(fresh_scc_queue))
     else:
         manager.log("No fresh SCCs left in queue")
@@ -2174,8 +2217,19 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
     return [s for ss in sccs for s in order_ascc(graph, ss, pri_max)]
 
 
-def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
+def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
     """Process the modules in one SCC from their cached data."""
+    # TODO: Clean this up, it's ugly.
+    saved_cache = manager.saved_cache
+    if all(id in saved_cache for id in scc):
+        trees = {id: saved_cache[id][1] for id in scc}
+        if all(trees.values()):
+            for id, tree in trees.items():
+                manager.reused_trees += 1
+                manager.trace("Reusing saved tree %s" % id)
+                graph[id].tree = tree
+                manager.modules[id] = tree
+            return
     for id in scc:
         graph[id].load_tree()
     for id in scc:
