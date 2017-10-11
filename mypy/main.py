@@ -28,6 +28,20 @@ class InvalidPackageName(Exception):
     """Exception indicating that a package name was invalid."""
 
 
+orig_stat = os.stat
+
+def stat_proxy(path: str) -> os.stat_result:
+    try:
+        st = orig_stat(path)
+    except os.error as err:
+        print("stat(%r) -> %s" % (path, err))
+        raise
+    else:
+        print("stat(%r) -> (st_mode=%o, st_mtime=%d, st_size=%d)" %
+              (path, st.st_mode, st.st_mtime, st.st_size))
+        return st
+
+
 def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     """Main entry point to the type checker.
 
@@ -37,6 +51,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         be used.
     """
     t0 = time.time()
+    ## os.stat = stat_proxy
     if script_path:
         bin_dir = find_bin_directory(script_path)  # type: Optional[str]
     else:
