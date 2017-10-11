@@ -2899,6 +2899,19 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType(TypeOfAny.special_form)
                 no_type_check = True
+            elif isinstance(d, CallExpr) and (
+                    refers_to_fullname(d.callee, 'typing.declared_type')
+                    or refers_to_fullname(d.callee, 'mypy_extensions.declared_type')):
+                removed.append(i)
+                if i != 0:
+                    self.fail('"declared_type" must be the topmost decorator', d)
+                elif len(d.args) != 1:
+                    self.fail('"declared_type" takes exactly one argument', d)
+                else:
+                    dec.var.type = self.expr_to_analyzed_type(d.args[0])
+            elif (refers_to_fullname(d, 'typing.declared_type') or
+                  refers_to_fullname(d, 'mypy_extensions.declared_type')):
+                self.fail('"declared_type" must have a type as an argument', d)
         for i in reversed(removed):
             del dec.decorators[i]
         if not dec.is_overload or dec.var.is_property:
@@ -4181,6 +4194,13 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         engine just for decorators.
         """
         super().visit_decorator(dec)
+        if dec.var.type is not None:
+            # We already have a declared type for this decorated thing.
+            return
+        if dec.func.is_awaitable_coroutine:
+            # The type here will be fixed up by checker.py, but we can't infer
+            # anything here.
+            return
         if dec.var.is_property:
             # Decorators are expected to have a callable type (it's a little odd).
             if dec.func.type is None:

@@ -135,3 +135,13 @@ def KwArg(type=Any):
 
 # Return type that indicates a function does not return
 class NoReturn: pass
+
+
+def declared_type(t):
+    """Declare the type of a declaration.
+
+    This is useful for declaring a more specific type for a decorated class or
+    function definition than the decorator provides as a return value.
+    """
+    # Return the identity function -- calling this should be a noop
+    return lambda __x: __x

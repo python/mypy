@@ -1,4 +1,4 @@
-from typing import Dict, Type, TypeVar, Optional, Any
+from typing import Dict, Type, TypeVar, Callable, Any, Optional
 
 _T = TypeVar('_T')
 
@@ -19,3 +19,5 @@ def KwArg(type: _T = ...) -> _T: ...
 def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -> Type[dict]: ...
 
 class NoReturn: pass
+
+def declared_type(t: Any) -> Callable[[T], T]: pass

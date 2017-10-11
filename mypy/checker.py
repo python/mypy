@@ -2486,8 +2486,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                    callable_name=fullname)
         self.check_untyped_after_decorator(sig, e.func)
         sig = cast(FunctionLike, sig)
-        sig = set_callable_name(sig, e.func)
-        e.var.type = sig
+        if e.var.type is not None:
+            # We have a declared type, check it.
+            self.check_subtype(sig, e.var.type, e,
+                               subtype_label="inferred decorated type",
+                               supertype_label="declared decorated type")
+        else:
+            e.var.type = sig
+        e.var.type = set_callable_name(e.var.type, e.func)
         e.var.is_ready = True
         if e.func.is_property:
             self.check_incompatible_property_override(e)

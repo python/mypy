@@ -45,3 +45,7 @@ class bool: pass
 class ellipsis: pass
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
 class BaseException: pass
+
+# Because all tests that use mypy_extensions need dict, this is easier.
+classmethod = object()
+staticmethod = object()
