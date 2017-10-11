@@ -342,6 +342,27 @@ CacheMeta = NamedTuple('CacheMeta',
 # silent mode or simply not found.
 
 
+def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
+    sentinel = None  # type: Any  # the values will be post-validated below
+    return CacheMeta(
+        meta.get('id', sentinel),
+        meta.get('path', sentinel),
+        int(meta['mtime']) if 'mtime' in meta else sentinel,
+        meta.get('size', sentinel),
+        meta.get('hash', sentinel),
+        meta.get('dependencies', []),
+        int(meta['data_mtime']) if 'data_mtime' in meta else sentinel,
+        data_json,
+        meta.get('suppressed', []),
+        meta.get('child_modules', []),
+        meta.get('options'),
+        meta.get('dep_prios', []),
+        meta.get('interface_hash', ''),
+        meta.get('version_id', sentinel),
+        meta.get('ignore_all', True),
+    )
+
+
 # Priorities used for imports.  (Here, top-level includes inside a class.)
 # These are used to determine a more predictable order in which the
 # nodes in an import cycle are processed.
@@ -917,24 +938,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         manager.log('Could not load cache for {}: meta cache is not a dict: {}'
                     .format(id, repr(meta)))
         return None
-    sentinel = None  # type: Any  # the values will be post-validated below
-    m = CacheMeta(
-        meta.get('id', sentinel),
-        meta.get('path', sentinel),
-        int(meta['mtime']) if 'mtime' in meta else sentinel,
-        meta.get('size', sentinel),
-        meta.get('hash', sentinel),
-        meta.get('dependencies', []),
-        int(meta['data_mtime']) if 'data_mtime' in meta else sentinel,
-        data_json,
-        meta.get('suppressed', []),
-        meta.get('child_modules', []),
-        meta.get('options'),
-        meta.get('dep_prios', []),
-        meta.get('interface_hash', ''),
-        meta.get('version_id', sentinel),
-        meta.get('ignore_all', True),
-    )
+    m = cache_meta_from_dict(meta, data_json)
     # Don't check for path match, that is dealt with in validate_meta().
     if (m.id != id or
             m.mtime is None or m.size is None or
@@ -995,7 +999,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                   ignore_all: bool, manager: BuildManager) -> Optional[CacheMeta]:
     '''Checks whether the cached AST of this module can be used.
 
-    Return:
+    Returns:
       None, if the cached AST is unusable.
       Original meta, if mtime/size matched.
       Meta with mtime updated to match source file, if hash/size matched but mtime/path didn't.
@@ -1087,7 +1091,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
                 old_interface_hash: str, source_hash: str,
-                ignore_all: bool, manager: BuildManager) -> str:
+                ignore_all: bool, manager: BuildManager) -> Tuple[str, CacheMeta]:
     """Write cache files for a module.
 
     Note that this mypy's behavior is still correct when any given
@@ -1104,8 +1108,10 @@ def write_cache(id: str, path: str, tree: MypyFile,
       old_interface_hash: the hash from the previous version of the data cache file
       manager: the build manager (for pyversion, log/trace)
 
-    Return:
-      The new interface hash based on the serialized tree
+    Returns:
+      A tuple containing the interface hash and CacheMeta
+      corresponding to the metadata that was written (the latter may
+      be None if the cache could not be written).
     """
     # Obtain file paths
     path = os.path.abspath(path)
@@ -1138,7 +1144,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             except OSError:
                 pass
         # Still return the interface hash we computed.
-        return interface_hash
+        return interface_hash, None
 
     # Write data cache file, if applicable
     if old_interface_hash == interface_hash:
@@ -1160,7 +1166,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             # data_mtime field won't match the data file's mtime.
             # Both have the effect of slowing down the next run a
             # little bit due to an out-of-date cache file.
-            return interface_hash
+            return interface_hash, None
         data_mtime = getmtime(data_json)
 
     mtime = int(st.st_mtime)
@@ -1194,7 +1200,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
         # The next run will simply find the cache entry out of date.
         manager.log("Error writing meta JSON file {}".format(meta_json))
 
-    return interface_hash
+    return interface_hash, cache_meta_from_dict(meta, data_json)
 
 
 def delete_cache(id: str, path: str, manager: BuildManager) -> None:
@@ -1586,8 +1592,7 @@ class State:
         self.manager.rechecked_modules.add(self.id)
 
     def mark_interface_stale(self, *, on_errors: bool = False) -> None:
-        """Marks this module as having a stale public interface, and discards the cache data."""
-        self.meta = None
+        """Marks this module as having a stale public interface."""
         self.externally_same = False
         if not on_errors:
             self.manager.stale_modules.add(self.id)
@@ -1870,7 +1875,7 @@ class State:
             self.mark_interface_stale(on_errors=True)
             return
         dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
-        new_interface_hash = write_cache(
+        new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
             list(self.dependencies), list(self.suppressed), list(self.child_modules),
             dep_prios, self.interface_hash, self.source_hash, self.ignore_all,
