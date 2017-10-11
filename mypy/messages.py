@@ -310,7 +310,10 @@ class MessageBuilder:
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(self.format_bare(typ.item, verbosity))
         elif isinstance(typ, ForwardRef):  # may appear in semanal.py
-            return self.format_bare(typ.link, verbosity)
+            if typ.resolved:
+                return self.format_bare(typ.resolved, verbosity)
+            else:
+                return self.format_bare(typ.unbound, verbosity)
         elif isinstance(typ, FunctionLike):
             func = typ
             if func.is_type_obj():

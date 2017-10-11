@@ -31,7 +31,7 @@ if MYPY:
     from typing import Deque
 
 from mypy.nodes import (MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
-from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
+from mypy.semanal import SemanticAnalyzerPass1, SemanticAnalyzerPass2, SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, DecodeError, report_internal_error
@@ -497,10 +497,11 @@ class BuildManager:
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
         self.plugin = plugin
-        self.semantic_analyzer = SemanticAnalyzer(self.modules, self.missing_modules,
+        self.semantic_analyzer = SemanticAnalyzerPass2(self.modules, self.missing_modules,
                                                   lib_path, self.errors, self.plugin)
         self.modules = self.semantic_analyzer.modules
-        self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors, self.semantic_analyzer)
+        self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
+                                                             self.semantic_analyzer)
         self.all_types = {}  # type: Dict[Expression, Type]
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
@@ -1605,7 +1606,7 @@ class State:
         """
         In Python, if a and a.b are both modules, running `import a.b` will
         modify not only the current module's namespace, but a's namespace as
-        well -- see SemanticAnalyzer.add_submodules_to_parent_modules for more
+        well -- see SemanticAnalyzerPass2.add_submodules_to_parent_modules for more
         details.
 
         However, this patching process can occur after `a` has been parsed and
@@ -1689,13 +1690,13 @@ class State:
         # definitions in the file to the symbol table.  We must do
         # this before processing imports, since this may mark some
         # import statements as unreachable.
-        first = FirstPass(manager.semantic_analyzer)
+        first = SemanticAnalyzerPass1(manager.semantic_analyzer)
         with self.wrap_context():
             first.visit_file(self.tree, self.xpath, self.id, self.options)
 
         # Initialize module symbol table, which was populated by the
         # semantic analyzer.
-        # TODO: Why can't FirstPass .analyze() do this?
+        # TODO: Why can't SemanticAnalyzerPass1 .analyze() do this?
         self.tree.names = manager.semantic_analyzer.globals
 
         # Compute (direct) dependencies.

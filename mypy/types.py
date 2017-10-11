@@ -717,8 +717,7 @@ class CallableType(FunctionLike):
         )
 
     def is_type_obj(self) -> bool:
-        t = self.fallback.type
-        return t is not None and t.is_metaclass()
+        return self.fallback.type.is_metaclass()
 
     def is_concrete_type_obj(self) -> bool:
         return self.is_type_obj() and self.is_classmethod_class
@@ -1341,10 +1340,7 @@ class TypeType(Type):
         type UnionType must be handled through make_normalized static method.
         """
         super().__init__(line, column)
-        if isinstance(item, CallableType) and item.is_type_obj():
-            self.item = item.fallback
-        else:
-            self.item = item
+        self.item = item
 
     @staticmethod
     def make_normalized(item: Type, *, line: int = -1, column: int = -1) -> Type:
@@ -1390,21 +1386,33 @@ class ForwardRef(Type):
     So that ForwardRefs are temporary and will be completely replaced with the linked types
     or Any (to avoid cyclic references) before the type checking stage.
     """
-    link = None  # type: Type  # The wrapped type
+    _unbound = None  # type: UnboundType  # The original wrapped type
+    _resolved = None  # type: Optional[Type]  # The resolved forward reference (initially None)
 
-    def __init__(self, link: Type) -> None:
-        self.link = link
+    def __init__(self, unbound: UnboundType) -> None:
+        self._unbound = unbound
+        self._resolved = None
+
+    @property
+    def unbound(self) -> UnboundType:
+        # This is read-only to make it clear that resolution happens through resolve().
+        return self._unbound
+
+    @property
+    def resolved(self) -> Optional[Type]:
+        # Similar to above.
+        return self._resolved
+
+    def resolve(self, resolved: Type) -> None:
+        """Resolve an unbound forward reference to point to a type."""
+        assert self._resolved is None
+        self._resolved = resolved
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_forwardref_type(self)
 
     def serialize(self):
-        if isinstance(self.link, UnboundType):
-            name = self.link.name
-        if isinstance(self.link, Instance):
-            name = self.link.type.name()
-        else:
-            name = self.link.__class__.__name__
+        name = self.unbound.name
         # We should never get here since all forward references should be resolved
         # and removed during semantic analysis.
         assert False, "Internal error: Unresolved forward reference to {}".format(name)
@@ -1749,7 +1757,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return 'Type[{}]'.format(t.item.accept(self))
 
     def visit_forwardref_type(self, t: ForwardRef) -> str:
-        return '~{}'.format(t.link.accept(self))
+        if t.resolved:
+            return '~{}'.format(t.resolved.accept(self))
+        else:
+            return '~{}'.format(t.unbound.accept(self))
 
     def list_str(self, a: List[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)
@@ -1831,7 +1842,10 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return t.item.accept(self)
 
     def visit_forwardref_type(self, t: ForwardRef) -> T:
-        return t.link.accept(self)
+        if t.resolved:
+            return t.resolved.accept(self)
+        else:
+            return t.unbound.accept(self)
 
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
         return self.strategy([])

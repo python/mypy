@@ -271,10 +271,8 @@ MypyFile:1(
   FuncDef:1(
     f
     Args(
-      Var(__tuple_arg_1))
-    Init(
-      AssignmentStmt:1(
-        NameExpr(__tuple_arg_1)
+      default(
+        Var(__tuple_arg_1)
         TupleExpr:1(
           IntExpr(1)
           IntExpr(2))))
