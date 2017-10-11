@@ -861,6 +861,67 @@ reveal_type(z) # E: Revealed type is 'Union[builtins.int, __main__.A, builtins.s
 [builtins fixtures/tuple.pyi]
 [out]
 
+[case testUnpackUnionNoCrashOnPartialNone]
+# flags: --strict-optional
+from typing import Dict, Tuple, List, Any
+
+a: Any
+d: Dict[str, Tuple[List[Tuple[str, str]], str]]
+x, _ = d.get(a, (None, None))
+
+for y in x: pass # E: Iterable expected \
+                 # E: Item "None" of "Optional[List[Tuple[str, str]]]" has no attribute "__iter__"
+if x:
+    for s, t in x:
+        reveal_type(s) # E: Revealed type is 'builtins.str'
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testUnpackUnionNoCrashOnPartialNone2]
+# flags: --strict-optional
+from typing import Dict, Tuple, List, Any
+
+a: Any
+x = None
+d: Dict[str, Tuple[List[Tuple[str, str]], str]]
+x, _ = d.get(a, (None, None))
+
+for y in x: pass # E: Iterable expected \
+                 # E: Item "None" of "Optional[List[Tuple[str, str]]]" has no attribute "__iter__"
+if x:
+    for s, t in x:
+        reveal_type(s) # E: Revealed type is 'builtins.str'
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testUnpackUnionNoCrashOnPartialNoneBinder]
+# flags: --strict-optional
+from typing import Dict, Tuple, List, Any
+
+x: object
+a: Any
+d: Dict[str, Tuple[List[Tuple[str, str]], str]]
+x, _ = d.get(a, (None, None))
+# FIXME: fix narrow_declared_type for narrowed Optional types.
+reveal_type(x) # E: Revealed type is 'builtins.list[Tuple[builtins.str, builtins.str]]'
+
+for y in x: pass
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testUnpackUnionNoCrashOnPartialNoneList]
+# flags: --strict-optional
+from typing import Dict, Tuple, List, Any
+
+a: Any
+d: Dict[str, Tuple[List[Tuple[str, str]], str]]
+x, _ = d.get(a, ([], []))
+reveal_type(x) # E: Revealed type is 'Union[builtins.list[Tuple[builtins.str, builtins.str]], builtins.list[<nothing>]]'
+
+for y in x: pass
+[builtins fixtures/dict.pyi]
+[out]
+
 [case testLongUnionFormatting]
 from typing import Any, Generic, TypeVar, Union
 

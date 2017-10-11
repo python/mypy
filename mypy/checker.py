@@ -131,6 +131,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Used for collecting inferred attribute types so that they can be checked
     # for consistency.
     inferred_attribute_types = None  # type: Optional[Dict[Var, Type]]
+    # Don't infer partial None types if we are processing assignment from Union
+    no_partial_types = False  # type: bool
 
     # The set of all dependencies (suppressed or not) that this module accesses, either
     # directly or indirectly.
@@ -1651,6 +1653,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         inferred types for first assignments, 'assignments' contains the narrowed types
         for binder.
         """
+        self.no_partial_types = True
         transposed = tuple([] for _ in
                            self.flatten_lvalues(lvalues))  # type: Tuple[List[Type], ...]
         # Notify binder that we want to defer bindings and instead collect types.
@@ -1680,6 +1683,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.set_inferred_type(inferred, lv, union)
             else:
                 self.store_type(lv, union)
+        self.no_partial_types = False
 
     def flatten_lvalues(self, lvalues: List[Expression]) -> List[Expression]:
         res = []  # type: List[Expression]
@@ -1864,7 +1868,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Infer the type of initialized variables from initializer type."""
         if isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
-        elif not is_valid_inferred_type(init_type):
+        elif not is_valid_inferred_type(init_type) and not self.no_partial_types:
             # We cannot use the type of the initialization expression for full type
             # inference (it's not specific enough), but we might be able to give
             # partial type which will be made more specific later. A partial type
