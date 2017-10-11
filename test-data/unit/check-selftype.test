@@ -351,6 +351,20 @@ class E:
     def __init_subclass__(cls) -> None:
         reveal_type(cls)  # E: Revealed type is 'def () -> __main__.E'
 
+[case testSelfTypePropertyUnion]
+from typing import Union
+class A:
+    @property
+    def f(self: A) -> int: pass
+
+class B:
+    @property
+    def f(self: B) -> int: pass
+x: Union[A, B]
+reveal_type(x.f)  # E: Revealed type is 'builtins.int'
+
+[builtins fixtures/property.pyi]
+
 [case testSelfTypeProperSupertypeAttribute]
 from typing import Callable, TypeVar
 T = TypeVar('T', bound=object)
