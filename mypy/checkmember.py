@@ -20,6 +20,8 @@ from mypy.typevars import fill_typevars
 from mypy.plugin import Plugin, AttributeContext
 from mypy import messages
 from mypy import subtypes
+from mypy import meet
+
 MYPY = False
 if MYPY:  # import for forward declaration only
     import mypy.checker
@@ -295,6 +297,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
 
     This is conceptually part of analyze_member_access and the arguments are similar.
 
+    itype is the class object in which var is dedined
     original_type is the type of E in the expression E.var
     """
     # Found a member variable.
@@ -319,15 +322,21 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                     msg.cant_assign_to_method(node)
 
             if not var.is_staticmethod:
-                # Class-level function objects and classmethods become bound
-                # methods: the former to the instance, the latter to the
-                # class.
+                # Class-level function objects and classmethods become bound methods:
+                # the former to the instance, the latter to the class.
                 functype = t
-                check_method_type(functype, itype, var.is_classmethod, node, msg)
+                # Use meet to narrow original_type to the dispatched type.
+                # For example, assume
+                # * A.f: Callable[[A1], None] where A1 <: A (maybe A1 == A)
+                # * B.f: Callable[[B1], None] where B1 <: B (maybe B1 == B)
+                # * x: Union[A1, B1]
+                # In `x.f`, when checking `x` against A1 we assume x is compatible with A
+                # and similarly for B1 when checking agains B
+                dispatched_type = meet.meet_types(original_type, itype)
+                check_self_arg(functype, dispatched_type, var.is_classmethod, node, name, msg)
                 signature = bind_self(functype, original_type, var.is_classmethod)
                 if var.is_property:
-                    # A property cannot have an overloaded type => the cast
-                    # is fine.
+                    # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(signature, CallableType)
                     result = signature.ret_type
                 else:
@@ -379,33 +388,28 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
         return None
 
 
-def check_method_type(functype: FunctionLike, itype: Instance, is_classmethod: bool,
-                      context: Context, msg: MessageBuilder) -> None:
+def check_self_arg(functype: FunctionLike, dispatched_arg_type: Type, is_classmethod: bool,
+                   context: Context, name: str, msg: MessageBuilder) -> None:
+    """For x.f where A.f: A1 -> T, check that meet(type(x), A) <: A1 for each overload.
+
+    dispatched_arg_type is meet(B, A) in the following example
+
+        def g(x: B): x.f
+        class A:
+            f: Callable[[A1], None]
+    """
+    # TODO: this is too strict. We can return filtered overloads for matching definitions
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
-            msg.invalid_method_type(item, context)
-        elif not is_classmethod:
-            # Check that self argument has type 'Any' or valid instance type.
-            selfarg = item.arg_types[0]
-            # If this is a method of a tuple class, correct for the fact that
-            # we passed to typ.fallback in analyze_member_access. See #1432.
-            if isinstance(selfarg, TupleType):
-                selfarg = selfarg.fallback
-            if not subtypes.is_subtype(selfarg, itype):
-                msg.invalid_method_type(item, context)
+            msg.no_formal_self(name, item, context)
         else:
-            # Check that cls argument has type 'Any' or valid class type.
-            # (This is sufficient for the current treatment of @classmethod,
-            # but probably needs to be revisited when we implement Type[C]
-            # or advanced variants of it like Type[<args>, C].)
-            clsarg = item.arg_types[0]
-            if isinstance(clsarg, CallableType) and clsarg.is_type_obj():
-                if not subtypes.is_equivalent(clsarg.ret_type, itype):
-                    msg.invalid_class_method_type(item, context)
-            else:
-                if not subtypes.is_equivalent(clsarg, AnyType(TypeOfAny.special_form)):
-                    msg.invalid_class_method_type(item, context)
+            selfarg = item.arg_types[0]
+            if is_classmethod:
+                dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
+            if not subtypes.is_subtype(dispatched_arg_type, erase_to_bound(selfarg)):
+                msg.incompatible_self_argument(name, dispatched_arg_type, item,
+                                               is_classmethod, context)
 
 
 def analyze_class_attribute_access(itype: Instance,
