@@ -27,8 +27,9 @@ from mypy import dmypy
 
 # List of files that contain test case descriptions.
 files = [
+    'check-enum.test',
     'check-incremental.test',
-    # TODO: Add other files that have (some) incremental test cases
+    'check-newtype.test',
 ]
 
 
@@ -38,20 +39,18 @@ class TypeCheckSuite(DataSuite):
     def cases(cls) -> List[DataDrivenTestCase]:
         c = []  # type: List[DataDrivenTestCase]
         for f in files:
-            # TODO: Filter for name containing 'incremental'
             tc = parse_test_cases(os.path.join(test_data_prefix, f),
                                   None, test_temp_dir, True)
-            c += [case for case in tc if cls.has_stable_flags(case)]
+            c += [case for case in tc
+                  if cls.has_stable_flags(case) and cls.is_incremental(case)]
         return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        incremental = ('incremental' in testcase.name.lower()
-                       or 'incremental' in testcase.file)
-        assert incremental, "Testcase is not incremental"
+        assert self.is_incremental(testcase), "Testcase is not incremental"
         assert self.has_stable_flags(testcase), "Testcase has varying flags"
-        # Incremental tests are run once with a cold cache, then
-        # at least once with a warm cache and maybe changed files.
-        # Expected output is specified separately for each run.
+        # All tests run once with a cold cache, then at least once
+        # with a warm cache and maybe changed files.  Expected output
+        # is specified separately for each run.
         self.clear_cache()
         num_steps = max([2] + list(testcase.output2.keys()))
         # Check that there are no file changes beyond the last run (they would be ignored).
@@ -65,6 +64,11 @@ class TypeCheckSuite(DataSuite):
         self.server = None
         for step in range(1, num_steps + 1):
             self.run_case_once(testcase, step)
+
+    @classmethod
+    def is_incremental(cls, testcase: DataDrivenTestCase) -> bool:
+        return 'incremental' in testcase.name.lower() or 'incremental' in testcase.file
+        
 
     @classmethod
     def has_stable_flags(cls, testcase: DataDrivenTestCase) -> bool:
@@ -290,7 +294,6 @@ class TypeCheckSuite(DataSuite):
             flag_list = flags.group(1).split()
             targets, options = process_options(flag_list, require_targets=False)
             if targets:
-                # TODO: support specifying targets via the flags pragma
                 raise RuntimeError('Specifying targets via the flags pragma is not supported.')
         else:
             options = Options()
