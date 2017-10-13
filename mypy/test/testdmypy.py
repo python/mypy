@@ -122,9 +122,6 @@ class TypeCheckSuite(DataSuite):
         if incremental_step == 1:
             self.server = dmypy.Server([])  # TODO: Fix ugly API
             self.server.options = options
-        else:
-            # Guard against options in mypy.ini changing for subsequent runs.
-            assert self.server.options == options
 
         sources = []
         for module_name, program_path, program_text in module_data:
