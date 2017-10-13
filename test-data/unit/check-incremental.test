@@ -3047,6 +3047,71 @@ class Pair(NamedTuple):
 Person(name=Pair(first="John", last="Doe"))
 [out]
 
+[case testNoCrashForwardRefToBrokenDoubleNewTypeIncremental]
+from typing import Any, List, NewType
+
+Foo = NewType('NotFoo', int) # type: ignore
+Foos = NewType('Foos', List[Foo]) # type: ignore
+
+def frob(foos: List[Foos]) -> None:
+    pass
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoCrashForwardRefOverloadIncremental]
+from typing import overload, List
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: F) -> F: ...
+def f(x):
+    pass
+
+F = List[int]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoCrashForwardRefOverloadIncrementalClass]
+from typing import overload, Tuple, NamedTuple
+
+x: C
+class C:
+    @overload
+    def f(self, x: str) -> N: pass
+    @overload
+    def f(self, x: int) -> int: pass
+    def f(self, x):
+        pass
+
+class N(NamedTuple):
+    x: A
+A = Tuple[int]
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testNewTypeFromForwardNamedTupleIncremental]
+from typing import NewType, NamedTuple, Tuple
+
+NT = NewType('NT', N)
+class N(NamedTuple):
+    x: int
+
+x: NT = N(1) # type: ignore
+x = NT(N(1))
+[out]
+
+[case testNewTypeFromForwardTypedDictIncremental]
+from typing import NewType, Tuple, Dict
+from mypy_extensions import TypedDict
+
+NT = NewType('NT', N) # type: ignore
+class N(TypedDict):
+    x: A
+A = Dict[str, int]
+[builtins fixtures/dict.pyi]
+[out]
+
 -- Some crazy selef-referential named tuples, types dicts, and aliases
 -- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed).
 -- For this reason errors are silenced (tests with # type: ignore have equivalents in other files)

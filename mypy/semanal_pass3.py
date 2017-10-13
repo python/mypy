@@ -17,7 +17,7 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
-    TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS
+    TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS, OverloadedFuncDef
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
@@ -84,6 +84,10 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         self.analyze(fdef.type, fdef)
         super().visit_func_def(fdef)
         self.errors.pop_function()
+
+    def visit_overloaded_func_def(self, fdef: OverloadedFuncDef) -> None:
+        self.analyze(fdef.type, fdef)
+        super().visit_overloaded_func_def(fdef)
 
     def visit_class_def(self, tdef: ClassDef) -> None:
         # NamedTuple base classes are validated in check_namedtuple_classdef; we don't have to
@@ -189,6 +193,15 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             analyzed = s.rvalue.analyzed
             if isinstance(analyzed, NewTypeExpr):
                 self.analyze(analyzed.old_type, analyzed)
+                if analyzed.info:
+                    for name in analyzed.info.names:
+                        sym = analyzed.info.names[name]
+                        # Currently NewTypes only have __init__, but to be future proof,
+                        # we analyze all symbols.
+                        if isinstance(sym.node, (FuncDef, Decorator)):
+                            self.accept(sym.node)
+                        if isinstance(sym.node, Var):
+                            self.analyze(sym.node.type, sym.node)
                 if analyzed.info and analyzed.info.mro:
                     analyzed.info.mro = []  # Force recomputation
                     mypy.semanal.calculate_class_mro(analyzed.info.defn, self.fail_blocker)
@@ -253,10 +266,25 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             for n in node.target:
                 if isinstance(n, NameExpr) and isinstance(n.node, Var) and n.node.type:
                     n.node.type = transform(n.node.type)
-        if isinstance(node, (FuncDef, CastExpr, AssignmentStmt, TypeAliasExpr, Var)):
+        if isinstance(node, (FuncDef, OverloadedFuncDef, CastExpr, AssignmentStmt,
+                             TypeAliasExpr, Var)):
             node.type = transform(node.type)
         if isinstance(node, NewTypeExpr):
             node.old_type = transform(node.old_type)
+            if node.info:
+                new_bases = []  # type: List[Instance]
+                for b in node.info.bases:
+                    new_b = transform(b)
+                    # TODO: this code can be combined with code in second pass.
+                    if isinstance(new_b, Instance):
+                        new_bases.append(new_b)
+                    elif isinstance(new_b, TupleType):
+                        new_bases.append(new_b.fallback)
+                    else:
+                        self.fail("Argument 2 to NewType(...) must be subclassable"
+                                  " (got {})".format(new_b), node)
+                        new_bases.append(self.builtin_type('object'))
+                node.info.bases = new_bases
         if isinstance(node, TypeVarExpr):
             if node.upper_bound:
                 node.upper_bound = transform(node.upper_bound)
