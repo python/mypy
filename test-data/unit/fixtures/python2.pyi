@@ -11,6 +11,7 @@ class function: pass
 class int: pass
 class str: pass
 class unicode: pass
+class bool: pass
 
 T = TypeVar('T')
 class list(Iterable[T], Generic[T]): pass

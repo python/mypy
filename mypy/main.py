@@ -750,7 +750,13 @@ def parse_section(prefix: str, template: Options,
             print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
             continue
         if key == 'disallow_any':
-            results['disallow_untyped_defs'] = v and 'unannotated' in v
+            # "disallow_any = " should disable all disallow_any options, including untyped defs,
+            # given in a more general config.
+            if not v:
+                results['disallow_untyped_defs'] = False
+            # If "unannotated" is explicitly given, turn on disallow_untyped_defs.
+            elif 'unannotated' in v:
+                results['disallow_untyped_defs'] = True
         if key == 'silent_imports':
             print("%s: silent_imports has been replaced by "
                   "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)

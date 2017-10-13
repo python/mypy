@@ -41,7 +41,7 @@ class PythonEvaluationSuite(DataSuite):
                                   native_sep=True)
         return c
 
-    def run_case(self, testcase: DataDrivenTestCase):
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_python_evaluation(testcase)
 
 
