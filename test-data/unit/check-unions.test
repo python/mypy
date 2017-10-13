@@ -902,10 +902,10 @@ x: object
 a: Any
 d: Dict[str, Tuple[List[Tuple[str, str]], str]]
 x, _ = d.get(a, (None, None))
-# FIXME: fix narrow_declared_type for narrowed Optional types.
 reveal_type(x) # E: Revealed type is 'builtins.list[Tuple[builtins.str, builtins.str]]'
 
-for y in x: pass
+if x:
+    for y in x: pass
 [builtins fixtures/dict.pyi]
 [out]
 

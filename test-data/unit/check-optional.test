@@ -642,3 +642,11 @@ def test_or_shortcut(value: Optional[Any]) -> None:
     if not value or value.get('foo') == 'hello':
         pass
 [builtins fixtures/bool.pyi]
+
+[case testNarrowingFromObjectToOptional]
+from typing import Optional
+x: object
+y: Optional[int]
+x = y
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+[out]
