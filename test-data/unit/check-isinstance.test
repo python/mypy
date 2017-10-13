@@ -1816,6 +1816,21 @@ else:
 [builtins fixtures/list.pyi]
 [out]
 
+[case testNarrowTypeAfterInListNested]
+# flags: --strict-optional
+from typing import List, Optional, Any
+
+x: Optional[int]
+lst: Optional[List[int]]
+nested_any: List[List[Any]]
+
+if lst in nested_any:
+    reveal_type(lst) # E: Revealed type is 'builtins.list[builtins.int]'
+if x in nested_any:
+    reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+[builtins fixtures/list.pyi]
+[out]
+
 [case testNarrowTypeAfterInTuple]
 # flags: --strict-optional
 from typing import Optional
