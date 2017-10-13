@@ -39,15 +39,16 @@ class TypeCheckSuite(DataSuite):
         c = []  # type: List[DataDrivenTestCase]
         for f in files:
             # TODO: Filter for name containing 'incremental'
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
+            tc = parse_test_cases(os.path.join(test_data_prefix, f),
                                   None, test_temp_dir, True)
+            c += [case for case in tc if cls.has_stable_flags(case)]
         return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         incremental = ('incremental' in testcase.name.lower()
                        or 'incremental' in testcase.file)
-        assert incremental, "cases() did not filter out non-incremental tests"
-        # TODO: Skip tests that vary flags across runs.
+        assert incremental, "Testcase is not incremental"
+        assert self.has_stable_flags(testcase), "Testcase has varying flags"
         # Incremental tests are run once with a cold cache, then
         # at least once with a warm cache and maybe changed files.
         # Expected output is specified separately for each run.
@@ -64,6 +65,14 @@ class TypeCheckSuite(DataSuite):
         self.server = None
         for step in range(1, num_steps + 1):
             self.run_case_once(testcase, step)
+
+    @classmethod
+    def has_stable_flags(cls, testcase: DataDrivenTestCase) -> bool:
+        if any(re.match(r'# flags[2-9]:', line) for line in testcase.input):
+            return False
+        if any(re.match(r'^\[file mypy.ini\.[2-9]\]', line) for line in testcase.input):
+            return False
+        return True
 
     def clear_cache(self) -> None:
         dn = defaults.CACHE_DIR
@@ -104,12 +113,12 @@ class TypeCheckSuite(DataSuite):
                 retry_on_error(lambda: os.remove(path))
 
         # Parse options after moving files (in case mypy.ini is being moved).
-        # TODO: Guard against options changing for subsequent runs
         options = self.parse_options(original_program_text, testcase, incremental_step)
         if incremental_step == 1:
             self.server = dmypy.Server([])  # TODO: Fix ugly API
             self.server.options = options
         else:
+            # Guard against options in mypy.ini changing for subsequent runs.
             assert self.server.options == options
 
         sources = []

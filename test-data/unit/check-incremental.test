@@ -3020,7 +3020,6 @@ tmp/mod.py:7: error: Revealed type is 'builtins.bytes'
 # cmd: mypy -m a
 # cmd2: mypy -m b
 # flags: --follow-imports=silent
-# flags2: --follow-imports=silent
 [file a.py]
 import b
 
