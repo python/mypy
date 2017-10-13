@@ -2953,6 +2953,39 @@ def remove_optional(typ: Type) -> Type:
         return typ
 
 
+def builtin_item_type(tp: Type) -> Optional[Type]:
+    """Get the item type of a builtin container.
+
+    If 'tp' is not one of the built containers (these includes NamedTuple and TypedDict)
+    or if the container is not parameterized (like List or List[Any])
+    return None. This function is used to narrow optional types in situations like this:
+
+        x: Optional[int]
+        if x in (1, 2, 3):
+            x + 42  # OK
+
+    Note: this is only OK for built-in containers, where we know the behavior
+    of __contains__.
+    """
+    if isinstance(tp, Instance):
+        if tp.type.fullname() in ['builtins.list', 'builtins.tuple', 'builtins.dict',
+                                  'builtins.set', 'builtins.frozenset']:
+            if not tp.args:
+                # TODO: fix tuple in lib-stub/builtins.pyi (it should be generic).
+                return None
+            if not isinstance(tp.args[0], AnyType):
+                return tp.args[0]
+    elif isinstance(tp, TupleType) and all(not isinstance(it, AnyType) for it in tp.items):
+        return UnionType.make_simplified_union(tp.items)  # this type is not externally visible
+    elif isinstance(tp, TypedDictType):
+        # TypedDict always has non-optional string keys.
+        if tp.fallback.type.fullname() == 'typing.Mapping':
+            return tp.fallback.args[0]
+        elif tp.fallback.type.bases[0].type.fullname() == 'typing.Mapping':
+            return tp.fallback.type.bases[0].args[0]
+    return None
+
+
 def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     """Calculate what information we can learn from the truth of (e1 and e2)
     in terms of the information that we can learn from the truth of e1 and
@@ -3099,6 +3132,20 @@ def find_isinstance_check(node: Expression,
                     optional_expr = node.operands[1]
                 if is_overlapping_types(optional_type, comp_type):
                     return {optional_expr: remove_optional(optional_type)}, {}
+        elif node.operators in [['in'], ['not in']]:
+            expr = node.operands[0]
+            left_type = type_map[expr]
+            right_type = builtin_item_type(type_map[node.operands[1]])
+            right_ok = right_type and (not is_optional(right_type) and
+                                       (not isinstance(right_type, Instance) or
+                                        right_type.type.fullname() != 'builtins.object'))
+            if (right_type and right_ok and is_optional(left_type) and
+                    literal(expr) == LITERAL_TYPE and not is_literal_none(expr) and
+                    is_overlapping_types(left_type, right_type)):
+                if node.operators == ['in']:
+                    return {expr: remove_optional(left_type)}, {}
+                if node.operators == ['not in']:
+                    return {}, {expr: remove_optional(left_type)}
     elif isinstance(node, RefExpr):
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
