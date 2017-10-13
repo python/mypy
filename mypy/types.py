@@ -1411,7 +1411,7 @@ class ForwardRef(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_forwardref_type(self)
 
-    def serialize(self):
+    def serialize(self) -> str:
         name = self.unbound.name
         # We should never get here since all forward references should be resolved
         # and removed during semantic analysis.
