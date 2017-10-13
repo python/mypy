@@ -3048,8 +3048,9 @@ def find_isinstance_check(node: Expression,
             right_ok = right_type and (not is_optional(right_type) and
                                        (not isinstance(right_type, Instance) or
                                         right_type.type.fullname() != 'builtins.object'))
-            if (right_ok and is_optional(left_type) and literal(expr) == LITERAL_TYPE and
-                    not is_literal_none(expr) and is_overlapping_types(left_type, right_type)):
+            if (right_type and right_ok and is_optional(left_type) and
+                    literal(expr) == LITERAL_TYPE and not is_literal_none(expr) and
+                    is_overlapping_types(left_type, right_type)):
                 if node.operators == ['in']:
                     return {expr: remove_optional(left_type)}, {}
                 if node.operators == ['not in']:
