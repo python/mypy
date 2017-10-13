@@ -1890,7 +1890,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.set_inferred_type(name, lvalue, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
-        if isinstance(init_type, (NoneTyp, UninhabitedType)):
+        if isinstance(init_type, NoneTyp):
             partial_type = PartialType(None, name, [init_type])
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname()
@@ -3391,11 +3391,11 @@ def is_valid_inferred_type(typ: Type) -> bool:
     invalid.  When doing strict Optional checking, only None and types that are
     incompletely defined (i.e. contain UninhabitedType) are invalid.
     """
-    if is_same_type(typ, NoneTyp()):
-        # With strict Optional checking, we *may* eventually infer NoneTyp, but
-        # we only do that if we can't infer a specific Optional type.  This
-        # resolution happens in leave_partial_types when we pop a partial types
-        # scope.
+    if isinstance(typ, (NoneTyp, UninhabitedType)):
+        # With strict Optional checking, we *may* eventually infer NoneTyp when
+        # the initializer is None, but we only do that if we can't infer a
+        # specific Optional type.  This resolution happens in
+        # leave_partial_types when we pop a partial types scope.
         return False
     return is_valid_inferred_type_component(typ)
 

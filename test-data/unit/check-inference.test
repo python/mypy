@@ -413,7 +413,7 @@ def id(x: T) -> T:
     return x
 [out]
 
-[case testUnderspecifiedInferenceResult-skip]
+[case testUnderspecifiedInferenceResult]
 from typing import TypeVar
 T = TypeVar('T')
 class A: pass
@@ -421,6 +421,7 @@ a = None # type: A
 
 def ff() -> None:
     x = f() # E: Need type annotation for variable
+    reveal_type(x)
 
 g(None) # Ok
 f()     # Ok because not used to infer local variable type
@@ -874,9 +875,10 @@ for x in [A()]:
     b = x # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x
 
-for y in []:
-    a = y
-    reveal_type(y)  # E: Revealed type is 'builtins.None'
+for y in []: # E: Need type annotation for variable
+    a = y # E: Cannot determine type of 'y'
+    reveal_type(y)  # E: Revealed type is 'Any' \
+                    # E: Cannot determine type of 'y'
 
 class A: pass
 class B: pass
@@ -920,9 +922,11 @@ for x, y in [[A()]]:
     a = x
     a = y
 
-for e, f in [[]]:
-    reveal_type(e)  # E: Revealed type is 'builtins.None'
-    reveal_type(f)  # E: Revealed type is 'builtins.None'
+for e, f in [[]]:  # E: Need type annotation for variable
+    reveal_type(e)  # E: Revealed type is 'Any' \
+                    # E: Cannot determine type of 'e'
+    reveal_type(f)  # E: Revealed type is 'Any' \
+                    # E: Cannot determine type of 'f'
 
 class A: pass
 class B: pass
