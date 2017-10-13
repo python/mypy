@@ -74,8 +74,9 @@ class TypeCheckSuite(DataSuite):
     def has_stable_flags(cls, testcase: DataDrivenTestCase) -> bool:
         if any(re.match(r'# flags[2-9]:', line) for line in testcase.input):
             return False
-        if any(re.match(r'^\[file mypy.ini\.[2-9]\]', line) for line in testcase.input):
-            return False
+        for filename, contents in testcase.files:
+            if os.path.basename(filename).startswith('mypy.ini.'):
+                return False
         return True
 
     def clear_cache(self) -> None:
