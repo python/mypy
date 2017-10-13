@@ -651,7 +651,7 @@ class ASTConverter(ast3.NodeTransformer):
     def visit_ImportFrom(self, n: ast3.ImportFrom) -> ImportBase:
         assert n.level is not None
         if len(n.names) == 1 and n.names[0].name == '*':
-            assert n.module is not None
+            assert n.module is not ''
             i = ImportAll(n.module, n.level)  # type: ImportBase
         else:
             i = ImportFrom(self.translate_module_id(n.module) if n.module is not None else '',
