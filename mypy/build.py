@@ -31,7 +31,8 @@ if MYPY:
     from typing import Deque
 
 from mypy.nodes import (MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
-from mypy.semanal import SemanticAnalyzerPass1, SemanticAnalyzerPass2
+from mypy.semanal_pass1 import SemanticAnalyzerPass1
+from mypy.semanal import SemanticAnalyzerPass2
 from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
