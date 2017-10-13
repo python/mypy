@@ -15,7 +15,7 @@ import socket
 import sys
 import time
 
-from typing import Any, Callable, Dict, List, Mapping, Sequence, Tuple, TypeVar
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, TypeVar
 
 import mypy.build
 import mypy.errors
@@ -298,6 +298,7 @@ class Server:
 
     def __init__(self, flags: List[str]) -> None:
         """Initialize the server with the desired mypy flags."""
+        self.saved_cache = {}  # type: mypy.build.SavedCache
         sources, options = mypy.main.process_options(['-i'] + flags, False)
         if sources:
             sys.exit("dmypy: start/restart does not accept sources")
@@ -385,21 +386,21 @@ class Server:
         finally:
             sys.stdout = save_stdout
             sys.stderr = save_stderr
-        return self.check()
+        return self.check(self.last_sources)
 
     def cmd_recheck(self) -> Dict[str, object]:
         """Check the same list of files we checked most recently."""
         if not self.last_sources:
             return {'error': "Command 'recheck' is only valid after a 'check' command"}
-        return self.check()
+        return self.check(self.last_sources)
 
-    saved_cache = {}  # type: mypy.build.SavedCache
-
-    def check(self) -> Dict[str, object]:
-        assert self.last_sources
+    def check(self, sources: List[mypy.build.BuildSource],
+              alt_lib_path: Optional[str] = None) -> Dict[str, object]:
         try:
             # saved_cache is mutated in place.
-            res = mypy.build.build(self.last_sources, self.options, saved_cache=self.saved_cache)
+            res = mypy.build.build(sources, self.options,
+                                   saved_cache=self.saved_cache,
+                                   alt_lib_path=alt_lib_path)
             msgs = res.errors
         except mypy.errors.CompileError as err:
             msgs = err.messages
