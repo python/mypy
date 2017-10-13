@@ -131,6 +131,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Used for collecting inferred attribute types so that they can be checked
     # for consistency.
     inferred_attribute_types = None  # type: Optional[Dict[Var, Type]]
+    # Don't infer partial None types if we are processing assignment from Union
+    no_partial_types = False  # type: bool
 
     # The set of all dependencies (suppressed or not) that this module accesses, either
     # directly or indirectly.
@@ -259,16 +261,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         node = self.scope.top_function()
-        if (self.pass_num < LAST_PASS and node is not None
-                and isinstance(node, (FuncDef, LambdaExpr))):
+        if self.pass_num < LAST_PASS and isinstance(node, (FuncDef, LambdaExpr)):
             # Don't report an error yet. Just defer.
             if self.errors.type_name:
                 type_name = self.errors.type_name[-1]
             else:
                 type_name = None
             # Shouldn't we freeze the entire scope?
-            active_class = self.scope.active_class()
-            self.deferred_nodes.append(DeferredNode(node, type_name, active_class))
+            enclosing_class = self.scope.enclosing_class()
+            self.deferred_nodes.append(DeferredNode(node, type_name, enclosing_class))
             # Set a marker so that we won't infer additional types in this
             # function. Any inferred types could be bogus, because there's at
             # least one type that we don't know.
@@ -1605,12 +1606,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                rvalue: Expression,
                                context: Context,
                                infer_lvalue_type: bool = True,
-                               msg: Optional[str] = None) -> None:
+                               rv_type: Optional[Type] = None,
+                               undefined_rvalue: bool = False) -> None:
         """Check the assignment of one rvalue to a number of lvalues."""
 
         # Infer the type of an ordinary rvalue expression.
-        rvalue_type = self.expr_checker.accept(rvalue)  # TODO maybe elsewhere; redundant
-        undefined_rvalue = False
+        # TODO: maybe elsewhere; redundant.
+        rvalue_type = rv_type or self.expr_checker.accept(rvalue)
 
         if isinstance(rvalue_type, UnionType):
             # If this is an Optional type in non-strict Optional code, unwrap it.
@@ -1628,9 +1630,70 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(rvalue_type, TupleType):
             self.check_multi_assignment_from_tuple(lvalues, rvalue, rvalue_type,
                                                    context, undefined_rvalue, infer_lvalue_type)
+        elif isinstance(rvalue_type, UnionType):
+            self.check_multi_assignment_from_union(lvalues, rvalue, rvalue_type, context,
+                                                   infer_lvalue_type)
         else:
             self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
                                                       context, infer_lvalue_type)
+
+    def check_multi_assignment_from_union(self, lvalues: List[Expression], rvalue: Expression,
+                                          rvalue_type: UnionType, context: Context,
+                                          infer_lvalue_type: bool) -> None:
+        """Check assignment to multiple lvalue targets when rvalue type is a Union[...].
+        For example:
+
+            t: Union[Tuple[int, int], Tuple[str, str]]
+            x, y = t
+            reveal_type(x)  # Union[int, str]
+
+        The idea in this case is to process the assignment for every item of the union.
+        Important note: the types are collected in two places, 'union_types' contains
+        inferred types for first assignments, 'assignments' contains the narrowed types
+        for binder.
+        """
+        self.no_partial_types = True
+        transposed = tuple([] for _ in
+                           self.flatten_lvalues(lvalues))  # type: Tuple[List[Type], ...]
+        # Notify binder that we want to defer bindings and instead collect types.
+        with self.binder.accumulate_type_assignments() as assignments:
+            for item in rvalue_type.items:
+                # Type check the assignment separately for each union item and collect
+                # the inferred lvalue types for each union item.
+                self.check_multi_assignment(lvalues, rvalue, context,
+                                            infer_lvalue_type=infer_lvalue_type,
+                                            rv_type=item, undefined_rvalue=True)
+                for t, lv in zip(transposed, self.flatten_lvalues(lvalues)):
+                    t.append(self.type_map.pop(lv, AnyType(TypeOfAny.special_form)))
+        union_types = tuple(UnionType.make_simplified_union(col) for col in transposed)
+        for expr, items in assignments.items():
+            # Bind a union of types collected in 'assignments' to every expression.
+            if isinstance(expr, StarExpr):
+                expr = expr.expr
+            types, declared_types = zip(*items)
+            self.binder.assign_type(expr,
+                                    UnionType.make_simplified_union(types),
+                                    UnionType.make_simplified_union(declared_types),
+                                    False)
+        for union, lv in zip(union_types, self.flatten_lvalues(lvalues)):
+            # Properly store the inferred types.
+            _1, _2, inferred = self.check_lvalue(lv)
+            if inferred:
+                self.set_inferred_type(inferred, lv, union)
+            else:
+                self.store_type(lv, union)
+        self.no_partial_types = False
+
+    def flatten_lvalues(self, lvalues: List[Expression]) -> List[Expression]:
+        res = []  # type: List[Expression]
+        for lv in lvalues:
+            if isinstance(lv, (TupleExpr, ListExpr)):
+                res.extend(self.flatten_lvalues(lv.items))
+            if isinstance(lv, StarExpr):
+                # Unwrap StarExpr, since it is unwrapped by other helpers.
+                lv = lv.expr
+            res.append(lv)
+        return res
 
     def check_multi_assignment_from_tuple(self, lvalues: List[Lvalue], rvalue: Expression,
                                           rvalue_type: TupleType, context: Context,
@@ -1654,7 +1717,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     relevant_items = reinferred_rvalue_type.relevant_items()
                     if len(relevant_items) == 1:
                         reinferred_rvalue_type = relevant_items[0]
-
+                if isinstance(reinferred_rvalue_type, UnionType):
+                    self.check_multi_assignment_from_union(lvalues, rvalue,
+                                                           reinferred_rvalue_type, context,
+                                                           infer_lvalue_type)
+                    return
                 assert isinstance(reinferred_rvalue_type, TupleType)
                 rvalue_type = reinferred_rvalue_type
 
@@ -1716,7 +1783,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         returns in: ([1,2], [3,4,5], [6,7])
         """
         nr_right_of_star = length - star_index - 1
-        right_index = nr_right_of_star if -nr_right_of_star != 0 else len(items)
+        right_index = -nr_right_of_star if nr_right_of_star != 0 else len(items)
         left = items[:star_index]
         star = items[star_index:right_index]
         right = items[right_index:]
@@ -1800,7 +1867,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Infer the type of initialized variables from initializer type."""
         if isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
-        elif not is_valid_inferred_type(init_type):
+        elif not is_valid_inferred_type(init_type) and not self.no_partial_types:
             # We cannot use the type of the initialization expression for full type
             # inference (it's not specific enough), but we might be able to give
             # partial type which will be made more specific later. A partial type
@@ -1897,7 +1964,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 rvalue: Expression, context: Context) -> Tuple[Type, bool]:
         """Type member assigment.
 
-        This is defers to check_simple_assignment, unless the member expression
+        This defers to check_simple_assignment, unless the member expression
         is a descriptor, in which case this checks descriptor semantics as well.
 
         Return the inferred rvalue_type and whether to infer anything about the attribute type
@@ -2697,7 +2764,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         iterable = map_instance_to_supertype(
             instance,
             self.lookup_typeinfo('typing.Iterable'))
-        return iterable.args[0]
+        item_type = iterable.args[0]
+        if not isinstance(item_type, AnyType):
+            # This relies on 'map_instance_to_supertype' returning 'Iterable[Any]'
+            # in case there is no explicit base class.
+            return item_type
+        # Try also structural typing.
+        iter_type = find_member('__iter__', instance, instance)
+        if (iter_type and isinstance(iter_type, CallableType) and
+                isinstance(iter_type.ret_type, Instance)):
+            iterator = map_instance_to_supertype(iter_type.ret_type,
+                                                 self.lookup_typeinfo('typing.Iterator'))
+            item_type = iterator.args[0]
+        return item_type
 
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type('builtins.function'))
@@ -3349,6 +3428,16 @@ class Scope:
     def active_class(self) -> Optional[TypeInfo]:
         if isinstance(self.stack[-1], TypeInfo):
             return self.stack[-1]
+        return None
+
+    def enclosing_class(self) -> Optional[TypeInfo]:
+        top = self.top_function()
+        assert top, "This method must be called from inside a function"
+        index = self.stack.index(top)
+        assert index, "Scope stack must always start with a module"
+        enclosing = self.stack[index - 1]
+        if isinstance(enclosing, TypeInfo):
+            return enclosing
         return None
 
     def active_self_type(self) -> Optional[Union[Instance, TupleType]]:

@@ -19,6 +19,7 @@ class list(Generic[T]):
     def __add__(self, x: list[T]) -> list[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
     def __getitem__(self, x: int) -> T: pass
+    def __setitem__(self, x: int, v: T) -> None: pass
     def append(self, x: T) -> None: pass
     def extend(self, x: Iterable[T]) -> None: pass
 
