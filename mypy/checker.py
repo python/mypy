@@ -53,7 +53,7 @@ from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
-from mypy.join import join_types, join_type_list
+from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
@@ -2880,12 +2880,12 @@ def builtin_item_type(tp: Type) -> Optional[Type]:
         if tp.type.fullname() in ['builtins.list', 'builtins.tuple', 'builtins.dict',
                                   'builtins.set', 'builtins.frozenset']:
             if not tp.args:
-                # TODO: make lib-stub/builtins.pyi define generic tuple.
+                # TODO: fix tuple in lib-stub/builtins.pyi (it should be generic).
                 return None
             if not isinstance(tp.args[0], AnyType):
                 return tp.args[0]
     elif isinstance(tp, TupleType) and all(not isinstance(it, AnyType) for it in tp.items):
-        return join_type_list(tp.items)
+        return UnionType.make_simplified_union(tp.items)  # this type is not externally visible
     elif isinstance(tp, TypedDictType):
         # TypedDict always has non-optional string keys.
         if tp.fallback.type.fullname() == 'typing.Mapping':
@@ -3007,17 +3007,6 @@ def find_isinstance_check(node: Expression,
             if literal(expr) == LITERAL_TYPE:
                 vartype = type_map[expr]
                 return conditional_callable_type_map(expr, vartype)
-    elif isinstance(node, ComparisonExpr) and node.operators in [['in'], ['not in']]:
-        expr = node.operands[0]
-        cont_type = type_map[node.operands[1]]
-        item_type = builtin_item_type(cont_type)
-        if (item_type and literal(expr) == LITERAL_TYPE and not is_literal_none(expr) and
-                is_overlapping_types(item_type, type_map[expr]) and
-                not isinstance(type_map[expr], AnyType)):
-            if node.operators == ['in']:
-                return {expr: item_type}, {}
-            if node.operators == ['not in']:
-                return {}, {expr: item_type}
     elif isinstance(node, ComparisonExpr) and experiments.STRICT_OPTIONAL:
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']
@@ -3052,6 +3041,19 @@ def find_isinstance_check(node: Expression,
                     optional_expr = node.operands[1]
                 if is_overlapping_types(optional_type, comp_type):
                     return {optional_expr: remove_optional(optional_type)}, {}
+        elif node.operators in [['in'], ['not in']]:
+            expr = node.operands[0]
+            left_type = type_map[expr]
+            right_type = builtin_item_type(type_map[node.operands[1]])
+            right_ok = right_type and (not is_optional(right_type) and
+                                       (not isinstance(right_type, Instance) or
+                                        right_type.type.fullname() != 'builtins.object'))
+            if (right_ok and is_optional(left_type) and literal(expr) == LITERAL_TYPE and
+                    not is_literal_none(expr) and is_overlapping_types(left_type, right_type)):
+                if node.operators == ['in']:
+                    return {expr: remove_optional(left_type)}, {}
+                if node.operators == ['not in']:
+                    return {}, {expr: remove_optional(left_type)}
     elif isinstance(node, RefExpr):
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively

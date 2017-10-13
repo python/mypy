@@ -1771,136 +1771,148 @@ def narrow_any_to_str_then_reassign_to_int() -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowTypeAfterInList]
-from typing import List
+# flags: --strict-optional
+from typing import List, Optional
 
 x: List[int]
-y: object
+y: Optional[int]
 
 if y in x:
     reveal_type(y)  # E: Revealed type is 'builtins.int'
 else:
-    reveal_type(y)  # E: Revealed type is 'builtins.object'
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 if y not in x:
-    reveal_type(y)  # E: Revealed type is 'builtins.object'
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 else:
     reveal_type(y)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/list.pyi]
 [out]
 
+[case testNarrowTypeAfterInListNonOverlapping]
+# flags: --strict-optional
+from typing import List, Optional
+
+x: List[str]
+y: Optional[int]
+
+if y in x:
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+else:
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+[builtins fixtures/list.pyi]
+[out]
+
 [case testNarrowTypeAfterInTuple]
+# flags: --strict-optional
+from typing import Optional
 class A: pass
 class B(A): pass
 class C(A): pass
 
-y: object
+y: Optional[B]
 if y in (B(), C()):
-    reveal_type(y) # E: Revealed type is '__main__.A'
+    reveal_type(y) # E: Revealed type is '__main__.B'
 else:
-    reveal_type(y) # E: Revealed type is 'builtins.object'
-if y not in (B(), C()):
-    reveal_type(y) # E: Revealed type is 'builtins.object'
-else:
-    reveal_type(y) # E: Revealed type is '__main__.A'
+    reveal_type(y) # E: Revealed type is 'Union[__main__.B, builtins.None]'
 [builtins fixtures/tuple.pyi]
 [out]
 
 [case testNarrowTypeAfterInNamedTuple]
-from typing import NamedTuple
+# flags: --strict-optional
+from typing import NamedTuple, Optional
 class NT(NamedTuple):
     x: int
     y: int
 nt: NT
 
-y: object
-if y in nt:
-    reveal_type(y) # E: Revealed type is 'builtins.int'
-else:
-    reveal_type(y) # E: Revealed type is 'builtins.object'
+y: Optional[int]
 if y not in nt:
-    reveal_type(y) # E: Revealed type is 'builtins.object'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
 else:
     reveal_type(y) # E: Revealed type is 'builtins.int'
 [builtins fixtures/tuple.pyi]
 [out]
 
 [case testNarrowTypeAfterInDict]
-from typing import Dict, Union
+# flags: --strict-optional
+from typing import Dict, Optional
 x: Dict[str, str]
-y: Union[int, str]
+y: Optional[str]
 
 if y in x:
     reveal_type(y) # E: Revealed type is 'builtins.str'
 else:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.str, builtins.None]'
 if y not in x:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.str, builtins.None]'
 else:
     reveal_type(y) # E: Revealed type is 'builtins.str'
 [builtins fixtures/dict.pyi]
 [out]
 
 [case testNarrowTypeAfterInList_python2]
-from typing import List
+# flags: --strict-optional
+from typing import List, Optional
 
-x = None  # type: List[int]
-y = None  # type: object
+x = []  # type: List[int]
+y = None  # type: Optional[int]
 
 # TODO: Fix running tests on Python 2: "Iterator[int]" has no attribute "next"
 if y in x:  # type: ignore
     reveal_type(y)  # E: Revealed type is 'builtins.int'
 else:
-    reveal_type(y)  # E: Revealed type is 'builtins.object'
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 if y not in x:  # type: ignore
-    reveal_type(y)  # E: Revealed type is 'builtins.object'
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 else:
     reveal_type(y)  # E: Revealed type is 'builtins.int'
 
 [builtins_py2 fixtures/python2.pyi]
 [out]
 
-[case testNarrowTypeAfterInNoPromotionsOrAny]
-from typing import Any, List
-x: List[int]
+[case testNarrowTypeAfterInNoAnyOrObject]
+# flags: --strict-optional
+from typing import Any, List, Optional
+x: List[Any]
+z: List[object]
 
-y: Any
-# We never narrow down from Any
+y: Optional[int]
 if y in x:
-    reveal_type(y) # E: Revealed type is 'Any'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
 else:
-    reveal_type(y) # E: Revealed type is 'Any'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
 
-z: float
-# We never use promotions
-if z not in x:
-    reveal_type(z) # E: Revealed type is 'builtins.float'
+if y not in z:
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
 else:
-    reveal_type(z) # E: Revealed type is 'builtins.float'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [out]
 
 [case testNarrowTypeAfterInUserDefined]
-from typing import Container, Union
+# flags: --strict-optional
+from typing import Container, Optional
 
 class C(Container[int]):
     def __contains__(self, item: object) -> bool:
         return item is 'surprise'
 
-y: Union[int, str]
+y: Optional[int]
 # We never trust user defined types
 if y in C():
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
 else:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
 if y not in C():
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
 else:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [out]
 
-[case testNarrowTypeAfterInStrictOptional]
+[case testNarrowTypeAfterInSet]
 # flags: --strict-optional
 from typing import Optional, Set
 s: Set[str]
@@ -1917,7 +1929,7 @@ else:
 [builtins fixtures/set.pyi]
 [out]
 
-[case testNarrowTypeAfterInStrictOptional2]
+[case testNarrowTypeAfterInTypedDict]
 # flags: --strict-optional
 from typing import Optional
 from mypy_extensions import TypedDict
