@@ -2875,7 +2875,19 @@ def remove_optional(typ: Type) -> Type:
 
 
 def builtin_item_type(tp: Type) -> Optional[Type]:
-    # This is only OK for built-in containers, where we know the behavior of __contains__.
+    """Get the item type of a builtin container.
+
+    If 'tp' is not one of the built containers (these includes NamedTuple and TypedDict)
+    or if the container is not parameterized (like List or List[Any])
+    return None. This function is used to narrow optional types in situations like this:
+
+        x: Optional[int]
+        if x in (1, 2, 3):
+            x + 42  # OK
+
+    Note: this is only OK for built-in containers, where we know the behavior
+    of __contains__.
+    """
     if isinstance(tp, Instance):
         if tp.type.fullname() in ['builtins.list', 'builtins.tuple', 'builtins.dict',
                                   'builtins.set', 'builtins.frozenset']:

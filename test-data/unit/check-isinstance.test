@@ -1788,6 +1788,20 @@ else:
 [builtins fixtures/list.pyi]
 [out]
 
+[case testNarrowTypeAfterInListOfOptional]
+# flags: --strict-optional
+from typing import List, Optional
+
+x: List[Optional[int]]
+y: Optional[int]
+
+if y not in x:
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+else:
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+[builtins fixtures/list.pyi]
+[out]
+
 [case testNarrowTypeAfterInListNonOverlapping]
 # flags: --strict-optional
 from typing import List, Optional
@@ -1836,7 +1850,7 @@ else:
 [case testNarrowTypeAfterInDict]
 # flags: --strict-optional
 from typing import Dict, Optional
-x: Dict[str, str]
+x: Dict[str, int]
 y: Optional[str]
 
 if y in x:
