@@ -902,7 +902,7 @@ x: object
 a: Any
 d: Dict[str, Tuple[List[Tuple[str, str]], str]]
 x, _ = d.get(a, (None, None))
-reveal_type(x) # E: Revealed type is 'builtins.list[Tuple[builtins.str, builtins.str]]'
+reveal_type(x) # E: Revealed type is 'Union[builtins.list[Tuple[builtins.str, builtins.str]], builtins.None]'
 
 if x:
     for y in x: pass
