@@ -74,6 +74,15 @@ def f() -> None: pass
 <n.f> -> m
 <n> -> m
 
+[case testImportModuleAs]
+import n as x
+x.f()
+[file n.py]
+def f() -> None: pass
+[out]
+<n.f> -> m
+<n> -> m
+
 [case testCallImportedFunctionInFunction]
 import n
 def g() -> None:
@@ -232,6 +241,16 @@ from n import f
 
 def g() -> None:
     f()
+[file n.py]
+def f() -> None: pass
+[out]
+<n.f> -> m, m.g
+
+[case testImportFromAs]
+from n import f as ff
+
+def g() -> None:
+    ff()
 [file n.py]
 def f() -> None: pass
 [out]
