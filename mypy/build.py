@@ -1424,6 +1424,9 @@ class State:
     # Whether to ignore all errors
     ignore_all = False
 
+    # Whether this module was found to have errors
+    has_errors = False
+
     def __init__(self,
                  id: Optional[str],
                  path: Optional[str],
@@ -1599,6 +1602,7 @@ class State:
     def mark_interface_stale(self, *, on_errors: bool = False) -> None:
         """Marks this module as having a stale public interface."""
         self.externally_same = False
+        self.has_errors = on_errors
         if not on_errors:
             self.manager.stale_modules.add(self.id)
 
@@ -1908,7 +1912,6 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.warn_unused_ignores:
         # TODO: This could also be a per-module option.
         manager.errors.generate_unused_ignore_notes()
-    # TODO: What about cache entries deleted because of errors?
     manager.saved_cache.update(preserve_cache(graph))
     return graph
 
@@ -1917,7 +1920,7 @@ def preserve_cache(graph: Graph) -> SavedCache:
     saved_cache = {}
     for id, state in graph.items():
         assert state.id == id
-        if state.meta is not None and state.tree is not None:
+        if state.meta is not None and state.tree is not None and not state.has_errors:
             saved_cache[id] = (state.meta, state.tree)
     return saved_cache
 
