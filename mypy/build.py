@@ -1600,7 +1600,8 @@ class State:
         self.manager.rechecked_modules.add(self.id)
 
     def mark_interface_stale(self, *, on_errors: bool = False) -> None:
-        """Marks this module as having a stale public interface."""
+        """Marks this module as having a stale public interface, and discards the cache data."""
+        self.meta = None
         self.externally_same = False
         self.has_errors = on_errors
         if not on_errors:
