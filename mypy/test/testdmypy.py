@@ -146,20 +146,20 @@ class TypeCheckSuite(DataSuite):
             update_testcase_output(testcase, a)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
-        # TODO: This requires access to the manager.
-        if False:
+        manager = self.server.last_manager
+        if manager is not None:
             if options.follow_imports == 'normal' and testcase.output is None:
-                self.verify_cache(module_data, a, res.manager)
+                self.verify_cache(module_data, a, manager)
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
                 self.check_module_equivalence(
                     'rechecked' + suffix,
                     testcase.expected_rechecked_modules.get(incremental_step - 1),
-                    res.manager.rechecked_modules)
+                    manager.rechecked_modules)
                 self.check_module_equivalence(
                     'stale' + suffix,
                     testcase.expected_stale_modules.get(incremental_step - 1),
-                    res.manager.stale_modules)
+                    manager.stale_modules)
 
     def check_module_equivalence(self, name: str,
                                  expected: Optional[Set[str]], actual: Set[str]) -> None:
