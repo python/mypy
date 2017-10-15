@@ -61,7 +61,7 @@ class TypeCheckSuite(DataSuite):
                     raise ValueError(
                         'Output file {} exists though test case only has {} runs'.format(
                             file, num_steps))
-        self.server = None
+        self.server = None  # type: Optional[dmypy.Server]
         for step in range(1, num_steps + 1):
             self.run_case_once(testcase, step)
 

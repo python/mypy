@@ -312,31 +312,37 @@ class Server:
 
     def serve(self) -> None:
         """Serve a single request, synchronously (no thread or fork)."""
-        sock = self.create_listening_socket()
-        with open(STATUS_FILE, 'w') as f:
-            json.dump({'pid': os.getpid(), 'sockname': sock.getsockname()}, f)
-            f.write('\n')  # I like my JSON with trailing newline
-        while True:
-            conn, addr = sock.accept()
-            data = receive(conn)
-            resp = {}  # type: Dict[str, Any]
-            if 'command' not in data:
-                resp = {'error': "No command found in request"}
-            else:
-                command = data['command']
-                if not isinstance(command, str):
-                    resp = {'error': "Command is not a string"}
-                else:
-                    command = data.pop('command')
-                resp = self.run_command(command, data)
+        try:
+            sock = self.create_listening_socket()
             try:
-                conn.sendall(json.dumps(resp).encode('utf8'))
-            except OSError as err:
-                pass  # Maybe the client hung up
-            conn.close()
-            if command == 'stop':
-                sock.close()
-                sys.exit(0)
+                with open(STATUS_FILE, 'w') as f:
+                    json.dump({'pid': os.getpid(), 'sockname': sock.getsockname()}, f)
+                    f.write('\n')  # I like my JSON with trailing newline
+                while True:
+                    conn, addr = sock.accept()
+                    data = receive(conn)
+                    resp = {}  # type: Dict[str, Any]
+                    if 'command' not in data:
+                        resp = {'error': "No command found in request"}
+                    else:
+                        command = data['command']
+                        if not isinstance(command, str):
+                            resp = {'error': "Command is not a string"}
+                        else:
+                            command = data.pop('command')
+                        resp = self.run_command(command, data)
+                    try:
+                        conn.sendall(json.dumps(resp).encode('utf8'))
+                    except OSError as err:
+                        pass  # Maybe the client hung up
+                    conn.close()
+                    if command == 'stop':
+                        sock.close()
+                        sys.exit(0)
+            finally:
+                os.unlink(STATUS_FILE)
+        finally:
+            os.unlink(self.sockname)
 
     def create_listening_socket(self) -> socket.socket:
         """Create the socket and set it up for listening."""
@@ -365,8 +371,6 @@ class Server:
 
     def cmd_stop(self) -> Dict[str, object]:
         """Stop daemon."""
-        os.unlink(self.sockname)
-        os.unlink(STATUS_FILE)
         return {}
 
     last_sources = None
@@ -397,7 +401,7 @@ class Server:
     last_mananager = None  # type: Optional[mypy.build.BuildManager]
 
     def check(self, sources: List[mypy.build.BuildSource],
-              alt_lib_path: Optional[str] = None) -> Dict[str, object]:
+              alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
         try:
             # saved_cache is mutated in place.
             res = mypy.build.build(sources, self.options,
