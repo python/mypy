@@ -23,8 +23,8 @@ import time
 from os.path import dirname, basename
 import errno
 
-from typing import (AbstractSet, Dict, Iterable, Iterator, List, cast, Any,
-                    NamedTuple, Optional, Set, Tuple, Union, Callable)
+from typing import (AbstractSet, Any, cast, Dict, Iterable, Iterator, List,
+                    Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
 # Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
 MYPY = False
 if MYPY:
@@ -504,13 +504,8 @@ class BuildManager:
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
       saved_cache:     Dict with saved cache state for dmypy (read-write!)
+      stats:           Dict with various instrumentation numbers
     """
-
-    # Counters for various cache-related events
-    fresh_metas = 0
-    fresh_trees = 0
-    reused_metas = 0
-    reused_trees = 0
 
     def __init__(self, data_dir: str,
                  lib_path: List[str],
@@ -545,6 +540,7 @@ class BuildManager:
         self.rechecked_modules = set()  # type: Set[str]
         self.plugin = plugin
         self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
+        self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
 
     def maybe_swap_for_shadow_path(self, path: str) -> str:
         if (self.options.shadow_file and
@@ -628,6 +624,7 @@ class BuildManager:
         num_errs = self.errors.num_messages()
         tree = parse(source, path, self.errors, options=self.options)
         tree._fullname = id
+        self.add_stats(files_parsed=1, modules_parsed=int(not tree.is_stub), stubs_parsed=int(tree.is_stub))
 
         if self.errors.num_messages() != num_errs:
             self.log("Bailing due to parse errors")
@@ -673,6 +670,15 @@ class BuildManager:
             print('TRACE:', *message, file=sys.stderr)
             sys.stderr.flush()
 
+    def add_stats(self, **kwds: Any) -> None:
+        for key, value in kwds.items():
+            if key in self.stats:
+                self.stats[key] += value
+            else:
+                self.stats[key] = value
+
+    def stats_summary(self) -> Mapping[str, object]:
+        return self.stats
 
 def remove_cwd_prefix_from_path(p: str) -> str:
     """Remove current working directory prefix from p, if present.
@@ -922,7 +928,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     saved_cache = manager.saved_cache
     if id in saved_cache:
         m, t = saved_cache[id]
-        manager.reused_metas += 1
+        manager.add_stats(reused_metas=1)
         manager.trace("Reusing saved metadata for %s" % id)
         # Note: it could still be skipped if the mtime/size/hash mismatches.
         return m
@@ -978,7 +984,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
                                   .format(key, cached_options.get(key), current_options.get(key)))
         return None
 
-    manager.fresh_metas += 1
+    manager.add_stats(fresh_metas=1)
     return m
 
 
@@ -1636,7 +1642,7 @@ class State:
         # TODO: Assert data file wasn't changed.
         self.tree = MypyFile.deserialize(data)
         self.manager.modules[self.id] = self.tree
-        self.manager.fresh_trees += 1
+        self.manager.add_stats(fresh_trees=1)
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -1901,7 +1907,12 @@ class State:
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     manager.log()
     manager.log("Mypy version %s" % __version__)
+    t0 = time.time()
     graph = load_graph(sources, manager)
+    t1 = time.time()
+    manager.add_stats(graph_size=len(graph),
+                      stubs_found=sum(g.path.endswith('.pyi') for g in graph.values()),
+                      graph_load_time=(t1 - t0))
     if not graph:
         print("Nothing to do?!")
         return graph
@@ -2171,12 +2182,10 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
             process_stale_scc(graph, scc, manager)
 
-    manager.log("Stats: fresh_metas=%d, fresh_trees=%d, reused_metas=%d, reused_trees=%d" %
-                (manager.fresh_metas, manager.fresh_trees,
-                 manager.reused_metas, manager.reused_trees))
     sccs_left = len(fresh_scc_queue)
+    nodes_left = sum(len(scc) for scc in fresh_scc_queue)
+    manager.add_stats(sccs_left=sccs_left, nodes_left=nodes_left)
     if sccs_left:
-        nodes_left = sum(len(scc) for scc in fresh_scc_queue)
         manager.log("{} fresh SCCs ({} nodes) left in queue (and will remain unprocessed)"
                     .format(sccs_left, nodes_left))
         manager.trace(str(fresh_scc_queue))
@@ -2239,7 +2248,7 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         trees = {id: saved_cache[id][1] for id in scc}
         if all(trees.values()):
             for id, tree in trees.items():
-                manager.reused_trees += 1
+                manager.add_stats(reused_trees=1)
                 manager.trace("Reusing saved tree %s" % id)
                 graph[id].tree = tree
                 manager.modules[id] = tree

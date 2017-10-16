@@ -164,7 +164,10 @@ def do_restart(args: argparse.Namespace) -> None:
 @action(check_parser)
 def do_check(args: argparse.Namespace) -> None:
     """Ask the daemon to check a list of files."""
+    t0 = time.time()
     response = request('check', files=args.files)
+    t1 = time.time()
+    response['roundtrip_time'] = t1 - t0
     check_output(response)
 
 
@@ -174,7 +177,10 @@ def do_recheck(args: argparse.Namespace) -> None:
 
     This doesn't work across daemon restarts.
     """
+    t0 = time.time()
     response = request('recheck')
+    t1 = time.time()
+    response['roundtrip_time'] = t1 - t0
     check_output(response)
 
 
@@ -186,6 +192,9 @@ def check_output(response: Dict[str, Any]) -> None:
         sys.exit("Response: %s" % str(response))
     sys.stdout.write(out)
     sys.stderr.write(err)
+    for key, value in sorted(response.items()):
+        if key not in ('out', 'err'):
+            print("%20s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
     sys.exit(status)
 
 
@@ -402,6 +411,7 @@ class Server:
 
     def check(self, sources: List[mypy.build.BuildSource],
               alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
+        t0 = time.time()
         try:
             # saved_cache is mutated in place.
             res = mypy.build.build(sources, self.options,
@@ -412,11 +422,16 @@ class Server:
         except mypy.errors.CompileError as err:
             msgs = err.messages
             self.last_manager = None
+        t1 = time.time()
         if msgs:
             msgs.append("")
-            return {'out': "\n".join(msgs), 'err': "", 'status': 1}
+            response = {'out': "\n".join(msgs), 'err': "", 'status': 1}
         else:
-            return {'out': "", 'err': "", 'status': 0}
+            response = {'out': "", 'err': "", 'status': 0}
+        response['build_time'] = t1 - t0
+        if self.last_manager is not None:
+            response.update(self.last_manager.stats_summary())
+        return response
 
     def cmd_hang(self) -> Dict[str, object]:
         """Hang for 100 seconds, as a debug hack."""
