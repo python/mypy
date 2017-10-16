@@ -109,27 +109,27 @@ def do_status(args: argparse.Namespace) -> None:
 
     This verifies that it is responsive to requests.
     """
-    pid, sockname = get_status()
-    print("pid: %d" % pid)
-    print("sockname: %s" % sockname)
+    status = read_status()
+    show_stats(status)
+    check_status(status)
     try:
-        status = request('status')
+        response = request('status')
     except Exception as err:
         print("Daemon is stuck; consider %s kill" % sys.argv[0])
     else:
-        show_stats(status)
+        show_stats(response)
 
 
 @action(stop_parser)
 def do_stop(args: argparse.Namespace) -> None:
     """Stop daemon politely (via a request)."""
     try:
-        status = request('stop')
+        response = request('stop')
     except Exception as err:
         sys.exit("Daemon is stuck; consider %s kill" % sys.argv[0])
     else:
-        if status:
-            print("Stop response:", status)
+        if response:
+            print("Stop response:", response)
         else:
             print("Daemon stopped")
 
@@ -154,12 +154,12 @@ def do_restart(args: argparse.Namespace) -> None:
     mypy flags (and has the same issues as start).
     """
     try:
-        status = request('stop')
+        response = request('stop')
     except SystemExit:
         pass
     else:
-        if status:
-            sys.exit("Status: %s" % str(status))
+        if response:
+            sys.exit("Status: %s" % str(response))
         else:
             print("Daemon stopped")
     daemonize(Server(args.flags).serve)
@@ -197,7 +197,8 @@ def check_output(response: Dict[str, Any]) -> None:
     sys.stdout.write(out)
     sys.stderr.write(err)
     show_stats(response)
-    sys.exit(status)
+    if status:
+        sys.exit(status)
 
 
 def show_stats(response: Mapping[str, object]):
@@ -257,22 +258,46 @@ def get_status() -> Tuple[int, str]:
 
     Raise SystemExit(<message>) if something's wrong.
     """
+    data = read_status()
+    return check_status(data)
+
+
+def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
+    """Check if the process is alive.
+
+    Return (pid, sockname) on success.
+
+    Raise SystemExit(<message>) if something's wrong.
+    """
+    if 'pid' not in data:
+        raise SystemExit("Invalid status file (no pid field)")
+    pid = data['pid']
+    if not isinstance(pid, int):
+        raise SystemExit("pid field is not an int")
+    try:
+        os.kill(pid, 0)
+    except OSError as err:
+        raise SystemExit("Daemon has died")
+    if 'sockname' not in data:
+        raise SystemExit("Invalid status file (no sockname field)")
+    sockname = data['sockname']
+    if not isinstance(sockname, str):
+        raise SystemExit("sockname field is not a string")
+    return pid, sockname
+
+
+def read_status() -> Dict[str, object]:
+    """Read status file."""
     if not os.path.isfile(STATUS_FILE):
         raise SystemExit("No status file found")
     with open(STATUS_FILE) as f:
         try:
             data = json.load(f)
         except Exception as err:
-            raise SystemExit("Malformed status file")
-    if not isinstance(data, dict) or 'pid' not in data:
-        raise SystemExit("Invalid status file")
-    pid = data['pid']
-    sockname = data['sockname']
-    try:
-        os.kill(pid, 0)
-    except OSError as err:
-        raise SystemExit("Daemon has died")
-    return pid, sockname
+            raise SystemExit("Malformed status file (not JSON)")
+    if not isinstance(data, dict):
+        raise SystemExit("Invalid status file (not a dict)")
+    return data
 
 
 def daemonize(func: Callable[[], None]) -> None:
