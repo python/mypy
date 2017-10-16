@@ -7,6 +7,7 @@ rather than having to read it back from disk on each run.
 """
 
 import argparse
+import gc
 import io
 import json
 import os
@@ -320,7 +321,7 @@ class Server:
         self.options = options
 
     def serve(self) -> None:
-        """Serve a single request, synchronously (no thread or fork)."""
+        """Serve requests, synchronously (no thread or fork)."""
         try:
             sock = self.create_listening_socket()
             try:
@@ -411,8 +412,15 @@ class Server:
 
     def check(self, sources: List[mypy.build.BuildSource],
               alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
+        bound_gc_callback = lambda phase, info: self.gc_callback(phase, info)
+        self.gc_start_time = None  # type: Optional[float]
+        self.gc_time = 0.0
+        self.gc_calls = 0
+        self.gc_collected = 0
+        self.gc_uncollectable = 0
         t0 = time.time()
         try:
+            gc.callbacks.append(bound_gc_callback)
             # saved_cache is mutated in place.
             res = mypy.build.build(sources, self.options,
                                    saved_cache=self.saved_cache,
@@ -422,6 +430,9 @@ class Server:
         except mypy.errors.CompileError as err:
             msgs = err.messages
             self.last_manager = None
+        finally:
+            while bound_gc_callback in gc.callbacks:
+                gc.callbacks.remove(bound_gc_callback)
         t1 = time.time()
         if msgs:
             msgs.append("")
@@ -429,6 +440,10 @@ class Server:
         else:
             response = {'out': "", 'err': "", 'status': 0}
         response['build_time'] = t1 - t0
+        response['gc_time'] = self.gc_time
+        response['gc_calls'] = self.gc_calls
+        response['gc_collected'] = self.gc_collected
+        response['gc_uncollectable'] = self.gc_uncollectable
         if self.last_manager is not None:
             response.update(self.last_manager.stats_summary())
         return response
@@ -437,6 +452,20 @@ class Server:
         """Hang for 100 seconds, as a debug hack."""
         time.sleep(100)
         return {}
+
+    def gc_callback(self, phase: str, info: Mapping[str, int]) -> None:
+        if phase == 'start':
+            assert self.gc_start_time is None, "Start phase out of sequence"
+            self.gc_start_time = time.time()
+        elif phase == 'stop':
+            assert self.gc_start_time is not None, "Stop phase out of sequence"
+            self.gc_calls += 1
+            self.gc_time += time.time() - self.gc_start_time
+            self.gc_start_time = None
+            self.gc_collected += info['collected']
+            self.gc_uncollectable += info['uncollectable']
+        else:
+            assert False, "Unrecognized gc phase (%r)" % (phase,)
 
 
 # Network utilities.

@@ -13,6 +13,7 @@ The function build() is the main interface to this module.
 import binascii
 import collections
 import contextlib
+import gc
 import hashlib
 import json
 import os.path
@@ -141,6 +142,8 @@ def build(sources: List[BuildSource],
       bin_dir: directory containing the mypy script, used for finding data
         directories; if omitted, use '.' as the data directory
     """
+    # This seems the most reasonable place to tune garbage collection.
+    gc.set_threshold(50000)
 
     data_dir = default_data_dir(bin_dir)
 
