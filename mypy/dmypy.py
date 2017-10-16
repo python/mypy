@@ -11,12 +11,15 @@ import gc
 import io
 import json
 import os
+import resource
 import signal
 import socket
 import sys
 import time
 
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, TypeVar
+
+import psutil  # type: ignore  # It's not in typeshed yet
 
 import mypy.build
 import mypy.errors
@@ -114,7 +117,7 @@ def do_status(args: argparse.Namespace) -> None:
     except Exception as err:
         print("Daemon is stuck; consider %s kill" % sys.argv[0])
     else:
-        print("Status response:", status)
+        show_stats(status)
 
 
 @action(stop_parser)
@@ -193,10 +196,14 @@ def check_output(response: Dict[str, Any]) -> None:
         sys.exit("Response: %s" % str(response))
     sys.stdout.write(out)
     sys.stderr.write(err)
+    show_stats(response)
+    sys.exit(status)
+
+
+def show_stats(response: Mapping[str, object]):
     for key, value in sorted(response.items()):
         if key not in ('out', 'err'):
             print("%20s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
-    sys.exit(status)
 
 
 @action(hang_parser)
@@ -377,7 +384,9 @@ class Server:
 
     def cmd_status(self) -> Dict[str, object]:
         """Return daemon status."""
-        return {'status': "I'm alive!"}
+        res = {}  # type: Dict[str, object]
+        res.update(get_meminfo())
+        return res
 
     def cmd_stop(self) -> Dict[str, object]:
         """Stop daemon."""
@@ -444,6 +453,7 @@ class Server:
         response['gc_calls'] = self.gc_calls
         response['gc_collected'] = self.gc_collected
         response['gc_uncollectable'] = self.gc_uncollectable
+        response.update(get_meminfo())
         if self.last_manager is not None:
             response.update(self.last_manager.stats_summary())
         return response
@@ -468,7 +478,7 @@ class Server:
             assert False, "Unrecognized gc phase (%r)" % (phase,)
 
 
-# Network utilities.
+# Misc utilities.
 
 def receive(sock: socket.socket) -> Any:
     """Receive data from a socket until EOF."""
@@ -481,6 +491,25 @@ def receive(sock: socket.socket) -> Any:
     if not bdata:
         raise OSError("No data received")
     return json.loads(bdata)
+
+
+MiB = 2**20
+
+
+def get_meminfo() -> Mapping[str, float]:
+    # See https://stackoverflow.com/questions/938733/total-memory-used-by-python-process
+    res = {}
+    rusage = resource.getrusage(resource.RUSAGE_SELF)
+    if sys.platform == 'darwin':
+        factor = 1
+    else:
+        factor = 1024  # Linux
+    res['memory_maxrss_mib'] = rusage.ru_maxrss * factor / MiB
+    process = psutil.Process(os.getpid())
+    meminfo = process.memory_info()
+    res['memory_rss_mib'] = meminfo.rss / MiB
+    res['memory_vms_mib'] = meminfo.vms / MiB
+    return res
 
 
 # Run main().
