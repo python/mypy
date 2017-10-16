@@ -81,7 +81,7 @@ class BuildResult:
         self.manager = manager
         self.graph = graph
         self.files = manager.modules
-        self.types = manager.all_types
+        self.types = manager.all_types  # Non-empty for tests only
         self.errors = manager.errors.messages()
 
 
@@ -207,10 +207,9 @@ def build(sources: List[BuildSource],
         graph = dispatch(sources, manager)
         return BuildResult(manager, graph)
     finally:
-        manager.log("Build finished in %.3f seconds with %d modules, %d types, and %d errors" %
+        manager.log("Build finished in %.3f seconds with %d modules, and %d errors" %
                     (time.time() - manager.start_time,
                      len(manager.modules),
-                     len(manager.all_types),
                      manager.errors.num_messages()))
         # Finish the HTML or XML reports even if CompileError was raised.
         reports.finish()
@@ -482,8 +481,6 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
 SavedCache = Dict[str, Tuple[CacheMeta, MypyFile]]
 
 
-# TODO: Get rid of all_types.  It's not used except for one log message.
-#       Maybe we could instead publish a map from module ID to its type_map.
 class BuildManager:
     """This class holds shared state for building a mypy program.
 
@@ -499,7 +496,7 @@ class BuildManager:
                        Semantic analyzer, pass 2
       semantic_analyzer_pass3:
                        Semantic analyzer, pass 3
-      all_types:       Map {Expression: Type} collected from all modules
+      all_types:       Map {Expression: Type} collected from all modules (tests only)
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
@@ -537,7 +534,7 @@ class BuildManager:
                                                   lib_path, self.errors, self.plugin)
         self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
                                                              self.semantic_analyzer)
-        self.all_types = {}  # type: Dict[Expression, Type]
+        self.all_types = {}  # type: Dict[Expression, Type]  # Used by tests only
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
@@ -1841,7 +1838,9 @@ class State:
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            manager.all_types.update(self.type_checker.type_map)
+            # Some tests want to look at the set of all types.
+            if manager.options.use_builtins_fixtures:
+                manager.all_types.update(self.type_checker.type_map)
 
             if self.options.incremental:
                 self._patch_indirect_dependencies(self.type_checker.module_refs,
@@ -1914,7 +1913,8 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     graph = load_graph(sources, manager)
     t1 = time.time()
     manager.add_stats(graph_size=len(graph),
-                      stubs_found=sum(g.path.endswith('.pyi') for g in graph.values()),
+                      stubs_found=sum(g.path is not None and g.path.endswith('.pyi')
+                                      for g in graph.values()),
                       graph_load_time=(t1 - t0))
     if not graph:
         print("Nothing to do?!")
