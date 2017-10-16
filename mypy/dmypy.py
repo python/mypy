@@ -490,7 +490,7 @@ def receive(sock: socket.socket) -> Any:
         bdata.extend(more)
     if not bdata:
         raise OSError("No data received")
-    return json.loads(bdata)
+    return json.loads(bdata.decode('utf8'))
 
 
 MiB = 2**20
