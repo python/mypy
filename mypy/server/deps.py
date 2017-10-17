@@ -125,7 +125,9 @@ class DependencyVisitor(TraverserVisitor):
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         if isinstance(o.rvalue, CallExpr) and isinstance(o.rvalue.analyzed, TypeVarExpr):
             analyzed = o.rvalue.analyzed
-            # TODO: implement special forms
+            # TODO: implement all special forms
+            self.add_type_dependencies(analyzed.upper_bound,
+                                       target=make_trigger(analyzed.fullname()))
         else:
             super().visit_assignment_stmt(o)
             for lvalue in o.lvalues:
