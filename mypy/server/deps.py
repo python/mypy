@@ -47,6 +47,7 @@ class DependencyVisitor(TraverserVisitor):
                  python_version: Tuple[int, int]) -> None:
         self.stack = [prefix]
         self.target_stack = [prefix]
+        self.scope_stack = []  # type: List[Node]
         self.type_map = type_map
         self.python2 = python_version[0] == 2
         self.map = {}  # type: Dict[str, Set[str]]
@@ -60,10 +61,18 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         # TODO: Do we need to anything here?
+        self.enter_scope(o)
         super().visit_mypy_file(o)
+        self.leave_scope()
 
     def visit_func_def(self, o: FuncDef) -> None:
-        target = self.push(o.name())
+        if not isinstance(self.current_scope(), FuncDef):
+            new_scope = True
+            self.enter_scope(o)
+            target = self.push(o.name())
+        else:
+            new_scope = False
+            target = self.current()
         if o.type:
             if self.is_class and isinstance(o.type, FunctionLike):
                 signature = bind_self(o.type)  # type: Type
@@ -77,12 +86,15 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
         super().visit_func_def(o)
         self.pop()
+        if new_scope:
+            self.leave_scope()
 
     def visit_decorator(self, o: Decorator) -> None:
         self.add_dependency(make_trigger(o.func.fullname()))
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
+        self.enter_scope(o)
         target = self.push_class(o.name)
         self.add_dependency(make_trigger(target), target)
         old_is_class = self.is_class
@@ -111,6 +123,7 @@ class DependencyVisitor(TraverserVisitor):
             self.add_dependency(make_trigger(base.fullname() + '.__init__'),
                                 target=make_trigger(info.fullname() + '.__init__'))
         self.pop()
+        self.leave_scope()
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
@@ -380,6 +393,15 @@ class DependencyVisitor(TraverserVisitor):
     def current(self) -> str:
         """Return the current target."""
         return self.stack[-1]
+
+    def enter_scope(self, node: Node) -> None:
+        self.scope_stack.append(node)
+
+    def leave_scope(self) -> None:
+        self.scope_stack.pop()
+
+    def current_scope(self) -> Node:
+        return self.scope_stack[-1]
 
 
 def get_type_dependencies(typ: Type) -> List[str]:

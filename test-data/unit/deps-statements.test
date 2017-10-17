@@ -518,3 +518,15 @@ class A:
 <m.A> -> m.A
 <m.dec> -> m
 <m.f> -> m.A.g
+
+[case testNestedFunction]
+class A: pass
+
+def h() -> None: pass
+
+def f() -> None:
+    def g(x: A) -> None:
+        h()
+[out]
+<m.A> -> <m.f>, m.A, m.f
+<m.h> -> m.f
