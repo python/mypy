@@ -49,10 +49,14 @@ restart_parser.add_argument('flags', metavar='FLAG', nargs='*', type=str,
                             help="Regular mypy flags (precede with --)")
 
 check_parser = subparsers.add_parser('check', help="Check some files (requires running daemon)")
+check_parser.add_argument('-q', '--quiet', action='store_true',
+                          help="Suppress instrumentation stats")
 check_parser.add_argument('files', metavar='FILE', nargs='+', help="File (or directory) to check")
 
 recheck_parser = subparsers.add_parser('recheck',
     help="Check the same files as the most previous  check run (requires running daemon)")
+recheck_parser.add_argument('-q', '--quiet', action='store_true',
+                            help="Suppress instrumentation stats")
 
 hang_parser = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
@@ -172,7 +176,7 @@ def do_check(args: argparse.Namespace) -> None:
     response = request('check', files=args.files)
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
-    check_output(response)
+    check_output(response, args.quiet)
 
 
 @action(recheck_parser)
@@ -185,10 +189,10 @@ def do_recheck(args: argparse.Namespace) -> None:
     response = request('recheck')
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
-    check_output(response)
+    check_output(response, args.quiet)
 
 
-def check_output(response: Dict[str, Any]) -> None:
+def check_output(response: Dict[str, Any], quiet: bool) -> None:
     """Print the output from a check or recheck command."""
     try:
         out, err, status = response['out'], response['err'], response['status']
@@ -196,7 +200,8 @@ def check_output(response: Dict[str, Any]) -> None:
         sys.exit("Response: %s" % str(response))
     sys.stdout.write(out)
     sys.stderr.write(err)
-    show_stats(response)
+    if not quiet:
+        show_stats(response)
     if status:
         sys.exit(status)
 
