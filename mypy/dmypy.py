@@ -102,7 +102,8 @@ def do_start(args: argparse.Namespace) -> None:
     try:
         pid, sockname = get_status()
     except SystemExit as err:
-        daemonize(Server(args.flags).serve)
+        if daemonize(Server(args.flags).serve):
+            sys.exit(1)
     else:
         sys.exit("Daemon is still alive")
 
@@ -166,7 +167,8 @@ def do_restart(args: argparse.Namespace) -> None:
             sys.exit("Status: %s" % str(response))
         else:
             print("Daemon stopped")
-    daemonize(Server(args.flags).serve)
+    if daemonize(Server(args.flags).serve):
+        sys.exit(1)
 
 
 @action(check_parser)
@@ -305,15 +307,29 @@ def read_status() -> Dict[str, object]:
     return data
 
 
-def daemonize(func: Callable[[], None]) -> None:
-    """Arrange to call func() in a grandchild of the current process."""
+def daemonize(func: Callable[[], None]) -> int:
+    """Arrange to call func() in a grandchild of the current process.
+
+    Return 0 for success, proposed exit status for failure.
+    """
     # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
     sys.stdout.flush()
     sys.stderr.flush()
     pid = os.fork()
     if pid:
-        print("Daemon started")
-        return
+        npid, sts = os.waitpid(pid, 0)
+        if sts == 0:
+            # TODO: Wait until STATUS_FILE appears and is readable.
+            print("Daemon started")
+            return 0
+        else:
+            sig = sts & 0xff
+            if sig:
+                print("Child killed by signal", sig)
+                return -sig
+            sts = sts >> 8
+            print("Child exit status", sts)
+            return sts
     # Child
     try:
         os.setsid()  # Detach controlling terminal
