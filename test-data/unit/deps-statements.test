@@ -486,3 +486,35 @@ def f() -> Iterator[int]:
 <m.A.__init__> -> m.f
 <m.A.__iter__> -> m.f
 <m.A> -> m.A, m.f
+
+[case testFunctionDecorator]
+from typing import Callable
+def dec(f: Callable[[int], int]) -> Callable[[str], str]:
+    pass
+
+def f() -> int: pass
+
+@dec
+def g(x: int) -> int:
+    return f()
+[out]
+<m.dec> -> m
+<m.f> -> m.g
+<m.g> -> m
+
+[case testMethodDecorator]
+from typing import Callable, Any
+def dec(f: Callable[[Any, int], int]) -> Callable[[Any, str], str]:
+    pass
+
+def f() -> int: pass
+
+class A:
+    @dec
+    def g(self, x: int) -> int:
+        return f()
+[out]
+<m.A.g> -> m
+<m.A> -> m.A
+<m.dec> -> m
+<m.f> -> m.A.g

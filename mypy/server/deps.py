@@ -7,8 +7,8 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
-    TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, TypeInfo, Var, LDEF,
-    op_methods, reverse_op_methods, ops_with_inplace_method
+    TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, TypeInfo, Var,
+    LDEF, op_methods, reverse_op_methods, ops_with_inplace_method
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -46,6 +46,7 @@ class DependencyVisitor(TraverserVisitor):
     def __init__(self, prefix: str, type_map: Dict[Expression, Type],
                  python_version: Tuple[int, int]) -> None:
         self.stack = [prefix]
+        self.target_stack = [prefix]
         self.type_map = type_map
         self.python2 = python_version[0] == 2
         self.map = {}  # type: Dict[str, Set[str]]
@@ -77,17 +78,21 @@ class DependencyVisitor(TraverserVisitor):
         super().visit_func_def(o)
         self.pop()
 
+    def visit_decorator(self, o: Decorator) -> None:
+        self.add_dependency(make_trigger(o.func.fullname()))
+        super().visit_decorator(o)
+
     def visit_class_def(self, o: ClassDef) -> None:
-        target = self.push(o.name)
-        self.add_dependency(make_trigger(target))
+        target = self.push_class(o.name)
+        self.add_dependency(make_trigger(target), target)
         old_is_class = self.is_class
         self.is_class = True
         # Add dependencies to type variables of a generic class.
         for tv in o.type_vars:
-            self.add_dependency(make_trigger(tv.fullname))
+            self.add_dependency(make_trigger(tv.fullname), target)
         # Add dependencies to base types.
         for base in o.info.bases:
-            self.add_type_dependencies(base)
+            self.add_type_dependencies(base, target=target)
         # TODO: Add dependencies based on remaining attributes.
         super().visit_class_def(o)
         self.is_class = old_is_class
@@ -325,9 +330,9 @@ class DependencyVisitor(TraverserVisitor):
             return
         self.map.setdefault(trigger, set()).add(target)
 
-    def add_type_dependencies(self, typ: Type) -> None:
+    def add_type_dependencies(self, typ: Type, target: Optional[str] = None) -> None:
         for trigger in get_type_dependencies(typ):
-            self.add_dependency(trigger)
+            self.add_dependency(trigger, target)
 
     def add_attribute_dependency(self, typ: Type, name: str) -> None:
         if isinstance(typ, TypeVarType):
@@ -355,12 +360,20 @@ class DependencyVisitor(TraverserVisitor):
             self.add_attribute_dependency(typ, '__iter__')
 
     def push(self, component: str) -> str:
-        target = '%s.%s' % (self.current(), component)
+        target = '%s.%s' % (self.target_stack[-1], component)
         self.stack.append(target)
+        self.target_stack.append(target)
+        return target
+
+    def push_class(self, name: str) -> None:
+        self.stack.append(self.stack[-1])
+        target = '%s.%s' % (self.target_stack[-1], name)
+        self.target_stack.append(target)
         return target
 
     def pop(self) -> None:
         self.stack.pop()
+        self.target_stack.pop()
 
     def current(self) -> str:
         """Return the current target."""

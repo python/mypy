@@ -100,7 +100,7 @@ class B(A):
     pass
 [out]
 <m.A.__init__> -> <m.B.__init__>
-<m.A> -> m.A, m.B
+<m.A> -> m, m.A, m.B
 <m.B> -> m.B
 
 [case testInheritanceWithMethodAndAttribute]
@@ -113,7 +113,7 @@ class B(A):
 <m.A.__init__> -> <m.B.__init__>
 <m.A.f> -> m.B.f
 <m.A.x> -> <m.B.x>
-<m.A> -> m.A, m.B
+<m.A> -> m, m.A, m.B
 <m.B.x> -> m.B.f
 <m.B> -> m.B
 
@@ -129,11 +129,11 @@ class C(B):
 <m.A.__init__> -> <m.B.__init__>, <m.C.__init__>
 <m.A.f> -> m.C.f
 <m.A.x> -> <m.C.x>
-<m.A> -> m.A, m.B
+<m.A> -> m, m.A, m.B
 <m.B.__init__> -> <m.C.__init__>
 <m.B.f> -> m.C.f
 <m.B.x> -> <m.C.x>
-<m.B> -> m.B, m.C
+<m.B> -> m, m.B, m.C
 <m.C.x> -> m.C.f
 <m.C> -> m.C
 
@@ -154,8 +154,8 @@ class A:
 <n.A.f> -> m.B.f
 <n.A.g> -> <m.B.g>
 <n.A.x> -> <m.B.x>
-<n.A> -> m.B
-<n> -> m, m.B
+<n.A> -> m, m.B
+<n> -> m
 
 [case testInheritMethod]
 class A:
@@ -167,7 +167,7 @@ class B(A):
 <m.A.__init__> -> <m.B.__init__>
 <m.A.f> -> m.B.f
 <m.A.g> -> <m.B.g>
-<m.A> -> m.A, m.B
+<m.A> -> m, m.A, m.B
 <m.B.g> -> m.B.f
 <m.B> -> m.B
 
@@ -302,3 +302,11 @@ class A:
 <m.A.B.f> -> m.f
 <m.A.B> -> <m.f>, m.A.B, m.f
 <m.A> -> m.A
+
+[case testDefaultArgValue]
+def f1(x: int) -> int: pass
+def f2() -> int: pass
+def g(x: int = f1(f2())) -> None: pass
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
