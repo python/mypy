@@ -310,3 +310,15 @@ def g(x: int = f1(f2())) -> None: pass
 [out]
 <m.f1> -> m.g
 <m.f2> -> m.g
+
+[case testIsInstance]
+class A:
+    def g(self) -> None: pass
+
+def f(x: object) -> None:
+    if isinstance(x, A):
+        x.g()
+[builtins fixtures/isinstancelist.pyi]
+[out]
+<m.A.g> -> m.f
+<m.A> -> m.A, m.f
