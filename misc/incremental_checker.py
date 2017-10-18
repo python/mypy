@@ -163,8 +163,6 @@ def start_daemon(mypy_cache_path: str, verbose: bool) -> None:
         if verbose:
             cmd.extend(["-v", "-v"])
         execute(cmd)
-        time.sleep(1)
-        execute(DAEMON_CMD + ["status"])
 
 
 def stop_daemon() -> None:

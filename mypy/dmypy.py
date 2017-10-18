@@ -104,6 +104,7 @@ def do_start(args: argparse.Namespace) -> None:
     except SystemExit as err:
         if daemonize(Server(args.flags).serve):
             sys.exit(1)
+        wait_for_server()
     else:
         sys.exit("Daemon is still alive")
 
@@ -169,6 +170,27 @@ def do_restart(args: argparse.Namespace) -> None:
             print("Daemon stopped")
     if daemonize(Server(args.flags).serve):
         sys.exit(1)
+    wait_for_server()
+
+
+def wait_for_server(timeout: float = 5.0) -> None:
+    """Wait until the server is up.
+
+    Exit if it doesn't happen within the timeout.
+    """
+    endtime = time.time() + timeout
+    while time.time() < endtime:
+        try:
+            data = read_status()
+        except SystemExit:
+            # If the file isn't there yet, retry later.
+            time.sleep(0.1)
+            continue
+        # If the file's content is bogus or the process is dead, fail.
+        pid, sockname = check_status(data)
+        print("Daemon started")
+        return
+    sys.exit("Timed out waiting for daemon to start")
 
 
 @action(check_parser)
@@ -310,7 +332,8 @@ def read_status() -> Dict[str, object]:
 def daemonize(func: Callable[[], None]) -> int:
     """Arrange to call func() in a grandchild of the current process.
 
-    Return 0 for success, proposed exit status for failure.
+    Return 0 for success, exit status for failure, negative if
+    subprocess killed by signal.
     """
     # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
     sys.stdout.flush()
@@ -318,18 +341,14 @@ def daemonize(func: Callable[[], None]) -> int:
     pid = os.fork()
     if pid:
         npid, sts = os.waitpid(pid, 0)
-        if sts == 0:
-            # TODO: Wait until STATUS_FILE appears and is readable.
-            print("Daemon started")
-            return 0
-        else:
-            sig = sts & 0xff
-            if sig:
-                print("Child killed by signal", sig)
-                return -sig
-            sts = sts >> 8
+        sig = sts & 0xff
+        if sig:
+            print("Child killed by signal", sig)
+            return -sig
+        sts = sts >> 8
+        if sts:
             print("Child exit status", sts)
-            return sts
+        return sts
     # Child
     try:
         os.setsid()  # Detach controlling terminal
@@ -372,6 +391,8 @@ class Server:
         if options.quick_and_dirty:
             sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
         self.options = options
+        if os.path.isfile(STATUS_FILE):
+            os.unlink(STATUS_FILE)
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
