@@ -14,7 +14,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, Instance, AnyType, NoneTyp, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    FunctionLike, ForwardRef
+    FunctionLike, ForwardRef, Overloaded
 )
 from mypy.server.trigger import make_trigger
 
@@ -469,10 +469,17 @@ class TypeDependenciesVisitor(TypeVisitor[List[str]]):
 
     def visit_callable_type(self, typ: CallableType) -> List[str]:
         # TODO: generic callables
+        # TODO: fallback?
         triggers = []
         for arg in typ.arg_types:
             triggers.extend(get_type_dependencies(arg))
         triggers.extend(get_type_dependencies(typ.ret_type))
+        return triggers
+
+    def visit_overloaded(self, typ: Overloaded) -> List[str]:
+        triggers = []
+        for item in typ.items():
+            triggers.extend(get_type_dependencies(item))
         return triggers
 
     def visit_deleted_type(self, typ: DeletedType) -> List[str]:
@@ -520,3 +527,15 @@ class TypeDependenciesVisitor(TypeVisitor[List[str]]):
 def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
     return [base for base in info.mro[1:]
             if base.fullname() != 'builtins.object']
+
+
+def dump_all_dependencies(modules: Dict[str, MypyFile],
+                          type_map: Dict[Expression, Type],
+                          python_version: Tuple[int, int]) -> None:
+    for id, node in modules.items():
+        if id in ('builtins', 'typing') or 'typeshed' in node.path:
+            continue
+        print('[%s]' % id)
+        deps = get_dependencies(id, node, type_map, python_version)
+        for trigger, targets in deps.items():
+            print('%s: %s' % (trigger, sorted(targets)))
