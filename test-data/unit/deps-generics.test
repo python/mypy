@@ -45,7 +45,7 @@ class A(Generic[T]):
 [out]
 <m.A.x> -> m.A.f, m.A.g
 <m.A> -> m.A
-<m.T> -> <m.A.f>, <m.A.g>, m.A, m.A.f, m.A.g
+<m.T> -> <m.A.f>, <m.A.g>, <m.A.x>, m.A, m.A.f, m.A.g
 
 [case testGenericClassInit]
 from typing import TypeVar, Generic
@@ -66,7 +66,7 @@ def f() -> None:
 <m.A> -> m.A, m.f
 <m.B.__init__> -> m.f
 <m.B> -> m.B, m.f
-<m.T> -> <m.A.__init__>, m.A, m.A.__init__
+<m.T> -> <m.A.__init__>, <m.A.x>, m.A, m.A.__init__
 
 [case testGenericMethod]
 from typing import TypeVar

@@ -8,7 +8,7 @@ from mypy.nodes import (
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, TypeInfo, Var,
-    LDEF, op_methods, reverse_op_methods, ops_with_inplace_method
+    LDEF, MDEF, GDEF, op_methods, reverse_op_methods, ops_with_inplace_method
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -158,6 +158,24 @@ class DependencyVisitor(TraverserVisitor):
     def process_lvalue(self, lvalue: Expression) -> None:
         if isinstance(lvalue, IndexExpr):
             self.add_indexing_method_dependency(lvalue, lvalue=True)
+        elif isinstance(lvalue, NameExpr):
+            if lvalue.kind in (MDEF, GDEF):
+                # Assignment to an attribute in the class body, or direct assignment to a
+                # global variable.
+                lvalue_type = self.type_map[lvalue]
+                type_triggers = get_type_dependencies(lvalue_type)
+                attr_trigger = make_trigger('%s.%s' % (self.target_stack[-1], lvalue.name))
+                for type_trigger in type_triggers:
+                    self.add_dependency(type_trigger, attr_trigger)
+        elif isinstance(lvalue, MemberExpr):
+            if lvalue.kind is None:
+                # Reference to a non-module attribute
+                object_type = self.type_map[lvalue.expr]
+                lvalue_type = self.type_map[lvalue]
+                type_triggers = get_type_dependencies(lvalue_type)
+                for attr_trigger in self.attribute_triggers(object_type, lvalue.name):
+                    for type_trigger in type_triggers:
+                        self.add_dependency(type_trigger, attr_trigger)
         elif isinstance(lvalue, (ListExpr, TupleExpr)):
             for item in lvalue.items:
                 self.process_lvalue(item)
@@ -212,6 +230,10 @@ class DependencyVisitor(TraverserVisitor):
         if o.kind == LDEF:
             # We don't track depdendencies to local variables, since they
             # aren't externally visible.
+            return
+        if o.kind == MDEF:
+            # Direct reference to member is only possible in the scope that
+            # defined the name, so no dependency is required.
             return
         if o.fullname is not None:
             trigger = make_trigger(o.fullname)
@@ -350,6 +372,7 @@ class DependencyVisitor(TraverserVisitor):
             self.add_dependency(trigger, target)
 
     def add_attribute_dependency(self, typ: Type, name: str) -> None:
+        # TODO: use attribute_triggers
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
         if isinstance(typ, TupleType):
@@ -363,6 +386,25 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(typ, UnionType):
             for item in typ.items:
                 self.add_attribute_dependency(item, name)
+
+    def attribute_triggers(self, typ: Type, name: str) -> List[str]:
+        if isinstance(typ, TypeVarType):
+            typ = typ.upper_bound
+        if isinstance(typ, TupleType):
+            typ = typ.fallback
+        if isinstance(typ, Instance):
+            member = '%s.%s' % (typ.type.fullname(), name)
+            return [make_trigger(member)]
+        elif isinstance(typ, FunctionLike) and typ.is_type_obj():
+            member = '%s.%s' % (typ.type_object().fullname(), name)
+            return [make_trigger(member)]
+        elif isinstance(typ, UnionType):
+            targets = []
+            for item in typ.items:
+                targets.extend(self.attribute_triggers(item, name))
+            return targets
+        else:
+            return []
 
     def add_attribute_dependency_for_expr(self, e: Expression, name: str) -> None:
         typ = self.type_map.get(e)

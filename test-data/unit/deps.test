@@ -45,7 +45,7 @@ def f() -> None:
     x
 [out]
 <m.A.__init__> -> m
-<m.A> -> m, m.A
+<m.A> -> <m.x>, m, m.A
 <m.x> -> m, m.f
 
 [case testAccessModuleAttribute2]
@@ -322,3 +322,121 @@ def f(x: object) -> None:
 [out]
 <m.A.g> -> m.f
 <m.A> -> m.A, m.f
+
+[case testAttributeWithClassType1]
+from n import A
+
+class B:
+    def h(self, z: A) -> None:
+        self.z = z
+[file n.py]
+class A: pass
+[out]
+<m.B.z> -> m.B.h
+<m.B> -> m.B
+<n.A> -> <m.B.h>, <m.B.z>, m, m.B.h
+
+[case testAttributeWithClassType2]
+from m import A
+
+class B:
+    def f(self) -> None:
+        self.x = A()
+[file m.py]
+class A: pass
+[out]
+<m.B.x> -> m.B.f
+<m.B> -> m.B
+<m.A.__init__> -> m.B.f
+<m.A> -> <m.B.x>, m, m.B.f
+
+[case testAttributeWithClassType3]
+from n import A, x
+
+class B:
+    def g(self) -> None:
+        self.x = x
+[file n.py]
+class A: pass
+
+x = A()
+[out]
+<m.B.x> -> m.B.g
+<m.B> -> m.B
+<n.A> -> <m.B.x>, m
+<n.x> -> m, m.B.g
+
+[case testAttributeWithClassType4]
+from n import A
+
+class B:
+    def g(self) -> None:
+        self.x: A
+[file n.py]
+class A: pass
+[out]
+<m.B.x> -> m.B.g
+<m.B> -> m.B
+<n.A> -> <m.B.x>, m, m.B.g
+
+[case testClassBody]
+def f() -> int: pass
+def g() -> int: pass
+def h() -> int: pass
+
+class A:
+    h()
+    if f():
+        g()
+[out]
+<m.A> -> m.A
+<m.f> -> m
+<m.g> -> m
+<m.h> -> m
+
+[case testVariableInitializedInClass]
+from n import A
+
+class B:
+    x = None  # type: A
+[file n.py]
+class A: pass
+[out]
+<m.B> -> m.B
+<n.A> -> <m.B.x>, m
+
+[case testVariableAnnotationInClass]
+from n import A
+
+class B:
+    x: A
+
+    def f(self) -> None:
+        y = self.x
+[file n.py]
+class A: pass
+[out]
+<m.B.x> -> m.B.f
+<m.B> -> m.B
+<n.A> -> <m.B.x>, m
+
+[case testGlobalVariableInitialized]
+from n import A
+
+x = A()
+[file n.py]
+class A: pass
+[out]
+<m.x> -> m
+<n.A.__init__> -> m
+<n.A> -> <m.x>, m
+
+[case testGlobalVariableAnnotation]
+from n import A
+
+x: A
+[file n.py]
+class A: pass
+[out]
+<m.x> -> m
+<n.A> -> <m.x>, m
