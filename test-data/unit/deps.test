@@ -440,3 +440,18 @@ class A: pass
 [out]
 <m.x> -> m
 <n.A> -> <m.x>, m
+
+[case testProperty]
+class B: pass
+
+class A:
+    @property
+    def x(self) -> B: pass
+
+def f(a: A) -> None:
+    b = a.x
+[builtins fixtures/property.pyi]
+[out]
+<m.A.x> -> m, m.f
+<m.A> -> <m.f>, m.A, m.f
+<m.B> -> <m.A.x>, m.A.x, m.B
