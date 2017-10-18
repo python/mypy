@@ -4,6 +4,8 @@ Revision history
 List of major changes:
 
 - October 2017
+    * Publish ``mypy`` version 0.540 on PyPI.
+
     * Publish ``mypy`` version 0.530 on PyPI.
 
 - August-September 2017
