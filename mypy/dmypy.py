@@ -11,7 +11,6 @@ import gc
 import io
 import json
 import os
-import resource
 import signal
 import socket
 import sys
@@ -565,6 +564,7 @@ MiB = 2**20
 
 def get_meminfo() -> Mapping[str, float]:
     # See https://stackoverflow.com/questions/938733/total-memory-used-by-python-process
+    import resource  # Since it doesn't exist on Windows.
     res = {}
     rusage = resource.getrusage(resource.RUSAGE_SELF)
     if sys.platform == 'darwin':
