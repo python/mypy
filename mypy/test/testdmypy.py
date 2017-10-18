@@ -37,6 +37,8 @@ class TypeCheckSuite(DataSuite):
 
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
+        if sys.platform == 'win32':
+            return []  # Nothing here works on Windows.
         c = []  # type: List[DataDrivenTestCase]
         for f in files:
             tc = parse_test_cases(os.path.join(test_data_prefix, f),
