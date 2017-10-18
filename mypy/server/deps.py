@@ -111,16 +111,16 @@ class DependencyVisitor(TraverserVisitor):
         info = o.info
         for name, node in info.names.items():
             if isinstance(node.node, Var):
-                for base in non_trivial_bases(info):
+                for base_info in non_trivial_bases(info):
                     # If the type of an attribute changes in a base class, we make references
                     # to the attribute in the subclass stale.
-                    self.add_dependency(make_trigger(base.fullname() + '.' + name),
+                    self.add_dependency(make_trigger(base_info.fullname() + '.' + name),
                                         target=make_trigger(info.fullname() + '.' + name))
-        for base in non_trivial_bases(info):
-            for name, node in base.names.items():
-                self.add_dependency(make_trigger(base.fullname() + '.' + name),
+        for base_info in non_trivial_bases(info):
+            for name, node in base_info.names.items():
+                self.add_dependency(make_trigger(base_info.fullname() + '.' + name),
                                     target=make_trigger(info.fullname() + '.' + name))
-            self.add_dependency(make_trigger(base.fullname() + '.__init__'),
+            self.add_dependency(make_trigger(base_info.fullname() + '.__init__'),
                                 target=make_trigger(info.fullname() + '.__init__'))
         self.pop()
         self.leave_scope()
@@ -422,7 +422,7 @@ class DependencyVisitor(TraverserVisitor):
         self.target_stack.append(target)
         return target
 
-    def push_class(self, name: str) -> None:
+    def push_class(self, name: str) -> str:
         self.stack.append(self.stack[-1])
         target = '%s.%s' % (self.target_stack[-1], name)
         self.target_stack.append(target)
