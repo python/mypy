@@ -120,11 +120,16 @@ class BuildSourceSet:
             return False
 
 
+# A dict containing saved cache data from a previous run.  This will
+# be updated in place with newly computed cache data.  See dmypy.py.
+SavedCache = Dict[str, Tuple['CacheMeta', MypyFile]]
+
+
 def build(sources: List[BuildSource],
           options: Options,
           alt_lib_path: Optional[str] = None,
           bin_dir: Optional[str] = None,
-          saved_cache: Optional['SavedCache'] = None,
+          saved_cache: Optional[SavedCache] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -141,6 +146,7 @@ def build(sources: List[BuildSource],
         (takes precedence over other directories)
       bin_dir: directory containing the mypy script, used for finding data
         directories; if omitted, use '.' as the data directory
+      saved_cache: optional dict with saved cache state for dmypy (read-write!)
     """
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(50000)
@@ -476,9 +482,6 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     except OSError:
         pass
     return -1
-
-
-SavedCache = Dict[str, Tuple[CacheMeta, MypyFile]]
 
 
 class BuildManager:

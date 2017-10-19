@@ -20,6 +20,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import psutil  # type: ignore  # It's not in typeshed yet
 
+# TODO: Import all mypy modules lazily to speed up client startup time.
 import mypy.build
 import mypy.errors
 import mypy.main
@@ -27,7 +28,7 @@ import mypy.main
 # Argument parser.  Subparsers are tied to action functions by the
 # @action(subparse) decorator.
 
-parser = argparse.ArgumentParser(description="Client for mymy daemon mode",
+parser = argparse.ArgumentParser(description="Client for mypy daemon mode",
                                  fromfile_prefix_chars='@')
 parser.set_defaults(action=None)
 subparsers = parser.add_subparsers()
@@ -86,6 +87,7 @@ def action(subparser: argparse.ArgumentParser) -> Callable[[ActionFunction], Non
 
 
 # Action functions (run in client from command line).
+# TODO: Use a separate exception instead of SystemExit to indicate failures.
 
 @action(start_parser)
 def do_start(args: argparse.Namespace) -> None:
@@ -259,7 +261,10 @@ STATUS_FILE = 'dmypy.json'
 
 
 def request(command: str, **kwds: object) -> Dict[str, Any]:
-    """Send a request to the daemon."""
+    """Send a request to the daemon.
+
+    Return the JSON dict with the response.
+    """
     args = dict(kwds)
     if command:
         args.update(command=command)
@@ -339,6 +344,7 @@ def daemonize(func: Callable[[], None]) -> int:
     sys.stderr.flush()
     pid = os.fork()
     if pid:
+        # Parent process: wait for child in case things go bad there.
         npid, sts = os.waitpid(pid, 0)
         sig = sts & 0xff
         if sig:
@@ -348,7 +354,7 @@ def daemonize(func: Callable[[], None]) -> int:
         if sts:
             print("Child exit status", sts)
         return sts
-    # Child
+    # Child process: do a bunch of UNIX stuff and then fork a grandchild.
     try:
         os.setsid()  # Detach controlling terminal
         os.umask(0o27)
@@ -359,8 +365,9 @@ def daemonize(func: Callable[[], None]) -> int:
         os.close(devnull)
         pid = os.fork()
         if pid:
+            # Child is done, exit to parent.
             os._exit(0)
-        # Grandchild
+        # Grandchild: run the server.
         func()
     finally:
         # Make sure we never get back into the caller.
@@ -487,6 +494,7 @@ class Server:
 
     def check(self, sources: List[mypy.build.BuildSource],
               alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
+        # TODO: Move stats handling code to make the logic here less cluttered.
         bound_gc_callback = lambda phase, info: self.gc_callback(phase, info)
         self.gc_start_time = None  # type: Optional[float]
         self.gc_time = 0.0
@@ -547,7 +555,7 @@ class Server:
 # Misc utilities.
 
 def receive(sock: socket.socket) -> Any:
-    """Receive data from a socket until EOF."""
+    """Receive JSON data from a socket until EOF."""
     bdata = bytearray()
     while True:
         more = sock.recv(100000)
@@ -556,7 +564,10 @@ def receive(sock: socket.socket) -> Any:
         bdata.extend(more)
     if not bdata:
         raise OSError("No data received")
-    return json.loads(bdata.decode('utf8'))
+    data = json.loads(bdata.decode('utf8'))
+    if not isinstance(data, dict):
+        raise OSError("Data received is not a dict (%s)" % str(type(data)))
+    return data
 
 
 MiB = 2**20
