@@ -70,7 +70,6 @@ class TypeCheckSuite(DataSuite):
     @classmethod
     def is_incremental(cls, testcase: DataDrivenTestCase) -> bool:
         return 'incremental' in testcase.name.lower() or 'incremental' in testcase.file
-        
 
     @classmethod
     def has_stable_flags(cls, testcase: DataDrivenTestCase) -> bool:

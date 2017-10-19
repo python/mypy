@@ -627,7 +627,9 @@ class BuildManager:
         num_errs = self.errors.num_messages()
         tree = parse(source, path, self.errors, options=self.options)
         tree._fullname = id
-        self.add_stats(files_parsed=1, modules_parsed=int(not tree.is_stub), stubs_parsed=int(tree.is_stub))
+        self.add_stats(files_parsed=1,
+                       modules_parsed=int(not tree.is_stub),
+                       stubs_parsed=int(tree.is_stub))
 
         if self.errors.num_messages() != num_errs:
             self.log("Bailing due to parse errors")
@@ -682,6 +684,7 @@ class BuildManager:
 
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
+
 
 def remove_cwd_prefix_from_path(p: str) -> str:
     """Remove current working directory prefix from p, if present.
