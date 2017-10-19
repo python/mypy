@@ -125,6 +125,7 @@ class TypeCheckSuite(DataSuite):
             self.server = dmypy.Server([])  # TODO: Fix ugly API
             self.server.options = options
 
+        assert self.server is not None  # Set in step 1 and survives into next steps
         sources = []
         for module_name, program_path, program_text in module_data:
             # Always set to none so we're forced to reread the module in incremental mode

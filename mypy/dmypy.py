@@ -231,7 +231,7 @@ def check_output(response: Dict[str, Any], quiet: bool) -> None:
         sys.exit(status)
 
 
-def show_stats(response: Mapping[str, object]):
+def show_stats(response: Mapping[str, object]) -> None:
     for key, value in sorted(response.items()):
         if key not in ('out', 'err'):
             print("%20s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
@@ -509,7 +509,7 @@ class Server:
                                    saved_cache=self.saved_cache,
                                    alt_lib_path=alt_lib_path)
             msgs = res.errors
-            self.last_manager = res.manager
+            self.last_manager = res.manager  # type: Optional[mypy.build.BuildManager]
         except mypy.errors.CompileError as err:
             msgs = err.messages
             self.last_manager = None
