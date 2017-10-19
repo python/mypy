@@ -495,8 +495,7 @@ class Server:
     def check(self, sources: List[mypy.build.BuildSource],
               alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
         # TODO: Move stats handling code to make the logic here less cluttered.
-        def bound_gc_callback(phase, info):
-            return self.gc_callback(phase, info)
+        bound_gc_callback = self.gc_callback
         self.gc_start_time = None  # type: Optional[float]
         self.gc_time = 0.0
         self.gc_calls = 0
