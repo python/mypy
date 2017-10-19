@@ -323,6 +323,21 @@ def f(x: object) -> None:
 <m.A.g> -> m.f
 <m.A> -> m.A, m.f
 
+[case testUnreachableIsInstance]
+class A:
+    x: int
+
+class B:
+    y: int
+
+def f(x: A) -> None:
+    if isinstance(x, B):
+        x.y
+[builtins fixtures/isinstancelist.pyi]
+[out]
+<m.A> -> <m.f>, m.A, m.f
+<m.B> -> m.B, m.f
+
 [case testAttributeWithClassType1]
 from n import A
 

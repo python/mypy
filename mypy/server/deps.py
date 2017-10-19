@@ -7,8 +7,8 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
-    TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, TypeInfo, Var,
-    LDEF, MDEF, GDEF, op_methods, reverse_op_methods, ops_with_inplace_method
+    TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
+    TypeInfo, Var, LDEF, MDEF, GDEF, op_methods, reverse_op_methods, ops_with_inplace_method
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -85,8 +85,8 @@ class DependencyVisitor(TraverserVisitor):
             for base in non_trivial_bases(o.info):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
         super().visit_func_def(o)
-        self.pop()
         if new_scope:
+            self.pop()
             self.leave_scope()
 
     def visit_decorator(self, o: Decorator) -> None:
@@ -134,6 +134,10 @@ class DependencyVisitor(TraverserVisitor):
         assert o.relative == 0  # Relative imports not supported
         for name, as_name in o.names:
             self.add_dependency(make_trigger(o.id + '.' + name))
+
+    def visit_block(self, o: Block) -> None:
+        if not o.is_unreachable:
+            super().visit_block(o)
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         if isinstance(o.rvalue, CallExpr) and isinstance(o.rvalue.analyzed, TypeVarExpr):
@@ -248,6 +252,10 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(trigger)
         else:
             # Reference to a non-module attribute
+            if e.expr not in self.type_map:
+                # No type available -- this happens for unreachable code. Since it's unreachable,
+                # it wasn't type checked and we don't need to generate dependencies.
+                return
             typ = self.type_map[e.expr]
             self.add_attribute_dependency(typ, e.name)
 
@@ -509,7 +517,8 @@ class TypeDependenciesVisitor(TypeVisitor[List[str]]):
         return triggers
 
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:
-        raise NotImplementedError
+        # TODO: implement
+        return []
 
     def visit_unbound_type(self, typ: UnboundType) -> List[str]:
         return []
@@ -532,10 +541,16 @@ def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
 def dump_all_dependencies(modules: Dict[str, MypyFile],
                           type_map: Dict[Expression, Type],
                           python_version: Tuple[int, int]) -> None:
+    all_deps = {}  # type: Dict[str, Set[str]]
     for id, node in modules.items():
+        # print('processing', id)
         if id in ('builtins', 'typing') or 'typeshed' in node.path:
             continue
-        print('[%s]' % id)
         deps = get_dependencies(id, node, type_map, python_version)
         for trigger, targets in deps.items():
-            print('%s: %s' % (trigger, sorted(targets)))
+            all_deps.setdefault(trigger, set()).update(targets)
+
+    for trigger, targets in sorted(all_deps.items(), key=lambda x: x[0]):
+        print(trigger)
+        for target in sorted(targets):
+            print('    %s' % target)

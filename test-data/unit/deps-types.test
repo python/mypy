@@ -106,3 +106,32 @@ def f(c: C) -> None:
 [out]
 <m.C.f> -> m.f
 <m.C> -> <m.f>, m.C, m.f
+
+[case testOverloaded]
+from typing import overload
+
+class A: pass
+class B: pass
+
+def g() -> None: pass
+
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: B) -> B: pass
+
+def f(x):
+    g()
+
+ff = f
+
+def h() -> None:
+    f(A())
+    ff(A())
+[out]
+<m.A.__init__> -> m.h
+<m.A> -> <m.f>, <m.ff>, m.A, m.f, m.h
+<m.B> -> <m.f>, <m.ff>, m.B, m.f
+<m.f> -> m, m.h
+<m.ff> -> m, m.h
+<m.g> -> m.f

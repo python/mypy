@@ -530,3 +530,19 @@ def f() -> None:
 [out]
 <m.A> -> <m.f>, m.A, m.f
 <m.h> -> m.f
+
+[case testPlatformCheck]
+import a
+import sys
+
+def f() -> int:
+    if sys.platform == 'win32':
+        return a.g()
+    else:
+        return 1
+[file a.py]
+[builtins fixtures/ops.pyi]
+[out]
+<a> -> m
+<sys.platform> -> m.f
+<sys> -> m, m.f
