@@ -512,7 +512,7 @@ class MessageBuilder:
         return AnyType(TypeOfAny.from_error)
 
     def untyped_function_call(self, callee: CallableType, context: Context) -> Type:
-        name = callee.name if callee.name is not None else '(unknown)'
+        name = callable_name(callee) or '(unknown)'
         self.fail('Call to untyped function {} in typed context'.format(name), context)
         return AnyType(TypeOfAny.from_error)
 
@@ -526,8 +526,9 @@ class MessageBuilder:
         operator name in the messages.
         """
         target = ''
-        if callee.name:
-            name = callee.name
+        callee_name = callable_name(callee)
+        if callee_name is not None:
+            name = callee_name
             if callee.bound_args and callee.bound_args[0] is not None:
                 base = self.format(callee.bound_args[0])
             else:
@@ -565,15 +566,15 @@ class MessageBuilder:
 
         msg = ''
         notes = []  # type: List[str]
-        if callee.name == '<list>':
-            name = callee.name[1:-1]
+        if callee_name == '<list>':
+            name = callee_name[1:-1]
             n -= 1
             actual_type_str, expected_type_str = self.format_distinctly(arg_type,
                                                                         callee.arg_types[0])
             msg = '{} item {} has incompatible type {}; expected {}'.format(
                 name.title(), n, actual_type_str, expected_type_str)
-        elif callee.name == '<dict>':
-            name = callee.name[1:-1]
+        elif callee_name == '<dict>':
+            name = callee_name[1:-1]
             n -= 1
             key_type, value_type = cast(TupleType, arg_type).items
             expected_key_type, expected_value_type = cast(TupleType, callee.arg_types[0]).items
@@ -596,19 +597,19 @@ class MessageBuilder:
             msg = '{} entry {} has incompatible type {}: {}; expected {}: {}'.format(
                 name.title(), n, key_type_str, value_type_str,
                 expected_key_type_str, expected_value_type_str)
-        elif callee.name == '<list-comprehension>':
+        elif callee_name == '<list-comprehension>':
             actual_type_str, expected_type_str = map(strip_quotes,
                                                      self.format_distinctly(arg_type,
                                                                             callee.arg_types[0]))
             msg = 'List comprehension has incompatible type List[{}]; expected List[{}]'.format(
                 actual_type_str, expected_type_str)
-        elif callee.name == '<set-comprehension>':
+        elif callee_name == '<set-comprehension>':
             actual_type_str, expected_type_str = map(strip_quotes,
                                                      self.format_distinctly(arg_type,
                                                                             callee.arg_types[0]))
             msg = 'Set comprehension has incompatible type Set[{}]; expected Set[{}]'.format(
                 actual_type_str, expected_type_str)
-        elif callee.name == '<dictionary-comprehension>':
+        elif callee_name == '<dictionary-comprehension>':
             actual_type_str, expected_type_str = self.format_distinctly(arg_type,
                                                                         callee.arg_types[n - 1])
             msg = ('{} expression in dictionary comprehension has incompatible type {}; '
@@ -616,7 +617,7 @@ class MessageBuilder:
                 'Key' if n == 1 else 'Value',
                 actual_type_str,
                 expected_type_str)
-        elif callee.name == '<generator>':
+        elif callee_name == '<generator>':
             actual_type_str, expected_type_str = self.format_distinctly(arg_type,
                                                                         callee.arg_types[0])
             msg = 'Generator has incompatible item type {}; expected {}'.format(
@@ -656,61 +657,50 @@ class MessageBuilder:
                 msg = 'Missing positional argument'
             else:
                 msg = 'Missing positional arguments'
-            if callee.name and diff and all(d is not None for d in diff):
-                msg += ' "{}" in call to {}'.format('", "'.join(cast(List[str], diff)),
-                                                    callee.name)
+            callee_name = callable_name(callee)
+            if callee_name is not None and diff and all(d is not None for d in diff):
+                args = '", "'.join(cast(List[str], diff))
+                msg += ' "{}" in call to {}'.format(args, callee_name)
         else:
-            msg = 'Too few arguments'
-            if callee.name:
-                msg += ' for {}'.format(callee.name)
+            msg = 'Too few arguments' + for_function(callee)
         self.fail(msg, context)
 
     def missing_named_argument(self, callee: CallableType, context: Context, name: str) -> None:
-        msg = 'Missing named argument "{}"'.format(name)
-        if callee.name:
-            msg += ' for function {}'.format(callee.name)
+        msg = 'Missing named argument "{}"'.format(name) + for_function(callee)
         self.fail(msg, context)
 
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
-        msg = 'Too many arguments'
-        if callee.name:
-            msg += ' for {}'.format(callee.name)
+        msg = 'Too many arguments' + for_function(callee)
         self.fail(msg, context)
 
     def too_many_positional_arguments(self, callee: CallableType,
                                       context: Context) -> None:
-        msg = 'Too many positional arguments'
-        if callee.name:
-            msg += ' for {}'.format(callee.name)
+        msg = 'Too many positional arguments' + for_function(callee)
         self.fail(msg, context)
 
     def unexpected_keyword_argument(self, callee: CallableType, name: str,
                                     context: Context) -> None:
-        msg = 'Unexpected keyword argument "{}"'.format(name)
-        if callee.name:
-            msg += ' for {}'.format(callee.name)
+        msg = 'Unexpected keyword argument "{}"'.format(name) + for_function(callee)
         self.fail(msg, context)
         module = find_defining_module(self.modules, callee)
         if module:
             assert callee.definition is not None
-            self.note('{} defined here'.format(callee.name), callee.definition,
+            self.note('{} defined here'.format(callable_name(callee)), callee.definition,
                       file=module.path, origin=context)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
                                  context: Context) -> None:
         self.fail('{} gets multiple values for keyword argument "{}"'.
-                  format(capitalize(callable_name(callee)),
-                         callee.arg_names[index]), context)
+                  format(callable_name(callee) or 'Function', callee.arg_names[index]),
+                  context)
 
-    def does_not_return_value(self, callee_type: Optional[Type], context: Context) -> None:
+    def does_not_return_value(self, callee_type: FunctionLike, context: Context) -> None:
         """Report an error about use of an unusable type."""
-        name = None  # type: Optional[str]
-        if isinstance(callee_type, FunctionLike):
-            name = callee_type.get_name()
-        if name is not None:
-            self.fail('{} does not return a value'.format(capitalize(name)), context)
-        else:
-            self.fail('Function does not return a value', context)
+        name = callable_name(callee_type) or 'Function'
+        self.fail('{} does not return a value'.format(name), context)
+
+    def evaluates_to_none(self, context: Context) -> None:
+        self.fail('Expression evaluates to "None"', context)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""
@@ -804,9 +794,9 @@ class MessageBuilder:
 
     def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
                                        context: Context) -> None:
-        if callee_type.name and n > 0:
-            self.fail('Cannot infer type argument {} of {}'.format(
-                n, callee_type.name), context)
+        callee_name = callable_name(callee_type)
+        if callee_name is not None and n > 0:
+            self.fail('Cannot infer type argument {} of {}'.format(n, callee_name), context)
         else:
             self.fail('Cannot infer function type argument', context)
 
@@ -909,8 +899,10 @@ class MessageBuilder:
                                    typ: Type,
                                    typevar_name: str,
                                    context: Context) -> None:
-        self.fail(INCOMPATIBLE_TYPEVAR_VALUE.format(typevar_name, callable_name(callee),
-                                                    self.format(typ)), context)
+        self.fail(INCOMPATIBLE_TYPEVAR_VALUE.format(typevar_name,
+                                                    callable_name(callee) or 'function',
+                                                    self.format(typ)),
+                  context)
 
     def overloaded_signatures_overlap(self, index1: int, index2: int,
                                       context: Context) -> None:
@@ -1354,11 +1346,15 @@ def format_item_name_list(s: Iterable[str]) -> str:
         return '(' + ', '.join(["'%s'" % name for name in lst[:5]]) + ', ...)'
 
 
-def callable_name(type: CallableType) -> str:
-    if type.name:
-        return type.name
-    else:
-        return 'function'
+def callable_name(type: FunctionLike) -> Optional[str]:
+    return type.get_name()
+
+
+def for_function(callee: CallableType) -> str:
+    name = callable_name(callee)
+    if name is not None:
+        return ' for {}'.format(name)
+    return ''
 
 
 def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> Optional[MypyFile]:

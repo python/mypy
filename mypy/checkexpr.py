@@ -274,7 +274,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(ret_type, UninhabitedType):
             self.chk.binder.unreachable()
         if not allow_none_return and isinstance(ret_type, NoneTyp):
-            self.chk.msg.does_not_return_value(callee_type, e)
+            if isinstance(callee_type, FunctionLike):
+                self.chk.msg.does_not_return_value(callee_type, e)
+            else:
+                self.chk.msg.evaluates_to_none(e)
             return AnyType(TypeOfAny.from_error)
         return ret_type
 
@@ -2543,7 +2546,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 expr_type = NoneTyp()
 
         if not allow_none_return and isinstance(expr_type, NoneTyp):
-            self.chk.msg.does_not_return_value(None, e)
+            self.chk.msg.evaluates_to_none(e)
         return expr_type
 
     def visit_temp_node(self, e: TempNode) -> Type:

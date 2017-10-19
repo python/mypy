@@ -1525,9 +1525,7 @@ from typing import Iterator
 def f() -> Iterator[int]:
     yield 5
 def g() -> Iterator[int]:
-    a = yield from f()
-[out]
-main:5: error: Function does not return a value
+    a = yield from f()  # E: Expression evaluates to "None"
 
 [case testYieldFromGeneratorHasValue]
 from typing import Iterator, Generator
