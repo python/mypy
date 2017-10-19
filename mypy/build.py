@@ -1934,6 +1934,10 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         # TODO: This could also be a per-module option.
         manager.errors.generate_unused_ignore_notes()
     manager.saved_cache.update(preserve_cache(graph))
+    if manager.options.dump_deps:
+        # This speeds up startup a little when not using the daemon mode.
+        from mypy.server.deps import dump_all_dependencies
+        dump_all_dependencies(manager.modules, manager.all_types, manager.options.python_version)
     return graph
 
 
