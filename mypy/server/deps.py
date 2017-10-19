@@ -47,7 +47,7 @@ class DependencyVisitor(TraverserVisitor):
                  python_version: Tuple[int, int]) -> None:
         self.stack = [prefix]
         self.target_stack = [prefix]
-        self.scope_stack = []  # type: List[Node]
+        self.scope_stack = [None]  # type: List[Optional[Node]]
         self.type_map = type_map
         self.python2 = python_version[0] == 2
         self.map = {}  # type: Dict[str, Set[str]]
@@ -101,6 +101,7 @@ class DependencyVisitor(TraverserVisitor):
         self.is_class = True
         # Add dependencies to type variables of a generic class.
         for tv in o.type_vars:
+            assert tv.fullname
             self.add_dependency(make_trigger(tv.fullname), target)
         # Add dependencies to base types.
         for base in o.info.bases:
