@@ -335,7 +335,7 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(typ, TupleType):
             typ = typ.fallback
         if isinstance(typ, Instance):
-            trigger = make_trigger(typ.type.fullname() + '.' +  method)
+            trigger = make_trigger(typ.type.fullname() + '.' + method)
             self.add_dependency(trigger)
         elif isinstance(typ, UnionType):
             for item in typ.items:
