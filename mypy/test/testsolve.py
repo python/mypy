@@ -5,7 +5,7 @@ from typing import List, Union, Tuple, Optional
 from mypy.myunit import Suite, assert_equal
 from mypy.constraints import SUPERTYPE_OF, SUBTYPE_OF, Constraint
 from mypy.solve import solve_constraints
-from mypy.typefixture import TypeFixture
+from mypy.test.typefixture import TypeFixture
 from mypy.types import Type, TypeVarType, TypeVarId
 
 
