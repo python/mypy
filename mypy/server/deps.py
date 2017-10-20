@@ -1,6 +1,6 @@
 """Generate fine-grained dependencies for AST nodes."""
 
-from typing import Dict, List, Set, Optional, Tuple
+from typing import Dict, List, Set, Optional, Tuple, Union
 
 from mypy.checkmember import bind_self
 from mypy.nodes import (
@@ -119,7 +119,7 @@ class DependencyVisitor(TraverserVisitor):
         # Add dependencies to base types.
         for base in o.info.bases:
             self.add_type_dependencies(base, target=target)
-        # TODO: Add dependencies based on remaining attributes.
+        # TODO: Add dependencies based on remaining TypeInfo attributes.
         super().visit_class_def(o)
         self.is_class = old_is_class
         info = o.info
@@ -154,12 +154,14 @@ class DependencyVisitor(TraverserVisitor):
             super().visit_block(o)
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
+        # TODO: Implement all assignment special forms
         if isinstance(o.rvalue, CallExpr) and isinstance(o.rvalue.analyzed, TypeVarExpr):
+            # TODO: Support type variable value restriction
             analyzed = o.rvalue.analyzed
-            # TODO: implement all special forms
             self.add_type_dependencies(analyzed.upper_bound,
                                        target=make_trigger(analyzed.fullname()))
         else:
+            # Normal assignment
             super().visit_assignment_stmt(o)
             for lvalue in o.lvalues:
                 self.process_lvalue(lvalue)
@@ -174,6 +176,7 @@ class DependencyVisitor(TraverserVisitor):
                     self.add_dependency(trigger)
 
     def process_lvalue(self, lvalue: Expression) -> None:
+        """Generate additional dependencies for an lvalue."""
         if isinstance(lvalue, IndexExpr):
             self.add_indexing_method_dependency(lvalue, lvalue=True)
         elif isinstance(lvalue, NameExpr):
@@ -390,26 +393,23 @@ class DependencyVisitor(TraverserVisitor):
         self.map.setdefault(trigger, set()).add(target)
 
     def add_type_dependencies(self, typ: Type, target: Optional[str] = None) -> None:
+        """Add dependencies to all components of a type.
+
+        Args:
+            target: If not None, override the default (current) target of the
+                generated dependency.
+        """
         for trigger in get_type_dependencies(typ):
             self.add_dependency(trigger, target)
 
     def add_attribute_dependency(self, typ: Type, name: str) -> None:
-        # TODO: use attribute_triggers
-        if isinstance(typ, TypeVarType):
-            typ = typ.upper_bound
-        if isinstance(typ, TupleType):
-            typ = typ.fallback
-        if isinstance(typ, Instance):
-            member = '%s.%s' % (typ.type.fullname(), name)
-            self.add_dependency(make_trigger(member))
-        elif isinstance(typ, FunctionLike) and typ.is_type_obj():
-            member = '%s.%s' % (typ.type_object().fullname(), name)
-            self.add_dependency(make_trigger(member))
-        elif isinstance(typ, UnionType):
-            for item in typ.items:
-                self.add_attribute_dependency(item, name)
+        """Add dependencies for accessing a named attribute of a type."""
+        targets = self.attribute_triggers(typ, name)
+        for target in targets:
+            self.add_dependency(target)
 
     def attribute_triggers(self, typ: Type, name: str) -> List[str]:
+        """Return all triggers associated with the attribute of a type."""
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
         if isinstance(typ, TupleType):
@@ -439,18 +439,21 @@ class DependencyVisitor(TraverserVisitor):
             self.add_attribute_dependency(typ, '__iter__')
 
     def push(self, component: str) -> str:
+        """Push a target name component (not a class)."""
         target = '%s.%s' % (self.target_stack[-1], component)
         self.stack.append(target)
         self.target_stack.append(target)
         return target
 
     def push_class(self, name: str) -> str:
+        """Push a target name component (a class)."""
         self.stack.append(self.stack[-1])
         target = '%s.%s' % (self.target_stack[-1], name)
         self.target_stack.append(target)
         return target
 
     def pop(self) -> None:
+        """Pop a target name component."""
         self.stack.pop()
         self.target_stack.pop()
 
@@ -458,13 +461,15 @@ class DependencyVisitor(TraverserVisitor):
         """Return the current target."""
         return self.stack[-1]
 
-    def enter_scope(self, node: Node) -> None:
+    def enter_scope(self, node: Union[MypyFile, TypeInfo, FuncDef]) -> None:
+        """Enter a scope."""
         self.scope_stack.append(node)
 
     def leave_scope(self) -> None:
+        """Leave the innermost scope."""
         self.scope_stack.pop()
 
-    def current_scope(self) -> Node:
+    def current_scope(self) -> Optional[Node]:
         return self.scope_stack[-1]
 
 
@@ -555,6 +560,7 @@ def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
 def dump_all_dependencies(modules: Dict[str, MypyFile],
                           type_map: Dict[Expression, Type],
                           python_version: Tuple[int, int]) -> None:
+    """Generate dependencies for all interesting modules and print them to stdout."""
     all_deps = {}  # type: Dict[str, Set[str]]
     for id, node in modules.items():
         # print('processing', id)
