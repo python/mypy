@@ -421,7 +421,7 @@ a = None # type: A
 
 def ff() -> None:
     x = f() # E: Need type annotation for variable
-    reveal_type(x)
+    reveal_type(x) # E: Revealed type is 'Any'
 
 g(None) # Ok
 f()     # Ok because not used to infer local variable type
@@ -1953,7 +1953,7 @@ T = TypeVar('T')
 def f() -> T: pass
 
 class C:
-    x = f()
+    x = f() # E: Need type annotation for variable
     def m(self) -> str:
         return 42 # E: Incompatible return value type (got "int", expected "str")
 
@@ -1970,7 +1970,7 @@ T = TypeVar('T')
 def f(x: Optional[T] = None) -> T: pass
 
 class C:
-    x = f()
+    x = f() # E: Need type annotation for variable
     def m(self) -> str:
         return 42 # E: Incompatible return value type (got "int", expected "str")
 
@@ -1986,7 +1986,7 @@ T = TypeVar('T')
 def f(x: List[T]) -> T: pass
 
 class C:
-    x = f([])
+    x = f([]) # E: Need type annotation for variable
     def m(self) -> str:
         return 42 # E: Incompatible return value type (got "int", expected "str")
 
