@@ -357,7 +357,7 @@ CacheMeta = NamedTuple('CacheMeta',
 
 
 def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
-    sentinel = None  # type: Any  # the values will be post-validated below
+    sentinel = None  # type: Any  # Values to be validated by the caller
     return CacheMeta(
         meta.get('id', sentinel),
         meta.get('path', sentinel),
