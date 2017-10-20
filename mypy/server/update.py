@@ -146,6 +146,7 @@ def build_incremental_step(manager: BuildManager,
                   path=path,
                   source=source,
                   manager=manager)  # TODO: more args?
+    # Parse file and run first pass of semantic analysis.
     state.parse_file()
     # TODO: state.fix_suppressed_dependencies()?
     state.semantic_analysis()
