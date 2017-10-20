@@ -8,7 +8,8 @@ from mypy.nodes import (
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
-    TypeInfo, Var, LDEF, MDEF, GDEF, op_methods, reverse_op_methods, ops_with_inplace_method
+    TypeInfo, FuncBase, Var, LDEF, MDEF, GDEF, op_methods, reverse_op_methods,
+    ops_with_inplace_method
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -23,16 +24,24 @@ def get_dependencies(prefix: str, node: Node,
                      type_map: Dict[Expression, Type],
                      python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get all dependencies of a node, recursively."""
-    visitor = DependencyVisitor(prefix, type_map, python_version)
+    visitor = DependencyVisitor(prefix, prefix, None, type_map, python_version)
     node.accept(visitor)
     return visitor.map
 
 
-def get_dependencies_of_target(prefix: str, node: Node,
+def get_dependencies_of_target(module_id: str, node: Node,
                                type_map: Dict[Expression, Type],
                                python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get dependencies of a target -- don't recursive into nested targets."""
-    visitor = DependencyVisitor(prefix, type_map, python_version)
+    prefix = module_id
+    surrounding_target = module_id
+    scope = None
+    if isinstance(node, FuncBase) and node.info:
+        # TODO: Nested classes
+        # TOOD: Add tests
+        surrounding_target += '.{}'.format(node.info.name())
+        scope = node.info
+    visitor = DependencyVisitor(prefix, surrounding_target, scope, type_map, python_version)
     if isinstance(node, MypyFile):
         for defn in node.defs:
             if not isinstance(defn, (ClassDef, FuncDef)):
@@ -43,11 +52,15 @@ def get_dependencies_of_target(prefix: str, node: Node,
 
 
 class DependencyVisitor(TraverserVisitor):
-    def __init__(self, prefix: str, type_map: Dict[Expression, Type],
+    def __init__(self,
+                 prefix: str,
+                 surrounding_target: str,
+                 scope: Optional[Node],
+                 type_map: Dict[Expression, Type],
                  python_version: Tuple[int, int]) -> None:
         self.stack = [prefix]
-        self.target_stack = [prefix]
-        self.scope_stack = [None]  # type: List[Optional[Node]]
+        self.target_stack = [surrounding_target]
+        self.scope_stack = [scope]
         self.type_map = type_map
         self.python2 = python_version[0] == 2
         self.map = {}  # type: Dict[str, Set[str]]
@@ -94,7 +107,7 @@ class DependencyVisitor(TraverserVisitor):
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
-        self.enter_scope(o)
+        self.enter_scope(o.info)
         target = self.push_class(o.name)
         self.add_dependency(make_trigger(target), target)
         old_is_class = self.is_class

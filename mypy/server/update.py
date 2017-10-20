@@ -388,11 +388,8 @@ def update_deps(module_id: str,
                 options: Options) -> None:
     for deferred in nodes:
         node = deferred.node
-        prefix = module_id
-        if isinstance(node, FuncBase) and node.info:
-            prefix += '.{}'.format(node.info.name())
         type_map = graph[module_id].type_checker.type_map
-        new_deps = get_dependencies_of_target(prefix, node, type_map, options.python_version)
+        new_deps = get_dependencies_of_target(module_id, node, type_map, options.python_version)
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
