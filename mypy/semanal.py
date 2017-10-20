@@ -380,7 +380,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                         if not self.set_original_def(n, defn):
                             self.name_already_defined(defn.name(), defn)
                     self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
-                self.prepare_method_signature(defn)
+                self.prepare_method_signature(defn, self.type)
             elif self.is_func_scope():
                 # Nested function
                 assert self.locals[-1] is not None, "No locals at function scope"
@@ -395,8 +395,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             else:
                 # Top-level function
                 if not defn.is_decorated and not defn.is_overload:
-                    symbol = self.globals.get(defn.name())
-                    assert symbol, "Global function not found in globals"
+                    symbol = self.globals[defn.name()]
                     if isinstance(symbol.node, FuncDef) and symbol.node != defn:
                         # This is redefinition. Conditional redefinition is okay.
                         if not self.set_original_def(symbol.node, defn):
@@ -424,10 +423,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                     defn.type = defn.type.copy_modified(ret_type=ret_type)
             self.errors.pop_function()
 
-    def prepare_method_signature(self, func: FuncDef) -> None:
+    def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
         # Only non-static methods are special.
-        assert self.type is not None, "This method should be only called inside a class"
         functype = func.type
         if not func.is_static:
             if not func.arguments:
@@ -436,9 +434,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 self_type = functype.arg_types[0]
                 if isinstance(self_type, AnyType):
                     if func.is_class or func.name() in ('__new__', '__init_subclass__'):
-                        leading_type = self.class_type(self.type)
+                        leading_type = self.class_type(info)
                     else:
-                        leading_type = fill_typevars(self.type)
+                        leading_type = fill_typevars(info)
                     func.type = replace_implicit_first_type(functype, leading_type)
 
     def set_original_def(self, previous: Optional[Node], new: FuncDef) -> bool:
