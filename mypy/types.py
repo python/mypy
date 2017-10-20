@@ -357,6 +357,10 @@ class UninhabitedType(Type):
     can_be_true = False
     can_be_false = False
     is_noreturn = False  # Does this come from a NoReturn?  Purely for error messages.
+    # It is important to track whether this is an actual NoReturn type, or just a result
+    # of ambiguous type inference, in the latter case we don't want to mark a branch as
+    # unreachable in binder.
+    ambiguous = False  # Is this a result of inference for a variable without constraints?
 
     def __init__(self, is_noreturn: bool = False, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)

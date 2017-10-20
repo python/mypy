@@ -1946,3 +1946,52 @@ def main() -> None:
     reveal_type(b) # E: Revealed type is 'builtins.int'
 [builtins fixtures/tuple.pyi]
 [out]
+
+[case testDontMarkUnreachableAfterInferenceUninhabited]
+from typing import TypeVar
+T = TypeVar('T')
+def f() -> T: pass
+
+class C:
+    x = f()
+    def m(self) -> str:
+        return 42 # E: Incompatible return value type (got "int", expected "str")
+
+if bool():
+    f()
+    1 + '' # E: Unsupported left operand type for + ("int")
+[builtins fixtures/list.pyi]
+[out]
+
+[case testDontMarkUnreachableAfterInferenceUninhabited2]
+# flags: --strict-optional
+from typing import TypeVar, Optional
+T = TypeVar('T')
+def f(x: Optional[T] = None) -> T: pass
+
+class C:
+    x = f()
+    def m(self) -> str:
+        return 42 # E: Incompatible return value type (got "int", expected "str")
+
+if bool():
+    f()
+    1 + '' # E: Unsupported left operand type for + ("int")
+[builtins fixtures/list.pyi]
+[out]
+
+[case testDontMarkUnreachableAfterInferenceUninhabited3]
+from typing import TypeVar, List
+T = TypeVar('T')
+def f(x: List[T]) -> T: pass
+
+class C:
+    x = f([])
+    def m(self) -> str:
+        return 42 # E: Incompatible return value type (got "int", expected "str")
+
+if bool():
+    f([])
+    1 + '' # E: Unsupported left operand type for + ("int")
+[builtins fixtures/list.pyi]
+[out]
