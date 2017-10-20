@@ -66,11 +66,18 @@ class DependencyVisitor(TraverserVisitor):
         self.map = {}  # type: Dict[str, Set[str]]
         self.is_class = False
 
-    # TODO
-    #   decorated functions
-    #   overloads
+    # TODO (incomplete):
     #   from m import *
     #   await
+    #   named tuples
+    #   TypedDict
+    #   protocols
+    #   metaclasses
+    #   type aliases
+    #   super()
+    #   relative imports
+    #   functional enum
+    #   type variable with value restriction
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         # TODO: Do we need to anything here?
