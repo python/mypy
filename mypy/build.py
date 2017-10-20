@@ -13,6 +13,7 @@ The function build() is the main interface to this module.
 import binascii
 import collections
 import contextlib
+import gc
 import hashlib
 import json
 import os.path
@@ -23,15 +24,17 @@ import time
 from os.path import dirname, basename
 import errno
 
-from typing import (AbstractSet, Dict, Iterable, Iterator, List, cast, Any,
-                    NamedTuple, Optional, Set, Tuple, Union, Callable)
+from typing import (AbstractSet, Any, cast, Dict, Iterable, Iterator, List,
+                    Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
 # Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
 MYPY = False
 if MYPY:
     from typing import Deque
 
 from mypy.nodes import (MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
-from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
+from mypy.semanal_pass1 import SemanticAnalyzerPass1
+from mypy.semanal import SemanticAnalyzerPass2
+from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, DecodeError, report_internal_error
@@ -78,7 +81,7 @@ class BuildResult:
         self.manager = manager
         self.graph = graph
         self.files = manager.modules
-        self.types = manager.all_types
+        self.types = manager.all_types  # Non-empty for tests only
         self.errors = manager.errors.messages()
 
 
@@ -117,10 +120,17 @@ class BuildSourceSet:
             return False
 
 
+# A dict containing saved cache data from a previous run.  This will
+# be updated in place with newly computed cache data.  See dmypy.py.
+SavedCache = Dict[str, Tuple['CacheMeta', MypyFile]]
+
+
 def build(sources: List[BuildSource],
           options: Options,
           alt_lib_path: Optional[str] = None,
-          bin_dir: Optional[str] = None) -> BuildResult:
+          bin_dir: Optional[str] = None,
+          saved_cache: Optional[SavedCache] = None,
+          ) -> BuildResult:
     """Analyze a program.
 
     A single call to build performs parsing, semantic analysis and optionally
@@ -136,7 +146,10 @@ def build(sources: List[BuildSource],
         (takes precedence over other directories)
       bin_dir: directory containing the mypy script, used for finding data
         directories; if omitted, use '.' as the data directory
+      saved_cache: optional dict with saved cache state for dmypy (read-write!)
     """
+    # This seems the most reasonable place to tune garbage collection.
+    gc.set_threshold(50000)
 
     data_dir = default_data_dir(bin_dir)
 
@@ -193,16 +206,16 @@ def build(sources: List[BuildSource],
                            options=options,
                            version_id=__version__,
                            plugin=plugin,
-                           errors=errors)
+                           errors=errors,
+                           saved_cache=saved_cache)
 
     try:
         graph = dispatch(sources, manager)
         return BuildResult(manager, graph)
     finally:
-        manager.log("Build finished in %.3f seconds with %d modules, %d types, and %d errors" %
+        manager.log("Build finished in %.3f seconds with %d modules, and %d errors" %
                     (time.time() - manager.start_time,
                      len(manager.modules),
-                     len(manager.all_types),
                      manager.errors.num_messages()))
         # Finish the HTML or XML reports even if CompileError was raised.
         reports.finish()
@@ -337,6 +350,27 @@ CacheMeta = NamedTuple('CacheMeta',
 # silent mode or simply not found.
 
 
+def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
+    sentinel = None  # type: Any  # the values will be post-validated below
+    return CacheMeta(
+        meta.get('id', sentinel),
+        meta.get('path', sentinel),
+        int(meta['mtime']) if 'mtime' in meta else sentinel,
+        meta.get('size', sentinel),
+        meta.get('hash', sentinel),
+        meta.get('dependencies', []),
+        int(meta['data_mtime']) if 'data_mtime' in meta else sentinel,
+        data_json,
+        meta.get('suppressed', []),
+        meta.get('child_modules', []),
+        meta.get('options'),
+        meta.get('dep_prios', []),
+        meta.get('interface_hash', ''),
+        meta.get('version_id', sentinel),
+        meta.get('ignore_all', True),
+    )
+
+
 # Priorities used for imports.  (Here, top-level includes inside a class.)
 # These are used to determine a more predictable order in which the
 # nodes in an import cycle are processed.
@@ -450,8 +484,6 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     return -1
 
 
-# TODO: Get rid of all_types.  It's not used except for one log message.
-#       Maybe we could instead publish a map from module ID to its type_map.
 class BuildManager:
     """This class holds shared state for building a mypy program.
 
@@ -467,13 +499,15 @@ class BuildManager:
                        Semantic analyzer, pass 2
       semantic_analyzer_pass3:
                        Semantic analyzer, pass 3
-      all_types:       Map {Expression: Type} collected from all modules
+      all_types:       Map {Expression: Type} collected from all modules (tests only)
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
+      saved_cache:     Dict with saved cache state for dmypy (read-write!)
+      stats:           Dict with various instrumentation numbers
     """
 
     def __init__(self, data_dir: str,
@@ -484,7 +518,9 @@ class BuildManager:
                  options: Options,
                  version_id: str,
                  plugin: Plugin,
-                 errors: Errors) -> None:
+                 errors: Errors,
+                 saved_cache: Optional[SavedCache] = None,
+                 ) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = errors
@@ -497,15 +533,17 @@ class BuildManager:
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
         self.plugin = plugin
-        self.semantic_analyzer = SemanticAnalyzer(self.modules, self.missing_modules,
+        self.semantic_analyzer = SemanticAnalyzerPass2(self.modules, self.missing_modules,
                                                   lib_path, self.errors, self.plugin)
-        self.modules = self.semantic_analyzer.modules
-        self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors, self.semantic_analyzer)
-        self.all_types = {}  # type: Dict[Expression, Type]
+        self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
+                                                             self.semantic_analyzer)
+        self.all_types = {}  # type: Dict[Expression, Type]  # Used by tests only
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
         self.plugin = plugin
+        self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
+        self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
 
     def maybe_swap_for_shadow_path(self, path: str) -> str:
         if (self.options.shadow_file and
@@ -589,6 +627,9 @@ class BuildManager:
         num_errs = self.errors.num_messages()
         tree = parse(source, path, self.errors, options=self.options)
         tree._fullname = id
+        self.add_stats(files_parsed=1,
+                       modules_parsed=int(not tree.is_stub),
+                       stubs_parsed=int(tree.is_stub))
 
         if self.errors.num_messages() != num_errs:
             self.log("Bailing due to parse errors")
@@ -623,13 +664,26 @@ class BuildManager:
 
     def log(self, *message: str) -> None:
         if self.options.verbosity >= 1:
-            print('LOG: ', *message, file=sys.stderr)
+            if message:
+                print('LOG: ', *message, file=sys.stderr)
+            else:
+                print(file=sys.stderr)
             sys.stderr.flush()
 
     def trace(self, *message: str) -> None:
         if self.options.verbosity >= 2:
             print('TRACE:', *message, file=sys.stderr)
             sys.stderr.flush()
+
+    def add_stats(self, **kwds: Any) -> None:
+        for key, value in kwds.items():
+            if key in self.stats:
+                self.stats[key] += value
+            else:
+                self.stats[key] = value
+
+    def stats_summary(self) -> Mapping[str, object]:
+        return self.stats
 
 
 def remove_cwd_prefix_from_path(p: str) -> str:
@@ -877,6 +931,14 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
       A CacheMeta instance if the cache data was found and appears
       valid; otherwise None.
     """
+    saved_cache = manager.saved_cache
+    if id in saved_cache:
+        m, t = saved_cache[id]
+        manager.add_stats(reused_metas=1)
+        manager.trace("Reusing saved metadata for %s" % id)
+        # Note: it could still be skipped if the mtime/size/hash mismatches.
+        return m
+
     # TODO: May need to take more build options into account
     meta_json, data_json = get_cache_names(id, path, manager)
     manager.trace('Looking for {} at {}'.format(id, meta_json))
@@ -891,24 +953,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         manager.log('Could not load cache for {}: meta cache is not a dict: {}'
                     .format(id, repr(meta)))
         return None
-    sentinel = None  # type: Any  # the values will be post-validated below
-    m = CacheMeta(
-        meta.get('id', sentinel),
-        meta.get('path', sentinel),
-        int(meta['mtime']) if 'mtime' in meta else sentinel,
-        meta.get('size', sentinel),
-        meta.get('hash', sentinel),
-        meta.get('dependencies', []),
-        int(meta['data_mtime']) if 'data_mtime' in meta else sentinel,
-        data_json,
-        meta.get('suppressed', []),
-        meta.get('child_modules', []),
-        meta.get('options'),
-        meta.get('dep_prios', []),
-        meta.get('interface_hash', ''),
-        meta.get('version_id', sentinel),
-        meta.get('ignore_all', True),
-    )
+    m = cache_meta_from_dict(meta, data_json)
     # Don't check for path match, that is dealt with in validate_meta().
     if (m.id != id or
             m.mtime is None or m.size is None or
@@ -945,6 +990,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
                                   .format(key, cached_options.get(key), current_options.get(key)))
         return None
 
+    manager.add_stats(fresh_metas=1)
     return m
 
 
@@ -968,7 +1014,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                   ignore_all: bool, manager: BuildManager) -> Optional[CacheMeta]:
     '''Checks whether the cached AST of this module can be used.
 
-    Return:
+    Returns:
       None, if the cached AST is unusable.
       Original meta, if mtime/size matched.
       Meta with mtime updated to match source file, if hash/size matched but mtime/path didn't.
@@ -996,6 +1042,10 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
     # TODO: Share stat() outcome with find_module()
     path = os.path.abspath(path)
+    # TODO: Don't use isfile() but check st.st_mode
+    if not os.path.isfile(path):
+        manager.log('Metadata abandoned for {}: file {} does not exist'.format(id, path))
+        return None
     st = manager.get_stat(path)  # TODO: Errors
     size = st.st_size
     if size != meta.size:
@@ -1041,7 +1091,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
             return meta
 
     # It's a match on (id, path, size, hash, mtime).
-    manager.log('Metadata fresh for {}: file {}'.format(id, path))
+    manager.trace('Metadata fresh for {}: file {}'.format(id, path))
     return meta
 
 
@@ -1056,7 +1106,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
                 old_interface_hash: str, source_hash: str,
-                ignore_all: bool, manager: BuildManager) -> str:
+                ignore_all: bool, manager: BuildManager) -> Tuple[str, Optional[CacheMeta]]:
     """Write cache files for a module.
 
     Note that this mypy's behavior is still correct when any given
@@ -1073,8 +1123,10 @@ def write_cache(id: str, path: str, tree: MypyFile,
       old_interface_hash: the hash from the previous version of the data cache file
       manager: the build manager (for pyversion, log/trace)
 
-    Return:
-      The new interface hash based on the serialized tree
+    Returns:
+      A tuple containing the interface hash and CacheMeta
+      corresponding to the metadata that was written (the latter may
+      be None if the cache could not be written).
     """
     # Obtain file paths
     path = os.path.abspath(path)
@@ -1107,7 +1159,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             except OSError:
                 pass
         # Still return the interface hash we computed.
-        return interface_hash
+        return interface_hash, None
 
     # Write data cache file, if applicable
     if old_interface_hash == interface_hash:
@@ -1129,7 +1181,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             # data_mtime field won't match the data file's mtime.
             # Both have the effect of slowing down the next run a
             # little bit due to an out-of-date cache file.
-            return interface_hash
+            return interface_hash, None
         data_mtime = getmtime(data_json)
 
     mtime = int(st.st_mtime)
@@ -1163,7 +1215,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
         # The next run will simply find the cache entry out of date.
         manager.log("Error writing meta JSON file {}".format(meta_json))
 
-    return interface_hash
+    return interface_hash, cache_meta_from_dict(meta, data_json)
 
 
 def delete_cache(id: str, path: str, manager: BuildManager) -> None:
@@ -1176,6 +1228,8 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     path = os.path.abspath(path)
     meta_json, data_json = get_cache_names(id, path, manager)
     manager.log('Deleting {} {} {} {}'.format(id, path, meta_json, data_json))
+    if id in manager.saved_cache:
+        del manager.saved_cache[id]
 
     for filename in [data_json, meta_json]:
         try:
@@ -1382,6 +1436,9 @@ class State:
     # Whether to ignore all errors
     ignore_all = False
 
+    # Whether this module was found to have errors
+    has_errors = False
+
     def __init__(self,
                  id: Optional[str],
                  path: Optional[str],
@@ -1558,6 +1615,7 @@ class State:
         """Marks this module as having a stale public interface, and discards the cache data."""
         self.meta = None
         self.externally_same = False
+        self.has_errors = on_errors
         if not on_errors:
             self.manager.stale_modules.add(self.id)
 
@@ -1590,6 +1648,7 @@ class State:
         # TODO: Assert data file wasn't changed.
         self.tree = MypyFile.deserialize(data)
         self.manager.modules[self.id] = self.tree
+        self.manager.add_stats(fresh_trees=1)
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -1605,7 +1664,7 @@ class State:
         """
         In Python, if a and a.b are both modules, running `import a.b` will
         modify not only the current module's namespace, but a's namespace as
-        well -- see SemanticAnalyzer.add_submodules_to_parent_modules for more
+        well -- see SemanticAnalyzerPass2.add_submodules_to_parent_modules for more
         details.
 
         However, this patching process can occur after `a` has been parsed and
@@ -1689,13 +1748,13 @@ class State:
         # definitions in the file to the symbol table.  We must do
         # this before processing imports, since this may mark some
         # import statements as unreachable.
-        first = FirstPass(manager.semantic_analyzer)
+        first = SemanticAnalyzerPass1(manager.semantic_analyzer)
         with self.wrap_context():
             first.visit_file(self.tree, self.xpath, self.id, self.options)
 
         # Initialize module symbol table, which was populated by the
         # semantic analyzer.
-        # TODO: Why can't FirstPass .analyze() do this?
+        # TODO: Why can't SemanticAnalyzerPass1 .analyze() do this?
         self.tree.names = manager.semantic_analyzer.globals
 
         # Compute (direct) dependencies.
@@ -1785,7 +1844,9 @@ class State:
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            manager.all_types.update(self.type_checker.type_map)
+            # Some tests want to look at the set of all types.
+            if manager.options.use_builtins_fixtures:
+                manager.all_types.update(self.type_checker.type_map)
 
             if self.options.incremental:
                 self._patch_indirect_dependencies(self.type_checker.module_refs,
@@ -1838,7 +1899,7 @@ class State:
             self.mark_interface_stale(on_errors=True)
             return
         dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
-        new_interface_hash = write_cache(
+        new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
             list(self.dependencies), list(self.suppressed), list(self.child_modules),
             dep_prios, self.interface_hash, self.source_hash, self.ignore_all,
@@ -1852,8 +1913,15 @@ class State:
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
+    manager.log()
     manager.log("Mypy version %s" % __version__)
+    t0 = time.time()
     graph = load_graph(sources, manager)
+    t1 = time.time()
+    manager.add_stats(graph_size=len(graph),
+                      stubs_found=sum(g.path is not None and g.path.endswith('.pyi')
+                                      for g in graph.values()),
+                      graph_load_time=(t1 - t0))
     if not graph:
         print("Nothing to do?!")
         return graph
@@ -1865,7 +1933,17 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.warn_unused_ignores:
         # TODO: This could also be a per-module option.
         manager.errors.generate_unused_ignore_notes()
+    manager.saved_cache.update(preserve_cache(graph))
     return graph
+
+
+def preserve_cache(graph: Graph) -> SavedCache:
+    saved_cache = {}
+    for id, state in graph.items():
+        assert state.id == id
+        if state.meta is not None and state.tree is not None and not state.has_errors:
+            saved_cache[id] = (state.meta, state.tree)
+    return saved_cache
 
 
 class NodeInfo:
@@ -2089,11 +2167,11 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
         scc_str = " ".join(scc)
         if fresh:
-            manager.log("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
+            manager.trace("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
             fresh_scc_queue.append(scc)
         else:
             if len(fresh_scc_queue) > 0:
-                manager.log("Processing the last {} queued SCCs".format(len(fresh_scc_queue)))
+                manager.log("Processing {} queued fresh SCCs".format(len(fresh_scc_queue)))
                 # Defer processing fresh SCCs until we actually run into a stale SCC
                 # and need the earlier modules to be loaded.
                 #
@@ -2104,7 +2182,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 # TODO: see if it's possible to determine if we need to process only a
                 # _subset_ of the past SCCs instead of having to process them all.
                 for prev_scc in fresh_scc_queue:
-                    process_fresh_scc(graph, prev_scc)
+                    process_fresh_scc(graph, prev_scc, manager)
                 fresh_scc_queue = []
             size = len(scc)
             if size == 1:
@@ -2114,8 +2192,11 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             process_stale_scc(graph, scc, manager)
 
     sccs_left = len(fresh_scc_queue)
+    nodes_left = sum(len(scc) for scc in fresh_scc_queue)
+    manager.add_stats(sccs_left=sccs_left, nodes_left=nodes_left)
     if sccs_left:
-        manager.log("{} fresh SCCs left in queue (and will remain unprocessed)".format(sccs_left))
+        manager.log("{} fresh SCCs ({} nodes) left in queue (and will remain unprocessed)"
+                    .format(sccs_left, nodes_left))
         manager.trace(str(fresh_scc_queue))
     else:
         manager.log("No fresh SCCs left in queue")
@@ -2168,8 +2249,19 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
     return [s for ss in sccs for s in order_ascc(graph, ss, pri_max)]
 
 
-def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
+def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
     """Process the modules in one SCC from their cached data."""
+    # TODO: Clean this up, it's ugly.
+    saved_cache = manager.saved_cache
+    if all(id in saved_cache for id in scc):
+        trees = {id: saved_cache[id][1] for id in scc}
+        if all(trees.values()):
+            for id, tree in trees.items():
+                manager.add_stats(reused_trees=1)
+                manager.trace("Reusing saved tree %s" % id)
+                graph[id].tree = tree
+                manager.modules[id] = tree
+            return
     for id in scc:
         graph[id].load_tree()
     for id in scc:

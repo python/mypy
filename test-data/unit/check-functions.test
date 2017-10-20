@@ -507,8 +507,8 @@ class A:
     f = x # type: Callable[[], None]
     g = x # type: Callable[[B], None]
 a = None # type: A
-a.f() # E: Invalid method type
-a.g() # E: Invalid method type
+a.f() # E: Attribute function "f" with type "Callable[[], None]" does not accept self argument
+a.g() # E: Invalid self argument "A" to attribute function "g" with type "Callable[[B], None]"
 
 [case testMethodWithDynamicallyTypedMethodAsDataAttribute]
 from typing import Any, Callable
@@ -568,7 +568,7 @@ class A(Generic[t]):
 ab = None # type: A[B]
 ac = None # type: A[C]
 ab.f()
-ac.f()   # E: Invalid method type
+ac.f()   # E: Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]"
 
 [case testPartiallyTypedSelfInMethodDataAttribute]
 from typing import Any, TypeVar, Generic, Callable

@@ -19,6 +19,7 @@ class dict(Generic[KT, VT]):
     def __getitem__(self, key: KT) -> VT: pass
     def __setitem__(self, k: KT, v: VT) -> None: pass
     def __iter__(self) -> Iterator[KT]: pass
+    def __contains__(self, item: object) -> bool: pass
     def update(self, a: Mapping[KT, VT]) -> None: pass
     @overload
     def get(self, k: KT) -> Optional[VT]: pass

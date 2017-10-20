@@ -310,7 +310,10 @@ class MessageBuilder:
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(self.format_bare(typ.item, verbosity))
         elif isinstance(typ, ForwardRef):  # may appear in semanal.py
-            return self.format_bare(typ.link, verbosity)
+            if typ.resolved:
+                return self.format_bare(typ.resolved, verbosity)
+            else:
+                return self.format_bare(typ.unbound, verbosity)
         elif isinstance(typ, FunctionLike):
             func = typ
             if func.is_type_obj():
@@ -860,11 +863,15 @@ class MessageBuilder:
     def cannot_determine_type_in_base(self, name: str, base: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s' in base class '%s'" % (name, base), context)
 
-    def invalid_method_type(self, sig: CallableType, context: Context) -> None:
-        self.fail('Invalid method type', context)
+    def no_formal_self(self, name: str, item: CallableType, context: Context) -> None:
+        self.fail('Attribute function "%s" with type %s does not accept self argument'
+                  % (name, self.format(item)), context)
 
-    def invalid_class_method_type(self, sig: CallableType, context: Context) -> None:
-        self.fail('Invalid class method type', context)
+    def incompatible_self_argument(self, name: str, arg: Type, sig: CallableType,
+                                   is_classmethod: bool, context: Context) -> None:
+        kind = 'class attribute function' if is_classmethod else 'attribute function'
+        self.fail('Invalid self argument %s to %s "%s" with type %s'
+                  % (self.format(arg), kind, name, self.format(sig)), context)
 
     def incompatible_conditional_function_def(self, defn: FuncDef) -> None:
         self.fail('All conditional function variants must have identical '

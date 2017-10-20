@@ -507,6 +507,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                      self.direction)
         elif isinstance(self.actual, TypeType):
             return infer_constraints(template.item, self.actual.item, self.direction)
+        elif isinstance(self.actual, AnyType):
+            return infer_constraints(template.item, self.actual, self.direction)
         else:
             return []
 

@@ -13,9 +13,11 @@ class function: pass
 
 class int: pass
 class str: pass
+class bool: pass
 
 class set(Iterable[T], Generic[T]):
     def __iter__(self) -> Iterator[T]: pass
+    def __contains__(self, item: object) -> bool: pass
     def add(self, x: T) -> None: pass
     def discard(self, x: T) -> None: pass
     def update(self, x: Set[T]) -> None: pass

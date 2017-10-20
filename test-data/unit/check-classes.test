@@ -2105,7 +2105,7 @@ class B:
     a = A
     bad = lambda: 42
 
-B().bad() # E: Invalid method type
+B().bad() # E: Attribute function "bad" with type "Callable[[], int]" does not accept self argument
 reveal_type(B.a) # E: Revealed type is 'def () -> __main__.A'
 reveal_type(B().a) # E: Revealed type is 'def () -> __main__.A'
 reveal_type(B().a()) # E: Revealed type is '__main__.A'
@@ -2119,17 +2119,17 @@ reveal_type(C().aa) # E: Revealed type is '__main__.A'
 [out]
 
 [case testClassValuedAttributesGeneric]
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Type
 T = TypeVar('T')
 
 class A(Generic[T]):
     def __init__(self, x: T) -> None:
         self.x = x
 class B(Generic[T]):
-    a = A[T]
+    a: Type[A[T]] = A
 
-reveal_type(B[int]().a) # E: Revealed type is 'def (x: builtins.int*) -> __main__.A[builtins.int*]'
-B[int]().a('hi') # E: Argument 1 has incompatible type "str"; expected "int"
+reveal_type(B[int]().a) # E: Revealed type is 'Type[__main__.A[builtins.int*]]'
+B[int]().a('hi') # E: Argument 1 to "A" has incompatible type "str"; expected "int"
 
 class C(Generic[T]):
     a = A
@@ -3995,3 +3995,79 @@ class E(metaclass=t.M): pass
 class F(six.with_metaclass(t.M)): pass
 @six.add_metaclass(t.M)
 class G: pass
+
+[case testCorrectEnclosingClassPushedInDeferred]
+class C:
+    def __getattr__(self, attr: str) -> int:
+        x: F
+        return x.f
+
+class F:
+    def __init__(self, f: int) -> None:
+        self.f = f
+[out]
+
+[case testCorrectEnclosingClassPushedInDeferred2]
+from typing import TypeVar
+T = TypeVar('T', bound=C)
+class C:
+    def m(self: T) -> T:
+        class Inner:
+            x: F
+            f = x.f
+        return self
+
+class F:
+    def __init__(self, f: int) -> None:
+        self.f = f
+[out]
+
+[case testCorrectEnclosingClassPushedInDeferred3]
+class A:
+    def f(self) -> None:
+        def g(x: int) -> int:
+            return y
+
+y = int()
+[out]
+
+[case testMetaclassMemberAccessViaType]
+from typing import Type
+class M(type):
+    def m(cls, x: int) -> int:
+        pass
+
+class C(metaclass=M):
+    pass
+x = C
+y: Type[C] = C
+
+reveal_type(type(C).m) # E: Revealed type is 'def (cls: __main__.M, x: builtins.int) -> builtins.int'
+reveal_type(type(x).m) # E: Revealed type is 'def (cls: __main__.M, x: builtins.int) -> builtins.int'
+reveal_type(type(y).m) # E: Revealed type is 'def (cls: __main__.M, x: builtins.int) -> builtins.int'
+[out]
+
+[case testMetaclassMemberAccessViaType2]
+from typing import Any, Type
+class M(type):
+    def m(cls, x: int) -> int:
+        pass
+B: Any
+class C(B, metaclass=M):
+    pass
+
+x: Type[C]
+reveal_type(x.m) # E: Revealed type is 'def (x: builtins.int) -> builtins.int'
+reveal_type(x.whatever) # E: Revealed type is 'Any'
+[out]
+
+[case testMetaclassMemberAccessViaType3]
+from typing import Any, Type, TypeVar
+T = TypeVar('T')
+class C(Any):
+    def bar(self: T) -> Type[T]: pass
+    def foo(self) -> None:
+        reveal_type(self.bar()) # E: Revealed type is 'Type[__main__.C*]'
+        reveal_type(self.bar().__name__) # E: Revealed type is 'builtins.str'
+[builtins fixtures/type.pyi]
+[out]

@@ -271,7 +271,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.check_runtime_protocol_test(e)
             if e.callee.fullname == 'builtins.issubclass':
                 self.check_protocol_issubclass(e)
-        if isinstance(ret_type, UninhabitedType):
+        if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
             self.chk.binder.unreachable()
         if not allow_none_return and isinstance(ret_type, NoneTyp):
             self.chk.msg.does_not_return_value(callee_type, e)
@@ -538,7 +538,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if (isinstance(callable_node, RefExpr)
                 and callable_node.fullname in ('enum.Enum', 'enum.IntEnum',
                                                'enum.Flag', 'enum.IntFlag')):
-                # An Enum() call that failed SemanticAnalyzer.check_enum_call().
+                # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
                 return callee.ret_type, callee
 
             if (callee.is_type_obj() and callee.type_object().is_abstract
@@ -652,7 +652,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             res = type_object_type(item.type, self.named_type)
             if isinstance(res, CallableType):
                 res = res.copy_modified(from_type_type=True)
-            return res
+            return expand_type_by_instance(res, item)
         if isinstance(item, UnionType):
             return UnionType([self.analyze_type_type_callee(item, context)
                               for item in item.relevant_items()], item.line)

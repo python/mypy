@@ -1747,3 +1747,13 @@ class D:
     def __or__(self, x: G[X]) -> G[X]: pass
     def __ior__(self, x: G[S2]) -> G[S2]: pass \
         # E: Signatures of "__ior__" and "__or__" are incompatible
+
+[case testConstraintInferenceForAnyAgainstTypeT]
+from typing import Type, Any, TypeVar
+
+T = TypeVar('T')
+
+def f(c: Type[T]) -> T: ...
+
+x: Any
+reveal_type(f(x))  # E: Revealed type is 'Any'

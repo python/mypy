@@ -413,7 +413,7 @@ def id(x: T) -> T:
     return x
 [out]
 
-[case testUnderspecifiedInferenceResult-skip]
+[case testUnderspecifiedInferenceResult]
 from typing import TypeVar
 T = TypeVar('T')
 class A: pass
@@ -421,6 +421,7 @@ a = None # type: A
 
 def ff() -> None:
     x = f() # E: Need type annotation for variable
+    reveal_type(x) # E: Revealed type is 'Any'
 
 g(None) # Ok
 f()     # Ok because not used to infer local variable type
@@ -874,9 +875,10 @@ for x in [A()]:
     b = x # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x
 
-for y in []:
-    a = y
-    reveal_type(y)  # E: Revealed type is 'builtins.None'
+for y in []: # E: Need type annotation for variable
+    a = y # E: Cannot determine type of 'y'
+    reveal_type(y)  # E: Revealed type is 'Any' \
+                    # E: Cannot determine type of 'y'
 
 class A: pass
 class B: pass
@@ -920,9 +922,11 @@ for x, y in [[A()]]:
     a = x
     a = y
 
-for e, f in [[]]:
-    reveal_type(e)  # E: Revealed type is 'builtins.None'
-    reveal_type(f)  # E: Revealed type is 'builtins.None'
+for e, f in [[]]:  # E: Need type annotation for variable
+    reveal_type(e)  # E: Revealed type is 'Any' \
+                    # E: Cannot determine type of 'e'
+    reveal_type(f)  # E: Revealed type is 'Any' \
+                    # E: Cannot determine type of 'f'
 
 class A: pass
 class B: pass
@@ -1941,4 +1945,53 @@ def main() -> None:
     reveal_type(a) # E: Revealed type is 'builtins.int'
     reveal_type(b) # E: Revealed type is 'builtins.int'
 [builtins fixtures/tuple.pyi]
+[out]
+
+[case testDontMarkUnreachableAfterInferenceUninhabited]
+from typing import TypeVar
+T = TypeVar('T')
+def f() -> T: pass
+
+class C:
+    x = f() # E: Need type annotation for variable
+    def m(self) -> str:
+        return 42 # E: Incompatible return value type (got "int", expected "str")
+
+if bool():
+    f()
+    1 + '' # E: Unsupported left operand type for + ("int")
+[builtins fixtures/list.pyi]
+[out]
+
+[case testDontMarkUnreachableAfterInferenceUninhabited2]
+# flags: --strict-optional
+from typing import TypeVar, Optional
+T = TypeVar('T')
+def f(x: Optional[T] = None) -> T: pass
+
+class C:
+    x = f() # E: Need type annotation for variable
+    def m(self) -> str:
+        return 42 # E: Incompatible return value type (got "int", expected "str")
+
+if bool():
+    f()
+    1 + '' # E: Unsupported left operand type for + ("int")
+[builtins fixtures/list.pyi]
+[out]
+
+[case testDontMarkUnreachableAfterInferenceUninhabited3]
+from typing import TypeVar, List
+T = TypeVar('T')
+def f(x: List[T]) -> T: pass
+
+class C:
+    x = f([]) # E: Need type annotation for variable
+    def m(self) -> str:
+        return 42 # E: Incompatible return value type (got "int", expected "str")
+
+if bool():
+    f([])
+    1 + '' # E: Unsupported left operand type for + ("int")
+[builtins fixtures/list.pyi]
 [out]
