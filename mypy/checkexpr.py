@@ -2546,7 +2546,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 expr_type = NoneTyp()
 
         if not allow_none_return and isinstance(expr_type, NoneTyp):
-            self.chk.msg.evaluates_to_none(e)
+            self.chk.msg.yield_from_iterator(e)
         return expr_type
 
     def visit_temp_node(self, e: TempNode) -> Type:

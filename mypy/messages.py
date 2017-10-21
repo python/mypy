@@ -25,7 +25,7 @@ from mypy.types import (
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
-    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT
+    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT,
 )
 
 
@@ -701,6 +701,9 @@ class MessageBuilder:
 
     def evaluates_to_none(self, context: Context) -> None:
         self.fail('Expression evaluates to "None"', context)
+
+    def yield_from_iterator(self, context: Context) -> None:
+        self.fail('Expression "yield from <iterator>" does not return a value', context)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""
