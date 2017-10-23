@@ -3,6 +3,12 @@ Revision history
 
 List of major changes:
 
+- Upcoming
+    * Publish ``mypy`` version 0.550 on PyPI.
+
+      * We soon intend to drop support for Python 3.3, which has reached end-of-life. Please comment on `#4036 <https://github.com/python/mypy/issues/4036>`_ if this is an issue.
+
+
 - October 2017
     * Publish ``mypy`` version 0.540 on PyPI.
 
