@@ -156,13 +156,9 @@ def run_mypy(target_file_path: Optional[str],
     return runtime, output
 
 
-def start_daemon(mypy_cache_path: str, verbose: bool) -> None:
-    stdout, stderr, status = execute(DAEMON_CMD + ["status"], fail_on_error=False)
-    if status:
-        cmd = DAEMON_CMD + ["start", "--", "--cache-dir", mypy_cache_path]
-        if verbose:
-            cmd.extend(["-v", "-v"])
-        execute(cmd)
+def start_daemon(mypy_cache_path: str) -> None:
+    cmd = DAEMON_CMD + ["start", "--", "--cache-dir", mypy_cache_path]
+    execute(cmd)
 
 
 def stop_daemon() -> None:
@@ -304,7 +300,7 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
 
     # Stage 4: Rewind and re-run mypy (with incremental mode enabled)
     if params.daemon:
-        start_daemon(mypy_cache_path, False)
+        start_daemon(mypy_cache_path)
     test_incremental(commits, cache, temp_repo_path, target_file_path, mypy_cache_path,
                      mypy_script=params.mypy_script, daemon=params.daemon)
 
