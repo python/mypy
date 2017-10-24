@@ -1442,9 +1442,6 @@ class State:
     # Whether to ignore all errors
     ignore_all = False
 
-    # Whether this module was found to have errors
-    has_errors = False
-
     def __init__(self,
                  id: Optional[str],
                  path: Optional[str],
@@ -1621,7 +1618,6 @@ class State:
         """Marks this module as having a stale public interface, and discards the cache data."""
         self.meta = None
         self.externally_same = False
-        self.has_errors = on_errors
         if not on_errors:
             self.manager.stale_modules.add(self.id)
 
@@ -1947,7 +1943,7 @@ def preserve_cache(graph: Graph) -> SavedCache:
     saved_cache = {}
     for id, state in graph.items():
         assert state.id == id
-        if state.meta is not None and state.tree is not None and not state.has_errors:
+        if state.meta is not None and state.tree is not None:
             saved_cache[id] = (state.meta, state.tree)
     return saved_cache
 
