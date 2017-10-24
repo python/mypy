@@ -6,8 +6,7 @@ List of major changes:
 - Upcoming
     * Publish ``mypy`` version 0.550 on PyPI.
 
-      * We soon intend to drop support for Python 3.3, which has reached end-of-life. Please comment on `#4036 <https://github.com/python/mypy/issues/4036>`_ if this is an issue.
-
+      * Running mypy now requires Python 3.4 or higher. However Python 3.2 and 3.3 are still valid for the target of the analysis (i.e. the ``--python-version`` flag).
 
 - October 2017
     * Publish ``mypy`` version 0.540 on PyPI.
