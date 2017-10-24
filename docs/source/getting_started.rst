@@ -6,7 +6,7 @@ Getting started
 Installation
 ************
 
-Mypy requires Python 3.3 or later.  Once you've `installed Python 3 <https://www.python.org/downloads/>`_,
+Mypy requires Python 3.4 or later.  Once you've `installed Python 3 <https://www.python.org/downloads/>`_,
 you can install mypy with:
 
 .. code-block:: text
