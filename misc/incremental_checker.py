@@ -157,14 +157,12 @@ def run_mypy(target_file_path: Optional[str],
 
 
 def start_daemon(mypy_cache_path: str) -> None:
-    cmd = DAEMON_CMD + ["start", "--", "--cache-dir", mypy_cache_path]
+    cmd = DAEMON_CMD + ["restart", "--", "--cache-dir", mypy_cache_path]
     execute(cmd)
 
 
 def stop_daemon() -> None:
-    stdout, stderr, status = execute(DAEMON_CMD + ["status"], fail_on_error=False)
-    if status == 0:
-        execute(DAEMON_CMD + ["stop"])
+    execute(DAEMON_CMD + ["stop"])
 
 
 def load_cache(incremental_cache_path: str = CACHE_PATH) -> JsonDict:
@@ -217,7 +215,8 @@ def test_incremental(commits: List[Tuple[str, str]],
                      mypy_cache_path: str,
                      *,
                      mypy_script: Optional[str] = None,
-                     daemon: bool = False) -> None:
+                     daemon: bool = False,
+                     exit_on_error: bool = False) -> None:
     """Runs incremental mode on all `commits` to verify the output matches the expected output.
 
     This function runs mypy on the `target_file_path` inside the `temp_repo_path`. The
@@ -238,6 +237,8 @@ def test_incremental(commits: List[Tuple[str, str]],
             print_offset(expected_output, 8)
             print("    Actual output: ({:.3f} sec):".format(runtime))
             print_offset(output, 8)
+            if exit_on_error:
+                break
         else:
             print("    Output matches expected result!")
             print("    Incremental: {:.3f} sec".format(runtime))
@@ -300,13 +301,16 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
 
     # Stage 4: Rewind and re-run mypy (with incremental mode enabled)
     if params.daemon:
+        print('Starting daemon')
         start_daemon(mypy_cache_path)
     test_incremental(commits, cache, temp_repo_path, target_file_path, mypy_cache_path,
-                     mypy_script=params.mypy_script, daemon=params.daemon)
+                     mypy_script=params.mypy_script, daemon=params.daemon,
+                     exit_on_error=params.exit_on_error)
 
     # Stage 5: Remove temp files, stop daemon
     cleanup(temp_repo_path, mypy_cache_path)
     if params.daemon:
+        print('Stopping daemon')
         stop_daemon()
 
 
@@ -326,6 +330,8 @@ def main() -> None:
                         help="the repo to clone and run tests on")
     parser.add_argument("-f", "--file-path", default=MYPY_TARGET_FILE, metavar="FILE",
                         help="the name of the file or directory to typecheck")
+    parser.add_argument("-x", "--exit-on-error", action='store_true',
+                        help="Exits as soon as an error occurs")
     parser.add_argument("--cache-path", default=CACHE_PATH, metavar="DIR",
                         help="sets a custom location to store cache data")
     parser.add_argument("--branch", default=None, metavar="NAME",
