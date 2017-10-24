@@ -114,7 +114,7 @@ def get_commits_starting_at(repo_folder_path: str, start_commit: str) -> List[Tu
     return get_commits(repo_folder_path, '{0}^..HEAD'.format(start_commit))
 
 
-def get_nth_commit(repo_folder_path, n: int) -> Tuple[str, str]:
+def get_nth_commit(repo_folder_path: str, n: int) -> Tuple[str, str]:
     print("Fetching last {} commits (or all, if there are fewer commits than n)".format(n))
     return get_commits(repo_folder_path, '-{}'.format(n))[0]
 
@@ -254,7 +254,7 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
               target_file_path: Optional[str],
               mypy_path: str, incremental_cache_path: str, mypy_cache_path: str,
               range_type: str, range_start: str, branch: str,
-              params: Optional[Namespace] = None) -> None:
+              params: Namespace) -> None:
     """Tests incremental mode against the repo specified in `target_repo_url`.
 
     This algorithm runs in five main stages:
@@ -287,7 +287,7 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
     else:
         raise RuntimeError("Invalid option: {}".format(range_type))
     commits = get_commits_starting_at(temp_repo_path, start_commit)
-    if params is not None and params.sample:
+    if params.sample:
         seed = params.seed or base64.urlsafe_b64encode(os.urandom(15)).decode('ascii')
         random.seed(seed)
         commits = random.sample(commits, params.sample)
@@ -315,7 +315,7 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
 
 
 def main() -> None:
-    help_factory = (lambda prog: RawDescriptionHelpFormatter(prog=prog, max_help_position=32))
+    help_factory = (lambda prog: RawDescriptionHelpFormatter(prog=prog, max_help_position=32))  # type: Any
     parser = ArgumentParser(
         prog='incremental_checker',
         description=__doc__,
