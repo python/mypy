@@ -2904,8 +2904,11 @@ class B(object, A): # E: Cannot determine consistent method resolution order (MR
     __iter__ = readlines
 
 [case testDynamicMetaclass]
-
 class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
+    pass
+
+[case testDynamicMetaclassCrash]
+class C(metaclass=int().x):  # E: Dynamic metaclass not supported for 'C'
     pass
 
 [case testVariableSubclass]
