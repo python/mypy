@@ -1814,9 +1814,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_lvalue(self, lvalue: Lvalue) -> Tuple[Optional[Type],
                                                     Optional[IndexExpr],
                                                     Optional[Var]]:
-        lvalue_type = None  # type: Optional[Type]
-        index_lvalue = None  # type: Optional[IndexExpr]
-        inferred = None  # type: Optional[Var]
+        lvalue_type = None
+        index_lvalue = None
+        inferred = None
 
         if self.is_definition(lvalue):
             if isinstance(lvalue, NameExpr):
@@ -2781,12 +2781,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type('builtins.function'))
 
-    # TODO: These next two functions should refer to TypeMap below
-    def find_isinstance_check(self, n: Expression) -> Tuple[Optional[Dict[Expression, Type]],
-                                                            Optional[Dict[Expression, Type]]]:
+    def find_isinstance_check(self, n: Expression) -> 'Tuple[TypeMap, TypeMap]':
         return find_isinstance_check(n, self.type_map)
 
-    def push_type_map(self, type_map: Optional[Dict[Expression, Type]]) -> None:
+    def push_type_map(self, type_map: 'TypeMap') -> None:
         if type_map is None:
             self.binder.unreachable()
         else:
