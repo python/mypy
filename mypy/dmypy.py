@@ -34,6 +34,8 @@ parser.set_defaults(action=None)
 subparsers = parser.add_subparsers()
 
 start_parser = subparsers.add_parser('start', help="Start daemon")
+start_parser.add_argument('--log-file', metavar='FILE', type=str,
+                          help="Direct daemon stdout/stderr to FILE")
 start_parser.add_argument('flags', metavar='FLAG', nargs='*', type=str,
                           help="Regular mypy flags (precede with --)")
 
@@ -45,6 +47,8 @@ kill_parser = subparsers.add_parser('kill', help="Kill daemon (kills the process
 
 restart_parser = subparsers.add_parser('restart',
     help="Restart daemon (stop or kill followed by start)")
+restart_parser.add_argument('--log-file', metavar='FILE', type=str,
+                            help="Direct daemon stdout/stderr to FILE")
 restart_parser.add_argument('flags', metavar='FLAG', nargs='*', type=str,
                             help="Regular mypy flags (precede with --)")
 
@@ -103,7 +107,7 @@ def do_start(args: argparse.Namespace) -> None:
     try:
         pid, sockname = get_status()
     except SystemExit as err:
-        if daemonize(Server(args.flags).serve):
+        if daemonize(Server(args.flags).serve, args.log_file):
             sys.exit(1)
         wait_for_server()
     else:
@@ -169,7 +173,7 @@ def do_restart(args: argparse.Namespace) -> None:
             sys.exit("Status: %s" % str(response))
         else:
             print("Daemon stopped")
-    if daemonize(Server(args.flags).serve):
+    if daemonize(Server(args.flags).serve, args.log_file):
         sys.exit(1)
     wait_for_server()
 
@@ -333,7 +337,7 @@ def read_status() -> Dict[str, object]:
     return data
 
 
-def daemonize(func: Callable[[], None]) -> int:
+def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
     """Arrange to call func() in a grandchild of the current process.
 
     Return 0 for success, exit status for failure, negative if
@@ -368,6 +372,11 @@ def daemonize(func: Callable[[], None]) -> int:
             # Child is done, exit to parent.
             os._exit(0)
         # Grandchild: run the server.
+        if log_file:
+            sys.stdout = sys.stderr = open(log_file, 'a', buffering=1)
+            fd = sys.stdout.fileno()
+            os.dup2(fd, 2)
+            os.dup2(fd, 1)
         func()
     finally:
         # Make sure we never get back into the caller.
