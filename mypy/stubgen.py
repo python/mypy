@@ -943,7 +943,7 @@ def default_python2_interpreter() -> str:
     raise SystemExit("Can't find a Python 2 interpreter -- please use the -p option")
 
 
-def usage(bool: exit_nonzero=True) -> None:
+def usage(exit_nonzero: bool=True) -> None:
     usage = textwrap.dedent("""\
         usage: stubgen [--py2] [--no-import] [--doc-dir PATH]
                        [--search-path PATH] [-p PATH] [-o PATH]
