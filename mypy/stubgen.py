@@ -977,12 +977,12 @@ def usage(exit_nonzero: bool=True) -> None:
     """.rstrip())
 
     if exit_nonzero:
-      # The user made a mistake, so we should return with an error code
-      raise SystemExit(usage)
+        # The user made a mistake, so we should return with an error code
+        raise SystemExit(usage)
     else:
-      # The user asked for help specifically, so we should exit with success
-      print(usage, file=sys.stderr)
-      sys.exit()
+        # The user asked for help specifically, so we should exit with success
+        print(usage, file=sys.stderr)
+        sys.exit()
 
 
 if __name__ == '__main__':
