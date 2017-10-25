@@ -5,7 +5,7 @@ from abc import abstractmethod
 from collections import OrderedDict
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable
+    Callable, Sequence
 )
 
 import mypy.nodes
@@ -357,6 +357,10 @@ class UninhabitedType(Type):
     can_be_true = False
     can_be_false = False
     is_noreturn = False  # Does this come from a NoReturn?  Purely for error messages.
+    # It is important to track whether this is an actual NoReturn type, or just a result
+    # of ambiguous type inference, in the latter case we don't want to mark a branch as
+    # unreachable in binder.
+    ambiguous = False  # Is this a result of inference for a variable without constraints?
 
     def __init__(self, is_noreturn: bool = False, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
@@ -642,7 +646,7 @@ class CallableType(FunctionLike):
     def __init__(self,
                  arg_types: List[Type],
                  arg_kinds: List[int],
-                 arg_names: List[Optional[str]],
+                 arg_names: Sequence[Optional[str]],
                  ret_type: Type,
                  fallback: Instance,
                  name: Optional[str] = None,
@@ -663,7 +667,7 @@ class CallableType(FunctionLike):
         assert not any(tp is None for tp in arg_types), "No annotation must be Any, not None"
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
-        self.arg_names = arg_names
+        self.arg_names = list(arg_names)
         self.min_args = arg_kinds.count(ARG_POS)
         self.is_var_arg = ARG_STAR in arg_kinds
         self.is_kw_arg = ARG_STAR2 in arg_kinds
@@ -1411,7 +1415,7 @@ class ForwardRef(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_forwardref_type(self)
 
-    def serialize(self):
+    def serialize(self) -> str:
         name = self.unbound.name
         # We should never get here since all forward references should be resolved
         # and removed during semantic analysis.

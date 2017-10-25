@@ -3,7 +3,16 @@ Revision history
 
 List of major changes:
 
+- Upcoming
+    * Publish ``mypy`` version 0.550 on PyPI.
+
+      * Running mypy now requires Python 3.4 or higher.
+        However Python 3.3 is still valid for the target
+        of the analysis (i.e. the ``--python-version`` flag).
+
 - October 2017
+    * Publish ``mypy`` version 0.540 on PyPI.
+
     * Publish ``mypy`` version 0.530 on PyPI.
 
 - August-September 2017

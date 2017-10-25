@@ -1814,9 +1814,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_lvalue(self, lvalue: Lvalue) -> Tuple[Optional[Type],
                                                     Optional[IndexExpr],
                                                     Optional[Var]]:
-        lvalue_type = None  # type: Optional[Type]
-        index_lvalue = None  # type: Optional[IndexExpr]
-        inferred = None  # type: Optional[Var]
+        lvalue_type = None
+        index_lvalue = None
+        inferred = None
 
         if self.is_definition(lvalue):
             if isinstance(lvalue, NameExpr):
@@ -1890,7 +1890,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.set_inferred_type(name, lvalue, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
-        if isinstance(init_type, (NoneTyp, UninhabitedType)):
+        if isinstance(init_type, NoneTyp):
             partial_type = PartialType(None, name, [init_type])
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname()
@@ -2781,12 +2781,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type('builtins.function'))
 
-    # TODO: These next two functions should refer to TypeMap below
-    def find_isinstance_check(self, n: Expression) -> Tuple[Optional[Dict[Expression, Type]],
-                                                            Optional[Dict[Expression, Type]]]:
+    def find_isinstance_check(self, n: Expression) -> 'Tuple[TypeMap, TypeMap]':
         return find_isinstance_check(n, self.type_map)
 
-    def push_type_map(self, type_map: Optional[Dict[Expression, Type]]) -> None:
+    def push_type_map(self, type_map: 'TypeMap') -> None:
         if type_map is None:
             self.binder.unreachable()
         else:
@@ -3391,11 +3389,11 @@ def is_valid_inferred_type(typ: Type) -> bool:
     invalid.  When doing strict Optional checking, only None and types that are
     incompletely defined (i.e. contain UninhabitedType) are invalid.
     """
-    if is_same_type(typ, NoneTyp()):
-        # With strict Optional checking, we *may* eventually infer NoneTyp, but
-        # we only do that if we can't infer a specific Optional type.  This
-        # resolution happens in leave_partial_types when we pop a partial types
-        # scope.
+    if isinstance(typ, (NoneTyp, UninhabitedType)):
+        # With strict Optional checking, we *may* eventually infer NoneTyp when
+        # the initializer is None, but we only do that if we can't infer a
+        # specific Optional type.  This resolution happens in
+        # leave_partial_types when we pop a partial types scope.
         return False
     return is_valid_inferred_type_component(typ)
 

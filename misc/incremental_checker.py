@@ -49,6 +49,7 @@ import time
 CACHE_PATH = ".incremental_checker_cache.json"
 MYPY_REPO_URL = "https://github.com/python/mypy.git"
 MYPY_TARGET_FILE = "mypy"
+DAEMON_CMD = ["python3", "-m", "mypy.dmypy"]
 
 JsonDict = Dict[str, Any]
 
@@ -121,23 +122,30 @@ def get_nth_commit(repo_folder_path, n: int) -> Tuple[str, str]:
 def run_mypy(target_file_path: Optional[str],
              mypy_cache_path: str,
              mypy_script: Optional[str],
-             incremental: bool = True,
+             *,
+             incremental: bool = False,
+             daemon: bool = False,
              verbose: bool = False) -> Tuple[float, str]:
     """Runs mypy against `target_file_path` and returns what mypy prints to stdout as a string.
 
     If `incremental` is set to True, this function will use store and retrieve all caching data
     inside `mypy_cache_path`. If `verbose` is set to True, this function will pass the "-v -v"
     flags to mypy to make it output debugging information.
+
+    If `daemon` is True, we use daemon mode; the daemon must be started and stopped by the caller.
     """
-    if mypy_script is None:
-        command = ["python3", "-m", "mypy"]
+    if daemon:
+        command = DAEMON_CMD + ["check", "-q"]
     else:
-        command = [mypy_script]
-    command.extend(["--cache-dir", mypy_cache_path])
-    if incremental:
-        command.append("--incremental")
-    if verbose:
-        command.extend(["-v", "-v"])
+        if mypy_script is None:
+            command = ["python3", "-m", "mypy"]
+        else:
+            command = [mypy_script]
+        command.extend(["--cache-dir", mypy_cache_path])
+        if incremental:
+            command.append("--incremental")
+        if verbose:
+            command.extend(["-v", "-v"])
     if target_file_path is not None:
         command.append(target_file_path)
     start = time.time()
@@ -146,6 +154,21 @@ def run_mypy(target_file_path: Optional[str],
         output = stderr
     runtime = time.time() - start
     return runtime, output
+
+
+def start_daemon(mypy_cache_path: str, verbose: bool) -> None:
+    stdout, stderr, status = execute(DAEMON_CMD + ["status"], fail_on_error=False)
+    if status:
+        cmd = DAEMON_CMD + ["start", "--", "--cache-dir", mypy_cache_path]
+        if verbose:
+            cmd.extend(["-v", "-v"])
+        execute(cmd)
+
+
+def stop_daemon() -> None:
+    stdout, stderr, status = execute(DAEMON_CMD + ["status"], fail_on_error=False)
+    if status == 0:
+        execute(DAEMON_CMD + ["stop"])
 
 
 def load_cache(incremental_cache_path: str = CACHE_PATH) -> JsonDict:
@@ -196,7 +219,9 @@ def test_incremental(commits: List[Tuple[str, str]],
                      temp_repo_path: str,
                      target_file_path: Optional[str],
                      mypy_cache_path: str,
-                     mypy_script: Optional[str]) -> None:
+                     *,
+                     mypy_script: Optional[str] = None,
+                     daemon: bool = False) -> None:
     """Runs incremental mode on all `commits` to verify the output matches the expected output.
 
     This function runs mypy on the `target_file_path` inside the `temp_repo_path`. The
@@ -208,7 +233,7 @@ def test_incremental(commits: List[Tuple[str, str]],
         print('Now testing commit {0}: "{1}"'.format(commit_id, message))
         execute(["git", "-C", temp_repo_path, "checkout", commit_id])
         runtime, output = run_mypy(target_file_path, mypy_cache_path, mypy_script,
-                                   incremental=True)
+                                   incremental=True, daemon=daemon)
         expected_runtime = cache[commit_id]['runtime']  # type: float
         expected_output = cache[commit_id]['output']  # type: str
         if output != expected_output:
@@ -278,11 +303,15 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
     save_cache(cache, incremental_cache_path)
 
     # Stage 4: Rewind and re-run mypy (with incremental mode enabled)
+    if params.daemon:
+        start_daemon(mypy_cache_path, False)
     test_incremental(commits, cache, temp_repo_path, target_file_path, mypy_cache_path,
-                     mypy_script=params.mypy_script)
+                     mypy_script=params.mypy_script, daemon=params.daemon)
 
-    # Stage 5: Remove temp files
+    # Stage 5: Remove temp files, stop daemon
     cleanup(temp_repo_path, mypy_cache_path)
+    if params.daemon:
+        stop_daemon()
 
 
 def main() -> None:
@@ -309,6 +338,8 @@ def main() -> None:
     parser.add_argument("--sample", type=int, help="use a random sample of size SAMPLE")
     parser.add_argument("--seed", type=str, help="random seed")
     parser.add_argument("--mypy-script", type=str, help="alternate mypy script to run")
+    parser.add_argument("--daemon", action='store_true',
+                        help="use mypy daemon instead of incremental (highly experimental)")
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()

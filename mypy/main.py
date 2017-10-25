@@ -8,7 +8,7 @@ import re
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from mypy import build
 from mypy import defaults
@@ -28,6 +28,21 @@ class InvalidPackageName(Exception):
     """Exception indicating that a package name was invalid."""
 
 
+orig_stat = os.stat
+
+
+def stat_proxy(path: str) -> os.stat_result:
+    try:
+        st = orig_stat(path)
+    except os.error as err:
+        print("stat(%r) -> %s" % (path, err))
+        raise
+    else:
+        print("stat(%r) -> (st_mode=%o, st_mtime=%d, st_size=%d)" %
+              (path, st.st_mode, st.st_mtime, st.st_size))
+        return st
+
+
 def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     """Main entry point to the type checker.
 
@@ -37,6 +52,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         be used.
     """
     t0 = time.time()
+    # To log stat() calls: os.stat = stat_proxy
     if script_path:
         bin_dir = find_bin_directory(script_path)  # type: Optional[str]
     else:
@@ -505,26 +521,31 @@ def process_options(args: List[str],
         targets = [BuildSource(None, None, '\n'.join(special_opts.command))]
         return targets, options
     else:
-        targets = []
-        for f in special_opts.files:
-            if f.endswith(PY_EXTENSIONS):
-                try:
-                    targets.append(BuildSource(f, crawl_up(f)[1], None))
-                except InvalidPackageName as e:
-                    fail(str(e))
-            elif os.path.isdir(f):
-                try:
-                    sub_targets = expand_dir(f)
-                except InvalidPackageName as e:
-                    fail(str(e))
-                if not sub_targets:
-                    fail("There are no .py[i] files in directory '{}'"
-                         .format(f))
-                targets.extend(sub_targets)
-            else:
-                mod = os.path.basename(f) if options.scripts_are_modules else None
-                targets.append(BuildSource(f, mod, None))
+        targets = create_source_list(special_opts.files, options)
         return targets, options
+
+
+def create_source_list(files: Sequence[str], options: Options) -> List[BuildSource]:
+    targets = []
+    for f in files:
+        if f.endswith(PY_EXTENSIONS):
+            try:
+                targets.append(BuildSource(f, crawl_up(f)[1], None))
+            except InvalidPackageName as e:
+                fail(str(e))
+        elif os.path.isdir(f):
+            try:
+                sub_targets = expand_dir(f)
+            except InvalidPackageName as e:
+                fail(str(e))
+            if not sub_targets:
+                fail("There are no .py[i] files in directory '{}'"
+                     .format(f))
+            targets.extend(sub_targets)
+        else:
+            mod = os.path.basename(f) if options.scripts_are_modules else None
+            targets.append(BuildSource(f, mod, None))
+    return targets
 
 
 def keyfunc(name: str) -> Tuple[int, str]:
@@ -750,7 +771,13 @@ def parse_section(prefix: str, template: Options,
             print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
             continue
         if key == 'disallow_any':
-            results['disallow_untyped_defs'] = v and 'unannotated' in v
+            # "disallow_any = " should disable all disallow_any options, including untyped defs,
+            # given in a more general config.
+            if not v:
+                results['disallow_untyped_defs'] = False
+            # If "unannotated" is explicitly given, turn on disallow_untyped_defs.
+            elif 'unannotated' in v:
+                results['disallow_untyped_defs'] = True
         if key == 'silent_imports':
             print("%s: silent_imports has been replaced by "
                   "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)
