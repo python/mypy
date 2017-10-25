@@ -417,9 +417,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                     # A coroutine defined as `async def foo(...) -> T: ...`
                     # has external return type `Awaitable[T]`.
                     ret_type = self.named_type_or_none('typing.Awaitable', [defn.type.ret_type])
-                    if ret_type is None:
-                        # We are running tests.
-                        ret_type = self.named_type('typing_full.Awaitable', [defn.type.ret_type])
+                    assert ret_type is not None, "Internal error: typing.Awaitable not found"
                     defn.type = defn.type.copy_modified(ret_type=ret_type)
             self.errors.pop_function()
 
