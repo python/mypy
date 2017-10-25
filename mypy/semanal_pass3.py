@@ -120,12 +120,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 self.analyze(tdef.analyzed.info.typeddict_type, tdef.analyzed, warn=True)
             elif isinstance(tdef.analyzed, NamedTupleExpr):
                 self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed, warn=True)
-                for name in tdef.analyzed.info.names:
-                    sym = tdef.analyzed.info.names[name]
-                    if isinstance(sym.node, (FuncDef, Decorator)):
-                        self.accept(sym.node)
-                    if isinstance(sym.node, Var):
-                        self.analyze(sym.node.type, sym.node)
+                self.analyze_info(tdef.analyzed.info)
         super().visit_class_def(tdef)
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -194,14 +189,9 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             if isinstance(analyzed, NewTypeExpr):
                 self.analyze(analyzed.old_type, analyzed)
                 if analyzed.info:
-                    for name in analyzed.info.names:
-                        sym = analyzed.info.names[name]
-                        # Currently NewTypes only have __init__, but to be future proof,
-                        # we analyze all symbols.
-                        if isinstance(sym.node, (FuncDef, Decorator)):
-                            self.accept(sym.node)
-                        if isinstance(sym.node, Var):
-                            self.analyze(sym.node.type, sym.node)
+                    # Currently NewTypes only have __init__, but to be future proof,
+                    # we analyze all symbols.
+                    self.analyze_info(analyzed.info)
                 if analyzed.info and analyzed.info.mro:
                     analyzed.info.mro = []  # Force recomputation
                     mypy.semanal.calculate_class_mro(analyzed.info.defn, self.fail_blocker)
@@ -216,12 +206,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 self.analyze(analyzed.info.typeddict_type, analyzed, warn=True)
             if isinstance(analyzed, NamedTupleExpr):
                 self.analyze(analyzed.info.tuple_type, analyzed, warn=True)
-                for name in analyzed.info.names:
-                    sym = analyzed.info.names[name]
-                    if isinstance(sym.node, (FuncDef, Decorator)):
-                        self.accept(sym.node)
-                    if isinstance(sym.node, Var):
-                        self.analyze(sym.node.type, sym.node)
+                self.analyze_info(analyzed.info)
         # We need to pay additional attention to assignments that define a type alias.
         # The resulting type is also stored in the 'type_override' attribute of
         # the corresponding SymbolTableNode.
@@ -366,6 +351,15 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                     lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
                                                                   node, warn=False)))
             self.patches.append(patch)
+
+    def analyze_info(self, info: TypeInfo) -> None:
+        # Similar to above but for nodes with synthetic TypeInfos (NamedTuple and NewType).
+        for name in info.names:
+            sym = info.names[name]
+            if isinstance(sym.node, (FuncDef, Decorator)):
+                self.accept(sym.node)
+            if isinstance(sym.node, Var):
+                self.analyze(sym.node.type, sym.node)
 
     def make_type_analyzer(self, indicator: Dict[str, bool]) -> TypeAnalyserPass3:
         return TypeAnalyserPass3(self.sem.lookup_qualified,
