@@ -13,6 +13,7 @@ The function build() is the main interface to this module.
 import binascii
 import collections
 import contextlib
+from distutils.sysconfig import get_python_lib
 import gc
 import hashlib
 import json
@@ -229,7 +230,12 @@ def default_data_dir(bin_dir: Optional[str]) -> str:
     """
     if not bin_dir:
         if os.name == 'nt':
-            prefixes = [os.path.join(sys.prefix, 'Lib'), os.path.join(site.getuserbase(), 'lib')]
+            prefixes = [os.path.join(sys.prefix, 'Lib')]
+            try:
+                prefixes.append(os.path.join(site.getuserbase(), 'lib'))
+            except AttributeError:
+                # getuserbase in not available in virtualenvs
+                prefixes.append(os.path.join(get_python_lib(), 'lib'))
             for parent in prefixes:
                     data_dir = os.path.join(parent, 'mypy')
                     if os.path.exists(data_dir):
