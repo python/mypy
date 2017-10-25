@@ -17,7 +17,7 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
-    TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS
+    TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS, OverloadedFuncDef
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
@@ -85,6 +85,10 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         super().visit_func_def(fdef)
         self.errors.pop_function()
 
+    def visit_overloaded_func_def(self, fdef: OverloadedFuncDef) -> None:
+        self.analyze(fdef.type, fdef)
+        super().visit_overloaded_func_def(fdef)
+
     def visit_class_def(self, tdef: ClassDef) -> None:
         # NamedTuple base classes are validated in check_namedtuple_classdef; we don't have to
         # check them again here.
@@ -116,12 +120,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 self.analyze(tdef.analyzed.info.typeddict_type, tdef.analyzed, warn=True)
             elif isinstance(tdef.analyzed, NamedTupleExpr):
                 self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed, warn=True)
-                for name in tdef.analyzed.info.names:
-                    sym = tdef.analyzed.info.names[name]
-                    if isinstance(sym.node, (FuncDef, Decorator)):
-                        self.accept(sym.node)
-                    if isinstance(sym.node, Var):
-                        self.analyze(sym.node.type, sym.node)
+                self.analyze_info(tdef.analyzed.info)
         super().visit_class_def(tdef)
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -189,6 +188,10 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             analyzed = s.rvalue.analyzed
             if isinstance(analyzed, NewTypeExpr):
                 self.analyze(analyzed.old_type, analyzed)
+                if analyzed.info:
+                    # Currently NewTypes only have __init__, but to be future proof,
+                    # we analyze all symbols.
+                    self.analyze_info(analyzed.info)
                 if analyzed.info and analyzed.info.mro:
                     analyzed.info.mro = []  # Force recomputation
                     mypy.semanal.calculate_class_mro(analyzed.info.defn, self.fail_blocker)
@@ -203,12 +206,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 self.analyze(analyzed.info.typeddict_type, analyzed, warn=True)
             if isinstance(analyzed, NamedTupleExpr):
                 self.analyze(analyzed.info.tuple_type, analyzed, warn=True)
-                for name in analyzed.info.names:
-                    sym = analyzed.info.names[name]
-                    if isinstance(sym.node, (FuncDef, Decorator)):
-                        self.accept(sym.node)
-                    if isinstance(sym.node, Var):
-                        self.analyze(sym.node.type, sym.node)
+                self.analyze_info(analyzed.info)
         # We need to pay additional attention to assignments that define a type alias.
         # The resulting type is also stored in the 'type_override' attribute of
         # the corresponding SymbolTableNode.
@@ -255,12 +253,27 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             for n in node.target:
                 if isinstance(n, NameExpr) and isinstance(n.node, Var) and n.node.type:
                     n.node.type = transform(n.node.type)
-        if isinstance(node, (FuncDef, CastExpr, AssignmentStmt, TypeAliasExpr, Var)):
+        if isinstance(node, (FuncDef, OverloadedFuncDef, CastExpr, AssignmentStmt,
+                             TypeAliasExpr, Var)):
             assert node.type, "Scheduled patch for non-existent type"
             node.type = transform(node.type)
         if isinstance(node, NewTypeExpr):
             assert node.old_type, "Scheduled patch for non-existent type"
             node.old_type = transform(node.old_type)
+            if node.info:
+                new_bases = []  # type: List[Instance]
+                for b in node.info.bases:
+                    new_b = transform(b)
+                    # TODO: this code can be combined with code in second pass.
+                    if isinstance(new_b, Instance):
+                        new_bases.append(new_b)
+                    elif isinstance(new_b, TupleType):
+                        new_bases.append(new_b.fallback)
+                    else:
+                        self.fail("Argument 2 to NewType(...) must be subclassable"
+                                  " (got {})".format(new_b), node)
+                        new_bases.append(self.builtin_type('object'))
+                node.info.bases = new_bases
         if isinstance(node, TypeVarExpr):
             if node.upper_bound:
                 node.upper_bound = transform(node.upper_bound)
@@ -292,7 +305,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                     new_bases.append(new_base)
                 else:
                     # Don't fix the NamedTuple bases, they are Instance's intentionally.
-                    # Patch the 'args' just in case, although generic tuple type are
+                    # Patch the 'args' just in case, although generic tuple types are
                     # not supported yet.
                     alt_base = Instance(base.type, [transform(a) for a in base.args])
                     new_bases.append(alt_base)
@@ -338,6 +351,15 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                     lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
                                                                   node, warn=False)))
             self.patches.append(patch)
+
+    def analyze_info(self, info: TypeInfo) -> None:
+        # Similar to above but for nodes with synthetic TypeInfos (NamedTuple and NewType).
+        for name in info.names:
+            sym = info.names[name]
+            if isinstance(sym.node, (FuncDef, Decorator)):
+                self.accept(sym.node)
+            if isinstance(sym.node, Var):
+                self.analyze(sym.node.type, sym.node)
 
     def make_type_analyzer(self, indicator: Dict[str, bool]) -> TypeAnalyserPass3:
         return TypeAnalyserPass3(self.sem.lookup_qualified,

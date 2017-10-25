@@ -14,7 +14,7 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef
+    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded
 )
 
 from mypy.nodes import (
@@ -765,6 +765,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         t.ret_type.accept(self)
         for arg_type in t.arg_types:
             arg_type.accept(self)
+
+    def visit_overloaded(self, t: Overloaded) -> None:
+        for item in t.items():
+            item.accept(self)
 
     def visit_tuple_type(self, t: TupleType) -> None:
         for item in t.items:
