@@ -57,8 +57,11 @@ class DependencyVisitor(TraverserVisitor):
                  type_map: Dict[Expression, Type],
                  python_version: Tuple[int, int]) -> None:
         self.prefix = prefix
+        # Stack of names of targets being processed. For stack targets we use the
+        # surrounding module.
         self.stack = []  # type: List[str]
-        self.target_stack = []  # type: List[str]
+        # Stack of names of targets being processed, including class targets.
+        self.full_target_stack = []  # type: List[str]
         self.scope_stack = []  # type: List[Union[None, TypeInfo, FuncDef]]
         self.type_map = type_map
         self.python2 = python_version[0] == 2
@@ -89,7 +92,7 @@ class DependencyVisitor(TraverserVisitor):
             target = self.enter_function_scope(o)
         else:
             new_scope = False
-            target = self.current()
+            target = self.current_target()
         if o.type:
             if self.is_class and isinstance(o.type, FunctionLike):
                 signature = bind_self(o.type)  # type: Type
@@ -143,7 +146,7 @@ class DependencyVisitor(TraverserVisitor):
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
             # TODO: as_id
-            self.add_dependency(make_trigger(id), self.current())
+            self.add_dependency(make_trigger(id), self.current_target())
 
     def visit_import_from(self, o: ImportFrom) -> None:
         assert o.relative == 0  # Relative imports not supported
@@ -186,7 +189,7 @@ class DependencyVisitor(TraverserVisitor):
                 # global variable.
                 lvalue_type = self.get_non_partial_lvalue_type(lvalue)
                 type_triggers = get_type_dependencies(lvalue_type)
-                attr_trigger = make_trigger('%s.%s' % (self.target_stack[-1], lvalue.name))
+                attr_trigger = make_trigger('%s.%s' % (self.full_target_stack[-1], lvalue.name))
                 for type_trigger in type_triggers:
                     self.add_dependency(type_trigger, attr_trigger)
         elif isinstance(lvalue, MemberExpr):
@@ -396,7 +399,7 @@ class DependencyVisitor(TraverserVisitor):
         If the target is not given explicitly, use the current target.
         """
         if target is None:
-            target = self.current()
+            target = self.current_target()
         if trigger.startswith(('<builtins.', '<typing.')):
             # Don't track dependencies to certain builtins to keep the size of
             # the dependencies manageable. These dependencies should only
@@ -453,33 +456,37 @@ class DependencyVisitor(TraverserVisitor):
 
     def enter_file_scope(self, prefix: str) -> None:
         self.stack.append(prefix)
-        self.target_stack.append(prefix)
+        self.full_target_stack.append(prefix)
         self.scope_stack.append(None)
 
     def enter_function_scope(self, fdef: FuncDef) -> str:
-        target = '%s.%s' % (self.target_stack[-1], fdef.name())
+        target = '%s.%s' % (self.full_target_stack[-1], fdef.name())
         self.stack.append(target)
-        self.target_stack.append(target)
+        self.full_target_stack.append(target)
         self.scope_stack.append(fdef)
         return target
 
     def enter_class_scope(self, info: TypeInfo) -> str:
         """Push a target name component (a class)."""
         self.stack.append(self.stack[-1])
-        target = '%s.%s' % (self.target_stack[-1], info.name())
-        self.target_stack.append(target)
+        target = '%s.%s' % (self.full_target_stack[-1], info.name())
+        self.full_target_stack.append(target)
         self.scope_stack.append(info)
         return target
 
     def leave_scope(self) -> None:
         """Pop a target name component."""
         self.stack.pop()
-        self.target_stack.pop()
+        self.full_target_stack.pop()
         self.scope_stack.pop()
 
-    def current(self) -> str:
-        """Return the current target."""
+    def current_target(self) -> str:
+        """Return the current target (non-class; for a class return enclosing module)."""
         return self.stack[-1]
+
+    def current_full_target(self) -> str:
+        """Return the current target (may be a class)."""
+        return self.full_target_stack[-1]
 
     def current_scope(self) -> Optional[Node]:
         return self.scope_stack[-1]
