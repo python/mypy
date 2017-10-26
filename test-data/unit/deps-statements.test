@@ -536,7 +536,7 @@ import a
 import sys
 
 def f() -> int:
-    if sys.platform == 'win32':
+    if sys.platform == 'nonexistent':
         return a.g()
     else:
         return 1
