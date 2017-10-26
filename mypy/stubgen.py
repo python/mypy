@@ -908,7 +908,7 @@ def parse_options(args: List[str]) -> Options:
         elif args[0] == '--include-private':
             include_private = True
         elif args[0] in ('-h', '--help'):
-            usage()
+            usage(exit_nonzero=False)
         else:
             raise SystemExit('Unrecognized option %s' % args[0])
         args = args[1:]
@@ -943,7 +943,7 @@ def default_python2_interpreter() -> str:
     raise SystemExit("Can't find a Python 2 interpreter -- please use the -p option")
 
 
-def usage() -> None:
+def usage(exit_nonzero: bool=True) -> None:
     usage = textwrap.dedent("""\
         usage: stubgen [--py2] [--no-import] [--doc-dir PATH]
                        [--search-path PATH] [-p PATH] [-o PATH]
@@ -976,7 +976,13 @@ def usage() -> None:
           -h, --help      print this help message and exit
     """.rstrip())
 
-    raise SystemExit(usage)
+    if exit_nonzero:
+        # The user made a mistake, so we should return with an error code
+        raise SystemExit(usage)
+    else:
+        # The user asked for help specifically, so we should exit with success
+        print(usage, file=sys.stderr)
+        sys.exit()
 
 
 if __name__ == '__main__':
