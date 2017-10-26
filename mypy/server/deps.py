@@ -20,11 +20,11 @@ from mypy.types import (
 from mypy.server.trigger import make_trigger
 
 
-def get_dependencies(prefix: str, node: Node,
+def get_dependencies(prefix: str, node: MypyFile,
                      type_map: Dict[Expression, Type],
                      python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get all dependencies of a node, recursively."""
-    visitor = DependencyVisitor(prefix, prefix, None, type_map, python_version)
+    visitor = DependencyVisitor(prefix, type_map, python_version)
     node.accept(visitor)
     return visitor.map
 
@@ -34,33 +34,32 @@ def get_dependencies_of_target(module_id: str, node: Node,
                                python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get dependencies of a target -- don't recursive into nested targets."""
     prefix = module_id
-    surrounding_target = module_id
-    scope = None
-    if isinstance(node, FuncBase) and node.info:
-        # TODO: Nested classes
-        # TOOD: Add tests
-        surrounding_target += '.{}'.format(node.info.name())
-        scope = node.info
-    visitor = DependencyVisitor(prefix, surrounding_target, scope, type_map, python_version)
+    visitor = DependencyVisitor(prefix, type_map, python_version)
+    visitor.enter_file_scope(prefix)
     if isinstance(node, MypyFile):
         for defn in node.defs:
             if not isinstance(defn, (ClassDef, FuncDef)):
                 defn.accept(visitor)
+    elif isinstance(node, FuncBase) and node.info:
+        # TODO: Methods in nested classes.
+        visitor.enter_class_scope(node.info)
+        node.accept(visitor)
+        visitor.leave_scope()
     else:
         node.accept(visitor)
+    visitor.leave_scope()
     return visitor.map
 
 
 class DependencyVisitor(TraverserVisitor):
     def __init__(self,
                  prefix: str,
-                 surrounding_target: str,
-                 scope: Optional[Node],
                  type_map: Dict[Expression, Type],
                  python_version: Tuple[int, int]) -> None:
-        self.stack = [prefix]
-        self.target_stack = [surrounding_target]
-        self.scope_stack = [scope]
+        self.prefix = prefix
+        self.stack = []  # type: List[str]
+        self.target_stack = []  # type: List[str]
+        self.scope_stack = []  # type: List[Union[None, TypeInfo, FuncDef]]
         self.type_map = type_map
         self.python2 = python_version[0] == 2
         self.map = {}  # type: Dict[str, Set[str]]
@@ -80,16 +79,14 @@ class DependencyVisitor(TraverserVisitor):
     #   type variable with value restriction
 
     def visit_mypy_file(self, o: MypyFile) -> None:
-        # TODO: Do we need to anything here?
-        self.enter_scope(o)
+        self.enter_file_scope(self.prefix)
         super().visit_mypy_file(o)
         self.leave_scope()
 
     def visit_func_def(self, o: FuncDef) -> None:
         if not isinstance(self.current_scope(), FuncDef):
             new_scope = True
-            self.enter_scope(o)
-            target = self.push(o.name())
+            target = self.enter_function_scope(o)
         else:
             new_scope = False
             target = self.current()
@@ -106,7 +103,6 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
         super().visit_func_def(o)
         if new_scope:
-            self.pop()
             self.leave_scope()
 
     def visit_decorator(self, o: Decorator) -> None:
@@ -114,8 +110,7 @@ class DependencyVisitor(TraverserVisitor):
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
-        self.enter_scope(o.info)
-        target = self.push_class(o.name)
+        target = self.enter_class_scope(o.info)
         self.add_dependency(make_trigger(target), target)
         old_is_class = self.is_class
         self.is_class = True
@@ -143,7 +138,6 @@ class DependencyVisitor(TraverserVisitor):
                                     target=make_trigger(info.fullname() + '.' + name))
             self.add_dependency(make_trigger(base_info.fullname() + '.__init__'),
                                 target=make_trigger(info.fullname() + '.__init__'))
-        self.pop()
         self.leave_scope()
 
     def visit_import(self, o: Import) -> None:
@@ -457,36 +451,35 @@ class DependencyVisitor(TraverserVisitor):
         if typ:
             self.add_attribute_dependency(typ, '__iter__')
 
-    def push(self, component: str) -> str:
-        """Push a target name component (not a class)."""
-        target = '%s.%s' % (self.target_stack[-1], component)
+    def enter_file_scope(self, prefix: str) -> None:
+        self.stack.append(prefix)
+        self.target_stack.append(prefix)
+        self.scope_stack.append(None)
+
+    def enter_function_scope(self, fdef: FuncDef) -> str:
+        target = '%s.%s' % (self.target_stack[-1], fdef.name())
         self.stack.append(target)
         self.target_stack.append(target)
+        self.scope_stack.append(fdef)
         return target
 
-    def push_class(self, name: str) -> str:
+    def enter_class_scope(self, info: TypeInfo) -> str:
         """Push a target name component (a class)."""
         self.stack.append(self.stack[-1])
-        target = '%s.%s' % (self.target_stack[-1], name)
+        target = '%s.%s' % (self.target_stack[-1], info.name())
         self.target_stack.append(target)
+        self.scope_stack.append(info)
         return target
 
-    def pop(self) -> None:
+    def leave_scope(self) -> None:
         """Pop a target name component."""
         self.stack.pop()
         self.target_stack.pop()
+        self.scope_stack.pop()
 
     def current(self) -> str:
         """Return the current target."""
         return self.stack[-1]
-
-    def enter_scope(self, node: Union[MypyFile, TypeInfo, FuncDef]) -> None:
-        """Enter a scope."""
-        self.scope_stack.append(node)
-
-    def leave_scope(self) -> None:
-        """Leave the innermost scope."""
-        self.scope_stack.pop()
 
     def current_scope(self) -> Optional[Node]:
         return self.scope_stack[-1]
