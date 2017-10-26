@@ -82,7 +82,7 @@ class BuildResult:
         self.manager = manager
         self.graph = graph
         self.files = manager.modules
-        self.types = manager.all_types  # Non-empty for tests only
+        self.types = manager.all_types  # Non-empty for tests only or if dumping deps
         self.errors = manager.errors.messages()
 
 
@@ -1851,7 +1851,7 @@ class State:
             return
         with self.wrap_context():
             # Some tests want to look at the set of all types.
-            if manager.options.use_builtins_fixtures:
+            if manager.options.use_builtins_fixtures or manager.options.dump_deps:
                 manager.all_types.update(self.type_checker.type_map)
 
             if self.options.incremental:
