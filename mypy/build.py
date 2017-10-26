@@ -1408,6 +1408,7 @@ class State:
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
+    tree_is_new = False  # True if the tree came from the in-memory cache
     dependencies = None  # type: List[str]
     suppressed = None  # type: List[str]  # Suppressed/missing dependencies
     priorities = None  # type: Dict[str, int]
@@ -2258,12 +2259,16 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
     if all(id in saved_cache for id in scc):
         trees = {id: saved_cache[id][1] for id in scc}
         if all(trees.values()):
-            for id, tree in trees.items():
-                manager.add_stats(reused_trees=1)
-                manager.trace("Reusing saved tree %s" % id)
-                graph[id].tree = tree
-                manager.modules[id] = tree
-            return
+            deps = set(dep for id in scc for dep in graph[id].dependencies if dep in graph)
+            if all(graph[dep].tree_is_new for dep in deps):
+                for id, tree in trees.items():
+                    manager.add_stats(reused_trees=1)
+                    manager.trace("Reusing saved tree %s" % id)
+                    st = graph[id]
+                    st.tree = tree
+                    st.tree_is_new = True
+                    manager.modules[id] = tree
+                return
     for id in scc:
         graph[id].load_tree()
     for id in scc:
