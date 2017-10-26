@@ -940,3 +940,15 @@ y = ""
 reveal_type(t[x:])  # E: Revealed type is 'Union[builtins.int, builtins.str]'
 t[y:]  # E: Slice index must be an integer or None
 [builtins fixtures/tuple.pyi]
+
+[case testTypeTupleClassmethod]
+from typing import Tuple, Type
+
+class C(Tuple[int, str]):
+    @classmethod
+    def f(cls) -> None: pass
+
+t: Type[C]
+t.g()  # E: "Type[C]" has no attribute "g"
+t.f()
+[builtins fixtures/classmethod.pyi]

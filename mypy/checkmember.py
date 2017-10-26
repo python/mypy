@@ -191,6 +191,8 @@ def analyze_member_access(name: str,
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound
+        elif isinstance(typ.item, TupleType):
+            item = typ.item.fallback
         elif isinstance(typ.item, FunctionLike) and typ.item.is_type_obj():
             item = typ.item.fallback
         elif isinstance(typ.item, TypeType):
