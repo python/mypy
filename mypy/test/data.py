@@ -279,7 +279,11 @@ class DataDrivenTestCase(TestCase):
         # First remove files.
         for is_dir, path in reversed(self.clean_up):
             if not is_dir:
-                remove(path)
+                try:
+                    remove(path)
+                except FileNotFoundError:
+                    # breaking early using Ctrl+C may happen before file creation
+                    pass
         # Then remove directories.
         for is_dir, path in reversed(self.clean_up):
             if is_dir:
