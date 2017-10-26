@@ -236,6 +236,14 @@ def f() -> None:
 <m.C.__init__> -> m.f
 <m.C> -> <m.A.__init__>, m.A.__init__, m.C, m.f
 
+[case testNonTrivialConstructor]
+class C:
+    def __init__(self) -> None:
+        self.x = 1
+[out]
+<m.C.x> -> m.C.__init__
+<m.C> -> m.C
+
 [case testImportFrom]
 from n import f
 
@@ -470,3 +478,20 @@ def f(a: A) -> None:
 <m.A.x> -> m, m.f
 <m.A> -> <m.f>, m.A, m.f
 <m.B> -> <m.A.x>, m.A.x, m.B
+
+[case testUnreachableAssignment]
+from typing import List, Tuple
+
+def f() -> None: pass
+
+class C:
+    def __init__(self, x: int) -> None:
+        if isinstance(x, int):
+            self.y = 1
+        else:
+            self.y = f()
+[builtins fixtures/isinstancelist.pyi]
+[out]
+<m.C.y> -> m.C.__init__
+<m.C> -> m.C
+<m.f> -> m.C.__init__

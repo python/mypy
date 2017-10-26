@@ -198,6 +198,9 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(lvalue, MemberExpr):
             if lvalue.kind is None:
                 # Reference to a non-module attribute
+                if lvalue.expr not in self.type_map:
+                    # Unreachable assignment -> not checked so no dependencies to generate.
+                    return
                 object_type = self.type_map[lvalue.expr]
                 lvalue_type = self.type_map[lvalue]
                 type_triggers = get_type_dependencies(lvalue_type)
