@@ -1360,8 +1360,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             if not self.current_node_deferred:
-                                var.type = UnionType.make_simplified_union(
+                                inferred_type = UnionType.make_simplified_union(
                                     [rvalue_type, NoneTyp()])
+                                self.set_inferred_type(var, lvalue, inferred_type)
                             else:
                                 var.type = None
                             del partial_types[var]

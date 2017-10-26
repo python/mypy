@@ -8,7 +8,7 @@ from mypy.nodes import (
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
-    TypeInfo, FuncBase, Var, LDEF, MDEF, GDEF, op_methods, reverse_op_methods,
+    TypeInfo, FuncBase, RefExpr, Var, LDEF, MDEF, GDEF, op_methods, reverse_op_methods,
     ops_with_inplace_method
 )
 from mypy.traverser import TraverserVisitor
@@ -190,7 +190,7 @@ class DependencyVisitor(TraverserVisitor):
             if lvalue.kind in (MDEF, GDEF):
                 # Assignment to an attribute in the class body, or direct assignment to a
                 # global variable.
-                lvalue_type = self.type_map[lvalue]
+                lvalue_type = self.get_non_partial_lvalue_type(lvalue)
                 type_triggers = get_type_dependencies(lvalue_type)
                 attr_trigger = make_trigger('%s.%s' % (self.target_stack[-1], lvalue.name))
                 for type_trigger in type_triggers:
@@ -202,7 +202,7 @@ class DependencyVisitor(TraverserVisitor):
                     # Unreachable assignment -> not checked so no dependencies to generate.
                     return
                 object_type = self.type_map[lvalue.expr]
-                lvalue_type = self.type_map[lvalue]
+                lvalue_type = self.get_non_partial_lvalue_type(lvalue)
                 type_triggers = get_type_dependencies(lvalue_type)
                 for attr_trigger in self.attribute_triggers(object_type, lvalue.name):
                     for type_trigger in type_triggers:
@@ -211,6 +211,15 @@ class DependencyVisitor(TraverserVisitor):
             for item in lvalue.items:
                 self.process_lvalue(item)
         # TODO: star lvalue
+
+    def get_non_partial_lvalue_type(self, lvalue: RefExpr) -> Type:
+        lvalue_type = self.type_map[lvalue]
+        if isinstance(lvalue_type, PartialType):
+            if isinstance(lvalue.node, Var) and lvalue.node.type:
+                lvalue_type = lvalue.node.type
+            else:
+                assert False, "Unexpected partial type"
+        return lvalue_type
 
     def visit_operator_assignment_stmt(self, o: OperatorAssignmentStmt) -> None:
         super().visit_operator_assignment_stmt(o)

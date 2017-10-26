@@ -495,3 +495,32 @@ class C:
 <m.C.y> -> m.C.__init__
 <m.C> -> m.C
 <m.f> -> m.C.__init__
+
+[case testPartialNoneTypeAttributeCrash1]
+class C: pass
+
+class A:
+    x = None
+
+    def f(self) -> None:
+        self.x = C()
+[out]
+<m.A.x> -> m.A.f
+<m.A> -> m.A
+<m.C.__init__> -> m.A.f
+<m.C> -> <m.A.x>, m.A.f, m.C
+
+[case testPartialNoneTypeAttributeCrash2]
+# flags: --strict-optional
+class C: pass
+
+class A:
+    x = None
+
+    def f(self) -> None:
+        self.x = C()
+[out]
+<m.A.x> -> m.A.f
+<m.A> -> m.A
+<m.C.__init__> -> m.A.f
+<m.C> -> <m.A.x>, m.A.f, m.C
