@@ -375,11 +375,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return res
         elif isinstance(actual, TupleType) and self.direction == SUPERTYPE_OF:
             return infer_constraints(template, actual.fallback, self.direction)
-        elif (isinstance(actual, TupleType) and template.type.is_protocol and
-              self.direction == SUPERTYPE_OF):
-            if mypy.subtypes.is_subtype(actual.fallback, erase_typevars(template)):
-                return infer_constraints(template, actual.fallback, self.direction)
-            return []
         else:
             return []
 
