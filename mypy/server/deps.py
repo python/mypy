@@ -59,7 +59,7 @@ class DependencyVisitor(TraverserVisitor):
         self.prefix = prefix
         # Stack of names of targets being processed. For stack targets we use the
         # surrounding module.
-        self.stack = []  # type: List[str]
+        self.target_stack = []  # type: List[str]
         # Stack of names of targets being processed, including class targets.
         self.full_target_stack = []  # type: List[str]
         self.scope_stack = []  # type: List[Union[None, TypeInfo, FuncDef]]
@@ -455,34 +455,38 @@ class DependencyVisitor(TraverserVisitor):
             self.add_attribute_dependency(typ, '__iter__')
 
     def enter_file_scope(self, prefix: str) -> None:
-        self.stack.append(prefix)
+        """Enter a module target scope."""
+        self.target_stack.append(prefix)
         self.full_target_stack.append(prefix)
         self.scope_stack.append(None)
 
     def enter_function_scope(self, fdef: FuncDef) -> str:
+        """Enter a function target scope."""
         target = '%s.%s' % (self.full_target_stack[-1], fdef.name())
-        self.stack.append(target)
+        self.target_stack.append(target)
         self.full_target_stack.append(target)
         self.scope_stack.append(fdef)
         return target
 
     def enter_class_scope(self, info: TypeInfo) -> str:
-        """Push a target name component (a class)."""
-        self.stack.append(self.stack[-1])
-        target = '%s.%s' % (self.full_target_stack[-1], info.name())
-        self.full_target_stack.append(target)
+        """Enter a class target scope."""
+        # Duplicate the previous top non-class target (it can't be a class but since the
+        # depths of all stacks must agree we need something).
+        self.target_stack.append(self.target_stack[-1])
+        full_target = '%s.%s' % (self.full_target_stack[-1], info.name())
+        self.full_target_stack.append(full_target)
         self.scope_stack.append(info)
-        return target
+        return full_target
 
     def leave_scope(self) -> None:
-        """Pop a target name component."""
-        self.stack.pop()
+        """Leave a target scope."""
+        self.target_stack.pop()
         self.full_target_stack.pop()
         self.scope_stack.pop()
 
     def current_target(self) -> str:
         """Return the current target (non-class; for a class return enclosing module)."""
-        return self.stack[-1]
+        return self.target_stack[-1]
 
     def current_full_target(self) -> str:
         """Return the current target (may be a class)."""
