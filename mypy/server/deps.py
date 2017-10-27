@@ -8,8 +8,8 @@ from mypy.nodes import (
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
-    TypeInfo, FuncBase, RefExpr, Var, LDEF, MDEF, GDEF, op_methods, reverse_op_methods,
-    ops_with_inplace_method
+    TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, Var, LDEF, MDEF, GDEF, op_methods,
+    reverse_op_methods, ops_with_inplace_method
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -20,33 +20,39 @@ from mypy.types import (
 from mypy.server.trigger import make_trigger
 
 
-def get_dependencies(prefix: str, node: MypyFile,
+def get_dependencies(prefix: str,
+                     target: MypyFile,
                      type_map: Dict[Expression, Type],
                      python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get all dependencies of a node, recursively."""
     visitor = DependencyVisitor(prefix, type_map, python_version)
-    node.accept(visitor)
+    target.accept(visitor)
     return visitor.map
 
 
-def get_dependencies_of_target(module_id: str, node: Node,
+def get_dependencies_of_target(module_id: str,
+                               target: Node,
                                type_map: Dict[Expression, Type],
                                python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get dependencies of a target -- don't recursive into nested targets."""
     prefix = module_id
     visitor = DependencyVisitor(prefix, type_map, python_version)
     visitor.enter_file_scope(prefix)
-    if isinstance(node, MypyFile):
-        for defn in node.defs:
-            if not isinstance(defn, (ClassDef, FuncDef)):
+    if isinstance(target, MypyFile):
+        # Only get dependencies of the top-level of the module. Don't recurse into
+        # functions.
+        for defn in target.defs:
+            # TODO: Recurse into top-level statements and class bodies but skip functions.
+            if not isinstance(defn, (ClassDef, Decorator, FuncDef, OverloadedFuncDef)):
                 defn.accept(visitor)
-    elif isinstance(node, FuncBase) and node.info:
+    elif isinstance(target, FuncBase) and target.info:
+        # It's a method.
         # TODO: Methods in nested classes.
-        visitor.enter_class_scope(node.info)
-        node.accept(visitor)
+        visitor.enter_class_scope(target.info)
+        target.accept(visitor)
         visitor.leave_scope()
     else:
-        node.accept(visitor)
+        target.accept(visitor)
     visitor.leave_scope()
     return visitor.map
 
@@ -88,9 +94,11 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_func_def(self, o: FuncDef) -> None:
         if not isinstance(self.current_scope(), FuncDef):
+            # Not a nested function, so create a new target.
             new_scope = True
             target = self.enter_function_scope(o)
         else:
+            # We treat nested functions as components of the parent function target.
             new_scope = False
             target = self.current_target()
         if o.type:
