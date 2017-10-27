@@ -1468,6 +1468,10 @@ class State:
             self.import_context = []
         self.id = id or '__main__'
         self.options = manager.options.clone_for_module(self.id)
+
+        if self.options.skip:
+            raise ModuleNotFound
+
         if not path and source is None:
             assert id is not None
             file_id = id
