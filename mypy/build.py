@@ -2253,22 +2253,29 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
 
 
 def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
-    """Process the modules in one SCC from their cached data."""
-    # TODO: Clean this up, it's ugly.
+    """Process the modules in one SCC from their cached data.
+
+    This involves loading the tree from JSON and then doing various cleanups.
+
+    If the tree is loaded from memory ('saved_cache') it's even quicker.
+    """
     saved_cache = manager.saved_cache
+    # Check that all nodes are available for loading from memory.
     if all(id in saved_cache for id in scc):
-        trees = {id: saved_cache[id][1] for id in scc}
-        if all(trees.values()):
-            deps = set(dep for id in scc for dep in graph[id].dependencies if dep in graph)
-            if all(graph[dep].tree_is_new for dep in deps):
-                for id, tree in trees.items():
-                    manager.add_stats(reused_trees=1)
-                    manager.trace("Reusing saved tree %s" % id)
-                    st = graph[id]
-                    st.tree = tree
-                    st.tree_is_new = True
-                    manager.modules[id] = tree
-                return
+        deps = set(dep for id in scc for dep in graph[id].dependencies if dep in graph)
+        # Check that all dependencies were loaded from memory.
+        # If not, some dependency was reparsed but the interface hash
+        # wasn't changed -- in that case we can't reuse the tree.
+        if all(graph[dep].tree_is_new for dep in deps):
+            trees = {id: saved_cache[id][1] for id in scc}
+            for id, tree in trees.items():
+                manager.add_stats(reused_trees=1)
+                manager.trace("Reusing saved tree %s" % id)
+                st = graph[id]
+                st.tree = tree  # This is never overwritten.
+                st.tree_is_new = True
+                manager.modules[id] = tree
+            return
     for id in scc:
         graph[id].load_tree()
     for id in scc:
