@@ -476,37 +476,33 @@ Here's the above example modified to use ``MYPY``:
 Properties & Incompatible Types in Assignment
 ---------------------------------------------
 
-Consider the code below:
+Mypy infers the type of a property from the getter method (e.g., ``int``) as
+the final type for the attribute, regardless of what the ``@property.setter``
+declares (e.g., ``Union[int, float]``), as demonstrated below:
 
 .. code-block:: python
 
     from typing import Union
-    
-    
+
+
     class A:
-        def __init__(self) -> None:
-            self._foo = 0
-    
         @property
         def foo(self) -> int:
-            return self._foo
-    
+            ...
+
         @foo.setter
         def foo(self, value: Union[int, float]) -> None:
-            self._foo = int(value)
-    
-    
-    if __name__ == '__main__':
-        a = A()
-        a.foo = 123
-        a.foo = 456.789
-    
+            ...
 
-Running Mypy against the above code will generate the following error at ``a.foo = 456.789``: 
+
+    a = A()
+    a.foo = 123
+    a.foo = 456.789 # error here
+
+
+Running mypy against the above code will generate the following error:
 
 .. code-block:: none
-    
-    error: Incompatible types in assignment (expression has type "float", variable has type "int")
 
-While overloading class property setters in Python is valid, Mypy infers the type from the initial ``@property`` definition (e.g., ``int``) as the final type for the attribute, regardless of what the ``@property.setter`` declares (e.g., ``Union[int, float]``). This error may be silenced with `# type: ignore  <http://mypy.readthedocs.io/en/latest/common_issues.html#spurious-errors-and-locally-silencing-the-checker>`_
-at ``a.foo = 456.789``.
+    error: Incompatible types in assignment
+    (expression has type "float", variable has type "int")
