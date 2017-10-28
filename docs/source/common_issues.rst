@@ -472,3 +472,37 @@ Here's the above example modified to use ``MYPY``:
 
    def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
        return [arg]
+
+Properties & Incompatible Types in Assignment
+---------------------------------------------
+
+Mypy infers the type of a property from the getter method (e.g., ``int``) as
+the final type for the attribute, regardless of what the ``@property.setter``
+declares (e.g., ``Union[int, float]``), as demonstrated below:
+
+.. code-block:: python
+
+    from typing import Union
+
+
+    class A:
+        @property
+        def foo(self) -> int:
+            ...
+
+        @foo.setter
+        def foo(self, value: Union[int, float]) -> None:
+            ...
+
+
+    a = A()
+    a.foo = 123
+    a.foo = 456.789 # error here
+
+
+Running mypy against the above code will generate the following error:
+
+.. code-block:: none
+
+    error: Incompatible types in assignment
+    (expression has type "float", variable has type "int")
