@@ -213,7 +213,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
-                    if 'generics' in self.options.disallow_any and not self.is_typeshed_stub:
+                    if self.options.disallow_any_generics and not self.is_typeshed_stub:
                         self.fail(messages.BARE_GENERIC, t)
                     typ = self.named_type('builtins.tuple', line=t.line, column=t.column)
                     typ.from_generic_builtin = True
@@ -669,7 +669,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         if len(t.args) != len(info.type_vars):
             if len(t.args) == 0:
                 from_builtins = t.type.fullname() in nongen_builtins and not t.from_generic_builtin
-                if ('generics' in self.options.disallow_any and
+                if (self.options.disallow_any_generics and
                         not self.is_typeshed_stub and
                         from_builtins):
                     alternative = nongen_builtins[t.type.fullname()]
@@ -930,7 +930,7 @@ def check_for_explicit_any(typ: Optional[Type],
                            is_typeshed_stub: bool,
                            msg: MessageBuilder,
                            context: Context) -> None:
-    if ('explicit' in options.disallow_any and
+    if (options.disallow_any_explicit and
             not is_typeshed_stub and
             typ and
             has_explicit_any(typ)):

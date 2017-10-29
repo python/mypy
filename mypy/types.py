@@ -277,7 +277,7 @@ class TypeOfAny:
     unannotated = TypeOfAny('unannotated')
     # Does this Any come from an explicit type annotation?
     explicit = TypeOfAny('explicit')
-    # Does this come from an unfollowed import? See --disallow-any=unimported option
+    # Does this come from an unfollowed import? See --disallow-any-unimported option
     from_unimported_type = TypeOfAny('from_unimported_type')
     # Does this Any type come from omitted generics?
     from_omitted_generics = TypeOfAny('from_omitted_generics')

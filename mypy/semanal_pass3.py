@@ -372,7 +372,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                                  indicator)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
-        if 'generics' not in self.options.disallow_any or self.is_typeshed_file:
+        if not self.options.disallow_any_generics or self.is_typeshed_file:
             return
 
         for t in collect_any_types(typ):

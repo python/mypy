@@ -20,7 +20,11 @@ class Options:
     PER_MODULE_OPTIONS = {
         "ignore_missing_imports",
         "follow_imports",
-        "disallow_any",
+        "disallow_any_generics",
+        "disallow_any_unimported",
+        "disallow_any_expr",
+        "disallow_any_decorated",
+        "disallow_any_explicit",
         "disallow_subclassing_any",
         "disallow_untyped_calls",
         "disallow_untyped_defs",
@@ -51,7 +55,13 @@ class Options:
         self.report_dirs = {}  # type: Dict[str, str]
         self.ignore_missing_imports = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
-        self.disallow_any = []  # type: List[str]
+
+        # disallow_any options
+        self.disallow_any_generics = False
+        self.disallow_any_unimported = False
+        self.disallow_any_expr = False
+        self.disallow_any_decorated = False
+        self.disallow_any_explicit = False
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False

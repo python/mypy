@@ -624,7 +624,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                   item)
 
                     self.check_for_missing_annotations(fdef)
-                    if 'unimported' in self.options.disallow_any:
+                    if self.options.disallow_any_unimported:
                         if fdef.type and isinstance(fdef.type, CallableType):
                             ret_type = fdef.type.ret_type
                             if has_any_from_unimported_type(ret_type):
@@ -1312,7 +1312,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
         if (s.type is not None and
-                'unimported' in self.options.disallow_any and
+                self.options.disallow_any_unimported and
                 has_any_from_unimported_type(s.type)):
             if isinstance(s.lvalues[-1], TupleExpr):
                 # This is a multiple assignment. Instead of figuring out which type is problematic,
@@ -2524,7 +2524,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.accept(s.body)
 
     def check_untyped_after_decorator(self, typ: Type, func: FuncDef) -> None:
-        if 'decorated' not in self.options.disallow_any or self.is_stub:
+        if not self.options.disallow_any_decorated or self.is_stub:
             return
 
         if mypy.checkexpr.has_any_type(typ):
