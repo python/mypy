@@ -1053,7 +1053,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             else:
                 self.fail('Invalid base class', base_expr)
                 info.fallback_to_any = True
-            if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(base):
+            if self.options.disallow_any_unimported and has_any_from_unimported_type(base):
                 if isinstance(base_expr, (NameExpr, MemberExpr)):
                     prefix = "Base type {}".format(base_expr.name)
                 else:
@@ -2004,7 +2004,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         check_for_explicit_any(old_type, self.options, self.is_typeshed_stub_file, self.msg,
                                context=s)
 
-        if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(old_type):
+        if self.options.disallow_any_unimported and has_any_from_unimported_type(old_type):
             self.msg.unimported_type_becomes_any("Argument 2 to NewType(...)", old_type, s)
 
         # If so, add it to the symbol table.
@@ -2118,7 +2118,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             return
         variance, upper_bound = res
 
-        if 'unimported' in self.options.disallow_any:
+        if self.options.disallow_any_unimported:
             for idx, constraint in enumerate(values, start=1):
                 if has_any_from_unimported_type(constraint):
                     prefix = "Constraint {}".format(idx)
@@ -2587,7 +2587,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             check_for_explicit_any(t, self.options, self.is_typeshed_stub_file, self.msg,
                                    context=call)
 
-        if 'unimported' in self.options.disallow_any:
+        if self.options.disallow_any_unimported:
             for t in types:
                 if has_any_from_unimported_type(t):
                     self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, dictexpr)

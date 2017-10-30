@@ -119,24 +119,6 @@ def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
                        options=options)
 
 
-disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated', 'explicit', 'generics']
-
-
-def disallow_any_argument_type(raw_options: str) -> List[str]:
-    if not raw_options:
-        # empty string disables all options
-        return []
-    flag_options = [o.strip() for o in raw_options.split(',')]
-    for option in flag_options:
-        if option not in disallow_any_options:
-            formatted_valid_options = ', '.join(
-                "'{}'".format(o) for o in disallow_any_options)
-            message = "Invalid '--disallow-any' option '{}' (valid options are: {}).".format(
-                option, formatted_valid_options)
-            raise argparse.ArgumentError(None, message)
-    return flag_options
-
-
 FOOTER = """environment variables:
 MYPYPATH     additional module search path"""
 
@@ -272,10 +254,18 @@ def process_options(args: List[str],
                         help="silently ignore imports of missing modules")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
-    parser.add_argument('--disallow-any', type=disallow_any_argument_type, default=[],
-                        metavar='{{{}}}'.format(', '.join(disallow_any_options)),
-                        help="disallow various types of Any in a module. Takes a comma-separated "
-                             "list of options (defaults to all options disabled)")
+    parser.add_argument('--disallow-any-unimported', default=False, action='store_true',
+                        help="disallow Any types resulting from unfollowed imports")
+    parser.add_argument('--disallow-any-expr', default=False, action='store_true',
+                        help='disallow all expressions that have type Any')
+    parser.add_argument('--disallow-any-decorated', default=False, action='store_true',
+                        help='disallow functions that have Any in their signature '
+                             'after decorator transformation')
+    parser.add_argument('--disallow-any-explicit', default=False, action='store_true',
+                        help='disallow explicit Any in type positions')
+    parser.add_argument('--disallow-any-generics', default=False, action='store_true',
+                        help='disallow usage of generic types that do not specify explicit '
+                             'type parameters')
     add_invertible_flag('--disallow-untyped-calls', default=False, strict_flag=True,
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
@@ -364,6 +354,8 @@ def process_options(args: List[str],
     # --dump-graph will dump the contents of the graph of SCCs and exit.
     parser.add_argument('--dump-graph', action='store_true', help=argparse.SUPPRESS)
     # deprecated options
+    parser.add_argument('--disallow-any', dest='special-opts:disallow_any',
+                        help=argparse.SUPPRESS)
     add_invertible_flag('--strict-boolean', default=False,
                         help=argparse.SUPPRESS)
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
@@ -438,6 +430,9 @@ def process_options(args: List[str],
                      )
 
     # Process deprecated options
+    if special_opts.disallow_any:
+        print("--disallow-any option was split up into multiple flags. "
+              "See http://mypy.readthedocs.io/en/latest/command_line.html#disallow-any-flags")
     if options.strict_boolean:
         print("Warning: --strict-boolean is deprecated; "
               "see https://github.com/python/mypy/issues/3195", file=sys.stderr)
@@ -461,9 +456,6 @@ def process_options(args: List[str],
     if special_opts.no_fast_parser:
         print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
               "is now mypy's default and only parser.")
-
-    if 'unannotated' in options.disallow_any:
-        options.disallow_untyped_defs = True
 
     # Check for invalid argument combinations.
     if require_targets:
@@ -652,7 +644,6 @@ config_types = {
     'custom_typeshed_dir': str,
     'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
     'junit_xml': str,
-    'disallow_any': disallow_any_argument_type,
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
@@ -770,14 +761,6 @@ def parse_section(prefix: str, template: Options,
         except ValueError as err:
             print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
             continue
-        if key == 'disallow_any':
-            # "disallow_any = " should disable all disallow_any options, including untyped defs,
-            # given in a more general config.
-            if not v:
-                results['disallow_untyped_defs'] = False
-            # If "unannotated" is explicitly given, turn on disallow_untyped_defs.
-            elif 'unannotated' in v:
-                results['disallow_untyped_defs'] = True
         if key == 'silent_imports':
             print("%s: silent_imports has been replaced by "
                   "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)
