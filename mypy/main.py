@@ -255,9 +255,9 @@ def process_options(args: List[str],
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
     parser.add_argument('--disallow-any-unimported', default=False, action='store_true',
-                        help="disallow usage of types that come from unfollowed imports")
+                        help="disallow Any types resulting from unfollowed imports")
     parser.add_argument('--disallow-any-expr', default=False, action='store_true',
-                        help='disallow all expressions in the module that have type Any')
+                        help='disallow all expressions that have type Any')
     parser.add_argument('--disallow-any-decorated', default=False, action='store_true',
                         help='disallow functions that have Any in their signature '
                              'after decorator transformation')
