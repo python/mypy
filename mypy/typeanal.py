@@ -602,11 +602,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
     def anal_var_defs(self, var_defs: List[TypeVarDef]) -> List[TypeVarDef]:
         a = []  # type: List[TypeVarDef]
         for vd in var_defs:
-            a.append(TypeVarDef(vd.name, vd.id.raw_id, self.anal_array(vd.values),
+            a.append(TypeVarDef(vd.name,
+                                vd.fullname,
+                                vd.id.raw_id,
+                                self.anal_array(vd.values),
                                 vd.upper_bound.accept(self),
                                 vd.variance,
-                                vd.line,
-                                fullname=vd.fullname))
+                                vd.line))
         return a
 
     def named_type(self, fully_qualified_name: str,

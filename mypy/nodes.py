@@ -1933,7 +1933,7 @@ class TypeInfo(SymbolNode):
 
     # Information related to type annotations.
 
-    # Generic type variable names
+    # Generic type variable names (full names)
     type_vars = None  # type: List[str]
 
     # Direct base classes.
@@ -1995,7 +1995,7 @@ class TypeInfo(SymbolNode):
     def add_type_vars(self) -> None:
         if self.defn.type_vars:
             for vd in self.defn.type_vars:
-                self.type_vars.append(vd.name)
+                self.type_vars.append(vd.fullname)
 
     def name(self) -> str:
         """Short name."""

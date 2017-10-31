@@ -124,7 +124,6 @@ class DependencyVisitor(TraverserVisitor):
         self.is_class = True
         # Add dependencies to type variables of a generic class.
         for tv in o.type_vars:
-            assert tv.fullname
             self.add_dependency(make_trigger(tv.fullname), target)
         # Add dependencies to base types.
         for base in o.info.bases:
