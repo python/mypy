@@ -1360,8 +1360,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             if not self.current_node_deferred:
-                                var.type = UnionType.make_simplified_union(
+                                inferred_type = UnionType.make_simplified_union(
                                     [rvalue_type, NoneTyp()])
+                                self.set_inferred_type(var, lvalue, inferred_type)
                             else:
                                 var.type = None
                             del partial_types[var]
@@ -2389,6 +2390,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             item_type = self.analyze_async_iterable_item_type(s.expr)
         else:
             item_type = self.analyze_iterable_item_type(s.expr)
+        s.inferred_item_type = item_type
         self.analyze_index_variables(s.index, item_type, s.index_type is None, s)
         self.accept_loop(s.body, s.else_body)
 
