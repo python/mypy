@@ -1654,20 +1654,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         op = e.op
         if op == 'not':
             result = self.bool_type()  # type: Type
-        elif op == '-':
-            method_type = self.analyze_external_member_access('__neg__',
-                                                              operand_type, e)
-            result, method_type = self.check_call(method_type, [], [], e)
-            e.method_type = method_type
-        elif op == '+':
-            method_type = self.analyze_external_member_access('__pos__',
-                                                              operand_type, e)
-            result, method_type = self.check_call(method_type, [], [], e)
-            e.method_type = method_type
         else:
-            assert op == '~', "unhandled unary operator"
-            method_type = self.analyze_external_member_access('__invert__',
-                                                              operand_type, e)
+            method = nodes.unary_op_methods[op]
+            method_type = self.analyze_external_member_access(method, operand_type, e)
             result, method_type = self.check_call(method_type, [], [], e)
             e.method_type = method_type
         return result

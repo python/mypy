@@ -166,8 +166,7 @@ def update_dependencies(new_modules: Dict[str, MypyFile],
                         graph: Dict[str, State],
                         options: Options) -> None:
     for id, node in new_modules.items():
-        module_deps = get_dependencies(prefix=id,
-                                       target=node,
+        module_deps = get_dependencies(target=node,
                                        type_map=graph[id].type_checker.type_map,
                                        python_version=options.python_version)
         for trigger, targets in module_deps.items():

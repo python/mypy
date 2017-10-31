@@ -264,7 +264,7 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_exec_stmt(self, o: ExecStmt) -> None:
         o.expr.accept(self)
-        if o.variables1:
-            o.variables1.accept(self)
-        if o.variables2:
-            o.variables2.accept(self)
+        if o.globals:
+            o.globals.accept(self)
+        if o.locals:
+            o.locals.accept(self)

@@ -42,11 +42,10 @@ class GetDependenciesSuite(DataSuite):
         messages, files, type_map = self.build(src, python_version)
         a = messages
         if files is None or type_map is None:
-            # Likely syntax error.
             if not a:
-                a = ['Unknown compile error']
+                a = ['Unknown compile error (likely syntax error in test case or fixture)']
         else:
-            deps = get_dependencies('__main__', files['__main__'], type_map, python_version)
+            deps = get_dependencies(files['__main__'], type_map, python_version)
 
             for source, targets in sorted(deps.items()):
                 line = '%s -> %s' % (source, ', '.join(sorted(targets)))

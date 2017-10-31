@@ -284,8 +284,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_exec_stmt(self, node: ExecStmt) -> ExecStmt:
         return ExecStmt(self.expr(node.expr),
-                        self.optional_expr(node.variables1),
-                        self.optional_expr(node.variables2))
+                        self.optional_expr(node.globals),
+                        self.optional_expr(node.locals))
 
     def visit_star_expr(self, node: StarExpr) -> StarExpr:
         return StarExpr(node.expr)

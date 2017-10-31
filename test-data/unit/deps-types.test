@@ -58,6 +58,20 @@ def f() -> None:
 [out]
 <m.A> -> m.A, m.f
 
+[case testTypeTypeAttribute]
+from typing import Type
+
+class A:
+    @staticmethod
+    def f() -> None: pass
+
+def f(x: Type[A]) -> None:
+    x.f()
+[builtins fixtures/staticmethod.pyi]
+[out]
+<m.A.f> -> m, m.f
+<m.A> -> <m.f>, m.A, m.f
+
 [case testComplexNestedType]
 from typing import Union, Callable, Type
 

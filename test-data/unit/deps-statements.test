@@ -145,6 +145,7 @@ def g() -> None:
         f2()
 [builtins fixtures/list.pyi]
 [out]
+<m.A.__getitem__> -> m.g
 <m.A.__iter__> -> m.g
 <m.A> -> m.A, m.g
 <m.f1> -> m.g
@@ -278,6 +279,7 @@ def g() -> None:
         x.f()
 [builtins fixtures/list.pyi]
 [out]
+<m.A.__getitem__> -> m.g
 <m.A.__iter__> -> m.g
 <m.A> -> m.A, m.g
 <m.B.f> -> m.g
@@ -362,6 +364,7 @@ def g() -> None:
 <m.A.x> -> m.A.f, m.g
 <m.A.y> -> m.A.f, m.g
 <m.A> -> m.A, m.g
+<m.B.__getitem__> -> m.g
 <m.B.__iter__> -> m.g
 <m.B> -> <m.f>, m.B, m.f
 <m.f> -> m.g

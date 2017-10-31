@@ -995,15 +995,15 @@ class ExecStmt(Statement):
     """Python 2 exec statement"""
 
     expr = None  # type: Expression
-    variables1 = None  # type: Optional[Expression]
-    variables2 = None  # type: Optional[Expression]
+    globals = None  # type: Optional[Expression]
+    locals = None  # type: Optional[Expression]
 
     def __init__(self, expr: Expression,
-                 variables1: Optional[Expression],
-                 variables2: Optional[Expression]) -> None:
+                 globals: Optional[Expression],
+                 locals: Optional[Expression]) -> None:
         self.expr = expr
-        self.variables1 = variables1
-        self.variables2 = variables2
+        self.globals = globals
+        self.locals = locals
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_exec_stmt(self)
@@ -1354,6 +1354,12 @@ reverse_op_methods = {
 
 normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())
 reverse_op_method_set = set(reverse_op_methods.values())
+
+unary_op_methods = {
+    '-': '__neg__',
+    '+': '__pos__',
+    '~': '__invert__',
+}
 
 
 class OpExpr(Expression):

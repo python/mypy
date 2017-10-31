@@ -3106,10 +3106,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
 
     def visit_exec_stmt(self, s: ExecStmt) -> None:
         s.expr.accept(self)
-        if s.variables1:
-            s.variables1.accept(self)
-        if s.variables2:
-            s.variables2.accept(self)
+        if s.globals:
+            s.globals.accept(self)
+        if s.locals:
+            s.locals.accept(self)
 
     #
     # Expressions
