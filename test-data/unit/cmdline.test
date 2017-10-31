@@ -176,76 +176,6 @@ z.py:1: error: Function is missing a type annotation
 z.py:4: error: Call to untyped function "f" in typed context
 x.py:1: error: Function is missing a type annotation
 
-[case testPerFileConfigSectionUntypedWithDisallowUnannotated]
-# cmd: mypy w.py x.py y.py z.py
-[file mypy.ini]
-[[mypy]
-disallow_any = unannotated
-[[mypy-y*]
-disallow_any =
-[[mypy-z*]
-disallow_untyped_defs = True
-[[mypy-w*]
-disallow_untyped_defs = False
-[file x.py]
-def f(a):
-    pass
-[file y.py]
-def f(a):
-    pass
-[file z.py]
-def f(a):
-    pass
-[file w.py]
-def f(a):
-    pass
-[out]
-z.py:1: error: Function is missing a type annotation
-x.py:1: error: Function is missing a type annotation
-
-[case testPerFileConfigSectionDisallowUnannotatedWithUntyped]
-# cmd: mypy x.py y.py z.py
-[file mypy.ini]
-[[mypy]
-disallow_untyped_defs = True
-[[mypy-y*]
-disallow_any =
-[[mypy-z*]
-disallow_any = unannotated
-[file x.py]
-def f(a):
-    pass
-[file y.py]
-def f(a):
-    pass
-[file z.py]
-def f(a):
-    pass
-[out]
-z.py:1: error: Function is missing a type annotation
-x.py:1: error: Function is missing a type annotation
-
-[case testPerFileConfigSectionDisallowUnannotatedNoOverride]
-# cmd: mypy x.py y.py z.py
-[file mypy.ini]
-[[mypy]
-[[mypy-x*]
-disallow_untyped_defs = True
-[[mypy-z*]
-disallow_any = unannotated
-[file x.py]
-def f(a):
-    pass
-[file y.py]
-def f(a):
-    pass
-[file z.py]
-def f(a):
-    pass
-[out]
-z.py:1: error: Function is missing a type annotation
-x.py:1: error: Function is missing a type annotation
-
 [case testPerFileConfigSectionMultipleMatches]
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file mypy.ini]
@@ -595,7 +525,7 @@ python_version = 3.6
 # cmd: mypy main.py
 [file mypy.ini]
 [[mypy]
-disallow_any = unimported
+disallow_any_unimported = True
 ignore_missing_imports = True
 [file main.py]
 from unreal import F
@@ -604,24 +534,12 @@ def f(x: F) -> None: pass
 [out]
 main.py:3: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
 
-[case testDisallowAnyEmpty]
-# cmd: mypy main.py
-[file mypy.ini]
-[[mypy]
-disallow_any =
-ignore_missing_imports = True
-[file main.py]
-from unreal import F
-
-def f(x: F) -> None: pass
-[out]
-
 [case testDisallowAnyExplicitDefSignature]
 # cmd: mypy m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m*]
-disallow_any = explicit
+disallow_any_explicit = True
 
 [file m.py]
 from typing import Any, List
@@ -646,7 +564,7 @@ m.py:9: error: Explicit "Any" is not allowed
 [file mypy.ini]
 [[mypy]
 [[mypy-m*]
-disallow_any = explicit
+disallow_any_explicit = True
 
 [file m.py]
 from typing import Any, List
@@ -666,7 +584,7 @@ m.py:5: error: Explicit "Any" is not allowed
 [file mypy.ini]
 [[mypy]
 [[mypy-m*]
-disallow_any = explicit
+disallow_any_explicit = True
 
 [file m.py]
 from typing import Any, List
@@ -680,7 +598,7 @@ m.py:2: error: Explicit "Any" is not allowed
 [file mypy.ini]
 [[mypy]
 [[mypy-m*]
-disallow_any = explicit
+disallow_any_explicit = True
 
 [file m.py]
 from typing import Any, List
@@ -700,7 +618,7 @@ m.py:6: error: Explicit "Any" is not allowed
 [file mypy.ini]
 [[mypy]
 [[mypy-m*]
-disallow_any = explicit
+disallow_any_explicit = True
 
 [file m.py]
 from typing import Any, List
@@ -722,7 +640,7 @@ m.py:4: error: Explicit "Any" is not allowed
 [file mypy.ini]
 [[mypy]
 [[mypy-m*]
-disallow_any = explicit
+disallow_any_explicit = True
 
 [file m.py]
 from typing import Any, List, TypeVar, Tuple
@@ -747,7 +665,7 @@ m.py:10: error: Explicit "Any" is not allowed
 [file mypy.ini]
 [[mypy]
 [[mypy-m*]
-disallow_any = explicit
+disallow_any_explicit = True
 
 [file m.py]
 from typing import Any, List, cast
@@ -765,7 +683,7 @@ m.py:5: error: Explicit "Any" is not allowed
 [file mypy.ini]
 [[mypy]
 [[mypy-m*]
-disallow_any = explicit
+disallow_any_explicit = True
 
 [file m.py]
 from typing import Any, List, NamedTuple
@@ -782,7 +700,7 @@ m.py:3: error: Explicit "Any" is not allowed
 [file mypy.ini]
 [[mypy]
 [[mypy-m*]
-disallow_any = explicit
+disallow_any_explicit = True
 
 [file m.py]
 from typing import Any, List, TypeVar
@@ -797,12 +715,12 @@ m.py:3: error: Explicit "Any" is not allowed
 [file mypy.ini]
 [[mypy]
 [[mypy-m*]
-disallow_any = explicit
+disallow_any_explicit = True
 
 [file m.py]
 from typing import Any, List, NewType
 
-Baz = NewType('Baz', Any)  # this error does not come from `--disallow-any=explicit` flag
+Baz = NewType('Baz', Any)  # this error does not come from `--disallow-any-explicit` flag
 Bar = NewType('Bar', List[Any])
 
 [out]
@@ -815,7 +733,7 @@ m.py:4: error: Explicit "Any" is not allowed
 [file mypy.ini]
 [[mypy]
 [[mypy-m*]
-disallow_any = explicit
+disallow_any_explicit = True
 
 [file m.py]
 from mypy_extensions import TypedDict
@@ -833,7 +751,7 @@ m.py:4: error: Explicit "Any" is not allowed
 [file mypy.ini]
 [[mypy]
 [[mypy-m*]
-disallow_any = explicit
+disallow_any_explicit = True
 
 [file m.py]
 from mypy_extensions import TypedDict
@@ -849,7 +767,7 @@ m.py:4: error: Explicit "Any" is not allowed
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
-disallow_any = generics
+disallow_any_generics = True
 
 [file m.py]
 from typing import Tuple
@@ -870,7 +788,7 @@ m.py:8: error: Missing type parameters for generic type
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
-disallow_any = generics
+disallow_any_generics = True
 
 [file m.py]
 from typing import Tuple, List
@@ -885,7 +803,7 @@ m.py:3: error: Missing type parameters for generic type
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
-disallow_any = generics
+disallow_any_generics = True
 
 [file m.py]
 from typing import Type, Any
@@ -905,7 +823,7 @@ m.py:8: error: Missing type parameters for generic type
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
-disallow_any = generics
+disallow_any_generics = True
 
 [file m.py]
 from typing import List
@@ -922,7 +840,7 @@ m.py:5: error: Missing type parameters for generic type
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
-disallow_any = generics
+disallow_any_generics = True
 
 [file m.py]
 from typing import List, TypeVar, Tuple
@@ -946,7 +864,7 @@ m.py:11: error: Missing type parameters for generic type
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
-disallow_any = generics
+disallow_any_generics = True
 
 [file m.py]
 from typing import List
@@ -970,7 +888,7 @@ m.py:9: error: Missing type parameters for generic type
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
-disallow_any = generics
+disallow_any_generics = True
 
 [file m.py]
 from typing import Generic, TypeVar, Any
@@ -993,7 +911,7 @@ m.py:10: error: Missing type parameters for generic type
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
-disallow_any = generics
+disallow_any_generics = True
 
 [file m.py]
 s = tuple([1, 2, 3])  # no error
@@ -1015,7 +933,7 @@ m.py:7: error: Implicit generic "Any". Use 'typing.FrozenSet' and specify generi
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
-disallow_any = generics
+disallow_any_generics = True
 
 [file m.py]
 from typing import Tuple, List, Dict, Set, FrozenSet
@@ -1084,7 +1002,7 @@ a/b/c/d/e/__init__.py:1: error: "int" not callable
 [file mypy.ini]
 [[mypy]
 disallow_untyped_defs = True
-disallow_any = generics
+disallow_any_generics = True
 [file a.py]
 def get_tasks(self):
     return 'whatever'

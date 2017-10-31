@@ -1775,7 +1775,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         options = self.chk.options
         if options.warn_redundant_casts and is_same_type(source_type, target_type):
             self.msg.redundant_cast(target_type, expr)
-        if 'unimported' in options.disallow_any and has_any_from_unimported_type(target_type):
+        if options.disallow_any_unimported and has_any_from_unimported_type(target_type):
             self.msg.unimported_type_becomes_any("Target type of cast", target_type, expr)
         check_for_explicit_any(target_type, self.chk.options, self.chk.is_typeshed_stub, self.msg,
                                context=expr)
@@ -2368,7 +2368,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert typ is not None
         self.chk.store_type(node, typ)
 
-        if ('expr' in self.chk.options.disallow_any and
+        if (self.chk.options.disallow_any_expr and
                 not always_allow_any and
                 not self.chk.is_stub and
                 self.chk.in_checked_function() and
@@ -2547,7 +2547,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
         tuple_type = e.info.tuple_type
         if tuple_type:
-            if ('unimported' in self.chk.options.disallow_any and
+            if (self.chk.options.disallow_any_unimported and
                     has_any_from_unimported_type(tuple_type)):
                 self.msg.unimported_type_becomes_any("NamedTuple type", tuple_type, e)
             check_for_explicit_any(tuple_type, self.chk.options, self.chk.is_typeshed_stub,
