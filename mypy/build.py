@@ -1916,6 +1916,7 @@ class State:
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
+    set_orig = set(manager.saved_cache)
     manager.log()
     manager.log("Mypy version %s" % __version__)
     t0 = time.time()
@@ -1936,7 +1937,15 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.warn_unused_ignores:
         # TODO: This could also be a per-module option.
         manager.errors.generate_unused_ignore_notes()
-    manager.saved_cache.update(preserve_cache(graph))
+    updated = preserve_cache(graph)
+    set_updated = set(updated)
+    manager.saved_cache.update(updated)
+    set_final = set(manager.saved_cache)
+    manager.add_stats(saved_cache_1orig=len(set_orig),
+                      saved_cache_2updated=len(set_updated & set_orig),
+                      saved_cache_3added=len(set_final - set_orig),
+                      saved_cache_4removed=len(set_orig - set_final),
+                      saved_cache_5final=len(set_final))
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
         from mypy.server.deps import dump_all_dependencies
