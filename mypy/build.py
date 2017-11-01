@@ -1408,7 +1408,7 @@ class State:
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
-    tree_is_new = False  # True if the tree came from the in-memory cache
+    is_from_saved_cache = False  # True if the tree came from the in-memory cache
     dependencies = None  # type: List[str]
     suppressed = None  # type: List[str]  # Suppressed/missing dependencies
     priorities = None  # type: Dict[str, int]
@@ -2266,14 +2266,14 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # Check that all dependencies were loaded from memory.
         # If not, some dependency was reparsed but the interface hash
         # wasn't changed -- in that case we can't reuse the tree.
-        if all(graph[dep].tree_is_new for dep in deps):
+        if all(graph[dep].is_from_saved_cache for dep in deps):
             trees = {id: saved_cache[id][1] for id in scc}
             for id, tree in trees.items():
                 manager.add_stats(reused_trees=1)
                 manager.trace("Reusing saved tree %s" % id)
                 st = graph[id]
                 st.tree = tree  # This is never overwritten.
-                st.tree_is_new = True
+                st.is_from_saved_cache = True
                 manager.modules[id] = tree
             return
     for id in scc:
