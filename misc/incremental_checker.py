@@ -157,7 +157,7 @@ def run_mypy(target_file_path: Optional[str],
 
 
 def start_daemon(mypy_cache_path: str) -> None:
-    cmd = DAEMON_CMD + ["restart", "--", "--cache-dir", mypy_cache_path]
+    cmd = DAEMON_CMD + ["restart", "--log-file", "./@incr-chk-logs", "--", "--cache-dir", mypy_cache_path]
     execute(cmd)
 
 
