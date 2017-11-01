@@ -1617,7 +1617,6 @@ class State:
 
     def mark_interface_stale(self, *, on_errors: bool = False) -> None:
         """Marks this module as having a stale public interface, and discards the cache data."""
-        self.meta = None
         self.externally_same = False
         if not on_errors:
             self.manager.stale_modules.add(self.id)
@@ -1899,6 +1898,7 @@ class State:
             is_errors = self.manager.errors.is_errors()
         if is_errors:
             delete_cache(self.id, self.path, self.manager)
+            self.meta = None
             self.mark_interface_stale(on_errors=True)
             return
         dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
