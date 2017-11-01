@@ -353,6 +353,8 @@ def process_options(args: List[str],
     parser.add_argument('--debug-cache', action='store_true', help=argparse.SUPPRESS)
     # --dump-graph will dump the contents of the graph of SCCs and exit.
     parser.add_argument('--dump-graph', action='store_true', help=argparse.SUPPRESS)
+    # --semantic-analysis-only does exactly that.
+    parser.add_argument('--semantic-analysis-only', action='store_true', help=argparse.SUPPRESS)
     # deprecated options
     parser.add_argument('--disallow-any', dest='special-opts:disallow_any',
                         help=argparse.SUPPRESS)
