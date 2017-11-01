@@ -308,7 +308,8 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
                      exit_on_error=params.exit_on_error)
 
     # Stage 5: Remove temp files, stop daemon
-    cleanup(temp_repo_path, mypy_cache_path)
+    if not params.keep_temporary_files:
+        cleanup(temp_repo_path, mypy_cache_path)
     if params.daemon:
         print('Stopping daemon')
         stop_daemon()
@@ -332,6 +333,8 @@ def main() -> None:
                         help="the name of the file or directory to typecheck")
     parser.add_argument("-x", "--exit-on-error", action='store_true',
                         help="Exits as soon as an error occurs")
+    parser.add_argument("--keep-temporary-files", action='store_true',
+                        help="Keep temporary files on exit")
     parser.add_argument("--cache-path", default=CACHE_PATH, metavar="DIR",
                         help="sets a custom location to store cache data")
     parser.add_argument("--branch", default=None, metavar="NAME",
