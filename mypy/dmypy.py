@@ -499,10 +499,12 @@ class Server:
             return {'error': "Command 'recheck' is only valid after a 'check' command"}
         return self.check(self.last_sources)
 
-    last_mananager = None  # type: Optional[mypy.build.BuildManager]
+    # Needed by tests.
+    last_manager = None  # type: Optional[mypy.build.BuildManager]
 
     def check(self, sources: List[mypy.build.BuildSource],
               alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
+        self.last_manager = None
         with GcLogger() as gc_result:
             try:
                 # saved_cache is mutated in place.
@@ -513,7 +515,6 @@ class Server:
                 self.last_manager = res.manager  # type: Optional[mypy.build.BuildManager]
             except mypy.errors.CompileError as err:
                 msgs = err.messages
-                self.last_manager = None
         if msgs:
             msgs.append("")
             response = {'out': "\n".join(msgs), 'err': "", 'status': 1}
