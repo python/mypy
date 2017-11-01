@@ -114,7 +114,7 @@ def get_commits_starting_at(repo_folder_path: str, start_commit: str) -> List[Tu
     return get_commits(repo_folder_path, '{0}^..HEAD'.format(start_commit))
 
 
-def get_nth_commit(repo_folder_path, n: int) -> Tuple[str, str]:
+def get_nth_commit(repo_folder_path: str, n: int) -> Tuple[str, str]:
     print("Fetching last {} commits (or all, if there are fewer commits than n)".format(n))
     return get_commits(repo_folder_path, '-{}'.format(n))[0]
 
@@ -156,19 +156,13 @@ def run_mypy(target_file_path: Optional[str],
     return runtime, output
 
 
-def start_daemon(mypy_cache_path: str, verbose: bool) -> None:
-    stdout, stderr, status = execute(DAEMON_CMD + ["status"], fail_on_error=False)
-    if status:
-        cmd = DAEMON_CMD + ["start", "--", "--cache-dir", mypy_cache_path]
-        if verbose:
-            cmd.extend(["-v", "-v"])
-        execute(cmd)
+def start_daemon(mypy_cache_path: str) -> None:
+    cmd = DAEMON_CMD + ["restart", "--", "--cache-dir", mypy_cache_path]
+    execute(cmd)
 
 
 def stop_daemon() -> None:
-    stdout, stderr, status = execute(DAEMON_CMD + ["status"], fail_on_error=False)
-    if status == 0:
-        execute(DAEMON_CMD + ["stop"])
+    execute(DAEMON_CMD + ["stop"])
 
 
 def load_cache(incremental_cache_path: str = CACHE_PATH) -> JsonDict:
@@ -221,7 +215,8 @@ def test_incremental(commits: List[Tuple[str, str]],
                      mypy_cache_path: str,
                      *,
                      mypy_script: Optional[str] = None,
-                     daemon: bool = False) -> None:
+                     daemon: bool = False,
+                     exit_on_error: bool = False) -> None:
     """Runs incremental mode on all `commits` to verify the output matches the expected output.
 
     This function runs mypy on the `target_file_path` inside the `temp_repo_path`. The
@@ -242,6 +237,8 @@ def test_incremental(commits: List[Tuple[str, str]],
             print_offset(expected_output, 8)
             print("    Actual output: ({:.3f} sec):".format(runtime))
             print_offset(output, 8)
+            if exit_on_error:
+                break
         else:
             print("    Output matches expected result!")
             print("    Incremental: {:.3f} sec".format(runtime))
@@ -257,7 +254,7 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
               target_file_path: Optional[str],
               mypy_path: str, incremental_cache_path: str, mypy_cache_path: str,
               range_type: str, range_start: str, branch: str,
-              params: Optional[Namespace] = None) -> None:
+              params: Namespace) -> None:
     """Tests incremental mode against the repo specified in `target_repo_url`.
 
     This algorithm runs in five main stages:
@@ -290,7 +287,7 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
     else:
         raise RuntimeError("Invalid option: {}".format(range_type))
     commits = get_commits_starting_at(temp_repo_path, start_commit)
-    if params is not None and params.sample:
+    if params.sample:
         seed = params.seed or base64.urlsafe_b64encode(os.urandom(15)).decode('ascii')
         random.seed(seed)
         commits = random.sample(commits, params.sample)
@@ -304,18 +301,21 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
 
     # Stage 4: Rewind and re-run mypy (with incremental mode enabled)
     if params.daemon:
-        start_daemon(mypy_cache_path, False)
+        print('Starting daemon')
+        start_daemon(mypy_cache_path)
     test_incremental(commits, cache, temp_repo_path, target_file_path, mypy_cache_path,
-                     mypy_script=params.mypy_script, daemon=params.daemon)
+                     mypy_script=params.mypy_script, daemon=params.daemon,
+                     exit_on_error=params.exit_on_error)
 
     # Stage 5: Remove temp files, stop daemon
     cleanup(temp_repo_path, mypy_cache_path)
     if params.daemon:
+        print('Stopping daemon')
         stop_daemon()
 
 
 def main() -> None:
-    help_factory = (lambda prog: RawDescriptionHelpFormatter(prog=prog, max_help_position=32))
+    help_factory = (lambda prog: RawDescriptionHelpFormatter(prog=prog, max_help_position=32))  # type: Any
     parser = ArgumentParser(
         prog='incremental_checker',
         description=__doc__,
@@ -330,6 +330,8 @@ def main() -> None:
                         help="the repo to clone and run tests on")
     parser.add_argument("-f", "--file-path", default=MYPY_TARGET_FILE, metavar="FILE",
                         help="the name of the file or directory to typecheck")
+    parser.add_argument("-x", "--exit-on-error", action='store_true',
+                        help="Exits as soon as an error occurs")
     parser.add_argument("--cache-path", default=CACHE_PATH, metavar="DIR",
                         help="sets a custom location to store cache data")
     parser.add_argument("--branch", default=None, metavar="NAME",

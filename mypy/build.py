@@ -357,7 +357,7 @@ CacheMeta = NamedTuple('CacheMeta',
 
 
 def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
-    sentinel = None  # type: Any  # the values will be post-validated below
+    sentinel = None  # type: Any  # Values to be validated by the caller
     return CacheMeta(
         meta.get('id', sentinel),
         meta.get('path', sentinel),
@@ -1408,6 +1408,7 @@ class State:
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
+    is_from_saved_cache = False  # True if the tree came from the in-memory cache
     dependencies = None  # type: List[str]
     suppressed = None  # type: List[str]  # Suppressed/missing dependencies
     priorities = None  # type: Dict[str, int]
@@ -1441,9 +1442,6 @@ class State:
 
     # Whether to ignore all errors
     ignore_all = False
-
-    # Whether this module was found to have errors
-    has_errors = False
 
     def __init__(self,
                  id: Optional[str],
@@ -1621,7 +1619,6 @@ class State:
         """Marks this module as having a stale public interface, and discards the cache data."""
         self.meta = None
         self.externally_same = False
-        self.has_errors = on_errors
         if not on_errors:
             self.manager.stale_modules.add(self.id)
 
@@ -1951,7 +1948,7 @@ def preserve_cache(graph: Graph) -> SavedCache:
     saved_cache = {}
     for id, state in graph.items():
         assert state.id == id
-        if state.meta is not None and state.tree is not None and not state.has_errors:
+        if state.meta is not None and state.tree is not None:
             saved_cache[id] = (state.meta, state.tree)
     return saved_cache
 
@@ -2260,16 +2257,27 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
 
 
 def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
-    """Process the modules in one SCC from their cached data."""
-    # TODO: Clean this up, it's ugly.
+    """Process the modules in one SCC from their cached data.
+
+    This involves loading the tree from JSON and then doing various cleanups.
+
+    If the tree is loaded from memory ('saved_cache') it's even quicker.
+    """
     saved_cache = manager.saved_cache
+    # Check that all nodes are available for loading from memory.
     if all(id in saved_cache for id in scc):
-        trees = {id: saved_cache[id][1] for id in scc}
-        if all(trees.values()):
+        deps = set(dep for id in scc for dep in graph[id].dependencies if dep in graph)
+        # Check that all dependencies were loaded from memory.
+        # If not, some dependency was reparsed but the interface hash
+        # wasn't changed -- in that case we can't reuse the tree.
+        if all(graph[dep].is_from_saved_cache for dep in deps):
+            trees = {id: saved_cache[id][1] for id in scc}
             for id, tree in trees.items():
                 manager.add_stats(reused_trees=1)
                 manager.trace("Reusing saved tree %s" % id)
-                graph[id].tree = tree
+                st = graph[id]
+                st.tree = tree  # This is never overwritten.
+                st.is_from_saved_cache = True
                 manager.modules[id] = tree
             return
     for id in scc:
