@@ -11,7 +11,7 @@ flag (or its long form ``--help``)::
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM] [-2]
               [--ignore-missing-imports]
               [--follow-imports {normal,silent,skip,error}]
-              [--disallow-any {unimported, expr, unannotated, decorated, explicit, generics}]
+              [--disallow-any-{unimported,expr,decorated,explicit,generics}]
               [--disallow-untyped-calls] [--disallow-untyped-defs]
               [--check-untyped-defs] [--disallow-subclassing-any]
               [--warn-incomplete-stub] [--warn-redundant-casts]
