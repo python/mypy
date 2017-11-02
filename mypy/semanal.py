@@ -3287,19 +3287,22 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             # In this case base.node is the module's MypyFile and we look up
             # bar in its namespace.  This must be done for all types of bar.
             file = cast(Optional[MypyFile], base.node)  # can't use isinstance due to issue #2999
-            if file.fullname() == self.cur_mod_id:
-                names = self.globals
-            else:
-                names = file.names
+            # TODO: should we actually use this?
+            # if file.fullname() == self.cur_mod_id:
+            #     names = self.globals
+            # else:
+            #     names = file.names
             n = file.names.get(expr.name, None) if file is not None else None
             if n and not n.module_hidden:
                 n = self.normalize_type_alias(n, expr)
                 if not n:
                     return
                 n = self.rebind_symbol_table_node(n)
-                expr.kind = n.kind
-                expr.fullname = n.fullname
-                expr.node = n.node
+                if n:
+                    # TODO: What if None?
+                    expr.kind = n.kind
+                    expr.fullname = n.fullname
+                    expr.node = n.node
             elif file is not None and file.is_stub and '__getattr__' in file.names:
                 # If there is a module-level __getattr__, then any attribute on the module is valid
                 # per PEP 484.
@@ -3661,7 +3664,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         """
         # TODO: Handle type aliases, type variables and other sorts of references
         if isinstance(n.node, (FuncDef, OverloadedFuncDef, TypeInfo, Var)):
-            if get_prefix(n.node.fullname()) == self.cur_mod_id:
+            # TODO: Why is it possible for fullname() to be None, even though it's not
+            #   annotated as Optional[str]?
+            if n.node.fullname() and get_prefix(n.node.fullname()) == self.cur_mod_id:
                 # This is an indirect reference to a name defined in the current module.
                 # Rebind it.
                 return self.globals.get(n.node.name())
@@ -3680,9 +3685,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         Assume that the name is defined. This happens in the global namespace -- the local
         module namespace is ignored.
 
-        NOTE: This is only supported for names defined in builtins and typing.
+        NOTE: This is only supported for names known to be defined.
         """
-        assert name.startswith(('builtins.', 'typing.'))
         parts = name.split('.')
         n = self.modules[parts[0]]
         for i in range(1, len(parts) - 1):
