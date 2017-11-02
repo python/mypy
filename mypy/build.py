@@ -2214,6 +2214,17 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         manager.log("{} fresh SCCs ({} nodes) left in queue (and will remain unprocessed)"
                     .format(sccs_left, nodes_left))
         manager.trace(str(fresh_scc_queue))
+        # Clear out in-memory trees for what's left in the queue
+        for scc in fresh_scc_queue:
+            if not can_reuse_in_memory_tree(graph, scc, manager):
+                for id in scc:
+                    st = graph[id]
+                    st.tree = None
+                    st.is_from_saved_cache = False
+                    if id in manager.saved_cache:
+                        del manager.saved_cache[id]
+                    if id in manager.modules:
+                        del manager.modules[id]
     else:
         manager.log("No fresh SCCs left in queue")
 
@@ -2272,23 +2283,16 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
 
     If the tree is loaded from memory ('saved_cache') it's even quicker.
     """
-    saved_cache = manager.saved_cache
-    # Check that all nodes are available for loading from memory.
-    if all(id in saved_cache for id in scc):
-        deps = set(dep for id in scc for dep in graph[id].dependencies if dep in graph)
-        # Check that all dependencies were loaded from memory.
-        # If not, some dependency was reparsed but the interface hash
-        # wasn't changed -- in that case we can't reuse the tree.
-        if all(graph[dep].is_from_saved_cache for dep in deps):
-            trees = {id: saved_cache[id][1] for id in scc}
-            for id, tree in trees.items():
-                manager.add_stats(reused_trees=1)
-                manager.trace("Reusing saved tree %s" % id)
-                st = graph[id]
-                st.tree = tree  # This is never overwritten.
-                st.is_from_saved_cache = True
-                manager.modules[id] = tree
-            return
+    if can_reuse_in_memory_tree(graph, scc, manager):
+        trees = {id: manager.saved_cache[id][1] for id in scc}
+        for id, tree in trees.items():
+            manager.add_stats(reused_trees=1)
+            manager.trace("Reusing saved tree %s" % id)
+            st = graph[id]
+            st.tree = tree
+            st.is_from_saved_cache = True
+            manager.modules[id] = tree
+        return
     for id in scc:
         graph[id].load_tree()
     for id in scc:
@@ -2297,6 +2301,24 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         graph[id].calculate_mros()
     for id in scc:
         graph[id].patch_dependency_parents()
+
+
+def can_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManager) -> bool:
+    """Check whether the given SCC can safely reuse the trees from saved_cache.
+
+    Assumes the SCC is already considered fresh.
+    """
+    saved_cache = manager.saved_cache
+    # Check that all nodes are available for loading from memory.
+    if all(id in saved_cache for id in scc):
+        # Check that all dependencies were loaded from memory.
+        # If not, some dependency was reparsed but the interface hash
+        # wasn't changed -- in that case we can't reuse the tree.
+        deps = set(dep for id in scc for dep in graph[id].dependencies if dep in graph)
+        deps -= set(scc)  # Subtract the SCC itself (else nothing will be safe)
+        if all(graph[dep].is_from_saved_cache for dep in deps):
+            return True
+    return False
 
 
 def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
