@@ -56,7 +56,9 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.types import Type
-from mypy.server.astdiff import compare_symbol_tables, is_identical_type
+from mypy.server.astdiff import (
+    snapshot_symbol_table, compare_symbol_table_snapshots, is_identical_type
+)
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.deps import get_dependencies, get_dependencies_of_target
@@ -184,7 +186,9 @@ def calculate_active_triggers(manager: BuildManager,
     """
     names = set()  # type: Set[str]
     for id in new_modules:
-        names |= compare_symbol_tables(id, old_modules[id].names, new_modules[id].names)
+        snapshot1 = snapshot_symbol_table(id, old_modules[id].names)
+        snapshot2 = snapshot_symbol_table(id, new_modules[id].names)
+        names |= compare_symbol_table_snapshots(id, snapshot1, snapshot2)
     return {make_trigger(name) for name in names}
 
 
