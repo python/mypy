@@ -76,18 +76,11 @@ class ASTMergeSuite(DataSuite):
                     os.path.join(test_temp_dir, 'target.py'))
 
         a.extend(self.dump(manager.modules, graph, kind))
-
-        old_modules = dict(manager.modules)
-        old_subexpr = get_subexpressions(old_modules['target'])
-
-        new_file, new_types = self.build_increment(manager, 'target')
-        replace_modules_with_new_variants(manager,
-                                          graph,
-                                          old_modules,
-                                          {'target': new_file},
-                                          {'target': new_types})
+        old_subexpr = get_subexpressions(manager.modules['target'])
 
         a.append('==>')
+
+        new_file, new_types = self.build_increment(manager, 'target', graph)
         a.extend(self.dump(manager.modules, graph, kind))
 
         for expr in old_subexpr:
@@ -114,10 +107,12 @@ class ASTMergeSuite(DataSuite):
         return result.errors, result.manager, result.graph
 
     def build_increment(self, manager: BuildManager,
-                        module_id: str) -> Tuple[MypyFile,
-                                                 Dict[Expression, Type]]:
-        module_dict, type_maps = build_incremental_step(manager, [module_id])
-        return module_dict[module_id], type_maps[module_id]
+                        module_id: str,
+                        graph: Dict[str, State]) -> Tuple[MypyFile,
+                                                          Dict[Expression, Type]]:
+        module_dict = build_incremental_step(manager, [module_id], graph)
+        type_map = graph[module_id].type_checker.type_map
+        return module_dict[module_id], type_map
 
     def dump(self,
              modules: Dict[str, MypyFile],
