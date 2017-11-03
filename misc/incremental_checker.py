@@ -287,8 +287,8 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
     else:
         raise RuntimeError("Invalid option: {}".format(range_type))
     commits = get_commits_starting_at(temp_repo_path, start_commit)
-    if params.count:
-        commits = commits[:params.count]
+    if params.limit:
+        commits = commits[:params.limit]
     if params.sample:
         seed = params.seed or base64.urlsafe_b64encode(os.urandom(15)).decode('ascii')
         random.seed(seed)
@@ -344,8 +344,8 @@ def main() -> None:
                         "uses the default if not specified")
     parser.add_argument("--sample", type=int, help="use a random sample of size SAMPLE")
     parser.add_argument("--seed", type=str, help="random seed")
-    parser.add_argument("--count", type=int,
-                        help="total number of commits to use (default until end)")
+    parser.add_argument("--limit", type=int,
+                        help="maximum number of commits to use (default until end)")
     parser.add_argument("--mypy-script", type=str, help="alternate mypy script to run")
     parser.add_argument("--daemon", action='store_true',
                         help="use mypy daemon instead of incremental (highly experimental)")
