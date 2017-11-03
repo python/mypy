@@ -145,16 +145,45 @@ def h() -> None:
 ==
 b.py:8: error: Too few arguments for "g" of "C"
 
+[case testReferenceToTypeThroughCycleAndDeleteType]
+import a
+
+[file a.py]
+from b import C
+
+def f() -> C: pass
+
+[file b.py]
+import a
+
+class C:
+    def g(self) -> None: pass
+
+def h() -> None:
+    c = a.f()
+    c.g()
+
+[file b.py.2]
+import a
+
+def h() -> None:
+    c = a.f()
+    c.g()
+
+[out]
+==
+a.py:1: error: Module 'b' has no attribute 'C'
 
 -- TODO: More import cycle:
 --
--- * reference to type in annotation through cycle
+-- * delete type used in another module
+-- * rebind type used in another module to different kind
 -- * "from x import y" through cycle
 -- * "from x import *" through cycle
 -- * "Cls.module" though cycle
 -- * TypeVar
 -- * type alias
--- * reference deleted
--- * reference rebound to different kind
+-- * all kinds of reference deleted
+-- * all kinds of reference rebound to different kind
 --
 -- etc.
