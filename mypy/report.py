@@ -361,25 +361,6 @@ class LineCoverageReporter(AbstractReporter):
 register_reporter('linecoverage', LineCoverageReporter)
 
 
-class OldHtmlReporter(AbstractReporter):
-    """Old HTML reporter.
-
-    This just calls the old functions in `stats`, which use global
-    variables to preserve state for the index.
-    """
-
-    def on_file(self,
-                tree: MypyFile,
-                type_map: Dict[Expression, Type], options: Options) -> None:
-        stats.generate_html_report(tree, tree.path, type_map, self.output_dir)
-
-    def on_finish(self) -> None:
-        stats.generate_html_index(self.output_dir)
-
-
-register_reporter('old-html', OldHtmlReporter)
-
-
 class FileInfo:
     def __init__(self, name: str, module: str) -> None:
         self.name = name
