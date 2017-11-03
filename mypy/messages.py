@@ -18,14 +18,14 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Option
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
-    Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
+    Type, CallableType, Instance, TypeVarDef, TypeVarType, TupleType, TypedDictType,
     UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
-    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT
+    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, CallExpr
 )
 
 
@@ -385,6 +385,14 @@ class MessageBuilder:
                 return (str1, str2)
         return (str1, str2)
 
+    def format_arg_string(self, arg_type_str: str, arg_kind: int) -> str:
+        """Given a type string and arg_kind, return a quoted, starred string."""
+        if arg_kind == ARG_STAR:
+            arg_type_str = '*' + arg_type_str
+        elif arg_kind == ARG_STAR2:
+            arg_type_str = '**' + arg_type_str
+        return self.quote_type_string(arg_type_str)
+
     #
     # Specific operations
     #
@@ -628,12 +636,8 @@ class MessageBuilder:
                 expected_type = callee.arg_types[-1]
             arg_type_str, expected_type_str = self.format_distinctly(
                 arg_type, expected_type, bare=True)
-            if arg_kind == ARG_STAR:
-                arg_type_str = '*' + arg_type_str
-            elif arg_kind == ARG_STAR2:
-                arg_type_str = '**' + arg_type_str
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
-                n, target, self.quote_type_string(arg_type_str),
+                n, target, self.format_arg_string(arg_type_str, arg_kind),
                 self.quote_type_string(expected_type_str))
             if isinstance(arg_type, Instance) and isinstance(expected_type, Instance):
                 notes = append_invariance_notes(notes, arg_type, expected_type)
@@ -911,6 +915,41 @@ class MessageBuilder:
                                    context: Context) -> None:
         self.fail(INCOMPATIBLE_TYPEVAR_VALUE.format(typevar_name, callable_name(callee),
                                                     self.format(typ)), context)
+
+    def incompatible_typevar_value_in_call(self,
+                                           callee: CallableType,
+                                           variable: TypeVarDef,
+                                           context: CallExpr) -> None:
+        from mypy.typeanal import collect_all_inner_types
+        callee_name = callable_name(callee)
+        self.fail(
+            'Argument types for type variable "{}" are incompatible in call to {}'.format(
+                variable.name, callee_name),
+            context)
+        arg_names = []
+        for n, arg_type in enumerate(callee.arg_types):
+            # We collect all inner types to handle cases like List[T], where the
+            # argument itself is not the type variable.
+            for typ in [arg_type] + collect_all_inner_types(arg_type):
+                if isinstance(typ, TypeVarType) and typ.id == variable.id:
+                    arg_names.append(
+                        self.format_arg_string(callee.arg_names[n], callee.arg_kinds[n]))
+                    break
+        valid_variable_types = ', '.join(
+            self.format(typ) for typ in variable.values)
+        if len(arg_names) > 1:
+            self.note(
+                'Arguments {} in call to {} must all have the same type for'
+                ' "{}" (one of {})'.format(
+                    format_string_list(arg_names, suppress=False),
+                    callee_name, variable.name, valid_variable_types),
+                context)
+        else:
+            self.note(
+                'Argument {} in call to {} must have a valid type for "{}" (one'
+                ' of {})'.format(
+                    arg_names[0], callee_name, variable.name, valid_variable_types),
+                context)
 
     def overloaded_signatures_overlap(self, index1: int, index2: int,
                                       context: Context) -> None:
@@ -1334,12 +1373,12 @@ def plural_s(s: Sequence[Any]) -> str:
         return ''
 
 
-def format_string_list(s: Iterable[str]) -> str:
+def format_string_list(s: Iterable[str], suppress: bool = True) -> str:
     lst = list(s)
     assert len(lst) > 0
     if len(lst) == 1:
         return lst[0]
-    elif len(lst) <= 5:
+    elif not suppress or len(lst) <= 5:
         return '%s and %s' % (', '.join(lst[:-1]), lst[-1])
     else:
         return '%s, ... and %s (%i methods suppressed)' % (

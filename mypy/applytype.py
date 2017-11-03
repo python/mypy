@@ -5,7 +5,7 @@ from mypy.sametypes import is_same_type
 from mypy.expandtype import expand_type
 from mypy.types import Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType
 from mypy.messages import MessageBuilder
-from mypy.nodes import Context
+from mypy.nodes import Context, CallExpr
 
 
 def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optional[Type]],
@@ -39,7 +39,12 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
                     types[i] = value
                     break
             else:
-                msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
+                if isinstance(context, CallExpr):
+                    msg.incompatible_typevar_value_in_call(
+                        callable, callable.variables[i], context)
+                else:
+                    msg.incompatible_typevar_value(
+                        callable, type, callable.variables[i].name, context)
         upper_bound = callable.variables[i].upper_bound
         if type and not mypy.subtypes.is_subtype(type, upper_bound):
             msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
