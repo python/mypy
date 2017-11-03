@@ -1939,6 +1939,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         manager.errors.generate_unused_ignore_notes()
     updated = preserve_cache(graph)
     set_updated = set(updated)
+    manager.saved_cache.clear()
     manager.saved_cache.update(updated)
     set_final = set(manager.saved_cache)
     manager.add_stats(saved_cache_1orig=len(set_orig),
@@ -2183,8 +2184,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
         scc_str = " ".join(scc)
         if fresh:
-            manager.trace("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
-            fresh_scc_queue.append(scc)
+            if not maybe_reuse_in_memory_tree(graph, scc, manager):
+                manager.trace("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
+                fresh_scc_queue.append(scc)
         else:
             if len(fresh_scc_queue) > 0:
                 manager.log("Processing {} queued fresh SCCs".format(len(fresh_scc_queue)))
@@ -2214,17 +2216,6 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         manager.log("{} fresh SCCs ({} nodes) left in queue (and will remain unprocessed)"
                     .format(sccs_left, nodes_left))
         manager.trace(str(fresh_scc_queue))
-        # Clear out in-memory trees for what's left in the queue
-        for scc in fresh_scc_queue:
-            if not can_reuse_in_memory_tree(graph, scc, manager):
-                for id in scc:
-                    st = graph[id]
-                    st.tree = None
-                    st.is_from_saved_cache = False
-                    if id in manager.saved_cache:
-                        del manager.saved_cache[id]
-                    if id in manager.modules:
-                        del manager.modules[id]
     else:
         manager.log("No fresh SCCs left in queue")
 
@@ -2283,16 +2274,6 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
 
     If the tree is loaded from memory ('saved_cache') it's even quicker.
     """
-    if can_reuse_in_memory_tree(graph, scc, manager):
-        trees = {id: manager.saved_cache[id][1] for id in scc}
-        for id, tree in trees.items():
-            manager.add_stats(reused_trees=1)
-            manager.trace("Reusing saved tree %s" % id)
-            st = graph[id]
-            st.tree = tree
-            st.is_from_saved_cache = True
-            manager.modules[id] = tree
-        return
     for id in scc:
         graph[id].load_tree()
     for id in scc:
@@ -2301,6 +2282,28 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         graph[id].calculate_mros()
     for id in scc:
         graph[id].patch_dependency_parents()
+
+
+def maybe_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManager) -> bool:
+    if not can_reuse_in_memory_tree(graph, scc, manager):
+        for id in scc:
+            manager.add_stats(cleared_trees=1)
+            manager.trace("Clearing tree %s" % id)
+            st = graph[id]
+            st.tree = None
+            st.is_from_saved_cache = False
+            if id in manager.modules:
+                del manager.modules[id]
+        return False
+    trees = {id: manager.saved_cache[id][1] for id in scc}
+    for id, tree in trees.items():
+        manager.add_stats(reused_trees=1)
+        manager.trace("Reusing saved tree %s" % id)
+        st = graph[id]
+        st.tree = tree
+        st.is_from_saved_cache = True
+        manager.modules[id] = tree
+    return True
 
 
 def can_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManager) -> bool:
