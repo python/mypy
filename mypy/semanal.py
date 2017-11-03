@@ -1463,7 +1463,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 existing_symbol = self.globals.get(imported_id)
                 if existing_symbol:
                     # Import can redefine a variable. They get special treatment.
-                    print('existing', id)
                     if self.process_import_over_existing_name(
                             imported_id, existing_symbol, node, imp):
                         continue

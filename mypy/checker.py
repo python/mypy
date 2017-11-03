@@ -1287,7 +1287,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 lvalue_type = AnyType(TypeOfAny.special_form)
             message = '{} "{}"'.format(messages.INCOMPATIBLE_IMPORT_OF,
                                        cast(NameExpr, assign.rvalue).name)
-            print(lvalue_type, assign.rvalue)
             self.check_simple_assignment(lvalue_type, assign.rvalue, node,
                                          msg=message, lvalue_name='local name',
                                          rvalue_name='imported name')
@@ -1823,13 +1822,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if self.is_definition(lvalue):
             if isinstance(lvalue, NameExpr):
                 inferred = cast(Var, lvalue.node)
-                print(1, inferred)
                 assert isinstance(inferred, Var)
             else:
                 assert isinstance(lvalue, MemberExpr)
                 self.expr_checker.accept(lvalue.expr)
                 inferred = lvalue.def_var
-                print(2, inferred)
         elif isinstance(lvalue, IndexExpr):
             index_lvalue = lvalue
         elif isinstance(lvalue, MemberExpr):
