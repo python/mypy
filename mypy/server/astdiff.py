@@ -20,83 +20,6 @@ from mypy.types import (
 )
 
 
-def compare_symbol_tables(name_prefix: str, table1: SymbolTable, table2: SymbolTable) -> Set[str]:
-    """Return names that are different in two versions of a symbol table.
-
-    Return a set of fully-qualified names (e.g., 'mod.func' or 'mod.Class.method').
-    """
-    # Find names only defined only in one version.
-    names1 = {'%s.%s' % (name_prefix, name) for name in table1}
-    names2 = {'%s.%s' % (name_prefix, name) for name in table2}
-    triggers = names1 ^ names2
-
-    # Look for names defined in both versions that are different.
-    for name in set(table1.keys()) & set(table2.keys()):
-        if not is_similar_node_shallow(table1[name], table2[name]):
-            triggers.add('%s.%s' % (name_prefix, name))
-        else:
-            # Nodes are the same when using shallow comparison. Now look into contents of
-            # classes to find changed items.
-            node1 = table1[name].node
-            node2 = table2[name].node
-
-            if node1 and node1.fullname() and get_prefix(node1.fullname()) != name_prefix:
-                # Only look inside things defined in the current module.
-                # TODO: This probably doesn't work generally...
-                continue
-
-            if isinstance(node1, TypeInfo) and isinstance(node2, TypeInfo):
-                # TODO: Only do this is the class is defined in this module.
-                prefix = '%s.%s' % (name_prefix, node1.name())
-                triggers |= compare_symbol_tables(prefix, node1.names, node2.names)
-
-    return triggers
-
-
-def is_similar_node_shallow(n: SymbolTableNode, m: SymbolTableNode) -> bool:
-    # TODO:
-    #   cross_ref
-    #   tvar_def
-    #   type_override
-    if (n.kind != m.kind
-            or n.module_public != m.module_public):
-        return False
-    if type(n.node) != type(m.node):  # noqa
-        return False
-    if n.node and m.node and n.node.fullname() != m.node.fullname():
-        return False
-    if isinstance(n.node, FuncBase) and isinstance(m.node, FuncBase):
-        # TODO: info
-        return (n.node.is_property == m.node.is_property and
-                is_identical_type(n.node.type, m.node.type))
-    if isinstance(n.node, TypeInfo) and isinstance(m.node, TypeInfo):
-        # TODO:
-        #   type_vars
-        #   bases
-        #   _promote
-        #   tuple_type
-        #   typeddict_type
-        nn = n.node
-        mn = m.node
-        return (nn.is_abstract == mn.is_abstract and
-                nn.is_enum == mn.is_enum and
-                nn.fallback_to_any == mn.fallback_to_any and
-                nn.is_named_tuple == mn.is_named_tuple and
-                nn.is_newtype == mn.is_newtype and
-                is_same_mro(nn.mro, mn.mro))
-    if isinstance(n.node, Var) and isinstance(m.node, Var):
-        if n.node.type is None and m.node.type is None:
-            return True
-        return (n.node.type is not None and m.node.type is not None and
-                is_identical_type(n.node.type, m.node.type))
-    return True
-
-
-def is_same_mro(mro1: List[TypeInfo], mro2: List[TypeInfo]) -> bool:
-    return (len(mro1) == len(mro2)
-            and all(x.fullname() == y.fullname() for x, y in zip(mro1, mro2)))
-
-
 def get_prefix(id: str) -> str:
     """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
     return id.rsplit('.', 1)[0]
@@ -212,9 +135,6 @@ class IdenticalTypeVisitor(TypeVisitor[bool]):
         if isinstance(self.right, TypeType):
             return is_identical_type(left.item, self.right.item)
         return False
-
-
-# ---------------------------
 
 
 SnapshotItem = Tuple[object, ...]
