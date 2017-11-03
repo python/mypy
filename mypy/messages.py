@@ -694,16 +694,15 @@ class MessageBuilder:
                   format(callable_name(callee) or 'Function', callee.arg_names[index]),
                   context)
 
-    def does_not_return_value(self, callee_type: FunctionLike, context: Context) -> None:
+    def does_not_return_value(self, callee_type: Optional[Type], context: Context) -> None:
         """Report an error about use of an unusable type."""
-        name = callable_name(callee_type) or 'Function'
-        self.fail('{} does not return a value'.format(name), context)
-
-    def evaluates_to_none(self, context: Context) -> None:
-        self.fail('Expression evaluates to "None"', context)
-
-    def yield_from_iterator(self, context: Context) -> None:
-        self.fail('Expression "yield from <iterator>" does not return a value', context)
+        name = None  # type: Optional[str]
+        if isinstance(callee_type, FunctionLike):
+            name = callable_name(callee_type)
+        if name is not None:
+            self.fail('{} does not return a value'.format(capitalize(name)), context)
+        else:
+            self.fail('Function does not return a value', context)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""

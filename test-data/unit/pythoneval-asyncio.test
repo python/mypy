@@ -277,7 +277,7 @@ try:
 finally:
     loop.close()
 [out]
-_program.py:13: error: Expression "yield from <iterator>" does not return a value
+_program.py:13: error: Function does not return a value
 
 [case testErrorReturnIsNotTheSameType]
 from typing import Generator, Any

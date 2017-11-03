@@ -876,7 +876,7 @@ main:3: error: "A" not callable
 
 a, o = None, None # type: (A, object)
 a = f()         # E: "f" does not return a value
-o = a()         # E: Expression evaluates to "None"
+o = a()         # E: Function does not return a value
 o = A().g(a)    # E: "g" of "A" does not return a value
 A().g(f())      # E: "f" does not return a value
 x: A = f()      # E: "f" does not return a value
@@ -1523,7 +1523,7 @@ from typing import Iterator
 def f() -> Iterator[int]:
     yield 5
 def g() -> Iterator[int]:
-    a = yield from f()  # E: Expression "yield from <iterator>" does not return a value
+    a = yield from f()  # E: Function does not return a value
 
 [case testYieldFromGeneratorHasValue]
 from typing import Iterator, Generator
