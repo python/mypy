@@ -1,11 +1,14 @@
-"""Strip AST from semantic information."""
+"""Strip AST from semantic information.
+
+This is used in fine-grained incremental checking to reprocess existing AST nodes.
+"""
 
 import contextlib
 from typing import Union, Iterator, Optional
 
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
-    TypeInfo, Var
+    ImportFrom, TypeInfo, Var, UNBOUND_IMPORTED
 )
 from mypy.traverser import TraverserVisitor
 
@@ -21,7 +24,9 @@ class NodeStripVisitor(TraverserVisitor):
     def strip_target(self, node: Union[MypyFile, FuncItem]) -> None:
         """Strip a fine-grained incremental mode target."""
         if isinstance(node, MypyFile):
+            self.names = node.names
             self.strip_top_level(node)
+            del self.names
         else:
             node.accept(self)
 
@@ -49,6 +54,7 @@ class NodeStripVisitor(TraverserVisitor):
 
     @contextlib.contextmanager
     def enter_class(self, info: TypeInfo) -> Iterator[None]:
+        # TODO: Update and restore self.names
         old = self.type
         self.type = info
         yield
@@ -57,6 +63,19 @@ class NodeStripVisitor(TraverserVisitor):
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         node.type = node.unanalyzed_type
         super().visit_assignment_stmt(node)
+
+    def visit_import_from(self, node: ImportFrom) -> None:
+        if node.assignments:
+            node.assignments = []
+        else:
+            # Reset entries in the symbol table. This is necessary since
+            # otherwise the semantic analyzer will think that the import
+            # assigns to an existing name instead of defining a new one.
+            for name, as_name in node.names:
+                imported_name = as_name or name
+                symnode = self.names[imported_name]
+                symnode.kind = UNBOUND_IMPORTED
+                symnode.node = None
 
     def visit_name_expr(self, node: NameExpr) -> None:
         self.strip_ref_expr(node)
