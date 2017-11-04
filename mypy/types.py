@@ -1962,17 +1962,13 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
 
 def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
                   ret_type: Optional[Type] = None) -> CallableType:
-    name = fdef.name()
-    if name:
-        name = '"{}"'.format(name)
-
     return CallableType(
         [AnyType(TypeOfAny.unannotated)] * len(fdef.arg_names),
         fdef.arg_kinds,
         [None if argument_elide_name(n) else n for n in fdef.arg_names],
         ret_type or AnyType(TypeOfAny.unannotated),
         fallback,
-        name,
+        name=fdef.name(),
         implicit=True,
     )
 
