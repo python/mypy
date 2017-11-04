@@ -175,11 +175,11 @@ def build(sources: List[BuildSource],
                 if dir not in lib_path:
                     lib_path.insert(0, dir)
 
-        # Do this even if running as a file, for sanity (mainly because with
-        # multiple builds, there could be a mix of files/modules, so its easier
-        # to just define the semantics that we always add the current director
-        # to the lib_path
-        lib_path.insert(0, os.getcwd())
+        ## # Do this even if running as a file, for sanity (mainly because with
+        ## # multiple builds, there could be a mix of files/modules, so its easier
+        ## # to just define the semantics that we always add the current director
+        ## # to the lib_path
+        ## lib_path.insert(0, os.getcwd())  # <========== ?!
 
     # Prepend a config-defined mypy path.
     lib_path[:0] = options.mypy_path
@@ -2045,7 +2045,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     while new:
         st = new.popleft()
         assert st.ancestors is not None
-        for dep in st.ancestors + st.dependencies + st.suppressed:
+        dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
+        for dep in st.ancestors + dependencies + st.suppressed:
             # We don't want to recheck imports marked with '# type: ignore'
             # so we ignore any suppressed module not explicitly re-included
             # from the command line.
@@ -2127,7 +2128,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         for id in scc:
             deps.update(graph[id].dependencies)
         deps -= ascc
-        stale_deps = {id for id in deps if not graph[id].is_interface_fresh()}
+        stale_deps = {id for id in deps if id in graph and not graph[id].is_interface_fresh()}
         if not manager.options.quick_and_dirty:
             fresh = fresh and not stale_deps
         undeps = set()
