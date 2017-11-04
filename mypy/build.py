@@ -175,11 +175,11 @@ def build(sources: List[BuildSource],
                 if dir not in lib_path:
                     lib_path.insert(0, dir)
 
-        ## # Do this even if running as a file, for sanity (mainly because with
-        ## # multiple builds, there could be a mix of files/modules, so its easier
-        ## # to just define the semantics that we always add the current director
-        ## # to the lib_path
-        ## lib_path.insert(0, os.getcwd())  # <========== ?!
+        # Do this even if running as a file, for sanity (mainly because with
+        # multiple builds, there could be a mix of files/modules, so its easier
+        # to just define the semantics that we always add the current director
+        # to the lib_path
+        lib_path.insert(0, os.getcwd())  # <========== ?!
 
     # Prepend a config-defined mypy path.
     lib_path[:0] = options.mypy_path
