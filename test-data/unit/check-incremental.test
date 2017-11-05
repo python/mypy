@@ -3376,3 +3376,65 @@ def f() -> None:
 [out2]
 [out3]
 [out4]
+
+[case testTreeShadowingViaParentPackage]
+import m.semanal
+
+[file m/__init__.py]
+pass
+
+[file m/nodes.py]
+if False:
+    import m.types
+    import m.semanal
+class Node:
+    line: int
+class FuncBase(Node):
+    type: m.types.Type
+class OverloadedFuncDef(FuncBase): pass
+
+[file m/types.py]
+from m.nodes import Node
+class Type(Node): pass
+class Overloaded(Type): pass
+
+[file m/semanal.py]
+from m.nodes import OverloadedFuncDef
+from m.types import Overloaded
+
+class C:
+    def func(self, defn: OverloadedFuncDef):
+        defn.type = Overloaded()
+        defn.type.line = 0
+
+[file m/nodes.py.2]
+if False:
+    import m.types
+    import m.semanal
+class Node:
+    line: int
+class FuncBase(Node):
+    type: m.types.Type
+class OverloadedFuncDef(FuncBase): pass
+extra = 1
+
+[file m/types.py.2]
+from m.nodes import Node
+class Type(Node): pass
+class Overloaded(Type): pass
+extra = 1
+[builtins fixtures/list.pyi]
+
+[file m/semanal.py.2]
+from m.nodes import OverloadedFuncDef
+from m.types import Overloaded
+
+class C:
+    def func(self, defn: OverloadedFuncDef):
+        defn.type = Overloaded()
+        defn.type.line = 0
+
+extra = 1
+
+[out1]
+[out2]
