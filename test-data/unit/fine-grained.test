@@ -870,3 +870,17 @@ class C:
 main:8: error: "B" has no attribute "x"
 ==
 main:4: error: Name 'm.C' is not defined
+
+[case testImportQualifiedModuleName]
+import a
+[file a.py]
+import b.c
+b.c.f()
+[file a.py.2]
+import b.c
+b.c.f() # dummy change
+[file b/__init__.py]
+[file b/c.py]
+def f() -> None: pass
+[out]
+==

@@ -237,6 +237,8 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             return
         for id, as_id in node.ids:
             imported_id = as_id or id
+            # For 'import a.b.c' we create symbol 'a'.
+            imported_id = imported_id.split('.')[0]
             if imported_id not in self.sem.globals:
                 self.sem.add_symbol(imported_id, SymbolTableNode(UNBOUND_IMPORTED, None), node)
             else:
