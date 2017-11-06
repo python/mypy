@@ -187,6 +187,13 @@ def update_dependencies(new_modules: Dict[str, MypyFile],
                         graph: Dict[str, State],
                         options: Options) -> None:
     for id, node in new_modules.items():
+        if '/typeshed/' in node.path:
+            # We don't track changes to typeshed -- the assumption is that they are only changed
+            # as part of mypy updates, which will invalidate everything anyway.
+            #
+            # TODO: Not a reliable test, as we could have a package named typeshed.
+            # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
+            continue
         module_deps = get_dependencies(target=node,
                                        type_map=graph[id].type_checker.type_map,
                                        python_version=options.python_version)
