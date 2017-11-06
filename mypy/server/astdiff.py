@@ -10,8 +10,8 @@ Only look at detail at definitions at the current module.
 from typing import Set, List, TypeVar, Dict, Tuple, Optional, Sequence
 
 from mypy.nodes import (
-    SymbolTable, SymbolTableNode, FuncBase, TypeInfo, Var, MypyFile, SymbolNode, MODULE_REF,
-    TYPE_ALIAS, UNBOUND_IMPORTED, TVAR
+    SymbolTable, SymbolTableNode, FuncBase, TypeInfo, Var, MypyFile, SymbolNode, Decorator,
+    MODULE_REF, TYPE_ALIAS, UNBOUND_IMPORTED, TVAR
 )
 from mypy.types import (
     Type, TypeVisitor, UnboundType, TypeList, AnyType, NoneTyp, UninhabitedType,
@@ -233,6 +233,17 @@ def snapshot_definition(node: Optional[SymbolNode],
         return ('Func', common, node.is_property, snapshot_type(node.type))
     elif isinstance(node, Var):
         return ('Var', common, snapshot_optional_type(node.type))
+    elif isinstance(node, Decorator):
+        # Note that decorated methods are represented by Decorator instances in
+        # a symbol table since we need to preserve information about the
+        # decorated function (whether it's a class function, for
+        # example). Top-level decorated functions, however, are represented by
+        # the corresponding Var node, since that happens to provide enough
+        # context.
+        return ('Decorator',
+                node.is_overload,
+                snapshot_optional_type(node.var.type),
+                snapshot_definition(node.func, common))
     elif isinstance(node, TypeInfo):
         # TODO:
         #   type_vars

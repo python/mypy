@@ -8,8 +8,8 @@ from mypy.nodes import (
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
-    TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, Var, LDEF, MDEF, GDEF, op_methods,
-    reverse_op_methods, ops_with_inplace_method, unary_op_methods
+    TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, Var, NamedTupleExpr, LDEF, MDEF, GDEF,
+    op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -167,17 +167,28 @@ class DependencyVisitor(TraverserVisitor):
         #   NamedTuple
         #   Enum
         #   type aliases
-        if isinstance(o.rvalue, CallExpr) and isinstance(o.rvalue.analyzed, TypeVarExpr):
+        rvalue = o.rvalue
+        if isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypeVarExpr):
             # TODO: Support type variable value restriction
-            analyzed = o.rvalue.analyzed
+            analyzed = rvalue.analyzed
             self.add_type_dependencies(analyzed.upper_bound,
                                        target=make_trigger(analyzed.fullname()))
+        elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, NamedTupleExpr):
+            # Depend on types of named tuple items.
+            info = rvalue.analyzed.info
+            prefix = '%s.%s' % (self.current_full_target(), info.name())
+            for name, symnode in info.names.items():
+                if not name.startswith('_') and isinstance(symnode.node, Var):
+                    typ = symnode.node.type
+                    self.add_type_dependencies(typ)
+                    attr_target = make_trigger('%s.%s' % (prefix, name))
+                    self.add_type_dependencies(typ, target=attr_target)
         else:
             # Normal assignment
             super().visit_assignment_stmt(o)
             for lvalue in o.lvalues:
                 self.process_lvalue(lvalue)
-            items = o.lvalues + [o.rvalue]
+            items = o.lvalues + [rvalue]
             for i in range(len(items) - 1):
                 lvalue = items[i]
                 rvalue = items[i + 1]

@@ -2415,6 +2415,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             var.info = info
             var.is_initialized_in_class = is_initialized_in_class
             var.is_property = is_property
+            var._fullname = '%s.%s' % (info.fullname(), var.name())
             info.names[var.name()] = SymbolTableNode(MDEF, var)
 
         vars = [Var(item, typ) for item, typ in zip(items, types)]
@@ -2455,10 +2456,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             func.info = info
             func.is_class = is_classmethod
             func.type = set_callable_name(signature, func)
+            func._fullname = info.fullname() + '.' + funcname
             if is_classmethod:
                 v = Var(funcname, func.type)
                 v.is_classmethod = True
                 v.info = info
+                v._fullname = func._fullname
                 dec = Decorator(func, [NameExpr('classmethod')], v)
                 info.names[funcname] = SymbolTableNode(MDEF, dec)
             else:
