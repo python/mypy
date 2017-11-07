@@ -189,22 +189,26 @@ class TypeReplaceVisitor(TypeVisitor[None]):
             item.accept(self)
 
     def visit_type_type(self, typ: TypeType) -> None:
-        raise NotImplementedError
+        typ.item.accept(self)
 
     def visit_type_var(self, typ: TypeVarType) -> None:
-        raise NotImplementedError
+        typ.upper_bound.accept(self)
+        for value in typ.values:
+            value.accept(self)
 
     def visit_typeddict_type(self, typ: TypedDictType) -> None:
         raise NotImplementedError
 
     def visit_unbound_type(self, typ: UnboundType) -> None:
-        raise RuntimeError
+        for arg in typ.args:
+            arg.accept(self)
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> None:
         pass
 
     def visit_union_type(self, typ: UnionType) -> None:
-        raise NotImplementedError
+        for item in typ.items:
+            item.accept(self)
 
     # Helpers
 

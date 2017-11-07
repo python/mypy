@@ -1680,10 +1680,13 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_type_var(self, t: TypeVarType) -> str:
         if t.name is None:
             # Anonymous type variable type (only numeric id).
-            return '`{}'.format(t.id)
+            s = '`{}'.format(t.id)
         else:
             # Named type variable type.
-            return '{}`{}'.format(t.name, t.id)
+            s = '{}`{}'.format(t.name, t.id)
+        if self.id_mapper and t.upper_bound:
+            s += '(upper_bound={})'.format(t.upper_bound.accept(self))
+        return s
 
     def visit_callable_type(self, t: CallableType) -> str:
         s = ''

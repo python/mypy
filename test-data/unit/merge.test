@@ -684,3 +684,131 @@ TypeInfo<2>(
     _source<14> (builtins.str<6>)
     x<15> (target.A<0>)
     y<16> (target.A<0>)))
+
+[case testUnionType_types]
+import target
+[file target.py]
+from typing import Union
+class A: pass
+a: A
+[file target.py.next]
+from typing import Union
+class A: pass
+a: Union[A, int]
+[out]
+## target
+TempNode:-1: Any
+NameExpr:3: target.A<0>
+==>
+## target
+TempNode:-1: Any
+NameExpr:3: Union[target.A<0>, builtins.int<1>]
+
+[case testTypeType_types]
+import target
+[file target.py]
+from typing import Type
+class A: pass
+a: Type[A]
+[file target.py.next]
+from typing import Type
+class A: pass
+a: Type[A]
+[out]
+## target
+TempNode:-1: Any
+NameExpr:3: Type[target.A<0>]
+==>
+## target
+TempNode:-1: Any
+NameExpr:3: Type[target.A<0>]
+
+[case testTypeVar_types]
+import target
+[file target.py]
+from typing import TypeVar, Generic
+T = TypeVar('T', bound=int)
+class A(Generic[T]):
+    x: T
+[file target.py.next]
+from typing import TypeVar
+T = TypeVar('T', bound='A')
+class A(Generic[T]):
+    x: T
+[out]
+## target
+TempNode:-1: Any
+CallExpr:2: Any
+NameExpr:2: Any
+TypeVarExpr:2: Any
+NameExpr:4: T`1(upper_bound=builtins.int<0>)
+==>
+## target
+TempNode:-1: Any
+CallExpr:2: Any
+NameExpr:2: Any
+TypeVarExpr:2: Any
+NameExpr:4: T`1(upper_bound=target.A[Any]<1>)
+
+[case testUnboundType_types]
+import target
+[file target.py]
+from typing import TypeVar, Generic
+class A: pass
+foo: int
+x: foo[A]
+[file target.py.next]
+from typing import TypeVar, Generic
+class A: pass
+foo: int
+x: foo[A]
+[out]
+tmp/target.py:4: error: Invalid type "target.foo"
+## target
+TempNode:-1: Any
+TempNode:-1: Any
+NameExpr:3: builtins.int<0>
+NameExpr:4: foo?[A?]
+==>
+## target
+TempNode:-1: Any
+TempNode:-1: Any
+NameExpr:3: builtins.int<0>
+NameExpr:4: foo?[A?]
+
+[case testOverloaded_types]
+import target
+[file target.py]
+from typing import overload
+class A: pass
+
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: int) -> int: pass
+
+def f(x): pass
+
+g = f
+[file target.py.next]
+from typing import overload
+
+class A: pass
+
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: str) -> str: pass
+
+def f(x): pass
+
+g = f
+[out]
+-- TODO: It is unclear why this works correctly...
+## target
+NameExpr:11: Overload(def (x: target.A<0>) -> target.A<0>, def (x: builtins.int<1>) -> builtins.int<1>)
+NameExpr:11: Overload(def (x: target.A<0>) -> target.A<0>, def (x: builtins.int<1>) -> builtins.int<1>)
+==>
+## target
+NameExpr:12: Overload(def (x: target.A<0>) -> target.A<0>, def (x: builtins.str<2>) -> builtins.str<2>)
+NameExpr:12: Overload(def (x: target.A<0>) -> target.A<0>, def (x: builtins.str<2>) -> builtins.str<2>)

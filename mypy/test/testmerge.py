@@ -35,6 +35,9 @@ TYPES = 'TYPES'
 AST = 'AST'
 
 
+NOT_DUMPED_MODULES = ('builtins', 'typing', 'abc')
+
+
 class ASTMergeSuite(DataSuite):
     def __init__(self, *, update_data: bool) -> None:
         super().__init__(update_data=update_data)
@@ -131,8 +134,8 @@ class ASTMergeSuite(DataSuite):
     def dump_asts(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
         for m in sorted(modules):
-            if m == 'builtins':
-                # We don't support incremental checking of changes to builtins.
+            if m in NOT_DUMPED_MODULES:
+                # We don't support incremental checking of changes to builtins, etc.
                 continue
             s = modules[m].accept(self.str_conv)
             a.extend(s.splitlines())
@@ -141,8 +144,8 @@ class ASTMergeSuite(DataSuite):
     def dump_symbol_tables(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
         for id in sorted(modules):
-            if id == 'builtins':
-                # We don't support incremental checking of changes to builtins.
+            if id in NOT_DUMPED_MODULES:
+                # We don't support incremental checking of changes to builtins, etc.
                 continue
             a.extend(self.dump_symbol_table(id, modules[id].names))
         return a
@@ -167,7 +170,7 @@ class ASTMergeSuite(DataSuite):
     def dump_typeinfos(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
         for id in sorted(modules):
-            if id in ('builtins', 'typing', 'abc'):
+            if id in NOT_DUMPED_MODULES:
                 continue
             a.extend(self.dump_typeinfos_recursive(modules[id].names))
         return a
@@ -190,7 +193,7 @@ class ASTMergeSuite(DataSuite):
         # To make the results repeatable, we try to generate unique and
         # deterministic sort keys.
         for module_id in sorted(graph):
-            if module_id == 'builtins':
+            if module_id in NOT_DUMPED_MODULES:
                 continue
             type_map = graph[module_id].type_checker.type_map
             if type_map:
