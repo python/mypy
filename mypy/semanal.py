@@ -2448,14 +2448,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             arg_kinds = [arg.kind for arg in args]
             assert None not in types
             signature = CallableType(cast(List[Type], types), arg_kinds, items, ret,
-                                     function_type,
-                                     name=name or info.name() + '.' + funcname)
+                                     function_type)
             signature.variables = [tvd]
-            func = FuncDef(funcname, args, Block([]), typ=signature)
+            func = FuncDef(funcname, args, Block([]))
             func.info = info
             func.is_class = is_classmethod
+            func.type = set_callable_name(signature, func)
             if is_classmethod:
-                v = Var(funcname, signature)
+                v = Var(funcname, func.type)
                 v.is_classmethod = True
                 v.info = info
                 dec = Decorator(func, [NameExpr('classmethod')], v)
@@ -3830,9 +3830,9 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
     if isinstance(sig, FunctionLike):
         if fdef.info:
             return sig.with_name(
-                '"{}" of "{}"'.format(fdef.name(), fdef.info.name()))
+                '{} of {}'.format(fdef.name(), fdef.info.name()))
         else:
-            return sig.with_name('"{}"'.format(fdef.name()))
+            return sig.with_name(fdef.name())
     else:
         return sig
 

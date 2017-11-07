@@ -536,6 +536,7 @@ class MessageBuilder:
 
             for op, method in op_methods.items():
                 for variant in method, '__r' + method[2:]:
+                    # FIX: do not rely on textual formatting
                     if name.startswith('"{}" of'.format(variant)):
                         if op == 'in' or variant != method:
                             # Reversed order of base/argument.
@@ -726,9 +727,10 @@ class MessageBuilder:
 
     def no_variant_matches_arguments(self, overload: Overloaded, arg_types: List[Type],
                                      context: Context) -> None:
-        if overload.name():
+        name = callable_name(overload)
+        if name:
             self.fail('No overload variant of {} matches argument types {}'
-                      .format(overload.name(), arg_types), context)
+                      .format(name, arg_types), context)
         else:
             self.fail('No overload variant matches argument types {}'.format(arg_types), context)
 
@@ -1349,7 +1351,10 @@ def format_item_name_list(s: Iterable[str]) -> str:
 
 
 def callable_name(type: FunctionLike) -> Optional[str]:
-    return type.get_name()
+    name = type.get_name()
+    if name is not None and name[0] != '<':
+        return '"{}"'.format(name).replace(' of ', '" of "')
+    return name
 
 
 def for_function(callee: CallableType) -> str:

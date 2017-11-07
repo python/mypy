@@ -584,7 +584,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     callable_type = init_type.copy_modified(
         ret_type=fill_typevars(info), fallback=type_type, name=None, variables=variables,
         special_sig=special_sig)
-    c = callable_type.with_name('"{}"'.format(info.name()))
+    c = callable_type.with_name(info.name())
     return c
 
 
