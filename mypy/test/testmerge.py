@@ -167,7 +167,7 @@ class ASTMergeSuite(DataSuite):
     def dump_typeinfos(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
         for id in sorted(modules):
-            if id == 'builtins':
+            if id in ('builtins', 'typing', 'abc'):
                 continue
             a.extend(self.dump_typeinfos_recursive(modules[id].names))
         return a

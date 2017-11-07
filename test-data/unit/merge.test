@@ -628,3 +628,59 @@ TypeInfo<2>(
   Mro(target.A.B<2>, builtins.object<1>)
   Names(
     f<3>))
+
+[case testNamedTuple_typeinfo]
+import target
+[file target.py]
+from typing import NamedTuple
+class A: pass
+N = NamedTuple('N', [('x', A)])
+[file target.py.next]
+from typing import NamedTuple
+class A: pass
+N = NamedTuple('N', [('x', A), ('y', A)])
+[out]
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names())
+TypeInfo<2>(
+  Name(target.N)
+  Bases(builtins.tuple[target.A<0>]<3>)
+  Mro(target.N<2>, builtins.tuple<3>, builtins.object<1>)
+  Names(
+    __annotations__<4> (builtins.object<1>)
+    __doc__<5> (builtins.str<6>)
+    __init__<7>
+    _asdict<8>
+    _field_defaults<9> (builtins.object<1>)
+    _field_types<10> (builtins.object<1>)
+    _fields<11> (Tuple[builtins.str<6>])
+    _make<12>
+    _replace<13>
+    _source<14> (builtins.str<6>)
+    x<15> (target.A<0>)))
+==>
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names())
+TypeInfo<2>(
+  Name(target.N)
+  Bases(builtins.tuple[target.A<0>]<3>)
+  Mro(target.N<2>, builtins.tuple<3>, builtins.object<1>)
+  Names(
+    __annotations__<4> (builtins.object<1>)
+    __doc__<5> (builtins.str<6>)
+    __init__<7>
+    _asdict<8>
+    _field_defaults<9> (builtins.object<1>)
+    _field_types<10> (builtins.object<1>)
+    _fields<11> (Tuple[builtins.str<6>, builtins.str<6>])
+    _make<12>
+    _replace<13>
+    _source<14> (builtins.str<6>)
+    x<15> (target.A<0>)
+    y<16> (target.A<0>)))

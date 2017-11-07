@@ -7,7 +7,7 @@ from typing import Dict, List, cast, TypeVar, Optional
 
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
-    FuncDef, ClassDef, SymbolNode, Var, Statement, MDEF
+    FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, MDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -98,12 +98,7 @@ class NodeReplaceVisitor(TraverserVisitor):
     def visit_class_def(self, node: ClassDef) -> None:
         # TODO additional things like the MRO
         node.defs.body = self.replace_statements(node.defs.body)
-        replace_nodes_in_symbol_table(node.info.names, self.replacements)
-        info = node.info
-        for i, item in enumerate(info.mro):
-            info.mro[i] = self.fixup(info.mro[i])
-        for i, base in enumerate(info.bases):
-            self.fixup_type(info.bases[i])
+        self.process_type_info(node.info)
         super().visit_class_def(node)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
@@ -124,6 +119,10 @@ class NodeReplaceVisitor(TraverserVisitor):
         if node.node is not None:
             node.node = self.fixup(node.node)
 
+    def visit_namedtuple_expr(self, node: NamedTupleExpr) -> None:
+        super().visit_namedtuple_expr(node)
+        self.process_type_info(node.info)
+
     # Helpers
 
     def fixup(self, node: SN) -> SN:
@@ -135,6 +134,14 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def fixup_type(self, typ: Type) -> None:
         typ.accept(TypeReplaceVisitor(self.replacements))
+
+    def process_type_info(self, info: TypeInfo) -> None:
+        # TODO additional things like the MRO
+        replace_nodes_in_symbol_table(info.names, self.replacements)
+        for i, item in enumerate(info.mro):
+            info.mro[i] = self.fixup(info.mro[i])
+        for i, base in enumerate(info.bases):
+            self.fixup_type(info.bases[i])
 
     def replace_statements(self, nodes: List[Statement]) -> List[Statement]:
         result = []
@@ -178,7 +185,8 @@ class TypeReplaceVisitor(TypeVisitor[None]):
         raise RuntimeError
 
     def visit_tuple_type(self, typ: TupleType) -> None:
-        raise NotImplementedError
+        for item in typ.items:
+            item.accept(self)
 
     def visit_type_type(self, typ: TypeType) -> None:
         raise NotImplementedError
@@ -211,10 +219,22 @@ class TypeReplaceVisitor(TypeVisitor[None]):
 def replace_nodes_in_symbol_table(symbols: SymbolTable,
                                   replacements: Dict[SymbolNode, SymbolNode]) -> None:
     for name, node in symbols.items():
-        if node.node and node.node in replacements:
-            new = replacements[node.node]
-            new.__dict__ = node.node.__dict__
-            node.node = new
-            if isinstance(node.node, Var) and node.node.type:
-                node.node.type.accept(TypeReplaceVisitor(replacements))
-                node.node.info = cast(TypeInfo, replacements.get(node.node.info, node.node.info))
+        if node.node:
+            if node.node in replacements:
+                new = replacements[node.node]
+                new.__dict__ = node.node.__dict__
+                node.node = new
+                # TODO: Other node types
+                if isinstance(node.node, Var) and node.node.type:
+                    node.node.type.accept(TypeReplaceVisitor(replacements))
+                    node.node.info = cast(TypeInfo, replacements.get(node.node.info,
+                                                                     node.node.info))
+            else:
+                # TODO: Other node types
+                if isinstance(node.node, Var) and node.node.type:
+                    node.node.type.accept(TypeReplaceVisitor(replacements))
+
+
+def get_prefix(fullname: str) -> str:
+    """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
+    return fullname.rsplit('.', 1)[0]

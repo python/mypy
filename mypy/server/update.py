@@ -162,7 +162,7 @@ def build_incremental_step(manager: BuildManager,
     # Run remaining passes of semantic analysis.
     state.semantic_analysis()
     state.semantic_analysis_pass_three()
-    # TODO: state.semantic_analysis_apply_patches()
+    state.semantic_analysis_apply_patches()
 
     # Merge old and new ASTs.
     assert state.tree is not None, "file must be at least parsed"
