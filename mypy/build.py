@@ -2314,6 +2314,7 @@ def maybe_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManag
             sym = tree.names[name]
             subname = id + '.' + name
             if (sym.kind == MODULE_REF
+                    and sym.node is not None
                     and sym.node.fullname() == subname
                     and subname not in st.dependencies):
                 manager.trace("Purging %s" % subname)
