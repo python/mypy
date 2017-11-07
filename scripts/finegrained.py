@@ -26,8 +26,10 @@ def main() -> None:
         usage()
     target_dir = sys.argv[1]
     messages, manager, graph = build_dir(target_dir)
-    sys.stdout.writelines(messages)
+    for message in messages:
+        sys.stdout.write(message + '\n')
     fine_grained_manager = FineGrainedBuildManager(manager, graph)
+    xxx = 'mypy.stubgen' if target_dir != 'stuff' else 'stuff.acme'
     while True:
         print('[ready]')
         inp = input().strip()
@@ -36,8 +38,9 @@ def main() -> None:
         if inp != '':
             print("Press enter to perform type checking; enter 'q' to quit")
             continue
-        messages = fine_grained_manager.update(['mypy.stubgen'])
-        sys.stdout.writelines(messages)
+        messages = fine_grained_manager.update([xxx])
+        for message in messages:
+            sys.stdout.write(message + '\n')
 
 
 def build_dir(target_dir: str) -> Tuple[List[str], BuildManager, Graph]:
