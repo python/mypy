@@ -10,12 +10,6 @@ def f(x) -> int: pass
 [out]
 main:2: error: Function is missing a type annotation for one or more arguments
 
-[case testUnannotatedArgumentWithFastParser]
-# flags: --disallow-untyped-defs
-def f(x) -> int: pass
-[out]
-main:2: error: Function is missing a type annotation for one or more arguments
-
 [case testNoArgumentFunction]
 # flags: --disallow-untyped-defs
 def f() -> int: pass
@@ -44,6 +38,31 @@ def f():
     1 + "str"
 [out]
 main:2: error: Function is missing a type annotation
+
+[case testUntypedAsyncDef]
+# flags: --disallow-untyped-defs
+async def f():  # E: Function is missing a type annotation
+    pass
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testAsyncUnannotatedArgument]
+# flags: --disallow-untyped-defs
+async def f(x) -> None:  # E: Function is missing a type annotation for one or more arguments
+    pass
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testAsyncUnannotatedReturn]
+# flags: --disallow-untyped-defs
+from typing import Any
+async def f(x: int):  # E: Function is missing a return type annotation
+    pass
+# Make sure explicit Any is allowed.
+async def g(x: int) -> Any:
+    pass
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testDisallowUntypedDefsUntypedDecorator]
 # flags: --disallow-untyped-decorators
