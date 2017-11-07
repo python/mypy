@@ -249,17 +249,33 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
             return False
         elif isinstance(right, Overloaded):
-            # Ensure each overload in the right side is accounted for.
-            super_overloads = right.items()[:]
-            while super_overloads:
-                right_item = super_overloads[-1]
-                for left_item in left.items():
-                    if is_subtype(left_item, right_item, self.check_type_parameter,
-                                  ignore_pos_arg_names=self.ignore_pos_arg_names):
-                        super_overloads.pop()
-                        break
-                else:
-                    # One of the overloads was not present in the left side.
+            # Ensure each overload in the right side (the supertype) is accounted for.
+            previous_match_left_index = -1
+
+            for right_index, right_item in enumerate(right.items()):
+                found_match = False
+
+                for left_index, left_item in enumerate(left.items()):
+                    subtype_match = is_subtype(left_item, right_item, self.check_type_parameter,
+                                               ignore_pos_arg_names=self.ignore_pos_arg_names)
+
+                    # Order matters: we need to make sure that the index of
+                    # this item is at least the index of the previous one.
+                    if subtype_match and previous_match_left_index <= left_index:
+                        if not found_match:
+                            # Update the index of the previous match.
+                            previous_match_left_index = left_index
+                            found_match = True
+                    else:
+                        # If this one overlaps with the supertype in any way, but it wasn't
+                        # an exact match, then it's a type error.
+                        if (is_callable_subtype(left_item, right_item, ignore_return=True,
+                                            ignore_pos_arg_names=self.ignore_pos_arg_names) or
+                                is_callable_subtype(right_item, left_item, ignore_return=True,
+                                                ignore_pos_arg_names=self.ignore_pos_arg_names)):
+                            return False
+
+                if not found_match:
                     return False
 
             return True
