@@ -32,7 +32,7 @@ MYPY = False
 if MYPY:
     from typing import Deque
 
-from mypy.nodes import (MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
+from mypy.nodes import (MODULE_REF, MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
 from mypy.semanal import SemanticAnalyzerPass2
 from mypy.semanal_pass3 import SemanticAnalyzerPass3
@@ -2304,6 +2304,20 @@ def maybe_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManag
         st.tree = tree
         st.is_from_saved_cache = True
         manager.modules[id] = tree
+        # Delete any submodules from the module that aren't
+        # dependencies of the module; they will be re-added once
+        # imported.  It's possible that the parent module is reused
+        # but a submodule isn't; we don't want to accidentally link
+        # into the old submodule's tree.  See also
+        # patch_dependency_parents() above.
+        for name in list(tree.names):
+            sym = tree.names[name]
+            subname = id + '.' + name
+            if (sym.kind == MODULE_REF
+                    and sym.node.fullname() == subname
+                    and subname not in st.dependencies):
+                manager.trace("Purging %s" % subname)
+                del tree.names[name]
     return True
 
 
