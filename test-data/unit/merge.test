@@ -1,4 +1,26 @@
--- Test cases for AST merge (user for fine-grained incremental checking)
+-- Test cases for AST merge (used for fine-grained incremental checking)
+--
+-- Each test case has two versions of the module 'target' (target.py and
+-- target.py.next). A test cases type checks both of them, merges the ASTs,
+-- and finally dumps certain parts of the ASTs for both versions (==>
+-- separates the first and second versions). A test case passes if the
+-- dumped output is as expected.
+--
+-- The dumped output uses <N> to denote identities of objects. Objects
+-- suffixed by the same <N> refer to the same object; <N> and <M> (if
+-- N != M) refer to different objects. The objective of these test cases
+-- is to verify that identities of publicly visible AST nodes is
+-- preserved across merge. Other AST nodes may get new identities.
+--
+-- Each test case dumps one of four kinds of information:
+--
+-- 1) ASTs (test case has no magic suffix)
+-- 2) Symbol tables (_symtable test case name suffix)
+-- 3) TypeInfos (_typeinfo suffix)
+-- 4) Inferred types (_types suffix)
+--
+-- If you need to dump multiple different kinds of information, write
+-- multiple test cases.
 
 [case testFunction]
 import target
