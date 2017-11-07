@@ -388,7 +388,7 @@ class MemoryXmlReporter(AbstractReporter):
         self.css_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.css')
         xsd_path = os.path.join(reports.data_dir, 'xml', 'mypy.xsd')
         self.schema = etree.XMLSchema(etree.parse(xsd_path))
-        self.last_xml = None  # type: Optional[etree._ElementTree]
+        self.last_xml = None  # type: Optional[Any]
         self.files = []  # type: List[FileInfo]
 
     def on_file(self,
@@ -482,7 +482,7 @@ class CoberturaPackage(object):
     """
     def __init__(self, name: str) -> None:
         self.name = name
-        self.classes = {}  # type: Dict[str, etree._Element]
+        self.classes = {}  # type: Dict[str, Any]
         self.packages = {}  # type: Dict[str, CoberturaPackage]
         self.total_lines = 0
         self.covered_lines = 0
