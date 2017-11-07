@@ -179,7 +179,9 @@ def build(sources: List[BuildSource],
         # multiple builds, there could be a mix of files/modules, so its easier
         # to just define the semantics that we always add the current director
         # to the lib_path
-        lib_path.insert(0, os.getcwd())  # <========== ?!
+        # TODO: Don't do this in some cases; for motivation see see
+        # https://github.com/python/mypy/issues/4195#issuecomment-341915031
+        lib_path.insert(0, os.getcwd())
 
     # Prepend a config-defined mypy path.
     lib_path[:0] = options.mypy_path
@@ -1942,6 +1944,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     manager.saved_cache.clear()
     manager.saved_cache.update(updated)
     set_final = set(manager.saved_cache)
+    # These keys have numbers in them to force a sort order.
     manager.add_stats(saved_cache_1orig=len(set_orig),
                       saved_cache_2updated=len(set_updated & set_orig),
                       saved_cache_3added=len(set_final - set_orig),
@@ -2045,6 +2048,17 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     while new:
         st = new.popleft()
         assert st.ancestors is not None
+        # Strip out indirect dependencies.  These will be dealt with
+        # when they show up as direct dependencies, and there's a
+        # scenario where they hurt:
+        # - Suppose A imports B and B imports C.
+        # - Suppose on the next round:
+        #   - C is deleted;
+        #   - B is updated to remove the dependency on C;
+        #   - A is unchanged.
+        # - In this case A's cached *direct* dependencies are still valid
+        #   (since direct dependencies reflect the imports found in the source)
+        #   but A's cached *indirect* dependency on C is wrong.
         dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
         for dep in st.ancestors + dependencies + st.suppressed:
             # We don't want to recheck imports marked with '# type: ignore'
@@ -2286,6 +2300,11 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
 
 
 def maybe_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManager) -> bool:
+    """Set the trees for the given SCC from the in-memory cache, if all valid.
+
+    If any saved tree for this SCC is invalid, set the trees for all
+    SCC members to None and mark as not-from-cache.
+    """
     if not can_reuse_in_memory_tree(graph, scc, manager):
         for id in scc:
             manager.add_stats(cleared_trees=1)
@@ -2309,7 +2328,11 @@ def maybe_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManag
         # imported.  It's possible that the parent module is reused
         # but a submodule isn't; we don't want to accidentally link
         # into the old submodule's tree.  See also
-        # patch_dependency_parents() above.
+        # patch_dependency_parents() above.  The exception for subname
+        # in st.dependencies handles the case where 'import m'
+        # guarantees that some submodule of m is also available
+        # (e.g. 'os.path'); in those cases the submodule is an
+        # explicit dependency of the parent.
         for name in list(tree.names):
             sym = tree.names[name]
             subname = id + '.' + name
