@@ -237,6 +237,9 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
                 # TODO: Other node types
                 if isinstance(node.node, Var) and node.node.type:
                     node.node.type.accept(TypeReplaceVisitor(replacements))
+        override = node.type_override
+        if override:
+            override.accept(TypeReplaceVisitor(replacements))
 
 
 def get_prefix(fullname: str) -> str:

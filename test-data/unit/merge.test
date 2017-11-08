@@ -812,3 +812,61 @@ NameExpr:11: Overload(def (x: target.A<0>) -> target.A<0>, def (x: builtins.int<
 ## target
 NameExpr:12: Overload(def (x: target.A<0>) -> target.A<0>, def (x: builtins.str<2>) -> builtins.str<2>)
 NameExpr:12: Overload(def (x: target.A<0>) -> target.A<0>, def (x: builtins.str<2>) -> builtins.str<2>)
+
+[case testTypeVar_symtable]
+import target
+
+[file target.py]
+from typing import TypeVar
+T = TypeVar('T')
+
+[file target.py.next]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    T: TypeVarExpr<1>
+    TypeVar: Var<2>
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    T: TypeVarExpr<1>
+    TypeVar: Var<2>
+
+[case testTypeAlias_symtable]
+import target
+
+[file target.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]): pass
+X = A[int]
+
+[file target.py.next]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]): pass
+X = A[str]
+
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    A: TypeInfo<1>
+    Generic: Var<2>
+    T: TypeVarExpr<3>
+    TypeVar: Var<4>
+    X: Var<5>(type_override=target.A[builtins.int<6>]<1>)
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    A: TypeInfo<1>
+    Generic: Var<2>
+    T: TypeVarExpr<3>
+    TypeVar: Var<4>
+    X: Var<5>(type_override=target.A[builtins.str<7>]<1>)

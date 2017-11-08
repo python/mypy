@@ -162,10 +162,14 @@ class ASTMergeSuite(DataSuite):
         if node is None:
             return 'None'
         if isinstance(node.node, Node):
-            return '{}<{}>'.format(str(type(node.node).__name__),
-                                   self.id_mapper.id(node.node))
-        # TODO: type_override?
-        return '?'
+            s = '{}<{}>'.format(str(type(node.node).__name__),
+                                self.id_mapper.id(node.node))
+        else:
+            s = '?'
+        if node.type_override:
+            override = self.format_type(node.type_override)
+            s += '(type_override={})'.format(override)
+        return s
 
     def dump_typeinfos(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
@@ -203,5 +207,8 @@ class ASTMergeSuite(DataSuite):
                     typ = type_map[expr]
                     a.append('{}:{}: {}'.format(short_type(expr),
                                                 expr.line,
-                                                typ.accept(self.type_str_conv)))
+                                                self.format_type(typ)))
         return a
+
+    def format_type(self, typ: Type) -> str:
+        return typ.accept(self.type_str_conv)
