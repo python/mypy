@@ -3287,7 +3287,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             # In this case base.node is the module's MypyFile and we look up
             # bar in its namespace.  This must be done for all types of bar.
             file = cast(Optional[MypyFile], base.node)  # can't use isinstance due to issue #2999
-            # TODO: should we actually use this?
+            # TODO: Should we actually use this? Not sure if this makes a difference.
             # if file.fullname() == self.cur_mod_id:
             #     names = self.globals
             # else:
