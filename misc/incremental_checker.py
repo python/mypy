@@ -157,7 +157,7 @@ def run_mypy(target_file_path: Optional[str],
 
 
 def start_daemon(mypy_cache_path: str) -> None:
-    cmd = DAEMON_CMD + ["restart", "--", "--cache-dir", mypy_cache_path]
+    cmd = DAEMON_CMD + ["restart", "--log-file", "./@incr-chk-logs", "--", "--cache-dir", mypy_cache_path]
     execute(cmd)
 
 
@@ -287,6 +287,8 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
     else:
         raise RuntimeError("Invalid option: {}".format(range_type))
     commits = get_commits_starting_at(temp_repo_path, start_commit)
+    if params.limit:
+        commits = commits[:params.limit]
     if params.sample:
         seed = params.seed or base64.urlsafe_b64encode(os.urandom(15)).decode('ascii')
         random.seed(seed)
@@ -308,7 +310,8 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
                      exit_on_error=params.exit_on_error)
 
     # Stage 5: Remove temp files, stop daemon
-    cleanup(temp_repo_path, mypy_cache_path)
+    if not params.keep_temporary_files:
+        cleanup(temp_repo_path, mypy_cache_path)
     if params.daemon:
         print('Stopping daemon')
         stop_daemon()
@@ -332,6 +335,8 @@ def main() -> None:
                         help="the name of the file or directory to typecheck")
     parser.add_argument("-x", "--exit-on-error", action='store_true',
                         help="Exits as soon as an error occurs")
+    parser.add_argument("--keep-temporary-files", action='store_true',
+                        help="Keep temporary files on exit")
     parser.add_argument("--cache-path", default=CACHE_PATH, metavar="DIR",
                         help="sets a custom location to store cache data")
     parser.add_argument("--branch", default=None, metavar="NAME",
@@ -339,6 +344,8 @@ def main() -> None:
                         "uses the default if not specified")
     parser.add_argument("--sample", type=int, help="use a random sample of size SAMPLE")
     parser.add_argument("--seed", type=str, help="random seed")
+    parser.add_argument("--limit", type=int,
+                        help="maximum number of commits to use (default until end)")
     parser.add_argument("--mypy-script", type=str, help="alternate mypy script to run")
     parser.add_argument("--daemon", action='store_true',
                         help="use mypy daemon instead of incremental (highly experimental)")

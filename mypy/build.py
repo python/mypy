@@ -32,7 +32,7 @@ MYPY = False
 if MYPY:
     from typing import Deque
 
-from mypy.nodes import (MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
+from mypy.nodes import (MODULE_REF, MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
 from mypy.semanal import SemanticAnalyzerPass2
 from mypy.semanal_pass3 import SemanticAnalyzerPass3
@@ -179,6 +179,8 @@ def build(sources: List[BuildSource],
         # multiple builds, there could be a mix of files/modules, so its easier
         # to just define the semantics that we always add the current director
         # to the lib_path
+        # TODO: Don't do this in some cases; for motivation see see
+        # https://github.com/python/mypy/issues/4195#issuecomment-341915031
         lib_path.insert(0, os.getcwd())
 
     # Prepend a config-defined mypy path.
@@ -1617,7 +1619,6 @@ class State:
 
     def mark_interface_stale(self, *, on_errors: bool = False) -> None:
         """Marks this module as having a stale public interface, and discards the cache data."""
-        self.meta = None
         self.externally_same = False
         if not on_errors:
             self.manager.stale_modules.add(self.id)
@@ -1899,6 +1900,7 @@ class State:
             is_errors = self.manager.errors.is_errors()
         if is_errors:
             delete_cache(self.id, self.path, self.manager)
+            self.meta = None
             self.mark_interface_stale(on_errors=True)
             return
         dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
@@ -1916,6 +1918,7 @@ class State:
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
+    set_orig = set(manager.saved_cache)
     manager.log()
     manager.log("Mypy version %s" % __version__)
     t0 = time.time()
@@ -1936,7 +1939,17 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.warn_unused_ignores:
         # TODO: This could also be a per-module option.
         manager.errors.generate_unused_ignore_notes()
-    manager.saved_cache.update(preserve_cache(graph))
+    updated = preserve_cache(graph)
+    set_updated = set(updated)
+    manager.saved_cache.clear()
+    manager.saved_cache.update(updated)
+    set_final = set(manager.saved_cache)
+    # These keys have numbers in them to force a sort order.
+    manager.add_stats(saved_cache_1orig=len(set_orig),
+                      saved_cache_2updated=len(set_updated & set_orig),
+                      saved_cache_3added=len(set_final - set_orig),
+                      saved_cache_4removed=len(set_orig - set_final),
+                      saved_cache_5final=len(set_final))
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
         from mypy.server.deps import dump_all_dependencies
@@ -2035,7 +2048,19 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     while new:
         st = new.popleft()
         assert st.ancestors is not None
-        for dep in st.ancestors + st.dependencies + st.suppressed:
+        # Strip out indirect dependencies.  These will be dealt with
+        # when they show up as direct dependencies, and there's a
+        # scenario where they hurt:
+        # - Suppose A imports B and B imports C.
+        # - Suppose on the next round:
+        #   - C is deleted;
+        #   - B is updated to remove the dependency on C;
+        #   - A is unchanged.
+        # - In this case A's cached *direct* dependencies are still valid
+        #   (since direct dependencies reflect the imports found in the source)
+        #   but A's cached *indirect* dependency on C is wrong.
+        dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
+        for dep in st.ancestors + dependencies + st.suppressed:
             # We don't want to recheck imports marked with '# type: ignore'
             # so we ignore any suppressed module not explicitly re-included
             # from the command line.
@@ -2117,7 +2142,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         for id in scc:
             deps.update(graph[id].dependencies)
         deps -= ascc
-        stale_deps = {id for id in deps if not graph[id].is_interface_fresh()}
+        stale_deps = {id for id in deps if id in graph and not graph[id].is_interface_fresh()}
         if not manager.options.quick_and_dirty:
             fresh = fresh and not stale_deps
         undeps = set()
@@ -2174,8 +2199,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
         scc_str = " ".join(scc)
         if fresh:
-            manager.trace("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
-            fresh_scc_queue.append(scc)
+            if not maybe_reuse_in_memory_tree(graph, scc, manager):
+                manager.trace("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
+                fresh_scc_queue.append(scc)
         else:
             if len(fresh_scc_queue) > 0:
                 manager.log("Processing {} queued fresh SCCs".format(len(fresh_scc_queue)))
@@ -2263,23 +2289,6 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
 
     If the tree is loaded from memory ('saved_cache') it's even quicker.
     """
-    saved_cache = manager.saved_cache
-    # Check that all nodes are available for loading from memory.
-    if all(id in saved_cache for id in scc):
-        deps = set(dep for id in scc for dep in graph[id].dependencies if dep in graph)
-        # Check that all dependencies were loaded from memory.
-        # If not, some dependency was reparsed but the interface hash
-        # wasn't changed -- in that case we can't reuse the tree.
-        if all(graph[dep].is_from_saved_cache for dep in deps):
-            trees = {id: saved_cache[id][1] for id in scc}
-            for id, tree in trees.items():
-                manager.add_stats(reused_trees=1)
-                manager.trace("Reusing saved tree %s" % id)
-                st = graph[id]
-                st.tree = tree  # This is never overwritten.
-                st.is_from_saved_cache = True
-                manager.modules[id] = tree
-            return
     for id in scc:
         graph[id].load_tree()
     for id in scc:
@@ -2288,6 +2297,70 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         graph[id].calculate_mros()
     for id in scc:
         graph[id].patch_dependency_parents()
+
+
+def maybe_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManager) -> bool:
+    """Set the trees for the given SCC from the in-memory cache, if all valid.
+
+    If any saved tree for this SCC is invalid, set the trees for all
+    SCC members to None and mark as not-from-cache.
+    """
+    if not can_reuse_in_memory_tree(graph, scc, manager):
+        for id in scc:
+            manager.add_stats(cleared_trees=1)
+            manager.trace("Clearing tree %s" % id)
+            st = graph[id]
+            st.tree = None
+            st.is_from_saved_cache = False
+            if id in manager.modules:
+                del manager.modules[id]
+        return False
+    trees = {id: manager.saved_cache[id][1] for id in scc}
+    for id, tree in trees.items():
+        manager.add_stats(reused_trees=1)
+        manager.trace("Reusing saved tree %s" % id)
+        st = graph[id]
+        st.tree = tree
+        st.is_from_saved_cache = True
+        manager.modules[id] = tree
+        # Delete any submodules from the module that aren't
+        # dependencies of the module; they will be re-added once
+        # imported.  It's possible that the parent module is reused
+        # but a submodule isn't; we don't want to accidentally link
+        # into the old submodule's tree.  See also
+        # patch_dependency_parents() above.  The exception for subname
+        # in st.dependencies handles the case where 'import m'
+        # guarantees that some submodule of m is also available
+        # (e.g. 'os.path'); in those cases the submodule is an
+        # explicit dependency of the parent.
+        for name in list(tree.names):
+            sym = tree.names[name]
+            subname = id + '.' + name
+            if (sym.kind == MODULE_REF
+                    and sym.node is not None
+                    and sym.node.fullname() == subname
+                    and subname not in st.dependencies):
+                manager.trace("Purging %s" % subname)
+                del tree.names[name]
+    return True
+
+
+def can_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManager) -> bool:
+    """Check whether the given SCC can safely reuse the trees from saved_cache.
+
+    Assumes the SCC is already considered fresh.
+    """
+    saved_cache = manager.saved_cache
+    # Check that all nodes are available for loading from memory.
+    if all(id in saved_cache for id in scc):
+        # Check that all dependencies were loaded from memory.
+        # If not, some dependency was reparsed but the interface hash
+        # wasn't changed -- in that case we can't reuse the tree.
+        deps = set(dep for id in scc for dep in graph[id].dependencies if dep in graph)
+        deps -= set(scc)  # Subtract the SCC itself (else nothing will be safe)
+        if all(graph[dep].is_from_saved_cache for dep in deps):
+            return True
+    return False
 
 
 def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
