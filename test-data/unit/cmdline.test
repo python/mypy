@@ -1088,3 +1088,72 @@ p.b.bar("wrong")
 p/a.py:4: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 p/b/__init__.py:5: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
 c.py:2: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
+
+-- Unused strictness exceptions
+-- ----------------------------
+
+[case testUnusedStrictnessExceptions]
+# cmd: mypy a.py b.py
+
+[file mypy.ini]
+[[mypy]
+warn_unused_strictness_exceptions = True
+disallow_any_generics = True
+
+[[mypy-a]
+disallow_any_generics = False
+
+[[mypy-b]
+disallow_any_generics = False
+
+[file a.py]
+from typing import List
+
+f: List = []
+[file b.py]
+from typing import List
+
+f: List[int] = []
+
+[out]
+b: warning: Flag disallow_any_generics can be enabled for module 'b'
+
+[case testUnusedStrictnessExceptionSubpattern]
+# cmd: mypy test1.py test2.py
+
+[file mypy.ini]
+[[mypy]
+warn_unused_strictness_exceptions = True
+disallow_any_generics = True
+
+[[mypy-test*]
+disallow_any_generics = False
+
+[file test1.py]
+f: list = []
+
+[file test2.py]
+from typing import List
+
+f: List[int] = []
+
+[out]
+test2: warning: Flag disallow_any_generics can be enabled for module 'test2'
+
+[case testUnusedStrictnessExceptionsNotAffectedByTypeIgnore]
+# cmd: mypy a.py
+
+[file mypy.ini]
+[[mypy]
+warn_unused_strictness_exceptions = True
+disallow_any_generics = True
+
+[[mypy-a]
+disallow_any_generics = False
+
+[file a.py]
+from typing import Tuple
+
+f: Tuple = (1, 2, 3)  # type: ignore
+
+[out]

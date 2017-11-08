@@ -46,6 +46,10 @@ class Options:
                                 {"quick_and_dirty", "platform", "cache_fine_grained"})
                                - {"debug_cache"})
 
+    WARN_UNUSED_STRICTNESS_OPTIONS = {
+        "disallow_any_generics",
+    }
+
     def __init__(self) -> None:
         # Cache for clone_for_module()
         self.clone_cache = {}  # type: Dict[str, Options]
@@ -105,6 +109,9 @@ class Options:
         # Warn about unused '[mypy-<pattern>] config sections
         self.warn_unused_configs = False
 
+        # Warn about strictness flags unnecessarily disabled for particular modules
+        self.warn_unused_strictness_exceptions = False
+
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
 
@@ -154,6 +161,9 @@ class Options:
         self.per_module_options = pm_opts
         # Map pattern back to glob
         self.unused_configs = OrderedDict()  # type: OrderedDict[Pattern[str], str]
+
+        # Dict of options to files in which they can be disabled
+        self.unused_strictness_whitelist = {}  # type: Dict[str, Set[str]]
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
@@ -220,3 +230,8 @@ class Options:
 
     def select_options_affecting_cache(self) -> Mapping[str, bool]:
         return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}
+
+    def remove_from_whitelist(self, flag: str, file: Optional[str]) -> None:
+        whitelist = self.unused_strictness_whitelist
+        if flag in whitelist and file in whitelist[flag]:
+            whitelist[flag].remove(file)

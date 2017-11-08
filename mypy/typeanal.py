@@ -10,6 +10,7 @@ from contextlib import contextmanager
 
 import itertools
 
+from mypy.errors import Errors
 from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.types import (
@@ -59,7 +60,7 @@ def analyze_type_alias(node: Expression,
                        tvar_scope: TypeVarScope,
                        plugin: Plugin,
                        options: Options,
-                       is_typeshed_stub: bool,
+                       errors: Errors,
                        allow_unnormalized: bool = False,
                        in_dynamic_func: bool = False,
                        global_scope: bool = True,
@@ -117,7 +118,7 @@ def analyze_type_alias(node: Expression,
     except TypeTranslationError:
         api.fail('Invalid type alias', node)
         return None
-    analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_typeshed_stub, aliasing=True,
+    analyzer = TypeAnalyser(api, tvar_scope, plugin, options, errors, aliasing=True,
                             allow_unnormalized=allow_unnormalized, warn_bound_tvar=warn_bound_tvar)
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
@@ -149,7 +150,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  tvar_scope: Optional[TypeVarScope],
                  plugin: Plugin,
                  options: Options,
-                 is_typeshed_stub: bool, *,
+                 errors: Errors, *,
                  aliasing: bool = False,
                  allow_tuple_literal: bool = False,
                  allow_unnormalized: bool = False,
@@ -168,7 +169,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_unnormalized = allow_unnormalized
         self.plugin = plugin
         self.options = options
-        self.is_typeshed_stub = is_typeshed_stub
+        self.errors = errors
         self.warn_bound_tvar = warn_bound_tvar
         self.third_pass = third_pass
         # Names of type aliases encountered while analysing a type will be collected here.
@@ -235,8 +236,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
-                    if self.options.disallow_any_generics and not self.is_typeshed_stub:
-                        self.fail(messages.BARE_GENERIC, t)
+                    if not self.errors.is_typeshed_file(self.errors.file):
+                        if self.options.disallow_any_generics:
+                            self.fail(messages.BARE_GENERIC, t)
+                        else:
+                            self.options.remove_from_whitelist("disallow_any_generics",
+                                                               self.errors.current_module())
                     typ = self.named_type('builtins.tuple', line=t.line, column=t.column)
                     typ.from_generic_builtin = True
                     return typ
@@ -680,7 +685,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                  api: SemanticAnalyzerInterface,
                  plugin: Plugin,
                  options: Options,
-                 is_typeshed_stub: bool,
+                 errors: Errors,
                  indicator: Dict[str, bool],
                  patches: List[Tuple[int, Callable[[], None]]]) -> None:
         self.api = api
@@ -690,7 +695,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         self.note_func = api.note
         self.options = options
         self.plugin = plugin
-        self.is_typeshed_stub = is_typeshed_stub
+        self.errors = errors
         self.indicator = indicator
         self.patches = patches
         self.aliases_used = set()  # type: Set[str]
@@ -703,11 +708,13 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         if len(t.args) != len(info.type_vars):
             if len(t.args) == 0:
                 from_builtins = t.type.fullname() in nongen_builtins and not t.from_generic_builtin
-                if (self.options.disallow_any_generics and
-                        not self.is_typeshed_stub and
-                        from_builtins):
-                    alternative = nongen_builtins[t.type.fullname()]
-                    self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
+                if from_builtins and not self.errors.is_typeshed_file(self.errors.file):
+                    if self.options.disallow_any_generics:
+                        alternative = nongen_builtins[t.type.fullname()]
+                        self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
+                    else:
+                        self.options.remove_from_whitelist("disallow_any_generics",
+                                                           self.errors.current_module())
                 # Insert implicit 'Any' type arguments.
                 if from_builtins:
                     # this 'Any' was already reported elsewhere
@@ -819,7 +826,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                             None,
                             self.plugin,
                             self.options,
-                            self.is_typeshed_stub,
+                            self.errors,
                             third_pass=True)
         res = tp.accept(tpan)
         self.aliases_used = tpan.aliases_used
