@@ -382,3 +382,70 @@ def g(x: S) -> S: pass
 [out]
 __main__.T
 __main__.f
+
+[case testGenericTypes]
+from typing import List
+x: List[int]
+y: List[int]
+[file next.py]
+from typing import List
+x: List[int]
+y: List[str]
+[builtins fixtures/list.pyi]
+[out]
+__main__.y
+
+[case testTypeAliasOfList]
+from typing import List
+X = List[int]
+Y = List[int]
+[file next.py]
+from typing import List
+X = List[str]
+Y = List[int]
+[builtins fixtures/list.pyi]
+[out]
+__main__.X
+
+[case testTypeAliasOfCallable]
+from typing import Callable
+A = Callable[[int], str]
+B = Callable[[int], str]
+C = Callable[[int], str]
+[file next.py]
+from typing import Callable
+A = Callable[[int], str]
+B = Callable[[], str]
+C = Callable[[int], int]
+[out]
+__main__.B
+__main__.C
+
+[case testGenericTypeAlias]
+from typing import Callable, TypeVar
+T = TypeVar('T')
+A = Callable[[T], T]
+B = Callable[[T], T]
+[file next.py]
+from typing import Callable, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+A = Callable[[T], T]
+B = Callable[[T], S]
+[out]
+__main__.B
+__main__.S
+
+[case testDifferentListTypes]
+from typing import List
+A = List
+B = list
+C = List
+[file next.py]
+from typing import List
+A = List
+B = list
+C = list
+[builtins fixtures/list.pyi]
+[out]
+__main__.C

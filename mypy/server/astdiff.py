@@ -198,7 +198,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
     result = {}  # type: Dict[str, SnapshotItem]
     for name, symbol in table.items():
         node = symbol.node
-        # TODO: cross_ref, tvar_def, type_override?
+        # TODO: cross_ref?
         fullname = node.fullname() if node else None
         common = (fullname, symbol.kind, symbol.module_public)
         if symbol.kind == MODULE_REF:
@@ -212,13 +212,14 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
                             [snapshot_type(value) for value in node.values],
                             snapshot_type(node.upper_bound))
         elif symbol.kind == TYPE_ALIAS:
-            # TODO: Implement
-            assert False
+            result[name] = ('TypeAlias',
+                            symbol.alias_tvars,
+                            snapshot_type(symbol.type_override))
         else:
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname()) != name_prefix:
                 # This is a cross-reference to a node defined in another module.
-                result[name] = ('CrossRef', common)
+                result[name] = ('CrossRef', common, symbol.normalized)
             else:
                 result[name] = snapshot_definition(node, common)
     return result
