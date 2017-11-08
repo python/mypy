@@ -30,5 +30,4 @@ from typing import Callable, Iterator
 c: Callable[..., Iterator[int]]
 reveal_type(c) # E: Revealed type is 'def (*Any, **Any) -> typing.Iterator[builtins.int]'
 reveal_type(contextmanager(c)) # E: Revealed type is 'def (*Any, **Any) -> contextlib.GeneratorContextManager[builtins.int*]'
-[builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
