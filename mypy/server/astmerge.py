@@ -171,9 +171,14 @@ class TypeReplaceVisitor(TypeVisitor[None]):
         for arg in typ.arg_types:
             arg.accept(self)
         typ.ret_type.accept(self)
-        # TODO: typ.definition
+        if typ.definition:
+            # No need to fixup since this is just a cross-reference.
+            typ.definition = self.replacements.get(typ.definition, typ.definition)
         # TODO: typ.fallback
-        assert not typ.variables  # TODO
+        for tv in typ.variables:
+            tv.upper_bound.accept(self)
+            for value in tv.values:
+                value.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
         raise NotImplementedError
@@ -215,6 +220,7 @@ class TypeReplaceVisitor(TypeVisitor[None]):
     def fixup(self, node: SN) -> SN:
         if node in self.replacements:
             new = self.replacements[node]
+            # TODO: This may be unnecessary?
             new.__dict__ = node.__dict__
             return cast(SN, new)
         return node

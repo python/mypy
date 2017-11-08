@@ -29,15 +29,18 @@ def main() -> None:
     for message in messages:
         sys.stdout.write(message + '\n')
     fine_grained_manager = FineGrainedBuildManager(manager, graph)
-    xxx = 'mypy.stubgen' if target_dir != 'stuff' else 'stuff.acme'
+    if target_dir != 'stuff':
+        xxx = 'mypy.checkexpr'
+    else:
+        xxx = 'stuff.acme'
     while True:
-        print('[ready]')
-        inp = input().strip()
+        inp = input('>>> ').strip()
         if inp.startswith('q'):
             sys.exit(0)
         if inp != '':
             print("Press enter to perform type checking; enter 'q' to quit")
             continue
+        print('[update {}]'.format(xxx))
         messages = fine_grained_manager.update([xxx])
         for message in messages:
             sys.stdout.write(message + '\n')
@@ -64,4 +67,7 @@ def usage() -> None:
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except EOFError:
+        print('^D')

@@ -1714,7 +1714,17 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += ' -> {}'.format(t.ret_type.accept(self))
 
         if t.variables:
-            s = '{} {}'.format(t.variables, s)
+            vs = []
+            # We reimplement TypeVarDef.__repr__ here in order to support id_mapper.
+            for var in t.variables:
+                if var.values:
+                    vals = tuple(val.accept(self) for val in var.values)
+                    vs.append('{} in {}'.format(var.name, vals))
+                elif not is_named_instance(var.upper_bound, 'builtins.object'):
+                    vs.append('{} <: {}'.format(var.name, var.upper_bound.accept(self)))
+                else:
+                    vs.append(var.name)
+            s = '{} {}'.format('[{}]'.format(', '.join(vs)), s)
 
         return 'def {}'.format(s)
 

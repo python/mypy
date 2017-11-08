@@ -870,3 +870,33 @@ target:
     T: TypeVarExpr<3>
     TypeVar: Var<4>
     X: Var<5>(type_override=target.A[builtins.str<7>]<1>)
+
+[case testGenericFunction_types]
+import target
+
+[file target.py]
+from typing import TypeVar
+class A: pass
+T = TypeVar('T', bound=A)
+def f(x: T) -> T: pass
+f
+
+[file target.py.next]
+from typing import TypeVar
+class A: pass
+T = TypeVar('T', bound=A)
+def f(x: T, y: A) -> T: pass
+f
+
+[out]
+## target
+CallExpr:3: Any
+NameExpr:3: Any
+TypeVarExpr:3: Any
+NameExpr:5: def [T <: target.A<0>] (x: T`-1(upper_bound=target.A<0>)) -> T`-1(upper_bound=target.A<0>)
+==>
+## target
+CallExpr:3: Any
+NameExpr:3: Any
+TypeVarExpr:3: Any
+NameExpr:5: def [T <: target.A<0>] (x: T`-1(upper_bound=target.A<0>), y: target.A<0>) -> T`-1(upper_bound=target.A<0>)
