@@ -290,12 +290,23 @@ def snapshot_simple_type(typ: Type) -> SnapshotItem:
 
 
 class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
+    """Creates a read-only, self-contained snapshot of a type object.
+
+    Properties of a snapshot:
+
+    - Contains (nested) tuples and other immutable primitive objects only.
+    - References to AST nodes are replaced with full names of targets.
+    - Has no references to mutable or non-primitive objects.
+    - Two snapshots represent the same object if and only if they are
+      equal.
+    """
+
     def visit_unbound_type(self, typ: UnboundType) -> SnapshotItem:
         return ('UnboundType',
                 typ.name,
                 typ.optional,
                 typ.empty_tuple_index,
-                [snapshot_type(arg) for arg in typ.args])
+                snapshot_types(typ.args))
 
     def visit_any(self, typ: AnyType) -> SnapshotItem:
         return snapshot_simple_type(typ)
@@ -332,8 +343,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return ('CallableType',
                 snapshot_types(typ.arg_types),
                 snapshot_type(typ.ret_type),
-                typ.arg_names,
-                typ.arg_kinds,
+                tuple(typ.arg_names),
+                tuple(typ.arg_kinds),
                 typ.is_type_obj(),
                 typ.is_ellipsis_args)
 
