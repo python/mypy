@@ -327,3 +327,58 @@ def dec(f: T) -> T:
     return f
 [out]
 __main__.A.f
+
+[case testTypeVarBound]
+from typing import TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+[file next.py]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+S = TypeVar('S')
+[out]
+__main__.T
+
+[case testTypeVarVariance]
+from typing import TypeVar
+A = TypeVar('A', covariant=True)
+B = TypeVar('B', covariant=True)
+C = TypeVar('C', covariant=True)
+[file next.py]
+from typing import TypeVar
+A = TypeVar('A', covariant=True)
+B = TypeVar('B', contravariant=True)
+C = TypeVar('C')
+[out]
+__main__.B
+__main__.C
+
+[case testTypeVarValues]
+from typing import TypeVar
+A = TypeVar('A', int, str)
+B = TypeVar('B', int, str)
+C = TypeVar('C', int, str)
+[file next.py]
+from typing import TypeVar
+A = TypeVar('A', int, str)
+B = TypeVar('B', int, str, object)
+C = TypeVar('C')
+[out]
+__main__.B
+__main__.C
+
+[case testGenericFunction]
+from typing import TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+def f(x: T) -> T: pass
+def g(x: S) -> S: pass
+[file next.py]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+S = TypeVar('S')
+def f(x: T) -> T: pass
+def g(x: S) -> S: pass
+[out]
+__main__.T
+__main__.f

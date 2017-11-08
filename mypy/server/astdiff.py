@@ -11,7 +11,7 @@ from typing import Set, List, TypeVar, Dict, Tuple, Optional, Sequence
 
 from mypy.nodes import (
     SymbolTable, SymbolTableNode, FuncBase, TypeInfo, Var, MypyFile, SymbolNode, Decorator,
-    MODULE_REF, TYPE_ALIAS, UNBOUND_IMPORTED, TVAR
+    TypeVarExpr, MODULE_REF, TYPE_ALIAS, UNBOUND_IMPORTED, TVAR
 )
 from mypy.types import (
     Type, TypeVisitor, UnboundType, TypeList, AnyType, NoneTyp, UninhabitedType,
@@ -206,8 +206,11 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
             assert isinstance(node, MypyFile)
             result[name] = ('Moduleref', common)
         elif symbol.kind == TVAR:
-            # TODO: Implement
-            assert False
+            assert isinstance(node, TypeVarExpr)
+            result[name] = ('TypeVar',
+                            node.variance,
+                            [snapshot_type(value) for value in node.values],
+                            snapshot_type(node.upper_bound))
         elif symbol.kind == TYPE_ALIAS:
             # TODO: Implement
             assert False
