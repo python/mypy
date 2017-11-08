@@ -214,7 +214,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
         elif symbol.kind == TYPE_ALIAS:
             result[name] = ('TypeAlias',
                             symbol.alias_tvars,
-                            snapshot_type(symbol.type_override))
+                            snapshot_optional_type(symbol.type_override))
         else:
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname()) != name_prefix:

@@ -180,9 +180,10 @@ class DependencyVisitor(TraverserVisitor):
             for name, symnode in info.names.items():
                 if not name.startswith('_') and isinstance(symnode.node, Var):
                     typ = symnode.node.type
-                    self.add_type_dependencies(typ)
-                    attr_target = make_trigger('%s.%s' % (prefix, name))
-                    self.add_type_dependencies(typ, target=attr_target)
+                    if typ:
+                        self.add_type_dependencies(typ)
+                        attr_target = make_trigger('%s.%s' % (prefix, name))
+                        self.add_type_dependencies(typ, target=attr_target)
         else:
             # Normal assignment
             super().visit_assignment_stmt(o)
