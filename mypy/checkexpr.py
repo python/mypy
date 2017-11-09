@@ -48,7 +48,6 @@ from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
 from mypy.typeanal import make_optional_type
-from mypy.binder import ConditionalTypeBinder
 
 from mypy import experiments
 
