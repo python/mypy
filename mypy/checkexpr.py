@@ -543,7 +543,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if (callee.is_type_obj() and callee.type_object().is_abstract
                     # Exceptions for Type[...] and classmethod first argument
-                    and not callee.from_type_type and not callee.is_classmethod_class):
+                    and not callee.from_type_type and not callee.is_classmethod_class
+                    and not callee.type_object().fallback_to_any):
                 type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
                     callee.type_object().name(), type.abstract_attributes,
