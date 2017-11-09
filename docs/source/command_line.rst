@@ -28,7 +28,7 @@ flag (or its long form ``--help``)::
               [--shadow-file SOURCE_FILE SHADOW_FILE] [--any-exprs-report DIR]
               [--cobertura-xml-report DIR] [--html-report DIR]
               [--linecount-report DIR] [--linecoverage-report DIR]
-              [--memory-xml-report DIR] [--old-html-report DIR]
+              [--memory-xml-report DIR]
               [--txt-report DIR] [--xml-report DIR] [--xslt-html-report DIR]
               [--xslt-txt-report DIR] [-m MODULE] [-c PROGRAM_TEXT] [-p PACKAGE]
               [files [files ...]]
@@ -249,8 +249,11 @@ directory.  The four possible values are:
     main.py:1: note: Import of 'submodule' ignored
     main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
+.. _disallow-any:
+
 Disallow Any Flags
-*****************************
+******************
+
 The ``--disallow-any`` family of flags disallows various types of ``Any`` in a module.
 The following options are available:
 
