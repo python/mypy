@@ -260,9 +260,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # TODO: Handle __all__
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        node = self.scope.top_function()
-        if self.pass_num < LAST_PASS and isinstance(node, (FuncDef, LambdaExpr)):
-            # Don't report an error yet. Just defer.
+        node = self.scope.top_non_lambda_function()
+        if self.pass_num < LAST_PASS and isinstance(node, FuncDef):
+            # Don't report an error yet. Just defer. Note that we don't defer
+            # lambdas because they are coupled to the surrounding function
+            # through the binder and the inferred type of the lambda, so it
+            # would get messy.
             if self.errors.type_name:
                 type_name = self.errors.type_name[-1]
             else:
@@ -3441,6 +3444,12 @@ class Scope:
     def top_function(self) -> Optional[FuncItem]:
         for e in reversed(self.stack):
             if isinstance(e, FuncItem):
+                return e
+        return None
+
+    def top_non_lambda_function(self) -> Optional[FuncItem]:
+        for e in reversed(self.stack):
+            if isinstance(e, FuncItem) and not isinstance(e, LambdaExpr):
                 return e
         return None
 
