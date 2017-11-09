@@ -181,7 +181,8 @@ class TypeReplaceVisitor(TypeVisitor[None]):
                 value.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
-        raise NotImplementedError
+        for item in t.items():
+            item.accept(self)
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass

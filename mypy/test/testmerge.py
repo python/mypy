@@ -144,7 +144,7 @@ class ASTMergeSuite(DataSuite):
     def dump_symbol_tables(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
         for id in sorted(modules):
-            if id in NOT_DUMPED_MODULES:
+            if not is_dumped_module(id):
                 # We don't support incremental checking of changes to builtins, etc.
                 continue
             a.extend(self.dump_symbol_table(id, modules[id].names))
@@ -174,7 +174,7 @@ class ASTMergeSuite(DataSuite):
     def dump_typeinfos(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
         for id in sorted(modules):
-            if id in NOT_DUMPED_MODULES:
+            if not is_dumped_module(id):
                 continue
             a.extend(self.dump_typeinfos_recursive(modules[id].names))
         return a
@@ -197,7 +197,7 @@ class ASTMergeSuite(DataSuite):
         # To make the results repeatable, we try to generate unique and
         # deterministic sort keys.
         for module_id in sorted(graph):
-            if module_id in NOT_DUMPED_MODULES:
+            if not is_dumped_module(module_id):
                 continue
             type_map = graph[module_id].type_checker.type_map
             if type_map:
@@ -212,3 +212,8 @@ class ASTMergeSuite(DataSuite):
 
     def format_type(self, typ: Type) -> str:
         return typ.accept(self.type_str_conv)
+
+
+def is_dumped_module(id: str) -> bool:
+    # TODO: Don't dump __main__
+    return id not in NOT_DUMPED_MODULES and (not id.startswith('_') or id.startswith('__'))

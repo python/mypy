@@ -900,3 +900,31 @@ CallExpr:3: Any
 NameExpr:3: Any
 TypeVarExpr:3: Any
 NameExpr:5: def [T <: target.A<0>] (x: T`-1(upper_bound=target.A<0>), y: target.A<0>) -> T`-1(upper_bound=target.A<0>)
+
+[case testMergeOverloaded_types]
+import target
+[file target.py]
+from _x import A
+a: A
+[file target.py.next]
+from _x import A
+a: A
+[file _x.pyi]
+from typing import Generic, TypeVar, overload
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, x: int) -> None: pass
+A = C[int]
+[out]
+## target
+TempNode:-1: Any
+NameExpr:2: _x.C[builtins.int<0>]<1>
+==>
+## target
+TempNode:-1: Any
+NameExpr:2: _x.C[builtins.int<0>]<1>
