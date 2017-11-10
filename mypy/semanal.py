@@ -308,20 +308,22 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
+        # TODO: Recursion into block statements.
         for d in file_node.defs:
             if isinstance(d, ClassDef):
                 self.refresh_class_def(d)
-            elif not isinstance(d, FuncItem):
+            elif not isinstance(d, (FuncItem, Decorator)):
                 self.accept(d)
 
     def refresh_class_def(self, defn: ClassDef) -> None:
+        # TODO: Recursion into block statements.
         with self.analyze_class_body(defn) as should_continue:
             if should_continue:
                 for d in defn.defs.body:
                     # TODO: Make sure refreshing class bodies works.
                     if isinstance(d, ClassDef):
                         self.refresh_class_def(d)
-                    elif not isinstance(d, FuncItem):
+                    elif not isinstance(d, (FuncItem, Decorator)):
                         self.accept(d)
 
     @contextmanager
@@ -1839,9 +1841,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 lval.fullname = v._fullname
                 self.globals[lval.name] = SymbolTableNode(GDEF, v)
             elif isinstance(lval.node, Var) and lval.is_any_def:
-                # Since the is_def flag is set, this must have been analyzed
-                # already in the first pass and added to the symbol table.
-                assert lval.node.name() in self.globals
+                if lval.kind == GDEF:
+                    # Since the is_any_def flag is set, this must have been analyzed
+                    # already in the first pass and added to the symbol table.
+                    assert lval.node.name() in self.globals
             elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
                   lval.name not in self.global_decls[-1] and
                   lval.name not in self.nonlocal_decls[-1]):

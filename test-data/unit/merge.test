@@ -994,3 +994,28 @@ __main__:
     NamedTuple: Var<1>
     f: UNBOUND_IMPORTED
 target:
+
+[case testRefreshAttributeDefinedInClassBody_typeinfo]
+from target import f
+class A:
+    a = 1
+    b = '' # type: str
+[file target.py]
+f = 1
+[file target.py.next]
+[out]
+TypeInfo<0>(
+  Name(__main__.A)
+  Bases(builtins.object<1>)
+  Mro(__main__.A<0>, builtins.object<1>)
+  Names(
+    a<2> (builtins.int<3>)
+    b<4> (builtins.str<5>)))
+==>
+TypeInfo<0>(
+  Name(__main__.A)
+  Bases(builtins.object<1>)
+  Mro(__main__.A<0>, builtins.object<1>)
+  Names(
+    a<2> (builtins.int<3>)
+    b<4> (builtins.str<5>)))

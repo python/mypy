@@ -52,7 +52,7 @@ from mypy.build import BuildManager, State
 from mypy.checker import DeferredNode
 from mypy.errors import Errors
 from mypy.nodes import (
-    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef
+    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator
 )
 from mypy.options import Options
 from mypy.types import Type
@@ -453,5 +453,8 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
             if isinstance(node, FuncDef):
                 result.extend(lookup_target(modules, target + '.' + name))
         return result
-    assert isinstance(node, (FuncDef, MypyFile))
+    if isinstance(node, Decorator):
+        # Decorator targets actually refer to the function definition only.
+        node = node.func
+    assert isinstance(node, (FuncDef, MypyFile)), 'unexpected type: %s' % type(node)
     return [DeferredNode(node, active_class_name, active_class)]
