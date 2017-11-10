@@ -1129,6 +1129,8 @@ class RefExpr(Expression):
     # For members, after semantic analysis, this does not take base
     # classes into consideration at all; the type checker deals with these.
     is_def = False
+    # Does this define a new name?
+    is_any_def = False
 
 
 class NameExpr(RefExpr):

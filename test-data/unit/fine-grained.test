@@ -884,3 +884,48 @@ b.c.f() # dummy change
 def f() -> None: pass
 [out]
 ==
+
+[case testTypeAliasRefresh]
+from typing import Callable
+from a import f
+C = Callable[[int], str]
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+[out]
+==
+main:2: error: Module 'a' has no attribute 'f'
+
+[case testTypeVarRefresh]
+from typing import TypeVar
+from a import f
+T = TypeVar('T')
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+[out]
+==
+main:2: error: Module 'a' has no attribute 'f'
+
+[case testNamedTupleRefresh]
+from typing import NamedTuple
+from a import f
+N = NamedTuple('N', [('x', int)])
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+[out]
+==
+main:2: error: Module 'a' has no attribute 'f'
+
+[case testModuleLevelAttributeRefresh]
+from typing import Callable
+from a import f
+x = 1
+y = ''  # type: str
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+[out]
+==
+main:2: error: Module 'a' has no attribute 'f'

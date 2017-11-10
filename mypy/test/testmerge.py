@@ -8,7 +8,7 @@ from mypy import build
 from mypy.build import BuildManager, BuildSource, State
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
-    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression
+    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, UNBOUND_IMPORTED
 )
 from mypy.options import Options
 from mypy.server.astmerge import merge_asts
@@ -161,13 +161,15 @@ class ASTMergeSuite(DataSuite):
         return a
 
     def format_symbol_table_node(self, node: SymbolTableNode) -> str:
-        if node is None:
+        if node.node is None:
+            if node.kind == UNBOUND_IMPORTED:
+                return 'UNBOUND_IMPORTED'
             return 'None'
         if isinstance(node.node, Node):
             s = '{}<{}>'.format(str(type(node.node).__name__),
                                 self.id_mapper.id(node.node))
         else:
-            s = '?'
+            s = '? ({})'.format(type(node.node))
         if node.type_override:
             override = self.format_type(node.type_override)
             s += '(type_override={})'.format(override)

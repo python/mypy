@@ -928,3 +928,69 @@ NameExpr:2: _x.C[builtins.int<0>]<1>
 ## target
 TempNode:-1: Any
 NameExpr:2: _x.C[builtins.int<0>]<1>
+
+[case testRefreshVar_symtable]
+from typing import TypeVar
+from target import f
+x = 1
+y = '' # type: str
+[file target.py]
+f = 1
+[file target.py.next]
+[out]
+__main__:
+    TypeVar: Var<0>
+    f: Var<1>
+    x: Var<2>
+    y: Var<3>
+target:
+    f: Var<1>
+==>
+__main__:
+    TypeVar: Var<0>
+    f: UNBOUND_IMPORTED
+    x: Var<2>
+    y: Var<3>
+target:
+
+[case testRefreshTypeVar_symtable]
+from typing import TypeVar
+from target import f
+T = TypeVar('T')
+[file target.py]
+f = 1
+[file target.py.next]
+[out]
+__main__:
+    T: TypeVarExpr<0>
+    TypeVar: Var<1>
+    f: Var<2>
+target:
+    f: Var<2>
+==>
+__main__:
+    T: TypeVarExpr<0>
+    TypeVar: Var<1>
+    f: UNBOUND_IMPORTED
+target:
+
+[case testRefreshNamedTuple_symtable]
+from typing import NamedTuple
+from target import f
+N = NamedTuple('N', [('x', int)])
+[file target.py]
+f = 1
+[file target.py.next]
+[out]
+__main__:
+    N: TypeInfo<0>
+    NamedTuple: Var<1>
+    f: Var<2>
+target:
+    f: Var<2>
+==>
+__main__:
+    N: TypeInfo<0>
+    NamedTuple: Var<1>
+    f: UNBOUND_IMPORTED
+target:

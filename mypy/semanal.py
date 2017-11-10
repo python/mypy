@@ -1815,10 +1815,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                        explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target.
 
-        Only if add_global is True, add name to globals table. If nested
-        is true, the lvalue is within a tuple or list lvalue expression.
+        Args:
+            nested: If true, the lvalue is within a tuple or list lvalue expression
+            add_global: Add name to globals table only if this is true (used in first pass)
+            explicit_type: Assignment has type annotation
         """
-
         if isinstance(lval, NameExpr):
             # Top-level definitions within some statements (at least while) are
             # not handled in the first pass, so they have to be added now.
@@ -1833,10 +1834,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 v.is_ready = False  # Type not inferred yet
                 lval.node = v
                 lval.is_def = True
+                lval.is_any_def = True
                 lval.kind = GDEF
                 lval.fullname = v._fullname
                 self.globals[lval.name] = SymbolTableNode(GDEF, v)
-            elif isinstance(lval.node, Var) and lval.is_def:
+            elif isinstance(lval.node, Var) and lval.is_any_def:
                 # Since the is_def flag is set, this must have been analyzed
                 # already in the first pass and added to the symbol table.
                 assert lval.node.name() in self.globals
@@ -1848,6 +1850,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 v.set_line(lval)
                 lval.node = v
                 lval.is_def = True
+                lval.is_any_def = True
                 lval.kind = LDEF
                 lval.fullname = lval.name
                 self.add_local(v, lval)
@@ -1861,6 +1864,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 v._fullname = self.qualified_name(lval.name)
                 lval.node = v
                 lval.is_def = True
+                lval.is_any_def = True
                 lval.kind = MDEF
                 lval.fullname = lval.name
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
@@ -1923,6 +1927,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 else:
                     # Implicit attribute definition in __init__.
                     lval.is_def = True
+                    lval.is_any_def = True
                     v = Var(lval.name)
                     v.set_line(lval)
                     v._fullname = self.qualified_name(lval.name)

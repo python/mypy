@@ -8,7 +8,7 @@ from typing import Union, Iterator, Optional
 
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
-    ImportFrom, TypeInfo, SymbolTable, Var, UNBOUND_IMPORTED
+    ImportFrom, TypeInfo, SymbolTable, Var, UNBOUND_IMPORTED, GDEF
 )
 from mypy.traverser import TraverserVisitor
 
@@ -79,7 +79,10 @@ class NodeStripVisitor(TraverserVisitor):
                     symnode.node = None
 
     def visit_name_expr(self, node: NameExpr) -> None:
-        self.strip_ref_expr(node)
+        # Global assignments are processed in semantic analysis pass 1, and we
+        # only want strip changes made in passes 2 or later.
+        if not (node.kind == GDEF and node.is_any_def):
+            self.strip_ref_expr(node)
 
     def visit_member_expr(self, node: MemberExpr) -> None:
         self.strip_ref_expr(node)
