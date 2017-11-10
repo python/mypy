@@ -13,7 +13,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.server.astmerge import merge_asts
 from mypy.server.subexpr import get_subexpressions
-from mypy.server.update import build_incremental_step, replace_modules_with_new_variants
+from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv, indent
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
@@ -70,6 +70,7 @@ class ASTMergeSuite(DataSuite):
         main_src = '\n'.join(testcase.input)
         messages, manager, graph = self.build(main_src)
         assert manager is not None, 'cases where CompileError occurred should not be run'
+        fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
         a = []
         if messages:
@@ -83,7 +84,7 @@ class ASTMergeSuite(DataSuite):
 
         a.append('==>')
 
-        new_file, new_types = self.build_increment(manager, 'target', graph)
+        new_file, new_types = self.build_increment(fine_grained_manager, 'target')
         a.extend(self.dump(manager.modules, graph, kind))
 
         for expr in old_subexpr:
@@ -109,13 +110,14 @@ class ASTMergeSuite(DataSuite):
             return e.messages, None, {}
         return result.errors, result.manager, result.graph
 
-    def build_increment(self, manager: BuildManager,
-                        module_id: str,
-                        graph: Dict[str, State]) -> Tuple[MypyFile,
-                                                          Dict[Expression, Type]]:
-        module_dict = build_incremental_step(manager, [module_id], graph)
-        type_map = graph[module_id].type_checker.type_map
-        return module_dict[module_id], type_map
+    def build_increment(self, manager: FineGrainedBuildManager,
+                        module_id: str) -> Tuple[MypyFile,
+                                                 Dict[Expression, Type]]:
+        manager.update([module_id])
+        #module_dict = build_incremental_step(manager, [module_id], graph)
+        module = manager.manager.modules[module_id]
+        type_map = manager.graph[module_id].type_checker.type_map
+        return module, type_map
 
     def dump(self,
              modules: Dict[str, MypyFile],
