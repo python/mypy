@@ -4140,7 +4140,7 @@ class TypeddictAnalyzer(Specializer):
             check_for_explicit_any(t, self.options, self.is_typeshed_stub_file, self.msg,
                                    context=call)
 
-        if 'unimported' in self.options.disallow_any:
+        if self.options.disallow_any_unimported:
             for t in types:
                 if has_any_from_unimported_type(t):
                     self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, dictexpr)
