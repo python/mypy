@@ -1068,7 +1068,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             else:
                 self.fail('Invalid base class', base_expr)
                 info.fallback_to_any = True
-            if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(base):
+            if self.options.disallow_any_unimported and has_any_from_unimported_type(base):
                 if isinstance(base_expr, (NameExpr, MemberExpr)):
                     prefix = "Base type {}".format(base_expr.name)
                 else:
@@ -1975,7 +1975,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         check_for_explicit_any(old_type, self.options, self.is_typeshed_stub_file, self.msg,
                                context=s)
 
-        if 'unimported' in self.options.disallow_any and has_any_from_unimported_type(old_type):
+        if self.options.disallow_any_unimported and has_any_from_unimported_type(old_type):
             self.msg.unimported_type_becomes_any("Argument 2 to NewType(...)", old_type, s)
 
         # If so, add it to the symbol table.
@@ -2089,7 +2089,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             return
         variance, upper_bound = res
 
-        if 'unimported' in self.options.disallow_any:
+        if self.options.disallow_any_unimported:
             for idx, constraint in enumerate(values, start=1):
                 if has_any_from_unimported_type(constraint):
                     prefix = "Constraint {}".format(idx)
@@ -2399,7 +2399,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         add_field(Var('__annotations__', ordereddictype), is_initialized_in_class=True)
         add_field(Var('__doc__', strtype), is_initialized_in_class=True)
 
-        tvd = TypeVarDef('NT', 1, [], info.tuple_type)
+        tvd = TypeVarDef('NT', 'NT', 1, [], info.tuple_type)
         selftype = TypeVarType(tvd)
 
         def add_method(funcname: str,
@@ -2419,14 +2419,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             arg_kinds = [arg.kind for arg in args]
             assert None not in types
             signature = CallableType(cast(List[Type], types), arg_kinds, items, ret,
-                                     function_type,
-                                     name=name or info.name() + '.' + funcname)
+                                     function_type)
             signature.variables = [tvd]
-            func = FuncDef(funcname, args, Block([]), typ=signature)
+            func = FuncDef(funcname, args, Block([]))
             func.info = info
             func.is_class = is_classmethod
+            func.type = set_callable_name(signature, func)
             if is_classmethod:
-                v = Var(funcname, signature)
+                v = Var(funcname, func.type)
                 v.is_classmethod = True
                 v.info = info
                 dec = Decorator(func, [NameExpr('classmethod')], v)
@@ -2925,10 +2925,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
 
     def visit_exec_stmt(self, s: ExecStmt) -> None:
         s.expr.accept(self)
-        if s.variables1:
-            s.variables1.accept(self)
-        if s.variables2:
-            s.variables2.accept(self)
+        if s.globals:
+            s.globals.accept(self)
+        if s.locals:
+            s.locals.accept(self)
 
     #
     # Expressions
@@ -3649,9 +3649,9 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
     if isinstance(sig, FunctionLike):
         if fdef.info:
             return sig.with_name(
-                '"{}" of "{}"'.format(fdef.name(), fdef.info.name()))
+                '{} of {}'.format(fdef.name(), fdef.info.name()))
         else:
-            return sig.with_name('"{}"'.format(fdef.name()))
+            return sig.with_name(fdef.name())
     else:
         return sig
 

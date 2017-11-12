@@ -105,18 +105,20 @@ class TypeVarId:
 class TypeVarDef(mypy.nodes.Context):
     """Definition of a single type variable."""
 
-    name = ''
+    name = ''  # Name (may be qualified)
+    fullname = ''  # Fully qualified name
     id = None  # type: TypeVarId
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type
     variance = INVARIANT  # type: int
 
-    def __init__(self, name: str, id: Union[TypeVarId, int], values: List[Type],
+    def __init__(self, name: str, fullname: str, id: Union[TypeVarId, int], values: List[Type],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1,
                  column: int = -1) -> None:
         super().__init__(line, column)
         assert values is not None, "No restrictions must be represented by empty list"
         self.name = name
+        self.fullname = fullname
         if isinstance(id, int):
             id = TypeVarId(id)
         self.id = id
@@ -127,7 +129,7 @@ class TypeVarDef(mypy.nodes.Context):
     @staticmethod
     def new_unification_variable(old: 'TypeVarDef') -> 'TypeVarDef':
         new_id = TypeVarId.new(meta_level=1)
-        return TypeVarDef(old.name, new_id, old.values,
+        return TypeVarDef(old.name, old.fullname, new_id, old.values,
                           old.upper_bound, old.variance, old.line, old.column)
 
     def __repr__(self) -> str:
@@ -142,6 +144,7 @@ class TypeVarDef(mypy.nodes.Context):
         assert not self.id.is_meta_var()
         return {'.class': 'TypeVarDef',
                 'name': self.name,
+                'fullname': self.fullname,
                 'id': self.id.raw_id,
                 'values': [v.serialize() for v in self.values],
                 'upper_bound': self.upper_bound.serialize(),
@@ -152,6 +155,7 @@ class TypeVarDef(mypy.nodes.Context):
     def deserialize(cls, data: JsonDict) -> 'TypeVarDef':
         assert data['.class'] == 'TypeVarDef'
         return TypeVarDef(data['name'],
+                          data['fullname'],
                           data['id'],
                           [deserialize_type(v) for v in data['values']],
                           deserialize_type(data['upper_bound']),
@@ -277,7 +281,7 @@ class TypeOfAny:
     unannotated = TypeOfAny('unannotated')
     # Does this Any come from an explicit type annotation?
     explicit = TypeOfAny('explicit')
-    # Does this come from an unfollowed import? See --disallow-any=unimported option
+    # Does this come from an unfollowed import? See --disallow-any-unimported option
     from_unimported_type = TypeOfAny('from_unimported_type')
     # Does this Any type come from omitted generics?
     from_omitted_generics = TypeOfAny('from_omitted_generics')
@@ -528,6 +532,7 @@ class TypeVarType(Type):
     """
 
     name = ''  # Name of the type variable (for messages and debugging)
+    fullname = None  # type: str
     id = None  # type: TypeVarId
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type   # Upper bound for values
@@ -536,6 +541,7 @@ class TypeVarType(Type):
 
     def __init__(self, binder: TypeVarDef, line: int = -1, column: int = -1) -> None:
         self.name = binder.name
+        self.fullname = binder.fullname
         self.id = binder.id
         self.values = binder.values
         self.upper_bound = binder.upper_bound
@@ -563,6 +569,7 @@ class TypeVarType(Type):
         assert not self.id.is_meta_var()
         return {'.class': 'TypeVarType',
                 'name': self.name,
+                'fullname': self.fullname,
                 'id': self.id.raw_id,
                 'values': [v.serialize() for v in self.values],
                 'upper_bound': self.upper_bound.serialize(),
@@ -573,6 +580,7 @@ class TypeVarType(Type):
     def deserialize(cls, data: JsonDict) -> 'TypeVarType':
         assert data['.class'] == 'TypeVarType'
         tvdef = TypeVarDef(data['name'],
+                           data['fullname'],
                            data['id'],
                            [deserialize_type(v) for v in data['values']],
                            deserialize_type(data['upper_bound']),
@@ -1954,17 +1962,13 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
 
 def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
                   ret_type: Optional[Type] = None) -> CallableType:
-    name = fdef.name()
-    if name:
-        name = '"{}"'.format(name)
-
     return CallableType(
         [AnyType(TypeOfAny.unannotated)] * len(fdef.arg_names),
         fdef.arg_kinds,
         [None if argument_elide_name(n) else n for n in fdef.arg_names],
         ret_type or AnyType(TypeOfAny.unannotated),
         fallback,
-        name,
+        name=fdef.name(),
         implicit=True,
     )
 

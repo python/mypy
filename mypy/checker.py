@@ -260,9 +260,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # TODO: Handle __all__
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        node = self.scope.top_function()
-        if self.pass_num < LAST_PASS and isinstance(node, (FuncDef, LambdaExpr)):
-            # Don't report an error yet. Just defer.
+        node = self.scope.top_non_lambda_function()
+        if self.pass_num < LAST_PASS and isinstance(node, FuncDef):
+            # Don't report an error yet. Just defer. Note that we don't defer
+            # lambdas because they are coupled to the surrounding function
+            # through the binder and the inferred type of the lambda, so it
+            # would get messy.
             if self.errors.type_name:
                 type_name = self.errors.type_name[-1]
             else:
@@ -624,7 +627,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                   item)
 
                     self.check_for_missing_annotations(fdef)
-                    if 'unimported' in self.options.disallow_any:
+                    if self.options.disallow_any_unimported:
                         if fdef.type and isinstance(fdef.type, CallableType):
                             ret_type = fdef.type.ret_type
                             if has_any_from_unimported_type(ret_type):
@@ -1312,7 +1315,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
         if (s.type is not None and
-                'unimported' in self.options.disallow_any and
+                self.options.disallow_any_unimported and
                 has_any_from_unimported_type(s.type)):
             if isinstance(s.lvalues[-1], TupleExpr):
                 # This is a multiple assignment. Instead of figuring out which type is problematic,
@@ -1360,8 +1363,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             if not self.current_node_deferred:
-                                var.type = UnionType.make_simplified_union(
+                                inferred_type = UnionType.make_simplified_union(
                                     [rvalue_type, NoneTyp()])
+                                self.set_inferred_type(var, lvalue, inferred_type)
                             else:
                                 var.type = None
                             del partial_types[var]
@@ -2389,6 +2393,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             item_type = self.analyze_async_iterable_item_type(s.expr)
         else:
             item_type = self.analyze_iterable_item_type(s.expr)
+        s.inferred_item_type = item_type
         self.analyze_index_variables(s.index, item_type, s.index_type is None, s)
         self.accept_loop(s.body, s.else_body)
 
@@ -2524,7 +2529,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.accept(s.body)
 
     def check_untyped_after_decorator(self, typ: Type, func: FuncDef) -> None:
-        if 'decorated' not in self.options.disallow_any or self.is_stub:
+        if not self.options.disallow_any_decorated or self.is_stub:
             return
 
         if mypy.checkexpr.has_any_type(typ):
@@ -3439,6 +3444,12 @@ class Scope:
     def top_function(self) -> Optional[FuncItem]:
         for e in reversed(self.stack):
             if isinstance(e, FuncItem):
+                return e
+        return None
+
+    def top_non_lambda_function(self) -> Optional[FuncItem]:
+        for e in reversed(self.stack):
+            if isinstance(e, FuncItem) and not isinstance(e, LambdaExpr):
                 return e
         return None
 

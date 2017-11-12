@@ -80,6 +80,10 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     # Any overlaps with everything
     if isinstance(t, AnyType) or isinstance(s, AnyType):
         return True
+    # object overlaps with everything
+    if (isinstance(t, Instance) and t.type.fullname() == 'builtins.object' or
+            isinstance(s, Instance) and s.type.fullname() == 'builtins.object'):
+        return True
 
     # Since we are effectively working with the erased types, we only
     # need to handle occurrences of TypeVarType at the top level.

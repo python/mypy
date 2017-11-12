@@ -3046,6 +3046,71 @@ class Pair(NamedTuple):
 Person(name=Pair(first="John", last="Doe"))
 [out]
 
+[case testNoCrashForwardRefToBrokenDoubleNewTypeIncremental]
+from typing import Any, List, NewType
+
+Foo = NewType('NotFoo', int) # type: ignore
+Foos = NewType('Foos', List[Foo]) # type: ignore
+
+def frob(foos: List[Foos]) -> None:
+    pass
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoCrashForwardRefOverloadIncremental]
+from typing import overload, List
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: F) -> F: ...
+def f(x):
+    pass
+
+F = List[int]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoCrashForwardRefOverloadIncrementalClass]
+from typing import overload, Tuple, NamedTuple
+
+x: C
+class C:
+    @overload
+    def f(self, x: str) -> N: pass
+    @overload
+    def f(self, x: int) -> int: pass
+    def f(self, x):
+        pass
+
+class N(NamedTuple):
+    x: A
+A = Tuple[int]
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testNewTypeFromForwardNamedTupleIncremental]
+from typing import NewType, NamedTuple, Tuple
+
+NT = NewType('NT', N)
+class N(NamedTuple):
+    x: int
+
+x: NT = N(1) # type: ignore
+x = NT(N(1))
+[out]
+
+[case testNewTypeFromForwardTypedDictIncremental]
+from typing import NewType, Tuple, Dict
+from mypy_extensions import TypedDict
+
+NT = NewType('NT', N) # type: ignore
+class N(TypedDict):
+    x: A
+A = Dict[str, int]
+[builtins fixtures/dict.pyi]
+[out]
+
 -- Some crazy selef-referential named tuples, types dicts, and aliases
 -- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed).
 -- For this reason errors are silenced (tests with # type: ignore have equivalents in other files)
@@ -3264,4 +3329,112 @@ def func(x: int) -> int:
 
 x = tp(func)
 [out]
+[out2]
+
+[case testReprocessModuleEvenIfInterfaceHashDoesNotChange]
+import a
+import d
+
+[file a.py]
+import b
+x: b.c.A
+x = b.c.A()
+
+[file b.py]
+import c
+
+[file c.py]
+class A:
+    x = 1
+
+[file d.py]
+import a
+def f() -> None: pass
+
+[file a.py.2]
+import b
+x: b.c.A
+
+[file c.py.3]
+class A:
+    x = 2
+
+[file d.py.4]
+import a
+def f() -> None:
+    from c import A
+    a.x = [A(), a.x][0]
+
+[builtins fixtures/list.pyi]
+[stale]
+[rechecked a]
+[stale2]
+[rechecked2 c]
+[stale3]
+[rechecked3 d]
+[out1]
+[out2]
+[out3]
+[out4]
+
+[case testTreeShadowingViaParentPackage]
+import m.semanal
+
+[file m/__init__.py]
+pass
+
+[file m/nodes.py]
+if False:
+    import m.types
+    import m.semanal
+class Node:
+    line: int
+class FuncBase(Node):
+    type: m.types.Type
+class OverloadedFuncDef(FuncBase): pass
+
+[file m/types.py]
+from m.nodes import Node
+class Type(Node): pass
+class Overloaded(Type): pass
+
+[file m/semanal.py]
+from m.nodes import OverloadedFuncDef
+from m.types import Overloaded
+
+class C:
+    def func(self, defn: OverloadedFuncDef):
+        defn.type = Overloaded()
+        defn.type.line = 0
+
+[file m/nodes.py.2]
+if False:
+    import m.types
+    import m.semanal
+class Node:
+    line: int
+class FuncBase(Node):
+    type: m.types.Type
+class OverloadedFuncDef(FuncBase): pass
+extra = 1
+
+[file m/types.py.2]
+from m.nodes import Node
+class Type(Node): pass
+class Overloaded(Type): pass
+extra = 1
+[builtins fixtures/list.pyi]
+
+[file m/semanal.py.2]
+from m.nodes import OverloadedFuncDef
+from m.types import Overloaded
+
+class C:
+    def func(self, defn: OverloadedFuncDef):
+        defn.type = Overloaded()
+        defn.type.line = 0
+
+extra = 1
+
+[out1]
 [out2]

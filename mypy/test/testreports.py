@@ -4,7 +4,7 @@ import textwrap
 from mypy.myunit import Suite, assert_equal
 from mypy.report import CoberturaPackage, get_line_rate
 
-import lxml.etree as etree
+import lxml.etree as etree  # type: ignore
 
 
 class CoberturaReportSuite(Suite):

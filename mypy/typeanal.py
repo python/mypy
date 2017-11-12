@@ -14,7 +14,7 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef
+    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded
 )
 
 from mypy.nodes import (
@@ -213,7 +213,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
-                    if 'generics' in self.options.disallow_any and not self.is_typeshed_stub:
+                    if self.options.disallow_any_generics and not self.is_typeshed_stub:
                         self.fail(messages.BARE_GENERIC, t)
                     typ = self.named_type('builtins.tuple', line=t.line, column=t.column)
                     typ.from_generic_builtin = True
@@ -602,7 +602,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
     def anal_var_defs(self, var_defs: List[TypeVarDef]) -> List[TypeVarDef]:
         a = []  # type: List[TypeVarDef]
         for vd in var_defs:
-            a.append(TypeVarDef(vd.name, vd.id.raw_id, self.anal_array(vd.values),
+            a.append(TypeVarDef(vd.name,
+                                vd.fullname,
+                                vd.id.raw_id,
+                                self.anal_array(vd.values),
                                 vd.upper_bound.accept(self),
                                 vd.variance,
                                 vd.line))
@@ -669,7 +672,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         if len(t.args) != len(info.type_vars):
             if len(t.args) == 0:
                 from_builtins = t.type.fullname() in nongen_builtins and not t.from_generic_builtin
-                if ('generics' in self.options.disallow_any and
+                if (self.options.disallow_any_generics and
                         not self.is_typeshed_stub and
                         from_builtins):
                     alternative = nongen_builtins[t.type.fullname()]
@@ -764,6 +767,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         t.ret_type.accept(self)
         for arg_type in t.arg_types:
             arg_type.accept(self)
+
+    def visit_overloaded(self, t: Overloaded) -> None:
+        for item in t.items():
+            item.accept(self)
 
     def visit_tuple_type(self, t: TupleType) -> None:
         for item in t.items:
@@ -926,7 +933,7 @@ def check_for_explicit_any(typ: Optional[Type],
                            is_typeshed_stub: bool,
                            msg: MessageBuilder,
                            context: Context) -> None:
-    if ('explicit' in options.disallow_any and
+    if (options.disallow_any_explicit and
             not is_typeshed_stub and
             typ and
             has_explicit_any(typ)):

@@ -11,7 +11,7 @@ flag (or its long form ``--help``)::
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM] [-2]
               [--ignore-missing-imports]
               [--follow-imports {normal,silent,skip,error}]
-              [--disallow-any {unimported, expr, unannotated, decorated, explicit, generics}]
+              [--disallow-any-{unimported,expr,decorated,explicit,generics}]
               [--disallow-untyped-calls] [--disallow-untyped-defs]
               [--check-untyped-defs] [--disallow-subclassing-any]
               [--warn-incomplete-stub] [--warn-redundant-casts]
@@ -28,7 +28,7 @@ flag (or its long form ``--help``)::
               [--shadow-file SOURCE_FILE SHADOW_FILE] [--any-exprs-report DIR]
               [--cobertura-xml-report DIR] [--html-report DIR]
               [--linecount-report DIR] [--linecoverage-report DIR]
-              [--memory-xml-report DIR] [--old-html-report DIR]
+              [--memory-xml-report DIR]
               [--txt-report DIR] [--xml-report DIR] [--xslt-html-report DIR]
               [--xslt-txt-report DIR] [-m MODULE] [-c PROGRAM_TEXT] [-p PACKAGE]
               [files [files ...]]
@@ -249,6 +249,38 @@ directory.  The four possible values are:
     main.py:1: note: Import of 'submodule' ignored
     main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
+.. _disallow-any:
+
+Disallow Any Flags
+******************
+
+The ``--disallow-any`` family of flags disallows various types of ``Any`` in a module.
+The following options are available:
+
+- ``--disallow-any-unimported`` disallows usage of types that come from unfollowed imports
+  (such types become aliases for ``Any``). Unfollowed imports occur either
+  when the imported module does not exist or when ``--follow-imports=skip``
+  is set.
+
+- ``--disallow-any-expr`` disallows all expressions in the module that have type ``Any``.
+  If an expression of type ``Any`` appears anywhere in the module
+  mypy will output an error unless the expression is immediately
+  used as an argument to ``cast`` or assigned to a variable with an
+  explicit type annotation. In addition, declaring a variable of type ``Any``
+  or casting to type ``Any`` is not allowed. Note that calling functions
+  that take parameters of type ``Any`` is still allowed.
+
+- ``--disallow-any-decorated`` disallows functions that have ``Any`` in their signature
+  after decorator transformation.
+
+- ``--disallow-any-explicit`` disallows explicit ``Any`` in type positions such as type
+  annotations and generic type parameters.
+
+- ``--disallow-any-generics`` disallows usage of generic types that do not specify explicit
+  type parameters. Moreover, built-in collections (such as ``list`` and
+  ``dict``) become disallowed as you should use their aliases from the typing
+  module (such as ``List[int]`` and ``Dict[str, str]``).
+
 
 Additional command line flags
 *****************************
@@ -276,42 +308,6 @@ Here are some more useful flags:
   non-strict-Optional run.  Therefore, when using this flag, you should also
   re-check your code without ``--strict-optional`` to ensure new type errors
   are not introduced.
-
-.. _disallow-any:
-
-- ``--disallow-any`` disallows various types of ``Any`` in a module.
-  The option takes a comma-separated list of the following values:
-  ``unimported``, ``unannotated``, ``expr``, ``decorated``, ``explicit``,
-  ``generics``.
-
-  ``unimported`` disallows usage of types that come from unfollowed imports
-  (such types become aliases for ``Any``). Unfollowed imports occur either
-  when the imported module does not exist or when ``--follow-imports=skip``
-  is set.
-
-  ``unannotated`` disallows function definitions that are not fully
-  typed (i.e. that are missing an explicit type annotation for any
-  of the parameters or the return type). ``unannotated`` option is
-  interchangeable with ``--disallow-untyped-defs``.
-
-  ``expr`` disallows all expressions in the module that have type ``Any``.
-  If an expression of type ``Any`` appears anywhere in the module
-  mypy will output an error unless the expression is immediately
-  used as an argument to ``cast`` or assigned to a variable with an
-  explicit type annotation. In addition, declaring a variable of type ``Any``
-  or casting to type ``Any`` is not allowed. Note that calling functions
-  that take parameters of type ``Any`` is still allowed.
-
-  ``decorated`` disallows functions that have ``Any`` in their signature
-  after decorator transformation.
-
-  ``explicit`` disallows explicit ``Any`` in type positions such as type
-  annotations and generic type parameters.
-
-  ``generics`` disallows usage of generic types that do not specify explicit
-  type parameters. Moreover, built-in collections (such as ``list`` and
-  ``dict``) become disallowed as you should use their aliases from the typing
-  module (such as ``List[int]`` and ``Dict[str, str]``).
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.

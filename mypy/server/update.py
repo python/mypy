@@ -54,6 +54,7 @@ from mypy.errors import Errors
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef
 )
+from mypy.options import Options
 from mypy.types import Type
 from mypy.server.astdiff import compare_symbol_tables, is_identical_type
 from mypy.server.astmerge import merge_asts
@@ -72,8 +73,9 @@ class FineGrainedBuildManager:
                  manager: BuildManager,
                  graph: Dict[str, State]) -> None:
         self.manager = manager
+        self.options = manager.options
         self.graph = graph
-        self.deps = get_all_dependencies(manager, graph)
+        self.deps = get_all_dependencies(manager, graph, self.options)
         self.previous_targets_with_errors = manager.errors.targets()
 
     def update(self, changed_modules: List[str]) -> List[str]:
@@ -107,7 +109,7 @@ class FineGrainedBuildManager:
         if DEBUG:
             print('triggered:', sorted(triggered))
         replace_modules_with_new_variants(manager, graph, old_modules, new_modules, new_type_maps)
-        update_dependencies(new_modules, self.deps, graph)
+        update_dependencies(new_modules, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              set(changed_modules),
                                              self.previous_targets_with_errors,
@@ -116,10 +118,11 @@ class FineGrainedBuildManager:
         return manager.errors.messages()
 
 
-def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
+def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
+                         options: Options) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
     deps = {}  # type: Dict[str, Set[str]]
-    update_dependencies(manager.modules, deps, graph)
+    update_dependencies(manager.modules, deps, graph, options)
     return deps
 
 
@@ -160,11 +163,12 @@ def build_incremental_step(manager: BuildManager,
 
 def update_dependencies(new_modules: Dict[str, MypyFile],
                         deps: Dict[str, Set[str]],
-                        graph: Dict[str, State]) -> None:
+                        graph: Dict[str, State],
+                        options: Options) -> None:
     for id, node in new_modules.items():
-        module_deps = get_dependencies(prefix=id,
-                                       node=node,
-                                       type_map=graph[id].type_checker.type_map)
+        module_deps = get_dependencies(target=node,
+                                       type_map=graph[id].type_checker.type_map,
+                                       python_version=options.python_version)
         for trigger, targets in module_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
@@ -337,7 +341,7 @@ def reprocess_nodes(manager: BuildManager,
     new_triggered = get_triggered_namespace_items(old_types_map)
 
     # Dependencies may have changed.
-    update_deps(module_id, nodes, graph, deps)
+    update_deps(module_id, nodes, graph, deps, manager.options)
 
     return new_triggered
 
@@ -379,14 +383,12 @@ def get_triggered_namespace_items(old_types_map: Dict[NamespaceNode, Dict[str, T
 def update_deps(module_id: str,
                 nodes: List[DeferredNode],
                 graph: Dict[str, State],
-                deps: Dict[str, Set[str]]) -> None:
+                deps: Dict[str, Set[str]],
+                options: Options) -> None:
     for deferred in nodes:
         node = deferred.node
-        prefix = module_id
-        if isinstance(node, FuncBase) and node.info:
-            prefix += '.{}'.format(node.info.name())
         type_map = graph[module_id].type_checker.type_map
-        new_deps = get_dependencies_of_target(prefix, node, type_map)
+        new_deps = get_dependencies_of_target(module_id, node, type_map, options.python_version)
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
