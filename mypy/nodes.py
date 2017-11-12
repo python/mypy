@@ -4,7 +4,7 @@ import os
 from abc import abstractmethod
 from collections import OrderedDict
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable,
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence,
 )
 
 import mypy.strconv
@@ -829,6 +829,8 @@ class ForStmt(Statement):
     index = None  # type: Lvalue
     # Type given by type comments for index, can be None
     index_type = None  # type: Optional[mypy.types.Type]
+    # Inferred iterable item type
+    inferred_item_type = None  # type: Optional[mypy.types.Type]
     # Expression to iterate
     expr = None  # type: Expression
     body = None  # type: Block
@@ -993,15 +995,15 @@ class ExecStmt(Statement):
     """Python 2 exec statement"""
 
     expr = None  # type: Expression
-    variables1 = None  # type: Optional[Expression]
-    variables2 = None  # type: Optional[Expression]
+    globals = None  # type: Optional[Expression]
+    locals = None  # type: Optional[Expression]
 
     def __init__(self, expr: Expression,
-                 variables1: Optional[Expression],
-                 variables2: Optional[Expression]) -> None:
+                 globals: Optional[Expression],
+                 locals: Optional[Expression]) -> None:
         self.expr = expr
-        self.variables1 = variables1
-        self.variables2 = variables2
+        self.globals = globals
+        self.locals = locals
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_exec_stmt(self)
@@ -1352,6 +1354,12 @@ reverse_op_methods = {
 
 normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())
 reverse_op_method_set = set(reverse_op_methods.values())
+
+unary_op_methods = {
+    '-': '__neg__',
+    '+': '__pos__',
+    '~': '__invert__',
+}
 
 
 class OpExpr(Expression):
@@ -1786,13 +1794,14 @@ class NewTypeExpr(Expression):
     """NewType expression NewType(...)."""
     name = None  # type: str
     # The base type (the second argument to NewType)
-    old_type = None  # type: mypy.types.Type
+    old_type = None  # type: Optional[mypy.types.Type]
     # The synthesized class representing the new type (inherits old_type)
     info = None  # type: Optional[TypeInfo]
 
-    def __init__(self, name: str, old_type: 'mypy.types.Type', line: int) -> None:
+    def __init__(self, name: str, old_type: 'Optional[mypy.types.Type]', line: int) -> None:
         self.name = name
         self.old_type = old_type
+        self.line = line
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_newtype_expr(self)
@@ -1924,7 +1933,7 @@ class TypeInfo(SymbolNode):
 
     # Information related to type annotations.
 
-    # Generic type variable names
+    # Generic type variable names (full names)
     type_vars = None  # type: List[str]
 
     # Direct base classes.
@@ -1986,7 +1995,7 @@ class TypeInfo(SymbolNode):
     def add_type_vars(self) -> None:
         if self.defn.type_vars:
             for vd in self.defn.type_vars:
-                self.type_vars.append(vd.name)
+                self.type_vars.append(vd.fullname)
 
     def name(self) -> str:
         """Short name."""
@@ -2552,7 +2561,7 @@ def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T
             is_kw_arg = True
 
 
-def check_arg_names(names: List[Optional[str]], nodes: List[T], fail: Callable[[str, T], None],
+def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callable[[str, T], None],
                     description: str = 'function definition') -> None:
     seen_names = set()  # type: Set[Optional[str]]
     for name, node in zip(names, nodes):

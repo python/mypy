@@ -34,6 +34,8 @@ parser.set_defaults(action=None)
 subparsers = parser.add_subparsers()
 
 start_parser = subparsers.add_parser('start', help="Start daemon")
+start_parser.add_argument('--log-file', metavar='FILE', type=str,
+                          help="Direct daemon stdout/stderr to FILE")
 start_parser.add_argument('flags', metavar='FLAG', nargs='*', type=str,
                           help="Regular mypy flags (precede with --)")
 
@@ -45,6 +47,8 @@ kill_parser = subparsers.add_parser('kill', help="Kill daemon (kills the process
 
 restart_parser = subparsers.add_parser('restart',
     help="Restart daemon (stop or kill followed by start)")
+restart_parser.add_argument('--log-file', metavar='FILE', type=str,
+                            help="Direct daemon stdout/stderr to FILE")
 restart_parser.add_argument('flags', metavar='FLAG', nargs='*', type=str,
                             help="Regular mypy flags (precede with --)")
 
@@ -103,7 +107,7 @@ def do_start(args: argparse.Namespace) -> None:
     try:
         pid, sockname = get_status()
     except SystemExit as err:
-        if daemonize(Server(args.flags).serve):
+        if daemonize(Server(args.flags).serve, args.log_file):
             sys.exit(1)
         wait_for_server()
     else:
@@ -169,7 +173,7 @@ def do_restart(args: argparse.Namespace) -> None:
             sys.exit("Status: %s" % str(response))
         else:
             print("Daemon stopped")
-    if daemonize(Server(args.flags).serve):
+    if daemonize(Server(args.flags).serve, args.log_file):
         sys.exit(1)
     wait_for_server()
 
@@ -333,7 +337,7 @@ def read_status() -> Dict[str, object]:
     return data
 
 
-def daemonize(func: Callable[[], None]) -> int:
+def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
     """Arrange to call func() in a grandchild of the current process.
 
     Return 0 for success, exit status for failure, negative if
@@ -368,6 +372,11 @@ def daemonize(func: Callable[[], None]) -> int:
             # Child is done, exit to parent.
             os._exit(0)
         # Grandchild: run the server.
+        if log_file:
+            sys.stdout = sys.stderr = open(log_file, 'a', buffering=1)
+            fd = sys.stdout.fileno()
+            os.dup2(fd, 2)
+            os.dup2(fd, 1)
         func()
     finally:
         # Make sure we never get back into the caller.
@@ -490,43 +499,28 @@ class Server:
             return {'error': "Command 'recheck' is only valid after a 'check' command"}
         return self.check(self.last_sources)
 
-    last_mananager = None  # type: Optional[mypy.build.BuildManager]
+    # Needed by tests.
+    last_manager = None  # type: Optional[mypy.build.BuildManager]
 
     def check(self, sources: List[mypy.build.BuildSource],
               alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
-        # TODO: Move stats handling code to make the logic here less cluttered.
-        bound_gc_callback = self.gc_callback
-        self.gc_start_time = None  # type: Optional[float]
-        self.gc_time = 0.0
-        self.gc_calls = 0
-        self.gc_collected = 0
-        self.gc_uncollectable = 0
-        t0 = time.time()
-        try:
-            gc.callbacks.append(bound_gc_callback)
-            # saved_cache is mutated in place.
-            res = mypy.build.build(sources, self.options,
-                                   saved_cache=self.saved_cache,
-                                   alt_lib_path=alt_lib_path)
-            msgs = res.errors
-            self.last_manager = res.manager  # type: Optional[mypy.build.BuildManager]
-        except mypy.errors.CompileError as err:
-            msgs = err.messages
-            self.last_manager = None
-        finally:
-            while bound_gc_callback in gc.callbacks:
-                gc.callbacks.remove(bound_gc_callback)
-        t1 = time.time()
+        self.last_manager = None
+        with GcLogger() as gc_result:
+            try:
+                # saved_cache is mutated in place.
+                res = mypy.build.build(sources, self.options,
+                                       saved_cache=self.saved_cache,
+                                       alt_lib_path=alt_lib_path)
+                msgs = res.errors
+                self.last_manager = res.manager  # type: Optional[mypy.build.BuildManager]
+            except mypy.errors.CompileError as err:
+                msgs = err.messages
         if msgs:
             msgs.append("")
             response = {'out': "\n".join(msgs), 'err': "", 'status': 1}
         else:
             response = {'out': "", 'err': "", 'status': 0}
-        response['build_time'] = t1 - t0
-        response['gc_time'] = self.gc_time
-        response['gc_calls'] = self.gc_calls
-        response['gc_collected'] = self.gc_collected
-        response['gc_uncollectable'] = self.gc_uncollectable
+        response.update(gc_result.get_stats())
         response.update(get_meminfo())
         if self.last_manager is not None:
             response.update(self.last_manager.stats_summary())
@@ -536,20 +530,6 @@ class Server:
         """Hang for 100 seconds, as a debug hack."""
         time.sleep(100)
         return {}
-
-    def gc_callback(self, phase: str, info: Mapping[str, int]) -> None:
-        if phase == 'start':
-            assert self.gc_start_time is None, "Start phase out of sequence"
-            self.gc_start_time = time.time()
-        elif phase == 'stop':
-            assert self.gc_start_time is not None, "Stop phase out of sequence"
-            self.gc_calls += 1
-            self.gc_time += time.time() - self.gc_start_time
-            self.gc_start_time = None
-            self.gc_collected += info['collected']
-            self.gc_uncollectable += info['uncollectable']
-        else:
-            assert False, "Unrecognized gc phase (%r)" % (phase,)
 
 
 # Misc utilities.
@@ -568,6 +548,48 @@ def receive(sock: socket.socket) -> Any:
     if not isinstance(data, dict):
         raise OSError("Data received is not a dict (%s)" % str(type(data)))
     return data
+
+
+class GcLogger:
+    """Context manager to log GC stats and overall time."""
+
+    def __enter__(self) -> 'GcLogger':
+        self.gc_start_time = None  # type: Optional[float]
+        self.gc_time = 0.0
+        self.gc_calls = 0
+        self.gc_collected = 0
+        self.gc_uncollectable = 0
+        gc.callbacks.append(self.gc_callback)
+        self.start_time = time.time()
+        return self
+
+    def gc_callback(self, phase: str, info: Mapping[str, int]) -> None:
+        if phase == 'start':
+            assert self.gc_start_time is None, "Start phase out of sequence"
+            self.gc_start_time = time.time()
+        elif phase == 'stop':
+            assert self.gc_start_time is not None, "Stop phase out of sequence"
+            self.gc_calls += 1
+            self.gc_time += time.time() - self.gc_start_time
+            self.gc_start_time = None
+            self.gc_collected += info['collected']
+            self.gc_uncollectable += info['uncollectable']
+        else:
+            assert False, "Unrecognized gc phase (%r)" % (phase,)
+
+    def __exit__(self, *args: object) -> None:
+        while self.gc_callback in gc.callbacks:
+            gc.callbacks.remove(self.gc_callback)
+
+    def get_stats(self) -> Dict[str, float]:
+        end_time = time.time()
+        result = {}
+        result['gc_time'] = self.gc_time
+        result['gc_calls'] = self.gc_calls
+        result['gc_collected'] = self.gc_collected
+        result['gc_uncollectable'] = self.gc_uncollectable
+        result['build_time'] = end_time - self.start_time
+        return result
 
 
 MiB = 2**20

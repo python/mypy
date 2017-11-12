@@ -638,6 +638,21 @@ class C:
     def __add__(self, other: int) -> B: pass
 [out]
 
+[case testAbstractClassWithAnyBase]
+from typing import Any
+from abc import abstractmethod, ABCMeta
+
+A: Any
+
+class D(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+
+class C(A, D):
+    pass
+
+C()  # A might implement 'f'
+
 
 -- Abstract properties
 -- -------------------

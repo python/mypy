@@ -543,7 +543,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if (callee.is_type_obj() and callee.type_object().is_abstract
                     # Exceptions for Type[...] and classmethod first argument
-                    and not callee.from_type_type and not callee.is_classmethod_class):
+                    and not callee.from_type_type and not callee.is_classmethod_class
+                    and not callee.type_object().fallback_to_any):
                 type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
                     callee.type_object().name(), type.abstract_attributes,
@@ -721,8 +722,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Returns the inferred types of *actual arguments*.
         """
-        dummy = None  # type: Any
-        res = [dummy] * len(args)  # type: List[Type]
+        res = [None] * len(args)  # type: List[Optional[Type]]
 
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
@@ -733,7 +733,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for i, t in enumerate(res):
             if not t:
                 res[i] = self.accept(args[i])
-        return res
+        assert all(tp is not None for tp in res)
+        return cast(List[Type], res)
 
     def infer_function_type_arguments_using_context(
             self, callable: CallableType, error_context: Context) -> CallableType:
@@ -1654,20 +1655,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         op = e.op
         if op == 'not':
             result = self.bool_type()  # type: Type
-        elif op == '-':
-            method_type = self.analyze_external_member_access('__neg__',
-                                                              operand_type, e)
-            result, method_type = self.check_call(method_type, [], [], e)
-            e.method_type = method_type
-        elif op == '+':
-            method_type = self.analyze_external_member_access('__pos__',
-                                                              operand_type, e)
-            result, method_type = self.check_call(method_type, [], [], e)
-            e.method_type = method_type
         else:
-            assert op == '~', "unhandled unary operator"
-            method_type = self.analyze_external_member_access('__invert__',
-                                                              operand_type, e)
+            method = nodes.unary_op_methods[op]
+            method_type = self.analyze_external_member_access(method, operand_type, e)
             result, method_type = self.check_call(method_type, [], [], e)
             e.method_type = method_type
         return result
@@ -1786,7 +1776,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         options = self.chk.options
         if options.warn_redundant_casts and is_same_type(source_type, target_type):
             self.msg.redundant_cast(target_type, expr)
-        if 'unimported' in options.disallow_any and has_any_from_unimported_type(target_type):
+        if options.disallow_any_unimported and has_any_from_unimported_type(target_type):
             self.msg.unimported_type_becomes_any("Target type of cast", target_type, expr)
         check_for_explicit_any(target_type, self.chk.options, self.chk.is_typeshed_stub, self.msg,
                                context=expr)
@@ -1872,7 +1862,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Used for list and set expressions, as well as for tuples
         # containing star expressions that don't refer to a
         # Tuple. (Note: "lst" stands for list-set-tuple. :-)
-        tvdef = TypeVarDef('T', -1, [], self.object_type())
+        tvdef = TypeVarDef('T', 'T', -1, [], self.object_type())
         tv = TypeVarType(tvdef)
         constructor = CallableType(
             [tv],
@@ -1973,8 +1963,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 args.append(TupleExpr([key, value]))
         # Define type variables (used in constructors below).
-        ktdef = TypeVarDef('KT', -1, [], self.object_type())
-        vtdef = TypeVarDef('VT', -2, [], self.object_type())
+        ktdef = TypeVarDef('KT', 'KT', -1, [], self.object_type())
+        vtdef = TypeVarDef('VT', 'VT', -2, [], self.object_type())
         kt = TypeVarType(ktdef)
         vt = TypeVarType(vtdef)
         rv = None
@@ -2241,7 +2231,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            tvdef = TypeVarDef('T', -1, [], self.object_type())
+            tvdef = TypeVarDef('T', 'T', -1, [], self.object_type())
             tv = TypeVarType(tvdef)
             constructor = CallableType(
                 [tv],
@@ -2261,8 +2251,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            ktdef = TypeVarDef('KT', -1, [], self.object_type())
-            vtdef = TypeVarDef('VT', -2, [], self.object_type())
+            ktdef = TypeVarDef('KT', 'KT', -1, [], self.object_type())
+            vtdef = TypeVarDef('VT', 'VT', -2, [], self.object_type())
             kt = TypeVarType(ktdef)
             vt = TypeVarType(vtdef)
             constructor = CallableType(
@@ -2379,7 +2369,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert typ is not None
         self.chk.store_type(node, typ)
 
-        if ('expr' in self.chk.options.disallow_any and
+        if (self.chk.options.disallow_any_expr and
                 not always_allow_any and
                 not self.chk.is_stub and
                 self.chk.in_checked_function() and
@@ -2558,7 +2548,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
         tuple_type = e.info.tuple_type
         if tuple_type:
-            if ('unimported' in self.chk.options.disallow_any and
+            if (self.chk.options.disallow_any_unimported and
                     has_any_from_unimported_type(tuple_type)):
                 self.msg.unimported_type_becomes_any("NamedTuple type", tuple_type, e)
             check_for_explicit_any(tuple_type, self.chk.options, self.chk.is_typeshed_stub,
@@ -2648,7 +2638,7 @@ def is_async_def(t: Type) -> bool:
 def map_actuals_to_formals(caller_kinds: List[int],
                            caller_names: Optional[Sequence[Optional[str]]],
                            callee_kinds: List[int],
-                           callee_names: List[Optional[str]],
+                           callee_names: Sequence[Optional[str]],
                            caller_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
     """Calculate mapping between actual (caller) args and formals.
