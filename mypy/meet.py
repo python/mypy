@@ -120,6 +120,17 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     if isinstance(s, UnionType):
         return any(is_overlapping_types(t, item)
                    for item in s.relevant_items())
+    if isinstance(t, TupleType) and isinstance(s, TupleType):
+        if t.length() == s.length():
+            if all(is_overlapping_types(ti, si, use_promotions)
+                   for ti, si in zip(t.items, s.items)):
+                return True
+        # TODO: Tuple[A, ...]
+        return False
+    if isinstance(t, TupleType) or isinstance(s, TupleType):
+        left = t.fallback if isinstance(t, TupleType) else t
+        right = s.fallback if isinstance(s, TupleType) else s
+        return is_overlapping_types(left, right, use_promotions)
     if isinstance(t, TypeType) and isinstance(s, TypeType):
         # If both types are TypeType, compare their inner types.
         return is_overlapping_types(t.item, s.item, use_promotions)
