@@ -613,6 +613,13 @@ class A: pass
 [out]
 main:3: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
+[case testIsRightOperand]
+
+1 is 1()
+[builtins fixtures/bool.pyi]
+[out]
+main:2: error: "int" not callable
+
 [case testReverseBinaryOperator]
 
 class A:
