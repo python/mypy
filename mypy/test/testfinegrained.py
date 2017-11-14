@@ -32,6 +32,7 @@ from mypy.util import short_type
 files = [
     'fine-grained.test',
     'fine-grained-cycles.test',
+    'fine-grained-blockers.test',
 ]
 
 

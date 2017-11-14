@@ -50,7 +50,7 @@ from typing import Dict, List, Set, Tuple, Iterable, Union, Optional
 
 from mypy.build import BuildManager, State
 from mypy.checker import DeferredNode
-from mypy.errors import Errors
+from mypy.errors import Errors, CompileError
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator
 )
@@ -79,6 +79,7 @@ class FineGrainedBuildManager:
         self.graph = graph
         self.deps = get_all_dependencies(manager, graph, self.options)
         self.previous_targets_with_errors = manager.errors.targets()
+        self.blocking_errors = []  # type: List[str]
 
     def update(self, changed_modules: List[str]) -> List[str]:
         """Update previous build result by processing changed modules.
@@ -101,6 +102,9 @@ class FineGrainedBuildManager:
         """
         if DEBUG:
             print('==== update ====')
+        if self.blocking_errors:
+            # TODO: Relax this requirement
+            assert self.blocking_errors == changed_modules
         manager = self.manager
         graph = self.graph
 
@@ -112,7 +116,13 @@ class FineGrainedBuildManager:
                 old_snapshots[id] = snapshot
 
         manager.errors.reset()
-        new_modules = build_incremental_step(manager, changed_modules, graph)
+        try:
+            new_modules = build_incremental_step(manager, changed_modules, graph)
+        except CompileError as err:
+            self.blocking_errors = changed_modules
+            return err.messages
+        self.blocking_errors = []
+
         # TODO: What to do with stale dependencies?
         triggered = calculate_active_triggers(manager, old_snapshots, new_modules)
         if DEBUG:
@@ -139,6 +149,8 @@ def build_incremental_step(manager: BuildManager,
                            graph: Dict[str, State]) -> Dict[str, MypyFile]:
     """Build new versions of changed modules only.
 
+    Raise CompleError on encountering a blocking error.
+
     Return the new ASTs for the changed modules.
     """
     assert len(changed_modules) == 1
@@ -160,7 +172,14 @@ def build_incremental_step(manager: BuildManager,
     # TODO: state.fix_suppressed_dependencies()?
 
     # Run remaining passes of semantic analysis.
-    state.semantic_analysis()
+    try:
+        state.semantic_analysis()
+    except CompileError as err:
+        # TODO: What if there are multiple changed modules?
+        # There was a blocking error, so module AST is incomplete. Restore old modules.
+        manager.modules.clear()
+        manager.modules.update(old_modules)
+        raise err
     state.semantic_analysis_pass_three()
     state.semantic_analysis_apply_patches()
 
