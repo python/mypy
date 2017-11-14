@@ -79,6 +79,8 @@ class FineGrainedBuildManager:
         self.graph = graph
         self.deps = get_all_dependencies(manager, graph, self.options)
         self.previous_targets_with_errors = manager.errors.targets()
+        # Modules that had blocking errors in the previous run.
+        # TODO: Handle blocking errors in the initial build
         self.blocking_errors = []  # type: List[str]
 
     def update(self, changed_modules: List[str]) -> List[str]:
@@ -87,8 +89,6 @@ class FineGrainedBuildManager:
         Also propagate changes to other modules as needed, but only process
         those parts of other modules that are affected by the changes. Retain
         the existing ASTs and symbol tables of unaffected modules.
-
-        TODO: What about blocking errors?
 
         Args:
             manager: State of the build
