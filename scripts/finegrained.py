@@ -40,9 +40,9 @@ def main() -> None:
             continue
         changed = None
         new_ts = timestamps(target_dir)
-        for path in ts:
-            if new_ts[path] != ts[path]:
-                changed = path
+        for module_id in ts:
+            if new_ts[module_id] != ts[module_id]:
+                changed = (module_id, new_ts[module_id][1])
                 break
         ts = new_ts
         if not changed:
@@ -69,12 +69,12 @@ def build_dir(target_dir: str) -> Tuple[List[str], BuildManager, Graph]:
     return result.errors, result.manager, result.graph
 
 
-def timestamps(target_dir: str) -> Dict[str, float]:
+def timestamps(target_dir: str) -> Dict[str, Tuple[float, str]]:
     paths = glob.glob('%s/**/*.py' % target_dir) + glob.glob('%s/*.py' % target_dir)
     result = {}
     for path in paths:
         mod = path[:-3].replace('/', '.')
-        result[mod] = os.stat(path).st_mtime
+        result[mod] = (os.stat(path).st_mtime, path)
     return result
 
 

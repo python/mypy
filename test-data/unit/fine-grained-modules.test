@@ -1,0 +1,46 @@
+-- Test cases for fine-grained incremental mode related to modules
+--
+-- Covers adding and deleting modules, changes to multiple modules, and
+-- changes to import graph.
+--
+-- The comments in fine-grained.test explain how these tests work.
+
+-- TODO
+-- * add file, no errors
+-- * add file, normal errors
+-- - add file, blocking error
+-- - add file, fixes error elsewhere
+-- - add file, causes new errors elsewhere
+-- - add file, report existing unrelated errors
+
+[case testAddFile]
+import b
+[file b.py]
+[file a.py.2]
+def f() -> None: pass
+[file b.py.3]
+import a
+a.f(1)
+[out]
+==
+==
+b.py:2: error: Too many arguments for "f"
+
+[case testAddFileWithErrors]
+import b
+[file b.py]
+[file a.py.2]
+def f() -> str:
+    return 1
+[file b.py.3]
+import a
+a.f(1)
+[file a.py.4]
+def f(x: int) -> None: pass
+[out]
+==
+a.py:2: error: Incompatible return value type (got "int", expected "str")
+==
+b.py:2: error: Too many arguments for "f"
+a.py:2: error: Incompatible return value type (got "int", expected "str")
+==

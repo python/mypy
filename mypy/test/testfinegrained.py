@@ -33,6 +33,7 @@ files = [
     'fine-grained.test',
     'fine-grained-cycles.test',
     'fine-grained-blockers.test',
+    'fine-grained-modules.test',
 ]
 
 
@@ -61,7 +62,7 @@ class FineGrainedSuite(DataSuite):
             for module, path in changed_paths:
                 new_path = re.sub(r'\.[0-9]+$', '', path)
                 shutil.copy(path, new_path)
-                modules.append(module)
+                modules.append((module, new_path))
 
             new_messages = fine_grained_manager.update(modules)
             new_messages = [re.sub('^tmp' + re.escape(os.sep), '', message)

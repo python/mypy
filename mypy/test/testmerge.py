@@ -76,15 +76,15 @@ class ASTMergeSuite(DataSuite):
         if messages:
             a.extend(messages)
 
-        shutil.copy(os.path.join(test_temp_dir, 'target.py.next'),
-                    os.path.join(test_temp_dir, 'target.py'))
+        target_path = os.path.join(test_temp_dir, 'target.py')
+        shutil.copy(os.path.join(test_temp_dir, 'target.py.next'), target_path)
 
         a.extend(self.dump(manager.modules, graph, kind))
         old_subexpr = get_subexpressions(manager.modules['target'])
 
         a.append('==>')
 
-        new_file, new_types = self.build_increment(fine_grained_manager, 'target')
+        new_file, new_types = self.build_increment(fine_grained_manager, 'target', target_path)
         a.extend(self.dump(manager.modules, graph, kind))
 
         for expr in old_subexpr:
@@ -113,9 +113,9 @@ class ASTMergeSuite(DataSuite):
         return result.errors, result.manager, result.graph
 
     def build_increment(self, manager: FineGrainedBuildManager,
-                        module_id: str) -> Tuple[MypyFile,
-                                                 Dict[Expression, Type]]:
-        manager.update([module_id])
+                        module_id: str, path: str) -> Tuple[MypyFile,
+                                                            Dict[Expression, Type]]:
+        manager.update([(module_id, path)])
         module = manager.manager.modules[module_id]
         type_map = manager.graph[module_id].type_checker.type_map
         return module, type_map

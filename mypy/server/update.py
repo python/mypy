@@ -74,6 +74,12 @@ class FineGrainedBuildManager:
     def __init__(self,
                  manager: BuildManager,
                  graph: Dict[str, State]) -> None:
+        """Initialize fine-grained build based on a batch build.
+
+        Args:
+            manager: State of the build (mutated by this class)
+            graph: Additional state of the build (mutated)
+        """
         self.manager = manager
         self.options = manager.options
         self.graph = graph
@@ -83,7 +89,7 @@ class FineGrainedBuildManager:
         # TODO: Handle blocking errors in the initial build
         self.blocking_errors = []  # type: List[str]
 
-    def update(self, changed_modules: List[str]) -> List[str]:
+    def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
         """Update previous build result by processing changed modules.
 
         Also propagate changes to other modules as needed, but only process
@@ -91,35 +97,36 @@ class FineGrainedBuildManager:
         the existing ASTs and symbol tables of unaffected modules.
 
         Args:
-            manager: State of the build
-            graph: Additional state of the build
-            deps: Fine-grained dependcy map for the build (mutated by this function)
-            changed_modules: Modules changed since the previous update/build (assume
-                this is correct; not validated here)
+            changed_modules: Modules changed since the previous update/build; each is
+                a (module id, path) tuple. Includes modified, added and deleted modules.
+                Assume this is correct; it's not validated here.
 
         Returns:
             A list of errors.
         """
         if DEBUG:
             print('==== update ====')
+        changed_ids = [id for id, _ in changed_modules]
         if self.blocking_errors:
             # TODO: Relax this requirement
-            assert self.blocking_errors == changed_modules
+            assert self.blocking_errors == changed_ids
         manager = self.manager
         graph = self.graph
 
         # Record symbol table snaphots of old versions of changed moduiles.
         old_snapshots = {}
-        for id in changed_modules:
+        for id, _ in changed_modules:
             if id in manager.modules:
                 snapshot = snapshot_symbol_table(id, manager.modules[id].names)
                 old_snapshots[id] = snapshot
+            else:
+                old_snapshots[id] = {}
 
         manager.errors.reset()
         try:
             new_modules = build_incremental_step(manager, changed_modules, graph)
         except CompileError as err:
-            self.blocking_errors = changed_modules
+            self.blocking_errors = changed_ids
             return err.messages
         self.blocking_errors = []
 
@@ -129,7 +136,7 @@ class FineGrainedBuildManager:
             print('triggered:', sorted(triggered))
         update_dependencies(new_modules, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
-                                             set(changed_modules),
+                                             set(changed_ids),
                                              self.previous_targets_with_errors,
                                              graph)
         self.previous_targets_with_errors = manager.errors.targets()
@@ -145,7 +152,7 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
 
 
 def build_incremental_step(manager: BuildManager,
-                           changed_modules: List[str],
+                           changed_modules: List[Tuple[str, str]],
                            graph: Dict[str, State]) -> Dict[str, MypyFile]:
     """Build new versions of changed modules only.
 
@@ -154,8 +161,9 @@ def build_incremental_step(manager: BuildManager,
     Return the new ASTs for the changed modules.
     """
     assert len(changed_modules) == 1
-    id = changed_modules[0]
-    path = manager.modules[id].path
+    id, path = changed_modules[0]
+    if id in manager.modules:
+        assert path == manager.modules[id].path, '%s != %s' % (path, manager.modules[id].path)
     old_modules = dict(manager.modules)
 
     # TODO: what if file is missing?
@@ -195,8 +203,12 @@ def build_incremental_step(manager: BuildManager,
     # TODO: state.write_cache()?
     # TODO: state.mark_as_rechecked()?
 
-    # Record the new types of expressions.
-    graph[id].type_checker.type_map = state.type_checker.type_map
+    if id in graph:
+        # Record the new types of expressions.
+        graph[id].type_checker.type_map = state.type_checker.type_map
+    else:
+        # New module: store the state for future build steps.
+        graph[id] = state
 
     return new_modules
 
@@ -251,9 +263,10 @@ def replace_modules_with_new_variants(
     propagate_changes_using_dependencies).
     """
     for id in new_modules:
-        merge_asts(old_modules[id], old_modules[id].names,
-                   new_modules[id], new_modules[id].names)
-        manager.modules[id] = old_modules[id]
+        if id in old_modules:
+            merge_asts(old_modules[id], old_modules[id].names,
+                       new_modules[id], new_modules[id].names)
+            manager.modules[id] = old_modules[id]
 
 
 def propagate_changes_using_dependencies(
