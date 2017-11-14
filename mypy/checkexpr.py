@@ -1395,7 +1395,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             method_type = None  # type: Optional[mypy.types.Type]
 
             if operator == 'in' or operator == 'not in':
-                right_type = self.accept(right)  # TODO only evaluate if needed
+                right_type = self.accept(right)  # always validate the right operand
 
                 # Keep track of whether we get type check errors (these won't be reported, they
                 # are just to verify whether something is valid typing wise).
@@ -1429,6 +1429,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                     allow_reverse=True)
 
             elif operator == 'is' or operator == 'is not':
+                self.accept(right)  # validate the right operand
                 sub_result = self.bool_type()
                 method_type = None
             else:
