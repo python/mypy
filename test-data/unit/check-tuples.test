@@ -941,6 +941,21 @@ reveal_type(t[x:])  # E: Revealed type is 'Union[builtins.int, builtins.str]'
 t[y:]  # E: Slice index must be an integer or None
 [builtins fixtures/tuple.pyi]
 
+[case testInferTupleTypeFallbackAgainstInstance]
+from typing import TypeVar, Generic, Tuple
+T = TypeVar('T')
+
+class Base(Generic[T]): pass
+def f(x: Base[T]) -> T: pass
+
+class DT(Tuple[str, str], Base[int]):
+    pass
+
+reveal_type(f(DT())) # E: Revealed type is 'builtins.int*'
+
+[builtins fixtures/tuple.pyi]
+[out]
+
 [case testTypeTupleClassmethod]
 from typing import Tuple, Type
 
