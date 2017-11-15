@@ -5,8 +5,8 @@ import os
 import os.path
 import sys
 
-if sys.version_info < (3, 2, 0):
-    sys.stderr.write("ERROR: You need Python 3.2 or later to use mypy.\n")
+if sys.version_info < (3, 4, 0):
+    sys.stderr.write("ERROR: You need Python 3.4 or later to use mypy.\n")
     exit(1)
 
 # This requires setuptools when building; setuptools is not needed
@@ -84,7 +84,6 @@ classifiers = [
     'License :: OSI Approved :: MIT License',
     'Operating System :: POSIX',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.3',
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',

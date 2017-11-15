@@ -303,7 +303,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_exec_stmt(self, o: 'mypy.nodes.ExecStmt') -> str:
-        return self.dump([o.expr, o.variables1, o.variables2], o)
+        return self.dump([o.expr, o.globals, o.locals], o)
 
     # Expressions
 

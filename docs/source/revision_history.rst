@@ -3,7 +3,21 @@ Revision history
 
 List of major changes:
 
+- November 2017
+    * Publish ``mypy`` version 0.550 on PyPI.
+
+      * Running mypy now requires Python 3.4 or higher.
+        However Python 3.3 is still valid for the target
+        of the analysis (i.e. the ``--python-version`` flag).
+
+      * Split ``--disallow-any`` flag into
+        :ref:`separate boolean flags <disallow-any>`.
+
+      * The ``--old-html-report`` flag was removed.
+
 - October 2017
+    * Publish ``mypy`` version 0.540 on PyPI.
+
     * Publish ``mypy`` version 0.530 on PyPI.
 
 - August-September 2017

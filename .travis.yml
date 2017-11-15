@@ -3,7 +3,6 @@ language: python
 # cache package wheels (1 cache per python version)
 cache: pip
 python:
-  - "3.3"
   - "3.4"
   # Specifically request 3.5.1 because we need to be compatible with that.
   - "3.5.1"

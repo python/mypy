@@ -14,7 +14,7 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef
+    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded
 )
 
 from mypy.nodes import (
@@ -53,7 +53,7 @@ ARG_KINDS_BY_CONSTRUCTOR = {
 
 
 def analyze_type_alias(node: Expression,
-                       lookup_func: Callable[[str, Context], SymbolTableNode],
+                       lookup_func: Callable[[str, Context], Optional[SymbolTableNode]],
                        lookup_fqn_func: Callable[[str], SymbolTableNode],
                        tvar_scope: TypeVarScope,
                        fail_func: Callable[[str, Context], None],
@@ -144,7 +144,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
     global_scope = True  # type: bool
 
     def __init__(self,
-                 lookup_func: Callable[[str, Context], SymbolTableNode],
+                 lookup_func: Callable[[str, Context], Optional[SymbolTableNode]],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
                  tvar_scope: Optional[TypeVarScope],
                  fail_func: Callable[[str, Context], None],
@@ -213,7 +213,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
-                    if 'generics' in self.options.disallow_any and not self.is_typeshed_stub:
+                    if self.options.disallow_any_generics and not self.is_typeshed_stub:
                         self.fail(messages.BARE_GENERIC, t)
                     typ = self.named_type('builtins.tuple', line=t.line, column=t.column)
                     typ.from_generic_builtin = True
@@ -467,7 +467,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
                 self.fail('The first argument to Callable must be a list of types or "..."', t)
                 return AnyType(TypeOfAny.from_error)
         else:
-            self.fail('Invalid function type', t)
+            self.fail('Please use "Callable[[<parameters>], <return type>]" or "Callable"', t)
             return AnyType(TypeOfAny.from_error)
         assert isinstance(ret, CallableType)
         return ret.accept(self)
@@ -555,7 +555,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
             return []  # We are in third pass, nothing new here
         if fun_type.variables:
             for var in fun_type.variables:
-                var_expr = self.lookup(var.name, var).node
+                var_node = self.lookup(var.name, var)
+                assert var_node, "Binding for function type variable not found within function"
+                var_expr = var_node.node
                 assert isinstance(var_expr, TypeVarExpr)
                 self.tvar_scope.bind(var.name, var_expr)
             return fun_type.variables
@@ -575,8 +577,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
         return defs
 
     def is_defined_type_var(self, tvar: str, context: Context) -> bool:
-        return (self.tvar_scope is not None and
-                self.tvar_scope.get_binding(self.lookup(tvar, context)) is not None)
+        if self.tvar_scope is None:
+            return False
+        tvar_node = self.lookup(tvar, context)
+        if not tvar_node:
+            return False
+        return self.tvar_scope.get_binding(tvar_node) is not None
 
     def anal_array(self, a: List[Type], nested: bool = True) -> List[Type]:
         res = []  # type: List[Type]
@@ -596,7 +602,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
     def anal_var_defs(self, var_defs: List[TypeVarDef]) -> List[TypeVarDef]:
         a = []  # type: List[TypeVarDef]
         for vd in var_defs:
-            a.append(TypeVarDef(vd.name, vd.id.raw_id, self.anal_array(vd.values),
+            a.append(TypeVarDef(vd.name,
+                                vd.fullname,
+                                vd.id.raw_id,
+                                self.anal_array(vd.values),
                                 vd.upper_bound.accept(self),
                                 vd.variance,
                                 vd.line))
@@ -638,7 +647,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     """
 
     def __init__(self,
-                 lookup_func: Callable[[str, Context], SymbolTableNode],
+                 lookup_func: Callable[[str, Context], Optional[SymbolTableNode]],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
                  fail_func: Callable[[str, Context], None],
                  note_func: Callable[[str, Context], None],
@@ -663,7 +672,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         if len(t.args) != len(info.type_vars):
             if len(t.args) == 0:
                 from_builtins = t.type.fullname() in nongen_builtins and not t.from_generic_builtin
-                if ('generics' in self.options.disallow_any and
+                if (self.options.disallow_any_generics and
                         not self.is_typeshed_stub and
                         from_builtins):
                     alternative = nongen_builtins[t.type.fullname()]
@@ -758,6 +767,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         t.ret_type.accept(self)
         for arg_type in t.arg_types:
             arg_type.accept(self)
+
+    def visit_overloaded(self, t: Overloaded) -> None:
+        for item in t.items():
+            item.accept(self)
 
     def visit_tuple_type(self, t: TupleType) -> None:
         for item in t.items:
@@ -878,7 +891,7 @@ def flatten_tvars(ll: Iterable[List[T]]) -> List[T]:
 class TypeVariableQuery(TypeQuery[TypeVarList]):
 
     def __init__(self,
-                 lookup: Callable[[str, Context], SymbolTableNode],
+                 lookup: Callable[[str, Context], Optional[SymbolTableNode]],
                  scope: 'TypeVarScope',
                  *,
                  include_callables: bool = True,
@@ -920,7 +933,7 @@ def check_for_explicit_any(typ: Optional[Type],
                            is_typeshed_stub: bool,
                            msg: MessageBuilder,
                            context: Context) -> None:
-    if ('explicit' in options.disallow_any and
+    if (options.disallow_any_explicit and
             not is_typeshed_stub and
             typ and
             has_explicit_any(typ)):

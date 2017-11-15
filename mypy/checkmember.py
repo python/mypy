@@ -191,6 +191,8 @@ def analyze_member_access(name: str,
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound
+        elif isinstance(typ.item, TupleType):
+            item = typ.item.fallback
         elif isinstance(typ.item, FunctionLike) and typ.item.is_type_obj():
             item = typ.item.fallback
         elif isinstance(typ.item, TypeType):
@@ -491,7 +493,7 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
     info = itype.type  # type: TypeInfo
     if isinstance(t, CallableType):
         # TODO: Should we propagate type variable values?
-        tvars = [TypeVarDef(n, i + 1, [], builtin_type('builtins.object'), tv.variance)
+        tvars = [TypeVarDef(n, n, i + 1, [], builtin_type('builtins.object'), tv.variance)
                  for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         if is_classmethod:
             t = bind_self(t, original_type, is_classmethod=True)
@@ -582,7 +584,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     callable_type = init_type.copy_modified(
         ret_type=fill_typevars(info), fallback=type_type, name=None, variables=variables,
         special_sig=special_sig)
-    c = callable_type.with_name('"{}"'.format(info.name()))
+    c = callable_type.with_name(info.name())
     return c
 
 

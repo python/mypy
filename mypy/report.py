@@ -25,7 +25,7 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    import lxml.etree as etree
+    import lxml.etree as etree  # type: ignore
     LXML_INSTALLED = True
 except ImportError:
     LXML_INSTALLED = False
@@ -361,25 +361,6 @@ class LineCoverageReporter(AbstractReporter):
 register_reporter('linecoverage', LineCoverageReporter)
 
 
-class OldHtmlReporter(AbstractReporter):
-    """Old HTML reporter.
-
-    This just calls the old functions in `stats`, which use global
-    variables to preserve state for the index.
-    """
-
-    def on_file(self,
-                tree: MypyFile,
-                type_map: Dict[Expression, Type], options: Options) -> None:
-        stats.generate_html_report(tree, tree.path, type_map, self.output_dir)
-
-    def on_finish(self) -> None:
-        stats.generate_html_index(self.output_dir)
-
-
-register_reporter('old-html', OldHtmlReporter)
-
-
 class FileInfo:
     def __init__(self, name: str, module: str) -> None:
         self.name = name
@@ -407,7 +388,7 @@ class MemoryXmlReporter(AbstractReporter):
         self.css_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.css')
         xsd_path = os.path.join(reports.data_dir, 'xml', 'mypy.xsd')
         self.schema = etree.XMLSchema(etree.parse(xsd_path))
-        self.last_xml = None  # type: Optional[etree._ElementTree]
+        self.last_xml = None  # type: Optional[Any]
         self.files = []  # type: List[FileInfo]
 
     def on_file(self,
@@ -501,7 +482,7 @@ class CoberturaPackage(object):
     """
     def __init__(self, name: str) -> None:
         self.name = name
-        self.classes = {}  # type: Dict[str, etree._Element]
+        self.classes = {}  # type: Dict[str, Any]
         self.packages = {}  # type: Dict[str, CoberturaPackage]
         self.total_lines = 0
         self.covered_lines = 0

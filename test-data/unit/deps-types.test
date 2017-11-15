@@ -1,0 +1,151 @@
+-- Test cases for generating fine-grained dependencies between types.
+--
+-- The dependencies are used for fined-grained incremental checking.
+
+[case testFilterOutBuiltInTypes]
+class A: pass
+
+def f(x: int, y: str, z: A) -> None:
+    pass
+[out]
+<m.A> -> <m.f>, m.A, m.f
+
+[case testTupleType]
+from typing import Tuple
+
+class A: pass
+class B: pass
+
+def f(x: Tuple[A, B]) -> None:
+    pass
+[out]
+<m.A> -> <m.f>, m.A, m.f
+<m.B> -> <m.f>, m.B, m.f
+
+[case testUnionType]
+from typing import Union
+
+class A: pass
+class B: pass
+
+def f() -> None:
+    x: Union[int, A, B]
+[out]
+<m.A> -> m.A, m.f
+<m.B> -> m.B, m.f
+
+[case testCallableType]
+from typing import Callable
+
+class A: pass
+class B: pass
+
+def f() -> None:
+    x: Callable[[int, A], None]
+    y: Callable[[int, str], B]
+[out]
+<m.A> -> m.A, m.f
+<m.B> -> m.B, m.f
+
+[case testTypeType]
+from typing import Type
+
+class A: pass
+
+def f() -> None:
+    x: Type[A]
+    y: Type[int]
+[out]
+<m.A> -> m.A, m.f
+
+[case testTypeTypeAttribute]
+from typing import Type
+
+class A:
+    @staticmethod
+    def f() -> None: pass
+
+def f(x: Type[A]) -> None:
+    x.f()
+[builtins fixtures/staticmethod.pyi]
+[out]
+<m.A.f> -> m, m.f
+<m.A> -> <m.f>, m.A, m.f
+
+[case testComplexNestedType]
+from typing import Union, Callable, Type
+
+class A: pass
+class B: pass
+class C: pass
+
+def f() -> None:
+    x: Union[int, Callable[[Type[A]], B], C]
+[out]
+<m.A> -> m.A, m.f
+<m.B> -> m.B, m.f
+<m.C> -> m.C, m.f
+
+[case testUnionTypeAttributeAccess]
+from typing import Union
+
+class A:
+    def f(self) -> None:
+        self.x = 0
+
+class B:
+    def f(self) -> None:
+        self.x = ''
+
+def f(a: Union[A, B]) -> None:
+    a.x
+    a.f()
+[out]
+<m.A.f> -> m.f
+<m.A.x> -> m.A.f, m.f
+<m.A> -> <m.f>, m.A, m.f
+<m.B.f> -> m.f
+<m.B.x> -> m.B.f, m.f
+<m.B> -> <m.f>, m.B, m.f
+
+[case testTupleTypeAttributeAccess]
+from typing import Tuple
+
+class C(Tuple[int, str]):
+    def f(self) -> None: pass
+
+def f(c: C) -> None:
+    c.f()
+[builtins fixtures/tuple.pyi]
+[out]
+<m.C.f> -> m.f
+<m.C> -> <m.f>, m.C, m.f
+
+[case testOverloaded]
+from typing import overload
+
+class A: pass
+class B: pass
+
+def g() -> None: pass
+
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: B) -> B: pass
+
+def f(x):
+    g()
+
+ff = f
+
+def h() -> None:
+    f(A())
+    ff(A())
+[out]
+<m.A.__init__> -> m.h
+<m.A> -> <m.f>, <m.ff>, m.A, m.f, m.h
+<m.B> -> <m.f>, <m.ff>, m.B, m.f
+<m.f> -> m, m.h
+<m.ff> -> m, m.h
+<m.g> -> m.f

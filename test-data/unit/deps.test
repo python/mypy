@@ -39,12 +39,14 @@ class A: pass
 <m.A> -> m.A, m.f
 
 [case testAccessModuleAttribute]
-x = 1
+class A: pass
+x = A()
 def f() -> None:
     x
 [out]
+<m.A.__init__> -> m
+<m.A> -> <m.x>, m, m.A
 <m.x> -> m, m.f
-<builtins.int> -> m
 
 [case testAccessModuleAttribute2]
 import n
@@ -72,6 +74,15 @@ def f() -> None: pass
 <n.f> -> m
 <n> -> m
 
+[case testImportModuleAs]
+import n as x
+x.f()
+[file n.py]
+def f() -> None: pass
+[out]
+<n.f> -> m
+<n> -> m
+
 [case testCallImportedFunctionInFunction]
 import n
 def g() -> None:
@@ -89,7 +100,7 @@ class B(A):
     pass
 [out]
 <m.A.__init__> -> <m.B.__init__>
-<m.A> -> m.A, m.B
+<m.A> -> m, m.A, m.B
 <m.B> -> m.B
 
 [case testInheritanceWithMethodAndAttribute]
@@ -102,7 +113,7 @@ class B(A):
 <m.A.__init__> -> <m.B.__init__>
 <m.A.f> -> m.B.f
 <m.A.x> -> <m.B.x>
-<m.A> -> m.A, m.B
+<m.A> -> m, m.A, m.B
 <m.B.x> -> m.B.f
 <m.B> -> m.B
 
@@ -118,11 +129,11 @@ class C(B):
 <m.A.__init__> -> <m.B.__init__>, <m.C.__init__>
 <m.A.f> -> m.C.f
 <m.A.x> -> <m.C.x>
-<m.A> -> m.A, m.B
+<m.A> -> m, m.A, m.B
 <m.B.__init__> -> <m.C.__init__>
 <m.B.f> -> m.C.f
 <m.B.x> -> <m.C.x>
-<m.B> -> m.B, m.C
+<m.B> -> m, m.B, m.C
 <m.C.x> -> m.C.f
 <m.C> -> m.C
 
@@ -143,8 +154,8 @@ class A:
 <n.A.f> -> m.B.f
 <n.A.g> -> <m.B.g>
 <n.A.x> -> <m.B.x>
-<n.A> -> m.B
-<n> -> m, m.B
+<n.A> -> m, m.B
+<n> -> m
 
 [case testInheritMethod]
 class A:
@@ -156,7 +167,7 @@ class B(A):
 <m.A.__init__> -> <m.B.__init__>
 <m.A.f> -> m.B.f
 <m.A.g> -> <m.B.g>
-<m.A> -> m.A, m.B
+<m.A> -> m, m.A, m.B
 <m.B.g> -> m.B.f
 <m.B> -> m.B
 
@@ -215,19 +226,39 @@ class A:
 
 [case testConstructor]
 class A:
-    def __init__(self, x: int) -> None: pass
+    def __init__(self, x: C) -> None: pass
+class C: pass
 def f() -> None:
-    A(1)
+    A(C())
 [out]
 <m.A.__init__> -> m.f
 <m.A> -> m.A, m.f
-<builtins.int> -> <m.A.__init__>, m.A.__init__
+<m.C.__init__> -> m.f
+<m.C> -> <m.A.__init__>, m.A.__init__, m.C, m.f
+
+[case testNonTrivialConstructor]
+class C:
+    def __init__(self) -> None:
+        self.x = 1
+[out]
+<m.C.x> -> m.C.__init__
+<m.C> -> m.C
 
 [case testImportFrom]
 from n import f
 
 def g() -> None:
     f()
+[file n.py]
+def f() -> None: pass
+[out]
+<n.f> -> m, m.g
+
+[case testImportFromAs]
+from n import f as ff
+
+def g() -> None:
+    ff()
 [file n.py]
 def f() -> None: pass
 [out]
@@ -279,3 +310,217 @@ class A:
 <m.A.B.f> -> m.f
 <m.A.B> -> <m.f>, m.A.B, m.f
 <m.A> -> m.A
+
+[case testDefaultArgValue]
+def f1(x: int) -> int: pass
+def f2() -> int: pass
+def g(x: int = f1(f2())) -> None: pass
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testIsInstance]
+class A:
+    def g(self) -> None: pass
+
+def f(x: object) -> None:
+    if isinstance(x, A):
+        x.g()
+[builtins fixtures/isinstancelist.pyi]
+[out]
+<m.A.g> -> m.f
+<m.A> -> m.A, m.f
+
+[case testUnreachableIsInstance]
+class A:
+    x: int
+
+class B:
+    y: int
+
+def f(x: A) -> None:
+    if isinstance(x, B):
+        x.y
+[builtins fixtures/isinstancelist.pyi]
+[out]
+<m.A> -> <m.f>, m.A, m.f
+<m.B> -> m.B, m.f
+
+[case testAttributeWithClassType1]
+from n import A
+
+class B:
+    def h(self, z: A) -> None:
+        self.z = z
+[file n.py]
+class A: pass
+[out]
+<m.B.z> -> m.B.h
+<m.B> -> m.B
+<n.A> -> <m.B.h>, <m.B.z>, m, m.B.h
+
+[case testAttributeWithClassType2]
+from m import A
+
+class B:
+    def f(self) -> None:
+        self.x = A()
+[file m.py]
+class A: pass
+[out]
+<m.B.x> -> m.B.f
+<m.B> -> m.B
+<m.A.__init__> -> m.B.f
+<m.A> -> <m.B.x>, m, m.B.f
+
+[case testAttributeWithClassType3]
+from n import A, x
+
+class B:
+    def g(self) -> None:
+        self.x = x
+[file n.py]
+class A: pass
+
+x = A()
+[out]
+<m.B.x> -> m.B.g
+<m.B> -> m.B
+<n.A> -> <m.B.x>, m
+<n.x> -> m, m.B.g
+
+[case testAttributeWithClassType4]
+from n import A
+
+class B:
+    def g(self) -> None:
+        self.x: A
+[file n.py]
+class A: pass
+[out]
+<m.B.x> -> m.B.g
+<m.B> -> m.B
+<n.A> -> <m.B.x>, m, m.B.g
+
+[case testClassBody]
+def f() -> int: pass
+def g() -> int: pass
+def h() -> int: pass
+
+class A:
+    h()
+    if f():
+        g()
+[out]
+<m.A> -> m.A
+<m.f> -> m
+<m.g> -> m
+<m.h> -> m
+
+[case testVariableInitializedInClass]
+from n import A
+
+class B:
+    x = None  # type: A
+[file n.py]
+class A: pass
+[out]
+<m.B> -> m.B
+<n.A> -> <m.B.x>, m
+
+[case testVariableAnnotationInClass]
+from n import A
+
+class B:
+    x: A
+
+    def f(self) -> None:
+        y = self.x
+[file n.py]
+class A: pass
+[out]
+<m.B.x> -> m.B.f
+<m.B> -> m.B
+<n.A> -> <m.B.x>, m
+
+[case testGlobalVariableInitialized]
+from n import A
+
+x = A()
+[file n.py]
+class A: pass
+[out]
+<m.x> -> m
+<n.A.__init__> -> m
+<n.A> -> <m.x>, m
+
+[case testGlobalVariableAnnotation]
+from n import A
+
+x: A
+[file n.py]
+class A: pass
+[out]
+<m.x> -> m
+<n.A> -> <m.x>, m
+
+[case testProperty]
+class B: pass
+
+class A:
+    @property
+    def x(self) -> B: pass
+
+def f(a: A) -> None:
+    b = a.x
+[builtins fixtures/property.pyi]
+[out]
+<m.A.x> -> m, m.f
+<m.A> -> <m.f>, m.A, m.f
+<m.B> -> <m.A.x>, m.A.x, m.B
+
+[case testUnreachableAssignment]
+from typing import List, Tuple
+
+def f() -> None: pass
+
+class C:
+    def __init__(self, x: int) -> None:
+        if isinstance(x, int):
+            self.y = 1
+        else:
+            self.y = f()
+[builtins fixtures/isinstancelist.pyi]
+[out]
+<m.C.y> -> m.C.__init__
+<m.C> -> m.C
+<m.f> -> m.C.__init__
+
+[case testPartialNoneTypeAttributeCrash1]
+class C: pass
+
+class A:
+    x = None
+
+    def f(self) -> None:
+        self.x = C()
+[out]
+<m.A.x> -> m.A.f
+<m.A> -> m.A
+<m.C.__init__> -> m.A.f
+<m.C> -> <m.A.x>, m.A.f, m.C
+
+[case testPartialNoneTypeAttributeCrash2]
+# flags: --strict-optional
+class C: pass
+
+class A:
+    x = None
+
+    def f(self) -> None:
+        self.x = C()
+[out]
+<m.A.x> -> m.A.f
+<m.A> -> m.A
+<m.C.__init__> -> m.A.f
+<m.C> -> <m.A.x>, m.A.f, m.C

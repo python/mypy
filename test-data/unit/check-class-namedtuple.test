@@ -283,7 +283,7 @@ class X(NamedTuple):
 x: X
 reveal_type(x._replace())  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 x._replace(x=5)
-x._replace(y=5)  # E: Argument 1 to X._replace has incompatible type "int"; expected "str"
+x._replace(y=5)  # E: Argument 1 to "_replace" of "X" has incompatible type "int"; expected "str"
 
 [case testNewNamedTupleFields]
 # flags: --python-version 3.6

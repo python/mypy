@@ -955,3 +955,15 @@ reveal_type(f(DT())) # E: Revealed type is 'builtins.int*'
 
 [builtins fixtures/tuple.pyi]
 [out]
+
+[case testTypeTupleClassmethod]
+from typing import Tuple, Type
+
+class C(Tuple[int, str]):
+    @classmethod
+    def f(cls) -> None: pass
+
+t: Type[C]
+t.g()  # E: "Type[C]" has no attribute "g"
+t.f()
+[builtins fixtures/classmethod.pyi]
