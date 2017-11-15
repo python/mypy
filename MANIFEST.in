@@ -4,3 +4,4 @@ recursive-include extensions *
 recursive-include docs *
 include runtests.py
 include mypy_self_check.ini
+include LICENSE
