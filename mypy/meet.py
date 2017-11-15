@@ -95,6 +95,13 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     if isinstance(s, TypedDictType):
         s = s.as_anonymous().fallback
 
+    if isinstance(t, UnionType):
+        return any(is_overlapping_types(item, s)
+                   for item in t.relevant_items())
+    if isinstance(s, UnionType):
+        return any(is_overlapping_types(t, item)
+                   for item in s.relevant_items())
+
     # We must check for TupleTypes before Instances, since Tuple[A, ...]
     # is an Instance
     tup_overlap = is_overlapping_tuples(t, s, use_promotions)
@@ -120,12 +127,6 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
             if s.type.is_protocol and is_protocol_implementation(t, s):
                 return True
             return False
-    if isinstance(t, UnionType):
-        return any(is_overlapping_types(item, s)
-                   for item in t.relevant_items())
-    if isinstance(s, UnionType):
-        return any(is_overlapping_types(t, item)
-                   for item in s.relevant_items())
     if isinstance(t, TypeType) and isinstance(s, TypeType):
         # If both types are TypeType, compare their inner types.
         return is_overlapping_types(t.item, s.item, use_promotions)
@@ -157,7 +158,7 @@ def is_overlapping_tuples(t: Type, s: Type, use_promotions: bool) -> Optional[bo
                 if all(is_overlapping_types(ti, si, use_promotions)
                        for ti, si in zip(t.items, s.items)):
                     return True
-        # TupleType and non-tuple Instances do not overlap
+        # TupleType and non-tuples do not overlap
         return False
     # No tuples are involved here
     return None
