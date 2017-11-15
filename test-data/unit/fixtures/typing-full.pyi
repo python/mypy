@@ -140,6 +140,7 @@ def runtime(cls: T) -> T:
 
 class ContextManager(Generic[T]):
     def __enter__(self) -> T: pass
-    def __exit__(self, exc_type, exc_value, traceback): pass
+    # Use Any because not all the precise types are in the fixtures.
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Any: pass
 
 TYPE_CHECKING = 1

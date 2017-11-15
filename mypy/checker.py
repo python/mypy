@@ -792,7 +792,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if fdef.type is None and self.options.disallow_untyped_defs:
                 self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
-                if is_unannotated_any(fdef.type.ret_type):
+                ret_type = fdef.type.ret_type
+                if is_unannotated_any(ret_type):
+                    self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
+                elif (fdef.is_coroutine and isinstance(ret_type, Instance) and
+                      is_unannotated_any(ret_type.args[0])):
                     self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
