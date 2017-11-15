@@ -73,7 +73,6 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     multiple inheritance actually occurs somewhere in a program, due to
     stub files hiding implementation details, dynamic loading etc.
 
-    TODO: Don't consider tuples always overlapping.
     TODO: Don't consider callables always overlapping.
     TODO: Don't consider type variables with values always overlapping.
     """
@@ -95,6 +94,13 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
         t = t.as_anonymous().fallback
     if isinstance(s, TypedDictType):
         s = s.as_anonymous().fallback
+
+    # We must check for TupleTypes before Instances, since Tuple[A, ...]
+    # is an Instance
+    tup_overlap = is_overlapping_tuples(t, s, use_promotions)
+    if tup_overlap is not None:
+        return tup_overlap
+
     if isinstance(t, Instance):
         if isinstance(s, Instance):
             # Consider two classes non-disjoint if one is included in the mro
@@ -120,17 +126,6 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     if isinstance(s, UnionType):
         return any(is_overlapping_types(t, item)
                    for item in s.relevant_items())
-    if isinstance(t, TupleType) and isinstance(s, TupleType):
-        if t.length() == s.length():
-            if all(is_overlapping_types(ti, si, use_promotions)
-                   for ti, si in zip(t.items, s.items)):
-                return True
-        # TODO: Tuple[A, ...]
-        return False
-    if isinstance(t, TupleType) or isinstance(s, TupleType):
-        left = t.fallback if isinstance(t, TupleType) else t
-        right = s.fallback if isinstance(s, TupleType) else s
-        return is_overlapping_types(left, right, use_promotions)
     if isinstance(t, TypeType) and isinstance(s, TypeType):
         # If both types are TypeType, compare their inner types.
         return is_overlapping_types(t.item, s.item, use_promotions)
@@ -147,9 +142,33 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
         if isinstance(t, NoneTyp) != isinstance(s, NoneTyp):
             # NoneTyp does not overlap with other non-Union types under strict Optional checking
             return False
-    # We conservatively assume that non-instance, non-union, and non-TypeType types can overlap
-    # any other types.
+    # We conservatively assume that non-instance, non-union, non-TupleType and non-TypeType types
+    # can overlap any other types.
     return True
+
+
+def is_overlapping_tuples(t: Type, s: Type, use_promotions: bool) -> Optional[bool]:
+    """Part of is_overlapping_types(), for tuples only"""
+    t = adjust_tuple(t, s) or t
+    s = adjust_tuple(s, t) or s
+    if isinstance(t, TupleType) or isinstance(s, TupleType):
+        if isinstance(t, TupleType) and isinstance(s, TupleType):
+            if t.length() == s.length():
+                if all(is_overlapping_types(ti, si, use_promotions)
+                       for ti, si in zip(t.items, s.items)):
+                    return True
+        # TupleType and non-tuple Instances do not overlap
+        return False
+    # No tuples are involved here
+    return None
+
+
+def adjust_tuple(left: Type, r: Type) -> Optional[TupleType]:
+    """Find out if `left` is a Tuple[A, ...], and adjust its length to `right`"""
+    if isinstance(left, Instance) and left.type.fullname() == 'builtins.tuple':
+        n = r.length() if isinstance(r, TupleType) else 1
+        return TupleType([left.args[0]] * n, left)
+    return None
 
 
 class TypeMeetVisitor(TypeVisitor[Type]):
