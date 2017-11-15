@@ -641,7 +641,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 if name:  # Special method names
                     if name in nodes.reverse_op_method_set:
-                        self.check_reverse_op_method(item, typ, name)
+                        self.check_reverse_op_method(item, typ, name, defn)
                     elif name in ('__getattr__', '__getattribute__'):
                         self.check_getattr_method(typ, defn, name)
                     elif name == '__setattr__':
@@ -816,12 +816,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                  isinstance(stmt.expr, EllipsisExpr)))
 
     def check_reverse_op_method(self, defn: FuncItem, typ: CallableType,
-                                method: str) -> None:
+                                method: str, context: Context) -> None:
         """Check a reverse operator method such as __radd__."""
 
         # This used to check for some very obscure scenario.  It now
         # just decides whether it's worth calling
         # check_overlapping_op_methods().
+
+        # First check for a valid signature
+        method_type = CallableType([AnyType(TypeOfAny.special_form),
+                                    AnyType(TypeOfAny.special_form)],
+                                   [nodes.ARG_POS, nodes.ARG_POS],
+                                   [None, None],
+                                   AnyType(TypeOfAny.special_form),
+                                   self.named_type('builtins.function'))
+        if not is_subtype(typ, method_type):
+            self.msg.invalid_signature(typ, context)
+            return
 
         if method in ('__eq__', '__ne__'):
             # These are defined for all objects => can't cause trouble.
@@ -835,9 +846,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(ret_type, Instance):
             if ret_type.type.fullname() == 'builtins.object':
                 return
-        # Plausibly the method could have too few arguments, which would result
-        # in an error elsewhere.
-        if len(typ.arg_types) <= 2:
+
+        if len(typ.arg_types) == 2:
             # TODO check self argument kind
 
             # Check for the issue described above.
