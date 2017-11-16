@@ -44,6 +44,8 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return narrowed
     elif isinstance(declared, (Instance, TupleType)):
         return meet_types(declared, narrowed)
+    elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
+        return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
     return narrowed
 
 
@@ -77,6 +79,10 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     """
     # Any overlaps with everything
     if isinstance(t, AnyType) or isinstance(s, AnyType):
+        return True
+    # object overlaps with everything
+    if (isinstance(t, Instance) and t.type.fullname() == 'builtins.object' or
+            isinstance(s, Instance) and s.type.fullname() == 'builtins.object'):
         return True
 
     # Since we are effectively working with the erased types, we only

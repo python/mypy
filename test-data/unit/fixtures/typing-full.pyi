@@ -126,6 +126,7 @@ class Mapping(Iterable[T], Protocol[T, T_co]):
     def get(self, k: T, default: Union[T_co, V]) -> Union[T_co, V]: pass
     def values(self) -> Iterable[T_co]: pass  # Approximate return type
     def __len__(self) -> int: ...
+    def __contains__(self, arg: object) -> int: pass
 
 @runtime
 class MutableMapping(Mapping[T, U], Protocol):
@@ -139,6 +140,7 @@ def runtime(cls: T) -> T:
 
 class ContextManager(Generic[T]):
     def __enter__(self) -> T: pass
-    def __exit__(self, exc_type, exc_value, traceback): pass
+    # Use Any because not all the precise types are in the fixtures.
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Any: pass
 
 TYPE_CHECKING = 1

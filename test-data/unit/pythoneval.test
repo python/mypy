@@ -1380,6 +1380,14 @@ _testTypedDictMappingMethods.py:9: error: Revealed type is 'typing.AbstractSet[b
 _testTypedDictMappingMethods.py:10: error: Revealed type is 'typing.AbstractSet[Tuple[builtins.str*, builtins.int*]]'
 _testTypedDictMappingMethods.py:11: error: Revealed type is 'typing.ValuesView[builtins.int*]'
 
+[case testCrashOnComplexCheckWithNamedTupleNext]
+from typing import NamedTuple
+
+MyNamedTuple = NamedTuple('MyNamedTuple', [('parent', 'MyNamedTuple')]) # type: ignore
+def foo(mymap) -> MyNamedTuple:
+    return next((mymap[key] for key in mymap), None)
+[out]
+
 [case testCanConvertTypedDictToAnySuperclassOfMapping]
 from mypy_extensions import TypedDict
 from typing import Sized, Iterable, Container
@@ -1394,3 +1402,54 @@ o: object = p
 it2: Iterable[int] = p
 [out]
 _testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
+
+[case testAsyncioGatherPreciseType]
+import asyncio
+from typing import Tuple
+
+async def get_location(arg: str) -> Tuple[str, str]:
+    return arg, arg
+
+async def main() -> None:
+    ((a_x, a_y),) = await asyncio.gather(get_location('start'))
+    reveal_type(a_x)
+    reveal_type(a_y)
+[out]
+_testAsyncioGatherPreciseType.py:9: error: Revealed type is 'builtins.str'
+_testAsyncioGatherPreciseType.py:10: error: Revealed type is 'builtins.str'
+
+[case testMultipleInheritanceWorksWithTupleTypeGeneric]
+from typing import SupportsAbs, NamedTuple
+
+class Point(NamedTuple('Point', [('x', int), ('y', int)]), SupportsAbs[int]):
+    def __abs__(p) -> int:
+        return abs(p.x) + abs(p.y)
+
+def test(a: Point) -> bool:
+    return abs(a) == 2
+[out]
+
+[case testNoCrashOnGenericUnionUnpacking]
+from typing import Union, Dict
+
+TEST = {'key': ('a', 'b')}
+def test() -> None:
+    a, b = TEST.get('foo', ('x', 'y'))
+    reveal_type(a)
+    reveal_type(b)
+def test2() -> None:
+    a, b = TEST.get('foo', (1, 2))
+    reveal_type(a)
+    reveal_type(b)
+
+x: Union[Dict[int, int], Dict[str, str]] = dict(a='b')
+for a, b in x.items():
+    reveal_type(a)
+    reveal_type(b)
+[out]
+_testNoCrashOnGenericUnionUnpacking.py:6: error: Revealed type is 'builtins.str'
+_testNoCrashOnGenericUnionUnpacking.py:7: error: Revealed type is 'builtins.str'
+_testNoCrashOnGenericUnionUnpacking.py:10: error: Revealed type is 'Union[builtins.str, builtins.int]'
+_testNoCrashOnGenericUnionUnpacking.py:11: error: Revealed type is 'Union[builtins.str, builtins.int]'
+_testNoCrashOnGenericUnionUnpacking.py:15: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
+_testNoCrashOnGenericUnionUnpacking.py:16: error: Revealed type is 'Union[builtins.int*, builtins.str*]'

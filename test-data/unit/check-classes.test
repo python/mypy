@@ -1639,6 +1639,18 @@ class C:
     def __radd__(self, x: Any) -> int: pass
 [out]
 
+[case testReverseOperatorMethodInvalid]
+from foo import *
+[file foo.pyi]
+class A: ...
+class B:
+    def __rmul__(self) -> A: ...
+class C:
+    def __radd__(self, other, oops) -> int: ...
+[out]
+tmp/foo.pyi:3: error: Invalid signature "def (foo.B) -> foo.A"
+tmp/foo.pyi:5: error: Invalid signature "def (foo.C, Any, Any) -> builtins.int"
+
 [case testReverseOperatorMethodForwardIsAny]
 from typing import Any
 def deco(f: Any) -> Any: return f
@@ -2105,7 +2117,7 @@ class B:
     a = A
     bad = lambda: 42
 
-B().bad() # E: Invalid method type
+B().bad() # E: Attribute function "bad" with type "Callable[[], int]" does not accept self argument
 reveal_type(B.a) # E: Revealed type is 'def () -> __main__.A'
 reveal_type(B().a) # E: Revealed type is 'def () -> __main__.A'
 reveal_type(B().a()) # E: Revealed type is '__main__.A'
@@ -2119,17 +2131,17 @@ reveal_type(C().aa) # E: Revealed type is '__main__.A'
 [out]
 
 [case testClassValuedAttributesGeneric]
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Type
 T = TypeVar('T')
 
 class A(Generic[T]):
     def __init__(self, x: T) -> None:
         self.x = x
 class B(Generic[T]):
-    a = A[T]
+    a: Type[A[T]] = A
 
-reveal_type(B[int]().a) # E: Revealed type is 'def (x: builtins.int*) -> __main__.A[builtins.int*]'
-B[int]().a('hi') # E: Argument 1 has incompatible type "str"; expected "int"
+reveal_type(B[int]().a) # E: Revealed type is 'Type[__main__.A[builtins.int*]]'
+B[int]().a('hi') # E: Argument 1 to "A" has incompatible type "str"; expected "int"
 
 class C(Generic[T]):
     a = A
@@ -2904,8 +2916,11 @@ class B(object, A): # E: Cannot determine consistent method resolution order (MR
     __iter__ = readlines
 
 [case testDynamicMetaclass]
-
 class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
+    pass
+
+[case testDynamicMetaclassCrash]
+class C(metaclass=int().x):  # E: Dynamic metaclass not supported for 'C'
     pass
 
 [case testVariableSubclass]
@@ -3515,8 +3530,304 @@ D = TypeVar('D')
 def mkdict(dict_type: Type[D]) -> D: ...
 reveal_type(mkdict(ExampleDict))  # E: Revealed type is '__main__.ExampleDict*[Any, Any]'
 
+[case testTupleForwardBase]
+from m import a
+a[0]()  # E: "int" not callable
+
+[file m.py]
+from typing import Tuple
+a = None # type: A
+class A(Tuple[int, str]): pass
+[builtins fixtures/tuple.pyi]
+
 -- Synthetic types crashes
 -- -----------------------
+
+[case testCrashOnSelfRecursiveNamedTupleVar]
+from typing import NamedTuple
+
+N = NamedTuple('N', [('x', N)]) # E: Recursive types not fully supported yet, nested types replaced with "Any"
+n: N
+[out]
+
+[case testCrashOnSelfRecursiveTypedDictVar]
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'a': 'A'})  # type: ignore
+a: A
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCrashInJoinOfSelfRecursiveNamedTuples]
+from typing import NamedTuple
+
+class N(NamedTuple): # type: ignore
+    x: N
+class M(NamedTuple): # type: ignore
+    x: M
+
+n: N
+m: M
+lst = [n, m]
+[builtins fixtures/isinstancelist.pyi]
+
+[case testCorrectJoinOfSelfRecursiveTypedDicts]
+from mypy_extensions import TypedDict
+
+class N(TypedDict):
+    x: N
+class M(TypedDict):
+    x: M
+
+n: N
+m: M
+lst = [n, m]
+reveal_type(lst[0]['x'])  # E: Revealed type is 'TypedDict('__main__.N', {'x': Any})'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testCrashInForwardRefToNamedTupleWithIsinstance]
+from typing import Dict, NamedTuple
+
+NameDict = Dict[str, 'NameInfo']
+class NameInfo(NamedTuple):
+    ast: bool
+
+def parse_ast(name_dict: NameDict) -> None:
+    if isinstance(name_dict[''], int):
+        pass
+    reveal_type(name_dict['test']) # E: Revealed type is 'Tuple[builtins.bool, fallback=__main__.NameInfo]'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCrashInForwardRefToTypedDictWithIsinstance]
+from mypy_extensions import TypedDict
+from typing import Dict
+
+NameDict = Dict[str, 'NameInfo']
+class NameInfo(TypedDict):
+    ast: bool
+
+def parse_ast(name_dict: NameDict) -> None:
+    if isinstance(name_dict[''], int):
+        pass
+    reveal_type(name_dict['']['ast'])  # E: Revealed type is 'builtins.bool'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCorrectIsinstanceInForwardRefToNewType]
+from typing import Dict, NewType
+
+NameDict = Dict[str, 'NameInfo']
+class Base:
+    ast: bool
+NameInfo = NewType('NameInfo', Base)
+
+def parse_ast(name_dict: NameDict) -> None:
+    if isinstance(name_dict[''], int):
+        pass
+    x = name_dict['']
+    reveal_type(x) # E: Revealed type is '__main__.NameInfo*'
+    x = NameInfo(Base()) # OK
+    x = Base() # E: Incompatible types in assignment (expression has type "Base", variable has type "NameInfo")
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testNoCrashForwardRefToBrokenDoubleNewType]
+from typing import Any, Dict, List, NewType
+
+Foo = NewType('NotFoo', int) # E: String argument 1 'NotFoo' to NewType(...) does not match variable name 'Foo'
+Foos = NewType('Foos', List[Foo]) # type: ignore
+
+def frob(foos: Dict[Any, Foos]) -> None:
+    foo = foos.get(1)
+    dict(foo)
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testNoCrashForwardRefToBrokenDoubleNewTypeClass]
+from typing import Any, Dict, List, NewType
+
+Foo = NewType('NotFoo', int) # type: ignore
+Foos = NewType('Foos', List[Foo]) # type: ignore
+
+x: C
+class C:
+    def frob(self, foos: Dict[Any, Foos]) -> None:
+        foo = foos.get(1)
+        dict(foo)
+
+reveal_type(x.frob) # E: Revealed type is 'def (foos: builtins.dict[Any, __main__.Foos])'
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testNewTypeFromForwardNamedTuple]
+from typing import NewType, NamedTuple, Tuple
+
+NT = NewType('NT', N)
+class N(NamedTuple):
+    x: int
+
+x: NT = N(1) # E: Incompatible types in assignment (expression has type "N", variable has type "NT")
+x = NT(N(1))
+[out]
+
+[case testNewTypeFromForwardTypedDict]
+from typing import NewType, Tuple
+from mypy_extensions import TypedDict
+
+NT = NewType('NT', N) # E: Argument 2 to NewType(...) must be subclassable (got TypedDict('__main__.N', {'x': builtins.int}))
+class N(TypedDict):
+    x: int
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testCorrectAttributeInForwardRefToNamedTuple]
+from typing import NamedTuple
+proc: Process
+reveal_type(proc.state)  # E: Revealed type is 'builtins.int'
+
+def get_state(proc: 'Process') -> int:
+    return proc.state
+class Process(NamedTuple):
+     state: int
+[out]
+
+[case testCorrectItemTypeInForwardRefToTypedDict]
+from mypy_extensions import TypedDict
+proc: Process
+reveal_type(proc['state'])  # E: Revealed type is 'builtins.int'
+
+def get_state(proc: 'Process') -> int:
+    return proc['state']
+class Process(TypedDict):
+     state: int
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCorrectDoubleForwardNamedTuple]
+from typing import NamedTuple
+
+x: A
+class A(NamedTuple):
+    one: 'B'
+    other: int
+class B(NamedTuple):
+    attr: str
+y: A
+y = x
+reveal_type(x.one.attr)  # E: Revealed type is 'builtins.str'
+[out]
+
+[case testCrashOnDoubleForwardTypedDict]
+from mypy_extensions import TypedDict
+
+x: A
+class A(TypedDict):
+    one: 'B'
+    other: int
+class B(TypedDict):
+    attr: str
+
+reveal_type(x['one']['attr'])  # E: Revealed type is 'builtins.str'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testCrashOnForwardUnionOfNamedTuples]
+from typing import Union, NamedTuple
+
+Node = Union['Foo', 'Bar']
+class Foo(NamedTuple):
+    x: int
+class Bar(NamedTuple):
+    x: int
+
+def foo(node: Node) -> int:
+    x = node
+    reveal_type(node) # E: Revealed type is 'Union[Tuple[builtins.int, fallback=__main__.Foo], Tuple[builtins.int, fallback=__main__.Bar]]'
+    return x.x
+[out]
+
+[case testCrashOnForwardUnionOfTypedDicts]
+from mypy_extensions import TypedDict
+from typing import Union
+
+NodeType = Union['Foo', 'Bar']
+class Foo(TypedDict):
+    x: int
+class Bar(TypedDict):
+    x: int
+
+def foo(node: NodeType) -> int:
+    x = node
+    return x['x']
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testSupportForwardUnionOfNewTypes]
+from typing import Union, NewType
+x: Node
+reveal_type(x.x) # E: Revealed type is 'builtins.int'
+
+class A:
+    x: int
+class B:
+    x: int
+
+Node = Union['Foo', 'Bar']
+Foo = NewType('Foo', A)
+Bar = NewType('Bar', B)
+
+def foo(node: Node) -> Node:
+    x = node
+    return Foo(A())
+[out]
+
+[case testForwardReferencesInNewTypeMRORecomputed]
+from typing import NewType
+x: Foo
+Foo = NewType('Foo', B)
+class A:
+    x: int
+class B(A):
+    pass
+
+reveal_type(x.x) # E: Revealed type is 'builtins.int'
+[out]
+
+[case testCrashOnComplexNamedTupleUnionProperty]
+from typing import NamedTuple, Union
+
+x: AOrB
+AOrB = Union['A', 'B']
+class A(NamedTuple):
+    x: int
+
+class B(object):
+    def __init__(self, a: AOrB) -> None:
+        self.a = a
+    @property
+    def x(self) -> int:
+        return self.a.x
+
+reveal_type(x.x) # E: Revealed type is 'builtins.int'
+[builtins fixtures/property.pyi]
+[out]
+
+[case testCorrectIsinstanceWithForwardUnion]
+from typing import Union, NamedTuple
+
+ForwardUnion = Union['TP', int]
+class TP(NamedTuple('TP', [('x', int)])): pass
+
+def f(x: ForwardUnion) -> None:
+  reveal_type(x)  # E: Revealed type is 'Union[Tuple[builtins.int, fallback=__main__.TP], builtins.int]'
+  if isinstance(x, TP):
+    reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.TP]'
+[builtins fixtures/isinstance.pyi]
+[out]
 
 [case testCrashInvalidArgsSyntheticClassSyntax]
 from typing import List, NamedTuple
@@ -3748,3 +4059,79 @@ class E(metaclass=t.M): pass
 class F(six.with_metaclass(t.M)): pass
 @six.add_metaclass(t.M)
 class G: pass
+
+[case testCorrectEnclosingClassPushedInDeferred]
+class C:
+    def __getattr__(self, attr: str) -> int:
+        x: F
+        return x.f
+
+class F:
+    def __init__(self, f: int) -> None:
+        self.f = f
+[out]
+
+[case testCorrectEnclosingClassPushedInDeferred2]
+from typing import TypeVar
+T = TypeVar('T', bound=C)
+class C:
+    def m(self: T) -> T:
+        class Inner:
+            x: F
+            f = x.f
+        return self
+
+class F:
+    def __init__(self, f: int) -> None:
+        self.f = f
+[out]
+
+[case testCorrectEnclosingClassPushedInDeferred3]
+class A:
+    def f(self) -> None:
+        def g(x: int) -> int:
+            return y
+
+y = int()
+[out]
+
+[case testMetaclassMemberAccessViaType]
+from typing import Type
+class M(type):
+    def m(cls, x: int) -> int:
+        pass
+
+class C(metaclass=M):
+    pass
+x = C
+y: Type[C] = C
+
+reveal_type(type(C).m) # E: Revealed type is 'def (cls: __main__.M, x: builtins.int) -> builtins.int'
+reveal_type(type(x).m) # E: Revealed type is 'def (cls: __main__.M, x: builtins.int) -> builtins.int'
+reveal_type(type(y).m) # E: Revealed type is 'def (cls: __main__.M, x: builtins.int) -> builtins.int'
+[out]
+
+[case testMetaclassMemberAccessViaType2]
+from typing import Any, Type
+class M(type):
+    def m(cls, x: int) -> int:
+        pass
+B: Any
+class C(B, metaclass=M):
+    pass
+
+x: Type[C]
+reveal_type(x.m) # E: Revealed type is 'def (x: builtins.int) -> builtins.int'
+reveal_type(x.whatever) # E: Revealed type is 'Any'
+[out]
+
+[case testMetaclassMemberAccessViaType3]
+from typing import Any, Type, TypeVar
+T = TypeVar('T')
+class C(Any):
+    def bar(self: T) -> Type[T]: pass
+    def foo(self) -> None:
+        reveal_type(self.bar()) # E: Revealed type is 'Type[__main__.C*]'
+        reveal_type(self.bar().__name__) # E: Revealed type is 'builtins.str'
+[builtins fixtures/type.pyi]
+[out]

@@ -15,7 +15,7 @@ from mypy.types import (
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
-from mypy.typefixture import TypeFixture, InterfaceTypeFixture
+from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
 
 
 class TypesSuite(Suite):
@@ -76,18 +76,18 @@ class TypesSuite(Suite):
                                    self.fx.std_tuple)), 'Tuple[X?, Any]')
 
     def test_type_variable_binding(self) -> None:
-        assert_equal(str(TypeVarDef('X', 1, [], self.fx.o)), 'X')
-        assert_equal(str(TypeVarDef('X', 1, [self.x, self.y], self.fx.o)),
+        assert_equal(str(TypeVarDef('X', 'X', 1, [], self.fx.o)), 'X')
+        assert_equal(str(TypeVarDef('X', 'X', 1, [self.x, self.y], self.fx.o)),
                      'X in (X?, Y?)')
 
     def test_generic_function_type(self) -> None:
         c = CallableType([self.x, self.y], [ARG_POS, ARG_POS], [None, None],
                      self.y, self.function, name=None,
-                     variables=[TypeVarDef('X', -1, [], self.fx.o)])
+                     variables=[TypeVarDef('X', 'X', -1, [], self.fx.o)])
         assert_equal(str(c), 'def [X] (X?, Y?) -> Y?')
 
-        v = [TypeVarDef('Y', -1, [], self.fx.o),
-             TypeVarDef('X', -2, [], self.fx.o)]
+        v = [TypeVarDef('Y', 'Y', -1, [], self.fx.o),
+             TypeVarDef('X', 'X', -2, [], self.fx.o)]
         c2 = CallableType([], [], [], NoneTyp(), self.function, name=None, variables=v)
         assert_equal(str(c2), 'def [Y, X] ()')
 
@@ -346,7 +346,7 @@ class TypeOpsSuite(Suite):
         tv = []  # type: List[TypeVarDef]
         n = -1
         for v in vars:
-            tv.append(TypeVarDef(v, n, [], self.fx.o))
+            tv.append(TypeVarDef(v, v, n, [], self.fx.o))
             n -= 1
         return CallableType(list(a[:-1]),
                             [ARG_POS] * (len(a) - 1),

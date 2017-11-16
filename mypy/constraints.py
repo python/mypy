@@ -373,12 +373,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 cb = infer_constraints(template.args[0], item, SUPERTYPE_OF)
                 res.extend(cb)
             return res
-        elif (isinstance(actual, TupleType) and template.type.is_protocol and
-              self.direction == SUPERTYPE_OF):
-            if mypy.subtypes.is_subtype(actual.fallback, erase_typevars(template)):
-                res.extend(infer_constraints(template, actual.fallback, self.direction))
-                return res
-            return []
+        elif isinstance(actual, TupleType) and self.direction == SUPERTYPE_OF:
+            return infer_constraints(template, actual.fallback, self.direction)
         else:
             return []
 
@@ -506,6 +502,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                      self.direction)
         elif isinstance(self.actual, TypeType):
             return infer_constraints(template.item, self.actual.item, self.direction)
+        elif isinstance(self.actual, AnyType):
+            return infer_constraints(template.item, self.actual, self.direction)
         else:
             return []
 

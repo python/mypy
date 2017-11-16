@@ -117,16 +117,16 @@ f(A())
 f(A(), B()) # E: Too many positional arguments for "f"
 g(A(), b=B())
 g(b=B(), a=A())
-g(A()) # E: Missing named argument "b" for function "g"
+g(A()) # E: Missing named argument "b" for "g"
 g(A(), B()) # E: Too many positional arguments for "g"
-h(A()) # E: Missing named argument "b" for function "h" # E: Missing named argument "aa" for function "h"
-h(A(), b=B()) # E: Missing named argument "aa" for function "h"
-h(A(), aa=A()) # E: Missing named argument "b" for function "h"
+h(A()) # E: Missing named argument "b" for "h" # E: Missing named argument "aa" for "h"
+h(A(), b=B()) # E: Missing named argument "aa" for "h"
+h(A(), aa=A()) # E: Missing named argument "b" for "h"
 h(A(), b=B(), aa=A())
 h(A(), aa=A(), b=B())
-i(A()) # E: Missing named argument "b" for function "i"
+i(A()) # E: Missing named argument "b" for "i"
 i(A(), b=B())
-i(A(), aa=A()) # E: Missing named argument "b" for function "i"
+i(A(), aa=A()) # E: Missing named argument "b" for "i"
 i(A(), b=B(), aa=A())
 i(A(), aa=A(), b=B())
 
@@ -146,16 +146,16 @@ f(A())
 f(A(), B()) # E: Too many positional arguments for "f"
 g(A(), b=B())
 g(b=B(), a=A())
-g(A()) # E: Missing named argument "b" for function "g"
+g(A()) # E: Missing named argument "b" for "g"
 g(A(), B()) # E: Too many positional arguments for "g"
-h(A()) # E: Missing named argument "b" for function "h" # E: Missing named argument "aa" for function "h"
-h(A(), b=B()) # E: Missing named argument "aa" for function "h"
-h(A(), aa=A()) # E: Missing named argument "b" for function "h"
+h(A()) # E: Missing named argument "b" for "h" # E: Missing named argument "aa" for "h"
+h(A(), b=B()) # E: Missing named argument "aa" for "h"
+h(A(), aa=A()) # E: Missing named argument "b" for "h"
 h(A(), b=B(), aa=A())
 h(A(), aa=A(), b=B())
-i(A()) # E: Missing named argument "b" for function "i"
+i(A()) # E: Missing named argument "b" for "i"
 i(A(), b=B())
-i(A(), aa=A()) # E: Missing named argument "b" for function "i"
+i(A(), aa=A()) # E: Missing named argument "b" for "i"
 i(A(), b=B(), aa=A())
 i(A(), aa=A(), b=B())
 

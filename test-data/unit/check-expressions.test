@@ -613,6 +613,13 @@ class A: pass
 [out]
 main:3: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
+[case testIsRightOperand]
+
+1 is 1()
+[builtins fixtures/bool.pyi]
+[out]
+main:2: error: "int" not callable
+
 [case testReverseBinaryOperator]
 
 class A:
@@ -875,10 +882,11 @@ main:3: error: "A" not callable
 [case testNoneReturnTypeBasics]
 
 a, o = None, None # type: (A, object)
-a = f()         # Fail
-o = A().g(a)    # Fail
-A().g(f())      # Fail
-x = f() # type: A # Fail
+a = f()         # E: "f" does not return a value
+o = a()         # E: Function does not return a value
+o = A().g(a)    # E: "g" of "A" does not return a value
+A().g(f())      # E: "f" does not return a value
+x: A = f()      # E: "f" does not return a value
 f()
 A().g(a)
 
@@ -888,11 +896,8 @@ def f() -> None:
 class A:
     def g(self, x: object) -> None:
         pass
-[out]
-main:3: error: "f" does not return a value
-main:4: error: "g" of "A" does not return a value
-main:5: error: "f" does not return a value
-main:6: error: "f" does not return a value
+    def __call__(self) -> None:
+        pass
 
 [case testNoneReturnTypeWithStatements]
 import typing
@@ -1525,9 +1530,7 @@ from typing import Iterator
 def f() -> Iterator[int]:
     yield 5
 def g() -> Iterator[int]:
-    a = yield from f()
-[out]
-main:5: error: Function does not return a value
+    a = yield from f()  # E: Function does not return a value
 
 [case testYieldFromGeneratorHasValue]
 from typing import Iterator, Generator

@@ -8,7 +8,7 @@ import re
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from mypy import build
 from mypy import defaults
@@ -28,6 +28,21 @@ class InvalidPackageName(Exception):
     """Exception indicating that a package name was invalid."""
 
 
+orig_stat = os.stat
+
+
+def stat_proxy(path: str) -> os.stat_result:
+    try:
+        st = orig_stat(path)
+    except os.error as err:
+        print("stat(%r) -> %s" % (path, err))
+        raise
+    else:
+        print("stat(%r) -> (st_mode=%o, st_mtime=%d, st_size=%d)" %
+              (path, st.st_mode, st.st_mtime, st.st_size))
+        return st
+
+
 def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     """Main entry point to the type checker.
 
@@ -37,6 +52,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         be used.
     """
     t0 = time.time()
+    # To log stat() calls: os.stat = stat_proxy
     if script_path:
         bin_dir = find_bin_directory(script_path)  # type: Optional[str]
     else:
@@ -101,24 +117,6 @@ def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
     return build.build(sources=sources,
                        bin_dir=bin_dir,
                        options=options)
-
-
-disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated', 'explicit', 'generics']
-
-
-def disallow_any_argument_type(raw_options: str) -> List[str]:
-    if not raw_options:
-        # empty string disables all options
-        return []
-    flag_options = [o.strip() for o in raw_options.split(',')]
-    for option in flag_options:
-        if option not in disallow_any_options:
-            formatted_valid_options = ', '.join(
-                "'{}'".format(o) for o in disallow_any_options)
-            message = "Invalid '--disallow-any' option '{}' (valid options are: {}).".format(
-                option, formatted_valid_options)
-            raise argparse.ArgumentError(None, message)
-    return flag_options
 
 
 FOOTER = """environment variables:
@@ -256,10 +254,18 @@ def process_options(args: List[str],
                         help="silently ignore imports of missing modules")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
-    parser.add_argument('--disallow-any', type=disallow_any_argument_type, default=[],
-                        metavar='{{{}}}'.format(', '.join(disallow_any_options)),
-                        help="disallow various types of Any in a module. Takes a comma-separated "
-                             "list of options (defaults to all options disabled)")
+    parser.add_argument('--disallow-any-unimported', default=False, action='store_true',
+                        help="disallow Any types resulting from unfollowed imports")
+    parser.add_argument('--disallow-any-expr', default=False, action='store_true',
+                        help='disallow all expressions that have type Any')
+    parser.add_argument('--disallow-any-decorated', default=False, action='store_true',
+                        help='disallow functions that have Any in their signature '
+                             'after decorator transformation')
+    parser.add_argument('--disallow-any-explicit', default=False, action='store_true',
+                        help='disallow explicit Any in type positions')
+    parser.add_argument('--disallow-any-generics', default=False, action='store_true',
+                        help='disallow usage of generic types that do not specify explicit '
+                             'type parameters')
     add_invertible_flag('--disallow-untyped-calls', default=False, strict_flag=True,
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
@@ -345,9 +351,15 @@ def process_options(args: List[str],
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
     parser.add_argument('--debug-cache', action='store_true', help=argparse.SUPPRESS)
+    # --dump-deps will dump all fine-grained dependencies to stdout
+    parser.add_argument('--dump-deps', action='store_true', help=argparse.SUPPRESS)
     # --dump-graph will dump the contents of the graph of SCCs and exit.
     parser.add_argument('--dump-graph', action='store_true', help=argparse.SUPPRESS)
+    # --semantic-analysis-only does exactly that.
+    parser.add_argument('--semantic-analysis-only', action='store_true', help=argparse.SUPPRESS)
     # deprecated options
+    parser.add_argument('--disallow-any', dest='special-opts:disallow_any',
+                        help=argparse.SUPPRESS)
     add_invertible_flag('--strict-boolean', default=False,
                         help=argparse.SUPPRESS)
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
@@ -422,6 +434,9 @@ def process_options(args: List[str],
                      )
 
     # Process deprecated options
+    if special_opts.disallow_any:
+        print("--disallow-any option was split up into multiple flags. "
+              "See http://mypy.readthedocs.io/en/latest/command_line.html#disallow-any-flags")
     if options.strict_boolean:
         print("Warning: --strict-boolean is deprecated; "
               "see https://github.com/python/mypy/issues/3195", file=sys.stderr)
@@ -445,9 +460,6 @@ def process_options(args: List[str],
     if special_opts.no_fast_parser:
         print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
               "is now mypy's default and only parser.")
-
-    if 'unannotated' in options.disallow_any:
-        options.disallow_untyped_defs = True
 
     # Check for invalid argument combinations.
     if require_targets:
@@ -505,26 +517,31 @@ def process_options(args: List[str],
         targets = [BuildSource(None, None, '\n'.join(special_opts.command))]
         return targets, options
     else:
-        targets = []
-        for f in special_opts.files:
-            if f.endswith(PY_EXTENSIONS):
-                try:
-                    targets.append(BuildSource(f, crawl_up(f)[1], None))
-                except InvalidPackageName as e:
-                    fail(str(e))
-            elif os.path.isdir(f):
-                try:
-                    sub_targets = expand_dir(f)
-                except InvalidPackageName as e:
-                    fail(str(e))
-                if not sub_targets:
-                    fail("There are no .py[i] files in directory '{}'"
-                         .format(f))
-                targets.extend(sub_targets)
-            else:
-                mod = os.path.basename(f) if options.scripts_are_modules else None
-                targets.append(BuildSource(f, mod, None))
+        targets = create_source_list(special_opts.files, options)
         return targets, options
+
+
+def create_source_list(files: Sequence[str], options: Options) -> List[BuildSource]:
+    targets = []
+    for f in files:
+        if f.endswith(PY_EXTENSIONS):
+            try:
+                targets.append(BuildSource(f, crawl_up(f)[1], None))
+            except InvalidPackageName as e:
+                fail(str(e))
+        elif os.path.isdir(f):
+            try:
+                sub_targets = expand_dir(f)
+            except InvalidPackageName as e:
+                fail(str(e))
+            if not sub_targets:
+                fail("There are no .py[i] files in directory '{}'"
+                     .format(f))
+            targets.extend(sub_targets)
+        else:
+            mod = os.path.basename(f) if options.scripts_are_modules else None
+            targets.append(BuildSource(f, mod, None))
+    return targets
 
 
 def keyfunc(name: str) -> Tuple[int, str]:
@@ -631,7 +648,6 @@ config_types = {
     'custom_typeshed_dir': str,
     'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
     'junit_xml': str,
-    'disallow_any': disallow_any_argument_type,
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
@@ -749,8 +765,6 @@ def parse_section(prefix: str, template: Options,
         except ValueError as err:
             print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
             continue
-        if key == 'disallow_any':
-            results['disallow_untyped_defs'] = v and 'unannotated' in v
         if key == 'silent_imports':
             print("%s: silent_imports has been replaced by "
                   "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)

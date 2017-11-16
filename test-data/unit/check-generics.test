@@ -812,7 +812,7 @@ class Node(Generic[T]):
     def __init__(self, x: T) -> None:
         ...
 
-BadC = Callable[T] # E: Invalid function type
+BadC = Callable[T] # E: Please use "Callable[[<parameters>], <return type>]" or "Callable"
 
 C = Callable[..., T]
 C2 = Callable[[T, T], Node[T]]
@@ -1747,3 +1747,40 @@ class D:
     def __or__(self, x: G[X]) -> G[X]: pass
     def __ior__(self, x: G[S2]) -> G[S2]: pass \
         # E: Signatures of "__ior__" and "__or__" are incompatible
+
+[case testConstraintInferenceForAnyAgainstTypeT]
+from typing import Type, Any, TypeVar
+
+T = TypeVar('T')
+
+def f(c: Type[T]) -> T: ...
+
+x: Any
+reveal_type(f(x))  # E: Revealed type is 'Any'
+
+[case testQualifiedTypeVariableName]
+import b
+def f(x: b.T) -> b.T: return x
+reveal_type(f)
+reveal_type(b.g)
+[file b.py]
+from typing import TypeVar
+T = TypeVar('T')
+def g(x: T) -> T: return x
+[out]
+main:3: error: Revealed type is 'def [b.T] (x: b.T`-1) -> b.T`-1'
+main:4: error: Revealed type is 'def [T] (x: T`-1) -> T`-1'
+
+[case testPartiallyQualifiedTypeVariableName]
+from p import b
+def f(x: b.T) -> b.T: return x
+reveal_type(f)
+reveal_type(b.g)
+[file p/__init__.py]
+[file p/b.py]
+from typing import TypeVar
+T = TypeVar('T')
+def g(x: T) -> T: return x
+[out]
+main:3: error: Revealed type is 'def [b.T] (x: b.T`-1) -> b.T`-1'
+main:4: error: Revealed type is 'def [T] (x: T`-1) -> T`-1'

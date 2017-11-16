@@ -497,6 +497,431 @@ if bool():
 reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
 [builtins fixtures/bool.pyi]
 
+[case testUnionMultiassignSingle]
+from typing import Union, Tuple, Any
+
+a: Union[Tuple[int], Tuple[float]]
+(a1,) = a
+reveal_type(a1)  # E: Revealed type is 'builtins.float'
+
+b: Union[Tuple[int], Tuple[str]]
+(b1,) = b
+reveal_type(b1)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+[case testUnionMultiassignDouble]
+from typing import Union, Tuple
+
+c: Union[Tuple[int, int], Tuple[int, float]]
+(c1, c2) = c
+reveal_type(c1)  # E: Revealed type is 'builtins.int'
+reveal_type(c2)  # E: Revealed type is 'builtins.float'
+
+[case testUnionMultiassignGeneric]
+from typing import Union, Tuple, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+
+def pack_two(x: T, y: S) -> Union[Tuple[T, T], Tuple[S, S]]:
+    pass
+
+(x, y) = pack_two(1, 'a')
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+reveal_type(y)  # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+
+[case testUnionMultiassignAny]
+from typing import Union, Tuple, Any
+
+d: Union[Any, Tuple[float, float]]
+(d1, d2) = d
+reveal_type(d1)  # E: Revealed type is 'Union[Any, builtins.float]'
+reveal_type(d2)  # E: Revealed type is 'Union[Any, builtins.float]'
+
+e: Union[Any, Tuple[float, float], int]
+(e1, e2) = e  # E: 'builtins.int' object is not iterable
+
+[case testUnionMultiassignNotJoin]
+from typing import Union, List
+
+class A: pass
+class B(A): pass
+class C(A): pass
+a: Union[List[B], List[C]]
+x, y = a
+reveal_type(x)  # E: Revealed type is 'Union[__main__.B*, __main__.C*]'
+[builtins fixtures/list.pyi]
+
+[case testUnionMultiassignRebind]
+from typing import Union, List
+
+class A: pass
+class B(A): pass
+class C(A): pass
+obj: object
+a: Union[List[B], List[C]]
+obj, new = a
+reveal_type(obj)  # E: Revealed type is 'Union[__main__.B*, __main__.C*]'
+reveal_type(new)  # E: Revealed type is 'Union[__main__.B*, __main__.C*]'
+
+obj = 1
+reveal_type(obj)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/list.pyi]
+
+[case testUnionMultiassignAlreadyDeclared]
+from typing import Union, Tuple
+
+a: Union[Tuple[int, int], Tuple[int, float]]
+a1: object
+a2: int
+(a1, a2) = a  # E: Incompatible types in assignment (expression has type "float", variable has type "int")
+
+b: Union[Tuple[float, int], Tuple[int, int]]
+b1: object
+b2: int
+(b1, b2) = b
+reveal_type(b1) # E: Revealed type is 'builtins.float'
+reveal_type(b2) # E: Revealed type is 'builtins.int'
+
+c: Union[Tuple[int, int], Tuple[int, int]]
+c1: object
+c2: int
+(c1, c2) = c
+reveal_type(c1)  # E: Revealed type is 'builtins.int'
+reveal_type(c2)  # E: Revealed type is 'builtins.int'
+
+d: Union[Tuple[int, int], Tuple[int, float]]
+d1: object
+(d1, d2) = d
+reveal_type(d1)  # E: Revealed type is 'builtins.int'
+reveal_type(d2)  # E: Revealed type is 'builtins.float'
+
+[case testUnionMultiassignIndexed]
+from typing import Union, Tuple, List
+
+class B:
+    x: object
+
+x: List[int]
+b: B
+
+a: Union[Tuple[int, int], Tuple[int, object]]
+(x[0], b.x) = a
+reveal_type(x[0])  # E: Revealed type is 'builtins.int*'
+reveal_type(b.x)  # E: Revealed type is 'builtins.object'
+[builtins fixtures/list.pyi]
+
+[case testUnionMultiassignIndexedWithError]
+from typing import Union, Tuple, List
+
+class A: pass
+class B:
+    x: int
+
+x: List[A]
+b: B
+
+a: Union[Tuple[int, int], Tuple[int, object]]
+(x[0], b.x) = a  # E: Incompatible types in assignment (expression has type "int", target has type "A") \
+                 # E: Incompatible types in assignment (expression has type "object", variable has type "int")
+reveal_type(x[0])  # E: Revealed type is '__main__.A*'
+reveal_type(b.x)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/list.pyi]
+
+[case testUnionMultiassignPacked]
+from typing import Union, Tuple, List
+
+a: Union[Tuple[int, int, int], Tuple[int, int, str]]
+a1: int
+a2: object
+(a1, *xs, a2) = a
+
+reveal_type(a1)  # E: Revealed type is 'builtins.int'
+reveal_type(xs)  # E: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(a2)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/list.pyi]
+
+[case testUnpackingUnionOfListsInFunction]
+from typing import Union, List
+
+def f(x: bool) -> Union[List[int], List[str]]:
+    if x:
+        return [1, 1]
+    else:
+        return ['a', 'a']
+
+def g(x: bool) -> None:
+    a, b = f(x)
+    reveal_type(a) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+    reveal_type(b) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+[builtins fixtures/list.pyi]
+
+[case testUnionOfVariableLengthTupleUnpacking]
+from typing import Tuple, Union
+VarTuple = Union[Tuple[int, int], Tuple[int, int, int]]
+
+def make_tuple() -> VarTuple:
+    pass
+x = make_tuple()
+
+a, b = x # E: Too many values to unpack (2 expected, 3 provided)
+a, b, c = x # E: Need more than 2 values to unpack (3 expected)
+c, *d = x
+reveal_type(c) # E: Revealed type is 'builtins.int'
+reveal_type(d) # E: Revealed type is 'builtins.list[builtins.int*]'
+[builtins fixtures/tuple.pyi]
+
+[case testUnionOfNonIterableUnpacking]
+from typing import Union
+bad: Union[int, str]
+
+x, y = bad # E: 'builtins.int' object is not iterable \
+           # E: 'builtins.str' object is not iterable
+reveal_type(x) # E: Revealed type is 'Any'
+reveal_type(y) # E: Revealed type is 'Any'
+[out]
+
+[case testUnionAlwaysTooMany]
+from typing import Union, Tuple
+bad: Union[Tuple[int, int, int], Tuple[str, str, str]]
+
+x, y = bad # E: Too many values to unpack (2 expected, 3 provided)
+reveal_type(x) # E: Revealed type is 'Any'
+reveal_type(y) # E: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUnionAlwaysTooFew]
+from typing import Union, Tuple
+bad: Union[Tuple[int, int, int], Tuple[str, str, str]]
+
+x, y, z, w = bad # E: Need more than 3 values to unpack (4 expected)
+reveal_type(x) # E: Revealed type is 'Any'
+reveal_type(y) # E: Revealed type is 'Any'
+reveal_type(z) # E: Revealed type is 'Any'
+reveal_type(w) # E: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUnionUnpackingChainedTuple]
+from typing import Union, Tuple
+good: Union[Tuple[int, int], Tuple[str, str]]
+
+x, y = t = good
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(t) # E: Revealed type is 'Union[Tuple[builtins.int, builtins.int], Tuple[builtins.str, builtins.str]]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUnionUnpackingChainedTuple2]
+from typing import Union, Tuple
+good: Union[Tuple[int, int], Tuple[str, str]]
+
+t = x, y = good
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(t) # E: Revealed type is 'Union[Tuple[builtins.int, builtins.int], Tuple[builtins.str, builtins.str]]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUnionUnpackingChainedTuple3]
+from typing import Union, Tuple
+good: Union[Tuple[int, int], Tuple[str, str]]
+
+x, y = a, b = good
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(a) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(b) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUnionUnpackingChainedList]
+from typing import Union, List
+good: Union[List[int], List[str]]
+
+lst = x, y = good
+reveal_type(x) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+reveal_type(lst) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testUnionUnpackingChainedList2]
+from typing import Union, List
+good: Union[List[int], List[str]]
+
+x, *y, z = lst = good
+reveal_type(x) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
+reveal_type(z) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+reveal_type(lst) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testUnionUnpackingInForTuple]
+from typing import Union, Tuple, NamedTuple
+class NTInt(NamedTuple):
+    x: int
+    y: int
+class NTStr(NamedTuple):
+    x: str
+    y: str
+
+nt: Union[NTInt, NTStr]
+for nx in nt:
+    reveal_type(nx) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+
+t: Union[Tuple[int, int], Tuple[str, str]]
+for x in t:
+    # TODO(Ivan): This will be OK when tuple fallback patches are added (like above)
+    reveal_type(x) # E: Revealed type is 'Any'
+[builtins fixtures/for.pyi]
+[out]
+
+[case testUnionUnpackingInForList]
+from typing import Union, List, Tuple
+
+t: Union[List[Tuple[int, int]], List[Tuple[str, str]]]
+for x, y in t:
+    reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+t2: List[Union[Tuple[int, int], Tuple[str, str]]]
+for x2, y2 in t2:
+    reveal_type(x2) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    reveal_type(y2) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/for.pyi]
+[out]
+
+[case testUnionUnpackingDoubleBinder]
+from typing import Union, Tuple
+
+x: object
+y: object
+class A: pass
+class B: pass
+
+t1: Union[Tuple[A, A], Tuple[B, B]]
+t2: Union[Tuple[int, int], Tuple[str, str]]
+
+x, y = t1
+reveal_type(x) # E: Revealed type is 'Union[__main__.A, __main__.B]'
+reveal_type(y) # E: Revealed type is 'Union[__main__.A, __main__.B]'
+
+x, y = t2
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+x, y = object(), object()
+reveal_type(x) # E: Revealed type is 'builtins.object'
+reveal_type(y) # E: Revealed type is 'builtins.object'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUnionUnpackingFromNestedTuples]
+from typing import Union, Tuple
+
+t: Union[Tuple[int, Tuple[int, int]], Tuple[str, Tuple[str, str]]]
+x, (y, z) = t
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(z) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testNestedUnionUnpackingFromNestedTuples]
+from typing import Union, Tuple
+
+class A: pass
+class B: pass
+
+t: Union[Tuple[int, Union[Tuple[int, int], Tuple[A, A]]], Tuple[str, Union[Tuple[str, str], Tuple[B, B]]]]
+x, (y, z) = t
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, __main__.A, builtins.str, __main__.B]'
+reveal_type(z) # E: Revealed type is 'Union[builtins.int, __main__.A, builtins.str, __main__.B]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testNestedUnionUnpackingFromNestedTuplesBinder]
+from typing import Union, Tuple
+
+class A: pass
+class B: pass
+
+x: object
+y: object
+z: object
+
+t: Union[Tuple[int, Union[Tuple[int, int], Tuple[A, A]]], Tuple[str, Union[Tuple[str, str], Tuple[B, B]]]]
+x, (y, z) = t
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.int, __main__.A, builtins.str, __main__.B]'
+reveal_type(z) # E: Revealed type is 'Union[builtins.int, __main__.A, builtins.str, __main__.B]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUnpackUnionNoCrashOnPartialNone]
+# flags: --strict-optional
+from typing import Dict, Tuple, List, Any
+
+a: Any
+d: Dict[str, Tuple[List[Tuple[str, str]], str]]
+x, _ = d.get(a, (None, None))
+
+for y in x: pass # E: Iterable expected \
+                 # E: Item "None" of "Optional[List[Tuple[str, str]]]" has no attribute "__iter__"
+if x:
+    for s, t in x:
+        reveal_type(s) # E: Revealed type is 'builtins.str'
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testUnpackUnionNoCrashOnPartialNone2]
+# flags: --strict-optional
+from typing import Dict, Tuple, List, Any
+
+a: Any
+x = None
+d: Dict[str, Tuple[List[Tuple[str, str]], str]]
+x, _ = d.get(a, (None, None))
+
+for y in x: pass # E: Iterable expected \
+                 # E: Item "None" of "Optional[List[Tuple[str, str]]]" has no attribute "__iter__"
+if x:
+    for s, t in x:
+        reveal_type(s) # E: Revealed type is 'builtins.str'
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testUnpackUnionNoCrashOnPartialNoneBinder]
+# flags: --strict-optional
+from typing import Dict, Tuple, List, Any
+
+x: object
+a: Any
+d: Dict[str, Tuple[List[Tuple[str, str]], str]]
+x, _ = d.get(a, (None, None))
+reveal_type(x) # E: Revealed type is 'Union[builtins.list[Tuple[builtins.str, builtins.str]], builtins.None]'
+
+if x:
+    for y in x: pass
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testUnpackUnionNoCrashOnPartialNoneList]
+# flags: --strict-optional
+from typing import Dict, Tuple, List, Any
+
+a: Any
+d: Dict[str, Tuple[List[Tuple[str, str]], str]]
+x, _ = d.get(a, ([], []))
+reveal_type(x) # E: Revealed type is 'Union[builtins.list[Tuple[builtins.str, builtins.str]], builtins.list[<nothing>]]'
+
+for y in x: pass
+[builtins fixtures/dict.pyi]
+[out]
+
 [case testLongUnionFormatting]
 from typing import Any, Generic, TypeVar, Union
 

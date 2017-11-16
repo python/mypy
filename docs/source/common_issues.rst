@@ -14,7 +14,7 @@ Can't install mypy using pip
 
 If installation fails, you've probably hit one of these issues:
 
-* Mypy needs Python 3.3 or later to run.
+* Mypy needs Python 3.4 or later to run.
 * You may have to run pip like this:
   ``python3 -m pip install mypy``.
 

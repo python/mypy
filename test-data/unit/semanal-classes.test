@@ -547,12 +547,10 @@ MypyFile:1(
       f
       Args(
         Var(self)
-        Var(x))
-      def (self: __main__.A, x: builtins.int =)
-      Init(
-        AssignmentStmt:4(
-          NameExpr(x [l])
+        default(
+          Var(x)
           NameExpr(X [__main__.A.X])))
+      def (self: __main__.A, x: builtins.int =)
       Block:4(
         PassStmt:4()))))
 

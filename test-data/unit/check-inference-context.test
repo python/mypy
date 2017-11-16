@@ -911,3 +911,11 @@ class M(Generic[_KT, _VT]):
 
 def f(d: M[_KT, _VT], k: _KT) -> Union[_VT, None]:
     return d.get(k, None)
+
+[case testLambdaDeferredCrash]
+from typing import Callable
+
+class C:
+    def f(self) -> None:
+        g: Callable[[], int] = lambda: 1 or self.x
+        self.x = int()

@@ -56,7 +56,6 @@ def is_similar_node_shallow(n: SymbolTableNode, m: SymbolTableNode) -> bool:
     #   tvar_def
     #   type_override
     if (n.kind != m.kind
-            or n.mod_id != m.mod_id
             or n.module_public != m.module_public):
         return False
     if type(n.node) != type(m.node):  # noqa

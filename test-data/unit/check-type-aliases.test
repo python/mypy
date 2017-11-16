@@ -96,6 +96,48 @@ GenAlias = Sequence[T]
 def fun(x: Alias) -> GenAlias[int]: pass
 [out]
 
+[case testCorrectQualifiedAliasesAlsoInFunctions]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+
+class X(Generic[T]):
+    A = X[S]
+    def f(self) -> X[T]:
+        pass
+
+    a: X[T]
+    b: A = a
+    c: A[T] = a
+    d: A[int] = a # E: Incompatible types in assignment (expression has type "X[T]", variable has type "X[int]")
+
+    def g(self) -> None:
+        a: X[T]
+        b: X.A = a
+        c: X.A[T] = a
+        d: X.A[int] = a  # E: Incompatible types in assignment (expression has type "X[T]", variable has type "X[int]")
+
+def g(arg: X[int]) -> None:
+    p: X[int] = arg.f()
+    q: X.A = arg.f()
+    r: X.A[str] = arg.f() # E: Incompatible types in assignment (expression has type "X[int]", variable has type "X[str]")
+[out]
+
+[case testProhibitBoundTypeVariableReuseForAliases]
+from typing import TypeVar, Generic, List
+T = TypeVar('T')
+class C(Generic[T]):
+    A = List[T] # E: Can't use bound type variable "T" to define generic alias
+
+x: C.A
+reveal_type(x) # E: Revealed type is 'builtins.list[Any]'
+
+def f(x: T) -> T:
+    A = List[T] # E: Can't use bound type variable "T" to define generic alias
+    return x
+[builtins fixtures/list.pyi]
+[out]
+
 [case testTypeAliasInBuiltins]
 def f(x: bytes): pass
 bytes
@@ -112,6 +154,110 @@ EmptyTupleCallable = Callable[[Tuple[()]], None]
 f = None # type: EmptyTupleCallable
 reveal_type(f)  # E: Revealed type is 'def (Tuple[])'
 [builtins fixtures/list.pyi]
+
+[case testForwardTypeAlias]
+def f(p: 'Alias') -> None:
+    pass
+
+reveal_type(f) # E: Revealed type is 'def (p: builtins.int)'
+Alias = int
+[out]
+
+[case testForwardTypeAliasGeneric]
+from typing import TypeVar, Tuple
+def f(p: 'Alias[str]') -> None:
+    pass
+
+reveal_type(f) # E: Revealed type is 'def (p: Tuple[builtins.int, builtins.str])'
+T = TypeVar('T')
+Alias = Tuple[int, T]
+[out]
+
+[case testRecursiveAliasesErrors1]
+from typing import Type, Callable, Union
+
+A = Union[A, int]
+B = Callable[[B], int]
+C = Type[C]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testRecursiveAliasesErrors2]
+from typing import Type, Callable, Union
+
+A = Union[B, int]
+B = Callable[[C], int]
+C = Type[A]
+[out]
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testDoubleForwardAlias]
+from typing import List
+x: A
+A = List[B]
+B = List[int]
+reveal_type(x) # E: Revealed type is 'builtins.list[builtins.list[builtins.int]]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testDoubleForwardAliasWithNamedTuple]
+from typing import List, NamedTuple
+x: A
+A = List[B]
+class B(NamedTuple):
+    x: str
+reveal_type(x[0].x) # E: Revealed type is 'builtins.str'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testJSONAliasApproximation]
+from typing import List, Union, Dict
+x: JSON
+JSON = Union[int, str, List[JSON], Dict[str, JSON]] # type: ignore
+reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[Any], builtins.dict[builtins.str, Any]]'
+if isinstance(x, list):
+    reveal_type(x) # E: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testProhibitedForwardRefToTypeVar]
+from typing import TypeVar, List
+
+a: List[T]
+
+T = TypeVar('T')
+[builtins fixtures/list.pyi]
+[out]
+main:3: error: Invalid type "__main__.T"
+main:3: note: Forward references to type variables are prohibited
+
+[case testUnsupportedForwardRef]
+from typing import List, TypeVar
+
+T = TypeVar('T')
+
+def f(x: T) -> None:
+    y: A[T]  # E: Unsupported forward reference to "A"
+
+A = List[T]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testUnsupportedForwardRef2]
+from typing import List, TypeVar
+
+def f() -> None:
+    X = List[int]
+    x: A[X]  # E: Unsupported forward reference to "A"
+
+T = TypeVar('T')
+A = List[T]
+[builtins fixtures/list.pyi]
+[out]
 
 [case testNoneAlias]
 from typing import Union

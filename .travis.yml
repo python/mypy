@@ -3,15 +3,11 @@ language: python
 # cache package wheels (1 cache per python version)
 cache: pip
 python:
-  - "3.3"
   - "3.4"
   # Specifically request 3.5.1 because we need to be compatible with that.
   - "3.5.1"
   - "3.6"
   - "3.7-dev"
-  # Pypy build is disabled because it doubles the travis build time, and it rarely fails
-  # unless one one of the other builds fails.
-  # - "pypy3"
 
 install:
   - pip install -U pip setuptools wheel
@@ -20,5 +16,6 @@ install:
   - pip install .
 
 script:
-  - python runtests.py -j12 -x lint
+  - python runtests.py -j12 -x lint -x package
   - if [[ $TRAVIS_PYTHON_VERSION == '3.6' ]]; then flake8; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.5.1' ]]; then python runtests.py package; fi

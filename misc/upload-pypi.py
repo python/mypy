@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build and upload mypy packages for Linux and macOS to PyPI.
 
-Note: This should be run on macOS using offical python.org Python 3.6 or
+Note: This should be run on macOS using official python.org Python 3.6 or
       later, as this is the only tested configuration. Use --force to
       run anyway.
 
@@ -54,7 +54,7 @@ class Builder:
             self.upload_wheel()
             self.upload_sdist()
             self.heading('Successfully uploaded wheel and sdist for mypy {}'.format(self.version))
-            print("<< Don't forget to upload Windows wheels! >>")
+            print("<< All done! >>")
         else:
             self.heading('Successfully built wheel and sdist for mypy {}'.format(self.version))
             dist_dir = os.path.join(self.repo_dir, 'dist')
@@ -105,7 +105,7 @@ class Builder:
 
     def make_virtualenv(self) -> None:
         self.heading('Creating a fresh virtualenv')
-        self.run('virtualenv -p {} mypy-venv'.format(sys.executable))
+        self.run('python3 -m virtualenv -p {} mypy-venv'.format(sys.executable))
 
     def install_dependencies(self) -> None:
         self.heading('Installing build dependencies')

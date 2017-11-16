@@ -29,7 +29,7 @@ class TypeFixture:
 
         def make_type_var(name: str, id: int, values: List[Type], upper_bound: Type,
                           variance: int) -> TypeVarType:
-            return TypeVarType(TypeVarDef(name, id, values, upper_bound, variance))
+            return TypeVarType(TypeVarDef(name, name, id, values, upper_bound, variance))
 
         self.t = make_type_var('T', 1, [], self.o, variance)     # T`1 (type variable)
         self.tf = make_type_var('T', -1, [], self.o, variance)   # T`-1 (type variable)
@@ -216,7 +216,7 @@ class TypeFixture:
                     variance = variances[id - 1]
                 else:
                     variance = COVARIANT
-                v.append(TypeVarDef(n, id, [], self.o, variance=variance))
+                v.append(TypeVarDef(n, n, id, [], self.o, variance=variance))
             class_def.type_vars = v
 
         info = TypeInfo(SymbolTable(), class_def, module_name)

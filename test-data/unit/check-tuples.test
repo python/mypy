@@ -633,7 +633,7 @@ for x in t:
 [case testForLoopOverEmptyTuple]
 import typing
 t = ()
-for x in t: pass
+for x in t: pass  # E: Need type annotation for variable
 [builtins fixtures/for.pyi]
 
 [case testForLoopOverNoneValuedTuple]
@@ -704,18 +704,17 @@ from typing import Tuple
 class A(tuple): pass
 [out]
 
-[case testTupleBaseClass2-skip]
+[case testTupleBaseClass2]
 import m
 [file m.pyi]
-# This doesn't work correctly -- no errors are reported (#867)
 from typing import Tuple
 a = None # type: A
 class A(Tuple[int, str]): pass
 x, y = a
-x() # Expected: "int" not callable
-y() # Expected: "str" not callable
+x() # E: "int" not callable
+y() # E: "str" not callable
+[builtins fixtures/tuple.pyi]
 [out]
-(should fail)
 
 [case testGenericClassWithTupleBaseClass]
 from typing import TypeVar, Generic, Tuple
@@ -941,3 +940,30 @@ y = ""
 reveal_type(t[x:])  # E: Revealed type is 'Union[builtins.int, builtins.str]'
 t[y:]  # E: Slice index must be an integer or None
 [builtins fixtures/tuple.pyi]
+
+[case testInferTupleTypeFallbackAgainstInstance]
+from typing import TypeVar, Generic, Tuple
+T = TypeVar('T')
+
+class Base(Generic[T]): pass
+def f(x: Base[T]) -> T: pass
+
+class DT(Tuple[str, str], Base[int]):
+    pass
+
+reveal_type(f(DT())) # E: Revealed type is 'builtins.int*'
+
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testTypeTupleClassmethod]
+from typing import Tuple, Type
+
+class C(Tuple[int, str]):
+    @classmethod
+    def f(cls) -> None: pass
+
+t: Type[C]
+t.g()  # E: "Type[C]" has no attribute "g"
+t.f()
+[builtins fixtures/classmethod.pyi]
