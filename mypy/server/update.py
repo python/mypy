@@ -52,7 +52,8 @@ from mypy.build import BuildManager, State, BuildSource, Graph, load_graph
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
-    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator
+    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator,
+    Import, ImportFrom
 )
 from mypy.options import Options
 from mypy.types import Type
@@ -231,9 +232,27 @@ def verify_dependencies(state: State, manager: BuildManager) -> None:
     """Report errors for import targets in module that don't exist."""
     for dep in state.dependencies + state.suppressed: # TODO: ancestors?
         if dep not in manager.modules:
-            line = 1  # TODO: Use correct line of import
+            assert state.tree
+            line = find_import_line(state.tree, dep) or 1
             assert state.path
             manager.module_not_found(state.path, state.id, line, dep)
+
+
+def find_import_line(node: MypyFile, target: str) -> Optional[int]:
+    for imp in node.imports:
+        if isinstance(imp, Import):
+            for name, _ in imp.ids:
+                if name == target:
+                    return imp.line
+        if isinstance(imp, ImportFrom):
+            if imp.id == target:
+                return imp.line
+            # TODO: Relative imports
+            for name, _ in imp.names:
+                if '%s.%s' % (imp.id, name) == target:
+                    return imp.line
+        # TODO: ImportAll
+    return None
 
 
 def update_dependencies(new_modules: Dict[str, MypyFile],

@@ -105,3 +105,32 @@ f()
 b.py:1: error: Name 'f' is not defined
 ==
 b.py:1: error: Name 'f' is not defined
+
+[case testImportLineNumber1]
+import b
+[file b.py]
+[file b.py.2]
+x = 1
+import a
+[out]
+==
+b.py:2: error: Cannot find module named 'a'
+b.py:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testImportLineNumber2]
+import b
+[file b.py]
+[file b.py.2]
+x = 1
+import a
+from c import f
+[file x.py.3]
+[out]
+==
+b.py:2: error: Cannot find module named 'a'
+b.py:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+b.py:3: error: Cannot find module named 'c'
+==
+b.py:2: error: Cannot find module named 'a'
+b.py:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+b.py:3: error: Cannot find module named 'c'
