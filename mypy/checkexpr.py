@@ -543,7 +543,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if (callee.is_type_obj() and callee.type_object().is_abstract
                     # Exceptions for Type[...] and classmethod first argument
-                    and not callee.from_type_type and not callee.is_classmethod_class):
+                    and not callee.from_type_type and not callee.is_classmethod_class
+                    and not callee.type_object().fallback_to_any):
                 type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
                     callee.type_object().name(), type.abstract_attributes,
@@ -1394,7 +1395,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             method_type = None  # type: Optional[mypy.types.Type]
 
             if operator == 'in' or operator == 'not in':
-                right_type = self.accept(right)  # TODO only evaluate if needed
+                right_type = self.accept(right)  # always validate the right operand
 
                 # Keep track of whether we get type check errors (these won't be reported, they
                 # are just to verify whether something is valid typing wise).
@@ -1428,6 +1429,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                     allow_reverse=True)
 
             elif operator == 'is' or operator == 'is not':
+                self.accept(right)  # validate the right operand
                 sub_result = self.bool_type()
                 method_type = None
             else:

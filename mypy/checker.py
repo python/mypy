@@ -260,9 +260,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # TODO: Handle __all__
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        node = self.scope.top_function()
-        if self.pass_num < LAST_PASS and isinstance(node, (FuncDef, LambdaExpr)):
-            # Don't report an error yet. Just defer.
+        node = self.scope.top_non_lambda_function()
+        if self.pass_num < LAST_PASS and isinstance(node, FuncDef):
+            # Don't report an error yet. Just defer. Note that we don't defer
+            # lambdas because they are coupled to the surrounding function
+            # through the binder and the inferred type of the lambda, so it
+            # would get messy.
             if self.errors.type_name:
                 type_name = self.errors.type_name[-1]
             else:
@@ -638,7 +641,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 if name:  # Special method names
                     if name in nodes.reverse_op_method_set:
-                        self.check_reverse_op_method(item, typ, name)
+                        self.check_reverse_op_method(item, typ, name, defn)
                     elif name in ('__getattr__', '__getattribute__'):
                         self.check_getattr_method(typ, defn, name)
                     elif name == '__setattr__':
@@ -789,7 +792,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if fdef.type is None and self.options.disallow_untyped_defs:
                 self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
-                if is_unannotated_any(fdef.type.ret_type):
+                ret_type = fdef.type.ret_type
+                if is_unannotated_any(ret_type):
+                    self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
+                elif (fdef.is_coroutine and isinstance(ret_type, Instance) and
+                      is_unannotated_any(ret_type.args[0])):
                     self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
@@ -813,12 +820,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                  isinstance(stmt.expr, EllipsisExpr)))
 
     def check_reverse_op_method(self, defn: FuncItem, typ: CallableType,
-                                method: str) -> None:
+                                method: str, context: Context) -> None:
         """Check a reverse operator method such as __radd__."""
 
         # This used to check for some very obscure scenario.  It now
         # just decides whether it's worth calling
         # check_overlapping_op_methods().
+
+        # First check for a valid signature
+        method_type = CallableType([AnyType(TypeOfAny.special_form),
+                                    AnyType(TypeOfAny.special_form)],
+                                   [nodes.ARG_POS, nodes.ARG_POS],
+                                   [None, None],
+                                   AnyType(TypeOfAny.special_form),
+                                   self.named_type('builtins.function'))
+        if not is_subtype(typ, method_type):
+            self.msg.invalid_signature(typ, context)
+            return
 
         if method in ('__eq__', '__ne__'):
             # These are defined for all objects => can't cause trouble.
@@ -832,9 +850,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(ret_type, Instance):
             if ret_type.type.fullname() == 'builtins.object':
                 return
-        # Plausibly the method could have too few arguments, which would result
-        # in an error elsewhere.
-        if len(typ.arg_types) <= 2:
+
+        if len(typ.arg_types) == 2:
             # TODO check self argument kind
 
             # Check for the issue described above.
@@ -3441,6 +3458,12 @@ class Scope:
     def top_function(self) -> Optional[FuncItem]:
         for e in reversed(self.stack):
             if isinstance(e, FuncItem):
+                return e
+        return None
+
+    def top_non_lambda_function(self) -> Optional[FuncItem]:
+        for e in reversed(self.stack):
+            if isinstance(e, FuncItem) and not isinstance(e, LambdaExpr):
                 return e
         return None
 

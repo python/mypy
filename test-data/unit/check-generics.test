@@ -812,7 +812,7 @@ class Node(Generic[T]):
     def __init__(self, x: T) -> None:
         ...
 
-BadC = Callable[T] # E: Invalid function type
+BadC = Callable[T] # E: Please use "Callable[[<parameters>], <return type>]" or "Callable"
 
 C = Callable[..., T]
 C2 = Callable[[T, T], Node[T]]

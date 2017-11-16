@@ -650,3 +650,26 @@ y: Optional[int]
 x = y
 reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.None]'
 [out]
+
+[case testNarrowOptionalOutsideLambda]
+from typing import Optional
+
+class A:
+    a: int
+
+def f(x: Optional[A]) -> None:
+    assert x
+    lambda: x.a
+[builtins fixtures/isinstancelist.pyi]
+
+[case testNarrowOptionalOutsideLambdaWithDeferred]
+from typing import Optional
+
+class A:
+    a: int
+
+    def f(self, x: Optional['A']) -> None:
+        assert x
+        lambda: (self.y, x.a) # E: Cannot determine type of 'y'
+        self.y = int()
+[builtins fixtures/isinstancelist.pyi]
