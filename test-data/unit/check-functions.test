@@ -2212,3 +2212,19 @@ def i() -> List[Union[str, int]]:
     return x
 
 [builtins fixtures/dict.pyi]
+
+[case testLambdaSemanal]
+f = lambda: xyz
+[out]
+main:1: error: Name 'xyz' is not defined
+
+[case testLambdaTypeCheck]
+f = lambda: 1 + '1'
+[out]
+main:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testLambdaTypeInference]
+f = lambda: 5
+reveal_type(f)
+[out]
+main:2: error: Revealed type is 'def () -> builtins.int'
