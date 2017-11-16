@@ -848,8 +848,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if ret_type.type.fullname() == 'builtins.object':
                 return
 
-        if len(reverse_type.arg_types) != 2:
-            return
+        assert len(reverse_type.arg_types) == 2
 
         forward_name = nodes.normal_from_reverse_op[reverse_name]
         forward_base = reverse_type.arg_types[1]
