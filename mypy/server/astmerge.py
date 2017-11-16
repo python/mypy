@@ -15,6 +15,7 @@ from mypy.types import (
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded
 )
+from mypy.util import get_prefix
 
 
 def merge_asts(old: MypyFile, old_symbols: SymbolTable,
@@ -217,8 +218,3 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
             if isinstance(node.node, Var) and node.node.type:
                 node.node.type.accept(TypeReplaceVisitor(replacements))
                 node.node.info = cast(TypeInfo, replacements.get(node.node.info, node.node.info))
-
-
-def get_prefix(fullname: str) -> str:
-    """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
-    return fullname.rsplit('.', 1)[0]

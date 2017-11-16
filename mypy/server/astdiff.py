@@ -18,11 +18,7 @@ from mypy.types import (
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
     UnionType, Overloaded, PartialType, TypeType
 )
-
-
-def get_prefix(id: str) -> str:
-    """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
-    return id.rsplit('.', 1)[0]
+from mypy.util import get_prefix
 
 
 def is_identical_type(t: Type, s: Type) -> bool:
@@ -137,6 +133,13 @@ class IdenticalTypeVisitor(TypeVisitor[bool]):
         return False
 
 
+# Snapshot representation of a symbol table node or type. The representation is
+# opaque -- the only supported operations are comparing for equality and
+# hashing (latter for type snapshots only). Snapshots can contain primitive
+# objects, nested tuples, lists and dictionaries and primitive objects (type
+# snapshots are immutable).
+#
+# For example, the snapshot of the 'int' type is ('Instance', 'builtins.int', ()).
 SnapshotItem = Tuple[object, ...]
 
 
@@ -203,8 +206,10 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
             assert isinstance(node, MypyFile)
             result[name] = ('Moduleref', common)
         elif symbol.kind == TVAR:
+            # TODO: Implement
             assert False
         elif symbol.kind == TYPE_ALIAS:
+            # TODO: Implement
             assert False
         else:
             assert symbol.kind != UNBOUND_IMPORTED

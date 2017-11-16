@@ -83,6 +83,7 @@ from mypy.options import Options
 from mypy import experiments
 from mypy.plugin import Plugin
 from mypy import join
+from mypy.util import get_prefix
 
 
 T = TypeVar('T')
@@ -3666,6 +3667,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         if isinstance(n.node, (FuncDef, OverloadedFuncDef, TypeInfo, Var)):
             # TODO: Why is it possible for fullname() to be None, even though it's not
             #   annotated as Optional[str]?
+            # TODO: Do this for all modules in the set of modified files
+            # TODO: This doesn't work for things nested within classes
             if n.node.fullname() and get_prefix(n.node.fullname()) == self.cur_mod_id:
                 # This is an indirect reference to a name defined in the current module.
                 # Rebind it.
@@ -3684,8 +3687,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
 
         Assume that the name is defined. This happens in the global namespace -- the local
         module namespace is ignored.
-
-        NOTE: This is only supported for names known to be defined.
         """
         parts = name.split('.')
         n = self.modules[parts[0]]
@@ -4189,8 +4190,3 @@ class MakeAnyNonExplicit(TypeTranslator):
         if t.type_of_any == TypeOfAny.explicit:
             return t.copy_modified(TypeOfAny.special_form)
         return t
-
-
-def get_prefix(fullname: str) -> str:
-    """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
-    return fullname.rsplit('.', 1)[0]
