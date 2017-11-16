@@ -195,8 +195,6 @@ def build_incremental_step(manager: BuildManager,
 
     # Parse file and run first pass of semantic analysis.
     state.parse_file()
-    # Generate errors if some import targets aren't available.
-    verify_dependencies(state, manager)
 
     # TODO: state.fix_suppressed_dependencies()?
 
