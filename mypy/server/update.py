@@ -188,6 +188,7 @@ def build_incremental_step(manager: BuildManager,
     for st in graph.values():
         if st.id not in old_graph and st.id not in changed_set:
             changed_set.add(st.id)
+            assert st.path
             changed_modules.append((st.id, st.path))
     # TODO: Handle multiple changed modules per step
     assert len(changed_modules) == 1, changed_modules
