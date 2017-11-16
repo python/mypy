@@ -831,8 +831,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                    [None, None],
                                    AnyType(TypeOfAny.special_form),
                                    self.named_type('builtins.function'))
-        if not is_subtype(typ, method_type):
-            self.msg.invalid_signature(typ, context)
+        if not is_subtype(reverse_type, method_type):
+            self.msg.invalid_signature(reverse_type, context)
             return
 
         if reverse_name in ('__eq__', '__ne__'):
