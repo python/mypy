@@ -117,7 +117,7 @@ class ASTMergeSuite(DataSuite):
                                                             Dict[Expression, Type]]:
         manager.update([(module_id, path)])
         module = manager.manager.modules[module_id]
-        type_map = manager.graph[module_id].type_checker.type_map
+        type_map = manager.graph[module_id].type_map()
         return module, type_map
 
     def dump(self,
@@ -204,7 +204,7 @@ class ASTMergeSuite(DataSuite):
         for module_id in sorted(graph):
             if not is_dumped_module(module_id):
                 continue
-            type_map = graph[module_id].type_checker.type_map
+            type_map = graph[module_id].type_map()
             if type_map:
                 a.append('## {}'.format(module_id))
                 for expr in sorted(type_map, key=lambda n: (n.line, short_type(n),

@@ -269,7 +269,7 @@ def update_dependencies(new_modules: Dict[str, MypyFile],
             # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
             continue
         module_deps = get_dependencies(target=node,
-                                       type_map=graph[id].type_checker.type_map,
+                                       type_map=graph[id].type_map(),
                                        python_version=options.python_version)
         for trigger, targets in module_deps.items():
             deps.setdefault(trigger, set()).update(targets)
@@ -438,7 +438,9 @@ def reprocess_nodes(manager: BuildManager,
     old_types_map = get_enclosing_namespace_types(nodes)
 
     # Type check.
-    graph[module_id].type_checker.check_second_pass(nodes)  # TODO: check return value
+    type_checker = graph[module_id].type_checker
+    assert type_checker is not None
+    type_checker.check_second_pass(nodes)  # TODO: check return value
 
     # Check if any attribute types were changed and need to be propagated further.
     new_triggered = get_triggered_namespace_items(old_types_map)
@@ -493,7 +495,7 @@ def update_deps(module_id: str,
                 options: Options) -> None:
     for deferred in nodes:
         node = deferred.node
-        type_map = graph[module_id].type_checker.type_map
+        type_map = graph[module_id].type_map()
         new_deps = get_dependencies_of_target(module_id, node, type_map, options.python_version)
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)

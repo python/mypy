@@ -119,7 +119,7 @@ class BuildSourceSet:
 
 # A dict containing saved cache data from a previous run.  This will
 # be updated in place with newly computed cache data.  See dmypy.py.
-SavedCache = Dict[str, Tuple['CacheMeta', MypyFile]]
+SavedCache = Dict[str, Tuple['CacheMeta', MypyFile, Dict[Expression, Type]]]
 
 
 def build(sources: List[BuildSource],
@@ -938,7 +938,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     """
     saved_cache = manager.saved_cache
     if id in saved_cache:
-        m, t = saved_cache[id]
+        m, t, types = saved_cache[id]
         manager.add_stats(reused_metas=1)
         manager.trace("Reusing saved metadata for %s" % id)
         # Note: it could still be skipped if the mtime/size/hash mismatches.
@@ -1465,6 +1465,7 @@ class State:
             self.import_context = []
         self.id = id or '__main__'
         self.options = manager.options.clone_for_module(self.id)
+        self.type_checker = None  # type: Optional[TypeChecker]
         if not path and source is None:
             assert id is not None
             file_id = id
@@ -1839,7 +1840,13 @@ class State:
                                             self.tree, self.xpath, manager.plugin)
             self.type_checker.check_first_pass()
 
+    def type_map(self) -> Dict[Expression, Type]:
+        if self.type_checker is None:
+            return {}
+        return self.type_checker.type_map
+
     def type_check_second_pass(self) -> bool:
+        assert self.type_checker is not None, "Internal error: type checking first pass not done"
         if self.options.semantic_analysis_only:
             return False
         with self.wrap_context():
@@ -1847,21 +1854,22 @@ class State:
 
     def finish_passes(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
+        assert self.type_checker is not None, "Internal error: type checking not done"
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
             # Some tests want to look at the set of all types.
             if manager.options.use_builtins_fixtures or manager.options.dump_deps:
-                manager.all_types.update(self.type_checker.type_map)
+                manager.all_types.update(self.type_map())
 
             if self.options.incremental:
                 self._patch_indirect_dependencies(self.type_checker.module_refs,
-                                                  self.type_checker.type_map)
+                                                  self.type_map())
 
             if self.options.dump_inference_stats:
                 dump_type_stats(self.tree, self.xpath, inferred=True,
-                                typemap=self.type_checker.type_map)
+                                typemap=self.type_map())
             manager.report_file(self.tree, self.type_checker.type_map, self.options)
 
     def _patch_indirect_dependencies(self,
@@ -1965,7 +1973,7 @@ def preserve_cache(graph: Graph) -> SavedCache:
     for id, state in graph.items():
         assert state.id == id
         if state.meta is not None and state.tree is not None:
-            saved_cache[id] = (state.meta, state.tree)
+            saved_cache[id] = (state.meta, state.tree, state.type_map())
     return saved_cache
 
 
