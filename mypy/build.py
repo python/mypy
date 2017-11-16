@@ -642,19 +642,20 @@ class BuildManager:
         self.errors.set_file_ignored_lines(path, tree.ignored_lines, ignore_errors)
         return tree
 
-    def module_not_found(self, path: str, line: int, id: str) -> None:
+    def module_not_found(self, path: str, id: str, line: int, target: str) -> None:
         self.errors.set_file(path, id)
         stub_msg = "(Stub files are from https://github.com/python/typeshed)"
-        if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
-                (self.options.python_version[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
+        if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(target)) or
+                (self.options.python_version[0] >= 3 and
+                     moduleinfo.is_py3_std_lib_module(target))):
             self.errors.report(
-                line, 0, "No library stub file for standard library module '{}'".format(id))
+                line, 0, "No library stub file for standard library module '{}'".format(target))
             self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
-        elif moduleinfo.is_third_party_module(id):
-            self.errors.report(line, 0, "No library stub file for module '{}'".format(id))
+        elif moduleinfo.is_third_party_module(target):
+            self.errors.report(line, 0, "No library stub file for module '{}'".format(target))
             self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
         else:
-            self.errors.report(line, 0, "Cannot find module named '{}'".format(id))
+            self.errors.report(line, 0, "Cannot find module named '{}'".format(target))
             self.errors.report(line, 0, '(Perhaps setting MYPYPATH '
                                'or using the "--ignore-missing-imports" flag would help)',
                                severity='note', only_once=True)
@@ -1511,7 +1512,8 @@ class State:
                     if not self.options.ignore_missing_imports:
                         save_import_context = manager.errors.import_context()
                         manager.errors.set_import_context(caller_state.import_context)
-                        manager.module_not_found(caller_state.xpath, caller_line, id)
+                        manager.module_not_found(caller_state.xpath, caller_state.id,
+                                                 caller_line, id)
                         manager.errors.set_import_context(save_import_context)
                     manager.missing_modules.add(id)
                     raise ModuleNotFound

@@ -176,6 +176,8 @@ def build_incremental_step(manager: BuildManager,
                   manager=manager)  # TODO: more args?
     # Parse file and run first pass of semantic analysis.
     state.parse_file()
+    # Generate errors if some import targets aren't available.
+    verify_dependencies(state, manager)
 
     # TODO: state.fix_suppressed_dependencies()?
 
@@ -202,15 +204,18 @@ def build_incremental_step(manager: BuildManager,
     state.finish_passes()
     # TODO: state.write_cache()?
     # TODO: state.mark_as_rechecked()?
+    # TODO: Store new State in graph, as it has updated dependencies etc.
 
-    if id in graph:
-        # Record the new types of expressions.
-        graph[id].type_checker.type_map = state.type_checker.type_map
-    else:
-        # New module: store the state for future build steps.
-        graph[id] = state
-
+    graph[id] = state
     return new_modules
+
+
+def verify_dependencies(state: State, manager: BuildManager) -> None:
+    """Report errors for import targets in module that don't exist."""
+    for dep in state.dependencies:
+        if dep not in manager.modules:
+            line = 1  # TODO: Use correct line of import
+            manager.module_not_found(state.path, state.id, line, dep)
 
 
 def update_dependencies(new_modules: Dict[str, MypyFile],
@@ -402,6 +407,9 @@ def reprocess_nodes(manager: BuildManager,
 
     # Dependencies may have changed.
     update_deps(module_id, nodes, graph, deps, manager.options)
+
+    # Report missing imports.
+    verify_dependencies(graph[module_id], manager)
 
     return new_triggered
 

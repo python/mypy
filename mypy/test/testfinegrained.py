@@ -52,7 +52,7 @@ class FineGrainedSuite(DataSuite):
 
         a = []
         if messages:
-            a.extend(messages)
+            a.extend(normalize_messages(messages))
 
         fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
@@ -65,8 +65,7 @@ class FineGrainedSuite(DataSuite):
                 modules.append((module, new_path))
 
             new_messages = fine_grained_manager.update(modules)
-            new_messages = [re.sub('^tmp' + re.escape(os.sep), '', message)
-                            for message in new_messages]
+            new_messages = normalize_messages(new_messages)
 
             a.append('==')
             a.extend(new_messages)
@@ -118,3 +117,8 @@ def find_steps() -> List[List[Tuple[str, str]]]:
                 steps.setdefault(num, []).append((module, path))
     max_step = max(steps)
     return [steps[num] for num in range(2, max_step + 1)]
+
+
+def normalize_messages(messages: List[str]) -> List[str]:
+    return [re.sub('^tmp' + re.escape(os.sep), '', message)
+            for message in messages]
