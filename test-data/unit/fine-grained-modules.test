@@ -11,7 +11,6 @@
 -- * add file, fixes import error elsewhere
 -- * add file, causes new errors elsewhere
 -- * add file, report existing unrelated errors
--- - add dependency to typeshed
 -- - add file, blocking error
 -- - correct line number for import
 

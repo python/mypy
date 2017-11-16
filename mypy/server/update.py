@@ -48,7 +48,7 @@ Major todo items:
 
 from typing import Dict, List, Set, Tuple, Iterable, Union, Optional
 
-from mypy.build import BuildManager, State
+from mypy.build import BuildManager, State, BuildSource, Graph, load_graph
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
@@ -104,9 +104,9 @@ class FineGrainedBuildManager:
         Returns:
             A list of errors.
         """
-        if DEBUG:
-            print('==== update ====')
         changed_ids = [id for id, _ in changed_modules]
+        if DEBUG:
+            print('==== update %s ====' % changed_ids)
         if self.blocking_errors:
             # TODO: Relax this requirement
             assert self.blocking_errors == changed_ids
@@ -124,11 +124,12 @@ class FineGrainedBuildManager:
 
         manager.errors.reset()
         try:
-            new_modules = build_incremental_step(manager, changed_modules, graph)
+            new_modules, self.graph = build_incremental_step(manager, changed_modules, graph)
         except CompileError as err:
             self.blocking_errors = changed_ids
             return err.messages
         self.blocking_errors = []
+        graph = self.graph
 
         # TODO: What to do with stale dependencies?
         triggered = calculate_active_triggers(manager, old_snapshots, new_modules)
@@ -153,7 +154,7 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
 
 def build_incremental_step(manager: BuildManager,
                            changed_modules: List[Tuple[str, str]],
-                           graph: Dict[str, State]) -> Dict[str, MypyFile]:
+                           graph: Dict[str, State]) -> Tuple[Dict[str, MypyFile], Graph]:
     """Build new versions of changed modules only.
 
     Raise CompleError on encountering a blocking error.
@@ -166,14 +167,32 @@ def build_incremental_step(manager: BuildManager,
         assert path == manager.modules[id].path, '%s != %s' % (path, manager.modules[id].path)
     old_modules = dict(manager.modules)
 
-    # TODO: what if file is missing?
-    with open(path) as f:
-        source = f.read()
+    sources = [BuildSource(st.path, st.id, None) for st in graph.values()]
+    for id, path in changed_modules:
+        if id not in graph:
+            sources.append(BuildSource(path, id, None))
 
-    state = State(id=id,
-                  path=path,
-                  source=source,
-                  manager=manager)  # TODO: more args?
+    changed_set = {id for id, _ in changed_modules}
+
+    def get_cached_state(id: str) -> Optional[State]:
+        if id in changed_set:
+            return None
+        return graph.get(id)
+
+    old_graph = graph
+    manager.missing_modules = set()
+    graph = load_graph(sources, manager, get_cached_state)
+
+    # Find any other modules brought in by imports.
+    for st in graph.values():
+        if st.id not in old_graph and st.id not in changed_set:
+            changed_set.add(st.id)
+            changed_modules.append((st.id, st.path))
+    # TODO: Handle multiple changed modules per step
+    assert len(changed_modules) == 1, changed_modules
+
+    state = graph[id]
+
     # Parse file and run first pass of semantic analysis.
     state.parse_file()
     # Generate errors if some import targets aren't available.
@@ -207,14 +226,15 @@ def build_incremental_step(manager: BuildManager,
     # TODO: Store new State in graph, as it has updated dependencies etc.
 
     graph[id] = state
-    return new_modules
+    return new_modules, graph
 
 
 def verify_dependencies(state: State, manager: BuildManager) -> None:
     """Report errors for import targets in module that don't exist."""
-    for dep in state.dependencies:
+    for dep in state.dependencies + state.suppressed: # TODO: ancestors?
         if dep not in manager.modules:
             line = 1  # TODO: Use correct line of import
+            assert state.path
             manager.module_not_found(state.path, state.id, line, dep)
 
 

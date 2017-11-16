@@ -79,13 +79,13 @@ class ASTMergeSuite(DataSuite):
         target_path = os.path.join(test_temp_dir, 'target.py')
         shutil.copy(os.path.join(test_temp_dir, 'target.py.next'), target_path)
 
-        a.extend(self.dump(manager.modules, graph, kind))
+        a.extend(self.dump(manager.modules, fine_grained_manager.graph, kind))
         old_subexpr = get_subexpressions(manager.modules['target'])
 
         a.append('==>')
 
         new_file, new_types = self.build_increment(fine_grained_manager, 'target', target_path)
-        a.extend(self.dump(manager.modules, graph, kind))
+        a.extend(self.dump(manager.modules, fine_grained_manager.graph, kind))
 
         for expr in old_subexpr:
             # Verify that old AST nodes are removed from the expression type map.
