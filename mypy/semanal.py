@@ -83,6 +83,7 @@ from mypy.options import Options
 from mypy import experiments
 from mypy.plugin import Plugin
 from mypy import join
+from mypy.util import get_prefix
 
 
 T = TypeVar('T')
@@ -3287,14 +3288,22 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             # In this case base.node is the module's MypyFile and we look up
             # bar in its namespace.  This must be done for all types of bar.
             file = cast(Optional[MypyFile], base.node)  # can't use isinstance due to issue #2999
+            # TODO: Should we actually use this? Not sure if this makes a difference.
+            # if file.fullname() == self.cur_mod_id:
+            #     names = self.globals
+            # else:
+            #     names = file.names
             n = file.names.get(expr.name, None) if file is not None else None
             if n and not n.module_hidden:
                 n = self.normalize_type_alias(n, expr)
                 if not n:
                     return
-                expr.kind = n.kind
-                expr.fullname = n.fullname
-                expr.node = n.node
+                n = self.rebind_symbol_table_node(n)
+                if n:
+                    # TODO: What if None?
+                    expr.kind = n.kind
+                    expr.fullname = n.fullname
+                    expr.node = n.node
             elif file is not None and file.is_stub and '__getattr__' in file.names:
                 # If there is a module-level __getattr__, then any attribute on the module is valid
                 # per PEP 484.
@@ -3627,7 +3636,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                             result = n.node.get(parts[i])
                         n = result
                     elif isinstance(n.node, MypyFile):
-                        n = n.node.names.get(parts[i], None)
+                        names = n.node.names
+                        # Rebind potential references to old version of current module in
+                        # fine-grained incremental mode.
+                        #
+                        # TODO: Do this for all modules in the set of modified files.
+                        if n.node.fullname() == self.cur_mod_id:
+                            names = self.globals
+                        n = names.get(parts[i], None)
                     # TODO: What if node is Var or FuncDef?
                     if not n:
                         if not suppress_errors:
@@ -3638,8 +3654,27 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                     if n and n.module_hidden:
                         self.name_not_defined(name, ctx)
             if n and not n.module_hidden:
+                n = self.rebind_symbol_table_node(n)
                 return n
             return None
+
+    def rebind_symbol_table_node(self, n: SymbolTableNode) -> Optional[SymbolTableNode]:
+        """If node refers to old version of module, return reference to new version.
+
+        If the reference is removed in the new version, return None.
+        """
+        # TODO: Handle type aliases, type variables and other sorts of references
+        if isinstance(n.node, (FuncDef, OverloadedFuncDef, TypeInfo, Var)):
+            # TODO: Why is it possible for fullname() to be None, even though it's not
+            #   annotated as Optional[str]?
+            # TODO: Do this for all modules in the set of modified files
+            # TODO: This doesn't work for things nested within classes
+            if n.node.fullname() and get_prefix(n.node.fullname()) == self.cur_mod_id:
+                # This is an indirect reference to a name defined in the current module.
+                # Rebind it.
+                return self.globals.get(n.node.name())
+        # No need to rebind.
+        return n
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
         sym = self.lookup_fully_qualified(fully_qualified_name)
@@ -3653,7 +3688,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         Assume that the name is defined. This happens in the global namespace -- the local
         module namespace is ignored.
         """
-        assert '.' in name
         parts = name.split('.')
         n = self.modules[parts[0]]
         for i in range(1, len(parts) - 1):

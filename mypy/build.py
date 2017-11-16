@@ -1720,6 +1720,11 @@ class State:
     # Methods for processing modules from source code.
 
     def parse_file(self) -> None:
+        """Parse file and run first pass of semantic analysis.
+
+        Everything done here is local to the file. Don't depend on imported
+        modules in any way. Also record module dependencies based on imports.
+        """
         if self.tree is not None:
             # The file was already parsed (in __init__()).
             return
