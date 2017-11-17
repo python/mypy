@@ -48,7 +48,9 @@ Major todo items:
 
 from typing import Dict, List, Set, Tuple, Iterable, Union, Optional
 
-from mypy.build import BuildManager, State, BuildSource, Graph, load_graph
+from mypy.build import (
+    BuildManager, State, BuildSource, Graph, load_graph, preserve_cache, SavedCache
+)
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
@@ -114,6 +116,8 @@ class FineGrainedBuildManager:
         manager = self.manager
         graph = self.graph
 
+        manager.saved_cache = preserve_cache(graph)
+
         # Record symbol table snaphots of old versions of changed moduiles.
         old_snapshots = {}
         for id, _ in changed_modules:
@@ -168,21 +172,14 @@ def build_incremental_step(manager: BuildManager,
         assert path == manager.modules[id].path, '%s != %s' % (path, manager.modules[id].path)
     old_modules = dict(manager.modules)
 
-    sources = [BuildSource(st.path, st.id, None) for st in graph.values()]
-    for id, path in changed_modules:
-        if id not in graph:
-            sources.append(BuildSource(path, id, None))
-
+    sources = get_sources(graph, changed_modules)
     changed_set = {id for id, _ in changed_modules}
 
-    def get_cached_state(id: str) -> Optional[State]:
-        if id in changed_set:
-            return None
-        return graph.get(id)
+    invalidate_stale_cache_entries(manager.saved_cache, changed_modules)
 
     old_graph = graph
     manager.missing_modules = set()
-    graph = load_graph(sources, manager, get_cached_state)
+    graph = load_graph(sources, manager)
 
     # Find any other modules brought in by imports.
     for st in graph.values():
@@ -226,7 +223,23 @@ def build_incremental_step(manager: BuildManager,
     # TODO: Store new State in graph, as it has updated dependencies etc.
 
     graph[id] = state
+
     return new_modules, graph
+
+
+def get_sources(graph: Graph, changed_modules: List[Tuple[str, str]]) -> List[BuildSource]:
+    sources = [BuildSource(st.path, st.id, None) for st in graph.values()]
+    for id, path in changed_modules:
+        if id not in graph:
+            sources.append(BuildSource(path, id, None))
+    return sources
+
+
+def invalidate_stale_cache_entries(cache: SavedCache,
+                                   changed_modules: List[Tuple[str, str]]) -> None:
+    for name, _ in changed_modules:
+        if name in cache:
+            del cache[name]
 
 
 def verify_dependencies(state: State, manager: BuildManager) -> None:
@@ -438,9 +451,10 @@ def reprocess_nodes(manager: BuildManager,
     old_types_map = get_enclosing_namespace_types(nodes)
 
     # Type check.
-    type_checker = graph[module_id].type_checker
-    assert type_checker is not None
-    type_checker.check_second_pass(nodes)  # TODO: check return value
+    meta, file_node, type_map = manager.saved_cache[module_id]
+    graph[module_id].tree = file_node
+    graph[module_id].type_checker().type_map = type_map
+    graph[module_id].type_checker().check_second_pass(nodes)  # TODO: check return value
 
     # Check if any attribute types were changed and need to be propagated further.
     new_triggered = get_triggered_namespace_items(old_types_map)

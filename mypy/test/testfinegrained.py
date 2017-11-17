@@ -80,11 +80,14 @@ class FineGrainedSuite(DataSuite):
 
     def build(self, source: str) -> Tuple[List[str], BuildManager, Graph]:
         options = Options()
+        options.incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
-        options.cache_dir = os.devnull
+        main_path = os.path.join(test_temp_dir, 'main')
+        with open(main_path, 'w') as f:
+            f.write(source)
         try:
-            result = build.build(sources=[BuildSource('main', None, source)],
+            result = build.build(sources=[BuildSource(main_path, None, None)],
                                  options=options,
                                  alt_lib_path=test_temp_dir)
         except CompileError as e:

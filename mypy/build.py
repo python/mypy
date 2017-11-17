@@ -1465,7 +1465,7 @@ class State:
             self.import_context = []
         self.id = id or '__main__'
         self.options = manager.options.clone_for_module(self.id)
-        self.type_checker = None  # type: Optional[TypeChecker]
+        self._type_checker = None  # type: Optional[TypeChecker]
         if not path and source is None:
             assert id is not None
             file_id = id
@@ -1831,30 +1831,30 @@ class State:
             patch_func()
 
     def type_check_first_pass(self) -> None:
-        assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        manager = self.manager
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            self.type_checker = TypeChecker(manager.errors, manager.modules, self.options,
-                                            self.tree, self.xpath, manager.plugin)
-            self.type_checker.check_first_pass()
+            self.type_checker().check_first_pass()
+
+    def type_checker(self) -> TypeChecker:
+        if not self._type_checker:
+            assert self.tree is not None, "Internal error: must be called on parsed file only"
+            manager = self.manager
+            self._type_checker = TypeChecker(manager.errors, manager.modules, self.options,
+                                             self.tree, self.xpath, manager.plugin)
+        return self._type_checker
 
     def type_map(self) -> Dict[Expression, Type]:
-        if self.type_checker is None:
-            return {}
-        return self.type_checker.type_map
+        return self.type_checker().type_map
 
     def type_check_second_pass(self) -> bool:
-        assert self.type_checker is not None, "Internal error: type checking first pass not done"
         if self.options.semantic_analysis_only:
             return False
         with self.wrap_context():
-            return self.type_checker.check_second_pass()
+            return self.type_checker().check_second_pass()
 
     def finish_passes(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        assert self.type_checker is not None, "Internal error: type checking not done"
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
@@ -1864,13 +1864,13 @@ class State:
                 manager.all_types.update(self.type_map())
 
             if self.options.incremental:
-                self._patch_indirect_dependencies(self.type_checker.module_refs,
+                self._patch_indirect_dependencies(self.type_checker().module_refs,
                                                   self.type_map())
 
             if self.options.dump_inference_stats:
                 dump_type_stats(self.tree, self.xpath, inferred=True,
                                 typemap=self.type_map())
-            manager.report_file(self.tree, self.type_checker.type_map, self.options)
+            manager.report_file(self.tree, self.type_map(), self.options)
 
     def _patch_indirect_dependencies(self,
                                      module_refs: Set[str],
