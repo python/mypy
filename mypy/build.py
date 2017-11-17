@@ -1922,7 +1922,7 @@ class State:
             self.meta = None
             self.mark_interface_stale(on_errors=True)
             return
-        dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
+        dep_prios = self.dependency_priorities()
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
             list(self.dependencies), list(self.suppressed), list(self.child_modules),
@@ -1934,6 +1934,9 @@ class State:
             self.manager.log("Cached module {} has changed interface".format(self.id))
             self.mark_interface_stale()
             self.interface_hash = new_interface_hash
+
+    def dependency_priorities(self) -> List[int]:
+        return [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:

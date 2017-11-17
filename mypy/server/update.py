@@ -49,7 +49,7 @@ Major todo items:
 from typing import Dict, List, Set, Tuple, Iterable, Union, Optional
 
 from mypy.build import (
-    BuildManager, State, BuildSource, Graph, load_graph, SavedCache, PRI_HIGH, CacheMeta,
+    BuildManager, State, BuildSource, Graph, load_graph, SavedCache, CacheMeta,
     cache_meta_from_dict
 )
 from mypy.checker import DeferredNode
@@ -247,15 +247,17 @@ def get_sources(graph: Graph, changed_modules: List[Tuple[str, str]]) -> List[Bu
 
 
 def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
+    """Preserve every module with an AST in the graph, including modules with errors."""
     saved_cache = {}
     for id, state in graph.items():
         assert state.id == id
         if state.tree is not None:
             meta = state.meta
             if meta is None:
+                # No metadata, likely because of an error. We still want to retain the AST.
+                # There is no corresponding JSON so create partial "memory-only" metadata.
                 assert state.path
-                # TODO: share the following with mypy.build
-                dep_prios = [state.priorities.get(dep, PRI_HIGH) for dep in state.dependencies]
+                dep_prios = state.dependency_priorities()
                 meta = memory_only_cache_meta(
                     id,
                     state.path,
