@@ -114,7 +114,6 @@ class ASTMergeSuite(DataSuite):
                         module_id: str) -> Tuple[MypyFile,
                                                  Dict[Expression, Type]]:
         manager.update([module_id])
-        #module_dict = build_incremental_step(manager, [module_id], graph)
         module = manager.manager.modules[module_id]
         type_map = manager.graph[module_id].type_checker.type_map
         return module, type_map
