@@ -49,7 +49,7 @@ Major todo items:
 from typing import Dict, List, Set, Tuple, Iterable, Union, Optional
 
 from mypy.build import (
-    BuildManager, State, BuildSource, Graph, load_graph, preserve_cache, SavedCache
+    BuildManager, State, BuildSource, Graph, load_graph, SavedCache, build_meta, PRI_HIGH
 )
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
@@ -73,6 +73,29 @@ from mypy.server.trigger import make_trigger
 DEBUG = False
 
 
+def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
+    saved_cache = {}
+    for id, state in graph.items():
+        assert state.id == id
+        if state.tree is not None:
+            meta = state.meta
+            if meta is None:
+                assert state.path
+                # TODO: share the following with mypy.build
+                dep_prios = [state.priorities.get(dep, PRI_HIGH) for dep in state.dependencies]
+                meta = build_meta(id,
+                                  state.path,
+                                  state.dependencies,
+                                  state.suppressed,
+                                  list(state.child_modules),
+                                  dep_prios,
+                                  state.source_hash,
+                                  state.ignore_all,
+                                  manager)
+            saved_cache[id] = (meta, state.tree, state.type_map())
+    return saved_cache
+
+
 class FineGrainedBuildManager:
     def __init__(self,
                  manager: BuildManager,
@@ -91,7 +114,7 @@ class FineGrainedBuildManager:
         # Modules that had blocking errors in the previous run.
         # TODO: Handle blocking errors in the initial build
         self.blocking_errors = []  # type: List[str]
-        manager.saved_cache = preserve_cache(graph)
+        manager.saved_cache = preserve_full_cache(graph, manager)
 
     def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
         """Update previous build result by processing changed modules.
@@ -154,7 +177,7 @@ class FineGrainedBuildManager:
             if state.tree is None and id in manager.saved_cache:
                 meta, tree, type_map = manager.saved_cache[id]
                 state.tree = tree
-        manager.saved_cache = preserve_cache(graph)
+        manager.saved_cache = preserve_full_cache(graph, manager)
 
         return manager.errors.messages()
 

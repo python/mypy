@@ -1037,6 +1037,10 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         manager.log('Metadata abandoned for {}: errors were previously ignored'.format(id))
         return None
 
+    if meta.size == -1:
+        manager.log('Metadata fresh for {}; fine-grained incremental special case'.format(id))
+        return meta
+
     assert path is not None, "Internal error: meta was provided without a path"
     # Check data_json; assume if its mtime matches it's good.
     # TODO: stat() errors
@@ -1221,6 +1225,34 @@ def write_cache(id: str, path: str, tree: MypyFile,
         manager.log("Error writing meta JSON file {}".format(meta_json))
 
     return interface_hash, cache_meta_from_dict(meta, data_json)
+
+
+def build_meta(id: str,
+               path: str,
+               dependencies: List[str],
+               suppressed: List[str],
+               child_modules: List[str],
+               dep_prios: List[int],
+               source_hash: str,
+               ignore_all: bool,
+               manager: BuildManager) -> CacheMeta:
+    options = manager.options.clone_for_module(id)
+    meta = {'id': id,
+            'path': path,
+            'mtime': -1,
+            'size': -1,
+            'hash': source_hash,
+            'data_mtime': -1,
+            'dependencies': dependencies,
+            'suppressed': suppressed,
+            'child_modules': child_modules,
+            'options': options.select_options_affecting_cache(),
+            'dep_prios': dep_prios,
+            'interface_hash': '',
+            'version_id': manager.version_id,
+            'ignore_all': ignore_all,
+            }
+    return cache_meta_from_dict(meta, '')
 
 
 def delete_cache(id: str, path: str, manager: BuildManager) -> None:

@@ -32,6 +32,7 @@ def f() -> int:
     pass
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -42,6 +43,7 @@ MypyFile:1<1>(
       PassStmt:2<5>())))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -63,6 +65,7 @@ class A:
         pass
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -78,6 +81,7 @@ MypyFile:1<1>(
         PassStmt:3<8>()))))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -134,6 +138,7 @@ class A:
         return B()
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -154,6 +159,7 @@ MypyFile:1<1>(
     PassStmt:4<10>()))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -187,6 +193,7 @@ class A:
         self.f()
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -206,6 +213,7 @@ MypyFile:1<1>(
             Args()))))))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -238,6 +246,7 @@ class A:
         self.x
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -260,6 +269,7 @@ MypyFile:1<1>(
             x))))))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -366,6 +376,7 @@ A()
 B()
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -378,6 +389,7 @@ MypyFile:1<1>(
       Args())))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -490,6 +502,7 @@ def f() -> int: pass
 def g() -> int: pass
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -500,6 +513,7 @@ MypyFile:1<1>(
       PassStmt:1<5>())))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -575,6 +589,7 @@ x = 1
 x = 2
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -584,6 +599,7 @@ MypyFile:1<1>(
     builtins.int<4>))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
