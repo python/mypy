@@ -247,8 +247,3 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
         override = node.type_override
         if override:
             override.accept(TypeReplaceVisitor(replacements))
-
-
-def get_prefix(fullname: str) -> str:
-    """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
-    return fullname.rsplit('.', 1)[0]
