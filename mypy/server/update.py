@@ -279,13 +279,17 @@ def memory_only_cache_meta(id: str,
                            source_hash: str,
                            ignore_all: bool,
                            manager: BuildManager) -> CacheMeta:
+    """Create cache metadata for module that doesn't have a JSON cache files.
+
+    JSON cache files aren't written for modules with errors, but we want to still
+    cache them in fine-grained incremental mode.
+    """
     options = manager.options.clone_for_module(id)
+    # Note that we omit attributes related to the JSON files.
     meta = {'id': id,
             'path': path,
-            'mtime': -1,
-            'size': -1,
+            'memory_only': True,  # Important bit: don't expect JSON files to exist
             'hash': source_hash,
-            'data_mtime': -1,
             'dependencies': dependencies,
             'suppressed': suppressed,
             'child_modules': child_modules,
