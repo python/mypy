@@ -82,7 +82,7 @@ class FineGrainedBuildManager:
 
         Args:
             manager: State of the build (mutated by this class)
-            graph: Additional state of the build (mutated)
+            graph: Additional state of the build
         """
         self.manager = manager
         self.options = manager.options
@@ -100,6 +100,8 @@ class FineGrainedBuildManager:
         Also propagate changes to other modules as needed, but only process
         those parts of other modules that are affected by the changes. Retain
         the existing ASTs and symbol tables of unaffected modules.
+
+        Create new graph with new State objects, but reuse original BuildManager.
 
         Args:
             changed_modules: Modules changed since the previous update/build; each is
@@ -129,12 +131,11 @@ class FineGrainedBuildManager:
 
         manager.errors.reset()
         try:
-            new_modules, self.graph = build_incremental_step(manager, changed_modules, graph)
+            new_modules, graph = build_incremental_step(manager, changed_modules, graph)
         except CompileError as err:
             self.blocking_errors = changed_ids
             return err.messages
         self.blocking_errors = []
-        graph = self.graph
 
         # TODO: What to do with stale dependencies?
         triggered = calculate_active_triggers(manager, old_snapshots, new_modules)
@@ -145,9 +146,9 @@ class FineGrainedBuildManager:
                                              set(changed_ids),
                                              self.previous_targets_with_errors,
                                              graph)
-        self.previous_targets_with_errors = manager.errors.targets()
 
-        # Preserve current state.
+        # Preserve state needed for the next update.
+        self.previous_targets_with_errors = manager.errors.targets()
         for id, _ in changed_modules:
             # Generate metadata so that we can reuse the AST in the next run.
             graph[id].write_cache()
@@ -157,6 +158,7 @@ class FineGrainedBuildManager:
                 meta, tree, type_map = manager.saved_cache[id]
                 state.tree = tree
         manager.saved_cache = preserve_full_cache(graph, manager)
+        self.graph = graph
 
         return manager.errors.messages()
 
