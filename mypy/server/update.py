@@ -49,7 +49,8 @@ Major todo items:
 from typing import Dict, List, Set, Tuple, Iterable, Union, Optional
 
 from mypy.build import (
-    BuildManager, State, BuildSource, Graph, load_graph, SavedCache, build_meta, PRI_HIGH
+    BuildManager, State, BuildSource, Graph, load_graph, SavedCache, PRI_HIGH, CacheMeta,
+    cache_meta_from_dict
 )
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
@@ -71,29 +72,6 @@ from mypy.server.trigger import make_trigger
 
 # If True, print out debug logging output.
 DEBUG = False
-
-
-def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
-    saved_cache = {}
-    for id, state in graph.items():
-        assert state.id == id
-        if state.tree is not None:
-            meta = state.meta
-            if meta is None:
-                assert state.path
-                # TODO: share the following with mypy.build
-                dep_prios = [state.priorities.get(dep, PRI_HIGH) for dep in state.dependencies]
-                meta = build_meta(id,
-                                  state.path,
-                                  state.dependencies,
-                                  state.suppressed,
-                                  list(state.child_modules),
-                                  dep_prios,
-                                  state.source_hash,
-                                  state.ignore_all,
-                                  manager)
-            saved_cache[id] = (meta, state.tree, state.type_map())
-    return saved_cache
 
 
 class FineGrainedBuildManager:
@@ -266,6 +244,58 @@ def get_sources(graph: Graph, changed_modules: List[Tuple[str, str]]) -> List[Bu
         if id not in graph:
             sources.append(BuildSource(path, id, None))
     return sources
+
+
+def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
+    saved_cache = {}
+    for id, state in graph.items():
+        assert state.id == id
+        if state.tree is not None:
+            meta = state.meta
+            if meta is None:
+                assert state.path
+                # TODO: share the following with mypy.build
+                dep_prios = [state.priorities.get(dep, PRI_HIGH) for dep in state.dependencies]
+                meta = memory_only_cache_meta(
+                    id,
+                    state.path,
+                    state.dependencies,
+                    state.suppressed,
+                    list(state.child_modules),
+                    dep_prios,
+                    state.source_hash,
+                    state.ignore_all,
+                    manager)
+            saved_cache[id] = (meta, state.tree, state.type_map())
+    return saved_cache
+
+
+def memory_only_cache_meta(id: str,
+                           path: str,
+                           dependencies: List[str],
+                           suppressed: List[str],
+                           child_modules: List[str],
+                           dep_prios: List[int],
+                           source_hash: str,
+                           ignore_all: bool,
+                           manager: BuildManager) -> CacheMeta:
+    options = manager.options.clone_for_module(id)
+    meta = {'id': id,
+            'path': path,
+            'mtime': -1,
+            'size': -1,
+            'hash': source_hash,
+            'data_mtime': -1,
+            'dependencies': dependencies,
+            'suppressed': suppressed,
+            'child_modules': child_modules,
+            'options': options.select_options_affecting_cache(),
+            'dep_prios': dep_prios,
+            'interface_hash': '',
+            'version_id': manager.version_id,
+            'ignore_all': ignore_all,
+            }
+    return cache_meta_from_dict(meta, '')
 
 
 def invalidate_stale_cache_entries(cache: SavedCache,
