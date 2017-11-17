@@ -91,6 +91,7 @@ class FineGrainedBuildManager:
         # Modules that had blocking errors in the previous run.
         # TODO: Handle blocking errors in the initial build
         self.blocking_errors = []  # type: List[str]
+        manager.saved_cache = preserve_cache(graph)
 
     def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
         """Update previous build result by processing changed modules.
@@ -115,8 +116,6 @@ class FineGrainedBuildManager:
             assert self.blocking_errors == changed_ids
         manager = self.manager
         graph = self.graph
-
-        manager.saved_cache = preserve_cache(graph)
 
         # Record symbol table snaphots of old versions of changed moduiles.
         old_snapshots = {}
@@ -146,6 +145,17 @@ class FineGrainedBuildManager:
                                              self.previous_targets_with_errors,
                                              graph)
         self.previous_targets_with_errors = manager.errors.targets()
+
+        # Preserve current state.
+        for id, _ in changed_modules:
+            # Generate metadata so that we can reuse the AST in the next run.
+            graph[id].write_cache()
+        for id, state in graph.items():
+            if state.tree is None and id in manager.saved_cache:
+                meta, tree, type_map = manager.saved_cache[id]
+                state.tree = tree
+        manager.saved_cache = preserve_cache(graph)
+
         return manager.errors.messages()
 
 
