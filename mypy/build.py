@@ -512,7 +512,8 @@ class BuildManager:
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
-      saved_cache:     Dict with saved cache state for dmypy (read-write!)
+      saved_cache:     Dict with saved cache state for dmypy and fine-grained incremental mode
+                       (read-write!)
       stats:           Dict with various instrumentation numbers
     """
 

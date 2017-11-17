@@ -152,6 +152,7 @@ class FineGrainedBuildManager:
             # Generate metadata so that we can reuse the AST in the next run.
             graph[id].write_cache()
         for id, state in graph.items():
+            # Look up missing ASTs from saved cache.
             if state.tree is None and id in manager.saved_cache:
                 meta, tree, type_map = manager.saved_cache[id]
                 state.tree = tree
@@ -175,8 +176,9 @@ def build_incremental_step(manager: BuildManager,
 
     Raise CompleError on encountering a blocking error.
 
-    Return the new ASTs for the changed modules.
+    Return the new ASTs for the changed modules and the entire build graph.
     """
+    # TODO: Handle multiple changed modules per step
     assert len(changed_modules) == 1
     id, path = changed_modules[0]
     if id in manager.modules:
