@@ -1835,14 +1835,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 v._fullname = self.qualified_name(lval.name)
                 v.is_ready = False  # Type not inferred yet
                 lval.node = v
+                lval.is_new_def = True
                 lval.is_inferred_def = True
-                lval.is_any_def = True
                 lval.kind = GDEF
                 lval.fullname = v._fullname
                 self.globals[lval.name] = SymbolTableNode(GDEF, v)
-            elif isinstance(lval.node, Var) and lval.is_any_def:
+            elif isinstance(lval.node, Var) and lval.is_new_def:
                 if lval.kind == GDEF:
-                    # Since the is_any_def flag is set, this must have been analyzed
+                    # Since the is_new_def flag is set, this must have been analyzed
                     # already in the first pass and added to the symbol table.
                     assert lval.node.name() in self.globals
             elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
@@ -1852,8 +1852,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 v = Var(lval.name)
                 v.set_line(lval)
                 lval.node = v
+                lval.is_new_def = True
                 lval.is_inferred_def = True
-                lval.is_any_def = True
                 lval.kind = LDEF
                 lval.fullname = lval.name
                 self.add_local(v, lval)
@@ -1866,8 +1866,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 v.set_line(lval)
                 v._fullname = self.qualified_name(lval.name)
                 lval.node = v
+                lval.is_new_def = True
                 lval.is_inferred_def = True
-                lval.is_any_def = True
                 lval.kind = MDEF
                 lval.fullname = lval.name
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
@@ -1929,8 +1929,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
                 else:
                     # Implicit attribute definition in __init__.
+                    lval.is_new_def = True
                     lval.is_inferred_def = True
-                    lval.is_any_def = True
                     v = Var(lval.name)
                     v.set_line(lval)
                     v._fullname = self.qualified_name(lval.name)
