@@ -93,11 +93,11 @@ class NodeStripVisitor(TraverserVisitor):
             # definition.
             if self.type is not None:
                 del self.type.names[node.name]
-            node.is_def = False
+            node.is_inferred_def = False
             node.def_var = None
 
     def is_duplicate_attribute_def(self, node: MemberExpr) -> bool:
-        if not node.is_def:
+        if not node.is_inferred_def:
             return False
         assert self.type is not None, "Internal error: Member defined outside class"
         if node.name not in self.type.names:

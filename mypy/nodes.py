@@ -1128,7 +1128,7 @@ class RefExpr(Expression):
     #
     # For members, after semantic analysis, this does not take base
     # classes into consideration at all; the type checker deals with these.
-    is_def = False
+    is_inferred_def = False
     # Does this define a new name?
     is_any_def = False
 
@@ -1154,7 +1154,8 @@ class NameExpr(RefExpr):
                 'kind': self.kind,
                 'node': None if self.node is None else self.node.serialize(),
                 'fullname': self.fullname,
-                'is_def': self.is_def,
+                'is_inferred_def': self.is_inferred_def,
+                'is_any_def': self.is_any_def,
                 'name': self.name,
                 }
 
@@ -1165,7 +1166,8 @@ class NameExpr(RefExpr):
         ret.kind = data['kind']
         ret.node = None if data['node'] is None else SymbolNode.deserialize(data['node'])
         ret.fullname = data['fullname']
-        ret.is_def = data['is_def']
+        ret.is_inferred_def = data['is_inferred_def']
+        ret.is_any_def = data['is_any_def']
         return ret
 
 
