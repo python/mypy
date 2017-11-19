@@ -1388,7 +1388,7 @@ def foo(mymap) -> MyNamedTuple:
     return next((mymap[key] for key in mymap), None)
 [out]
 
-[case testCanConvertTypedDictToAnySuperclassOfMapping]
+[case testCanConvertTypedDictToAnySuperclassOfMapping-skip]
 from mypy_extensions import TypedDict
 from typing import Sized, Iterable, Container
 
