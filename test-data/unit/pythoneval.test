@@ -1388,7 +1388,7 @@ def foo(mymap) -> MyNamedTuple:
     return next((mymap[key] for key in mymap), None)
 [out]
 
-[case testCanConvertTypedDictToAnySuperclassOfMapping-skip]
+[case testCanConvertTypedDictToAnySuperclassOfMapping]
 from mypy_extensions import TypedDict
 from typing import Sized, Iterable, Container
 
@@ -1402,6 +1402,11 @@ o: object = p
 it2: Iterable[int] = p
 [out]
 _testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note: Following member(s) of "Point" have conflicts:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Expected:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[int]
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Got:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[str]
 
 [case testAsyncioGatherPreciseType]
 import asyncio
