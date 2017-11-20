@@ -5,14 +5,13 @@
 --
 -- The comments in fine-grained.test explain how these tests work.
 
--- TODO
--- * add file, no errors
--- * add file, normal errors
--- * add file, fixes import error elsewhere
--- * add file, causes new errors elsewhere
--- * add file, report existing unrelated errors
+
+-- Add file
+-- --------
+
+
+-- TODO:
 -- - add file, blocking error
--- - correct line number for import
 
 [case testAddFile]
 import b
@@ -134,3 +133,20 @@ b.py:3: error: Cannot find module named 'c'
 b.py:2: error: Cannot find module named 'a'
 b.py:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 b.py:3: error: Cannot find module named 'c'
+
+
+-- Delete file
+-- -----------
+
+
+[case testDeleteBasic]
+import a
+[file a.py]
+import b
+[file b.py]
+def f() -> None: pass
+[file a.py.2]
+[delete b.py.3]
+[out]
+==
+==

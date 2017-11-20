@@ -10,7 +10,7 @@ information.
 import os
 import re
 import shutil
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional, Set
 
 from mypy import build
 from mypy.build import BuildManager, BuildSource, Graph
@@ -56,14 +56,19 @@ class FineGrainedSuite(DataSuite):
 
         fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
-        steps = find_steps()
+        steps = find_steps(testcase.deleted_paths)
         for changed_paths in steps:
             modules = []
             for module, path in changed_paths:
                 new_path = re.sub(r'\.[0-9]+$', '', path)
-                shutil.copy(path, new_path)
-                modules.append((module, new_path))
-
+                if new_path != path:
+                    # Modify/create file
+                    shutil.copy(path, new_path)
+                    modules.append((module, new_path))
+                else:
+                    # Delete file
+                    modules.append((module, path))
+                    os.remove(path)
             new_messages = fine_grained_manager.update(modules)
             new_messages = normalize_messages(new_messages)
 
@@ -97,29 +102,42 @@ class FineGrainedSuite(DataSuite):
         return result.errors, result.manager, result.graph
 
 
-def find_steps() -> List[List[Tuple[str, str]]]:
+def find_steps(deleted: Dict[int, Set[str]]) -> List[List[Tuple[str, str]]]:
     """Return a list of build step representations.
 
     Each build step is a list of (module id, path) tuples, and each
-    path is of form 'dir/mod.py.2' (where 2 is the step number).
+    path of a modified file is of form 'dir/mod.py.2' (where 2 is the step number);
+    if a path has no .N suffix, it will be deleted.
     """
     steps = {}  # type: Dict[int, List[Tuple[str, str]]]
     for dn, dirs, files in os.walk(test_temp_dir):
-        dnparts = dn.split(os.sep)
-        assert dnparts[0] == test_temp_dir
-        del dnparts[0]
         for filename in files:
             m = re.match(r'.*\.([0-9]+)$', filename)
             if m:
                 num = int(m.group(1))
                 assert num >= 2
                 name = re.sub(r'\.py.*', '', filename)
-                module = '.'.join(dnparts + [name])
-                module = re.sub(r'\.__init__$', '', module)
+                module = module_from_path(os.path.join(dn, name))
                 path = os.path.join(dn, filename)
                 steps.setdefault(num, []).append((module, path))
+    for num, paths in deleted.items():
+        assert num >= 2
+        for path in paths:
+            module = module_from_path(path)
+            steps.setdefault(num, []).append((module, path))
+    print(steps)
     max_step = max(steps)
     return [steps[num] for num in range(2, max_step + 1)]
+
+
+def module_from_path(path: str) -> str:
+    path = re.sub(r'\.py$', '', path)
+    parts = path.split(os.sep)
+    assert parts[0] == test_temp_dir
+    del parts[0]
+    module = '.'.join(parts)
+    module = re.sub(r'\.__init__$', '', module)
+    return module
 
 
 def normalize_messages(messages: List[str]) -> List[str]:

@@ -46,6 +46,7 @@ Major todo items:
 - Support multiple type checking passes
 """
 
+import os.path
 from typing import Dict, List, Set, Tuple, Iterable, Union, Optional
 
 from mypy.build import (
@@ -150,8 +151,10 @@ class FineGrainedBuildManager:
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = manager.errors.targets()
         for id, _ in changed_modules:
-            # Generate metadata so that we can reuse the AST in the next run.
-            graph[id].write_cache()
+            # If deleted, module won't be in the graph.
+            if id in graph:
+                # Generate metadata so that we can reuse the AST in the next run.
+                graph[id].write_cache()
         for id, state in graph.items():
             # Look up missing ASTs from saved cache.
             if state.tree is None and id in manager.saved_cache:
@@ -185,12 +188,17 @@ def build_incremental_step(manager: BuildManager,
     id, path = changed_modules[0]
     if id in manager.modules:
         assert path == manager.modules[id].path, '%s != %s' % (path, manager.modules[id].path)
+
     old_modules = dict(manager.modules)
 
     sources = get_sources(graph, changed_modules)
     changed_set = {id for id, _ in changed_modules}
 
     invalidate_stale_cache_entries(manager.saved_cache, changed_modules)
+
+    if not os.path.isfile(path):
+        graph = delete_module(id, graph, manager)
+        return {}, graph
 
     old_graph = graph
     manager.missing_modules = set()
@@ -240,6 +248,18 @@ def build_incremental_step(manager: BuildManager,
     graph[id] = state
 
     return new_modules, graph
+
+
+def delete_module(module_id: str,
+                  graph: Dict[str, State],
+                  manager: BuildManager) -> Dict[str, State]:
+    # TODO: Remove deps for the module
+    new_graph = graph.copy()
+    del new_graph[module_id]
+    del manager.modules[module_id]
+    if module_id in manager.saved_cache:
+        del manager.saved_cache[module_id]
+    return new_graph
 
 
 def get_sources(graph: Graph, changed_modules: List[Tuple[str, str]]) -> List[BuildSource]:
