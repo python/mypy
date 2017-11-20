@@ -52,7 +52,7 @@ from mypy.build import BuildManager, State
 from mypy.checker import DeferredNode
 from mypy.errors import Errors
 from mypy.nodes import (
-    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef
+    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator
 )
 from mypy.options import Options
 from mypy.types import Type
@@ -162,7 +162,7 @@ def build_incremental_step(manager: BuildManager,
     # Run remaining passes of semantic analysis.
     state.semantic_analysis()
     state.semantic_analysis_pass_three()
-    # TODO: state.semantic_analysis_apply_patches()
+    state.semantic_analysis_apply_patches()
 
     # Merge old and new ASTs.
     assert state.tree is not None, "file must be at least parsed"
@@ -187,6 +187,13 @@ def update_dependencies(new_modules: Dict[str, MypyFile],
                         graph: Dict[str, State],
                         options: Options) -> None:
     for id, node in new_modules.items():
+        if '/typeshed/' in node.path:
+            # We don't track changes to typeshed -- the assumption is that they are only changed
+            # as part of mypy updates, which will invalidate everything anyway.
+            #
+            # TODO: Not a reliable test, as we could have a package named typeshed.
+            # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
+            continue
         module_deps = get_dependencies(target=node,
                                        type_map=graph[id].type_checker.type_map,
                                        python_version=options.python_version)
@@ -446,5 +453,8 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
             if isinstance(node, FuncDef):
                 result.extend(lookup_target(modules, target + '.' + name))
         return result
-    assert isinstance(node, (FuncDef, MypyFile))
+    if isinstance(node, Decorator):
+        # Decorator targets actually refer to the function definition only.
+        node = node.func
+    assert isinstance(node, (FuncDef, MypyFile)), 'unexpected type: %s' % type(node)
     return [DeferredNode(node, active_class_name, active_class)]

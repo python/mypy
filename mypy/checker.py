@@ -1866,7 +1866,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def is_definition(self, s: Lvalue) -> bool:
         if isinstance(s, NameExpr):
-            if s.is_def:
+            if s.is_inferred_def:
                 return True
             # If the node type is not defined, this must the first assignment
             # that we process => this is a definition, even though the semantic
@@ -1877,7 +1877,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(node, Var):
                 return node.type is None
         elif isinstance(s, MemberExpr):
-            return s.is_def
+            return s.is_inferred_def
         return False
 
     def infer_variable_type(self, name: Var, lvalue: Lvalue,
@@ -2324,7 +2324,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if var:
                                 # To support local variables, we make this a definition line,
                                 # causing assignment to set the variable's type.
-                                var.is_def = True
+                                var.is_inferred_def = True
                                 # We also temporarily set current_node_deferred to False to
                                 # make sure the inference happens.
                                 # TODO: Use a better solution, e.g. a

@@ -8,16 +8,16 @@ from mypy import build
 from mypy.build import BuildManager, BuildSource, State
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
-    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression
+    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, UNBOUND_IMPORTED
 )
 from mypy.options import Options
 from mypy.server.astmerge import merge_asts
 from mypy.server.subexpr import get_subexpressions
-from mypy.server.update import build_incremental_step, replace_modules_with_new_variants
+from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv, indent
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type, IdMapper
@@ -33,6 +33,9 @@ SYMTABLE = 'SYMTABLE'
 TYPEINFO = ' TYPEINFO'
 TYPES = 'TYPES'
 AST = 'AST'
+
+
+NOT_DUMPED_MODULES = ('builtins', 'typing', 'abc')
 
 
 class ASTMergeSuite(DataSuite):
@@ -67,6 +70,7 @@ class ASTMergeSuite(DataSuite):
         main_src = '\n'.join(testcase.input)
         messages, manager, graph = self.build(main_src)
         assert manager is not None, 'cases where CompileError occurred should not be run'
+        fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
         a = []
         if messages:
@@ -80,12 +84,14 @@ class ASTMergeSuite(DataSuite):
 
         a.append('==>')
 
-        new_file, new_types = self.build_increment(manager, 'target', graph)
+        new_file, new_types = self.build_increment(fine_grained_manager, 'target')
         a.extend(self.dump(manager.modules, graph, kind))
 
         for expr in old_subexpr:
             # Verify that old AST nodes are removed from the expression type map.
             assert expr not in new_types
+
+        a = normalize_error_messages(a)
 
         assert_string_arrays_equal(
             testcase.output, a,
@@ -106,13 +112,13 @@ class ASTMergeSuite(DataSuite):
             return e.messages, None, {}
         return result.errors, result.manager, result.graph
 
-    def build_increment(self, manager: BuildManager,
-                        module_id: str,
-                        graph: Dict[str, State]) -> Tuple[MypyFile,
-                                                          Dict[Expression, Type]]:
-        module_dict = build_incremental_step(manager, [module_id], graph)
-        type_map = graph[module_id].type_checker.type_map
-        return module_dict[module_id], type_map
+    def build_increment(self, manager: FineGrainedBuildManager,
+                        module_id: str) -> Tuple[MypyFile,
+                                                 Dict[Expression, Type]]:
+        manager.update([module_id])
+        module = manager.manager.modules[module_id]
+        type_map = manager.graph[module_id].type_checker.type_map
+        return module, type_map
 
     def dump(self,
              modules: Dict[str, MypyFile],
@@ -131,8 +137,8 @@ class ASTMergeSuite(DataSuite):
     def dump_asts(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
         for m in sorted(modules):
-            if m == 'builtins':
-                # We don't support incremental checking of changes to builtins.
+            if m in NOT_DUMPED_MODULES:
+                # We don't support incremental checking of changes to builtins, etc.
                 continue
             s = modules[m].accept(self.str_conv)
             a.extend(s.splitlines())
@@ -141,8 +147,8 @@ class ASTMergeSuite(DataSuite):
     def dump_symbol_tables(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
         for id in sorted(modules):
-            if id == 'builtins':
-                # We don't support incremental checking of changes to builtins.
+            if not is_dumped_module(id):
+                # We don't support incremental checking of changes to builtins, etc.
                 continue
             a.extend(self.dump_symbol_table(id, modules[id].names))
         return a
@@ -156,18 +162,24 @@ class ASTMergeSuite(DataSuite):
         return a
 
     def format_symbol_table_node(self, node: SymbolTableNode) -> str:
-        if node is None:
+        if node.node is None:
+            if node.kind == UNBOUND_IMPORTED:
+                return 'UNBOUND_IMPORTED'
             return 'None'
         if isinstance(node.node, Node):
-            return '{}<{}>'.format(str(type(node.node).__name__),
-                                   self.id_mapper.id(node.node))
-        # TODO: type_override?
-        return '?'
+            s = '{}<{}>'.format(str(type(node.node).__name__),
+                                self.id_mapper.id(node.node))
+        else:
+            s = '? ({})'.format(type(node.node))
+        if node.type_override:
+            override = self.format_type(node.type_override)
+            s += '(type_override={})'.format(override)
+        return s
 
     def dump_typeinfos(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
         for id in sorted(modules):
-            if id == 'builtins':
+            if not is_dumped_module(id):
                 continue
             a.extend(self.dump_typeinfos_recursive(modules[id].names))
         return a
@@ -190,7 +202,7 @@ class ASTMergeSuite(DataSuite):
         # To make the results repeatable, we try to generate unique and
         # deterministic sort keys.
         for module_id in sorted(graph):
-            if module_id == 'builtins':
+            if not is_dumped_module(module_id):
                 continue
             type_map = graph[module_id].type_checker.type_map
             if type_map:
@@ -200,5 +212,12 @@ class ASTMergeSuite(DataSuite):
                     typ = type_map[expr]
                     a.append('{}:{}: {}'.format(short_type(expr),
                                                 expr.line,
-                                                typ.accept(self.type_str_conv)))
+                                                self.format_type(typ)))
         return a
+
+    def format_type(self, typ: Type) -> str:
+        return typ.accept(self.type_str_conv)
+
+
+def is_dumped_module(id: str) -> bool:
+    return id not in NOT_DUMPED_MODULES and (not id.startswith('_') or id == '__main__')

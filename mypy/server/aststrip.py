@@ -8,7 +8,7 @@ from typing import Union, Iterator, Optional
 
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
-    ImportFrom, TypeInfo, SymbolTable, Var, UNBOUND_IMPORTED
+    ImportFrom, TypeInfo, SymbolTable, Var, UNBOUND_IMPORTED, GDEF
 )
 from mypy.traverser import TraverserVisitor
 
@@ -79,7 +79,10 @@ class NodeStripVisitor(TraverserVisitor):
                     symnode.node = None
 
     def visit_name_expr(self, node: NameExpr) -> None:
-        self.strip_ref_expr(node)
+        # Global assignments are processed in semantic analysis pass 1, and we
+        # only want to strip changes made in passes 2 or later.
+        if not (node.kind == GDEF and node.is_new_def):
+            self.strip_ref_expr(node)
 
     def visit_member_expr(self, node: MemberExpr) -> None:
         self.strip_ref_expr(node)
@@ -90,11 +93,11 @@ class NodeStripVisitor(TraverserVisitor):
             # definition.
             if self.type is not None:
                 del self.type.names[node.name]
-            node.is_def = False
+            node.is_inferred_def = False
             node.def_var = None
 
     def is_duplicate_attribute_def(self, node: MemberExpr) -> bool:
-        if not node.is_def:
+        if not node.is_inferred_def:
             return False
         assert self.type is not None, "Internal error: Member defined outside class"
         if node.name not in self.type.names:

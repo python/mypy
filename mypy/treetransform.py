@@ -341,7 +341,8 @@ class TransformVisitor(NodeVisitor[Node]):
             # Use a placeholder node for the function if it exists.
             target = self.func_placeholder_map.get(target, target)
         new.node = target
-        new.is_def = original.is_def
+        new.is_new_def = original.is_new_def
+        new.is_inferred_def = original.is_inferred_def
 
     def visit_yield_from_expr(self, node: YieldFromExpr) -> YieldFromExpr:
         return YieldFromExpr(self.expr(node.expr))

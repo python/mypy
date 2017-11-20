@@ -308,20 +308,22 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
+        # TODO: Recursion into block statements.
         for d in file_node.defs:
             if isinstance(d, ClassDef):
                 self.refresh_class_def(d)
-            elif not isinstance(d, FuncItem):
+            elif not isinstance(d, (FuncItem, Decorator)):
                 self.accept(d)
 
     def refresh_class_def(self, defn: ClassDef) -> None:
+        # TODO: Recursion into block statements.
         with self.analyze_class_body(defn) as should_continue:
             if should_continue:
                 for d in defn.defs.body:
                     # TODO: Make sure refreshing class bodies works.
                     if isinstance(d, ClassDef):
                         self.refresh_class_def(d)
-                    elif not isinstance(d, FuncItem):
+                    elif not isinstance(d, (FuncItem, Decorator)):
                         self.accept(d)
 
     @contextmanager
@@ -1658,12 +1660,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                         if isinstance(lval.node, Var):
                             lval.node.is_abstract_var = True
         else:
-            if (any(isinstance(lv, NameExpr) and lv.is_def for lv in s.lvalues) and
+            if (any(isinstance(lv, NameExpr) and lv.is_inferred_def for lv in s.lvalues) and
                     self.type and self.type.is_protocol and not self.is_func_scope()):
                 self.fail('All protocol members must have explicitly declared types', s)
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
             if len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr):
-                if s.lvalues[0].is_def:
+                if s.lvalues[0].is_inferred_def:
                     s.type = self.analyze_simple_literal_type(s.rvalue)
         if s.type:
             # Store type into nodes.
@@ -1760,7 +1762,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             # Second rule: Explicit type (cls: Type[A] = A) always creates variable, not alias.
             return
         non_global_scope = self.type or self.is_func_scope()
-        if isinstance(s.rvalue, NameExpr) and non_global_scope and lvalue.is_def:
+        if isinstance(s.rvalue, NameExpr) and non_global_scope and lvalue.is_inferred_def:
             # Third rule: Non-subscripted right hand side creates a variable
             # at class and function scopes. For example:
             #
@@ -1778,7 +1780,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             return
         node = self.lookup(lvalue.name, lvalue)
         assert node is not None
-        if not lvalue.is_def:
+        if not lvalue.is_inferred_def:
             # Type aliases can't be re-defined.
             if node and (node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo)):
                 self.fail('Cannot assign multiple types to name "{}"'
@@ -1815,10 +1817,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                        explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target.
 
-        Only if add_global is True, add name to globals table. If nested
-        is true, the lvalue is within a tuple or list lvalue expression.
+        Args:
+            lval: The target lvalue
+            nested: If true, the lvalue is within a tuple or list lvalue expression
+            add_global: Add name to globals table only if this is true (used in first pass)
+            explicit_type: Assignment has type annotation
         """
-
         if isinstance(lval, NameExpr):
             # Top-level definitions within some statements (at least while) are
             # not handled in the first pass, so they have to be added now.
@@ -1832,14 +1836,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 v._fullname = self.qualified_name(lval.name)
                 v.is_ready = False  # Type not inferred yet
                 lval.node = v
-                lval.is_def = True
+                lval.is_new_def = True
+                lval.is_inferred_def = True
                 lval.kind = GDEF
                 lval.fullname = v._fullname
                 self.globals[lval.name] = SymbolTableNode(GDEF, v)
-            elif isinstance(lval.node, Var) and lval.is_def:
-                # Since the is_def flag is set, this must have been analyzed
-                # already in the first pass and added to the symbol table.
-                assert lval.node.name() in self.globals
+            elif isinstance(lval.node, Var) and lval.is_new_def:
+                if lval.kind == GDEF:
+                    # Since the is_new_def flag is set, this must have been analyzed
+                    # already in the first pass and added to the symbol table.
+                    assert lval.node.name() in self.globals
             elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
                   lval.name not in self.global_decls[-1] and
                   lval.name not in self.nonlocal_decls[-1]):
@@ -1847,7 +1853,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 v = Var(lval.name)
                 v.set_line(lval)
                 lval.node = v
-                lval.is_def = True
+                lval.is_new_def = True
+                lval.is_inferred_def = True
                 lval.kind = LDEF
                 lval.fullname = lval.name
                 self.add_local(v, lval)
@@ -1860,7 +1867,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 v.set_line(lval)
                 v._fullname = self.qualified_name(lval.name)
                 lval.node = v
-                lval.is_def = True
+                lval.is_new_def = True
+                lval.is_inferred_def = True
                 lval.kind = MDEF
                 lval.fullname = lval.name
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
@@ -1922,7 +1930,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
                 else:
                     # Implicit attribute definition in __init__.
-                    lval.is_def = True
+                    lval.is_new_def = True
+                    lval.is_inferred_def = True
                     v = Var(lval.name)
                     v.set_line(lval)
                     v._fullname = self.qualified_name(lval.name)
@@ -1951,7 +1960,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):
             self.fail('Star type only allowed for starred expressions', lvalue)
         if isinstance(lvalue, RefExpr):
-            lvalue.is_def = False
+            lvalue.is_inferred_def = False
             if isinstance(lvalue.node, Var):
                 var = lvalue.node
                 var.type = typ
@@ -2028,7 +2037,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 and s.rvalue.callee.fullname == 'typing.NewType'):
             lvalue = s.lvalues[0]
             name = s.lvalues[0].name
-            if not lvalue.is_def:
+            if not lvalue.is_inferred_def:
                 if s.type:
                     self.fail("Cannot declare the type of a NewType declaration", s)
                 else:
@@ -2096,7 +2105,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         lvalue = s.lvalues[0]
         assert isinstance(lvalue, NameExpr)
         name = lvalue.name
-        if not lvalue.is_def:
+        if not lvalue.is_inferred_def:
             if s.type:
                 self.fail("Cannot declare the type of a type variable", s)
             else:
@@ -2415,6 +2424,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             var.info = info
             var.is_initialized_in_class = is_initialized_in_class
             var.is_property = is_property
+            var._fullname = '%s.%s' % (info.fullname(), var.name())
             info.names[var.name()] = SymbolTableNode(MDEF, var)
 
         vars = [Var(item, typ) for item, typ in zip(items, types)]
@@ -2455,10 +2465,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             func.info = info
             func.is_class = is_classmethod
             func.type = set_callable_name(signature, func)
+            func._fullname = info.fullname() + '.' + funcname
             if is_classmethod:
                 v = Var(funcname, func.type)
                 v.is_classmethod = True
                 v.info = info
+                v._fullname = func._fullname
                 dec = Decorator(func, [NameExpr('classmethod')], v)
                 info.names[funcname] = SymbolTableNode(MDEF, dec)
             else:
@@ -2729,7 +2741,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                                 "without explicit 'types.ModuleType' annotation".format(lval.name),
                                 ctx)
                         # never create module alias except on initial var definition
-                        elif lval.is_def:
+                        elif lval.is_inferred_def:
                             lnode.kind = MODULE_REF
                             lnode.node = rnode.node
 

@@ -870,3 +870,104 @@ class C:
 main:8: error: "B" has no attribute "x"
 ==
 main:4: error: Name 'm.C' is not defined
+
+[case testImportQualifiedModuleName]
+import a
+[file a.py]
+import b.c
+b.c.f()
+[file a.py.2]
+import b.c
+b.c.f() # dummy change
+[file b/__init__.py]
+[file b/c.py]
+def f() -> None: pass
+[out]
+==
+
+[case testTypeAliasRefresh]
+from typing import Callable
+from a import f
+C = Callable[[int], str]
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+[out]
+==
+main:2: error: Module 'a' has no attribute 'f'
+
+[case testTypeVarRefresh]
+from typing import TypeVar
+from a import f
+T = TypeVar('T')
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+[out]
+==
+main:2: error: Module 'a' has no attribute 'f'
+
+[case testNamedTupleRefresh]
+from typing import NamedTuple
+from a import f
+N = NamedTuple('N', [('x', int)])
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+[out]
+==
+main:2: error: Module 'a' has no attribute 'f'
+
+[case testModuleLevelAttributeRefresh]
+from typing import Callable
+from a import f
+x = 1
+y = ''  # type: str
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+[out]
+==
+main:2: error: Module 'a' has no attribute 'f'
+
+[case testClassBodyRefresh]
+from a import f
+class A:
+    x = 1
+    y = '' # type: str
+
+    def f(self) -> None:
+        self.x = 1
+[file a.py]
+f = 1
+[file a.py.2]
+[out]
+==
+main:1: error: Module 'a' has no attribute 'f'
+
+[case testDecoratedMethodRefresh]
+from typing import Iterator, Callable, List
+from a import f
+import a
+
+def dec(f: Callable[['A'], Iterator[int]]) -> Callable[[int], int]: pass
+
+class A:
+    @dec
+    def f(self) -> Iterator[int]:
+        self.x = a.g()  # type: int
+        return None
+[builtins fixtures/list.pyi]
+[file a.py]
+f = 1
+def g() -> int: pass
+[file a.py.2]
+def f() -> None: pass
+def g() -> int: pass
+[file a.py.3]
+def f() -> None: pass
+def g() -> str: pass
+[out]
+==
+==
+main:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")

@@ -128,7 +128,7 @@ class StatisticsVisitor(TraverserVisitor):
                 else:
                     items = [lvalue]
                 for item in items:
-                    if isinstance(item, RefExpr) and item.is_def:
+                    if isinstance(item, RefExpr) and item.is_inferred_def:
                         if self.typemap is not None:
                             self.type(self.typemap.get(item))
         super().visit_assignment_stmt(o)

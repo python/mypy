@@ -20,6 +20,7 @@ files = [
     'deps-generics.test',
     'deps-expressions.test',
     'deps-statements.test',
+    'deps-classes.test',
 ]
 
 
