@@ -40,15 +40,15 @@ def main() -> None:
             continue
         changed = None
         new_ts = timestamps(target_dir)
-        for module_id in ts:
-            if new_ts[module_id] != ts[module_id]:
+        for module_id in new_ts:
+            if module_id not in ts or new_ts[module_id] != ts[module_id]:
                 changed = (module_id, new_ts[module_id][1])
                 break
         ts = new_ts
         if not changed:
             print('[nothing changed]')
             continue
-        print('[update {}]'.format(changed))
+        print('[update {}]'.format(changed[0]))
         messages = fine_grained_manager.update([changed])
         for message in messages:
             sys.stdout.write(message + '\n')
