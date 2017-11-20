@@ -1484,6 +1484,9 @@ class LambdaExpr(FuncItem, Expression):
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_lambda_expr(self)
 
+    def is_dynamic(self) -> bool:
+        return False
+
 
 class ListExpr(Expression):
     """List literal expression [...]."""
