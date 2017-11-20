@@ -47,7 +47,7 @@ Major todo items:
 """
 
 import os.path
-from typing import Dict, List, Set, Tuple, Iterable, Union, Optional
+from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping
 
 from mypy.build import (
     BuildManager, State, BuildSource, Graph, load_graph, SavedCache, CacheMeta,
@@ -57,7 +57,7 @@ from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator,
-    Import, ImportFrom
+    Import, ImportFrom, SymbolTable
 )
 from mypy.options import Options
 from mypy.types import Type
@@ -176,7 +176,8 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
 
 def build_incremental_step(manager: BuildManager,
                            changed_modules: List[Tuple[str, str]],
-                           graph: Dict[str, State]) -> Tuple[Dict[str, MypyFile], Graph]:
+                           graph: Dict[str, State]) -> Tuple[Dict[str, Optional[MypyFile]],
+                                                             Graph]:
     """Build new versions of changed modules only.
 
     Raise CompleError on encountering a blocking error.
@@ -198,7 +199,7 @@ def build_incremental_step(manager: BuildManager,
 
     if not os.path.isfile(path):
         graph = delete_module(id, graph, manager)
-        return {}, graph
+        return {id: None}, graph
 
     old_graph = graph
     manager.missing_modules = set()
@@ -234,7 +235,7 @@ def build_incremental_step(manager: BuildManager,
 
     # Merge old and new ASTs.
     assert state.tree is not None, "file must be at least parsed"
-    new_modules = {id: state.tree}
+    new_modules = {id: state.tree}  # type: Dict[str, Optional[MypyFile]]
     replace_modules_with_new_variants(manager, graph, old_modules, new_modules)
 
     # Perform type checking.
@@ -362,11 +363,13 @@ def find_import_line(node: MypyFile, target: str) -> Optional[int]:
     return None
 
 
-def update_dependencies(new_modules: Dict[str, MypyFile],
+def update_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
                         deps: Dict[str, Set[str]],
                         graph: Dict[str, State],
                         options: Options) -> None:
     for id, node in new_modules.items():
+        if node is None:
+            continue
         if '/typeshed/' in node.path:
             # We don't track changes to typeshed -- the assumption is that they are only changed
             # as part of mypy updates, which will invalidate everything anyway.
@@ -383,7 +386,7 @@ def update_dependencies(new_modules: Dict[str, MypyFile],
 
 def calculate_active_triggers(manager: BuildManager,
                               old_snapshots: Dict[str, Dict[str, SnapshotItem]],
-                              new_modules: Dict[str, MypyFile]) -> Set[str]:
+                              new_modules: Dict[str, Optional[MypyFile]]) -> Set[str]:
     """Determine activated triggers by comparing old and new symbol tables.
 
     For example, if only the signature of function m.f is different in the new
@@ -392,7 +395,11 @@ def calculate_active_triggers(manager: BuildManager,
     names = set()  # type: Set[str]
     for id in new_modules:
         snapshot1 = old_snapshots[id]
-        snapshot2 = snapshot_symbol_table(id, new_modules[id].names)
+        new = new_modules[id]
+        if new is None:
+            snapshot2 = snapshot_symbol_table(id, SymbolTable())
+        else:
+            snapshot2 = snapshot_symbol_table(id, new.names)
         names |= compare_symbol_table_snapshots(id, snapshot1, snapshot2)
     return {make_trigger(name) for name in names}
 
@@ -401,7 +408,7 @@ def replace_modules_with_new_variants(
         manager: BuildManager,
         graph: Dict[str, State],
         old_modules: Dict[str, MypyFile],
-        new_modules: Dict[str, MypyFile]) -> None:
+        new_modules: Dict[str, Optional[MypyFile]]) -> None:
     """Replace modules with newly builds versions.
 
     Retain the identities of externally visible AST nodes in the
@@ -412,9 +419,10 @@ def replace_modules_with_new_variants(
     propagate_changes_using_dependencies).
     """
     for id in new_modules:
-        if id in old_modules:
+        new_module = new_modules[id]
+        if id in old_modules and new_module is not None:
             merge_asts(old_modules[id], old_modules[id].names,
-                       new_modules[id], new_modules[id].names)
+                       new_module, new_module.names)
             manager.modules[id] = old_modules[id]
 
 

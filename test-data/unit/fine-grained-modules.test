@@ -150,3 +150,18 @@ def f() -> None: pass
 [out]
 ==
 ==
+
+[case testDeletionTriggersImportFrom]
+import a
+[file a.py]
+from b import f
+
+def g() -> None:
+    f()
+[file b.py]
+def f() -> None: pass
+[delete b.py.2]
+[out]
+==
+a.py:1: error: Cannot find module named 'b'
+a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
