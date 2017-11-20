@@ -17,7 +17,7 @@ from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv, indent
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type, IdMapper
@@ -90,6 +90,8 @@ class ASTMergeSuite(DataSuite):
         for expr in old_subexpr:
             # Verify that old AST nodes are removed from the expression type map.
             assert expr not in new_types
+
+        a = normalize_error_messages(a)
 
         assert_string_arrays_equal(
             testcase.output, a,
