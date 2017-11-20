@@ -1818,6 +1818,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         """Analyze an lvalue or assignment target.
 
         Args:
+            lval: The target lvalue
             nested: If true, the lvalue is within a tuple or list lvalue expression
             add_global: Add name to globals table only if this is true (used in first pass)
             explicit_type: Assignment has type annotation

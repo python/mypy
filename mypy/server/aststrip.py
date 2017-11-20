@@ -80,7 +80,7 @@ class NodeStripVisitor(TraverserVisitor):
 
     def visit_name_expr(self, node: NameExpr) -> None:
         # Global assignments are processed in semantic analysis pass 1, and we
-        # only want strip changes made in passes 2 or later.
+        # only want to strip changes made in passes 2 or later.
         if not (node.kind == GDEF and node.is_new_def):
             self.strip_ref_expr(node)
 

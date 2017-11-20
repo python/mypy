@@ -218,5 +218,4 @@ class ASTMergeSuite(DataSuite):
 
 
 def is_dumped_module(id: str) -> bool:
-    # TODO: Don't dump __main__
-    return id not in NOT_DUMPED_MODULES and (not id.startswith('_') or id.startswith('__'))
+    return id not in NOT_DUMPED_MODULES and (not id.startswith('_') or id == '__main__')
