@@ -57,6 +57,7 @@ def main() -> None:
 def build_dir(target_dir: str) -> Tuple[List[str], BuildManager, Graph]:
     sources = expand_dir(target_dir)
     options = Options()
+    options.incremental = True
     options.show_traceback = True
     options.cache_dir = os.devnull
     try:
