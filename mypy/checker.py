@@ -725,7 +725,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             arg_type.variance == COVARIANT and
                             defn.name() not in ('__init__', '__new__')
                         ):
-                            ctx = arg_type
+                            ctx = arg_type  # type: Context
                             if ctx.line < 0:
                                 ctx = typ
                             self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
