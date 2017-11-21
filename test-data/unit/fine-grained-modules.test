@@ -161,7 +161,24 @@ def g() -> None:
 [file b.py]
 def f() -> None: pass
 [delete b.py.2]
+[file b.py.3]
+def f(x: int) -> None: pass
 [out]
 ==
 a.py:1: error: Cannot find module named 'b'
 a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+a.py:4: error: Too few arguments for "f"
+
+[case testDeletionTriggersImport]
+import a
+[file a.py]
+def f() -> None: pass
+[delete a.py.2]
+[file a.py.3]
+def f() -> None: pass
+[out]
+==
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==

@@ -398,6 +398,7 @@ def calculate_active_triggers(manager: BuildManager,
         new = new_modules[id]
         if new is None:
             snapshot2 = snapshot_symbol_table(id, SymbolTable())
+            names.add(id)
         else:
             snapshot2 = snapshot_symbol_table(id, new.names)
         names |= compare_symbol_table_snapshots(id, snapshot1, snapshot2)
