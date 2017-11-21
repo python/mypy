@@ -446,7 +446,7 @@ def propagate_changes_using_dependencies(
         # errors might be lost.
         for target in targets_with_errors:
             id = module_prefix(modules, target)
-            if id not in up_to_date_modules:
+            if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
                 if DEBUG:
@@ -491,6 +491,9 @@ def find_targets_recursive(
                 worklist |= deps.get(target, set()) - processed
             else:
                 module_id = module_prefix(modules, target)
+                if module_id is None:
+                    # Deleted module.
+                    continue
                 if module_id in up_to_date_modules:
                     # Already processed.
                     continue
@@ -619,7 +622,10 @@ def update_deps(module_id: str,
 
 def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNode]:
     """Look up a target by fully-qualified name."""
-    module, rest = split_target(modules, target)
+    items = split_target(modules, target)
+    if items is None:
+        return []
+    module, rest = items
     if rest:
         components = rest.split('.')
     else:

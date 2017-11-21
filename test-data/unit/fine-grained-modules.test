@@ -224,3 +224,21 @@ def f(x: int) -> None: pass
 main:1: error: Cannot find module named 'p.q'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
+
+[case testDeleteModuleWithError]
+import a
+[file a.py]
+def f() -> int:
+    return 1
+[file a.py.2]
+def f() -> str:
+    return 1
+[delete a.py.3]
+def f() -> str:
+    return 1
+[out]
+==
+a.py:2: error: Incompatible return value type (got "int", expected "str")
+==
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
