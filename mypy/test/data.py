@@ -192,6 +192,7 @@ class DataDrivenTestCase(TestCase):
     expected_stale_modules = None  # type: Dict[int, Set[str]]
     expected_rechecked_modules = None  # type: Dict[int, Set[str]]
 
+    # Files/directories to clean up after test case; (is directory, path) tuples
     clean_up = None  # type: List[Tuple[bool, str]]
 
     def __init__(self,
@@ -229,23 +230,23 @@ class DataDrivenTestCase(TestCase):
         super().set_up()
         encountered_files = set()
         self.clean_up = []
-        all_deleted = []  # type: List[str]
         for paths in self.deleted_paths.values():
-            all_deleted += paths
+            for path in paths:
+                self.clean_up.append((False, path))
+                encountered_files.add(path)
         for path, content in self.files:
             dir = os.path.dirname(path)
             for d in self.add_dirs(dir):
                 self.clean_up.append((True, d))
             with open(path, 'w') as f:
                 f.write(content)
-            if path not in all_deleted:
-                # TODO: Don't assume that deleted files don't get reintroduced.
+            if path not in encountered_files:
                 self.clean_up.append((False, path))
-            encountered_files.add(path)
+                encountered_files.add(path)
             if re.search(r'\.[2-9]$', path):
                 # Make sure new files introduced in the second and later runs are accounted for
                 renamed_path = path[:-2]
-                if renamed_path not in encountered_files and renamed_path not in all_deleted:
+                if renamed_path not in encountered_files:
                     encountered_files.add(renamed_path)
                     self.clean_up.append((False, renamed_path))
         for path, _ in self.output_files:
@@ -282,7 +283,8 @@ class DataDrivenTestCase(TestCase):
                 try:
                     remove(path)
                 except FileNotFoundError:
-                    # breaking early using Ctrl+C may happen before file creation
+                    # Breaking early using Ctrl+C may happen before file creation. Also, some
+                    # files may be deleted by a test case.
                     pass
         # Then remove directories.
         for is_dir, path in reversed(self.clean_up):
