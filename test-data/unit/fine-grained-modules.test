@@ -182,3 +182,45 @@ def f() -> None: pass
 main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
+
+[case testDeletionOfSubmoduleTriggersImportFrom1]
+from p import q
+[file p/__init__.py]
+[file p/q.py]
+[delete p/q.py.2]
+[file p/q.py.3]
+[out]
+==
+main:1: error: Cannot find module named 'p.q'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+
+[case testDeletionOfSubmoduleTriggersImportFrom2]
+from p.q import f
+f()
+[file p/__init__.py]
+[file p/q.py]
+def f() -> None: pass
+[delete p/q.py.2]
+[file p/q.py.3]
+def f(x: int) -> None: pass
+[out]
+==
+main:1: error: Cannot find module named 'p.q'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+main:2: error: Too few arguments for "f"
+
+[case testDeletionOfSubmoduleTriggersImport]
+import p.q
+[file p/__init__.py]
+[file p/q.py]
+def f() -> None: pass
+[delete p/q.py.2]
+[file p/q.py.3]
+def f(x: int) -> None: pass
+[out]
+==
+main:1: error: Cannot find module named 'p.q'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
