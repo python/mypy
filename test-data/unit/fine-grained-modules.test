@@ -191,6 +191,8 @@ from p import q
 [file p/q.py.3]
 [out]
 ==
+main:1: error: Module 'p' has no attribute 'q'
+-- TODO: The following messages are different compared to non-incremental mode
 main:1: error: Cannot find module named 'p.q'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
@@ -241,4 +243,19 @@ def f() -> str:
 a.py:2: error: Incompatible return value type (got "int", expected "str")
 ==
 main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testDeleteModuleWithErrorInsidePackage]
+import a.b
+[file a/__init__.py]
+[file a/b.py]
+def f() -> int:
+    return ''
+[delete a/b.py.2]
+def f() -> str:
+    return 1
+[out]
+a/b.py:2: error: Incompatible return value type (got "str", expected "int")
+==
+main:1: error: Cannot find module named 'a.b'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)

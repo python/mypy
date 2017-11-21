@@ -254,12 +254,17 @@ def build_incremental_step(manager: BuildManager,
 def delete_module(module_id: str,
                   graph: Dict[str, State],
                   manager: BuildManager) -> Dict[str, State]:
-    # TODO: Remove deps for the module
+    # TODO: Deletion of a package
+    # TODO: Remove deps for the module (this only affects memory use, not correctness)
     new_graph = graph.copy()
     del new_graph[module_id]
     del manager.modules[module_id]
     if module_id in manager.saved_cache:
         del manager.saved_cache[module_id]
+    components = module_id.split('.')
+    if len(components) > 1:
+        parent = manager.modules['.'.join(components[:-1])]
+        del parent.names[components[-1]]
     return new_graph
 
 
@@ -624,6 +629,7 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
     """Look up a target by fully-qualified name."""
     items = split_target(modules, target)
     if items is None:
+        # Deleted target
         return []
     module, rest = items
     if rest:
@@ -642,6 +648,9 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
         if isinstance(node, MypyFile):
             file = node
         assert isinstance(node, (MypyFile, TypeInfo))
+        if c not in node.names:
+            # Deleted target
+            return []
         node = node.names[c].node
     if isinstance(node, TypeInfo):
         # A ClassDef target covers the body of the class and everything defined
