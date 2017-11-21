@@ -264,7 +264,8 @@ def delete_module(module_id: str,
     components = module_id.split('.')
     if len(components) > 1:
         parent = manager.modules['.'.join(components[:-1])]
-        del parent.names[components[-1]]
+        if components[-1] in parent.names:
+            del parent.names[components[-1]]
     return new_graph
 
 
