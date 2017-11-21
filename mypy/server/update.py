@@ -344,7 +344,7 @@ def invalidate_stale_cache_entries(cache: SavedCache,
 
 def verify_dependencies(state: State, manager: BuildManager) -> None:
     """Report errors for import targets in module that don't exist."""
-    for dep in state.dependencies + state.suppressed: # TODO: ancestors?
+    for dep in state.dependencies + state.suppressed:  # TODO: ancestors?
         if dep not in manager.modules:
             assert state.tree
             line = find_import_line(state.tree, dep) or 1

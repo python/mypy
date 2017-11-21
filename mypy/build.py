@@ -650,7 +650,7 @@ class BuildManager:
         stub_msg = "(Stub files are from https://github.com/python/typeshed)"
         if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(target)) or
                 (self.options.python_version[0] >= 3 and
-                     moduleinfo.is_py3_std_lib_module(target))):
+                 moduleinfo.is_py3_std_lib_module(target))):
             self.errors.report(
                 line, 0, "No library stub file for standard library module '{}'".format(target))
             self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
