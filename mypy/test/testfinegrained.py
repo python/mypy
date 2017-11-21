@@ -125,7 +125,6 @@ def find_steps(deleted: Dict[int, Set[str]]) -> List[List[Tuple[str, str]]]:
         for path in paths:
             module = module_from_path(path)
             steps.setdefault(num, []).append((module, path))
-    print(steps)
     max_step = max(steps)
     return [steps[num] for num in range(2, max_step + 1)]
 
