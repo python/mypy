@@ -52,10 +52,13 @@ from mypy.build import BuildManager, State
 from mypy.checker import DeferredNode
 from mypy.errors import Errors
 from mypy.nodes import (
-    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef
+    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator
 )
+from mypy.options import Options
 from mypy.types import Type
-from mypy.server.astdiff import compare_symbol_tables, is_identical_type
+from mypy.server.astdiff import (
+    snapshot_symbol_table, compare_symbol_table_snapshots, is_identical_type, SnapshotItem
+)
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.deps import get_dependencies, get_dependencies_of_target
@@ -72,8 +75,9 @@ class FineGrainedBuildManager:
                  manager: BuildManager,
                  graph: Dict[str, State]) -> None:
         self.manager = manager
+        self.options = manager.options
         self.graph = graph
-        self.deps = get_all_dependencies(manager, graph)
+        self.deps = get_all_dependencies(manager, graph, self.options)
         self.previous_targets_with_errors = manager.errors.targets()
 
     def update(self, changed_modules: List[str]) -> List[str]:
@@ -99,15 +103,21 @@ class FineGrainedBuildManager:
             print('==== update ====')
         manager = self.manager
         graph = self.graph
-        old_modules = dict(manager.modules)
+
+        # Record symbol table snaphots of old versions of changed moduiles.
+        old_snapshots = {}
+        for id in changed_modules:
+            if id in manager.modules:
+                snapshot = snapshot_symbol_table(id, manager.modules[id].names)
+                old_snapshots[id] = snapshot
+
         manager.errors.reset()
-        new_modules, new_type_maps = build_incremental_step(manager, changed_modules)
+        new_modules = build_incremental_step(manager, changed_modules, graph)
         # TODO: What to do with stale dependencies?
-        triggered = calculate_active_triggers(manager, old_modules, new_modules)
+        triggered = calculate_active_triggers(manager, old_snapshots, new_modules)
         if DEBUG:
             print('triggered:', sorted(triggered))
-        replace_modules_with_new_variants(manager, graph, old_modules, new_modules, new_type_maps)
-        update_dependencies(new_modules, self.deps, graph)
+        update_dependencies(new_modules, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              set(changed_modules),
                                              self.previous_targets_with_errors,
@@ -116,24 +126,25 @@ class FineGrainedBuildManager:
         return manager.errors.messages()
 
 
-def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
+def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
+                         options: Options) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
     deps = {}  # type: Dict[str, Set[str]]
-    update_dependencies(manager.modules, deps, graph)
+    update_dependencies(manager.modules, deps, graph, options)
     return deps
 
 
 def build_incremental_step(manager: BuildManager,
-                           changed_modules: List[str]) -> Tuple[Dict[str, MypyFile],
-                                                                Dict[str, Dict[Expression, Type]]]:
+                           changed_modules: List[str],
+                           graph: Dict[str, State]) -> Dict[str, MypyFile]:
     """Build new versions of changed modules only.
 
-    Return the new ASTs for the changed modules. They will be totally
-    separate from the existing ASTs and need to merged afterwards.
+    Return the new ASTs for the changed modules.
     """
     assert len(changed_modules) == 1
     id = changed_modules[0]
     path = manager.modules[id].path
+    old_modules = dict(manager.modules)
 
     # TODO: what if file is missing?
     with open(path) as f:
@@ -143,34 +154,55 @@ def build_incremental_step(manager: BuildManager,
                   path=path,
                   source=source,
                   manager=manager)  # TODO: more args?
+    # Parse file and run first pass of semantic analysis.
     state.parse_file()
+
     # TODO: state.fix_suppressed_dependencies()?
+
+    # Run remaining passes of semantic analysis.
     state.semantic_analysis()
     state.semantic_analysis_pass_three()
-    # TODO: state.semantic_analysis_apply_patches()
+    state.semantic_analysis_apply_patches()
+
+    # Merge old and new ASTs.
+    assert state.tree is not None, "file must be at least parsed"
+    new_modules = {id: state.tree}
+    replace_modules_with_new_variants(manager, graph, old_modules, new_modules)
+
+    # Perform type checking.
     state.type_check_first_pass()
     # TODO: state.type_check_second_pass()?
     state.finish_passes()
     # TODO: state.write_cache()?
     # TODO: state.mark_as_rechecked()?
 
-    assert state.tree is not None, "file must be at least parsed"
-    return {id: state.tree}, {id: state.type_checker.type_map}
+    # Record the new types of expressions.
+    graph[id].type_checker.type_map = state.type_checker.type_map
+
+    return new_modules
 
 
 def update_dependencies(new_modules: Dict[str, MypyFile],
                         deps: Dict[str, Set[str]],
-                        graph: Dict[str, State]) -> None:
+                        graph: Dict[str, State],
+                        options: Options) -> None:
     for id, node in new_modules.items():
-        module_deps = get_dependencies(prefix=id,
-                                       node=node,
-                                       type_map=graph[id].type_checker.type_map)
+        if '/typeshed/' in node.path:
+            # We don't track changes to typeshed -- the assumption is that they are only changed
+            # as part of mypy updates, which will invalidate everything anyway.
+            #
+            # TODO: Not a reliable test, as we could have a package named typeshed.
+            # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
+            continue
+        module_deps = get_dependencies(target=node,
+                                       type_map=graph[id].type_checker.type_map,
+                                       python_version=options.python_version)
         for trigger, targets in module_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
 
 def calculate_active_triggers(manager: BuildManager,
-                              old_modules: Dict[str, MypyFile],
+                              old_snapshots: Dict[str, Dict[str, SnapshotItem]],
                               new_modules: Dict[str, MypyFile]) -> Set[str]:
     """Determine activated triggers by comparing old and new symbol tables.
 
@@ -179,7 +211,9 @@ def calculate_active_triggers(manager: BuildManager,
     """
     names = set()  # type: Set[str]
     for id in new_modules:
-        names |= compare_symbol_tables(id, old_modules[id].names, new_modules[id].names)
+        snapshot1 = old_snapshots[id]
+        snapshot2 = snapshot_symbol_table(id, new_modules[id].names)
+        names |= compare_symbol_table_snapshots(id, snapshot1, snapshot2)
     return {make_trigger(name) for name in names}
 
 
@@ -187,8 +221,7 @@ def replace_modules_with_new_variants(
         manager: BuildManager,
         graph: Dict[str, State],
         old_modules: Dict[str, MypyFile],
-        new_modules: Dict[str, MypyFile],
-        new_type_maps: Dict[str, Dict[Expression, Type]]) -> None:
+        new_modules: Dict[str, MypyFile]) -> None:
     """Replace modules with newly builds versions.
 
     Retain the identities of externally visible AST nodes in the
@@ -202,7 +235,6 @@ def replace_modules_with_new_variants(
         merge_asts(old_modules[id], old_modules[id].names,
                    new_modules[id], new_modules[id].names)
         manager.modules[id] = old_modules[id]
-        graph[id].type_checker.type_map = new_type_maps[id]
 
 
 def propagate_changes_using_dependencies(
@@ -337,7 +369,7 @@ def reprocess_nodes(manager: BuildManager,
     new_triggered = get_triggered_namespace_items(old_types_map)
 
     # Dependencies may have changed.
-    update_deps(module_id, nodes, graph, deps)
+    update_deps(module_id, nodes, graph, deps, manager.options)
 
     return new_triggered
 
@@ -379,14 +411,12 @@ def get_triggered_namespace_items(old_types_map: Dict[NamespaceNode, Dict[str, T
 def update_deps(module_id: str,
                 nodes: List[DeferredNode],
                 graph: Dict[str, State],
-                deps: Dict[str, Set[str]]) -> None:
+                deps: Dict[str, Set[str]],
+                options: Options) -> None:
     for deferred in nodes:
         node = deferred.node
-        prefix = module_id
-        if isinstance(node, FuncBase) and node.info:
-            prefix += '.{}'.format(node.info.name())
         type_map = graph[module_id].type_checker.type_map
-        new_deps = get_dependencies_of_target(prefix, node, type_map)
+        new_deps = get_dependencies_of_target(module_id, node, type_map, options.python_version)
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
@@ -423,5 +453,8 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
             if isinstance(node, FuncDef):
                 result.extend(lookup_target(modules, target + '.' + name))
         return result
-    assert isinstance(node, (FuncDef, MypyFile))
+    if isinstance(node, Decorator):
+        # Decorator targets actually refer to the function definition only.
+        node = node.func
+    assert isinstance(node, (FuncDef, MypyFile)), 'unexpected type: %s' % type(node)
     return [DeferredNode(node, active_class_name, active_class)]

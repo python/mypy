@@ -351,21 +351,130 @@ class E:
     def __init_subclass__(cls) -> None:
         reveal_type(cls)  # E: Revealed type is 'def () -> __main__.E'
 
-[case testSelfTypeProperty]
-from typing import TypeVar
-
-T = TypeVar('T', bound='A')
-
+[case testSelfTypePropertyUnion]
+from typing import Union
 class A:
     @property
-    def member(self: T) -> T:
-        pass
+    def f(self: A) -> int: pass
+
+class B:
+    @property
+    def f(self: B) -> int: pass
+x: Union[A, B]
+reveal_type(x.f)  # E: Revealed type is 'builtins.int'
+
+[builtins fixtures/property.pyi]
+
+[case testSelfTypeProperSupertypeAttribute]
+from typing import Callable, TypeVar
+class K: pass
+T = TypeVar('T', bound=K)
+class A(K):
+    @property
+    def g(self: K) -> int: return 0
+    @property
+    def gt(self: T) -> T: return self
+    f: Callable[[object], int]
+    ft: Callable[[T], T]
 
 class B(A):
     pass
 
-reveal_type(A().member)  # E: Revealed type is '__main__.A*'
-reveal_type(B().member)  # E: Revealed type is '__main__.B*'
+reveal_type(A().g)  # E: Revealed type is 'builtins.int'
+reveal_type(A().gt)  # E: Revealed type is '__main__.A*'
+reveal_type(A().f())  # E: Revealed type is 'builtins.int'
+reveal_type(A().ft())  # E: Revealed type is '__main__.A*'
+reveal_type(B().g)  # E: Revealed type is 'builtins.int'
+reveal_type(B().gt)  # E: Revealed type is '__main__.B*'
+reveal_type(B().f())  # E: Revealed type is 'builtins.int'
+reveal_type(B().ft())  # E: Revealed type is '__main__.B*'
+
+[builtins fixtures/property.pyi]
+
+[case testSelfTypeProperSupertypeAttributeTuple]
+from typing import Callable, TypeVar, Tuple
+T = TypeVar('T')
+class A(Tuple[int, int]):
+    @property
+    def g(self: object) -> int: return 0
+    @property
+    def gt(self: T) -> T: return self
+    f: Callable[[object], int]
+    ft: Callable[[T], T]
+
+class B(A):
+    pass
+
+reveal_type(A().g)  # E: Revealed type is 'builtins.int'
+reveal_type(A().gt)  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.A]'
+reveal_type(A().f())  # E: Revealed type is 'builtins.int'
+reveal_type(A().ft())  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.A]'
+reveal_type(B().g)  # E: Revealed type is 'builtins.int'
+reveal_type(B().gt)  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.B]'
+reveal_type(B().f())  # E: Revealed type is 'builtins.int'
+reveal_type(B().ft())  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.B]'
+
+[builtins fixtures/property.pyi]
+
+[case testSelfTypeProperSupertypeAttributeMeta]
+from typing import Callable, TypeVar, Type
+T = TypeVar('T')
+class A(type):
+    @property
+    def g(cls: object) -> int: return 0
+    @property
+    def gt(cls: T) -> T: return cls
+    f: Callable[[object], int]
+    ft: Callable[[T], T]
+
+class B(A):
+    pass
+
+class X(metaclass=B):
+    def __init__(self, x: int) -> None: pass
+class Y(X): pass
+X1: Type[X]
+reveal_type(X.g)  # E: Revealed type is 'builtins.int'
+reveal_type(X.gt)  # E: Revealed type is 'def (x: builtins.int) -> __main__.X'
+reveal_type(X.f())  # E: Revealed type is 'builtins.int'
+reveal_type(X.ft())  # E: Revealed type is 'def (x: builtins.int) -> __main__.X'
+reveal_type(Y.g)  # E: Revealed type is 'builtins.int'
+reveal_type(Y.gt)  # E: Revealed type is 'def (x: builtins.int) -> __main__.Y'
+reveal_type(Y.f())  # E: Revealed type is 'builtins.int'
+reveal_type(Y.ft())  # E: Revealed type is 'def (x: builtins.int) -> __main__.Y'
+reveal_type(X1.g)  # E: Revealed type is 'builtins.int'
+reveal_type(X1.gt)  # E: Revealed type is 'Type[__main__.X]'
+reveal_type(X1.f())  # E: Revealed type is 'builtins.int'
+reveal_type(X1.ft())  # E: Revealed type is 'Type[__main__.X]'
+
+[builtins fixtures/property.pyi]
+
+[case testSelfTypeProperSupertypeAttributeGeneric]
+from typing import Callable, TypeVar, Generic
+Q = TypeVar('Q', covariant=True)
+class K(Generic[Q]):
+    q: Q
+T = TypeVar('T')
+class A(K[Q]):
+    @property
+    def g(self: K[object]) -> int: return 0
+    @property
+    def gt(self: K[T]) -> T: return self.q
+    f: Callable[[object], int]
+    ft: Callable[[T], T]
+
+class B(A[Q]):
+    pass
+a: A[int]
+b: B[str]
+reveal_type(a.g)  # E: Revealed type is 'builtins.int'
+--reveal_type(a.gt)  # E: Revealed type is 'builtins.int'
+reveal_type(a.f())  # E: Revealed type is 'builtins.int'
+reveal_type(a.ft())  # E: Revealed type is '__main__.A*[builtins.int]'
+reveal_type(b.g)  # E: Revealed type is 'builtins.int'
+--reveal_type(b.gt)  # E: Revealed type is '__main__.B*[builtins.str]'
+reveal_type(b.f())  # E: Revealed type is 'builtins.int'
+reveal_type(b.ft())  # E: Revealed type is '__main__.B*[builtins.str]'
 
 [builtins fixtures/property.pyi]
 
@@ -376,3 +485,21 @@ class A:
     # def g(self: None) -> None: ... see in check-python2.test
 [out]
 main:3: error: Self argument missing for a non-static method (or an invalid type for self)
+
+[case testUnionPropertyField]
+from typing import Union
+
+class A:
+    x: int
+
+class B:
+    @property
+    def x(self) -> int: return 1
+
+class C:
+    @property
+    def x(self) -> int: return 1
+
+ab: Union[A, B, C]
+reveal_type(ab.x)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/property.pyi]

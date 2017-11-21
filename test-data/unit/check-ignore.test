@@ -194,7 +194,7 @@ foo(Child())
 def bar(x: Base[str, str]) -> None: pass
 bar(Child())
 [out]
-main:19: error: Argument 1 to "bar" has incompatible type "Child"; expected Base[str, str]
+main:19: error: Argument 1 to "bar" has incompatible type "Child"; expected "Base[str, str]"
 
 [case testTypeIgnoreLineNumberWithinFile]
 import m

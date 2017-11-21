@@ -613,6 +613,13 @@ class A: pass
 [out]
 main:3: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
+[case testIsRightOperand]
+
+1 is 1()
+[builtins fixtures/bool.pyi]
+[out]
+main:2: error: "int" not callable
+
 [case testReverseBinaryOperator]
 
 class A:
@@ -875,10 +882,11 @@ main:3: error: "A" not callable
 [case testNoneReturnTypeBasics]
 
 a, o = None, None # type: (A, object)
-a = f()         # Fail
-o = A().g(a)    # Fail
-A().g(f())      # Fail
-x = f() # type: A # Fail
+a = f()         # E: "f" does not return a value
+o = a()         # E: Function does not return a value
+o = A().g(a)    # E: "g" of "A" does not return a value
+A().g(f())      # E: "f" does not return a value
+x: A = f()      # E: "f" does not return a value
 f()
 A().g(a)
 
@@ -888,11 +896,8 @@ def f() -> None:
 class A:
     def g(self, x: object) -> None:
         pass
-[out]
-main:3: error: "f" does not return a value
-main:4: error: "g" of "A" does not return a value
-main:5: error: "f" does not return a value
-main:6: error: "f" does not return a value
+    def __call__(self) -> None:
+        pass
 
 [case testNoneReturnTypeWithStatements]
 import typing
@@ -1135,7 +1140,7 @@ b'%a' % 3
 from typing import Any, Dict
 a = None # type: Any
 ds, do, di = None, None, None # type: Dict[str, int], Dict[object, int], Dict[int, int]
-'%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is Dict[Any, Any])
+'%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is "Dict[Any, Any]")
 '%()d' % a
 '%()d' % ds
 '%()d' % do
@@ -1199,7 +1204,7 @@ f = lambda: ''.x
 f = lambda: ''
 [out]
 main:3: error: "str" has no attribute "x"
-main:4: error: Incompatible types in assignment (expression has type Callable[[], str], variable has type Callable[[], int])
+main:4: error: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "Callable[[], int]")
 main:4: error: Incompatible return value type (got "str", expected "int")
 
 [case testVoidLambda]
@@ -1215,7 +1220,7 @@ from typing import Iterator, Callable
 lambda: (yield)
 
 gen: Callable[[], Iterator[str]]
-gen = (lambda: (yield 1))  # E: Incompatible types in yield (actual type "int", expected type "str")
+gen = (lambda: (yield 1))  # E: Incompatible types in "yield" (actual type "int", expected type "str")
 
 def fun(cb: Callable[[], Iterator[str]]) -> None:
     pass
@@ -1322,7 +1327,7 @@ class B: pass
 [out]
 main:5: error: Key expression in dictionary comprehension has incompatible type "A"; expected type "B"
 main:5: error: Value expression in dictionary comprehension has incompatible type "B"; expected type "A"
-main:6: error: Incompatible types in assignment (expression has type Dict[A, B], variable has type "A")
+main:6: error: Incompatible types in assignment (expression has type "Dict[A, B]", variable has type "A")
 
 
 [case testDictionaryComprehensionWithNonDirectMapping]
@@ -1359,7 +1364,7 @@ from typing import Callable, Iterator, List
 
 a = []  # type: List[Callable[[], str]]
 b = None  # type: Iterator[Callable[[], int]]
-b = (x for x in a)  # E: Generator has incompatible item type Callable[[], str]; expected Callable[[], int]
+b = (x for x in a)  # E: Generator has incompatible item type "Callable[[], str]"; expected "Callable[[], int]"
 [builtins fixtures/list.pyi]
 
 -- Conditional expressions
@@ -1415,9 +1420,9 @@ cast(A, f)
 def f() -> None:
     pass
 [out]
-main:5: error: Unsupported left operand type for + (None)
-main:6: error: Unsupported left operand type for + (Callable[[], None])
-main:7: error: Unsupported operand types for + ("A" and Callable[[], None])
+main:5: error: Unsupported left operand type for + ("None")
+main:6: error: Unsupported left operand type for + ("Callable[[], None]")
+main:7: error: Unsupported operand types for + ("A" and "Callable[[], None]")
 
 [case testOperatorMethodWithInvalidArgCount]
 
@@ -1525,9 +1530,7 @@ from typing import Iterator
 def f() -> Iterator[int]:
     yield 5
 def g() -> Iterator[int]:
-    a = yield from f()
-[out]
-main:5: error: Function does not return a value
+    a = yield from f()  # E: Function does not return a value
 
 [case testYieldFromGeneratorHasValue]
 from typing import Iterator, Generator
@@ -1553,7 +1556,7 @@ d1 = dict(a=1, b=2) # type: Dict[str, int]
 d2 = dict(a=1, b='') # type: Dict[str, int] # E: Dict entry 1 has incompatible type "str": "str"; expected "str": "int"
 d3 = dict(a=1) # type: Dict[int, int] # E: Dict entry 0 has incompatible type "str": "int"; expected "int": "int"
 d4 = dict(a=1, b=1)
-d4.xyz # E: Dict[str, int] has no attribute "xyz"
+d4.xyz # E: "Dict[str, int]" has no attribute "xyz"
 d5 = dict(a=1, b='') # type: Dict[str, Any]
 [builtins fixtures/dict.pyi]
 
@@ -1567,7 +1570,7 @@ dict(undefined) # E: Name 'undefined' is not defined
 [case testDictFromList]
 from typing import Dict
 d = dict([(1, 'x'), (2, 'y')])
-d() # E: Dict[int, str] not callable
+d() # E: "Dict[int, str]" not callable
 d2 = dict([(1, 'x')]) # type: Dict[str, str] # E: List item 0 has incompatible type "Tuple[int, str]"; expected "Tuple[str, str]"
 [builtins fixtures/dict.pyi]
 
@@ -1576,10 +1579,10 @@ from typing import Dict
 it = [('x', 1)]
 
 d = dict(it, x=1)
-d() # E: Dict[str, int] not callable
+d() # E: "Dict[str, int]" not callable
 
 d2 = dict(it, x='') # E: Cannot infer type argument 2 of "dict"
-d2() # E: Dict[Any, Any] not callable
+d2() # E: "Dict[Any, Any]" not callable
 
 d3 = dict(it, x='') # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
@@ -1591,7 +1594,7 @@ dict(it, x='y') # E: Keyword argument only valid with "str" key type in call to 
 
 [case testDictFromIterableAndKeywordArg3]
 d = dict([], x=1)
-d() # E: Dict[str, int] not callable
+d() # E: "Dict[str, int]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testDictFromIterableAndStarStarArgs]
@@ -1600,20 +1603,20 @@ it = [('x', 1)]
 
 kw = {'x': 1}
 d = dict(it, **kw)
-d() # E: Dict[str, int] not callable
+d() # E: "Dict[str, int]" not callable
 
 kw2 = {'x': ''}
 d2 = dict(it, **kw2) # E: Cannot infer type argument 2 of "dict"
-d2() # E: Dict[Any, Any] not callable
+d2() # E: "Dict[Any, Any]" not callable
 
-d3 = dict(it, **kw2) # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type **Dict[str, str]; expected "int"
+d3 = dict(it, **kw2) # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type "**Dict[str, str]"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testDictFromIterableAndStarStarArgs2]
 it = [(1, 'x')]
 kw = {'x': 'y'}
 d = dict(it, **kw) # E: Keyword argument only valid with "str" key type in call to "dict"
-d() # E: Dict[int, str] not callable
+d() # E: "Dict[int, str]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testUserDefinedClassNamedDict]
@@ -1633,10 +1636,10 @@ class D1(dict): pass # Implicit base class Dict[Any, Any]
 D1([(1, 2)], x=1)
 class D2(Dict[T, S], Generic[T, S]): pass
 da = D2([('x', 2)], x=1)
-da() # E: D2[str, int] not callable
+da() # E: "D2[str, int]" not callable
 D2([(1, 2)], x=1) # E: Keyword argument only valid with "str" key type in call to "dict"
 db = D2(x=1)
-db() # E: D2[str, int] not callable
+db() # E: "D2[str, int]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testSpecialSignatureForSubclassOfDict2]
@@ -1653,7 +1656,7 @@ S = TypeVar('S')
 class D(Dict[T, S], Generic[T, S]):
     def __init__(self, x: S, y: T) -> None: pass
 d = D(1, y='')
-d() # E: D[str, int] not callable
+d() # E: "D[str, int]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testRevealType]
@@ -1708,7 +1711,7 @@ None == None
 [builtins fixtures/ops.pyi]
 
 [case testLtNone]
-None < None  # E: Unsupported left operand type for < (None)
+None < None  # E: Unsupported left operand type for < ("None")
 [builtins fixtures/ops.pyi]
 
 [case testDictWithStarExpr]
@@ -1723,8 +1726,8 @@ a = {'a': 1}
 b = {'z': 26, **a}
 c = {**b}
 d = {**a, **b, 'c': 3}
-e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type Dict[str, int]; expected Mapping[int, str]
-f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type Dict[str, int]; expected Mapping[int, int]
+e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type "Dict[str, int]"; expected "Mapping[int, str]"
+f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Dict[str, int]"; expected "Mapping[int, int]"
 [builtins fixtures/dict.pyi]
 
 [case testDictIncompatibleTypeErrorMessage]
@@ -1733,7 +1736,7 @@ from typing import Dict, Callable
 def things() -> int:
     return 42
 
-stuff: Dict[int, Callable[[], str]] = {  # E: Dict entry 0 has incompatible type "int": Callable[[], int]; expected "int": Callable[[], str]
+stuff: Dict[int, Callable[[], str]] = {  # E: Dict entry 0 has incompatible type "int": "Callable[[], int]"; expected "int": "Callable[[], str]"
     1: things
 }
 [builtins fixtures/dict.pyi]

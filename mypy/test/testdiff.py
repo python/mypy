@@ -8,7 +8,7 @@ from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.nodes import MypyFile
 from mypy.options import Options
-from mypy.server.astdiff import compare_symbol_tables
+from mypy.server.astdiff import snapshot_symbol_table, compare_symbol_table_snapshots
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
@@ -20,8 +20,6 @@ files = [
 
 
 class ASTDiffSuite(DataSuite):
-    def __init__(self, *, update_data: bool) -> None:
-        pass
 
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
@@ -48,10 +46,10 @@ class ASTDiffSuite(DataSuite):
 
         assert files1 is not None and files2 is not None, ('cases where CompileError'
                                                            ' occurred should not be run')
-        diff = compare_symbol_tables(
-            '__main__',
-            files1['__main__'].names,
-            files2['__main__'].names)
+        prefix = '__main__'
+        snapshot1 = snapshot_symbol_table(prefix, files1['__main__'].names)
+        snapshot2 = snapshot_symbol_table(prefix, files2['__main__'].names)
+        diff = compare_symbol_table_snapshots(prefix, snapshot1, snapshot2)
         for trigger in sorted(diff):
             a.append(trigger)
 

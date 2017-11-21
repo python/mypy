@@ -3,7 +3,7 @@
 import os
 from typing import List, Tuple, Dict, Optional
 
-from mypy import build
+from mypy import build, defaults
 from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.nodes import MypyFile, Expression
@@ -15,13 +15,16 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypy.types import Type
 
 files = [
-    'deps.test'
+    'deps.test',
+    'deps-types.test',
+    'deps-generics.test',
+    'deps-expressions.test',
+    'deps-statements.test',
+    'deps-classes.test',
 ]
 
 
 class GetDependenciesSuite(DataSuite):
-    def __init__(self, *, update_data: bool) -> None:
-        pass
 
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
@@ -33,30 +36,39 @@ class GetDependenciesSuite(DataSuite):
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)
-        messages, files, type_map = self.build(src)
+        if testcase.name.endswith('python2'):
+            python_version = defaults.PYTHON2_VERSION
+        else:
+            python_version = defaults.PYTHON3_VERSION
+        messages, files, type_map = self.build(src, python_version)
         a = messages
-        assert files is not None and type_map is not None, ('cases where CompileError'
-                                                            ' occurred should not be run')
-        deps = get_dependencies('__main__', files['__main__'], type_map)
+        if files is None or type_map is None:
+            if not a:
+                a = ['Unknown compile error (likely syntax error in test case or fixture)']
+        else:
+            deps = get_dependencies(files['__main__'], type_map, python_version)
 
-        for source, targets in sorted(deps.items()):
-            line = '%s -> %s' % (source, ', '.join(sorted(targets)))
-            # Clean up output a bit
-            line = line.replace('__main__', 'm')
-            a.append(line)
+            for source, targets in sorted(deps.items()):
+                line = '%s -> %s' % (source, ', '.join(sorted(targets)))
+                # Clean up output a bit
+                line = line.replace('__main__', 'm')
+                a.append(line)
 
         assert_string_arrays_equal(
             testcase.output, a,
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
 
-    def build(self, source: str) -> Tuple[List[str],
-                                          Optional[Dict[str, MypyFile]],
-                                          Optional[Dict[Expression, Type]]]:
+    def build(self,
+              source: str,
+              python_version: Tuple[int, int]) -> Tuple[List[str],
+                                                        Optional[Dict[str, MypyFile]],
+                                                        Optional[Dict[Expression, Type]]]:
         options = Options()
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull
+        options.python_version = python_version
         try:
             result = build.build(sources=[BuildSource('main', None, source)],
                                  options=options,

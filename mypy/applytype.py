@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Sequence, Optional
 
 import mypy.subtypes
 from mypy.sametypes import is_same_type
@@ -8,7 +8,7 @@ from mypy.messages import MessageBuilder
 from mypy.nodes import Context
 
 
-def apply_generic_arguments(callable: CallableType, types: List[Type],
+def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optional[Type]],
                             msg: MessageBuilder, context: Context) -> CallableType:
     """Apply generic type arguments to a callable type.
 
@@ -18,11 +18,12 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
     Note that each type can be None; in this case, it will not be applied.
     """
     tvars = callable.variables
-    assert len(tvars) == len(types)
+    assert len(tvars) == len(orig_types)
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.
-    types = types[:]
+    types = list(orig_types)
     for i, type in enumerate(types):
+        assert not isinstance(type, PartialType), "Internal error: must never apply partial type"
         values = callable.variables[i].values
         if values and type:
             if isinstance(type, AnyType):
@@ -34,22 +35,21 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
                        for v1 in type.values):
                     continue
             for value in values:
-                if isinstance(type, PartialType) or mypy.subtypes.is_subtype(type, value):
+                if mypy.subtypes.is_subtype(type, value):
                     types[i] = value
                     break
             else:
-                msg.incompatible_typevar_value(callable, i + 1, type, context)
-
+                msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
         upper_bound = callable.variables[i].upper_bound
-        if (type and not isinstance(type, PartialType) and
-                not mypy.subtypes.is_subtype(type, upper_bound)):
-            msg.incompatible_typevar_value(callable, i + 1, type, context)
+        if type and not mypy.subtypes.is_subtype(type, upper_bound):
+            msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
 
     # Create a map from type variable id to target type.
     id_to_type = {}  # type: Dict[TypeVarId, Type]
     for i, tv in enumerate(tvars):
-        if types[i]:
-            id_to_type[tv.id] = types[i]
+        typ = types[i]
+        if typ:
+            id_to_type[tv.id] = typ
 
     # Apply arguments to argument types.
     arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]

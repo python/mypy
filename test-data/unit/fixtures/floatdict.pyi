@@ -18,7 +18,7 @@ class str:
 
 class bytes: pass
 
-class tuple: pass
+class tuple(Generic[T]): pass
 class function: pass
 
 class ellipsis: pass

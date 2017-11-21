@@ -184,14 +184,11 @@ MypyFile:1(
   FuncDef:1(
     f
     Args(
-      Var(x)
-      Var(y))
-    Init(
-      AssignmentStmt:1(
-        NameExpr(x [l])
+      default(
+        Var(x)
         NameExpr(f [__main__.f]))
-      AssignmentStmt:1(
-        NameExpr(y [l])
+      default(
+        Var(y)
         NameExpr(object [builtins.object])))
     Block:1(
       ExpressionStmt:2(

@@ -14,7 +14,7 @@ Can't install mypy using pip
 
 If installation fails, you've probably hit one of these issues:
 
-* Mypy needs Python 3.3 or later to run.
+* Mypy needs Python 3.4 or later to run.
 * You may have to run pip like this:
   ``python3 -m pip install mypy``.
 
@@ -225,6 +225,48 @@ Possible strategies in such situations are:
      def f_good(x: Sequence[A]) -> A:
          return x[0]
      f_good(new_lst) # OK
+
+Covariant subtyping of mutable protocol members is rejected
+-----------------------------------------------------------
+
+Mypy rejects this because this is potentially unsafe.
+Consider this example:
+
+.. code-block:: python
+
+   from typing_extensions import Protocol
+
+   class P(Protocol):
+       x: float
+
+   def fun(arg: P) -> None:
+       arg.x = 3.14
+
+   class C:
+       x = 42
+   c = C()
+   fun(c)  # This is not safe
+   c.x << 5  # Since this will fail!
+
+To work around this problem consider whether "mutating" is actually part
+of a protocol. If not, then one can use a ``@property`` in
+the protocol definition:
+
+.. code-block:: python
+
+   from typing_extensions import Protocol
+
+   class P(Protocol):
+       @property
+       def x(self) -> float:
+          pass
+
+   def fun(arg: P) -> None:
+       ...
+
+   class C:
+       x = 42
+   fun(C())  # OK
 
 Declaring a supertype as variable type
 --------------------------------------

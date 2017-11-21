@@ -1,4 +1,26 @@
 -- Test cases for function overloading
+[case testOverloadNotImportedNoCrash]
+@overload
+def f(a): pass
+@overload
+def f(a): pass
+def f(a): pass
+f(0)
+
+@overload  # E: Name 'overload' is not defined
+def g(a:int): pass
+def g(a): pass  # E: Name 'g' already defined
+g(0)
+
+@something  # E: Name 'something' is not defined
+def r(a:int): pass
+def r(a): pass  # E: Name 'r' already defined
+r(0)
+[out]
+main:1: error: Name 'overload' is not defined
+main:3: error: Name 'f' already defined
+main:3: error: Name 'overload' is not defined
+main:5: error: Name 'f' already defined
 
 [case testTypeCheckOverloadWithImplementation]
 from typing import overload, Any
@@ -447,7 +469,7 @@ from foo import *
 from typing import overload
 t, a = None, None # type: (type, A)
 
-a = A # E: Incompatible types in assignment (expression has type Type[A], variable has type "A")
+a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
 t = A
 
 class A:
@@ -610,7 +632,7 @@ n = 1
 m = 1
 n = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 m = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-f(list_object) # E: Argument 1 to "f" has incompatible type List[object]; expected List[int]
+f(list_object) # E: Argument 1 to "f" has incompatible type "List[object]"; expected "List[int]"
 [builtins fixtures/list.pyi]
 
 [case testOverlappingOverloadSignatures]
@@ -901,7 +923,7 @@ def f(x: int, y: List[int] = None) -> int: pass
 def f(x: int, y: List[str] = None) -> int: pass
 f(y=[1], x=0)() # E: "int" not callable
 f(y=[''], x=0)() # E: "int" not callable
-a = f(y=[['']], x=0) # E: List item 0 has incompatible type List[str]; expected "int"
+a = f(y=[['']], x=0) # E: List item 0 has incompatible type "List[str]"; expected "int"
 a() # E: "int" not callable
 [builtins fixtures/list.pyi]
 
@@ -957,8 +979,8 @@ def g(x: U, y: V) -> None:
     f(x)() # E: "mystr" not callable
     f(y) # E: No overload variant of "f" matches argument types [V`-2]
     a = f([x]) # E: "f" does not return a value
-    f([y]) # E: Type argument 1 of "f" has incompatible value "V"
-    f([x, y]) # E: Type argument 1 of "f" has incompatible value "object"
+    f([y]) # E: Value of type variable "T" of "f" cannot be "V"
+    f([x, y]) # E: Value of type variable "T" of "f" cannot be "object"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -998,10 +1020,10 @@ def g(x: int, *a: AnyStr) -> None: pass
 
 g('foo')
 g('foo', 'bar')
-g('foo', b'bar') # E: Type argument 1 of "g" has incompatible value "object"
+g('foo', b'bar') # E: Value of type variable "AnyStr" of "g" cannot be "object"
 g(1)
 g(1, 'foo')
-g(1, 'foo', b'bar') # E: Type argument 1 of "g" has incompatible value "object"
+g(1, 'foo', b'bar') # E: Value of type variable "AnyStr" of "g" cannot be "object"
 [builtins fixtures/primitives.pyi]
 
 [case testBadOverlapWithTypeVarsWithValues]
@@ -1117,14 +1139,14 @@ def f(x: int, y: Tuple[str, ...]) -> None: pass
 @overload
 def f(x: int, y: str) -> None: pass
 f(1, ('2', '3'))
-f(1, (2, '3')) # E: Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected Tuple[str, ...]
+f(1, (2, '3')) # E: Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected "Tuple[str, ...]"
 f(1, ('2',))
 f(1, '2')
-f(1, (2, 3)) # E: Argument 2 to "f" has incompatible type "Tuple[int, int]"; expected Tuple[str, ...]
+f(1, (2, 3)) # E: Argument 2 to "f" has incompatible type "Tuple[int, int]"; expected "Tuple[str, ...]"
 x = ('2', '3')  # type: Tuple[str, ...]
 f(1, x)
 y = (2, 3)  # type: Tuple[int, ...]
-f(1, y) # E: Argument 2 to "f" has incompatible type Tuple[int, ...]; expected Tuple[str, ...]
+f(1, y) # E: Argument 2 to "f" has incompatible type "Tuple[int, ...]"; expected "Tuple[str, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testCallableSpecificOverload]
@@ -1157,3 +1179,143 @@ class Test(object):
 
 t = Test()
 reveal_type(t.do_chain)  # E: Revealed type is '__main__.Chain'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument1]
+from typing import overload, Any
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: object) -> object: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument2]
+from typing import overload, Any
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: float) -> float: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument3]
+from typing import overload, Any
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument4]
+from typing import overload, Any
+
+@overload
+def f(x: int, y: int, z: str) -> int: ...
+@overload
+def f(x: object, y: int, z: str) -> object: ...
+def f(x): pass
+
+a: Any
+# Any causes ambiguity
+reveal_type(f(a, 1, ''))  # E: Revealed type is 'Any'
+# Any causes no ambiguity
+reveal_type(f(1, a, a))  # E: Revealed type is 'builtins.int'
+reveal_type(f('', a, a))  # E: Revealed type is 'builtins.object'
+# Like above, but use keyword arguments.
+reveal_type(f(y=1, z='', x=a))  # E: Revealed type is 'Any'
+reveal_type(f(y=a, z='', x=1))  # E: Revealed type is 'builtins.int'
+reveal_type(f(z='', x=1, y=a))  # E: Revealed type is 'builtins.int'
+reveal_type(f(z='', x=a, y=1))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument5]
+from typing import overload, Any, Union
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: Union[int, float]) -> float: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument6]
+from typing import overload, Any
+
+@overload
+def f(x: int, y: int) -> int: ...
+@overload
+def f(x: float, y: int, z: str) -> float: ...
+@overload
+def f(x: object, y: int, z: str, a: None) -> object: ...
+def f(x): pass
+
+a: Any
+# Any causes ambiguity
+reveal_type(f(*a))  # E: Revealed type is 'Any'
+reveal_type(f(a, *a))  # E: Revealed type is 'Any'
+reveal_type(f(1, *a))  # E: Revealed type is 'Any'
+reveal_type(f(1.1, *a))  # E: Revealed type is 'Any'
+reveal_type(f('', *a))  # E: Revealed type is 'builtins.object'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument7]
+from typing import overload, Any
+
+@overload
+def f(x: int, y: int, z: int) -> int: ...
+@overload
+def f(x: object, y: int, z: int) -> object: ...
+def f(x): pass
+
+a: Any
+# TODO: We could infer 'int' here
+reveal_type(f(1, *a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument8]
+from typing import overload, Any
+
+@overload
+def f(x: int, y: int, z: int) -> str: ...
+@overload
+def f(x: object, y: int, z: int) -> str: ...
+def f(x): pass
+
+a: Any
+# The return type is not ambiguous so Any arguments cause no ambiguity.
+reveal_type(f(a, 1, 1)) # E: Revealed type is 'builtins.str'
+reveal_type(f(1, *a))  # E: Revealed type is 'builtins.str'
+
+[case testOverloadOnOverloadWithType]
+from typing import Any, Type, TypeVar, overload
+from mod import MyInt
+T = TypeVar('T')
+
+@overload
+def make(cls: Type[T]) -> T: pass
+@overload
+def make() -> Any: pass
+
+def make(*args):
+    pass
+
+c = make(MyInt)
+reveal_type(c) # E: Revealed type is 'mod.MyInt*'
+
+[file mod.pyi]
+from typing import overload
+class MyInt:
+    @overload
+    def __init__(self, x: str) -> None: pass
+    @overload
+    def __init__(self, x: str, y: int) -> None: pass
+[out]

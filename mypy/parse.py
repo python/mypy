@@ -16,7 +16,7 @@ def parse(source: Union[str, bytes],
 
     The python_version (major, minor) option determines the Python syntax variant.
     """
-    is_stub_file = bool(fnam) and fnam.endswith('.pyi')
+    is_stub_file = fnam.endswith('.pyi')
     if options.python_version[0] >= 3 or is_stub_file:
         import mypy.fastparse
         return mypy.fastparse.parse(source,

@@ -78,6 +78,22 @@ type:
 
    x = 1.1  # type: Union[int, str]  # Error!
 
+Python 3.6 introduced a new syntax for variable annotations, which
+resembles function annotations:
+
+.. code-block:: python
+
+   x: Union[int, str] = 1
+
+We'll use both syntax variants in examples. The syntax variants are
+mostly interchangeable, but the Python 3.6 syntax allows defining the
+type of a variable without initialization, which is not possible with
+the comment-based syntax:
+
+.. code-block:: python
+
+   x: str  # Declare type of 'x' without initialization
+
 .. note::
 
    The best way to think about this is that the type comment sets the

@@ -1,17 +1,19 @@
 import typing
 
 T = typing.TypeVar('T')
-class list(typing.Generic[T], typing.Sequence[T]): pass
+U = typing.TypeVar('U')
+class list(typing.Sequence[T]): pass
 
 class object:
-    def __init__(self): pass
+    def __init__(self) -> None: pass
 class type: pass
 class function: pass
 class int: pass
 class str: pass
-class dict: pass
-class set: pass
-class tuple: pass
+class bool: pass
+class dict(typing.Generic[T, U]): pass
+class set(typing.Generic[T]): pass
+class tuple(typing.Generic[T]): pass
 class BaseException: pass
 class StopIteration(BaseException): pass
 class StopAsyncIteration(BaseException): pass

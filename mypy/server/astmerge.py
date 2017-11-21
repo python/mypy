@@ -7,7 +7,7 @@ from typing import Dict, List, cast, TypeVar, Optional
 
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
-    FuncDef, ClassDef, SymbolNode, Var, Statement, MDEF
+    FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, MDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -15,6 +15,7 @@ from mypy.types import (
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded
 )
+from mypy.util import get_prefix
 
 
 def merge_asts(old: MypyFile, old_symbols: SymbolTable,
@@ -97,12 +98,7 @@ class NodeReplaceVisitor(TraverserVisitor):
     def visit_class_def(self, node: ClassDef) -> None:
         # TODO additional things like the MRO
         node.defs.body = self.replace_statements(node.defs.body)
-        replace_nodes_in_symbol_table(node.info.names, self.replacements)
-        info = node.info
-        for i, item in enumerate(info.mro):
-            info.mro[i] = self.fixup(info.mro[i])
-        for i, base in enumerate(info.bases):
-            self.fixup_type(info.bases[i])
+        self.process_type_info(node.info)
         super().visit_class_def(node)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
@@ -123,6 +119,10 @@ class NodeReplaceVisitor(TraverserVisitor):
         if node.node is not None:
             node.node = self.fixup(node.node)
 
+    def visit_namedtuple_expr(self, node: NamedTupleExpr) -> None:
+        super().visit_namedtuple_expr(node)
+        self.process_type_info(node.info)
+
     # Helpers
 
     def fixup(self, node: SN) -> SN:
@@ -134,6 +134,14 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def fixup_type(self, typ: Type) -> None:
         typ.accept(TypeReplaceVisitor(self.replacements))
+
+    def process_type_info(self, info: TypeInfo) -> None:
+        # TODO additional things like the MRO
+        replace_nodes_in_symbol_table(info.names, self.replacements)
+        for i, item in enumerate(info.mro):
+            info.mro[i] = self.fixup(info.mro[i])
+        for i, base in enumerate(info.bases):
+            self.fixup_type(info.bases[i])
 
     def replace_statements(self, nodes: List[Statement]) -> List[Statement]:
         result = []
@@ -163,12 +171,18 @@ class TypeReplaceVisitor(TypeVisitor[None]):
         for arg in typ.arg_types:
             arg.accept(self)
         typ.ret_type.accept(self)
-        # TODO: typ.definition
+        if typ.definition:
+            # No need to fixup since this is just a cross-reference.
+            typ.definition = self.replacements.get(typ.definition, typ.definition)
         # TODO: typ.fallback
-        assert not typ.variables  # TODO
+        for tv in typ.variables:
+            tv.upper_bound.accept(self)
+            for value in tv.values:
+                value.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
-        raise NotImplementedError
+        for item in t.items():
+            item.accept(self)
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
@@ -177,31 +191,37 @@ class TypeReplaceVisitor(TypeVisitor[None]):
         raise RuntimeError
 
     def visit_tuple_type(self, typ: TupleType) -> None:
-        raise NotImplementedError
+        for item in typ.items:
+            item.accept(self)
 
     def visit_type_type(self, typ: TypeType) -> None:
-        raise NotImplementedError
+        typ.item.accept(self)
 
     def visit_type_var(self, typ: TypeVarType) -> None:
-        raise NotImplementedError
+        typ.upper_bound.accept(self)
+        for value in typ.values:
+            value.accept(self)
 
     def visit_typeddict_type(self, typ: TypedDictType) -> None:
         raise NotImplementedError
 
     def visit_unbound_type(self, typ: UnboundType) -> None:
-        raise RuntimeError
+        for arg in typ.args:
+            arg.accept(self)
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> None:
         pass
 
     def visit_union_type(self, typ: UnionType) -> None:
-        raise NotImplementedError
+        for item in typ.items:
+            item.accept(self)
 
     # Helpers
 
     def fixup(self, node: SN) -> SN:
         if node in self.replacements:
             new = self.replacements[node]
+            # TODO: This may be unnecessary?
             new.__dict__ = node.__dict__
             return cast(SN, new)
         return node
@@ -210,15 +230,20 @@ class TypeReplaceVisitor(TypeVisitor[None]):
 def replace_nodes_in_symbol_table(symbols: SymbolTable,
                                   replacements: Dict[SymbolNode, SymbolNode]) -> None:
     for name, node in symbols.items():
-        if node.node and node.node in replacements:
-            new = replacements[node.node]
-            new.__dict__ = node.node.__dict__
-            node.node = new
-            if isinstance(node.node, Var) and node.node.type:
-                node.node.type.accept(TypeReplaceVisitor(replacements))
-                node.node.info = cast(TypeInfo, replacements.get(node.node.info, node.node.info))
-
-
-def get_prefix(fullname: str) -> str:
-    """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
-    return fullname.rsplit('.', 1)[0]
+        if node.node:
+            if node.node in replacements:
+                new = replacements[node.node]
+                new.__dict__ = node.node.__dict__
+                node.node = new
+                # TODO: Other node types
+                if isinstance(node.node, Var) and node.node.type:
+                    node.node.type.accept(TypeReplaceVisitor(replacements))
+                    node.node.info = cast(TypeInfo, replacements.get(node.node.info,
+                                                                     node.node.info))
+            else:
+                # TODO: Other node types
+                if isinstance(node.node, Var) and node.node.type:
+                    node.node.type.accept(TypeReplaceVisitor(replacements))
+        override = node.type_override
+        if override:
+            override.accept(TypeReplaceVisitor(replacements))

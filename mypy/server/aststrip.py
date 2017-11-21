@@ -1,32 +1,36 @@
-"""Strip AST from semantic information."""
+"""Strip AST from semantic information.
+
+This is used in fine-grained incremental checking to reprocess existing AST nodes.
+"""
 
 import contextlib
 from typing import Union, Iterator, Optional
 
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
-    TypeInfo, Var
+    ImportFrom, TypeInfo, SymbolTable, Var, UNBOUND_IMPORTED, GDEF
 )
 from mypy.traverser import TraverserVisitor
 
 
 def strip_target(node: Union[MypyFile, FuncItem]) -> None:
-    NodeStripVisitor().strip_target(node)
+    """Strip a fine-grained incremental mode target from semantic information."""
+    visitor = NodeStripVisitor()
+    if isinstance(node, MypyFile):
+        visitor.strip_file_top_level(node)
+    else:
+        node.accept(visitor)
 
 
 class NodeStripVisitor(TraverserVisitor):
     def __init__(self) -> None:
         self.type = None  # type: Optional[TypeInfo]
+        self.names = None  # type: Optional[SymbolTable]
 
-    def strip_target(self, node: Union[MypyFile, FuncItem]) -> None:
-        """Strip a fine-grained incremental mode target."""
-        if isinstance(node, MypyFile):
-            self.strip_top_level(node)
-        else:
-            node.accept(self)
-
-    def strip_top_level(self, file_node: MypyFile) -> None:
+    def strip_file_top_level(self, file_node: MypyFile) -> None:
         """Strip a module top-level (don't recursive into functions)."""
+        self.names = file_node.names
+        # TODO: Functions nested within statements
         for node in file_node.defs:
             if not isinstance(node, (FuncItem, ClassDef)):
                 node.accept(self)
@@ -35,6 +39,7 @@ class NodeStripVisitor(TraverserVisitor):
 
     def strip_class_body(self, node: ClassDef) -> None:
         """Strip class body and type info, but don't strip methods."""
+        # TODO: Statements in class body
         node.info.type_vars = []
         node.info.bases = []
         node.info.abstract_attributes = []
@@ -49,6 +54,7 @@ class NodeStripVisitor(TraverserVisitor):
 
     @contextlib.contextmanager
     def enter_class(self, info: TypeInfo) -> Iterator[None]:
+        # TODO: Update and restore self.names
         old = self.type
         self.type = info
         yield
@@ -58,8 +64,25 @@ class NodeStripVisitor(TraverserVisitor):
         node.type = node.unanalyzed_type
         super().visit_assignment_stmt(node)
 
+    def visit_import_from(self, node: ImportFrom) -> None:
+        if node.assignments:
+            node.assignments = []
+        else:
+            if self.names:
+                # Reset entries in the symbol table. This is necessary since
+                # otherwise the semantic analyzer will think that the import
+                # assigns to an existing name instead of defining a new one.
+                for name, as_name in node.names:
+                    imported_name = as_name or name
+                    symnode = self.names[imported_name]
+                    symnode.kind = UNBOUND_IMPORTED
+                    symnode.node = None
+
     def visit_name_expr(self, node: NameExpr) -> None:
-        self.strip_ref_expr(node)
+        # Global assignments are processed in semantic analysis pass 1, and we
+        # only want to strip changes made in passes 2 or later.
+        if not (node.kind == GDEF and node.is_new_def):
+            self.strip_ref_expr(node)
 
     def visit_member_expr(self, node: MemberExpr) -> None:
         self.strip_ref_expr(node)
@@ -70,11 +93,11 @@ class NodeStripVisitor(TraverserVisitor):
             # definition.
             if self.type is not None:
                 del self.type.names[node.name]
-            node.is_def = False
+            node.is_inferred_def = False
             node.def_var = None
 
     def is_duplicate_attribute_def(self, node: MemberExpr) -> bool:
-        if not node.is_def:
+        if not node.is_inferred_def:
             return False
         assert self.type is not None, "Internal error: Member defined outside class"
         if node.name not in self.type.names:

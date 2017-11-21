@@ -15,7 +15,6 @@ class bytes: pass
 
 class tuple: pass
 class function: pass
-
 class ellipsis: pass
 
 # Definition of None is implicit
