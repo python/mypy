@@ -53,10 +53,6 @@ from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 
 
-# We need to know the location of this file to load data, but
-# until Python 3.4, __file__ is relative.
-__file__ = os.path.realpath(__file__)
-
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
 

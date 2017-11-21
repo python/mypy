@@ -3,6 +3,7 @@
 import copy
 from abc import abstractmethod
 from collections import OrderedDict
+from enum import Enum
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
     Callable, Sequence
@@ -263,42 +264,32 @@ class TypeList(Type):
 _dummy = object()  # type: Any
 
 
-class TypeOfAny:
+class TypeOfAny(Enum):
     """
     This class describes different types of Any. Each 'Any' can be of only one type at a time.
-
-    TODO: this class should be made an Enum once we drop support for python 3.3.
     """
-    MYPY = False
-    if MYPY:
-        from typing import NewType
-        TypeOfAny = NewType('TypeOfAny', str)
-    else:
-        def TypeOfAny(x: str) -> str:
-            return x
-
     # Was this Any type was inferred without a type annotation?
-    unannotated = TypeOfAny('unannotated')
+    unannotated = 'unannotated'
     # Does this Any come from an explicit type annotation?
-    explicit = TypeOfAny('explicit')
+    explicit = 'explicit'
     # Does this come from an unfollowed import? See --disallow-any-unimported option
-    from_unimported_type = TypeOfAny('from_unimported_type')
+    from_unimported_type = 'from_unimported_type'
     # Does this Any type come from omitted generics?
-    from_omitted_generics = TypeOfAny('from_omitted_generics')
+    from_omitted_generics = 'from_omitted_generics'
     # Does this Any come from an error?
-    from_error = TypeOfAny('from_error')
+    from_error = 'from_error'
     # Is this a type that can't be represented in mypy's type system? For instance, type of
-    # call to NewType(...)). Even though these types aren't real Anys, we treat them as such.
-    special_form = TypeOfAny('special_form')
+    # call to NewType...). Even though these types aren't real Anys, we treat them as such.
+    special_form = 'special_form'
     # Does this Any come from interaction with another Any?
-    from_another_any = TypeOfAny('from_another_any')
+    from_another_any = 'from_another_any'
 
 
 class AnyType(Type):
     """The type 'Any'."""
 
     def __init__(self,
-                 type_of_any: TypeOfAny.TypeOfAny,
+                 type_of_any: TypeOfAny,
                  source_any: Optional['AnyType'] = None,
                  line: int = -1,
                  column: int = -1) -> None:
@@ -319,7 +310,7 @@ class AnyType(Type):
         return visitor.visit_any(self)
 
     def copy_modified(self,
-                      type_of_any: TypeOfAny.TypeOfAny = _dummy,
+                      type_of_any: TypeOfAny = _dummy,
                       original_any: Optional['AnyType'] = _dummy,
                       ) -> 'AnyType':
         if type_of_any is _dummy:
