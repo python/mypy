@@ -1973,6 +1973,8 @@ def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
         ret_type or AnyType(TypeOfAny.unannotated),
         fallback,
         name=fdef.name(),
+        line=fdef.line,
+        column=fdef.column,
         implicit=True,
     )
 

@@ -1879,6 +1879,18 @@ class A(Generic[t]):
 [out]
 main:5: error: Cannot use a covariant type variable as a parameter
 
+[case testRejectCovariantArgumentInLambda]
+from typing import TypeVar, Generic, Callable
+
+t = TypeVar('t', covariant=True)
+class Thing(Generic[t]):
+    def chain(self, func: Callable[[t], None]) -> None: pass
+    def end(self) -> None:
+        return self.chain(lambda _: None)
+[builtins fixtures/bool.pyi]
+[out]
+main:7: error: Cannot use a covariant type variable as a parameter
+
 [case testRejectContravariantReturnType]
 from typing import TypeVar, Generic
 
