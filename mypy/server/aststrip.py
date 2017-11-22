@@ -8,7 +8,7 @@ from typing import Union, Iterator, Optional
 
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
-    ImportFrom, TypeInfo, SymbolTable, Var, UNBOUND_IMPORTED, GDEF
+    ImportFrom, Import, TypeInfo, SymbolTable, Var, UNBOUND_IMPORTED, GDEF
 )
 from mypy.traverser import TraverserVisitor
 
@@ -75,6 +75,21 @@ class NodeStripVisitor(TraverserVisitor):
                 for name, as_name in node.names:
                     imported_name = as_name or name
                     symnode = self.names[imported_name]
+                    symnode.kind = UNBOUND_IMPORTED
+                    symnode.node = None
+
+    def visit_import(self, node: Import) -> None:
+        if node.assignments:
+            node.assignments = []
+        else:
+            if self.names:
+                # Reset entries in the symbol table. This is necessary since
+                # otherwise the semantic analyzer will think that the import
+                # assigns to an existing name instead of defining a new one.
+                for name, as_name in node.ids:
+                    imported_name = as_name or name
+                    initial = imported_name.split('.')[0]
+                    symnode = self.names[initial]
                     symnode.kind = UNBOUND_IMPORTED
                     symnode.node = None
 

@@ -12,7 +12,7 @@ Usage:
 import glob
 import sys
 import os
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Optional
 
 from mypy import build
 from mypy.build import BuildManager, Graph
@@ -38,25 +38,35 @@ def main() -> None:
         if inp != '':
             print("Press enter to perform type checking; enter 'q' to quit")
             continue
-        changed = None
         new_ts = timestamps(target_dir)
-        for path in ts:
-            if new_ts[path] != ts[path]:
-                changed = path
-                break
+        changed = find_changed_module(ts, new_ts)
         ts = new_ts
         if not changed:
             print('[nothing changed]')
             continue
-        print('[update {}]'.format(changed))
+        print('[update {}]'.format(changed[0]))
         messages = fine_grained_manager.update([changed])
         for message in messages:
             sys.stdout.write(message + '\n')
 
 
+def find_changed_module(old_ts: Dict[str, Tuple[float, str]],
+                        new_ts: Dict[str, Tuple[float, str]]) -> Optional[Tuple[str, str]]:
+    for module_id in new_ts:
+        if module_id not in old_ts or new_ts[module_id] != old_ts[module_id]:
+            # Modified or created
+            return (module_id, new_ts[module_id][1])
+    for module_id in old_ts:
+        if module_id not in new_ts:
+            # Deleted
+            return (module_id, old_ts[module_id][1])
+    return None
+
+
 def build_dir(target_dir: str) -> Tuple[List[str], BuildManager, Graph]:
     sources = expand_dir(target_dir)
     options = Options()
+    options.incremental = True
     options.show_traceback = True
     options.cache_dir = os.devnull
     try:
@@ -69,12 +79,12 @@ def build_dir(target_dir: str) -> Tuple[List[str], BuildManager, Graph]:
     return result.errors, result.manager, result.graph
 
 
-def timestamps(target_dir: str) -> Dict[str, float]:
+def timestamps(target_dir: str) -> Dict[str, Tuple[float, str]]:
     paths = glob.glob('%s/**/*.py' % target_dir) + glob.glob('%s/*.py' % target_dir)
     result = {}
     for path in paths:
         mod = path[:-3].replace('/', '.')
-        result[mod] = os.stat(path).st_mtime
+        result[mod] = (os.stat(path).st_mtime, path)
     return result
 
 

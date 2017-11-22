@@ -76,16 +76,16 @@ class ASTMergeSuite(DataSuite):
         if messages:
             a.extend(messages)
 
-        shutil.copy(os.path.join(test_temp_dir, 'target.py.next'),
-                    os.path.join(test_temp_dir, 'target.py'))
+        target_path = os.path.join(test_temp_dir, 'target.py')
+        shutil.copy(os.path.join(test_temp_dir, 'target.py.next'), target_path)
 
-        a.extend(self.dump(manager.modules, graph, kind))
+        a.extend(self.dump(manager, fine_grained_manager.graph, kind))
         old_subexpr = get_subexpressions(manager.modules['target'])
 
         a.append('==>')
 
-        new_file, new_types = self.build_increment(fine_grained_manager, 'target')
-        a.extend(self.dump(manager.modules, graph, kind))
+        new_file, new_types = self.build_increment(fine_grained_manager, 'target', target_path)
+        a.extend(self.dump(manager, fine_grained_manager.graph, kind))
 
         for expr in old_subexpr:
             # Verify that old AST nodes are removed from the expression type map.
@@ -100,11 +100,14 @@ class ASTMergeSuite(DataSuite):
 
     def build(self, source: str) -> Tuple[List[str], Optional[BuildManager], Dict[str, State]]:
         options = Options()
+        options.incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
-        options.cache_dir = os.devnull
+        main_path = os.path.join(test_temp_dir, 'main')
+        with open(main_path, 'w') as f:
+            f.write(source)
         try:
-            result = build.build(sources=[BuildSource('main', None, source)],
+            result = build.build(sources=[BuildSource(main_path, None, None)],
                                  options=options,
                                  alt_lib_path=test_temp_dir)
         except CompileError as e:
@@ -113,17 +116,18 @@ class ASTMergeSuite(DataSuite):
         return result.errors, result.manager, result.graph
 
     def build_increment(self, manager: FineGrainedBuildManager,
-                        module_id: str) -> Tuple[MypyFile,
-                                                 Dict[Expression, Type]]:
-        manager.update([module_id])
+                        module_id: str, path: str) -> Tuple[MypyFile,
+                                                            Dict[Expression, Type]]:
+        manager.update([(module_id, path)])
         module = manager.manager.modules[module_id]
-        type_map = manager.graph[module_id].type_checker.type_map
+        type_map = manager.graph[module_id].type_map()
         return module, type_map
 
     def dump(self,
-             modules: Dict[str, MypyFile],
+             manager: BuildManager,
              graph: Dict[str, State],
              kind: str) -> List[str]:
+        modules = manager.modules
         if kind == AST:
             return self.dump_asts(modules)
         elif kind == TYPEINFO:
@@ -131,7 +135,7 @@ class ASTMergeSuite(DataSuite):
         elif kind == SYMTABLE:
             return self.dump_symbol_tables(modules)
         elif kind == TYPES:
-            return self.dump_types(graph)
+            return self.dump_types(manager)
         assert False, 'Invalid kind %s' % kind
 
     def dump_asts(self, modules: Dict[str, MypyFile]) -> List[str]:
@@ -197,14 +201,14 @@ class ASTMergeSuite(DataSuite):
                       type_str_conv=self.type_str_conv)
         return s.splitlines()
 
-    def dump_types(self, graph: Dict[str, State]) -> List[str]:
+    def dump_types(self, manager: BuildManager) -> List[str]:
         a = []
         # To make the results repeatable, we try to generate unique and
         # deterministic sort keys.
-        for module_id in sorted(graph):
+        for module_id in sorted(manager.modules):
             if not is_dumped_module(module_id):
                 continue
-            type_map = graph[module_id].type_checker.type_map
+            type_map = manager.saved_cache[module_id][2]
             if type_map:
                 a.append('## {}'.format(module_id))
                 for expr in sorted(type_map, key=lambda n: (n.line, short_type(n),
