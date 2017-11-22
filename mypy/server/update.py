@@ -188,7 +188,9 @@ def build_incremental_step(manager: BuildManager,
     assert len(changed_modules) == 1
     id, path = changed_modules[0]
     if id in manager.modules:
-        assert path == manager.modules[id].path, '%s != %s' % (path, manager.modules[id].path)
+        path1 = os.path.normpath(path)
+        path2 = os.path.normpath(manager.modules[id].path)
+        assert path1 == path2, '%s != %s' % (path1, path2)
 
     old_modules = dict(manager.modules)
 
