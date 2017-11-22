@@ -76,6 +76,7 @@ typecheck_files = [
     'check-incomplete-fixture.test',
     'check-custom-plugin.test',
     'check-default-plugin.test',
+    'check-namespaces.test',
 ]
 
 
@@ -320,7 +321,8 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             for module_name in module_names.split(' '):
-                path = build.find_module(module_name, [test_temp_dir])
+                md = build.ModuleDiscovery([test_temp_dir], namespaces_allowed=False)
+                path = md.find_module(module_name)
                 assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
                     program_text = f.read()

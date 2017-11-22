@@ -3,7 +3,7 @@
 from typing import AbstractSet, Dict, Set, List
 
 from mypy.myunit import Suite, assert_equal
-from mypy.build import BuildManager, State, BuildSourceSet
+from mypy.build import BuildManager, State, BuildSourceSet, ModuleDiscovery
 from mypy.build import topsort, strongly_connected_components, sorted_components, order_ascc
 from mypy.version import __version__
 from mypy.options import Options
@@ -41,7 +41,6 @@ class GraphSuite(Suite):
         options = Options()
         manager = BuildManager(
             data_dir='',
-            lib_path=[],
             ignore_prefix='',
             source_set=BuildSourceSet([]),
             reports=Reports('', {}),
@@ -49,6 +48,7 @@ class GraphSuite(Suite):
             version_id=__version__,
             plugin=Plugin(options),
             errors=errors,
+            module_discovery=ModuleDiscovery([]),
         )
         return manager
 

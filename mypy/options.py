@@ -164,6 +164,9 @@ class Options:
         # Use stub builtins fixtures to speed up tests
         self.use_builtins_fixtures = False
 
+        # Allow implicit namespace packages (PEP420)
+        self.namespace_packages = False
+
         # -- experimental options --
         self.shadow_file = None  # type: Optional[Tuple[str, str]]
         self.show_column_numbers = False  # type: bool

@@ -1,0 +1,87 @@
+-- Type checker test cases dealing with namespaces imports
+
+[case testAccessModuleInsideNamespace]
+# flags: --namespace-packages
+from ns import a
+[file ns/a.py]
+class A: pass
+def f(a: A) -> None: pass
+
+[case testAccessModuleInsideNamespaceNoNamespacePackages]
+from ns import a
+[file ns/a.py]
+class A: pass
+def f(a: A) -> None: pass
+[out]
+main:1: error: Cannot find module named 'ns'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testAccessPackageInsideNamespace]
+# flags: --namespace-packages
+from ns import a
+[file ns/a/__init__.py]
+class A: pass
+def f(a: A) -> None: pass
+
+[case testAccessPackageInsideNamespaceLocatedInSeparateDirectories]
+# flags: --config-file tmp/mypy.ini
+from ns import a, b
+[file mypy.ini]
+[[mypy]
+namespace_packages = True
+mypy_path = ./tmp/dir1:./tmp/dir2
+[file dir1/ns/a/__init__.py]
+class A: pass
+def f(a: A) -> None: pass
+[file dir2/ns/b.py]
+class B: pass
+def f(a: B) -> None: pass
+
+[case testConflictingPackageAndNamespaceFromImport]
+# flags: --config-file tmp/mypy.ini
+from pkg_or_ns import a
+from pkg_or_ns import b # E: Module 'pkg_or_ns' has no attribute 'b'
+[file mypy.ini]
+[[mypy]
+namespace_packages = True
+mypy_path = ./tmp/dir:./tmp/other_dir
+[file dir/pkg_or_ns/__init__.py]
+[file dir/pkg_or_ns/a.py]
+[file other_dir/pkg_or_ns/b.py]
+
+[case testConflictingPackageAndNamespaceImport]
+# flags: --config-file tmp/mypy.ini
+import pkg_or_ns.a
+import pkg_or_ns.b
+[file mypy.ini]
+[[mypy]
+namespace_packages = True
+mypy_path = ./tmp/dir:./tmp/other_dir
+[file dir/pkg_or_ns/__init__.py]
+[file dir/pkg_or_ns/a.py]
+[file other_dir/pkg_or_ns/b.py]
+[out]
+main:3: error: Cannot find module named 'pkg_or_ns.b'
+main:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testConflictingModuleAndNamespace]
+# flags: --config-file tmp/mypy.ini
+from mod_or_ns import a
+from mod_or_ns import b # E: Module 'mod_or_ns' has no attribute 'b'
+[file mypy.ini]
+[[mypy]
+namespace_packages = True
+mypy_path = ./tmp/dir:./tmp/other_dir
+[file dir/mod_or_ns.py]
+a = None
+[file other_dir/mod_or_ns/b.py]
+
+[case testeNamespaceInsidePackage]
+# flags: --config-file tmp/mypy.ini
+from pkg.ns import a
+[file mypy.ini]
+[[mypy]
+namespace_packages = True
+[file pkg/__init__.py]
+[file pkg/ns/a.py]
+[out]

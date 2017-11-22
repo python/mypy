@@ -232,6 +232,7 @@ MYUNIT_FILES = test_path(
     'testsolve',
     'testsubtypes',
     'testtypes',
+    'testmodulediscovery',
 )
 
 for f in find_files('mypy', prefix='test', suffix='.py'):

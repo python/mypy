@@ -323,6 +323,8 @@ def process_options(args: List[str],
     parser.add_argument('--show-traceback', '--tb', action='store_true',
                         help="show traceback on fatal error")
     parser.add_argument('--stats', action='store_true', dest='dump_type_stats', help="dump stats")
+    parser.add_argument('--namespace-packages', action='store_true', dest='namespace_packages',
+                        help='Allow implicit namespace packages (PEP420)')
     parser.add_argument('--inferstats', action='store_true', dest='dump_inference_stats',
                         help="dump type inference stats")
     parser.add_argument('--custom-typing', metavar='MODULE', dest='custom_typing_module',
@@ -508,7 +510,8 @@ def process_options(args: List[str],
                  .format(special_opts.package))
         options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
-        targets = build.find_modules_recursive(special_opts.package, lib_path)
+        mod_discovery = build.ModuleDiscovery(lib_path, options.namespace_packages)
+        targets = mod_discovery.find_modules_recursive(special_opts.package)
         if not targets:
             fail("Can't find package '{}'".format(special_opts.package))
         return targets, options
