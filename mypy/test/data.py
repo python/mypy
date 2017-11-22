@@ -352,7 +352,8 @@ class DataDrivenTestCase(TestCase):
 
 def module_from_path(path: str) -> str:
     path = re.sub(r'\.py$', '', path)
-    parts = path.split(os.sep)
+    # We can have a mix of Unix-style and Windows-style separators.
+    parts = re.split(r'[/\\]', path)
     assert parts[0] == test_temp_dir
     del parts[0]
     module = '.'.join(parts)
