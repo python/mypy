@@ -3,11 +3,8 @@
 -- The comments in fine-grained.test explain how these tests work.
 
 -- TODO:
--- - blocking error while other existing errors as well
-
--- Later:
 -- - new file with parse error
--- - blocking error while other existing errors as well
+-- - blocking error while other existing errors as well (that get preserved)
 -- - multiple files with blocking errors
 -- - differences in other modules + blocking error
 
@@ -99,9 +96,11 @@ class C:
     def f(self) -> None: pass
 [file a.py.2]
 error error
-[file a.py.2]
+[file a.py.3]
 class C:
     def f(self, x: int) -> None: pass
 [out]
+==
+a.py:1: error: invalid syntax
 ==
 main:5: error: Too few arguments for "f" of "C"

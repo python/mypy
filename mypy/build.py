@@ -1451,6 +1451,10 @@ class State:
     # Whether to ignore all errors
     ignore_all = False
 
+    # Type checker used for checking this file.  Use type_checker() for
+    # access and to construct this on demand.
+    _type_checker = None  # type: Optional[TypeChecker]
+
     def __init__(self,
                  id: Optional[str],
                  path: Optional[str],
@@ -1474,7 +1478,7 @@ class State:
             self.import_context = []
         self.id = id or '__main__'
         self.options = manager.options.clone_for_module(self.id)
-        self._type_checker = None  # type: Optional[TypeChecker]
+        self._type_checker = None
         if not path and source is None:
             assert id is not None
             file_id = id
@@ -2045,8 +2049,7 @@ def dump_graph(graph: Graph) -> None:
     print("[" + ",\n ".join(node.dumps() for node in nodes) + "\n]")
 
 
-def load_graph(sources: List[BuildSource],
-               manager: BuildManager) -> Graph:
+def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     """Given some source files, load the full dependency graph."""
     graph = {}  # type: Graph
     # The deque is used to implement breadth-first traversal.
