@@ -1977,6 +1977,17 @@ def f() -> None:
 [out]
 
 [case testIsinstanceWidensWithAnyArg]
+from typing import Any
+class A: ...
+B: Any
+x: A
+x.foo()  # E: "A" has no attribute "foo"
+assert isinstance(x, B)
+x.foo()
+reveal_type(x)  # E: Revealed type is 'Any'
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceWidensUnionWithAnyArg]
 from typing import Any, Union
 class A: ...
 B: Any
@@ -1984,4 +1995,13 @@ x: Union[A, B]
 reveal_type(x)  # E: Revealed type is 'Union[__main__.A, Any]'
 assert isinstance(x, B)
 reveal_type(x)  # E: Revealed type is 'Any'
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceIgnoredImport]
+from typing import Union
+from foo import A  # type: ignore
+def f(x: Union[A, str]) -> None:
+    x.method_only_in_a()  # E: Item "str" of "Union[Any, str]" has no attribute "method_only_in_a"
+    if isinstance(x, A):
+        x.method_only_in_a()
 [builtins fixtures/isinstance.pyi]
