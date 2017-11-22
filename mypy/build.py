@@ -19,6 +19,7 @@ import hashlib
 import json
 import os.path
 import re
+import enum
 import site
 import stat
 import sys
@@ -799,19 +800,32 @@ def is_file(path: str) -> bool:
     return res
 
 
-class ModuleType:
-    PACKAGE = 1
-    MODULE = 2
-    NAMESPACE = 3
+class ModuleType(enum.Enum):
+    package = 'package'
+    module = 'module'
+    namespace = 'namespace'
 
 
 class ImportContext:
+    """
+    Describes module import context
+
+    Do we already discovered implementation?
+    What kind of module we discovered?
+    """
     def __init__(self) -> None:
         self.has_py = False  # type: bool
-        self.type = None  # type: Optional[int]
+        self.type = None  # type: Optional[ModuleType]
+        # Paths can contain only one ".py" path, but multiple stubs
         self.paths = []  # type: List[str]
 
-    def maybe_add_path(self, path: str, type: int) -> None:
+    def maybe_add_path(self, path: str, type: ModuleType) -> None:
+        """
+        Add path to import context.
+        Modifies self.paths in case if arguments satisfy import context state
+        """
+        assert path.endswith((os.path.sep,) + tuple(PYTHON_EXTENSIONS))
+
         if self.type is not None and self.type != type:
             return None
 
@@ -821,7 +835,7 @@ class ImportContext:
         if self.has_py and py_path:
             return None
 
-        if type == ModuleType.NAMESPACE:
+        if type == ModuleType.namespace:
             ok = self._verify_namespace(path)
         else:
             ok = self._verify_module(path)
@@ -836,6 +850,8 @@ class ImportContext:
         self.paths.append(path)
 
     def _verify_module(self, path: str) -> bool:
+        # At this point we already know that that it's valid python path
+        # We only need to check file existence
         if not is_file(path):
             return False
 
@@ -879,6 +895,10 @@ class ModuleDiscovery:
             return None
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
+        """
+        Discover module and all it's children
+        Remove duplicates from discovered paths
+        """
         hits = set()  # type: Set[str]
         result = []  # type: List[BuildSource]
         for src in self._find_modules_recursive(module):
@@ -922,6 +942,9 @@ class ModuleDiscovery:
         sepinit = '__init__'
         ctx = ImportContext()
 
+        # Detect modules in following order: package, module, namespace.
+        # First hit determines module type, consistency of paths to given type
+        # ensured in ImportContext
         for path_item in paths:
             if is_module_path(path_item):
                 continue
@@ -931,15 +954,15 @@ class ModuleDiscovery:
 
             for ext in PYTHON_EXTENSIONS:
                 path = os.path.join(path_item, last_comp, sepinit + ext)
-                ctx.maybe_add_path(path, ModuleType.PACKAGE)
+                ctx.maybe_add_path(path, ModuleType.package)
 
             for ext in PYTHON_EXTENSIONS:
                 path = os.path.join(path_item, last_comp + ext)
-                ctx.maybe_add_path(path, ModuleType.MODULE)
+                ctx.maybe_add_path(path, ModuleType.module)
 
             if self.namespaces_allowed:
                 path = os.path.join(path_item, last_comp)
-                ctx.maybe_add_path(path + os.sep, ModuleType.NAMESPACE)
+                ctx.maybe_add_path(path + os.sep, ModuleType.namespace)
 
         return ctx.paths
 
