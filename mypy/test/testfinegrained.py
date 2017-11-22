@@ -22,7 +22,7 @@ from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv, indent
 from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite, UpdateFile
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
@@ -56,19 +56,18 @@ class FineGrainedSuite(DataSuite):
 
         fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
-        steps = find_steps(testcase.deleted_paths)
-        for changed_paths in steps:
+        steps = testcase.find_steps()
+        for operations in steps:
             modules = []
-            for module, path in changed_paths:
-                new_path = re.sub(r'\.[0-9]+$', '', path)
-                if new_path != path:
+            for op in operations:
+                if isinstance(op, UpdateFile):
                     # Modify/create file
-                    shutil.copy(path, new_path)
-                    modules.append((module, new_path))
+                    shutil.copy(op.source_path, op.target_path)
+                    modules.append((op.module, op.target_path))
                 else:
                     # Delete file
-                    modules.append((module, path))
-                    os.remove(path)
+                    os.remove(op.path)
+                    modules.append((op.module, op.path))
             new_messages = fine_grained_manager.update(modules)
             new_messages = normalize_messages(new_messages)
 
@@ -100,43 +99,6 @@ class FineGrainedSuite(DataSuite):
             assert False, str('\n'.join(e.messages))
             return e.messages, None, None
         return result.errors, result.manager, result.graph
-
-
-def find_steps(deleted: Dict[int, Set[str]]) -> List[List[Tuple[str, str]]]:
-    """Return a list of build step representations.
-
-    Each build step is a list of (module id, path) tuples, and each
-    path of a modified file is of form 'dir/mod.py.2' (where 2 is the step number);
-    if a path has no .N suffix, it will be deleted.
-    """
-    steps = {}  # type: Dict[int, List[Tuple[str, str]]]
-    for dn, dirs, files in os.walk(test_temp_dir):
-        for filename in files:
-            m = re.match(r'.*\.([0-9]+)$', filename)
-            if m:
-                num = int(m.group(1))
-                assert num >= 2
-                name = re.sub(r'\.py.*', '', filename)
-                module = module_from_path(os.path.join(dn, name))
-                path = os.path.join(dn, filename)
-                steps.setdefault(num, []).append((module, path))
-    for num, paths in deleted.items():
-        assert num >= 2
-        for path in paths:
-            module = module_from_path(path)
-            steps.setdefault(num, []).append((module, path))
-    max_step = max(steps)
-    return [steps[num] for num in range(2, max_step + 1)]
-
-
-def module_from_path(path: str) -> str:
-    path = re.sub(r'\.py$', '', path)
-    parts = path.split(os.sep)
-    assert parts[0] == test_temp_dir
-    del parts[0]
-    module = '.'.join(parts)
-    module = re.sub(r'\.__init__$', '', module)
-    return module
 
 
 def normalize_messages(messages: List[str]) -> List[str]:
