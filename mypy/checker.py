@@ -588,7 +588,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             with self.enter_partial_types():
                 typ = self.function_type(defn)
                 if type_override:
-                    typ = type_override
+                    typ = type_override.copy_modified(line=typ.line, column=typ.column)
                 if isinstance(typ, CallableType):
                     with self.enter_attribute_inference_context():
                         self.check_func_def(defn, typ, name)
@@ -725,7 +725,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             arg_type.variance == COVARIANT and
                             defn.name() not in ('__init__', '__new__')
                         ):
-                            self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, arg_type)
+                            ctx = arg_type  # type: Context
+                            if ctx.line < 0:
+                                ctx = typ
+                            self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
                         # builtins.tuple[T] is typing.Tuple[T, ...]
                         arg_type = self.named_generic_type('builtins.tuple',
