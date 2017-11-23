@@ -12,7 +12,7 @@ from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict, Na
 import typing
 
 from mypy.myunit import ProtoTestCase
-from mypy.test.config import test_data_prefix
+from mypy.test.config import test_data_prefix, test_temp_dir
 
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
