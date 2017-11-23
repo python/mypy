@@ -220,9 +220,8 @@ def update_single_isolated(module: str,
                                                              List[Tuple[str, str]]]:
     """Build a new version of one changed module only.
 
-    Don't propagate changes to elsewhere in the program.
-
-    Raise CompleError on encountering a blocking error.
+    Don't propagate changes to elsewhere in the program. Raise CompleError on
+    encountering a blocking error.
 
     Args:
         module: Changed module (modified, created or deleted)
@@ -241,9 +240,7 @@ def update_single_isolated(module: str,
           modules)
     """
     if module in manager.modules:
-        path1 = os.path.normpath(path)
-        path2 = os.path.normpath(manager.modules[module].path)
-        assert path1 == path2, '%s != %s' % (path1, path2)
+        assert_equivalent_paths(path, manager.modules[module].path)
 
     old_modules = dict(manager.modules)
     sources = get_sources(graph, [(module, path)])
@@ -258,14 +255,7 @@ def update_single_isolated(module: str,
     graph = load_graph(sources, manager)
 
     # Find any other modules brought in by imports.
-    changed_set = {module}
-    changed_modules = [(module, path)]
-    for st in graph.values():
-        if st.id not in old_graph and st.id not in changed_set:
-            changed_set.add(st.id)
-            assert st.path
-            changed_modules.append((st.id, st.path))
-
+    changed_modules = get_all_changed_modules(module, path, old_graph, graph)
     # If there are multiple modules to process, only process one of them and return the
     # remaining ones to the caller.
     if len(changed_modules) > 1:
@@ -282,12 +272,9 @@ def update_single_isolated(module: str,
 
     state = graph[module]
 
-    # Parse file and run first pass of semantic analysis.
+    # Process the changed file.
     state.parse_file()
-
     # TODO: state.fix_suppressed_dependencies()?
-
-    # Run remaining passes of semantic analysis.
     try:
         state.semantic_analysis()
     except CompileError as err:
@@ -317,6 +304,12 @@ def update_single_isolated(module: str,
     return module, state.tree, graph, remaining_modules
 
 
+def assert_equivalent_paths(path1: str, path2: str) -> None:
+    path1 = os.path.normpath(path1)
+    path2 = os.path.normpath(path2)
+    assert path1 == path2, '%s != %s' % (path1, path2)
+
+
 def delete_module(module_id: str,
                   graph: Dict[str, State],
                   manager: BuildManager) -> Dict[str, State]:
@@ -341,6 +334,20 @@ def get_sources(graph: Graph, changed_modules: List[Tuple[str, str]]) -> List[Bu
         if id not in graph:
             sources.append(BuildSource(path, id, None))
     return sources
+
+
+def get_all_changed_modules(root_module: str,
+                            root_path: str,
+                            old_graph: Dict[str, State],
+                            new_graph: Dict[str, State]) -> List[Tuple[str, str]]:
+    changed_set = {root_module}
+    changed_modules = [(root_module, root_path)]
+    for st in new_graph.values():
+        if st.id not in old_graph and st.id not in changed_set:
+            changed_set.add(st.id)
+            assert st.path
+            changed_modules.append((st.id, st.path))
+    return changed_modules
 
 
 def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
