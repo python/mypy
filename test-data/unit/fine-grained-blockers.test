@@ -119,3 +119,57 @@ main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 a.py:1: error: invalid syntax
 ==
 main:2: error: Too many arguments for "f"
+
+[case testModifyTwoFilesOneWithBlockingError1]
+import a
+[file a.py]
+import b
+def f() -> None: pass
+b.g()
+[file b.py]
+import a
+a.f()
+def g() -> None: pass
+[file a.py.2]
+import b  # Dummy edit
+def f() -> None: pass
+b.g()
+[file b.py.2]
+import a a  # Syntax error
+a.f()
+def g() -> None: pass
+[file b.py.3]
+import a
+a.f()
+def g() -> None: pass
+[out]
+==
+b.py:1: error: invalid syntax
+==
+
+[case testModifyTwoFilesOneWithBlockingError2]
+import a
+[file a.py]
+import b
+def f() -> None: pass
+b.g()
+[file b.py]
+import a
+a.f()
+def g() -> None: pass
+[file a.py.2]
+import b b
+def f() -> None: pass
+b.g()
+[file b.py.2]
+import a  # Dummy edit
+a.f()
+def g() -> None: pass
+[file a.py.3]
+import b
+def f() -> None: pass
+b.g()
+[out]
+==
+a.py:1: error: invalid syntax
+==

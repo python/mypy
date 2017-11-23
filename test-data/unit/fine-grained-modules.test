@@ -10,9 +10,6 @@
 -- --------
 
 
--- TODO:
--- - add file, blocking error
-
 [case testAddFile]
 import b
 [file b.py]

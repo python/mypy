@@ -92,7 +92,7 @@ class FineGrainedBuildManager:
         self.previous_targets_with_errors = manager.errors.targets()
         # Modules that had blocking errors in the previous run.
         # TODO: Handle blocking errors in the initial build
-        self.blocking_errors = []  # type: List[str]
+        self.blocking_errors = []  # type: List[Tuple[str, str]]
         mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
 
@@ -113,9 +113,25 @@ class FineGrainedBuildManager:
         Returns:
             A list of errors.
         """
+        changed_modules = changed_modules[:]
         if DEBUG:
             changed_ids = [id for id, _ in changed_modules]
             print('==== update %s ====' % changed_ids)
+        if self.blocking_errors:
+            # Handle blocking errors first. We'll exit as soon as we find a
+            # modul that still has blocking errors.
+            old_blockers = self.blocking_errors[:]
+            while old_blockers:
+                next_id, next_path = old_blockers.pop()
+                if DEBUG:
+                    print('-- %s (blocking error) --' % next_id)
+                result, remaining = self.update_single(next_id, next_path)
+                changed_modules = [(id, path) for id, path in changed_modules if id != next_id]
+                changed_modules.extend(remaining)
+                if self.blocking_errors:
+                    # TODO: Collect remaining
+                    self.blocking_errors.extend(old_blockers)
+                    return result
         while changed_modules:
             id, path = changed_modules.pop(0)
             if DEBUG:
@@ -138,9 +154,6 @@ class FineGrainedBuildManager:
             - Remaining modules to process as (module id, path) tuples
         """
         # TODO: If new module brings in other modules, we parse some files multiple times.
-        if self.blocking_errors:
-            # TODO: Relax this requirement
-            assert self.blocking_errors == [module]
         manager = self.manager
         graph = self.graph
 
@@ -157,7 +170,7 @@ class FineGrainedBuildManager:
             module, tree, graph, remaining = update_single_isolated(module, path, manager, graph)
         except CompileError as err:
             # TODO: Remaining modules
-            self.blocking_errors = [module]
+            self.blocking_errors = [(module, path)]
             return err.messages, []
         self.blocking_errors = []
 
