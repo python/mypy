@@ -489,8 +489,21 @@ main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 ==
 main:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
+[case testAddFileWhichImportsLibModuleWithErrors]
+import a
+a.x = 0
+[file a.py.2]
+import broken
+x = broken.x
+z
+[out]
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+a.py:3: error: Name 'z' is not defined
+<ROOT>/test-data/unit/lib-stub/broken.pyi:2: error: Name 'y' is not defined
+
 -- TODO:
--- - add one file which imports another new file, error in new file
 -- - add one file which imports another new file, blocking error in new file
 -- - arbitrary blocking errors
 -- - packages
