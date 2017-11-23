@@ -93,6 +93,7 @@ class FineGrainedBuildManager:
         # Modules that had blocking errors in the previous run.
         # TODO: Handle blocking errors in the initial build
         self.blocking_errors = []  # type: List[str]
+        mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
 
     def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
@@ -115,26 +116,32 @@ class FineGrainedBuildManager:
         changed_ids = [id for id, _ in changed_modules]
         if DEBUG:
             print('==== update %s ====' % changed_ids)
+        for id, path in changed_modules:
+            if DEBUG:
+                print('-- %s --' % id)
+            result = self.update_single(id, path)
+        return result
+
+    def update_single(self, module: str, path: str) -> List[str]:
         if self.blocking_errors:
             # TODO: Relax this requirement
-            assert self.blocking_errors == changed_ids
+            assert self.blocking_errors == [module]
         manager = self.manager
         graph = self.graph
 
-        # Record symbol table snaphots of old versions of changed moduiles.
+        # Record symbol table snaphots of old versions of changed modules.
         old_snapshots = {}
-        for id, _ in changed_modules:
-            if id in manager.modules:
-                snapshot = snapshot_symbol_table(id, manager.modules[id].names)
-                old_snapshots[id] = snapshot
-            else:
-                old_snapshots[id] = {}
+        if module in manager.modules:
+            snapshot = snapshot_symbol_table(module, manager.modules[module].names)
+            old_snapshots[module] = snapshot
+        else:
+            old_snapshots[module] = {}
 
         manager.errors.reset()
         try:
-            new_modules, graph = build_incremental_step(manager, changed_modules, graph)
+            new_modules, graph = build_incremental_step(manager, [(module, path)], graph)
         except CompileError as err:
-            self.blocking_errors = changed_ids
+            self.blocking_errors = [module]
             return err.messages
         self.blocking_errors = []
 
@@ -144,26 +151,40 @@ class FineGrainedBuildManager:
             print('triggered:', sorted(triggered))
         update_dependencies(new_modules, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
-                                             set(changed_ids),
+                                             {module},
                                              self.previous_targets_with_errors,
                                              graph)
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = manager.errors.targets()
-        for id, _ in changed_modules:
-            # If deleted, module won't be in the graph.
-            if id in graph:
-                # Generate metadata so that we can reuse the AST in the next run.
-                graph[id].write_cache()
+        # If deleted, module won't be in the graph.
+        if module in graph:
+            # Generate metadata so that we can reuse the AST in the next run.
+            graph[module].write_cache()
         for id, state in graph.items():
             # Look up missing ASTs from saved cache.
             if state.tree is None and id in manager.saved_cache:
                 meta, tree, type_map = manager.saved_cache[id]
                 state.tree = tree
+        mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
         self.graph = graph
 
         return manager.errors.messages()
+
+
+def mark_all_meta_as_memory_only(graph: Dict[str, State],
+                                 manager: BuildManager) -> None:
+    for id, state in graph.items():
+        if id in manager.saved_cache:
+            # Don't look at disk.
+            old = manager.saved_cache[id]
+            manager.saved_cache[id] = (old[0]._replace(memory_only=True,
+                                                       mtime=None,
+                                                       data_mtime=None,
+                                                       size=None),
+                                       old[1],
+                                       old[2])
 
 
 def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
@@ -301,6 +322,8 @@ def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
                     state.source_hash,
                     state.ignore_all,
                     manager)
+            else:
+                meta = meta._replace(memory_only=True)
             saved_cache[id] = (meta, state.tree, state.type_map())
     return saved_cache
 

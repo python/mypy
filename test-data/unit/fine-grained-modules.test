@@ -259,3 +259,48 @@ a/b.py:2: error: Incompatible return value type (got "str", expected "int")
 ==
 main:1: error: Cannot find module named 'a.b'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testModifyTwoFiles1]
+import a
+[file a.py]
+import b
+b.f()
+[file b.py]
+def f() -> None: pass
+[file a.py.2]
+import b
+b.f(1)
+[file b.py.2]
+def f(x: int) -> None: pass
+[out]
+==
+
+[case testModifyTwoFiles2]
+import a
+[file a.py]
+from b import g
+def f() -> None: pass
+[file b.py]
+import a
+def g() -> None: pass
+a.f()
+[file a.py.2]
+from b import g
+def f(x: int) -> None: pass
+[file b.py.2]
+import a
+def g() -> None: pass
+a.f(1)
+[out]
+==
+
+-- TODO:
+-- - modify two files, generate errors elsewhere
+-- - modify two files and generate error in both, caused by the change in the other module
+-- - add two files
+-- - add one file which imports another new file
+-- - delete two files, resulting in no errors
+-- - delete two files, resulting in import errors elsewhere
+-- - mix of modify, add and delete
+-- - add two files that form a package
+-- - delete two files that for a package
