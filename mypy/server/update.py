@@ -93,6 +93,8 @@ class FineGrainedBuildManager:
         # Modules that had blocking errors in the previous run.
         # TODO: Handle blocking errors in the initial build
         self.blocking_errors = []  # type: List[Tuple[str, str]]
+        # Module that we haven't processed yet but that are known to be stale.
+        self.stale = []  # type: List[Tuple[str, str]]
         mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
 
@@ -113,10 +115,12 @@ class FineGrainedBuildManager:
         Returns:
             A list of errors.
         """
-        changed_modules = changed_modules[:]
+        changed_modules = changed_modules + self.stale
         if DEBUG:
             changed_ids = [id for id, _ in changed_modules]
             print('==== update %s ====' % changed_ids)
+            if self.blocking_errors:
+                print('blockers: %s' % [id for id, _ in self.blocking_errors])
         if self.blocking_errors:
             # Handle blocking errors first. We'll exit as soon as we find a
             # modul that still has blocking errors.
@@ -129,7 +133,7 @@ class FineGrainedBuildManager:
                 changed_modules = [(id, path) for id, path in changed_modules if id != next_id]
                 changed_modules.extend(remaining)
                 if self.blocking_errors:
-                    # TODO: Collect remaining
+                    self.stale = changed_modules
                     self.blocking_errors.extend(old_blockers)
                     return result
         while changed_modules:

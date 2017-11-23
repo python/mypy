@@ -173,3 +173,25 @@ b.g()
 ==
 a.py:1: error: invalid syntax
 ==
+
+[case testBlockingErrorRemainsUnfixed]
+import a
+[file a.py]
+import b
+b.f()
+[file b.py]
+def f() -> None: pass
+[file a.py.2]
+x x
+[file b.py.3]
+def f(x: int) -> None: pass
+[file a.py.4]
+import b
+b.f()
+[out]
+==
+a.py:1: error: invalid syntax
+==
+a.py:1: error: invalid syntax
+==
+a.py:2: error: Too few arguments for "f"
