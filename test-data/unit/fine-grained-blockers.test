@@ -104,3 +104,18 @@ class C:
 a.py:1: error: invalid syntax
 ==
 main:5: error: Too few arguments for "f" of "C"
+
+[case testAddFileWithBlockingError]
+import a
+a.f(1)
+[file a.py.2]
+x x
+[file a.py.3]
+def f() -> None: pass
+[out]
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+a.py:1: error: invalid syntax
+==
+main:2: error: Too many arguments for "f"
