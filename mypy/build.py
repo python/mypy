@@ -53,10 +53,6 @@ from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 
 
-# We need to know the location of this file to load data, but
-# until Python 3.4, __file__ is relative.
-__file__ = os.path.realpath(__file__)
-
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
 
@@ -123,7 +119,7 @@ class BuildSourceSet:
 
 # A dict containing saved cache data from a previous run.  This will
 # be updated in place with newly computed cache data.  See dmypy.py.
-SavedCache = Dict[str, Tuple['CacheMeta', MypyFile]]
+SavedCache = Dict[str, Tuple['CacheMeta', MypyFile, Dict[Expression, Type]]]
 
 
 def build(sources: List[BuildSource],
@@ -339,6 +335,7 @@ def default_lib_path(data_dir: str,
 CacheMeta = NamedTuple('CacheMeta',
                        [('id', str),
                         ('path', str),
+                        ('memory_only', bool),  # no corresponding json files (fine-grained only)
                         ('mtime', int),
                         ('size', int),
                         ('hash', str),
@@ -363,6 +360,7 @@ def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
     return CacheMeta(
         meta.get('id', sentinel),
         meta.get('path', sentinel),
+        meta.get('memory_only', False),
         int(meta['mtime']) if 'mtime' in meta else sentinel,
         meta.get('size', sentinel),
         meta.get('hash', sentinel),
@@ -514,7 +512,8 @@ class BuildManager:
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
-      saved_cache:     Dict with saved cache state for dmypy (read-write!)
+      saved_cache:     Dict with saved cache state for dmypy and fine-grained incremental mode
+                       (read-write!)
       stats:           Dict with various instrumentation numbers
     """
 
@@ -646,19 +645,20 @@ class BuildManager:
         self.errors.set_file_ignored_lines(path, tree.ignored_lines, ignore_errors)
         return tree
 
-    def module_not_found(self, path: str, line: int, id: str) -> None:
+    def module_not_found(self, path: str, id: str, line: int, target: str) -> None:
         self.errors.set_file(path, id)
         stub_msg = "(Stub files are from https://github.com/python/typeshed)"
-        if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
-                (self.options.python_version[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
+        if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(target)) or
+                (self.options.python_version[0] >= 3 and
+                 moduleinfo.is_py3_std_lib_module(target))):
             self.errors.report(
-                line, 0, "No library stub file for standard library module '{}'".format(id))
+                line, 0, "No library stub file for standard library module '{}'".format(target))
             self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
-        elif moduleinfo.is_third_party_module(id):
-            self.errors.report(line, 0, "No library stub file for module '{}'".format(id))
+        elif moduleinfo.is_third_party_module(target):
+            self.errors.report(line, 0, "No library stub file for module '{}'".format(target))
             self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
         else:
-            self.errors.report(line, 0, "Cannot find module named '{}'".format(id))
+            self.errors.report(line, 0, "Cannot find module named '{}'".format(target))
             self.errors.report(line, 0, '(Perhaps setting MYPYPATH '
                                'or using the "--ignore-missing-imports" flag would help)',
                                severity='note', only_once=True)
@@ -941,7 +941,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     """
     saved_cache = manager.saved_cache
     if id in saved_cache:
-        m, t = saved_cache[id]
+        m, t, types = saved_cache[id]
         manager.add_stats(reused_metas=1)
         manager.trace("Reusing saved metadata for %s" % id)
         # Note: it could still be skipped if the mtime/size/hash mismatches.
@@ -1039,6 +1039,12 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     if meta.ignore_all and not ignore_all:
         manager.log('Metadata abandoned for {}: errors were previously ignored'.format(id))
         return None
+
+    if meta.memory_only:
+        # Special case for fine-grained incremental mode when the JSON file is missing but
+        # we want to cache the module anyway.
+        manager.log('Memory-only metadata for {}'.format(id))
+        return meta
 
     assert path is not None, "Internal error: meta was provided without a path"
     # Check data_json; assume if its mtime matches it's good.
@@ -1445,6 +1451,10 @@ class State:
     # Whether to ignore all errors
     ignore_all = False
 
+    # Type checker used for checking this file.  Use type_checker() for
+    # access and to construct this on demand.
+    _type_checker = None  # type: Optional[TypeChecker]
+
     def __init__(self,
                  id: Optional[str],
                  path: Optional[str],
@@ -1468,6 +1478,7 @@ class State:
             self.import_context = []
         self.id = id or '__main__'
         self.options = manager.options.clone_for_module(self.id)
+        self._type_checker = None
         if not path and source is None:
             assert id is not None
             file_id = id
@@ -1515,7 +1526,8 @@ class State:
                     if not self.options.ignore_missing_imports:
                         save_import_context = manager.errors.import_context()
                         manager.errors.set_import_context(caller_state.import_context)
-                        manager.module_not_found(caller_state.xpath, caller_line, id)
+                        manager.module_not_found(caller_state.xpath, caller_state.id,
+                                                 caller_line, id)
                         manager.errors.set_import_context(save_import_context)
                     manager.missing_modules.add(id)
                     raise ModuleNotFound
@@ -1720,6 +1732,11 @@ class State:
     # Methods for processing modules from source code.
 
     def parse_file(self) -> None:
+        """Parse file and run first pass of semantic analysis.
+
+        Everything done here is local to the file. Don't depend on imported
+        modules in any way. Also record module dependencies based on imports.
+        """
         if self.tree is not None:
             # The file was already parsed (in __init__()).
             return
@@ -1827,20 +1844,27 @@ class State:
             patch_func()
 
     def type_check_first_pass(self) -> None:
-        assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        manager = self.manager
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            self.type_checker = TypeChecker(manager.errors, manager.modules, self.options,
-                                            self.tree, self.xpath, manager.plugin)
-            self.type_checker.check_first_pass()
+            self.type_checker().check_first_pass()
+
+    def type_checker(self) -> TypeChecker:
+        if not self._type_checker:
+            assert self.tree is not None, "Internal error: must be called on parsed file only"
+            manager = self.manager
+            self._type_checker = TypeChecker(manager.errors, manager.modules, self.options,
+                                             self.tree, self.xpath, manager.plugin)
+        return self._type_checker
+
+    def type_map(self) -> Dict[Expression, Type]:
+        return self.type_checker().type_map
 
     def type_check_second_pass(self) -> bool:
         if self.options.semantic_analysis_only:
             return False
         with self.wrap_context():
-            return self.type_checker.check_second_pass()
+            return self.type_checker().check_second_pass()
 
     def finish_passes(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -1850,16 +1874,16 @@ class State:
         with self.wrap_context():
             # Some tests want to look at the set of all types.
             if manager.options.use_builtins_fixtures or manager.options.dump_deps:
-                manager.all_types.update(self.type_checker.type_map)
+                manager.all_types.update(self.type_map())
 
             if self.options.incremental:
-                self._patch_indirect_dependencies(self.type_checker.module_refs,
-                                                  self.type_checker.type_map)
+                self._patch_indirect_dependencies(self.type_checker().module_refs,
+                                                  self.type_map())
 
             if self.options.dump_inference_stats:
                 dump_type_stats(self.tree, self.xpath, inferred=True,
-                                typemap=self.type_checker.type_map)
-            manager.report_file(self.tree, self.type_checker.type_map, self.options)
+                                typemap=self.type_map())
+            manager.report_file(self.tree, self.type_map(), self.options)
 
     def _patch_indirect_dependencies(self,
                                      module_refs: Set[str],
@@ -1903,7 +1927,7 @@ class State:
             self.meta = None
             self.mark_interface_stale(on_errors=True)
             return
-        dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
+        dep_prios = self.dependency_priorities()
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
             list(self.dependencies), list(self.suppressed), list(self.child_modules),
@@ -1915,6 +1939,9 @@ class State:
             self.manager.log("Cached module {} has changed interface".format(self.id))
             self.mark_interface_stale()
             self.interface_hash = new_interface_hash
+
+    def dependency_priorities(self) -> List[int]:
+        return [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
@@ -1962,7 +1989,7 @@ def preserve_cache(graph: Graph) -> SavedCache:
     for id, state in graph.items():
         assert state.id == id
         if state.meta is not None and state.tree is not None:
-            saved_cache[id] = (state.meta, state.tree)
+            saved_cache[id] = (state.meta, state.tree, state.type_map())
     return saved_cache
 
 

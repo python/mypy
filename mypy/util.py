@@ -135,3 +135,8 @@ class IdMapper:
             self.id_map[o] = self.next_id
             self.next_id += 1
         return self.id_map[o]
+
+
+def get_prefix(fullname: str) -> str:
+    """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
+    return fullname.rsplit('.', 1)[0]

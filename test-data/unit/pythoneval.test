@@ -1402,6 +1402,11 @@ o: object = p
 it2: Iterable[int] = p
 [out]
 _testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note: Following member(s) of "Point" have conflicts:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Expected:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[int]
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Got:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[str]
 
 [case testAsyncioGatherPreciseType]
 import asyncio
@@ -1417,6 +1422,17 @@ async def main() -> None:
 [out]
 _testAsyncioGatherPreciseType.py:9: error: Revealed type is 'builtins.str'
 _testAsyncioGatherPreciseType.py:10: error: Revealed type is 'builtins.str'
+
+[case testMultipleInheritanceWorksWithTupleTypeGeneric]
+from typing import SupportsAbs, NamedTuple
+
+class Point(NamedTuple('Point', [('x', int), ('y', int)]), SupportsAbs[int]):
+    def __abs__(p) -> int:
+        return abs(p.x) + abs(p.y)
+
+def test(a: Point) -> bool:
+    return abs(a) == 2
+[out]
 
 [case testNoCrashOnGenericUnionUnpacking]
 from typing import Union, Dict

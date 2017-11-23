@@ -588,7 +588,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             with self.enter_partial_types():
                 typ = self.function_type(defn)
                 if type_override:
-                    typ = type_override
+                    typ = type_override.copy_modified(line=typ.line, column=typ.column)
                 if isinstance(typ, CallableType):
                     with self.enter_attribute_inference_context():
                         self.check_func_def(defn, typ, name)
@@ -641,7 +641,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 if name:  # Special method names
                     if name in nodes.reverse_op_method_set:
-                        self.check_reverse_op_method(item, typ, name)
+                        self.check_reverse_op_method(item, typ, name, defn)
                     elif name in ('__getattr__', '__getattribute__'):
                         self.check_getattr_method(typ, defn, name)
                     elif name == '__setattr__':
@@ -725,7 +725,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             arg_type.variance == COVARIANT and
                             defn.name() not in ('__init__', '__new__')
                         ):
-                            self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, arg_type)
+                            ctx = arg_type  # type: Context
+                            if ctx.line < 0:
+                                ctx = typ
+                            self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
                         # builtins.tuple[T] is typing.Tuple[T, ...]
                         arg_type = self.named_generic_type('builtins.tuple',
@@ -792,7 +795,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if fdef.type is None and self.options.disallow_untyped_defs:
                 self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
-                if is_unannotated_any(fdef.type.ret_type):
+                ret_type = fdef.type.ret_type
+                if is_unannotated_any(ret_type):
+                    self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
+                elif (fdef.is_coroutine and isinstance(ret_type, Instance) and
+                      is_unannotated_any(ret_type.args[0])):
                     self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
@@ -816,12 +823,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                  isinstance(stmt.expr, EllipsisExpr)))
 
     def check_reverse_op_method(self, defn: FuncItem, typ: CallableType,
-                                method: str) -> None:
+                                method: str, context: Context) -> None:
         """Check a reverse operator method such as __radd__."""
 
         # This used to check for some very obscure scenario.  It now
         # just decides whether it's worth calling
         # check_overlapping_op_methods().
+
+        # First check for a valid signature
+        method_type = CallableType([AnyType(TypeOfAny.special_form),
+                                    AnyType(TypeOfAny.special_form)],
+                                   [nodes.ARG_POS, nodes.ARG_POS],
+                                   [None, None],
+                                   AnyType(TypeOfAny.special_form),
+                                   self.named_type('builtins.function'))
+        if not is_subtype(typ, method_type):
+            self.msg.invalid_signature(typ, context)
+            return
 
         if method in ('__eq__', '__ne__'):
             # These are defined for all objects => can't cause trouble.
@@ -835,9 +853,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(ret_type, Instance):
             if ret_type.type.fullname() == 'builtins.object':
                 return
-        # Plausibly the method could have too few arguments, which would result
-        # in an error elsewhere.
-        if len(typ.arg_types) <= 2:
+
+        if len(typ.arg_types) == 2:
             # TODO check self argument kind
 
             # Check for the issue described above.
@@ -1852,7 +1869,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def is_definition(self, s: Lvalue) -> bool:
         if isinstance(s, NameExpr):
-            if s.is_def:
+            if s.is_inferred_def:
                 return True
             # If the node type is not defined, this must the first assignment
             # that we process => this is a definition, even though the semantic
@@ -1863,7 +1880,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(node, Var):
                 return node.type is None
         elif isinstance(s, MemberExpr):
-            return s.is_def
+            return s.is_inferred_def
         return False
 
     def infer_variable_type(self, name: Var, lvalue: Lvalue,
@@ -2310,7 +2327,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if var:
                                 # To support local variables, we make this a definition line,
                                 # causing assignment to set the variable's type.
-                                var.is_def = True
+                                var.is_inferred_def = True
                                 # We also temporarily set current_node_deferred to False to
                                 # make sure the inference happens.
                                 # TODO: Use a better solution, e.g. a
@@ -3216,6 +3233,8 @@ def get_isinstance_type(expr: Expression,
         elif isinstance(typ, Instance) and typ.type.fullname() == 'builtins.type':
             object_type = Instance(typ.type.mro[-1], [])
             types.append(TypeRange(object_type, is_upper_bound=True))
+        elif isinstance(typ, AnyType):
+            types.append(TypeRange(typ, is_upper_bound=False))
         else:  # we didn't see an actual type, but rather a variable whose value is unknown to us
             return None
     if not types:

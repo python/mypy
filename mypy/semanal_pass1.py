@@ -237,11 +237,10 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             return
         for id, as_id in node.ids:
             imported_id = as_id or id
+            # For 'import a.b.c' we create symbol 'a'.
+            imported_id = imported_id.split('.')[0]
             if imported_id not in self.sem.globals:
                 self.sem.add_symbol(imported_id, SymbolTableNode(UNBOUND_IMPORTED, None), node)
-            else:
-                # If the previous symbol is a variable, this should take precedence.
-                self.sem.globals[imported_id] = SymbolTableNode(UNBOUND_IMPORTED, None)
 
     def visit_import_all(self, node: ImportAll) -> None:
         node.is_top_level = self.sem.is_module_scope()

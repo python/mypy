@@ -1,4 +1,26 @@
--- Test cases for AST merge (user for fine-grained incremental checking)
+-- Test cases for AST merge (used for fine-grained incremental checking)
+--
+-- Each test case has two versions of the module 'target' (target.py and
+-- target.py.next). A test cases type checks both of them, merges the ASTs,
+-- and finally dumps certain parts of the ASTs for both versions (==>
+-- separates the first and second versions). A test case passes if the
+-- dumped output is as expected.
+--
+-- The dumped output uses <N> to denote identities of objects. Objects
+-- suffixed by the same <N> refer to the same object; <N> and <M> (if
+-- N != M) refer to different objects. The objective of these test cases
+-- is to verify that identities of publicly visible AST nodes is
+-- preserved across merge. Other AST nodes may get new identities.
+--
+-- Each test case dumps one of four kinds of information:
+--
+-- 1) ASTs (test case has no magic suffix)
+-- 2) Symbol tables (_symtable test case name suffix)
+-- 3) TypeInfos (_typeinfo suffix)
+-- 4) Inferred types (_types suffix)
+--
+-- If you need to dump multiple different kinds of information, write
+-- multiple test cases.
 
 [case testFunction]
 import target
@@ -10,6 +32,7 @@ def f() -> int:
     pass
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -20,6 +43,7 @@ MypyFile:1<1>(
       PassStmt:2<5>())))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -41,6 +65,7 @@ class A:
         pass
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -56,6 +81,7 @@ MypyFile:1<1>(
         PassStmt:3<8>()))))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -112,6 +138,7 @@ class A:
         return B()
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -132,6 +159,7 @@ MypyFile:1<1>(
     PassStmt:4<10>()))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -165,6 +193,7 @@ class A:
         self.f()
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -184,6 +213,7 @@ MypyFile:1<1>(
             Args()))))))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -216,6 +246,7 @@ class A:
         self.x
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -238,6 +269,7 @@ MypyFile:1<1>(
             x))))))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -344,6 +376,7 @@ A()
 B()
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -356,6 +389,7 @@ MypyFile:1<1>(
       Args())))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -468,6 +502,7 @@ def f() -> int: pass
 def g() -> int: pass
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -478,6 +513,7 @@ MypyFile:1<1>(
       PassStmt:1<5>())))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -553,6 +589,7 @@ x = 1
 x = 2
 [out]
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -562,6 +599,7 @@ MypyFile:1<1>(
     builtins.int<4>))
 ==>
 MypyFile:1<0>(
+  tmp/main
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
@@ -606,3 +644,394 @@ TypeInfo<2>(
   Mro(target.A.B<2>, builtins.object<1>)
   Names(
     f<3>))
+
+[case testNamedTuple_typeinfo]
+import target
+[file target.py]
+from typing import NamedTuple
+class A: pass
+N = NamedTuple('N', [('x', A)])
+[file target.py.next]
+from typing import NamedTuple
+class A: pass
+N = NamedTuple('N', [('x', A), ('y', A)])
+[out]
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names())
+TypeInfo<2>(
+  Name(target.N)
+  Bases(builtins.tuple[target.A<0>]<3>)
+  Mro(target.N<2>, builtins.tuple<3>, builtins.object<1>)
+  Names(
+    __annotations__<4> (builtins.object<1>)
+    __doc__<5> (builtins.str<6>)
+    __init__<7>
+    _asdict<8>
+    _field_defaults<9> (builtins.object<1>)
+    _field_types<10> (builtins.object<1>)
+    _fields<11> (Tuple[builtins.str<6>])
+    _make<12>
+    _replace<13>
+    _source<14> (builtins.str<6>)
+    x<15> (target.A<0>)))
+==>
+TypeInfo<0>(
+  Name(target.A)
+  Bases(builtins.object<1>)
+  Mro(target.A<0>, builtins.object<1>)
+  Names())
+TypeInfo<2>(
+  Name(target.N)
+  Bases(builtins.tuple[target.A<0>]<3>)
+  Mro(target.N<2>, builtins.tuple<3>, builtins.object<1>)
+  Names(
+    __annotations__<4> (builtins.object<1>)
+    __doc__<5> (builtins.str<6>)
+    __init__<7>
+    _asdict<8>
+    _field_defaults<9> (builtins.object<1>)
+    _field_types<10> (builtins.object<1>)
+    _fields<11> (Tuple[builtins.str<6>, builtins.str<6>])
+    _make<12>
+    _replace<13>
+    _source<14> (builtins.str<6>)
+    x<15> (target.A<0>)
+    y<16> (target.A<0>)))
+
+[case testUnionType_types]
+import target
+[file target.py]
+from typing import Union
+class A: pass
+a: A
+[file target.py.next]
+from typing import Union
+class A: pass
+a: Union[A, int]
+[out]
+## target
+TempNode:-1: Any
+NameExpr:3: target.A<0>
+==>
+## target
+TempNode:-1: Any
+NameExpr:3: Union[target.A<0>, builtins.int<1>]
+
+[case testTypeType_types]
+import target
+[file target.py]
+from typing import Type
+class A: pass
+a: Type[A]
+[file target.py.next]
+from typing import Type
+class A: pass
+a: Type[A]
+[out]
+## target
+TempNode:-1: Any
+NameExpr:3: Type[target.A<0>]
+==>
+## target
+TempNode:-1: Any
+NameExpr:3: Type[target.A<0>]
+
+[case testTypeVar_types]
+import target
+[file target.py]
+from typing import TypeVar, Generic
+T = TypeVar('T', bound=int)
+class A(Generic[T]):
+    x: T
+[file target.py.next]
+from typing import TypeVar
+T = TypeVar('T', bound='A')
+class A(Generic[T]):
+    x: T
+[out]
+## target
+TempNode:-1: Any
+CallExpr:2: Any
+NameExpr:2: Any
+TypeVarExpr:2: Any
+NameExpr:4: T`1(upper_bound=builtins.int<0>)
+==>
+## target
+TempNode:-1: Any
+CallExpr:2: Any
+NameExpr:2: Any
+TypeVarExpr:2: Any
+NameExpr:4: T`1(upper_bound=target.A[Any]<1>)
+
+[case testUnboundType_types]
+import target
+[file target.py]
+from typing import TypeVar, Generic
+class A: pass
+foo: int
+x: foo[A]
+[file target.py.next]
+from typing import TypeVar, Generic
+class A: pass
+foo: int
+x: foo[A]
+[out]
+tmp/target.py:4: error: Invalid type "target.foo"
+## target
+TempNode:-1: Any
+TempNode:-1: Any
+NameExpr:3: builtins.int<0>
+NameExpr:4: foo?[A?]
+==>
+## target
+TempNode:-1: Any
+TempNode:-1: Any
+NameExpr:3: builtins.int<0>
+NameExpr:4: foo?[A?]
+
+[case testOverloaded_types]
+import target
+[file target.py]
+from typing import overload
+class A: pass
+
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: int) -> int: pass
+
+def f(x): pass
+
+g = f
+[file target.py.next]
+from typing import overload
+
+class A: pass
+
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: str) -> str: pass
+
+def f(x): pass
+
+g = f
+[out]
+-- TODO: It is unclear why this works correctly...
+## target
+NameExpr:11: Overload(def (x: target.A<0>) -> target.A<0>, def (x: builtins.int<1>) -> builtins.int<1>)
+NameExpr:11: Overload(def (x: target.A<0>) -> target.A<0>, def (x: builtins.int<1>) -> builtins.int<1>)
+==>
+## target
+NameExpr:12: Overload(def (x: target.A<0>) -> target.A<0>, def (x: builtins.str<2>) -> builtins.str<2>)
+NameExpr:12: Overload(def (x: target.A<0>) -> target.A<0>, def (x: builtins.str<2>) -> builtins.str<2>)
+
+[case testTypeVar_symtable]
+import target
+
+[file target.py]
+from typing import TypeVar
+T = TypeVar('T')
+
+[file target.py.next]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    T: TypeVarExpr<1>
+    TypeVar: Var<2>
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    T: TypeVarExpr<1>
+    TypeVar: Var<2>
+
+[case testTypeAlias_symtable]
+import target
+
+[file target.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]): pass
+X = A[int]
+
+[file target.py.next]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]): pass
+X = A[str]
+
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    A: TypeInfo<1>
+    Generic: Var<2>
+    T: TypeVarExpr<3>
+    TypeVar: Var<4>
+    X: Var<5>(type_override=target.A[builtins.int<6>]<1>)
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    A: TypeInfo<1>
+    Generic: Var<2>
+    T: TypeVarExpr<3>
+    TypeVar: Var<4>
+    X: Var<5>(type_override=target.A[builtins.str<7>]<1>)
+
+[case testGenericFunction_types]
+import target
+
+[file target.py]
+from typing import TypeVar
+class A: pass
+T = TypeVar('T', bound=A)
+def f(x: T) -> T: pass
+f
+
+[file target.py.next]
+from typing import TypeVar
+class A: pass
+T = TypeVar('T', bound=A)
+def f(x: T, y: A) -> T: pass
+f
+
+[out]
+## target
+CallExpr:3: Any
+NameExpr:3: Any
+TypeVarExpr:3: Any
+NameExpr:5: def [T <: target.A<0>] (x: T`-1(upper_bound=target.A<0>)) -> T`-1(upper_bound=target.A<0>)
+==>
+## target
+CallExpr:3: Any
+NameExpr:3: Any
+TypeVarExpr:3: Any
+NameExpr:5: def [T <: target.A<0>] (x: T`-1(upper_bound=target.A<0>), y: target.A<0>) -> T`-1(upper_bound=target.A<0>)
+
+[case testMergeOverloaded_types]
+import target
+[file target.py]
+from _x import A
+a: A
+[file target.py.next]
+from _x import A
+a: A
+[file _x.pyi]
+from typing import Generic, TypeVar, overload
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, x: int) -> None: pass
+A = C[int]
+[out]
+## target
+TempNode:-1: Any
+NameExpr:2: _x.C[builtins.int<0>]<1>
+==>
+## target
+TempNode:-1: Any
+NameExpr:2: _x.C[builtins.int<0>]<1>
+
+[case testRefreshVar_symtable]
+from typing import TypeVar
+from target import f
+x = 1
+y = '' # type: str
+[file target.py]
+f = 1
+[file target.py.next]
+[out]
+__main__:
+    TypeVar: Var<0>
+    f: Var<1>
+    x: Var<2>
+    y: Var<3>
+target:
+    f: Var<1>
+==>
+__main__:
+    TypeVar: Var<0>
+    f: UNBOUND_IMPORTED
+    x: Var<2>
+    y: Var<3>
+target:
+
+[case testRefreshTypeVar_symtable]
+from typing import TypeVar
+from target import f
+T = TypeVar('T')
+[file target.py]
+f = 1
+[file target.py.next]
+[out]
+__main__:
+    T: TypeVarExpr<0>
+    TypeVar: Var<1>
+    f: Var<2>
+target:
+    f: Var<2>
+==>
+__main__:
+    T: TypeVarExpr<0>
+    TypeVar: Var<1>
+    f: UNBOUND_IMPORTED
+target:
+
+[case testRefreshNamedTuple_symtable]
+from typing import NamedTuple
+from target import f
+N = NamedTuple('N', [('x', int)])
+[file target.py]
+f = 1
+[file target.py.next]
+[out]
+__main__:
+    N: TypeInfo<0>
+    NamedTuple: Var<1>
+    f: Var<2>
+target:
+    f: Var<2>
+==>
+__main__:
+    N: TypeInfo<0>
+    NamedTuple: Var<1>
+    f: UNBOUND_IMPORTED
+target:
+
+[case testRefreshAttributeDefinedInClassBody_typeinfo]
+from target import f
+class A:
+    a = 1
+    b = '' # type: str
+[file target.py]
+f = 1
+[file target.py.next]
+[out]
+TypeInfo<0>(
+  Name(__main__.A)
+  Bases(builtins.object<1>)
+  Mro(__main__.A<0>, builtins.object<1>)
+  Names(
+    a<2> (builtins.int<3>)
+    b<4> (builtins.str<5>)))
+==>
+TypeInfo<0>(
+  Name(__main__.A)
+  Bases(builtins.object<1>)
+  Mro(__main__.A<0>, builtins.object<1>)
+  Names(
+    a<2> (builtins.int<3>)
+    b<4> (builtins.str<5>)))

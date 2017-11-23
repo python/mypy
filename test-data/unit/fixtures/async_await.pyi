@@ -5,11 +5,12 @@ U = typing.TypeVar('U')
 class list(typing.Sequence[T]): pass
 
 class object:
-    def __init__(self): pass
+    def __init__(self) -> None: pass
 class type: pass
 class function: pass
 class int: pass
 class str: pass
+class bool: pass
 class dict(typing.Generic[T, U]): pass
 class set(typing.Generic[T]): pass
 class tuple(typing.Generic[T]): pass

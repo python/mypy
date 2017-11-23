@@ -51,6 +51,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         self.sem.options = options
         self.patches = patches
         self.is_typeshed_file = self.errors.is_typeshed_file(fnam)
+        self.sem.cur_mod_id = file_node.fullname()
         self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
             self.accept(file_node)

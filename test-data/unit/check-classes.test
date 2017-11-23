@@ -1639,6 +1639,18 @@ class C:
     def __radd__(self, x: Any) -> int: pass
 [out]
 
+[case testReverseOperatorMethodInvalid]
+from foo import *
+[file foo.pyi]
+class A: ...
+class B:
+    def __rmul__(self) -> A: ...
+class C:
+    def __radd__(self, other, oops) -> int: ...
+[out]
+tmp/foo.pyi:3: error: Invalid signature "def (foo.B) -> foo.A"
+tmp/foo.pyi:5: error: Invalid signature "def (foo.C, Any, Any) -> builtins.int"
+
 [case testReverseOperatorMethodForwardIsAny]
 from typing import Any
 def deco(f: Any) -> Any: return f

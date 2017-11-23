@@ -23,6 +23,7 @@ class GetDependenciesSuite(DataSuite):
         'deps-generics.test',
         'deps-expressions.test',
         'deps-statements.test',
+        'deps-classes.test',
     ]  # type: typing.ClassVar[List[str]]
     base_path = test_temp_dir  # type: typing.ClassVar[str]
     optional_out = True  # type: typing.ClassVar[bool]

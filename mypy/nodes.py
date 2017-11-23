@@ -1124,11 +1124,13 @@ class RefExpr(Expression):
     node = None  # type: Optional[SymbolNode]  # Var, FuncDef or TypeInfo that describes this
     fullname = None  # type: Optional[str]  # Fully qualified name (or name if not global)
 
+    # Does this define a new name?
+    is_new_def = False
     # Does this define a new name with inferred type?
     #
     # For members, after semantic analysis, this does not take base
     # classes into consideration at all; the type checker deals with these.
-    is_def = False
+    is_inferred_def = False
 
 
 class NameExpr(RefExpr):
@@ -1152,7 +1154,8 @@ class NameExpr(RefExpr):
                 'kind': self.kind,
                 'node': None if self.node is None else self.node.serialize(),
                 'fullname': self.fullname,
-                'is_def': self.is_def,
+                'is_new_def': self.is_new_def,
+                'is_inferred_def': self.is_inferred_def,
                 'name': self.name,
                 }
 
@@ -1163,7 +1166,8 @@ class NameExpr(RefExpr):
         ret.kind = data['kind']
         ret.node = None if data['node'] is None else SymbolNode.deserialize(data['node'])
         ret.fullname = data['fullname']
-        ret.is_def = data['is_def']
+        ret.is_new_def = data['is_new_def']
+        ret.is_inferred_def = data['is_inferred_def']
         return ret
 
 
@@ -1479,6 +1483,9 @@ class LambdaExpr(FuncItem, Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_lambda_expr(self)
+
+    def is_dynamic(self) -> bool:
+        return False
 
 
 class ListExpr(Expression):
