@@ -1486,6 +1486,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 if extra:
                     message += " {}".format(extra)
                 self.fail(message, imp)
+                self.add_unknown_symbol(as_id or id, imp, is_import=True)
             else:
                 # Missing module.
                 self.add_unknown_symbol(as_id or id, imp, is_import=True)
