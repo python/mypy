@@ -477,10 +477,24 @@ main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Cannot find module named 'b'
 
+[case testAddFileWhichImportsLibModule]
+import a
+a.x = 0
+[file a.py.2]
+import sys
+x = sys.platform
+[out]
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+main:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
 -- TODO:
--- - add one file which imports another new file
--- - mix of modify, add and delete in one iteration
+-- - add one file which imports another new file, error in new file
+-- - add one file which imports another new file, blocking error in new file
+-- - arbitrary blocking errors
 -- - packages
 --   - add two files that form a package
 --   - delete two files that form a package
 -- - order of processing makes a difference
+-- - mix of modify, add and delete in one iteration
