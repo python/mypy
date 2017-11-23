@@ -2817,10 +2817,8 @@ from b import x
 [out]
 [out2]
 tmp/b.py:1: error: Module 'c' has no attribute 'x'
-tmp/a.py:1: error: Module 'b' has no attribute 'x'
 [out3]
 tmp/b.py:1: error: Module 'c' has no attribute 'x'
-tmp/a.py:1: error: Module 'b' has no attribute 'x'
 
 [case testCacheDeletedAfterErrorsFound2]
 import a
@@ -2875,12 +2873,8 @@ from b import x
 [out]
 [out2]
 tmp/c.py:1: error: Module 'd' has no attribute 'x'
-tmp/b.py:1: error: Module 'c' has no attribute 'x'
-tmp/a.py:1: error: Module 'b' has no attribute 'x'
 [out3]
 tmp/c.py:1: error: Module 'd' has no attribute 'x'
-tmp/b.py:1: error: Module 'c' has no attribute 'x'
-tmp/a.py:1: error: Module 'b' has no attribute 'x'
 
 [case testNoCrashOnDoubleImportAliasQuick]
 # cmd: mypy -m e
