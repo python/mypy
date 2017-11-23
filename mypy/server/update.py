@@ -120,7 +120,7 @@ class FineGrainedBuildManager:
             changed_ids = [id for id, _ in changed_modules]
             print('==== update %s ====' % changed_ids)
             if self.blocking_errors:
-                print('blockers: %s' % [id for id, _ in self.blocking_errors])
+                print('existing blockers: %s' % [id for id, _ in self.blocking_errors])
         if self.blocking_errors:
             # Handle blocking errors first. We'll exit as soon as we find a
             # modul that still has blocking errors.
@@ -142,6 +142,9 @@ class FineGrainedBuildManager:
                 print('-- %s --' % id)
             result, remaining = self.update_single(id, path)
             changed_modules.extend(remaining)
+            if self.blocking_errors:
+                self.stale = changed_modules
+                return result
         return result
 
     def update_single(self, module: str, path: str) -> Tuple[List[str],
@@ -174,6 +177,8 @@ class FineGrainedBuildManager:
             module, tree, graph, remaining = update_single_isolated(module, path, manager, graph)
         except CompileError as err:
             # TODO: Remaining modules
+            if DEBUG:
+                print('blocking error: %s' % module)
             self.blocking_errors = [(module, path)]
             return err.messages, []
         self.blocking_errors = []
@@ -614,6 +619,11 @@ def reprocess_nodes(manager: BuildManager,
 
     Return fired triggers.
     """
+    if module_id not in manager.saved_cache:
+        if DEBUG:
+            print('%s not in saved cache (blocking errors?)' % module_id)
+        return set()
+
     file_node = manager.modules[module_id]
 
     def key(node: DeferredNode) -> str:

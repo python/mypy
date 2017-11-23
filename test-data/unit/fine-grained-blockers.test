@@ -3,9 +3,7 @@
 -- The comments in fine-grained.test explain how these tests work.
 
 -- TODO:
--- - new file with parse error
 -- - blocking error while other existing errors as well (that get preserved)
--- - multiple files with blocking errors
 -- - differences in other modules + blocking error
 
 [case testParseError]
@@ -195,3 +193,46 @@ a.py:1: error: invalid syntax
 a.py:1: error: invalid syntax
 ==
 a.py:2: error: Too few arguments for "f"
+
+[case testModifyTwoFilesIntroduceTwoBlockingErrors]
+import a
+[file a.py]
+import b
+def f() -> None: pass
+b.g()
+[file b.py]
+import a
+a.f()
+def g() -> None: pass
+[file a.py.2]
+import b b
+def f() -> None: pass
+b.g()
+[file b.py.2]
+import a a
+a.f()
+def g() -> None: pass
+[file a.py.3]
+import b b
+def f() -> None: pass
+b.g()
+[file b.py.3]
+import a a
+a.f()
+def g() -> None: pass
+[file a.py.4]
+import b
+def f() -> None: pass
+b.g(1)
+[file b.py.4]
+import a
+def g() -> None: pass
+a.f(1)
+[out]
+==
+a.py:1: error: invalid syntax
+==
+a.py:1: error: invalid syntax
+==
+b.py:3: error: Too many arguments for "f"
+a.py:3: error: Too many arguments for "g"
