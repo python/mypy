@@ -503,6 +503,26 @@ main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 a.py:3: error: Name 'z' is not defined
 <ROOT>/test-data/unit/lib-stub/broken.pyi:2: error: Name 'y' is not defined
 
+[case testRenameModule]
+import a
+[file a.py]
+import b
+b.f()
+[file b.py]
+def f() -> None: pass
+[file a.py.2]
+import c
+c.f()
+[file c.py.2]
+def f() -> None: pass
+[file a.py.3]
+import c
+c.f(1)
+[out]
+==
+==
+a.py:2: error: Too many arguments for "f"
+
 -- TODO:
 -- - add one file which imports another new file, blocking error in new file
 -- - arbitrary blocking errors
