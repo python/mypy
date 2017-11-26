@@ -2784,6 +2784,9 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
 
     The distinction is important in cases where multiple overload items match. We want
     give priority to higher similarity matches.
+
+    If strict-optional is enabled, we count (None -> object) as a promotion, even though it's
+    treated as a subtype elsewhere, to enable overloads between None and object.
     """
     # Replace type variables with their upper bounds. Overloading
     # resolution is based on runtime behavior which erases type
@@ -2809,8 +2812,10 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             # NoneTyp matches anything if we're not doing strict Optional checking
             return 2
         else:
-            # NoneType can be promoted to object, but isn't actually a subtype (otherwise you
-            # wouldn't be able to define overloads between object and None).
+            # HACK: As a special case, we don't consider NoneType as a subtype of object here, as
+            # otherwise you wouldn't be able to define overloads between object and None. This is
+            # important e.g. for typing descriptors, which get an object when acting as an instance
+            # property and None when acting as a class property.
             if isinstance(formal, Instance) and formal.type.fullname() == "builtins.object":
                 return 1
     if isinstance(actual, UnionType):
