@@ -8,12 +8,24 @@ from os import remove, rmdir
 import shutil
 
 import pytest  # type: ignore  # no pytest in typeshed
-from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict
+from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 
 from mypy.myunit import TestCase, SkipTestCaseException
+from mypy.test.config import test_temp_dir
 
 
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+# File modify/create operation: copy module contents from source_path.
+UpdateFile = NamedTuple('UpdateFile', [('module', str),
+                                       ('source_path', str),
+                                       ('target_path', str)])
+
+# File delete operation: delete module file.
+DeleteFile = NamedTuple('DeleteFile', [('module', str),
+                                       ('path', str)])
+
+FileOperation = Union[UpdateFile, DeleteFile]
 
 
 def parse_test_cases(
@@ -38,10 +50,10 @@ def parse_test_cases(
     if not include_path:
         include_path = os.path.dirname(path)
     with open(path, encoding='utf-8') as f:
-        l = f.readlines()
-    for i in range(len(l)):
-        l[i] = l[i].rstrip('\n')
-    p = parse_test_data(l, path)
+        lst = f.readlines()
+    for i in range(len(lst)):
+        lst[i] = lst[i].rstrip('\n')
+    p = parse_test_data(lst, path)
     out = []  # type: List[DataDrivenTestCase]
 
     # Process the parsed items. Each item has a header of form [id args],
@@ -192,6 +204,7 @@ class DataDrivenTestCase(TestCase):
     expected_stale_modules = None  # type: Dict[int, Set[str]]
     expected_rechecked_modules = None  # type: Dict[int, Set[str]]
 
+    # Files/directories to clean up after test case; (is directory, path) tuples
     clean_up = None  # type: List[Tuple[bool, str]]
 
     def __init__(self,
@@ -229,23 +242,23 @@ class DataDrivenTestCase(TestCase):
         super().set_up()
         encountered_files = set()
         self.clean_up = []
-        all_deleted = []  # type: List[str]
         for paths in self.deleted_paths.values():
-            all_deleted += paths
+            for path in paths:
+                self.clean_up.append((False, path))
+                encountered_files.add(path)
         for path, content in self.files:
             dir = os.path.dirname(path)
             for d in self.add_dirs(dir):
                 self.clean_up.append((True, d))
             with open(path, 'w') as f:
                 f.write(content)
-            if path not in all_deleted:
-                # TODO: Don't assume that deleted files don't get reintroduced.
+            if path not in encountered_files:
                 self.clean_up.append((False, path))
-            encountered_files.add(path)
+                encountered_files.add(path)
             if re.search(r'\.[2-9]$', path):
                 # Make sure new files introduced in the second and later runs are accounted for
                 renamed_path = path[:-2]
-                if renamed_path not in encountered_files and renamed_path not in all_deleted:
+                if renamed_path not in encountered_files:
                     encountered_files.add(renamed_path)
                     self.clean_up.append((False, renamed_path))
         for path, _ in self.output_files:
@@ -279,7 +292,12 @@ class DataDrivenTestCase(TestCase):
         # First remove files.
         for is_dir, path in reversed(self.clean_up):
             if not is_dir:
-                remove(path)
+                try:
+                    remove(path)
+                except FileNotFoundError:
+                    # Breaking early using Ctrl+C may happen before file creation. Also, some
+                    # files may be deleted by a test case.
+                    pass
         # Then remove directories.
         for is_dir, path in reversed(self.clean_up):
             if is_dir:
@@ -301,10 +319,46 @@ class DataDrivenTestCase(TestCase):
                     path = error.filename
                     # Be defensive -- only call rmtree if we're sure we aren't removing anything
                     # valuable.
-                    if path.startswith('tmp/') and os.path.isdir(path):
+                    if path.startswith(test_temp_dir + '/') and os.path.isdir(path):
                         shutil.rmtree(path)
                     raise
         super().tear_down()
+
+    def find_steps(self) -> List[List[FileOperation]]:
+        """Return a list of descriptions of file operations for each incremental step.
+
+        The first list item corresponds to the first incremental step, the second for the
+        second step, etc. Each operation can either be a file modification/creation (UpdateFile)
+        or deletion (DeleteFile).
+        """
+        steps = {}  # type: Dict[int, List[FileOperation]]
+        for path, _ in self.files:
+            m = re.match(r'.*\.([0-9]+)$', path)
+            if m:
+                num = int(m.group(1))
+                assert num >= 2
+                target_path = re.sub(r'\.[0-9]+$', '', path)
+                module = module_from_path(target_path)
+                operation = UpdateFile(module, path, target_path)
+                steps.setdefault(num, []).append(operation)
+        for num, paths in self.deleted_paths.items():
+            assert num >= 2
+            for path in paths:
+                module = module_from_path(path)
+                steps.setdefault(num, []).append(DeleteFile(module, path))
+        max_step = max(steps)
+        return [steps[num] for num in range(2, max_step + 1)]
+
+
+def module_from_path(path: str) -> str:
+    path = re.sub(r'\.py$', '', path)
+    # We can have a mix of Unix-style and Windows-style separators.
+    parts = re.split(r'[/\\]', path)
+    assert parts[0] == test_temp_dir
+    del parts[0]
+    module = '.'.join(parts)
+    module = re.sub(r'\.__init__$', '', module)
+    return module
 
 
 class TestItem:
@@ -556,6 +610,9 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
 
 
 class DataSuite:
+    def __init__(self, *, update_data: bool) -> None:
+        self.update_data = update_data
+
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
         return []

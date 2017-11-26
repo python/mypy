@@ -79,8 +79,8 @@ class A(Generic[T]): pass
 class B: pass
 class C(B): pass
 [out]
-main:4: error: Incompatible types in assignment (expression has type A[B], variable has type A[C])
-main:5: error: Incompatible types in assignment (expression has type A[C], variable has type A[B])
+main:4: error: Incompatible types in assignment (expression has type "A[B]", variable has type "A[C]")
+main:5: error: Incompatible types in assignment (expression has type "A[C]", variable has type "A[B]")
 
 [case testGenericTypeCompatibilityWithAny]
 from typing import Any, TypeVar, Generic
@@ -115,8 +115,8 @@ class A(Generic[T]):
 class B: pass
 class C: pass
 [out]
-main:7: error: Incompatible types in assignment (expression has type A[C], variable has type A[B])
-main:8: error: Incompatible types in assignment (expression has type A[B], variable has type A[C])
+main:7: error: Incompatible types in assignment (expression has type "A[C]", variable has type "A[B]")
+main:8: error: Incompatible types in assignment (expression has type "A[B]", variable has type "A[C]")
 
 [case testMultipleGenericTypeParametersWithMemberVars]
 from typing import TypeVar, Generic
@@ -183,9 +183,9 @@ class A(Generic[S, T]):
 class B: pass
 class C(B):pass
 [out]
-main:8: error: Incompatible types in assignment (expression has type A[B, C], variable has type A[B, B])
-main:9: error: Incompatible types in assignment (expression has type A[C, B], variable has type A[B, B])
-main:10: error: Incompatible types in assignment (expression has type A[B, B], variable has type A[B, C])
+main:8: error: Incompatible types in assignment (expression has type "A[B, C]", variable has type "A[B, B]")
+main:9: error: Incompatible types in assignment (expression has type "A[C, B]", variable has type "A[B, B]")
+main:10: error: Incompatible types in assignment (expression has type "A[B, B]", variable has type "A[B, C]")
 
 
 -- Simple generic type bodies
@@ -208,7 +208,7 @@ x = None # type: B
 class B: pass
 [out]
 main:7: error: Argument 1 to "f" of "A" has incompatible type "B"; expected "T"
-main:8: error: Incompatible types in assignment (expression has type A[T], variable has type A[B])
+main:8: error: Incompatible types in assignment (expression has type "A[T]", variable has type "A[B]")
 
 [case testGenericTypeBodyWithMultipleVariables]
 from typing import TypeVar, Generic
@@ -229,8 +229,8 @@ class B: pass
 [out]
 main:8: error: Incompatible types in assignment (expression has type "T", variable has type "S")
 main:9: error: Incompatible types in assignment (expression has type "S", variable has type "T")
-main:10: error: Incompatible types in assignment (expression has type A[S, T], variable has type A[S, B])
-main:11: error: Incompatible types in assignment (expression has type A[S, T], variable has type A[T, T])
+main:10: error: Incompatible types in assignment (expression has type "A[S, T]", variable has type "A[S, B]")
+main:11: error: Incompatible types in assignment (expression has type "A[S, T]", variable has type "A[T, T]")
 
 [case testCompatibilityOfNoneWithTypeVar]
 from typing import TypeVar, Generic
@@ -284,9 +284,9 @@ class B: pass
 class C: pass
 [out]
 main:8: error: Incompatible types in assignment (expression has type "C", variable has type "B")
-main:9: error: Unsupported operand types for + (A[B, C] and "C")
+main:9: error: Unsupported operand types for + ("A[B, C]" and "C")
 main:10: error: Incompatible types in assignment (expression has type "B", variable has type "C")
-main:11: error: Invalid index type "B" for A[B, C]; expected type "C"
+main:11: error: Invalid index type "B" for "A[B, C]"; expected type "C"
 
 [case testOperatorAssignmentWithIndexLvalue1]
 from typing import TypeVar, Generic
@@ -309,7 +309,7 @@ class C:
     def __add__(self, o: 'C') -> 'C': pass
 [out]
 main:7: error: Unsupported operand types for + ("C" and "B")
-main:8: error: Invalid index type "C" for A[C]; expected type "B"
+main:8: error: Invalid index type "C" for "A[C]"; expected type "B"
 
 [case testOperatorAssignmentWithIndexLvalue2]
 from typing import TypeVar, Generic
@@ -330,9 +330,9 @@ class B: pass
 class C:
     def __add__(self, o: 'C') -> 'C': pass
 [out]
-main:7: error: Invalid index type "B" for A[C]; expected type "C"
-main:8: error: Invalid index type "C" for A[C]; expected type "B"
-main:9: error: Invalid index type "B" for A[C]; expected type "C"
+main:7: error: Invalid index type "B" for "A[C]"; expected type "C"
+main:8: error: Invalid index type "C" for "A[C]"; expected type "B"
+main:9: error: Invalid index type "B" for "A[C]"; expected type "C"
 
 
 -- Nested generic types
@@ -364,8 +364,8 @@ class B:
 class C:
     pass
 [out]
-main:8: error: Incompatible types in assignment (expression has type A[B], variable has type A[C])
-main:9: error: Incompatible types in assignment (expression has type A[A[B]], variable has type A[A[C]])
+main:8: error: Incompatible types in assignment (expression has type "A[B]", variable has type "A[C]")
+main:9: error: Incompatible types in assignment (expression has type "A[A[B]]", variable has type "A[A[C]]")
 
 
 -- Generic functions
@@ -384,7 +384,7 @@ def f(s: S, t: T) -> p[T, A]:
     s = t           # E: Incompatible types in assignment (expression has type "T", variable has type "S")
     p_s_a = None  # type: p[S, A]
     if s:
-        return p_s_a # E: Incompatible return value type (got p[S, A], expected p[T, A])
+        return p_s_a # E: Incompatible return value type (got "p[S, A]", expected "p[T, A]")
     b = t # type: T
     c = s # type: S
     p_t_a = None  # type: p[T, A]
@@ -402,10 +402,10 @@ class A(Generic[T]):
         s = t # E: Incompatible types in assignment (expression has type "T", variable has type "S")
         p_s_s = None  # type: p[S, S]
         if s:
-            return p_s_s # E: Incompatible return value type (got p[S, S], expected p[S, T])
+            return p_s_s # E: Incompatible return value type (got "p[S, S]", expected "p[S, T]")
         p_t_t = None  # type: p[T, T]
         if t:
-            return p_t_t # E: Incompatible return value type (got p[T, T], expected p[S, T])
+            return p_t_t # E: Incompatible return value type (got "p[T, T]", expected "p[S, T]")
         t = t
         s = s
         p_s_t = None  # type: p[S, T]
@@ -448,7 +448,7 @@ A[int, str, int]() # E: Type application has too many types (2 expected)
 a = None # type: A
 class A: pass
 a[A]()  # E: Value of type "A" is not indexable
-A[A]()  # E: The type Type[A] is not generic and not indexable
+A[A]()  # E: The type "Type[A]" is not generic and not indexable
 [out]
 
 [case testTypeApplicationArgTypes]
@@ -504,7 +504,7 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
-type[int] # this was crashing, see #2302 (comment)  # E: The type Type[type] is not generic and not indexable
+type[int] # this was crashing, see #2302 (comment)  # E: The type "Type[type]" is not generic and not indexable
 [out]
 
 
@@ -564,7 +564,7 @@ def func(x: IntNode[T]) -> IntNode[T]:
     return x
 reveal_type(func) # E: Revealed type is 'def [T] (x: __main__.Node[builtins.int, T`-1]) -> __main__.Node[builtins.int, T`-1]'
 
-func(1) # E: Argument 1 to "func" has incompatible type "int"; expected Node[int, <nothing>]
+func(1) # E: Argument 1 to "func" has incompatible type "int"; expected "Node[int, <nothing>]"
 func(Node('x', 1)) # E: Argument 1 to "Node" has incompatible type "str"; expected "int"
 reveal_type(func(Node(1, 'x'))) # E: Revealed type is '__main__.Node[builtins.int, builtins.str*]'
 
@@ -693,7 +693,7 @@ l.meth().append(1)
 reveal_type(l.meth()) # E: Revealed type is 'builtins.list*[builtins.int]'
 l.meth().append('x') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 
-ListedNode[str]([]).x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type List[str])
+ListedNode[str]([]).x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "List[str]")
 
 [builtins fixtures/list.pyi]
 
@@ -715,7 +715,7 @@ def f_bad(x: T) -> D[T]:
     return D(1)  # Error, see out
 
 L[int]().append(Node((1, 1)))
-L[int]().append(5) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected Node[Tuple[int, int]]
+L[int]().append(5) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "Node[Tuple[int, int]]"
 
 x = D((1, 1)) # type: D[int]
 y = D(5) # type: D[int] # E: Argument 1 to "D" has incompatible type "int"; expected "Tuple[int, int]"
@@ -779,7 +779,7 @@ if not isinstance(s, str):
 
 z = None # type: TNode # Same as TNode[Any]
 z.x
-z.foo() # E: Item Node[int] of "Union[Any, Node[int]]" has no attribute "foo"
+z.foo() # E: Item "Node[int]" of "Union[Any, Node[int]]" has no attribute "foo"
 
 [builtins fixtures/isinstance.pyi]
 
@@ -812,7 +812,7 @@ class Node(Generic[T]):
     def __init__(self, x: T) -> None:
         ...
 
-BadC = Callable[T] # E: Invalid function type
+BadC = Callable[T] # E: Please use "Callable[[<parameters>], <return type>]" or "Callable"
 
 C = Callable[..., T]
 C2 = Callable[[T, T], Node[T]]
@@ -825,9 +825,9 @@ reveal_type(make_cb(1)) # E: Revealed type is 'def (*Any, **Any) -> builtins.int
 def use_cb(arg: T, cb: C2[T]) -> Node[T]:
     return cb(arg, arg)
 
-use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected Callable[[int, int], Node[int]]
+use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected "Callable[[int, int], Node[int]]"
 my_cb = None # type: C2[int]
-use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type Callable[[int, int], Node[int]]; expected Callable[[str, str], Node[str]]
+use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type "Callable[[int, int], Node[int]]"; expected "Callable[[str, str], Node[str]]"
 reveal_type(use_cb(1, my_cb)) # E: Revealed type is '__main__.Node[builtins.int]'
 
 [out]
@@ -848,11 +848,11 @@ def fun2(v: Vec[T], scale: T) -> Vec[T]:
     return v
 
 reveal_type(fun1([(1, 1)])) # E: Revealed type is 'builtins.int*'
-fun1(1) # E: Argument 1 to "fun1" has incompatible type "int"; expected List[Tuple[int, int]]
+fun1(1) # E: Argument 1 to "fun1" has incompatible type "int"; expected "List[Tuple[int, int]]"
 fun1([(1, 'x')]) # E: Cannot infer type argument 1 of "fun1"
 
 reveal_type(fun2([(1, 1)], 1)) # E: Revealed type is 'builtins.list[Tuple[builtins.int*, builtins.int*]]'
-fun2([('x', 'x')], 'x') # E: Type argument 1 of "fun2" has incompatible value "str"
+fun2([('x', 'x')], 'x') # E: Value of type variable "T" of "fun2" cannot be "str"
 
 [builtins fixtures/list.pyi]
 
@@ -869,7 +869,7 @@ n.y = 'x' # E: Incompatible types in assignment (expression has type "str", vari
 def f(x: Node[T, T]) -> TupledNode[T]:
     return Node(x.x, (x.x, x.x))
 
-f(1) # E: Argument 1 to "f" has incompatible type "int"; expected Node[<nothing>, <nothing>]
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Node[<nothing>, <nothing>]"
 f(Node(1, 'x')) # E: Cannot infer type argument 1 of "f"
 reveal_type(Node('x', 'x')) # E: Revealed type is 'a.Node[builtins.str*, builtins.str*]'
 
@@ -978,7 +978,7 @@ class C:
     c: Type[object] = Iterable[int]  # This is however also a variable
     a = B
     b = int  # E: Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation \
-             # E: Incompatible types in assignment (expression has type Type[int], variable has type "Type alias to Union")
+             # E: Incompatible types in assignment (expression has type "Type[int]", variable has type "Type alias to Union")
     c = int
     def f(self, x: a) -> None: pass  # E: Invalid type "__main__.C.a"
     def g(self, x: b) -> None: pass
@@ -1068,9 +1068,9 @@ y = None # type: SameA[str] # Two errors here, for both args of A
 
 [builtins fixtures/list.pyi]
 [out]
-main:9:7: error: Type argument 1 of "A" has incompatible value "str"
-main:13: error: Type argument 1 of "A" has incompatible value "str"
-main:13: error: Type argument 2 of "A" has incompatible value "str"
+main:9:7: error: Value of type variable "T" of "A" cannot be "str"
+main:13: error: Value of type variable "T" of "A" cannot be "str"
+main:13: error: Value of type variable "S" of "A" cannot be "str"
 
 [case testGenericTypeAliasesIgnoredPotentialAlias]
 class A: ...
@@ -1201,7 +1201,7 @@ reveal_type(D[str, int]().c()) # E: Revealed type is 'builtins.str*'
 from typing import TypeVar, Generic
 T = TypeVar('T')
 
-class A(Generic[T, T]): # E: Duplicate type variables in Generic[...]
+class A(Generic[T, T]): # E: Duplicate type variables in Generic[...] or Protocol[...]
     pass
 
 a = A[int]()
@@ -1218,7 +1218,7 @@ class A(Generic[T]):
 class B(Generic[T]):
     pass
 
-class C(A[T], B[S], Generic[T]): # E: If Generic[...] is present it should list all type variables
+class C(A[T], B[S], Generic[T]): # E: If Generic[...] or Protocol[...] is present it should list all type variables
     pass
 
 c = C[int, str]()
@@ -1343,7 +1343,7 @@ Z = TypeVar('Z')
 class OO: pass
 a = None # type: A[object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object]
 
-f(a) # E: Argument 1 to "f" has incompatible type A[...]; expected "OO"
+f(a) # E: Argument 1 to "f" has incompatible type "A[...]"; expected "OO"
 
 def f(a: OO) -> None:
     pass
@@ -1354,7 +1354,7 @@ from typing import TypeVar, Generic
 S = TypeVar('S')
 T = TypeVar('T')
 a = None # type: A[object, B]
-f(a) # E: Argument 1 to "f" has incompatible type A[object, B]; expected "B"
+f(a) # E: Argument 1 to "f" has incompatible type "A[object, B]"; expected "B"
 
 def f(a: 'B') -> None: pass
 class A(Generic[S, T]): pass
@@ -1365,7 +1365,7 @@ from typing import Callable, TypeVar, Generic
 S = TypeVar('S')
 T = TypeVar('T')
 a = None # type: A[object, Callable[[], None]]
-f(a) # E: Argument 1 to "f" has incompatible type A[object, Callable[[], None]]; expected "B"
+f(a) # E: Argument 1 to "f" has incompatible type "A[object, Callable[[], None]]"; expected "B"
 
 def f(a: 'B') -> None: pass
 class A(Generic[S, T]): pass
@@ -1499,25 +1499,25 @@ y1 = f1
 y1 = f1
 y1 = f2
 y1 = f3
-y1 = f4 # E: Incompatible types in assignment (expression has type Callable[[int], A], variable has type Callable[[A], A])
+y1 = f4 # E: Incompatible types in assignment (expression has type "Callable[[int], A]", variable has type "Callable[[A], A]")
 
 y2 = f2
 y2 = f2
-y2 = f1 # E: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[A], B])
-y2 = f3 # E: Incompatible types in assignment (expression has type Callable[[B], B], variable has type Callable[[A], B])
-y2 = f4 # E: Incompatible types in assignment (expression has type Callable[[int], A], variable has type Callable[[A], B])
+y2 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[A], B]")
+y2 = f3 # E: Incompatible types in assignment (expression has type "Callable[[B], B]", variable has type "Callable[[A], B]")
+y2 = f4 # E: Incompatible types in assignment (expression has type "Callable[[int], A]", variable has type "Callable[[A], B]")
 
 y3 = f3
 y3 = f3
 y3 = f1
 y3 = f2
-y3 = f4 # E: Incompatible types in assignment (expression has type Callable[[int], A], variable has type Callable[[B], B])
+y3 = f4 # E: Incompatible types in assignment (expression has type "Callable[[int], A]", variable has type "Callable[[B], B]")
 
 y4 = f4
 y4 = f4
-y4 = f1 # E: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[int], A])
+y4 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[int], A]")
 y4 = f2
-y4 = f3 # E: Incompatible types in assignment (expression has type Callable[[B], B], variable has type Callable[[int], A])
+y4 = f3 # E: Incompatible types in assignment (expression has type "Callable[[B], B]", variable has type "Callable[[int], A]")
 
 [case testSubtypingWithGenericInnerFunctions]
 from typing import TypeVar
@@ -1533,24 +1533,24 @@ def outer(t: T) -> None:
 
     y1 = f1
     y1 = f2
-    y1 = f3 # E: Incompatible types in assignment (expression has type Callable[[T], A], variable has type Callable[[A], A])
-    y1 = f4 # E: Incompatible types in assignment (expression has type Callable[[A], T], variable has type Callable[[A], A])
-    y1 = f5 # E: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[A], A])
+    y1 = f3 # E: Incompatible types in assignment (expression has type "Callable[[T], A]", variable has type "Callable[[A], A]")
+    y1 = f4 # E: Incompatible types in assignment (expression has type "Callable[[A], T]", variable has type "Callable[[A], A]")
+    y1 = f5 # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[A], A]")
 
     y2 = f2
-    y2 = f1 # E: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[A], B])
+    y2 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[A], B]")
 
     y3 = f3
-    y3 = f1 # E: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[T], A])
+    y3 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[T], A]")
     y3 = f2
-    y3 = f4 # E: Incompatible types in assignment (expression has type Callable[[A], T], variable has type Callable[[T], A])
-    y3 = f5 # E: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[T], A])
+    y3 = f4 # E: Incompatible types in assignment (expression has type "Callable[[A], T]", variable has type "Callable[[T], A]")
+    y3 = f5 # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[T], A]")
 
     y4 = f4
-    y4 = f1 # E: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[A], T])
+    y4 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[A], T]")
     y4 = f2
-    y4 = f3 # E: Incompatible types in assignment (expression has type Callable[[T], A], variable has type Callable[[A], T])
-    y4 = f5 # E: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[A], T])
+    y4 = f3 # E: Incompatible types in assignment (expression has type "Callable[[T], A]", variable has type "Callable[[A], T]")
+    y4 = f5 # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[A], T]")
 
     y5 = f5
     y5 = f1
@@ -1568,8 +1568,8 @@ g1(f)
 def g2(f: Callable[[int], int]) -> None: pass
 g2(f)
 def g3(f: Callable[[object], object]) -> None: pass
-g3(f) # E: Argument 1 to "g3" has incompatible type Callable[[T], T]; \
-           expected Callable[[object], object]
+g3(f) # E: Argument 1 to "g3" has incompatible type "Callable[[T], T]"; \
+           expected "Callable[[object], object]"
 
 [case testSubtypingWithGenericFunctionUsingTypevarWithValues2-skip]
 from typing import TypeVar, Callable
@@ -1626,7 +1626,7 @@ T = TypeVar('T')
 class C(Generic[T]):
     def __init__(self) -> None: pass
 x = C # type: Callable[[], C[int]]
-y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type Type[C[Any]], variable has type Callable[[], int])
+y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type "Type[C[Any]]", variable has type "Callable[[], int]")
 
 
 -- Special cases
@@ -1747,3 +1747,40 @@ class D:
     def __or__(self, x: G[X]) -> G[X]: pass
     def __ior__(self, x: G[S2]) -> G[S2]: pass \
         # E: Signatures of "__ior__" and "__or__" are incompatible
+
+[case testConstraintInferenceForAnyAgainstTypeT]
+from typing import Type, Any, TypeVar
+
+T = TypeVar('T')
+
+def f(c: Type[T]) -> T: ...
+
+x: Any
+reveal_type(f(x))  # E: Revealed type is 'Any'
+
+[case testQualifiedTypeVariableName]
+import b
+def f(x: b.T) -> b.T: return x
+reveal_type(f)
+reveal_type(b.g)
+[file b.py]
+from typing import TypeVar
+T = TypeVar('T')
+def g(x: T) -> T: return x
+[out]
+main:3: error: Revealed type is 'def [b.T] (x: b.T`-1) -> b.T`-1'
+main:4: error: Revealed type is 'def [T] (x: T`-1) -> T`-1'
+
+[case testPartiallyQualifiedTypeVariableName]
+from p import b
+def f(x: b.T) -> b.T: return x
+reveal_type(f)
+reveal_type(b.g)
+[file p/__init__.py]
+[file p/b.py]
+from typing import TypeVar
+T = TypeVar('T')
+def g(x: T) -> T: return x
+[out]
+main:3: error: Revealed type is 'def [b.T] (x: b.T`-1) -> b.T`-1'
+main:4: error: Revealed type is 'def [T] (x: T`-1) -> T`-1'

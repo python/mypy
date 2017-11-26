@@ -58,27 +58,24 @@ class StrConv(NodeVisitor[str]):
         array with information specific to methods, global functions or
         anonymous functions.
         """
-        args = []  # type: List[mypy.nodes.Var]
-        init = []  # type: List[Optional[mypy.nodes.AssignmentStmt]]
+        args = []  # type: List[Union[mypy.nodes.Var, Tuple[str, List[mypy.nodes.Node]]]]
         extra = []  # type: List[Tuple[str, List[mypy.nodes.Var]]]
-        for i, arg in enumerate(o.arguments):
+        for arg in o.arguments:
             kind = arg.kind  # type: int
             if kind in (mypy.nodes.ARG_POS, mypy.nodes.ARG_NAMED):
-                args.append(o.arguments[i].variable)
+                args.append(arg.variable)
             elif kind in (mypy.nodes.ARG_OPT, mypy.nodes.ARG_NAMED_OPT):
-                args.append(o.arguments[i].variable)
-                init.append(o.arguments[i].initialization_statement)
+                assert arg.initializer is not None
+                args.append(('default', [arg.variable, arg.initializer]))
             elif kind == mypy.nodes.ARG_STAR:
-                extra.append(('VarArg', [o.arguments[i].variable]))
+                extra.append(('VarArg', [arg.variable]))
             elif kind == mypy.nodes.ARG_STAR2:
-                extra.append(('DictVarArg', [o.arguments[i].variable]))
+                extra.append(('DictVarArg', [arg.variable]))
         a = []  # type: List[Any]
         if args:
             a.append(('Args', args))
         if o.type:
             a.append(o.type)
-        if init:
-            a.append(('Init', init))
         if o.is_generator:
             a.append('Generator')
         a.extend(extra)
@@ -175,12 +172,12 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_var(self, o: 'mypy.nodes.Var') -> str:
-        l = ''
+        lst = ''
         # Add :nil line number tag if no line number is specified to remain
         # compatible with old test case descriptions that assume this.
         if o.line < 0:
-            l = ':nil'
-        return 'Var' + l + '(' + o.name() + ')'
+            lst = ':nil'
+        return 'Var' + lst + '(' + o.name() + ')'
 
     def visit_global_decl(self, o: 'mypy.nodes.GlobalDecl') -> str:
         return self.dump([o.names], o)
@@ -306,7 +303,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_exec_stmt(self, o: 'mypy.nodes.ExecStmt') -> str:
-        return self.dump([o.expr, o.variables1, o.variables2], o)
+        return self.dump([o.expr, o.globals, o.locals], o)
 
     # Expressions
 
@@ -342,13 +339,13 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr], o)
 
     def visit_name_expr(self, o: 'mypy.nodes.NameExpr') -> str:
-        pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_def, o.node)
+        pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_inferred_def, o.node)
         return short_type(o) + '(' + pretty + ')'
 
     def pretty_name(self, name: str, kind: Optional[int], fullname: Optional[str],
-                    is_def: bool, target_node: 'Optional[mypy.nodes.Node]' = None) -> str:
+                    is_inferred_def: bool, target_node: 'Optional[mypy.nodes.Node]' = None) -> str:
         n = name
-        if is_def:
+        if is_inferred_def:
             n += '*'
         if target_node:
             id = self.format_id(target_node)
@@ -369,7 +366,7 @@ class StrConv(NodeVisitor[str]):
         return n
 
     def visit_member_expr(self, o: 'mypy.nodes.MemberExpr') -> str:
-        pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_def, o.node)
+        pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_inferred_def, o.node)
         return self.dump([o.expr, pretty], o)
 
     def visit_yield_expr(self, o: 'mypy.nodes.YieldExpr') -> str:

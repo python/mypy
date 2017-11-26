@@ -7,7 +7,7 @@ from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
 from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
-    AnyType, TypeList, UnboundType
+    AnyType, TypeList, UnboundType, TypeOfAny
 )
 from mypy.messages import MessageBuilder
 from mypy.options import Options
@@ -311,7 +311,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
                         return UnionType.make_simplified_union([value_type, ctx.arg_types[1][0]])
             else:
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
-                return AnyType()
+                return AnyType(TypeOfAny.from_error)
     return ctx.default_return_type
 
 

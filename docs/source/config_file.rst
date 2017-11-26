@@ -34,6 +34,11 @@ characters.
   separated by commas.  These sections specify additional flags that
   only apply to *modules* whose name matches at least one of the patterns.
 
+.. note::
+
+   The ``warn_unused_configs`` flag may be useful to debug misspelled
+   section names.
+
 Global flags
 ************
 
@@ -71,6 +76,10 @@ The following global flags may only be set in the global section
 
 - ``warn_unused_ignores`` (Boolean, default False) warns about
   unneeded ``# type: ignore`` comments.
+
+- ``warn_unused_configs`` (Boolean, default False) warns about
+  per-module sections in the config file that didn't match any
+  files processed in the current run.
 
 - ``strict_optional`` (Boolean, default False) enables experimental
   strict Optional checks.
@@ -147,11 +156,24 @@ overridden by the pattern sections matching the module name.
 - ``almost_silent`` (Boolean, deprecated) equivalent to
   ``follow_imports=skip``.
 
-- ``disallow_any`` (Comma-separated list, default empty) is an option to
-  disallow various types of ``Any`` in a module. The flag takes a
-  comma-separated list of the following arguments: ``unimported``,
-  ``unannotated``, ``expr``, ``decorated``, ``explicit``, ``generics``.
-  For explanations see the discussion for the :ref:`--disallow-any <disallow-any>` option.
+- ``disallow_any_unimported`` (Boolean, default false) disallows usage of types that come
+  from unfollowed imports (such types become aliases for ``Any``).
+
+- ``disallow_any_expr`` (Boolean, default false) disallows all expressions in the module
+  that have type ``Any``.
+
+- ``disallow_any_decorated`` (Boolean, default false) disallows functions that have ``Any``
+  in their signature after decorator transformation.
+
+- ``disallow_any_explicit`` (Boolean, default false) disallows explicit ``Any`` in type
+  positions such as type annotations and generic type parameters.
+
+- ``disallow_any_generics`` (Boolean, default false) disallows usage of generic types that
+  do not specify explicit type parameters.
+
+- ``disallow_subclassing_any`` (Boolean, default False) disallows
+  subclassing a value of type ``Any``.  See
+  :ref:`--disallow-subclassing-any <disallow-subclassing-any>` option.
 
 - ``disallow_untyped_calls`` (Boolean, default False) disallows
   calling functions without type annotations from functions with type

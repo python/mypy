@@ -13,7 +13,7 @@ from typing import List, Tuple
 
 from mypy.myunit import Suite, AssertionFailure, assert_equal
 from mypy.test.helpers import assert_string_arrays_equal
-from mypy.test.data import parse_test_cases, DataDrivenTestCase
+from mypy.test.data import DataSuite, parse_test_cases, DataDrivenTestCase
 from mypy.test import config
 from mypy.parse import parse
 from mypy.errors import CompileError
@@ -95,14 +95,18 @@ class StubgenUtilSuite(Suite):
         assert_equal(infer_sig_from_docstring('\nfunc x', 'func'), None)
 
 
-class StubgenPythonSuite(Suite):
+class StubgenPythonSuite(DataSuite):
     test_data_files = ['stubgen.test']
 
-    def cases(self) -> List[DataDrivenTestCase]:
+    @classmethod
+    def cases(cls) -> List[DataDrivenTestCase]:
         c = []  # type: List[DataDrivenTestCase]
-        for path in self.test_data_files:
+        for path in cls.test_data_files:
             c += parse_test_cases(os.path.join(config.test_data_prefix, path), test_stubgen)
         return c
+
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
+        test_stubgen(testcase)
 
 
 def parse_flags(program_text: str) -> Options:

@@ -46,16 +46,24 @@ Major todo items:
 - Support multiple type checking passes
 """
 
-from typing import Dict, List, Set, Tuple, Iterable, Union, Optional
+import os.path
+from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping
 
-from mypy.build import BuildManager, State
-from mypy.checker import DeferredNode
-from mypy.errors import Errors
-from mypy.nodes import (
-    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef
+from mypy.build import (
+    BuildManager, State, BuildSource, Graph, load_graph, SavedCache, CacheMeta,
+    cache_meta_from_dict
 )
+from mypy.checker import DeferredNode
+from mypy.errors import Errors, CompileError
+from mypy.nodes import (
+    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator,
+    Import, ImportFrom, SymbolTable
+)
+from mypy.options import Options
 from mypy.types import Type
-from mypy.server.astdiff import compare_symbol_tables, is_identical_type
+from mypy.server.astdiff import (
+    snapshot_symbol_table, compare_symbol_table_snapshots, is_identical_type, SnapshotItem
+)
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.deps import get_dependencies, get_dependencies_of_target
@@ -71,107 +79,322 @@ class FineGrainedBuildManager:
     def __init__(self,
                  manager: BuildManager,
                  graph: Dict[str, State]) -> None:
-        self.manager = manager
-        self.graph = graph
-        self.deps = get_all_dependencies(manager, graph)
-        self.previous_targets_with_errors = manager.errors.targets()
+        """Initialize fine-grained build based on a batch build.
 
-    def update(self, changed_modules: List[str]) -> List[str]:
+        Args:
+            manager: State of the build (mutated by this class)
+            graph: Additional state of the build
+        """
+        self.manager = manager
+        self.options = manager.options
+        self.graph = graph
+        self.deps = get_all_dependencies(manager, graph, self.options)
+        self.previous_targets_with_errors = manager.errors.targets()
+        # Modules that had blocking errors in the previous run.
+        # TODO: Handle blocking errors in the initial build
+        self.blocking_errors = []  # type: List[str]
+        manager.saved_cache = preserve_full_cache(graph, manager)
+
+    def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
         """Update previous build result by processing changed modules.
 
         Also propagate changes to other modules as needed, but only process
         those parts of other modules that are affected by the changes. Retain
         the existing ASTs and symbol tables of unaffected modules.
 
-        TODO: What about blocking errors?
+        Create new graph with new State objects, but reuse original BuildManager.
 
         Args:
-            manager: State of the build
-            graph: Additional state of the build
-            deps: Fine-grained dependcy map for the build (mutated by this function)
-            changed_modules: Modules changed since the previous update/build (assume
-                this is correct; not validated here)
+            changed_modules: Modules changed since the previous update/build; each is
+                a (module id, path) tuple. Includes modified, added and deleted modules.
+                Assume this is correct; it's not validated here.
 
         Returns:
             A list of errors.
         """
+        changed_ids = [id for id, _ in changed_modules]
         if DEBUG:
-            print('==== update ====')
+            print('==== update %s ====' % changed_ids)
+        if self.blocking_errors:
+            # TODO: Relax this requirement
+            assert self.blocking_errors == changed_ids
         manager = self.manager
         graph = self.graph
-        old_modules = dict(manager.modules)
+
+        # Record symbol table snaphots of old versions of changed moduiles.
+        old_snapshots = {}
+        for id, _ in changed_modules:
+            if id in manager.modules:
+                snapshot = snapshot_symbol_table(id, manager.modules[id].names)
+                old_snapshots[id] = snapshot
+            else:
+                old_snapshots[id] = {}
+
         manager.errors.reset()
-        new_modules, new_type_maps = build_incremental_step(manager, changed_modules)
+        try:
+            new_modules, graph = build_incremental_step(manager, changed_modules, graph)
+        except CompileError as err:
+            self.blocking_errors = changed_ids
+            return err.messages
+        self.blocking_errors = []
+
         # TODO: What to do with stale dependencies?
-        triggered = calculate_active_triggers(manager, old_modules, new_modules)
+        triggered = calculate_active_triggers(manager, old_snapshots, new_modules)
         if DEBUG:
             print('triggered:', sorted(triggered))
-        replace_modules_with_new_variants(manager, graph, old_modules, new_modules, new_type_maps)
-        update_dependencies(new_modules, self.deps, graph)
+        update_dependencies(new_modules, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
-                                             set(changed_modules),
+                                             set(changed_ids),
                                              self.previous_targets_with_errors,
                                              graph)
+
+        # Preserve state needed for the next update.
         self.previous_targets_with_errors = manager.errors.targets()
+        for id, _ in changed_modules:
+            # If deleted, module won't be in the graph.
+            if id in graph:
+                # Generate metadata so that we can reuse the AST in the next run.
+                graph[id].write_cache()
+        for id, state in graph.items():
+            # Look up missing ASTs from saved cache.
+            if state.tree is None and id in manager.saved_cache:
+                meta, tree, type_map = manager.saved_cache[id]
+                state.tree = tree
+        manager.saved_cache = preserve_full_cache(graph, manager)
+        self.graph = graph
+
         return manager.errors.messages()
 
 
-def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
+def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
+                         options: Options) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
     deps = {}  # type: Dict[str, Set[str]]
-    update_dependencies(manager.modules, deps, graph)
+    update_dependencies(manager.modules, deps, graph, options)
     return deps
 
 
 def build_incremental_step(manager: BuildManager,
-                           changed_modules: List[str]) -> Tuple[Dict[str, MypyFile],
-                                                                Dict[str, Dict[Expression, Type]]]:
+                           changed_modules: List[Tuple[str, str]],
+                           graph: Dict[str, State]) -> Tuple[Dict[str, Optional[MypyFile]],
+                                                             Graph]:
     """Build new versions of changed modules only.
 
-    Return the new ASTs for the changed modules. They will be totally
-    separate from the existing ASTs and need to merged afterwards.
+    Raise CompleError on encountering a blocking error.
+
+    Return the new ASTs for the changed modules and the entire build graph.
     """
+    # TODO: Handle multiple changed modules per step
     assert len(changed_modules) == 1
-    id = changed_modules[0]
-    path = manager.modules[id].path
+    id, path = changed_modules[0]
+    if id in manager.modules:
+        path1 = os.path.normpath(path)
+        path2 = os.path.normpath(manager.modules[id].path)
+        assert path1 == path2, '%s != %s' % (path1, path2)
 
-    # TODO: what if file is missing?
-    with open(path) as f:
-        source = f.read()
+    old_modules = dict(manager.modules)
 
-    state = State(id=id,
-                  path=path,
-                  source=source,
-                  manager=manager)  # TODO: more args?
+    sources = get_sources(graph, changed_modules)
+    changed_set = {id for id, _ in changed_modules}
+
+    invalidate_stale_cache_entries(manager.saved_cache, changed_modules)
+
+    if not os.path.isfile(path):
+        graph = delete_module(id, graph, manager)
+        return {id: None}, graph
+
+    old_graph = graph
+    manager.missing_modules = set()
+    graph = load_graph(sources, manager)
+
+    # Find any other modules brought in by imports.
+    for st in graph.values():
+        if st.id not in old_graph and st.id not in changed_set:
+            changed_set.add(st.id)
+            assert st.path
+            changed_modules.append((st.id, st.path))
+    # TODO: Handle multiple changed modules per step
+    assert len(changed_modules) == 1, changed_modules
+
+    state = graph[id]
+
+    # Parse file and run first pass of semantic analysis.
     state.parse_file()
+
     # TODO: state.fix_suppressed_dependencies()?
-    state.semantic_analysis()
+
+    # Run remaining passes of semantic analysis.
+    try:
+        state.semantic_analysis()
+    except CompileError as err:
+        # TODO: What if there are multiple changed modules?
+        # There was a blocking error, so module AST is incomplete. Restore old modules.
+        manager.modules.clear()
+        manager.modules.update(old_modules)
+        raise err
     state.semantic_analysis_pass_three()
-    # TODO: state.semantic_analysis_apply_patches()
+    state.semantic_analysis_apply_patches()
+
+    # Merge old and new ASTs.
+    assert state.tree is not None, "file must be at least parsed"
+    new_modules = {id: state.tree}  # type: Dict[str, Optional[MypyFile]]
+    replace_modules_with_new_variants(manager, graph, old_modules, new_modules)
+
+    # Perform type checking.
     state.type_check_first_pass()
     # TODO: state.type_check_second_pass()?
     state.finish_passes()
     # TODO: state.write_cache()?
     # TODO: state.mark_as_rechecked()?
+    # TODO: Store new State in graph, as it has updated dependencies etc.
 
-    assert state.tree is not None, "file must be at least parsed"
-    return {id: state.tree}, {id: state.type_checker.type_map}
+    graph[id] = state
+
+    return new_modules, graph
 
 
-def update_dependencies(new_modules: Dict[str, MypyFile],
+def delete_module(module_id: str,
+                  graph: Dict[str, State],
+                  manager: BuildManager) -> Dict[str, State]:
+    # TODO: Deletion of a package
+    # TODO: Remove deps for the module (this only affects memory use, not correctness)
+    new_graph = graph.copy()
+    del new_graph[module_id]
+    del manager.modules[module_id]
+    if module_id in manager.saved_cache:
+        del manager.saved_cache[module_id]
+    components = module_id.split('.')
+    if len(components) > 1:
+        parent = manager.modules['.'.join(components[:-1])]
+        if components[-1] in parent.names:
+            del parent.names[components[-1]]
+    return new_graph
+
+
+def get_sources(graph: Graph, changed_modules: List[Tuple[str, str]]) -> List[BuildSource]:
+    sources = [BuildSource(st.path, st.id, None) for st in graph.values()]
+    for id, path in changed_modules:
+        if id not in graph:
+            sources.append(BuildSource(path, id, None))
+    return sources
+
+
+def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
+    """Preserve every module with an AST in the graph, including modules with errors."""
+    saved_cache = {}
+    for id, state in graph.items():
+        assert state.id == id
+        if state.tree is not None:
+            meta = state.meta
+            if meta is None:
+                # No metadata, likely because of an error. We still want to retain the AST.
+                # There is no corresponding JSON so create partial "memory-only" metadata.
+                assert state.path
+                dep_prios = state.dependency_priorities()
+                meta = memory_only_cache_meta(
+                    id,
+                    state.path,
+                    state.dependencies,
+                    state.suppressed,
+                    list(state.child_modules),
+                    dep_prios,
+                    state.source_hash,
+                    state.ignore_all,
+                    manager)
+            saved_cache[id] = (meta, state.tree, state.type_map())
+    return saved_cache
+
+
+def memory_only_cache_meta(id: str,
+                           path: str,
+                           dependencies: List[str],
+                           suppressed: List[str],
+                           child_modules: List[str],
+                           dep_prios: List[int],
+                           source_hash: str,
+                           ignore_all: bool,
+                           manager: BuildManager) -> CacheMeta:
+    """Create cache metadata for module that doesn't have a JSON cache files.
+
+    JSON cache files aren't written for modules with errors, but we want to still
+    cache them in fine-grained incremental mode.
+    """
+    options = manager.options.clone_for_module(id)
+    # Note that we omit attributes related to the JSON files.
+    meta = {'id': id,
+            'path': path,
+            'memory_only': True,  # Important bit: don't expect JSON files to exist
+            'hash': source_hash,
+            'dependencies': dependencies,
+            'suppressed': suppressed,
+            'child_modules': child_modules,
+            'options': options.select_options_affecting_cache(),
+            'dep_prios': dep_prios,
+            'interface_hash': '',
+            'version_id': manager.version_id,
+            'ignore_all': ignore_all,
+            }
+    return cache_meta_from_dict(meta, '')
+
+
+def invalidate_stale_cache_entries(cache: SavedCache,
+                                   changed_modules: List[Tuple[str, str]]) -> None:
+    for name, _ in changed_modules:
+        if name in cache:
+            del cache[name]
+
+
+def verify_dependencies(state: State, manager: BuildManager) -> None:
+    """Report errors for import targets in module that don't exist."""
+    for dep in state.dependencies + state.suppressed:  # TODO: ancestors?
+        if dep not in manager.modules:
+            assert state.tree
+            line = find_import_line(state.tree, dep) or 1
+            assert state.path
+            manager.module_not_found(state.path, state.id, line, dep)
+
+
+def find_import_line(node: MypyFile, target: str) -> Optional[int]:
+    for imp in node.imports:
+        if isinstance(imp, Import):
+            for name, _ in imp.ids:
+                if name == target:
+                    return imp.line
+        if isinstance(imp, ImportFrom):
+            if imp.id == target:
+                return imp.line
+            # TODO: Relative imports
+            for name, _ in imp.names:
+                if '%s.%s' % (imp.id, name) == target:
+                    return imp.line
+        # TODO: ImportAll
+    return None
+
+
+def update_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
                         deps: Dict[str, Set[str]],
-                        graph: Dict[str, State]) -> None:
+                        graph: Dict[str, State],
+                        options: Options) -> None:
     for id, node in new_modules.items():
-        module_deps = get_dependencies(prefix=id,
-                                       node=node,
-                                       type_map=graph[id].type_checker.type_map)
+        if node is None:
+            continue
+        if '/typeshed/' in node.path:
+            # We don't track changes to typeshed -- the assumption is that they are only changed
+            # as part of mypy updates, which will invalidate everything anyway.
+            #
+            # TODO: Not a reliable test, as we could have a package named typeshed.
+            # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
+            continue
+        module_deps = get_dependencies(target=node,
+                                       type_map=graph[id].type_map(),
+                                       python_version=options.python_version)
         for trigger, targets in module_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
 
 def calculate_active_triggers(manager: BuildManager,
-                              old_modules: Dict[str, MypyFile],
-                              new_modules: Dict[str, MypyFile]) -> Set[str]:
+                              old_snapshots: Dict[str, Dict[str, SnapshotItem]],
+                              new_modules: Dict[str, Optional[MypyFile]]) -> Set[str]:
     """Determine activated triggers by comparing old and new symbol tables.
 
     For example, if only the signature of function m.f is different in the new
@@ -179,7 +402,14 @@ def calculate_active_triggers(manager: BuildManager,
     """
     names = set()  # type: Set[str]
     for id in new_modules:
-        names |= compare_symbol_tables(id, old_modules[id].names, new_modules[id].names)
+        snapshot1 = old_snapshots[id]
+        new = new_modules[id]
+        if new is None:
+            snapshot2 = snapshot_symbol_table(id, SymbolTable())
+            names.add(id)
+        else:
+            snapshot2 = snapshot_symbol_table(id, new.names)
+        names |= compare_symbol_table_snapshots(id, snapshot1, snapshot2)
     return {make_trigger(name) for name in names}
 
 
@@ -187,8 +417,7 @@ def replace_modules_with_new_variants(
         manager: BuildManager,
         graph: Dict[str, State],
         old_modules: Dict[str, MypyFile],
-        new_modules: Dict[str, MypyFile],
-        new_type_maps: Dict[str, Dict[Expression, Type]]) -> None:
+        new_modules: Dict[str, Optional[MypyFile]]) -> None:
     """Replace modules with newly builds versions.
 
     Retain the identities of externally visible AST nodes in the
@@ -199,10 +428,11 @@ def replace_modules_with_new_variants(
     propagate_changes_using_dependencies).
     """
     for id in new_modules:
-        merge_asts(old_modules[id], old_modules[id].names,
-                   new_modules[id], new_modules[id].names)
-        manager.modules[id] = old_modules[id]
-        graph[id].type_checker.type_map = new_type_maps[id]
+        new_module = new_modules[id]
+        if id in old_modules and new_module is not None:
+            merge_asts(old_modules[id], old_modules[id].names,
+                       new_module, new_module.names)
+            manager.modules[id] = old_modules[id]
 
 
 def propagate_changes_using_dependencies(
@@ -224,7 +454,7 @@ def propagate_changes_using_dependencies(
         # errors might be lost.
         for target in targets_with_errors:
             id = module_prefix(modules, target)
-            if id not in up_to_date_modules:
+            if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
                 if DEBUG:
@@ -269,6 +499,9 @@ def find_targets_recursive(
                 worklist |= deps.get(target, set()) - processed
             else:
                 module_id = module_prefix(modules, target)
+                if module_id is None:
+                    # Deleted module.
+                    continue
                 if module_id in up_to_date_modules:
                     # Already processed.
                     continue
@@ -331,13 +564,19 @@ def reprocess_nodes(manager: BuildManager,
     old_types_map = get_enclosing_namespace_types(nodes)
 
     # Type check.
-    graph[module_id].type_checker.check_second_pass(nodes)  # TODO: check return value
+    meta, file_node, type_map = manager.saved_cache[module_id]
+    graph[module_id].tree = file_node
+    graph[module_id].type_checker().type_map = type_map
+    graph[module_id].type_checker().check_second_pass(nodes)  # TODO: check return value
 
     # Check if any attribute types were changed and need to be propagated further.
     new_triggered = get_triggered_namespace_items(old_types_map)
 
     # Dependencies may have changed.
-    update_deps(module_id, nodes, graph, deps)
+    update_deps(module_id, nodes, graph, deps, manager.options)
+
+    # Report missing imports.
+    verify_dependencies(graph[module_id], manager)
 
     return new_triggered
 
@@ -379,21 +618,23 @@ def get_triggered_namespace_items(old_types_map: Dict[NamespaceNode, Dict[str, T
 def update_deps(module_id: str,
                 nodes: List[DeferredNode],
                 graph: Dict[str, State],
-                deps: Dict[str, Set[str]]) -> None:
+                deps: Dict[str, Set[str]],
+                options: Options) -> None:
     for deferred in nodes:
         node = deferred.node
-        prefix = module_id
-        if isinstance(node, FuncBase) and node.info:
-            prefix += '.{}'.format(node.info.name())
-        type_map = graph[module_id].type_checker.type_map
-        new_deps = get_dependencies_of_target(prefix, node, type_map)
+        type_map = graph[module_id].type_map()
+        new_deps = get_dependencies_of_target(module_id, node, type_map, options.python_version)
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
 
 def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNode]:
     """Look up a target by fully-qualified name."""
-    module, rest = split_target(modules, target)
+    items = split_target(modules, target)
+    if items is None:
+        # Deleted target
+        return []
+    module, rest = items
     if rest:
         components = rest.split('.')
     else:
@@ -410,6 +651,9 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
         if isinstance(node, MypyFile):
             file = node
         assert isinstance(node, (MypyFile, TypeInfo))
+        if c not in node.names:
+            # Deleted target
+            return []
         node = node.names[c].node
     if isinstance(node, TypeInfo):
         # A ClassDef target covers the body of the class and everything defined
@@ -423,5 +667,8 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
             if isinstance(node, FuncDef):
                 result.extend(lookup_target(modules, target + '.' + name))
         return result
-    assert isinstance(node, (FuncDef, MypyFile))
+    if isinstance(node, Decorator):
+        # Decorator targets actually refer to the function definition only.
+        node = node.func
+    assert isinstance(node, (FuncDef, MypyFile)), 'unexpected type: %s' % type(node)
     return [DeferredNode(node, active_class_name, active_class)]

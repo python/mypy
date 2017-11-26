@@ -23,7 +23,7 @@ docs/build/
 *.swp
 
 # Operating Systems
-.DS_store
+.DS_Store
 
 # Coverage Files
 htmlcov

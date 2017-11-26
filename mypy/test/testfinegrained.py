@@ -10,7 +10,7 @@ information.
 import os
 import re
 import shutil
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional, Set
 
 from mypy import build
 from mypy.build import BuildManager, BuildSource, Graph
@@ -22,7 +22,7 @@ from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv, indent
 from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite, UpdateFile
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
@@ -30,14 +30,14 @@ from mypy.util import short_type
 
 
 files = [
-    'fine-grained.test'
+    'fine-grained.test',
+    'fine-grained-cycles.test',
+    'fine-grained-blockers.test',
+    'fine-grained-modules.test',
 ]
 
 
 class FineGrainedSuite(DataSuite):
-    def __init__(self, *, update_data: bool) -> None:
-        pass
-
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
         c = []  # type: List[DataDrivenTestCase]
@@ -52,21 +52,24 @@ class FineGrainedSuite(DataSuite):
 
         a = []
         if messages:
-            a.extend(messages)
+            a.extend(normalize_messages(messages))
 
         fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
-        steps = find_steps()
-        for changed_paths in steps:
+        steps = testcase.find_steps()
+        for operations in steps:
             modules = []
-            for module, path in changed_paths:
-                new_path = re.sub(r'\.[0-9]+$', '', path)
-                shutil.copy(path, new_path)
-                modules.append(module)
-
+            for op in operations:
+                if isinstance(op, UpdateFile):
+                    # Modify/create file
+                    shutil.copy(op.source_path, op.target_path)
+                    modules.append((op.module, op.target_path))
+                else:
+                    # Delete file
+                    os.remove(op.path)
+                    modules.append((op.module, op.path))
             new_messages = fine_grained_manager.update(modules)
-            new_messages = [re.sub('^tmp' + re.escape(os.sep), '', message)
-                            for message in new_messages]
+            new_messages = normalize_messages(new_messages)
 
             a.append('==')
             a.extend(new_messages)
@@ -81,11 +84,14 @@ class FineGrainedSuite(DataSuite):
 
     def build(self, source: str) -> Tuple[List[str], BuildManager, Graph]:
         options = Options()
+        options.incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
-        options.cache_dir = os.devnull
+        main_path = os.path.join(test_temp_dir, 'main')
+        with open(main_path, 'w') as f:
+            f.write(source)
         try:
-            result = build.build(sources=[BuildSource('main', None, source)],
+            result = build.build(sources=[BuildSource(main_path, None, None)],
                                  options=options,
                                  alt_lib_path=test_temp_dir)
         except CompileError as e:
@@ -95,26 +101,6 @@ class FineGrainedSuite(DataSuite):
         return result.errors, result.manager, result.graph
 
 
-def find_steps() -> List[List[Tuple[str, str]]]:
-    """Return a list of build step representations.
-
-    Each build step is a list of (module id, path) tuples, and each
-    path is of form 'dir/mod.py.2' (where 2 is the step number).
-    """
-    steps = {}  # type: Dict[int, List[Tuple[str, str]]]
-    for dn, dirs, files in os.walk(test_temp_dir):
-        dnparts = dn.split(os.sep)
-        assert dnparts[0] == test_temp_dir
-        del dnparts[0]
-        for filename in files:
-            m = re.match(r'.*\.([0-9]+)$', filename)
-            if m:
-                num = int(m.group(1))
-                assert num >= 2
-                name = re.sub(r'\.py.*', '', filename)
-                module = '.'.join(dnparts + [name])
-                module = re.sub(r'\.__init__$', '', module)
-                path = os.path.join(dn, filename)
-                steps.setdefault(num, []).append((module, path))
-    max_step = max(steps)
-    return [steps[num] for num in range(2, max_step + 1)]
+def normalize_messages(messages: List[str]) -> List[str]:
+    return [re.sub('^tmp' + re.escape(os.sep), '', message)
+            for message in messages]

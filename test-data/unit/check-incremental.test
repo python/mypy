@@ -27,7 +27,8 @@
 -- Any files that we expect to be rechecked should be annotated in the [rechecked]
 -- annotation, and any files expect to be stale (aka have a modified interface)
 -- should be annotated in the [stale] annotation. Note that a file that ends up
--- producing an error does not create a new cache file and so is not considered stale.
+-- producing an error has its caches deleted and is marked stale automatically.
+-- Such files don't need to be included in [stale ...] list.
 --
 -- The test suite will automatically assume that __main__ is stale and rechecked in
 -- all cases so we can avoid constantly having to annotate it. The list of
@@ -200,7 +201,7 @@ def foo() -> int:
         return "foo"
     return inner2()
 
-[rechecked mod2]
+[rechecked mod1, mod2]
 [stale]
 [out2]
 tmp/mod2.py:4: error: Incompatible return value type (got "str", expected "int")
@@ -1501,6 +1502,99 @@ class MyClass:
 [rechecked]
 [stale]
 
+[case testIncrementalWorksWithBasicProtocols]
+import a
+[file a.py]
+from b import P
+
+x: int
+y: P[int]
+x = y.meth()
+
+class C:
+    def meth(self) -> int:
+        pass
+y = C()
+
+[file a.py.2]
+from b import P
+
+x: str
+y: P[str]
+x = y.meth()
+
+class C:
+    def meth(self) -> str:
+        pass
+y = C()
+[file b.py]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T', covariant=True)
+class P(Protocol[T]):
+    def meth(self) -> T:
+        pass
+
+[case testIncrementalSwitchFromNominalToStructural]
+import a
+[file a.py]
+from b import B, fun
+class C(B):
+    def x(self) -> int: pass
+    def y(self) -> int: pass
+fun(C())
+
+[file b.py]
+from typing import Protocol
+class B:
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[file b.py.2]
+from typing import Protocol
+class B(Protocol):
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[file a.py.3]
+from b import fun
+class C:
+    def x(self) -> int: pass
+    def y(self) -> int: pass
+fun(C())
+[out1]
+[out2]
+[out3]
+
+[case testIncrementalSwitchFromStructuralToNominal]
+import a
+[file a.py]
+from b import fun
+class C:
+    def x(self) -> int: pass
+    def y(self) -> int: pass
+fun(C())
+
+[file b.py]
+from typing import Protocol
+class B(Protocol):
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[file b.py.2]
+from typing import Protocol
+class B:
+    def x(self) -> float: pass
+def fun(arg: B) -> None:
+    arg.x()
+
+[out1]
+[out2]
+tmp/a.py:5: error: Argument 1 to "fun" has incompatible type "C"; expected "B"
+
 [case testIncrementalWorksWithNamedTuple]
 import foo
 
@@ -2707,6 +2801,87 @@ b.x.y
 tmp/c.py:2: error: Revealed type is '<stale cache: consider running mypy without --quick>'
 tmp/c.py:5: error: "<stale cache: consider running mypy without --quick>" has no attribute "y"
 
+[case testCacheDeletedAfterErrorsFound]
+import a
+[file a.py]
+from b import x
+[file b.py]
+from c import x
+[file c.py]
+x = 1
+[file c.py.2]
+1 + 1
+[file a.py.3]
+from b import x
+1 + 1
+[out]
+[out2]
+tmp/b.py:1: error: Module 'c' has no attribute 'x'
+tmp/a.py:1: error: Module 'b' has no attribute 'x'
+[out3]
+tmp/b.py:1: error: Module 'c' has no attribute 'x'
+tmp/a.py:1: error: Module 'b' has no attribute 'x'
+
+[case testCacheDeletedAfterErrorsFound2]
+import a
+[file a.py]
+from b import x
+[file b.py]
+from c import C
+x: C
+[file c.py]
+class C: pass
+[file c.py.2]
+def C(): pass
+[file a.py.3]
+from b import x
+1 + 1
+[out]
+[out2]
+tmp/b.py:2: error: Invalid type "c.C"
+[out3]
+tmp/b.py:2: error: Invalid type "c.C"
+
+[case testCacheDeletedAfterErrorsFound3]
+import a
+[file a.py]
+import b
+b.f()
+[file b.py]
+def f() -> None: pass
+[file b.py.2]
+def f(x) -> None: pass
+[out]
+[out2]
+tmp/a.py:2: error: Too few arguments for "f"
+[out3]
+tmp/a.py:2: error: Too few arguments for "f"
+
+[case testCacheDeletedAfterErrorsFound4]
+import a
+[file a.py]
+from b import x
+[file b.py]
+from c import x
+[file c.py]
+from d import x
+[file d.py]
+x = 1
+[file d.py.2]
+1 + 1
+[file a.py.3]
+from b import x
+1 + 1
+[out]
+[out2]
+tmp/c.py:1: error: Module 'd' has no attribute 'x'
+tmp/b.py:1: error: Module 'c' has no attribute 'x'
+tmp/a.py:1: error: Module 'b' has no attribute 'x'
+[out3]
+tmp/c.py:1: error: Module 'd' has no attribute 'x'
+tmp/b.py:1: error: Module 'c' has no attribute 'x'
+tmp/a.py:1: error: Module 'b' has no attribute 'x'
+
 [case testNoCrashOnDoubleImportAliasQuick]
 # cmd: mypy -m e
 # cmd2: mypy -m c
@@ -2840,3 +3015,426 @@ foo.bar(b"test")
 [out]
 [out2]
 tmp/mod.py:7: error: Revealed type is 'builtins.bytes'
+
+[case testIncrementalWithSilentImports]
+# cmd: mypy -m a
+# cmd2: mypy -m b
+# flags: --follow-imports=silent
+[file a.py]
+import b
+
+b.foo(1, 2)
+
+[file b.py]
+def foo(a: int, b: int) -> str:
+    return a + b
+
+[out1]
+[out2]
+tmp/b.py:2: error: Incompatible return value type (got "int", expected "str")
+
+[case testForwardNamedTupleToUnionWithOtherNamedTUple]
+from typing import NamedTuple, Union
+
+class Person(NamedTuple):
+    name: Union[str, "Pair"]
+
+class Pair(NamedTuple):
+    first: str
+    last: str
+
+Person(name=Pair(first="John", last="Doe"))
+[out]
+
+[case testNoCrashForwardRefToBrokenDoubleNewTypeIncremental]
+from typing import Any, List, NewType
+
+Foo = NewType('NotFoo', int) # type: ignore
+Foos = NewType('Foos', List[Foo]) # type: ignore
+
+def frob(foos: List[Foos]) -> None:
+    pass
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoCrashForwardRefOverloadIncremental]
+from typing import overload, List
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: F) -> F: ...
+def f(x):
+    pass
+
+F = List[int]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoCrashForwardRefOverloadIncrementalClass]
+from typing import overload, Tuple, NamedTuple
+
+x: C
+class C:
+    @overload
+    def f(self, x: str) -> N: pass
+    @overload
+    def f(self, x: int) -> int: pass
+    def f(self, x):
+        pass
+
+class N(NamedTuple):
+    x: A
+A = Tuple[int]
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testNewTypeFromForwardNamedTupleIncremental]
+from typing import NewType, NamedTuple, Tuple
+
+NT = NewType('NT', N)
+class N(NamedTuple):
+    x: int
+
+x: NT = N(1) # type: ignore
+x = NT(N(1))
+[out]
+
+[case testNewTypeFromForwardTypedDictIncremental]
+from typing import NewType, Tuple, Dict
+from mypy_extensions import TypedDict
+
+NT = NewType('NT', N) # type: ignore
+class N(TypedDict):
+    x: A
+A = Dict[str, int]
+[builtins fixtures/dict.pyi]
+[out]
+
+-- Some crazy selef-referential named tuples, types dicts, and aliases
+-- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed).
+-- For this reason errors are silenced (tests with # type: ignore have equivalents in other files)
+
+[case testForwardTypeAliasInBase1]
+from typing import List
+class C(List['A']):
+    pass
+
+A = List[int]
+x: int = C()[0][0]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testForwardTypeAliasInBase2]
+from typing import List, Generic, TypeVar, NamedTuple
+T = TypeVar('T')
+
+class C(A, B): #type: ignore
+    pass
+class G(Generic[T]): pass
+A = G[C]
+class B(NamedTuple):
+    x: int
+
+C().x
+C()[0]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testSerializeRecursiveAliases1]
+from typing import Type, Callable, Union
+
+A = Union[A, int]  # type: ignore
+B = Callable[[B], int] # type: ignore
+C = Type[C] # type: ignore
+[out]
+
+[case testSerializeRecursiveAliases2]
+from typing import Type, Callable, Union
+
+A = Union[B, int]  # type: ignore
+B = Callable[[C], int] # type: ignore
+C = Type[A] # type: ignore
+[out]
+
+[case testSerializeRecursiveAliases3]
+from typing import Type, Callable, Union, NamedTuple
+
+A = Union[B, int]  # type: ignore
+B = Callable[[C], int] # type: ignore
+class C(NamedTuple): # type: ignore
+    x: A
+[out]
+
+[case testGenericTypeAliasesForwardAnyIncremental1]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+IntNode = Node[int, S]
+AnyNode = Node[S, T]
+
+class Node(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        self.x = x
+        self.y = y
+
+def output() -> IntNode[str]:
+    return Node(1, 'x')
+x = output() # type: IntNode
+
+y = None # type: IntNode
+y.x = 1
+y.y = 1
+y.y = 'x'
+
+z = Node(1, 'x') # type: AnyNode
+[out]
+
+[case testGenericTypeAliasesForwardAnyIncremental2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+
+class Node(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        self.x = x
+        self.y = y
+
+def output() -> IntNode[str]:
+    return Node(1, 'x')
+x = output() # type: IntNode
+
+y = None # type: IntNode
+y.x = 1
+y.y = 1
+y.y = 'x'
+
+z = Node(1, 'x') # type: AnyNode
+IntNode = Node[int, S]
+AnyNode = Node[S, T]
+[out]
+
+[case testNamedTupleForwardAsUpperBoundSerialization]
+from typing import NamedTuple, TypeVar, Generic
+T = TypeVar('T', bound='M')
+class G(Generic[T]):
+    x: T
+
+yg: G[M]
+z: int = G[M]().x.x
+z = G[M]().x[0]
+M = NamedTuple('M', [('x', int)])
+[out]
+
+[case testSelfRefNTIncremental1]
+from typing import Tuple, NamedTuple
+
+Node = NamedTuple('Node', [ # type: ignore
+        ('name', str),
+        ('children', Tuple['Node', ...]),
+    ])
+n: Node
+[builtins fixtures/tuple.pyi]
+
+[case testSelfRefNTIncremental2]
+from typing import Tuple, NamedTuple
+
+A = NamedTuple('A', [ # type: ignore
+        ('x', str),
+        ('y', Tuple['B', ...]),
+    ])
+class B(NamedTuple): # type: ignore
+    x: A
+    y: int
+
+n: A
+[builtins fixtures/tuple.pyi]
+
+[case testSelfRefNTIncremental3]
+from typing import NamedTuple, Tuple
+
+class B(NamedTuple): # type: ignore
+    x: Tuple[A, int]
+    y: int
+A = NamedTuple('A', [ # type: ignore
+        ('x', str),
+        ('y', 'B'),
+    ])
+n: B
+m: A
+lst = [m, n]
+[builtins fixtures/tuple.pyi]
+
+[case testSelfRefNTIncremental4]
+from typing import NamedTuple
+
+class B(NamedTuple): # type: ignore
+    x: A
+    y: int
+class A(NamedTuple): # type: ignore
+    x: str
+    y: B
+
+n: A
+[builtins fixtures/tuple.pyi]
+
+[case testSelfRefNTIncremental5]
+from typing import NamedTuple
+
+B = NamedTuple('B', [ # type: ignore
+        ('x', A),
+        ('y', int),
+    ])
+A = NamedTuple('A', [ # type: ignore
+        ('x', str),
+        ('y', 'B'),
+    ])
+n: A
+def f(m: B) -> None: pass
+[builtins fixtures/tuple.pyi]
+
+[case testCrashWithPartialGlobalAndCycle]
+import bar
+
+[file foo.py]
+import bar
+my_global_dict = {}  # type: ignore
+def external_func_0() -> None:
+    global my_global_dict
+    bar.external_list
+    my_global_dict[12] = 0
+
+[file bar.py]
+import foo
+
+external_list = [0]
+
+[builtins fixtures/dict.pyi]
+
+[case testIncrementalCrashOnTypeWithFunction]
+import a
+[file a.py]
+import b
+[file a.py.2]
+from b import x
+
+[file b.py]
+from typing import TypeVar, Type
+T = TypeVar('T')
+
+def tp(arg: T) -> Type[T]:
+    pass
+def func(x: int) -> int:
+    pass
+
+x = tp(func)
+[out]
+[out2]
+
+[case testReprocessModuleEvenIfInterfaceHashDoesNotChange]
+import a
+import d
+
+[file a.py]
+import b
+x: b.c.A
+x = b.c.A()
+
+[file b.py]
+import c
+
+[file c.py]
+class A:
+    x = 1
+
+[file d.py]
+import a
+def f() -> None: pass
+
+[file a.py.2]
+import b
+x: b.c.A
+
+[file c.py.3]
+class A:
+    x = 2
+
+[file d.py.4]
+import a
+def f() -> None:
+    from c import A
+    a.x = [A(), a.x][0]
+
+[builtins fixtures/list.pyi]
+[stale]
+[rechecked a]
+[stale2]
+[rechecked2 c]
+[stale3]
+[rechecked3 d]
+[out1]
+[out2]
+[out3]
+[out4]
+
+[case testTreeShadowingViaParentPackage]
+import m.semanal
+
+[file m/__init__.py]
+pass
+
+[file m/nodes.py]
+if False:
+    import m.types
+    import m.semanal
+class Node:
+    line: int
+class FuncBase(Node):
+    type: m.types.Type
+class OverloadedFuncDef(FuncBase): pass
+
+[file m/types.py]
+from m.nodes import Node
+class Type(Node): pass
+class Overloaded(Type): pass
+
+[file m/semanal.py]
+from m.nodes import OverloadedFuncDef
+from m.types import Overloaded
+
+class C:
+    def func(self, defn: OverloadedFuncDef):
+        defn.type = Overloaded()
+        defn.type.line = 0
+
+[file m/nodes.py.2]
+if False:
+    import m.types
+    import m.semanal
+class Node:
+    line: int
+class FuncBase(Node):
+    type: m.types.Type
+class OverloadedFuncDef(FuncBase): pass
+extra = 1
+
+[file m/types.py.2]
+from m.nodes import Node
+class Type(Node): pass
+class Overloaded(Type): pass
+extra = 1
+[builtins fixtures/list.pyi]
+
+[file m/semanal.py.2]
+from m.nodes import OverloadedFuncDef
+from m.types import Overloaded
+
+class C:
+    def func(self, defn: OverloadedFuncDef):
+        defn.type = Overloaded()
+        defn.type.line = 0
+
+extra = 1
+
+[out1]
+[out2]

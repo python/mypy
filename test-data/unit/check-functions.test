@@ -65,10 +65,10 @@ class B(A): pass
 f = None # type: Callable[[B], A]
 g = None # type: Callable[[A], A]  # subtype of f
 h = None # type: Callable[[B], B]  # subtype of f
-g = h  # E: Incompatible types in assignment (expression has type Callable[[B], B], variable has type Callable[[A], A])
-h = f  # E: Incompatible types in assignment (expression has type Callable[[B], A], variable has type Callable[[B], B])
-h = g  # E: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[B], B])
-g = f  # E: Incompatible types in assignment (expression has type Callable[[B], A], variable has type Callable[[A], A])
+g = h  # E: Incompatible types in assignment (expression has type "Callable[[B], B]", variable has type "Callable[[A], A]")
+h = f  # E: Incompatible types in assignment (expression has type "Callable[[B], A]", variable has type "Callable[[B], B]")
+h = g  # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[B], B]")
+g = f  # E: Incompatible types in assignment (expression has type "Callable[[B], A]", variable has type "Callable[[A], A]")
 f = g
 f = h
 f = f
@@ -79,13 +79,13 @@ h = h
 
 def l(x) -> None: ...
 def r(__, *, x) -> None: ...
-r = l # E: Incompatible types in assignment (expression has type Callable[[Any], None], variable has type Callable[[Any, NamedArg(Any, 'x')], None])
+r = l # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, NamedArg(Any, 'x')], None]")
 
 [case testSubtypingFunctionsRequiredLeftArgNotPresent]
 
 def l(x, y) -> None: ...
 def r(x) -> None: ...
-r = l # E: Incompatible types in assignment (expression has type Callable[[Any, Any], None], variable has type Callable[[Any], None])
+r = l # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], None]", variable has type "Callable[[Any], None]")
 
 [case testSubtypingFunctionsImplicitNames]
 from typing import Any
@@ -115,10 +115,10 @@ hh = h
 ff = gg
 ff_nonames = ff
 ff_nonames = f_nonames # reset
-ff = ff_nonames # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg(int, 'a'), Arg(str, 'b')], None])
+ff = ff_nonames # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
 ff = f # reset
-gg = ff # E: Incompatible types in assignment (expression has type Callable[[Arg(int, 'a'), Arg(str, 'b')], None], variable has type Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None])
-gg = hh # E: Incompatible types in assignment (expression has type Callable[[Arg(int, 'aa'), DefaultArg(str, 'b')], None], variable has type Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None])
+gg = ff # E: Incompatible types in assignment (expression has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]", variable has type "Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None]")
+gg = hh # E: Incompatible types in assignment (expression has type "Callable[[Arg(int, 'aa'), DefaultArg(str, 'b')], None]", variable has type "Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None]")
 
 [case testSubtypingFunctionsArgsKwargs]
 from typing import Any, Callable
@@ -144,7 +144,7 @@ ee_var = everything
 ee_var = everywhere
 
 ee_var = specific_1 # The difference between Callable[..., blah] and one with a *args: Any, **kwargs: Any is that the ... goes loosely both ways.
-ee_def = specific_1 # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[VarArg(Any), KwArg(Any)], None])
+ee_def = specific_1 # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[VarArg(Any), KwArg(Any)], None]")
 
 [builtins fixtures/dict.pyi]
 
@@ -175,7 +175,7 @@ ff = f
 gg = g
 
 ff = g
-gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg(int, 'a'), Arg(str, 'b')], None])
+gg = f # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
 
 [case testLackOfNamesFastparse]
 
@@ -187,15 +187,15 @@ ff = f
 gg = g
 
 ff = g
-gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg(int, 'a'), Arg(str, 'b')], None])
+gg = f # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
 
 [case testFunctionTypeCompatibilityWithOtherTypes]
 from typing import Callable
 f = None # type: Callable[[], None]
 a, o = None, None # type: (A, object)
-a = f   # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type "A")
-f = a   # E: Incompatible types in assignment (expression has type "A", variable has type Callable[[], None])
-f = o   # E: Incompatible types in assignment (expression has type "object", variable has type Callable[[], None])
+a = f   # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "A")
+f = a   # E: Incompatible types in assignment (expression has type "A", variable has type "Callable[[], None]")
+f = o   # E: Incompatible types in assignment (expression has type "object", variable has type "Callable[[], None]")
 f = f() # E: Function does not return a value
 
 f = f
@@ -208,7 +208,7 @@ class A: pass
 from typing import Callable
 f = None # type: Callable[[], None]
 g = None # type: Callable[[], object]
-f = g  # E: Incompatible types in assignment (expression has type Callable[[], object], variable has type Callable[[], None])
+f = g  # E: Incompatible types in assignment (expression has type "Callable[[], object]", variable has type "Callable[[], None]")
 g = f  # OK
 
 f = f
@@ -219,9 +219,9 @@ from typing import Callable
 f = None # type: Callable[[A, A], None]
 g = None # type: Callable[[A, B], None]
 h = None # type: Callable[[B, B], None]
-f = g  # E: Incompatible types in assignment (expression has type Callable[[A, B], None], variable has type Callable[[A, A], None])
-f = h  # E: Incompatible types in assignment (expression has type Callable[[B, B], None], variable has type Callable[[A, A], None])
-g = h  # E: Incompatible types in assignment (expression has type Callable[[B, B], None], variable has type Callable[[A, B], None])
+f = g  # E: Incompatible types in assignment (expression has type "Callable[[A, B], None]", variable has type "Callable[[A, A], None]")
+f = h  # E: Incompatible types in assignment (expression has type "Callable[[B, B], None]", variable has type "Callable[[A, A], None]")
+g = h  # E: Incompatible types in assignment (expression has type "Callable[[B, B], None]", variable has type "Callable[[A, B], None]")
 g = f
 h = f
 h = g
@@ -238,10 +238,10 @@ f = None # type: Callable[[], None]
 g = None # type: Callable[[A], None]
 h = None # type: Callable[[A, A], None]
 
-f = g   # E: Incompatible types in assignment (expression has type Callable[[A], None], variable has type Callable[[], None])
-f = h   # E: Incompatible types in assignment (expression has type Callable[[A, A], None], variable has type Callable[[], None])
-h = f   # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type Callable[[A, A], None])
-h = g   # E: Incompatible types in assignment (expression has type Callable[[A], None], variable has type Callable[[A, A], None])
+f = g   # E: Incompatible types in assignment (expression has type "Callable[[A], None]", variable has type "Callable[[], None]")
+f = h   # E: Incompatible types in assignment (expression has type "Callable[[A, A], None]", variable has type "Callable[[], None]")
+h = f   # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "Callable[[A, A], None]")
+h = g   # E: Incompatible types in assignment (expression has type "Callable[[A], None]", variable has type "Callable[[A, A], None]")
 
 f = f
 g = g
@@ -255,8 +255,8 @@ class A: pass
 t = None # type: type
 a = None # type: A
 
-a = A # E: Incompatible types in assignment (expression has type Type[A], variable has type "A")
-t = f # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type "type")
+a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
+t = f # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "type")
 t = A
 
 class A:
@@ -272,7 +272,7 @@ f = None # type: Callable[[AA], A]
 g = None # type: Callable[[B], B]
 h = None # type: Callable[[A], AA]
 
-h = i  # E: Incompatible types in assignment (expression has type overloaded function, variable has type Callable[[A], AA])
+h = i  # E: Incompatible types in assignment (expression has type overloaded function, variable has type "Callable[[A], AA]")
 f = j
 
 f = i
@@ -311,7 +311,7 @@ a, b, c = None, None, None # type: (A, B, C)
 b = f(a)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = f(b)  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 b = f(c)  # E: Incompatible types in assignment (expression has type "C", variable has type "B")
-g4 = f    # E: Incompatible types in assignment (expression has type overloaded function, variable has type Callable[[A], B])
+g4 = f    # E: Incompatible types in assignment (expression has type overloaded function, variable has type "Callable[[A], B]")
 
 g1 = f
 g2 = f
@@ -335,10 +335,10 @@ def f(x: C) -> C: pass
 from typing import Any, Callable, List
 def f(fields: List[Callable[[Any], Any]]): pass
 class C: pass
-f([C])  # E: List item 0 has incompatible type Type[C]; expected Callable[[Any], Any]
+f([C])  # E: List item 0 has incompatible type "Type[C]"; expected "Callable[[Any], Any]"
 class D:
     def __init__(self, a, b): pass
-f([D])  # E: List item 0 has incompatible type Type[D]; expected Callable[[Any], Any]
+f([D])  # E: List item 0 has incompatible type "Type[D]"; expected "Callable[[Any], Any]"
 [builtins fixtures/list.pyi]
 
 [case testSubtypingTypeTypeAsCallable]
@@ -353,7 +353,7 @@ from typing import Callable, Type
 class A: pass
 x = None  # type: Callable[..., A]
 y = None  # type: Type[A]
-y = x  # E: Incompatible types in assignment (expression has type Callable[..., A], variable has type Type[A])
+y = x  # E: Incompatible types in assignment (expression has type "Callable[..., A]", variable has type "Type[A]")
 
 -- Default argument values
 -- -----------------------
@@ -388,17 +388,54 @@ class A: pass
 
 [case testDefaultArgumentExpressions2]
 import typing
-def f(x: 'A' = B()) -> None: # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+def f(x: 'A' = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
     b = x # type: B      # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x # type: A
 
 class B: pass
 class A: pass
-[out]
+
+[case testDefaultArgumentExpressionsGeneric]
+from typing import TypeVar
+T = TypeVar('T', bound='A')
+def f(x: T = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "T")
+    b = x # type: B      # E: Incompatible types in assignment (expression has type "T", variable has type "B")
+    a = x # type: A
+
+class B: pass
+class A: pass
+
+[case testDefaultArgumentExpressionsPython2]
+# flags: --python-version 2.7
+from typing import Tuple
+def f(x = B()): # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
+    # type: (A) -> None
+    b = x # type: B      # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    a = x # type: A
+
+class B: pass
+class A: pass
+
+[case testDefaultTupleArgumentExpressionsPython2]
+# flags: --python-version 2.7
+from typing import Tuple
+def f((x, y) = (A(), B())): # E: Incompatible default for tuple argument 1 (default has type "Tuple[A, B]", argument has type "Tuple[B, B]")
+    # type: (Tuple[B, B]) -> None
+    b = x # type: B
+    a = x # type: A      # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+def g(a, (x, y) = (A(),)): # E: Incompatible default for tuple argument 2 (default has type "Tuple[A]", argument has type "Tuple[B, B]")
+    # type: (int, Tuple[B, B]) -> None
+    pass
+def h((x, y) = (A(), B(), A())): # E: Incompatible default for tuple argument 1 (default has type "Tuple[A, B, A]", argument has type "Tuple[B, B]")
+    # type: (Tuple[B, B]) -> None
+    pass
+
+class B: pass
+class A: pass
 
 [case testDefaultArgumentsWithSubtypes]
 import typing
-def f(x: 'B' = A()) -> None: # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+def f(x: 'B' = A()) -> None: # E: Incompatible default for argument "x" (default has type "A", argument has type "B")
     pass
 def g(x: 'A' = B()) -> None:
     pass
@@ -409,7 +446,7 @@ class B(A): pass
 
 [case testMultipleDefaultArgumentExpressions]
 import typing
-def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+def f(x: 'A' = B(), y: 'B' = B()) -> None: # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
     pass
 def h(x: 'A' = A(), y: 'B' = B()) -> None:
     pass
@@ -420,7 +457,7 @@ class B: pass
 
 [case testMultipleDefaultArgumentExpressions2]
 import typing
-def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible default for argument "y" (default has type "A", argument has type "B")
     pass
 
 class A: pass
@@ -470,8 +507,8 @@ class A:
     f = x # type: Callable[[], None]
     g = x # type: Callable[[B], None]
 a = None # type: A
-a.f() # E: Invalid method type
-a.g() # E: Invalid method type
+a.f() # E: Attribute function "f" with type "Callable[[], None]" does not accept self argument
+a.g() # E: Invalid self argument "A" to attribute function "g" with type "Callable[[B], None]"
 
 [case testMethodWithDynamicallyTypedMethodAsDataAttribute]
 from typing import Any, Callable
@@ -518,7 +555,7 @@ class A(Generic[t]):
     g = f
 a = None # type: A[B]
 a.g(B())
-a.g(a)   # E: Argument 1 has incompatible type A[B]; expected "B"
+a.g(a)   # E: Argument 1 has incompatible type "A[B]"; expected "B"
 
 [case testInvalidMethodAsDataAttributeInGenericClass]
 from typing import Any, TypeVar, Generic, Callable
@@ -531,7 +568,7 @@ class A(Generic[t]):
 ab = None # type: A[B]
 ac = None # type: A[C]
 ab.f()
-ac.f()   # E: Invalid method type
+ac.f()   # E: Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]"
 
 [case testPartiallyTypedSelfInMethodDataAttribute]
 from typing import Any, TypeVar, Generic, Callable
@@ -639,8 +676,8 @@ def f() -> None:
         g(1)
         g.x # E
 [out]
-main:7: error: Callable[..., Any] has no attribute "x"
-main:11: error: Callable[..., Any] has no attribute "x"
+main:7: error: "Callable[..., Any]" has no attribute "x"
+main:11: error: "Callable[..., Any]" has no attribute "x"
 
 [case testNestedGenericFunctions]
 from typing import TypeVar
@@ -748,7 +785,7 @@ f(None) # E: Too many arguments for "f"
 from typing import Any, Callable
 def dec1(f: Callable[[Any], None]) -> Callable[[], None]: pass
 def dec2(f: Callable[[Any, Any], None]) -> Callable[[Any], None]: pass
-@dec1 # E: Argument 1 to "dec2" has incompatible type Callable[[Any], Any]; expected Callable[[Any, Any], None]
+@dec1 # E: Argument 1 to "dec2" has incompatible type "Callable[[Any], Any]"; expected "Callable[[Any, Any], None]"
 @dec2
 def f(x): pass
 
@@ -756,7 +793,7 @@ def f(x): pass
 from typing import Any, Callable
 def dec1(f: Callable[[Any, Any], None]) -> Callable[[], None]: pass
 def dec2(f: Callable[[Any, Any], None]) -> Callable[[Any], None]: pass
-@dec1 # E: Argument 1 to "dec1" has incompatible type Callable[[Any], None]; expected Callable[[Any, Any], None]
+@dec1 # E: Argument 1 to "dec1" has incompatible type "Callable[[Any], None]"; expected "Callable[[Any, Any], None]"
 @dec2
 def f(x, y): pass
 
@@ -1239,6 +1276,56 @@ if x:
 else:
     def f(x: int = 0) -> None: pass # E: All conditional function variants must have identical signatures
 
+[case testConditionalFunctionDefinitionUsingDecorator1]
+from typing import Callable
+
+def dec(f) -> Callable[[int], None]: pass
+
+x = int()
+if x:
+    @dec
+    def f(): pass
+else:
+    def f(x: int) -> None: pass
+
+[case testConditionalFunctionDefinitionUsingDecorator2]
+from typing import Callable
+
+def dec(f) -> Callable[[int], None]: pass
+
+x = int()
+if x:
+    @dec
+    def f(): pass
+else:
+    def f(x: str) -> None: pass # E: Incompatible redefinition (redefinition with type "Callable[[str], None]", original type "Callable[[int], None]")
+
+[case testConditionalFunctionDefinitionUsingDecorator3]
+from typing import Callable
+
+def dec(f) -> Callable[[int], None]: pass
+
+x = int()
+if x:
+    def f(x: int) -> None: pass
+else:
+    # TODO: This should be okay.
+    @dec # E: Name 'f' already defined
+    def f(): pass
+
+[case testConditionalFunctionDefinitionUsingDecorator4]
+from typing import Callable
+
+def dec(f) -> Callable[[int], None]: pass
+
+x = int()
+if x:
+    def f(x: str) -> None: pass
+else:
+    # TODO: We should report an incompatible redefinition.
+    @dec # E: Name 'f' already defined
+    def f(): pass
+
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
 from typing import Any
 def f(x: str) -> None: pass
@@ -1285,7 +1372,7 @@ def g() -> None:
 def g(): pass
 f = g
 if g():
-    def f(x): pass  # E: Incompatible redefinition (redefinition with type Callable[[Any], Any], original type Callable[[], Any])
+    def f(x): pass  # E: Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "Callable[[], Any]")
 
 [case testRedefineFunctionDefinedAsVariableWithVariance1]
 class B: pass
@@ -1480,7 +1567,7 @@ L = Callable[[Arg(name='x', type=int)], int] # ok
 # I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
 # M = Callable[[Arg(gnome='x', type=int)], int]   E: Invalid type alias   E: Unexpected keyword argument "gnome" for "Arg"
 N = Callable[[Arg(name=None, type=int)], int] # ok
-O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: Type expected within [...] # E: The type Type[List[Any]] is not generic and not indexable
+O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: Type expected within [...] # E: The type "Type[List[Any]]" is not generic and not indexable
 P = Callable[[mypy_extensions.VarArg(int)], int] # ok
 Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "type"
 R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "name"
@@ -1523,7 +1610,7 @@ def f2(*args, **kwargs) -> int: pass
 d(f1)
 e(f2)
 d(f2)
-e(f1)  # E: Argument 1 to "e" has incompatible type Callable[[VarArg(Any)], int]; expected Callable[[VarArg(Any), KwArg(Any)], int]
+e(f1)  # E: Argument 1 to "e" has incompatible type "Callable[[VarArg(Any)], int]"; expected "Callable[[VarArg(Any), KwArg(Any)], int]"
 
 [builtins fixtures/dict.pyi]
 
@@ -1644,12 +1731,12 @@ def isf_unnamed(__i: int, __s: str) -> str:
 
 int_str_fun = isf
 int_str_fun = isf_unnamed
-int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type Callable[[int, str], str], variable has type Callable[[int, Arg(str, 's')], str])
+int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type "Callable[[int, str], str]", variable has type "Callable[[int, Arg(str, 's')], str]")
 int_opt_str_fun = iosf
 int_str_fun = iosf
-int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg(int, 'ii'), Arg(str, 'ss')], str], variable has type Callable[[int, DefaultArg(str)], str])
+int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type "Callable[[Arg(int, 'ii'), Arg(str, 'ss')], str]", variable has type "Callable[[int, DefaultArg(str)], str]")
 
-int_named_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg(int, 'ii'), Arg(str, 'ss')], str], variable has type Callable[[int, Arg(str, 's')], str])
+int_named_str_fun = isf # E: Incompatible types in assignment (expression has type "Callable[[Arg(int, 'ii'), Arg(str, 'ss')], str]", variable has type "Callable[[int, Arg(str, 's')], str]")
 int_named_str_fun = iosf
 
 [builtins fixtures/dict.pyi]
@@ -1681,7 +1768,7 @@ f(x=4) + '' # E: Unsupported operand types for + ("int" and "str")
 [case testCallableWithArbitraryArgsInErrorMessage]
 from typing import Callable
 def f(x: Callable[..., int]) -> None:
-    x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type Callable[..., int])
+    x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[..., int]")
 [out]
 
 [case testCallableWithArbitraryArgsInGenericFunction]
@@ -1703,7 +1790,7 @@ def g4(*, y: int) -> str: pass
 f(g1)
 f(g2)
 f(g3)
-f(g4) # E: Argument 1 to "f" has incompatible type Callable[[NamedArg(int, 'y')], str]; expected Callable[..., int]
+f(g4) # E: Argument 1 to "f" has incompatible type "Callable[[NamedArg(int, 'y')], str]"; expected "Callable[..., int]"
 
 [case testCallableWithArbitraryArgsSubtypingWithGenericFunc]
 from typing import Callable, TypeVar
@@ -1736,7 +1823,7 @@ f(x=1, y="hello", z=[])
 from typing import Dict
 def f(x, **kwargs): # type: (...) -> None
     success_dict_type = kwargs # type: Dict[str, str]
-    failure_dict_type = kwargs # type: Dict[int, str] # E: Incompatible types in assignment (expression has type Dict[str, Any], variable has type Dict[int, str])
+    failure_dict_type = kwargs # type: Dict[int, str] # E: Incompatible types in assignment (expression has type "Dict[str, Any]", variable has type "Dict[int, str]")
 f(1, thing_in_kwargs=["hey"])
 [builtins fixtures/dict.pyi]
 [out]
@@ -1745,7 +1832,7 @@ f(1, thing_in_kwargs=["hey"])
 from typing import Tuple, Any
 def f(x, *args): # type: (...) -> None
     success_tuple_type = args # type: Tuple[Any, ...]
-    fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type Tuple[Any, ...], variable has type None)
+    fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type "Tuple[Any, ...]", variable has type "None")
 f(1, "hello")
 [builtins fixtures/tuple.pyi]
 [out]
@@ -1792,6 +1879,34 @@ class A(Generic[t]):
 [out]
 main:5: error: Cannot use a covariant type variable as a parameter
 
+[case testRejectCovariantArgumentSplitLine]
+from typing import TypeVar, Generic
+
+t = TypeVar('t', covariant=True)
+class A(Generic[t]):
+    def foo(self,
+            x: t) -> None:
+        return None
+[builtins fixtures/bool.pyi]
+[out]
+main:6: error: Cannot use a covariant type variable as a parameter
+
+[case testRejectCovariantArgumentInLambda]
+from typing import TypeVar, Generic, Callable
+
+t = TypeVar('t', covariant=True)
+class Thing(Generic[t]):
+    def chain(self, func: Callable[[t], None]) -> None: pass
+    def end(self) -> None:
+        return self.chain(  # Note that lambda args have no line numbers
+            lambda _: None)
+[builtins fixtures/bool.pyi]
+[out]
+main:8: error: Cannot use a covariant type variable as a parameter
+
+[case testRejectCovariantArgumentInLambdaSplitLine]
+from typing import TypeVar, Generic, Callable
+
 [case testRejectContravariantReturnType]
 from typing import TypeVar, Generic
 
@@ -1832,8 +1947,8 @@ def g(x, y): pass
 def h(x): pass
 def j(y) -> Any: pass
 f = h
-f = j # E: Incompatible types in assignment (expression has type Callable[[Arg(Any, 'y')], Any], variable has type Callable[[Arg(Any, 'x')], Any])
-f = g # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[Any], Any])
+f = j # E: Incompatible types in assignment (expression has type "Callable[[Arg(Any, 'y')], Any]", variable has type "Callable[[Arg(Any, 'x')], Any]")
+f = g # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[Any], Any]")
 
 [case testRedefineFunction2]
 def f() -> None: pass
@@ -2074,23 +2189,23 @@ def fn(
 from typing import Union, Dict, List
 def f() -> List[Union[str, int]]:
     x = ['a']
-    return x # E: Incompatible return value type (got List[str], expected List[Union[str, int]]) \
-# N: Perhaps you need a type annotation for "x"? Suggestion: List[Union[str, int]]
+    return x # E: Incompatible return value type (got "List[str]", expected "List[Union[str, int]]") \
+# N: Perhaps you need a type annotation for "x"? Suggestion: "List[Union[str, int]]"
 
 def g() -> Dict[str, Union[str, int]]:
     x = {'a': 'a'}
-    return x # E: Incompatible return value type (got Dict[str, str], expected Dict[str, Union[str, int]]) \
-# N: Perhaps you need a type annotation for "x"? Suggestion: Dict[str, Union[str, int]]
+    return x # E: Incompatible return value type (got "Dict[str, str]", expected "Dict[str, Union[str, int]]") \
+# N: Perhaps you need a type annotation for "x"? Suggestion: "Dict[str, Union[str, int]]"
 
 def h() -> Dict[Union[str, int], str]:
     x = {'a': 'a'}
-    return x # E: Incompatible return value type (got Dict[str, str], expected Dict[Union[str, int], str]) \
-# N: Perhaps you need a type annotation for "x"? Suggestion: Dict[Union[str, int], str]
+    return x # E: Incompatible return value type (got "Dict[str, str]", expected "Dict[Union[str, int], str]") \
+# N: Perhaps you need a type annotation for "x"? Suggestion: "Dict[Union[str, int], str]"
 
 def i() -> List[Union[int, float]]:
     x: List[int] = [1]
-    return x # E: Incompatible return value type (got List[int], expected List[Union[int, float]]) \
-# N: Perhaps you need a type annotation for "x"? Suggestion: List[Union[int, float]]
+    return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]") \
+# N: Perhaps you need a type annotation for "x"? Suggestion: "List[Union[int, float]]"
 
 [builtins fixtures/dict.pyi]
 
@@ -2098,11 +2213,11 @@ def i() -> List[Union[int, float]]:
 from typing import Union, List
 def f() -> List[Union[int, float]]:
     x = ['a']
-    return x # E: Incompatible return value type (got List[str], expected List[Union[int, float]])
+    return x # E: Incompatible return value type (got "List[str]", expected "List[Union[int, float]]")
 
 def g() -> List[Union[str, int]]:
     x = ('a', 2)
-    return x # E: Incompatible return value type (got "Tuple[str, int]", expected List[Union[str, int]])
+    return x # E: Incompatible return value type (got "Tuple[str, int]", expected "List[Union[str, int]]")
 
 [builtins fixtures/list.pyi]
 
@@ -2110,7 +2225,7 @@ def g() -> List[Union[str, int]]:
 from typing import Union, Dict, List
 def f() -> Dict[str, Union[str, int]]:
     x = {'a': 'a', 'b': 2}
-    return x # E: Incompatible return value type (got Dict[str, object], expected Dict[str, Union[str, int]])
+    return x # E: Incompatible return value type (got "Dict[str, object]", expected "Dict[str, Union[str, int]]")
 
 def g() -> Dict[str, Union[str, int]]:
     x: Dict[str, Union[str, int]] = {'a': 'a', 'b': 2}
@@ -2118,10 +2233,26 @@ def g() -> Dict[str, Union[str, int]]:
 
 def h() -> List[Union[str, int]]:
     x = ['a', 2]
-    return x # E: Incompatible return value type (got List[object], expected List[Union[str, int]])
+    return x # E: Incompatible return value type (got "List[object]", expected "List[Union[str, int]]")
 
 def i() -> List[Union[str, int]]:
     x: List[Union[str, int]] = ['a', 2]
     return x
 
 [builtins fixtures/dict.pyi]
+
+[case testLambdaSemanal]
+f = lambda: xyz
+[out]
+main:1: error: Name 'xyz' is not defined
+
+[case testLambdaTypeCheck]
+f = lambda: 1 + '1'
+[out]
+main:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testLambdaTypeInference]
+f = lambda: 5
+reveal_type(f)
+[out]
+main:2: error: Revealed type is 'def () -> builtins.int'

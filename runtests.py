@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 """Mypy test runner."""
 
-from typing import Dict, List, Optional, Set, Iterable
+from typing import Dict, List, Optional, Set, Iterable, Tuple
 
 from mypy.waiter import Waiter, LazySubprocess
 from mypy import util
-from mypy.test.config import test_data_prefix
-from mypy.test.testpythoneval import python_eval_files, python_34_eval_files
 
 import itertools
 import os
 from os.path import join, isdir
-import re
 import sys
 
 
@@ -92,16 +89,19 @@ class Driver:
     def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         self.add_mypy_cmd(name, ['-c'] + list(args), cwd=cwd)
 
-    def add_pytest(self, name: str, pytest_args: List[str], coverage: bool = False) -> None:
-        full_name = 'pytest %s' % name
-        if not self.allow(full_name):
+    def add_pytest(self, files: List[Tuple[str, str]], coverage: bool = True) -> None:
+        pytest_files = [name for kind, name in files
+                        if self.allow('pytest {} {}'.format(kind, name))]
+        if not pytest_files:
             return
+        pytest_args = pytest_files + self.arglist + self.pyt_arglist
         if coverage and self.coverage:
             args = [sys.executable, '-m', 'pytest', '--cov=mypy'] + pytest_args
         else:
             args = [sys.executable, '-m', 'pytest'] + pytest_args
 
-        self.waiter.add(LazySubprocess(full_name, args, env=self.env, passthrough=self.verbosity),
+        self.waiter.add(LazySubprocess('pytest', args, env=self.env,
+                                       passthrough=self.verbosity),
                         sequential=True)
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
@@ -197,64 +197,57 @@ def add_imports(driver: Driver) -> None:
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
 
 
-PYTEST_FILES = [os.path.join('mypy', 'test', '{}.py'.format(name)) for name in [
+def test_path(*names: str):
+    return [os.path.join('mypy', 'test', '{}.py'.format(name))
+            for name in names]
+
+
+PYTEST_FILES = test_path(
     'testcheck',
+    'testdmypy',
     'testextensions',
     'testdeps',
     'testdiff',
     'testfinegrained',
     'testmerge',
-]]
+    'testtransform',
+    'testtypegen',
+    'testparse',
+    'testsemanal'
+)
+
+SLOW_FILES = test_path(
+    'testpythoneval',
+    'testcmdline',
+    'teststubgen',
+)
+
+MYUNIT_FILES = test_path(
+    'teststubgen',
+    'testargs',
+    'testgraph',
+    'testinfer',
+    'testmoduleinfo',
+    'testreports',
+    'testsolve',
+    'testsubtypes',
+    'testtypes',
+)
+
+for f in find_files('mypy', prefix='test', suffix='.py'):
+    assert f in PYTEST_FILES + SLOW_FILES + MYUNIT_FILES, f
 
 
 def add_pytest(driver: Driver) -> None:
-    driver.add_pytest('pytest', PYTEST_FILES + driver.arglist + driver.pyt_arglist, True)
+    driver.add_pytest([('unit-test', name) for name in PYTEST_FILES] +
+                      [('integration', name) for name in SLOW_FILES])
 
 
 def add_myunit(driver: Driver) -> None:
-    for f in find_files('mypy', prefix='test', suffix='.py'):
+    for f in MYUNIT_FILES:
         mod = file_to_module(f)
-        if mod in ('mypy.test.testpythoneval', 'mypy.test.testcmdline'):
-            # Run Python evaluation integration tests and command-line
-            # parsing tests separately since they are much slower than
-            # proper unit tests.
-            pass
-        elif f in PYTEST_FILES:
-            # This module has been converted to pytest; don't try to use myunit.
-            pass
-        else:
-            driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod,
-                                  *driver.arglist, coverage=True)
-
-
-def add_pythoneval(driver: Driver) -> None:
-    cases = set()
-    case_re = re.compile(r'^\[case ([^\]]+)\]$')
-    for file in python_eval_files + python_34_eval_files:
-        with open(os.path.join(test_data_prefix, file), 'r') as f:
-            for line in f:
-                m = case_re.match(line)
-                if m:
-                    case_name = m.group(1)
-                    assert case_name[:4] == 'test'
-                    cases.add(case_name[4:5])
-
-    for prefix in sorted(cases):
-        driver.add_python_mod(
-            'eval-test-' + prefix,
-            'mypy.myunit',
-            '-m',
-            'mypy.test.testpythoneval',
-            'test_testpythoneval_PythonEvaluationSuite.test' + prefix + '*',
-            *driver.arglist,
-            coverage=True
-        )
-
-
-def add_cmdline(driver: Driver) -> None:
-    driver.add_python_mod('cmdline-test', 'mypy.myunit',
-                          '-m', 'mypy.test.testcmdline', *driver.arglist,
-                         coverage=True)
+        driver.add_python_mod('myunit unit-test %s' % mod, 'mypy.myunit', '-m', mod,
+                              *driver.arglist, coverage=True)
 
 
 def add_stubs(driver: Driver) -> None:
@@ -303,8 +296,12 @@ def usage(status: int) -> None:
     print()
     print('Examples:')
     print('  %s unit-test  (run unit tests only)' % sys.argv[0])
-    print('  %s unit-test -a "*tuple*"' % sys.argv[0])
-    print('       (run all unit tests with "tuple" in test name)')
+    print('  %s testcheck  (run type checking unit tests only)' % sys.argv[0])
+    print('  %s "pytest unit-test" -a -k -a Tuple' % sys.argv[0])
+    print('       (run all pytest unit tests with "Tuple" in test name)')
+    print()
+    print('You can also run pytest directly without using %s:' % sys.argv[0])
+    print('  pytest mypy/test/testcheck.py -k Tuple')
     print()
     print('Options:')
     print('  -h, --help             show this help')
@@ -428,8 +425,6 @@ def main() -> None:
 
     driver.add_flake8()
     add_pytest(driver)
-    add_pythoneval(driver)
-    add_cmdline(driver)
     add_basic(driver)
     add_selftypecheck(driver)
     add_myunit(driver)

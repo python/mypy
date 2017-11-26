@@ -364,3 +364,32 @@ def m(x, ((x, y), z)):  # E: Duplicate argument 'x' in function definition
   pass
 
 lambda x, (y, x): None  # E: Duplicate argument 'x' in function definition
+
+[case testNoCrashOnImportFromStar]
+from pack import *
+[file pack/__init__.py]
+from . import *
+
+[case testNoCrashOnImportFromStarNested]
+import blamodule
+[file blamodule/__init__.py]
+from . import command
+from . import backends
+
+[file blamodule/backends/__init__.py]
+from .Bla import Bla
+reveal_type(Bla().method())  # E: Revealed type is 'builtins.str'
+
+[file blamodule/backends/Bla.py]
+from .. import *
+
+class Bla:
+    def method(self) -> str:
+        return command.call()
+
+[file blamodule/command.py]
+def call() -> str: pass
+
+[case testNoCrashOnImportFromStarPython2]
+# flags: --py2
+from . import * # E: No parent module -- cannot perform relative import

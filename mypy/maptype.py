@@ -2,7 +2,7 @@ from typing import Dict, List
 
 from mypy.expandtype import expand_type
 from mypy.nodes import TypeInfo
-from mypy.types import Type, TypeVarId, Instance, AnyType
+from mypy.types import Type, TypeVarId, Instance, AnyType, TypeOfAny
 
 
 def map_instance_to_supertype(instance: Instance,
@@ -10,7 +10,8 @@ def map_instance_to_supertype(instance: Instance,
     """Produce a supertype of `instance` that is an Instance
     of `superclass`, mapping type arguments up the chain of bases.
 
-    `superclass` is required to be a superclass of `instance.type`.
+    If `superclass` is not a nominal superclass of `instance.type`,
+    then all type arguments are mapped to 'Any'.
     """
     if instance.type == superclass:
         # Fast path: `instance` already belongs to `superclass`.
@@ -40,7 +41,8 @@ def map_instance_to_supertypes(instance: Instance,
         return result
     else:
         # Nothing. Presumably due to an error. Construct a dummy using Any.
-        return [Instance(supertype, [AnyType()] * len(supertype.type_vars))]
+        any_type = AnyType(TypeOfAny.from_error)
+        return [Instance(supertype, [any_type] * len(supertype.type_vars))]
 
 
 def class_derivation_paths(typ: TypeInfo,
@@ -86,7 +88,8 @@ def map_instance_to_direct_supertypes(instance: Instance,
     else:
         # Relationship with the supertype not specified explicitly. Use dynamic
         # type arguments implicitly.
-        return [Instance(supertype, [AnyType()] * len(supertype.type_vars))]
+        any_type = AnyType(TypeOfAny.unannotated)
+        return [Instance(supertype, [any_type] * len(supertype.type_vars))]
 
 
 def instance_to_type_environment(instance: Instance) -> Dict[TypeVarId, Type]:

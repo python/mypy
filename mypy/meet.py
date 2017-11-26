@@ -3,11 +3,11 @@ from typing import List, Optional, cast, Tuple
 
 from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
-    Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType,
-    Instance, CallableType, TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType,
-    DeletedType, UninhabitedType, TypeType
+    Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType, Instance, CallableType,
+    TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType, DeletedType,
+    UninhabitedType, TypeType, TypeOfAny
 )
-from mypy.subtypes import is_equivalent, is_subtype
+from mypy.subtypes import is_equivalent, is_subtype, is_protocol_implementation
 
 from mypy import experiments
 
@@ -44,6 +44,8 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return narrowed
     elif isinstance(declared, (Instance, TupleType)):
         return meet_types(declared, narrowed)
+    elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
+        return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
     return narrowed
 
 
@@ -52,7 +54,8 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
 
     Note that this effectively checks against erased types, since type
     variables are erased at runtime and the overlapping check is based
-    on runtime behavior.
+    on runtime behavior. The exception is protocol types, it is not safe,
+    but convenient and is an opt-in behavior.
 
     If use_promotions is True, also consider type promotions (int and
     float would only be overlapping if it's True).
@@ -70,12 +73,15 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     multiple inheritance actually occurs somewhere in a program, due to
     stub files hiding implementation details, dynamic loading etc.
 
-    TODO: Don't consider tuples always overlapping.
     TODO: Don't consider callables always overlapping.
     TODO: Don't consider type variables with values always overlapping.
     """
     # Any overlaps with everything
     if isinstance(t, AnyType) or isinstance(s, AnyType):
+        return True
+    # object overlaps with everything
+    if (isinstance(t, Instance) and t.type.fullname() == 'builtins.object' or
+            isinstance(s, Instance) and s.type.fullname() == 'builtins.object'):
         return True
 
     # Since we are effectively working with the erased types, we only
@@ -88,6 +94,20 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
         t = t.as_anonymous().fallback
     if isinstance(s, TypedDictType):
         s = s.as_anonymous().fallback
+
+    if isinstance(t, UnionType):
+        return any(is_overlapping_types(item, s)
+                   for item in t.relevant_items())
+    if isinstance(s, UnionType):
+        return any(is_overlapping_types(t, item)
+                   for item in s.relevant_items())
+
+    # We must check for TupleTypes before Instances, since Tuple[A, ...]
+    # is an Instance
+    tup_overlap = is_overlapping_tuples(t, s, use_promotions)
+    if tup_overlap is not None:
+        return tup_overlap
+
     if isinstance(t, Instance):
         if isinstance(s, Instance):
             # Consider two classes non-disjoint if one is included in the mro
@@ -100,13 +120,13 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
                     return True
                 if s.type._promote and is_overlapping_types(s.type._promote, t):
                     return True
-            return t.type in s.type.mro or s.type in t.type.mro
-    if isinstance(t, UnionType):
-        return any(is_overlapping_types(item, s)
-                   for item in t.relevant_items())
-    if isinstance(s, UnionType):
-        return any(is_overlapping_types(t, item)
-                   for item in s.relevant_items())
+            if t.type in s.type.mro or s.type in t.type.mro:
+                return True
+            if t.type.is_protocol and is_protocol_implementation(s, t):
+                return True
+            if s.type.is_protocol and is_protocol_implementation(t, s):
+                return True
+            return False
     if isinstance(t, TypeType) and isinstance(s, TypeType):
         # If both types are TypeType, compare their inner types.
         return is_overlapping_types(t.item, s.item, use_promotions)
@@ -123,9 +143,33 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
         if isinstance(t, NoneTyp) != isinstance(s, NoneTyp):
             # NoneTyp does not overlap with other non-Union types under strict Optional checking
             return False
-    # We conservatively assume that non-instance, non-union, and non-TypeType types can overlap
-    # any other types.
+    # We conservatively assume that non-instance, non-union, non-TupleType and non-TypeType types
+    # can overlap any other types.
     return True
+
+
+def is_overlapping_tuples(t: Type, s: Type, use_promotions: bool) -> Optional[bool]:
+    """Part of is_overlapping_types(), for tuples only"""
+    t = adjust_tuple(t, s) or t
+    s = adjust_tuple(s, t) or s
+    if isinstance(t, TupleType) or isinstance(s, TupleType):
+        if isinstance(t, TupleType) and isinstance(s, TupleType):
+            if t.length() == s.length():
+                if all(is_overlapping_types(ti, si, use_promotions)
+                       for ti, si in zip(t.items, s.items)):
+                    return True
+        # TupleType and non-tuples do not overlap
+        return False
+    # No tuples are involved here
+    return None
+
+
+def adjust_tuple(left: Type, r: Type) -> Optional[TupleType]:
+    """Find out if `left` is a Tuple[A, ...], and adjust its length to `right`"""
+    if isinstance(left, Instance) and left.type.fullname() == 'builtins.tuple':
+        n = r.length() if isinstance(r, TupleType) else 1
+        return TupleType([left.args[0]] * n, left)
+    return None
 
 
 class TypeMeetVisitor(TypeVisitor[Type]):
@@ -135,13 +179,13 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if isinstance(self.s, NoneTyp):
             if experiments.STRICT_OPTIONAL:
-                return AnyType()
+                return AnyType(TypeOfAny.special_form)
             else:
                 return self.s
         elif isinstance(self.s, UninhabitedType):
             return self.s
         else:
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
 
     def visit_any(self, t: AnyType) -> Type:
         return self.s
@@ -296,7 +340,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def default(self, typ: Type) -> Type:
         if isinstance(typ, UnboundType):
-            return AnyType()
+            return AnyType(TypeOfAny.special_form)
         else:
             if experiments.STRICT_OPTIONAL:
                 return UninhabitedType()

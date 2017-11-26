@@ -5,8 +5,8 @@ import os
 import os.path
 import sys
 
-if sys.version_info < (3, 2, 0):
-    sys.stderr.write("ERROR: You need Python 3.2 or later to use mypy.\n")
+if sys.version_info < (3, 4, 0):
+    sys.stderr.write("ERROR: You need Python 3.4 or later to use mypy.\n")
     exit(1)
 
 # This requires setuptools when building; setuptools is not needed
@@ -84,15 +84,11 @@ classifiers = [
     'License :: OSI Approved :: MIT License',
     'Operating System :: POSIX',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.3',
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
     'Topic :: Software Development',
 ]
-
-
-package_dir = {'mypy': 'mypy'}
 
 setup(name='mypy',
       version=version,
@@ -103,15 +99,18 @@ setup(name='mypy',
       url='http://www.mypy-lang.org/',
       license='MIT License',
       platforms=['POSIX'],
-      package_dir=package_dir,
       py_modules=[],
-      packages=['mypy'],
+      packages=['mypy', 'mypy.test', 'mypy.myunit', 'mypy.server'],
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
-                                        'stubgen=mypy.stubgen:main']},
+                                        'stubgen=mypy.stubgen:main',
+                                        'dmypy=mypy.dmypy:main',
+                                        ]},
       data_files=data_files,
       classifiers=classifiers,
       cmdclass={'build_py': CustomPythonBuild},
-      install_requires = ['typed-ast >= 1.1.0, < 1.2.0'],
+      install_requires = ['typed-ast >= 1.1.0, < 1.2.0',
+                          'psutil >= 5.4.0, < 5.5.0',
+                          ],
       extras_require = {
           ':python_version < "3.5"': 'typing >= 3.5.3',
       },

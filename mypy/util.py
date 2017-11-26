@@ -10,7 +10,7 @@ T = TypeVar('T')
 
 ENCODING_RE = re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')
 
-default_python2_interpreter = ['python2', 'python', '/usr/bin/python']
+default_python2_interpreter = ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']
 
 
 def split_module_names(mod_name: str) -> List[str]:
@@ -69,10 +69,11 @@ def try_find_python2_interpreter() -> Optional[str]:
         return _python2_interpreter
     for interpreter in default_python2_interpreter:
         try:
-            process = subprocess.Popen([interpreter, '-V'], stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT)
-            stdout, stderr = process.communicate()
-            if b'Python 2.7' in stdout:
+            retcode = subprocess.Popen([
+                interpreter, '-c',
+                'import sys, typing; assert sys.version_info[:2] == (2, 7)'
+            ]).wait()
+            if not retcode:
                 _python2_interpreter = interpreter
                 return interpreter
         except OSError:
@@ -134,3 +135,8 @@ class IdMapper:
             self.id_map[o] = self.next_id
             self.next_id += 1
         return self.id_map[o]
+
+
+def get_prefix(fullname: str) -> str:
+    """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
+    return fullname.rsplit('.', 1)[0]
