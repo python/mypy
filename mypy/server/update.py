@@ -242,7 +242,7 @@ def build_incremental_step(manager: BuildManager,
 
     # Perform type checking.
     state.type_check_first_pass()
-    # TODO: state.type_check_second_pass()?
+    state.type_check_second_pass()
     state.finish_passes()
     # TODO: state.write_cache()?
     # TODO: state.mark_as_rechecked()?
