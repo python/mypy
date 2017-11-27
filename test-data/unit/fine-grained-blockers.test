@@ -278,3 +278,33 @@ a.py:1: error: invalid syntax
 ==
 b.py:2: error: Module has no attribute "f"
 b.py:3: error: "int" not callable
+
+[case testImportBringsAnotherFileWithBlockingError1]
+import a
+[file a.py]
+[file a.py.2]
+import blocker
+1()
+[file a.py.3]
+1()
+def f() -> None: pass
+[out]
+==
+<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax
+==
+a.py:1: error: "int" not callable
+x
+
+[case testImportBringsAnotherFileWithSemanticAnalysisBlockingError]
+import a
+[file a.py]
+[file a.py.2]
+import blocker2
+1()
+[file a.py.3]
+1()
+[out]
+==
+<ROOT>/test-data/unit/lib-stub/blocker2.pyi:2: error: 'continue' outside loop
+==
+a.py:1: error: "int" not callable

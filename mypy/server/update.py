@@ -47,7 +47,7 @@ Major todo items:
 """
 
 import os.path
-from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping
+from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple
 
 from mypy.build import (
     BuildManager, State, BuildSource, Graph, load_graph, SavedCache, CacheMeta,
@@ -173,14 +173,13 @@ class FineGrainedBuildManager:
             old_snapshots[module] = {}
 
         manager.errors.reset()
-        try:
-            module, tree, graph, remaining = update_single_isolated(module, path, manager, graph)
-        except CompileError as err:
-            # TODO: Remaining modules
-            if DEBUG:
-                print('blocking error: %s' % module)
+        result = update_single_isolated(module, path, manager, graph)
+        module, path, is_blocker, tree, graph, remaining = result
+        if is_blocker:
+            self.graph = graph
             self.blocking_errors = [(module, path)]
-            return err.messages, []
+            return manager.errors.messages(), remaining
+
         self.blocking_errors = []
 
         if module not in old_snapshots:
@@ -233,13 +232,28 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
     return deps
 
 
+# The result of update_single_isolated, with these items:
+#
+# - Id of the changed module (can be different from the module argument)
+# - Path of the changed module
+# - Was there a blocking error in the changed module?
+# - New AST for the changed module (None if module was deleted or on blocker)
+# - The entire updated build graph
+# - Remaining changed modules that are not processed yet as (module id, path)
+#   tuples (non-empty if the original changed module imported other new
+#   modules)
+SingleResult = NamedTuple('SingleResult', [('module', str),
+                                           ('path', str),
+                                           ('is_blocker', bool),
+                                           ('tree', Optional[MypyFile]),
+                                           ('graph', Graph),
+                                           ('remaining', List[Tuple[str, str]])])
+
+
 def update_single_isolated(module: str,
                            path: str,
                            manager: BuildManager,
-                           graph: Dict[str, State]) -> Tuple[str,
-                                                             Optional[MypyFile],
-                                                             Graph,
-                                                             List[Tuple[str, str]]]:
+                           graph: Dict[str, State]) -> SingleResult:
     """Build a new version of one changed module only.
 
     Don't propagate changes to elsewhere in the program. Raise CompleError on
@@ -251,15 +265,7 @@ def update_single_isolated(module: str,
         manager: Build manager
         graph: Build graph
 
-    Returns:
-        A 4-tuple with these items:
-
-        - Id of the changed module (can be different from the argument)
-        - New AST for the changed module (None if module was deleted)
-        - The entire build graph
-        - Remaining changed modules that are not processed yet as (module id, path)
-          tuples (non-empty if the original changed module imported other new
-          modules)
+    Returns a named tuple describing the result (see above for details).
     """
     if module in manager.modules:
         assert_equivalent_paths(path, manager.modules[module].path)
@@ -270,11 +276,25 @@ def update_single_isolated(module: str,
 
     if not os.path.isfile(path):
         graph = delete_module(module, graph, manager)
-        return module, None, graph, []
+        return SingleResult(module, path, False, None, graph, [])
 
     old_graph = graph
     manager.missing_modules = set()
-    graph = load_graph(sources, manager)
+    try:
+        graph = load_graph(sources, manager)
+    except CompileError as err:
+        # Parse error somewhere in the program -- a blocker
+        assert err.module_with_blocker
+        if err.module_with_blocker != module:
+            path = manager.modules[module].path
+            del manager.modules[module]
+            graph = old_graph.copy()
+            if module in graph:
+                del graph[module]
+            remaining_modules = [(module, path)]
+        else:
+            remaining_modules = []
+        return SingleResult(err.module_with_blocker, path, True, None, graph, remaining_modules)
 
     # Find any other modules brought in by imports.
     changed_modules = get_all_changed_modules(module, path, old_graph, graph)
@@ -300,12 +320,11 @@ def update_single_isolated(module: str,
     try:
         state.semantic_analysis()
     except CompileError as err:
-        # TODO: What if there are multiple changed modules?
         # There was a blocking error, so module AST is incomplete. Restore old modules.
         manager.modules.clear()
         manager.modules.update(old_modules)
-        # TODO: Propagate remaining modules
-        raise err
+        del graph[module]
+        return SingleResult(module, path, True, None, graph, remaining_modules)
     state.semantic_analysis_pass_three()
     state.semantic_analysis_apply_patches()
 
@@ -323,7 +342,7 @@ def update_single_isolated(module: str,
 
     graph[module] = state
 
-    return module, state.tree, graph, remaining_modules
+    return SingleResult(module, path, False, state.tree, graph, remaining_modules)
 
 
 def assert_equivalent_paths(path1: str, path2: str) -> None:
