@@ -118,7 +118,7 @@ class FineGrainedBuildManager:
         changed_modules = changed_modules + self.stale
         if DEBUG:
             changed_ids = [id for id, _ in changed_modules]
-            print('==== update %s ====' % changed_ids)
+            print('==== update %s ====' % str(changed_ids).strip('[]'))
             if self.blocking_errors:
                 print('existing blockers: %s' % [id for id, _ in self.blocking_errors])
         if self.blocking_errors:
@@ -128,7 +128,7 @@ class FineGrainedBuildManager:
             while old_blockers:
                 next_id, next_path = old_blockers.pop()
                 if DEBUG:
-                    print('-- %s (blocking error) --' % next_id)
+                    print('-- %r -- (blocking error)' % next_id)
                 result, remaining = self.update_single(next_id, next_path)
                 changed_modules = [(id, path) for id, path in changed_modules if id != next_id]
                 changed_modules.extend(remaining)
@@ -139,7 +139,7 @@ class FineGrainedBuildManager:
         while changed_modules:
             id, path = changed_modules.pop(0)
             if DEBUG:
-                print('-- %s --' % id)
+                print('-- %r --' % id)
             result, remaining = self.update_single(id, path)
             changed_modules.extend(remaining)
             if self.blocking_errors:
