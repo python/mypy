@@ -2050,7 +2050,11 @@ def dump_graph(graph: Graph) -> None:
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
-    """Given some source files, load the full dependency graph."""
+    """Given some source files, load the full dependency graph.
+
+    As this may need to parse files, this can raise CompileError in case
+    there are syntax errors.
+    """
     graph = {}  # type: Graph
     # The deque is used to implement breadth-first traversal.
     # TODO: Consider whether to go depth-first instead.  This may
