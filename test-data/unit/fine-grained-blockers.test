@@ -236,3 +236,45 @@ a.py:1: error: invalid syntax
 ==
 b.py:3: error: Too many arguments for "f"
 a.py:3: error: Too many arguments for "g"
+
+[case testDeleteFileWithBlockingError]
+import a
+import b
+[file a.py]
+def f() -> None: pass
+[file b.py]
+import a
+a.f()
+[file a.py.2]
+x x
+[delete a.py.3]
+[out]
+==
+a.py:1: error: invalid syntax
+==
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+b.py:1: error: Cannot find module named 'a'
+
+[case testModifyFileWhileBlockingErrorElsewhere]
+import a
+import b
+[file a.py]
+[file b.py]
+import a
+[file a.py.2]
+x x
+[file b.py.3]
+import a
+a.f()
+1()
+[file a.py.4]
+[builtins fixtures/module.pyi]
+[out]
+==
+a.py:1: error: invalid syntax
+==
+a.py:1: error: invalid syntax
+==
+b.py:2: error: Module has no attribute "f"
+b.py:3: error: "int" not callable
