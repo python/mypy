@@ -79,6 +79,7 @@ TYPE_COMMENT_AST_ERROR = 'invalid type comment'
 
 def parse(source: Union[str, bytes],
           fnam: str,
+          module: Optional[str],
           errors: Optional[Errors] = None,
           options: Options = Options()) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
@@ -90,7 +91,7 @@ def parse(source: Union[str, bytes],
     if errors is None:
         errors = Errors()
         raise_on_error = True
-    errors.set_file(fnam, None)
+    errors.set_file(fnam, module)
     is_stub_file = fnam.endswith('.pyi')
     try:
         assert options.python_version[0] < 3 and not is_stub_file

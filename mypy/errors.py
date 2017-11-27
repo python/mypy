@@ -331,6 +331,13 @@ class Errors:
         """Are the any errors that are blockers?"""
         return any(err for err in self.error_info if err.blocker)
 
+    def blocker_module(self) -> Optional[str]:
+        """Return the module with a blocking error, or None if not possible."""
+        for err in self.error_info:
+            if err.blocker:
+                return err.module
+        return None
+
     def is_errors_for_file(self, file: str) -> bool:
         """Are there any errors for the given file?"""
         return file in self.error_files
@@ -340,7 +347,9 @@ class Errors:
 
         Render the messages suitable for displaying.
         """
-        raise CompileError(self.messages(), use_stdout=True)
+        raise CompileError(self.messages(),
+                           use_stdout=True,
+                           module_with_blocker=self.blocker_module())
 
     def messages(self) -> List[str]:
         """Return a string list that represents the error messages.
@@ -506,11 +515,17 @@ class CompileError(Exception):
 
     messages = None  # type: List[str]
     use_stdout = False
+    # Can be set in case there was a module with a blocking error
+    module_with_blocker = None  # type: Optional[str]
 
-    def __init__(self, messages: List[str], use_stdout: bool = False) -> None:
+    def __init__(self,
+                 messages: List[str],
+                 use_stdout: bool = False,
+                 module_with_blocker: Optional[str] = None) -> None:
         super().__init__('\n'.join(messages))
         self.messages = messages
         self.use_stdout = use_stdout
+        self.module_with_blocker = module_with_blocker
 
 
 class DecodeError(Exception):

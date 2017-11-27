@@ -46,6 +46,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     try:
         n = parse(bytes('\n'.join(testcase.input), 'ascii'),
                   fnam='main',
+                  module='__main__',
                   errors=None,
                   options=options)
         a = str(n).split('\n')
@@ -76,9 +77,11 @@ class ParseErrorSuite(DataSuite):
 def test_parse_error(testcase: DataDrivenTestCase) -> None:
     try:
         # Compile temporary file. The test file contains non-ASCII characters.
-        parse(bytes('\n'.join(testcase.input), 'utf-8'), INPUT_FILE_NAME, None, Options())
+        parse(bytes('\n'.join(testcase.input), 'utf-8'), INPUT_FILE_NAME, '__main__', None,
+              Options())
         raise AssertionFailure('No errors reported')
     except CompileError as e:
+        assert e.module_with_blocker == '__main__'
         # Verify that there was a compile error and that the error messages
         # are equivalent.
         assert_string_arrays_equal(

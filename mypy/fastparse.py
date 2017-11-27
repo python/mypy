@@ -68,6 +68,7 @@ TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
 
 def parse(source: Union[str, bytes],
           fnam: str,
+          module: Optional[str],
           errors: Optional[Errors] = None,
           options: Options = Options()) -> MypyFile:
 
@@ -80,7 +81,7 @@ def parse(source: Union[str, bytes],
     if errors is None:
         errors = Errors()
         raise_on_error = True
-    errors.set_file(fnam, None)
+    errors.set_file(fnam, module)
     is_stub_file = fnam.endswith('.pyi')
     try:
         if is_stub_file:
@@ -97,7 +98,7 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg)
+        errors.report(e.lineno, e.offset, e.msg, blocker=True)
         tree = MypyFile([], [], False, set())
 
     if raise_on_error and errors.is_errors():
