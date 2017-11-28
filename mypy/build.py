@@ -89,6 +89,11 @@ class BuildSource:
         self.module = module or '__main__'
         self.text = text
 
+    def __repr__(self) -> str:
+        return '<BuildSource path=%r module=%r text=%s>' % (self.path,
+                                                            self.module,
+                                                            bool(self.text))
+
 
 class BuildSourceSet:
     """Efficiently test a file's membership in the set of build sources."""
