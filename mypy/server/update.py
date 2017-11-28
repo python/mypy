@@ -92,7 +92,7 @@ class FineGrainedBuildManager:
         self.previous_targets_with_errors = manager.errors.targets()
         # Modules that had blocking errors in the previous run.
         # TODO: Handle blocking errors in the initial build
-        self.blocking_errors = []  # type: List[Tuple[str, str]]
+        self.blocking_error = None  # type: Optional[Tuple[str, str]]
         # Module that we haven't processed yet but that are known to be stale.
         self.stale = []  # type: List[Tuple[str, str]]
         mark_all_meta_as_memory_only(graph, manager)
@@ -121,22 +121,21 @@ class FineGrainedBuildManager:
         if DEBUG:
             changed_ids = [id for id, _ in changed_modules]
             print('==== update %s ====' % str(changed_ids).strip('[]'))
-            if self.blocking_errors:
-                print('existing blockers: %s' % [id for id, _ in self.blocking_errors])
-        if self.blocking_errors:
+            if self.blocking_error:
+                print('existing blocker: %s' % self.blocking_error[0])
+        if self.blocking_error:
             # Handle blocking errors first. We'll exit as soon as we find a
-            # modul that still has blocking errors.
-            old_blockers = self.blocking_errors[:]
-            while old_blockers:
-                next_id, next_path = old_blockers.pop()
+            # module that still has blocking errors.
+            while self.blocking_error:
+                next_id, next_path = self.blocking_error
+                self.blocking_error = None
                 if DEBUG:
                     print('-- %r -- (blocking error)' % next_id)
                 result, remaining, next_id = self.update_single(next_id, next_path)
                 changed_modules = [(id, path) for id, path in changed_modules if id != next_id]
                 changed_modules = dedupe_modules(changed_modules + remaining)
-                if self.blocking_errors:
+                if self.blocking_error:
                     self.stale = changed_modules
-                    self.blocking_errors.extend(old_blockers)
                     return result
         while changed_modules:
             id, path = changed_modules.pop(0)
@@ -146,7 +145,7 @@ class FineGrainedBuildManager:
             changed_modules = [(id, path) for id, path in changed_modules
                                if id != next_id]
             changed_modules = dedupe_modules(changed_modules + remaining)
-            if self.blocking_errors:
+            if self.blocking_error:
                 self.stale = changed_modules
                 return result
         return result
@@ -183,10 +182,10 @@ class FineGrainedBuildManager:
         if isinstance(result, BlockedUpdate):
             module, path, remaining = result
             self.previous_modules = get_module_to_path_map(manager)
-            self.blocking_errors = [(module, path)]
+            self.blocking_error = (module, path)
             return manager.errors.messages(), remaining, result.module
         module, path, tree, graph, remaining = result
-        self.blocking_errors = []
+        self.blocking_error = None
 
         if module not in old_snapshots:
             old_snapshots[module] = {}
