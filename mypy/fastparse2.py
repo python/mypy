@@ -104,7 +104,7 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg)
+        errors.report(e.lineno, e.offset, e.msg, blocker=True)
         tree = MypyFile([], [], False, set())
 
     if raise_on_error and errors.is_errors():
@@ -151,7 +151,7 @@ class ASTConverter(ast27.NodeTransformer):
         self.errors = errors
 
     def fail(self, msg: str, line: int, column: int) -> None:
-        self.errors.report(line, column, msg)
+        self.errors.report(line, column, msg, blocker=True)
 
     def generic_visit(self, node: ast27.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))

@@ -112,7 +112,7 @@ def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -
         typ = ast3.parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
         if errors is not None:
-            errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR)
+            errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR, blocker=True)
             return None
         else:
             raise
@@ -159,7 +159,7 @@ class ASTConverter(ast3.NodeTransformer):
         self.errors = errors
 
     def fail(self, msg: str, line: int, column: int) -> None:
-        self.errors.report(line, column, msg)
+        self.errors.report(line, column, msg, blocker=True)
 
     def generic_visit(self, node: ast3.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))
@@ -1014,7 +1014,7 @@ class TypeConverter(ast3.NodeTransformer):
 
     def fail(self, msg: str, line: int, column: int) -> None:
         if self.errors:
-            self.errors.report(line, column, msg)
+            self.errors.report(line, column, msg, blocker=True)
 
     def visit_raw_str(self, s: str) -> Type:
         # An escape hatch that allows the AST walker in fastparse2 to
