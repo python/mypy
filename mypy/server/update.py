@@ -116,43 +116,38 @@ class FineGrainedBuildManager:
         Returns:
             A list of errors.
         """
+        assert changed_modules, 'No changed modules'
+
+        # Reset global caches for the new build.
         find_module_clear_caches()
 
         changed_modules = dedupe_modules(changed_modules + self.stale)
-        changed_set = {m[0] for m in changed_modules}
+        initial_set = {m[0] for m in changed_modules}
         if DEBUG:
             changed_ids = [id for id, _ in changed_modules]
             print('==== update %s ====' % str(changed_ids).strip('[]'))
-            if self.blocking_error:
-                print('existing blocker: %s' % self.blocking_error[0])
+
         if self.blocking_error:
             # Handle blocking errors first. We'll exit as soon as we find a
             # module that still has blocking errors.
-            while self.blocking_error:
-                next_id, next_path = self.blocking_error
-                self.blocking_error = None
-                if next_id not in self.previous_modules and next_id not in changed_set:
-                    print('skip %r (module not in import graph)' % next_id)
-                    break
-                if DEBUG:
-                    print('-- %r -- (blocking error)' % next_id)
-                result, remaining, next_id = self.update_single(next_id, next_path)
-                changed_modules = [(id, path) for id, path in changed_modules if id != next_id]
-                changed_modules = dedupe_modules(changed_modules + remaining)
-                if self.blocking_error:
-                    self.stale = changed_modules
-                    return result
-        while changed_modules:
-            id, path = changed_modules.pop(0)
             if DEBUG:
-                print('-- %r --' % id)
-            result, remaining, next_id = self.update_single(id, path)
+                print('existing blocker: %s' % self.blocking_error[0])
+            changed_modules = dedupe_modules([self.blocking_error] + changed_modules)
+            self.blocking_error = None
+
+        while changed_modules:
+            next_id, next_path = changed_modules.pop(0)
+            if next_id not in self.previous_modules and next_id not in initial_set:
+                 print('skip %r (module not in import graph)' % next_id)
+                 continue
+            result, remaining, next_id = self.update_single(next_id, next_path)
             changed_modules = [(id, path) for id, path in changed_modules
                                if id != next_id]
             changed_modules = dedupe_modules(changed_modules + remaining)
             if self.blocking_error:
                 self.stale = changed_modules
                 return result
+
         return result
 
     def update_single(self, module: str, path: str) -> Tuple[List[str],
@@ -170,6 +165,9 @@ class FineGrainedBuildManager:
             - Remaining modules to process as (module id, path) tuples
             - Module which was actually processed
         """
+        if DEBUG:
+            print('--- update single %r ---' % module)
+
         # TODO: If new module brings in other modules, we parse some files multiple times.
         manager = self.manager
         previous_modules = self.previous_modules
