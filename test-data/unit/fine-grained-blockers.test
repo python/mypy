@@ -310,3 +310,59 @@ import blocker2
 <ROOT>/test-data/unit/lib-stub/blocker2.pyi:2: error: 'continue' outside loop
 ==
 a.py:1: error: "int" not callable
+
+[case testFixingBlockingErrorTriggersDeletion1]
+import a
+
+def g(x: a.A) -> None:
+    x.f()
+[file a.py]
+class A:
+    def f(self) -> None: pass
+[delete a.py.2]
+[file a.py.3]
+class A: pass
+[builtins fixtures/module.pyi]
+[out]
+==
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+main:4: error: "A" has no attribute "f"
+
+[case testFixingBlockingErrorTriggersDeletion2]
+from a import A
+
+def g(x: A) -> None:
+    x.f()
+[file a.py]
+class A:
+    def f(self) -> None: pass
+[delete a.py.2]
+[file a.py.3]
+[builtins fixtures/module.pyi]
+[out]
+==
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+main:1: error: Module 'a' has no attribute 'A'
+
+[case testFixingBlockingErrorBringsInAnotherModuleWithBlocker]
+import a
+[file a.py]
+[file a.py.2]
+x y
+[file a.py.3]
+import blocker
+1()
+[file a.py.4]
+import sys
+1()
+[out]
+==
+a.py:1: error: invalid syntax
+==
+<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax
+==
+a.py:2: error: "int" not callable
