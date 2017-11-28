@@ -117,7 +117,8 @@ class FineGrainedBuildManager:
         """
         find_module_clear_caches()
 
-        changed_modules = changed_modules + self.stale
+        changed_modules = dedupe_modules(changed_modules + self.stale)
+        changed_set = {m[0] for m in changed_modules}
         if DEBUG:
             changed_ids = [id for id, _ in changed_modules]
             print('==== update %s ====' % str(changed_ids).strip('[]'))
@@ -129,6 +130,9 @@ class FineGrainedBuildManager:
             while self.blocking_error:
                 next_id, next_path = self.blocking_error
                 self.blocking_error = None
+                if next_id not in self.previous_modules and next_id not in changed_set:
+                    print('skip %r (module not in import graph)' % next_id)
+                    break
                 if DEBUG:
                     print('-- %r -- (blocking error)' % next_id)
                 result, remaining, next_id = self.update_single(next_id, next_path)
