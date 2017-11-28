@@ -97,6 +97,7 @@ class FineGrainedBuildManager:
         self.stale = []  # type: List[Tuple[str, str]]
         mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
+        self.type_maps = extract_type_maps(graph)
 
     def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
         """Update previous build result by processing changed modules.
@@ -188,6 +189,7 @@ class FineGrainedBuildManager:
             self.previous_modules = get_module_to_path_map(manager)
             self.blocking_error = (module, path)
             return manager.errors.messages(), remaining, result.module
+        assert isinstance(result, NormalUpdate)  # Work around #4124
         module, path, tree, graph, remaining = result
         self.blocking_error = None
 
@@ -218,6 +220,7 @@ class FineGrainedBuildManager:
         mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
         self.previous_modules = get_module_to_path_map(manager)
+        self.type_maps = extract_type_maps(graph)
 
         return manager.errors.messages(), remaining, module
 
@@ -827,3 +830,7 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
         node = node.func
     assert isinstance(node, (FuncDef, MypyFile)), 'unexpected type: %s' % type(node)
     return [DeferredNode(node, active_class_name, active_class)]
+
+
+def extract_type_maps(graph: Graph) -> Dict[str, Dict[Expression, Type]]:
+    return {id: state.type_map() for id, state in graph.items()}

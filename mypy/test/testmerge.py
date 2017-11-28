@@ -79,13 +79,13 @@ class ASTMergeSuite(DataSuite):
         target_path = os.path.join(test_temp_dir, 'target.py')
         shutil.copy(os.path.join(test_temp_dir, 'target.py.next'), target_path)
 
-        a.extend(self.dump(manager, fine_grained_manager.graph, kind))
+        a.extend(self.dump(manager, kind))
         old_subexpr = get_subexpressions(manager.modules['target'])
 
         a.append('==>')
 
         new_file, new_types = self.build_increment(fine_grained_manager, 'target', target_path)
-        a.extend(self.dump(manager, fine_grained_manager.graph, kind))
+        a.extend(self.dump(manager, kind))
 
         for expr in old_subexpr:
             # Verify that old AST nodes are removed from the expression type map.
@@ -120,12 +120,11 @@ class ASTMergeSuite(DataSuite):
                                                             Dict[Expression, Type]]:
         manager.update([(module_id, path)])
         module = manager.manager.modules[module_id]
-        type_map = manager.graph[module_id].type_map()
+        type_map = manager.type_maps[module_id]
         return module, type_map
 
     def dump(self,
              manager: BuildManager,
-             graph: Dict[str, State],
              kind: str) -> List[str]:
         modules = manager.modules
         if kind == AST:
