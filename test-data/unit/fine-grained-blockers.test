@@ -255,6 +255,9 @@ a.py:1: error: invalid syntax
 main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 b.py:1: error: Cannot find module named 'a'
+-- TODO: Remove redundant errors
+main:1: error: Cannot find module named 'a'
+b.py:1: error: Cannot find module named 'a'
 
 [case testModifyFileWhileBlockingErrorElsewhere]
 import a
@@ -291,20 +294,5 @@ def f() -> None: pass
 [out]
 ==
 <ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax
-==
-a.py:1: error: "int" not callable
-x
-
-[case testImportBringsAnotherFileWithSemanticAnalysisBlockingError]
-import a
-[file a.py]
-[file a.py.2]
-import blocker2
-1()
-[file a.py.3]
-1()
-[out]
-==
-<ROOT>/test-data/unit/lib-stub/blocker2.pyi:2: error: 'continue' outside loop
 ==
 a.py:1: error: "int" not callable

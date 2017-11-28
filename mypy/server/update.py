@@ -51,7 +51,7 @@ from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, N
 
 from mypy.build import (
     BuildManager, State, BuildSource, Graph, load_graph, SavedCache, CacheMeta,
-    cache_meta_from_dict
+    cache_meta_from_dict, find_module_clear_caches
 )
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
@@ -78,16 +78,16 @@ DEBUG = False
 class FineGrainedBuildManager:
     def __init__(self,
                  manager: BuildManager,
-                 graph: Dict[str, State]) -> None:
+                 graph: Graph) -> None:
         """Initialize fine-grained build based on a batch build.
 
         Args:
             manager: State of the build (mutated by this class)
-            graph: Additional state of the build
+            graph: Additional state of the build (only read to initialize state)
         """
         self.manager = manager
         self.options = manager.options
-        self.graph = graph
+        self.previous_modules = get_module_to_path_map(manager)
         self.deps = get_all_dependencies(manager, graph, self.options)
         self.previous_targets_with_errors = manager.errors.targets()
         # Modules that had blocking errors in the previous run.
@@ -115,6 +115,8 @@ class FineGrainedBuildManager:
         Returns:
             A list of errors.
         """
+        find_module_clear_caches()
+
         changed_modules = changed_modules + self.stale
         if DEBUG:
             changed_ids = [id for id, _ in changed_modules]
@@ -129,9 +131,9 @@ class FineGrainedBuildManager:
                 next_id, next_path = old_blockers.pop()
                 if DEBUG:
                     print('-- %r -- (blocking error)' % next_id)
-                result, remaining = self.update_single(next_id, next_path)
+                result, remaining, next_id = self.update_single(next_id, next_path)
                 changed_modules = [(id, path) for id, path in changed_modules if id != next_id]
-                changed_modules.extend(remaining)
+                changed_modules = dedupe_modules(changed_modules + remaining)
                 if self.blocking_errors:
                     self.stale = changed_modules
                     self.blocking_errors.extend(old_blockers)
@@ -140,15 +142,18 @@ class FineGrainedBuildManager:
             id, path = changed_modules.pop(0)
             if DEBUG:
                 print('-- %r --' % id)
-            result, remaining = self.update_single(id, path)
-            changed_modules.extend(remaining)
+            result, remaining, next_id = self.update_single(id, path)
+            changed_modules = [(id, path) for id, path in changed_modules
+                               if id != next_id]
+            changed_modules = dedupe_modules(changed_modules + remaining)
             if self.blocking_errors:
                 self.stale = changed_modules
                 return result
         return result
 
     def update_single(self, module: str, path: str) -> Tuple[List[str],
-                                                             List[Tuple[str, str]]]:
+                                                             List[Tuple[str, str]],
+                                                             str]:
         """Update a single modified module.
 
         If the module contains imports of previously unseen modules, only process one of
@@ -159,27 +164,28 @@ class FineGrainedBuildManager:
 
             - Error messages
             - Remaining modules to process as (module id, path) tuples
+            - Module which was actually processed
         """
         # TODO: If new module brings in other modules, we parse some files multiple times.
         manager = self.manager
-        graph = self.graph
+        previous_modules = self.previous_modules
 
         # Record symbol table snaphots of old versions of changed modules.
-        old_snapshots = {}
+        old_snapshots = {}  # type: Dict[str, Optional[Dict[str, SnapshotItem]]]
         if module in manager.modules:
             snapshot = snapshot_symbol_table(module, manager.modules[module].names)
             old_snapshots[module] = snapshot
         else:
-            old_snapshots[module] = {}
+            old_snapshots[module] = None
 
         manager.errors.reset()
-        result = update_single_isolated(module, path, manager, graph)
-        module, path, is_blocker, tree, graph, remaining = result
-        if is_blocker:
-            self.graph = graph
+        result = update_single_isolated(module, path, manager, previous_modules)
+        if isinstance(result, BlockedUpdate):
+            module, path, remaining = result
+            self.previous_modules = get_module_to_path_map(manager)
             self.blocking_errors = [(module, path)]
-            return manager.errors.messages(), remaining
-
+            return manager.errors.messages(), remaining, result.module
+        module, path, tree, graph, remaining = result
         self.blocking_errors = []
 
         if module not in old_snapshots:
@@ -208,9 +214,9 @@ class FineGrainedBuildManager:
                 state.tree = tree
         mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
-        self.graph = graph
+        self.previous_modules = get_module_to_path_map(manager)
 
-        return manager.errors.messages(), remaining
+        return manager.errors.messages(), remaining, module
 
 
 def mark_all_meta_as_memory_only(graph: Dict[str, State],
@@ -232,28 +238,34 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
     return deps
 
 
-# The result of update_single_isolated, with these items:
+# The result of update_single_isolated when no blockers, with these items:
 #
 # - Id of the changed module (can be different from the module argument)
 # - Path of the changed module
-# - Was there a blocking error in the changed module?
 # - New AST for the changed module (None if module was deleted or on blocker)
 # - The entire updated build graph
 # - Remaining changed modules that are not processed yet as (module id, path)
 #   tuples (non-empty if the original changed module imported other new
 #   modules)
-SingleResult = NamedTuple('SingleResult', [('module', str),
+NormalUpdate = NamedTuple('NormalUpdate', [('module', str),
                                            ('path', str),
-                                           ('is_blocker', bool),
                                            ('tree', Optional[MypyFile]),
                                            ('graph', Graph),
                                            ('remaining', List[Tuple[str, str]])])
+
+# The result of update_single_isolated when there is a blocking error. Items
+# are similar to NormalUpdate (but there are fewer).
+BlockedUpdate = NamedTuple('BlockedUpdate', [('module', str),
+                                             ('path', str),
+                                             ('remaining', List[Tuple[str, str]])])
+
+UpdateResult = Union[NormalUpdate, BlockedUpdate]
 
 
 def update_single_isolated(module: str,
                            path: str,
                            manager: BuildManager,
-                           graph: Dict[str, State]) -> SingleResult:
+                           previous_modules: Dict[str, str]) -> UpdateResult:
     """Build a new version of one changed module only.
 
     Don't propagate changes to elsewhere in the program. Raise CompleError on
@@ -271,14 +283,9 @@ def update_single_isolated(module: str,
         assert_equivalent_paths(path, manager.modules[module].path)
 
     old_modules = dict(manager.modules)
-    sources = get_sources(graph, [(module, path)])
+    sources = get_sources(previous_modules, [(module, path)])
     invalidate_stale_cache_entries(manager.saved_cache, [(module, path)])
 
-    if not os.path.isfile(path):
-        graph = delete_module(module, graph, manager)
-        return SingleResult(module, path, False, None, graph, [])
-
-    old_graph = graph
     manager.missing_modules = set()
     try:
         graph = load_graph(sources, manager)
@@ -288,16 +295,17 @@ def update_single_isolated(module: str,
         if err.module_with_blocker != module:
             path = manager.modules[module].path
             del manager.modules[module]
-            graph = old_graph.copy()
-            if module in graph:
-                del graph[module]
             remaining_modules = [(module, path)]
         else:
             remaining_modules = []
-        return SingleResult(err.module_with_blocker, path, True, None, graph, remaining_modules)
+        return BlockedUpdate(err.module_with_blocker, path, remaining_modules)
+
+    if not os.path.isfile(path):
+        graph = delete_module(module, graph, manager)
+        return NormalUpdate(module, path, None, graph, [])
 
     # Find any other modules brought in by imports.
-    changed_modules = get_all_changed_modules(module, path, old_graph, graph)
+    changed_modules = get_all_changed_modules(module, path, previous_modules, graph)
     # If there are multiple modules to process, only process one of them and return the
     # remaining ones to the caller.
     if len(changed_modules) > 1:
@@ -324,7 +332,7 @@ def update_single_isolated(module: str,
         manager.modules.clear()
         manager.modules.update(old_modules)
         del graph[module]
-        return SingleResult(module, path, True, None, graph, remaining_modules)
+        return BlockedUpdate(module, path, remaining_modules)
     state.semantic_analysis_pass_three()
     state.semantic_analysis_apply_patches()
 
@@ -342,7 +350,7 @@ def update_single_isolated(module: str,
 
     graph[module] = state
 
-    return SingleResult(module, path, False, state.tree, graph, remaining_modules)
+    return NormalUpdate(module, path, state.tree, graph, remaining_modules)
 
 
 def assert_equivalent_paths(path1: str, path2: str) -> None:
@@ -357,7 +365,9 @@ def delete_module(module_id: str,
     # TODO: Deletion of a package
     # TODO: Remove deps for the module (this only affects memory use, not correctness)
     new_graph = graph.copy()
-    del new_graph[module_id]
+    if module_id in new_graph:
+        # TODO: Why would this ever be reached?
+        del new_graph[module_id]
     del manager.modules[module_id]
     if module_id in manager.saved_cache:
         del manager.saved_cache[module_id]
@@ -369,22 +379,42 @@ def delete_module(module_id: str,
     return new_graph
 
 
-def get_sources(graph: Graph, changed_modules: List[Tuple[str, str]]) -> List[BuildSource]:
-    sources = [BuildSource(st.path, st.id, None) for st in graph.values()]
+def dedupe_modules(modules: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+    seen = set()  # type: Set[str]
+    result = []
+    for id, path in modules:
+        if id not in seen:
+            seen.add(id)
+            result.append((id, path))
+    return result
+
+
+def get_module_to_path_map(manager: BuildManager) -> Dict[str, str]:
+    return {module: node.path
+            for module, node in manager.modules.items()}
+
+
+def get_sources(modules: Dict[str, str],
+                changed_modules: List[Tuple[str, str]]) -> List[BuildSource]:
+    # TODO: Race condition when reading from the file system; we should only read each
+    #       bit of external state once during a build to have a consistent view of the world
+    sources = [BuildSource(path, id, None)
+               for id, path in modules.items()
+               if os.path.isfile(path)]
     for id, path in changed_modules:
-        if id not in graph:
+        if os.path.isfile(path) and id not in modules:
             sources.append(BuildSource(path, id, None))
     return sources
 
 
 def get_all_changed_modules(root_module: str,
                             root_path: str,
-                            old_graph: Dict[str, State],
+                            old_modules: Dict[str, str],
                             new_graph: Dict[str, State]) -> List[Tuple[str, str]]:
     changed_set = {root_module}
     changed_modules = [(root_module, root_path)]
     for st in new_graph.values():
-        if st.id not in old_graph and st.id not in changed_set:
+        if st.id not in old_modules and st.id not in changed_set:
             changed_set.add(st.id)
             assert st.path
             changed_modules.append((st.id, st.path))
@@ -507,7 +537,7 @@ def update_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
 
 
 def calculate_active_triggers(manager: BuildManager,
-                              old_snapshots: Dict[str, Dict[str, SnapshotItem]],
+                              old_snapshots: Dict[str, Optional[Dict[str, SnapshotItem]]],
                               new_modules: Dict[str, Optional[MypyFile]]) -> Set[str]:
     """Determine activated triggers by comparing old and new symbol tables.
 
@@ -517,6 +547,9 @@ def calculate_active_triggers(manager: BuildManager,
     names = set()  # type: Set[str]
     for id in new_modules:
         snapshot1 = old_snapshots[id]
+        if snapshot1 is None:
+            names.add(id)
+            snapshot1 = {}
         new = new_modules[id]
         if new is None:
             snapshot2 = snapshot_symbol_table(id, SymbolTable())
@@ -638,9 +671,9 @@ def reprocess_nodes(manager: BuildManager,
 
     Return fired triggers.
     """
-    if module_id not in manager.saved_cache:
+    if module_id not in manager.saved_cache or module_id not in graph:
         if DEBUG:
-            print('%s not in saved cache (blocking errors?)' % module_id)
+            print('%s not in saved cache or graph (blocking errors or deleted?)' % module_id)
         return set()
 
     file_node = manager.modules[module_id]
