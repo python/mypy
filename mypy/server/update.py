@@ -140,19 +140,22 @@ class FineGrainedBuildManager:
             if next_id not in self.previous_modules and next_id not in initial_set:
                  print('skip %r (module not in import graph)' % next_id)
                  continue
-            result, remaining, next_id = self.update_single(next_id, next_path)
+            result = self.update_single(next_id, next_path)
+            messages, remaining, (next_id, next_path), blocker = result
             changed_modules = [(id, path) for id, path in changed_modules
                                if id != next_id]
             changed_modules = dedupe_modules(changed_modules + remaining)
-            if self.blocking_error:
+            if blocker:
+                self.blocking_error = (next_id, next_path)
                 self.stale = changed_modules
-                return result
+                return messages
 
-        return result
+        return messages
 
     def update_single(self, module: str, path: str) -> Tuple[List[str],
                                                              List[Tuple[str, str]],
-                                                             str]:
+                                                             Tuple[str, str],
+                                                             bool]:
         """Update a single modified module.
 
         If the module contains imports of previously unseen modules, only process one of
@@ -163,7 +166,8 @@ class FineGrainedBuildManager:
 
             - Error messages
             - Remaining modules to process as (module id, path) tuples
-            - Module which was actually processed
+            - Module which was actually processed as (id, path) tuple
+            - Whether there was a blocking error in the module
         """
         if DEBUG:
             print('--- update single %r ---' % module)
@@ -184,11 +188,9 @@ class FineGrainedBuildManager:
             # Blocking error -- just give up
             module, path, remaining = result
             self.previous_modules = get_module_to_path_map(manager)
-            self.blocking_error = (module, path)
-            return manager.errors.messages(), remaining, result.module
+            return manager.errors.messages(), remaining, (module, path), True
         assert isinstance(result, NormalUpdate)  # Work around #4124
         module, path, tree, graph, remaining = result
-        self.blocking_error = None
 
         # TODO: What to do with stale dependencies?
         triggered = calculate_active_triggers(manager, old_snapshots, {module: tree})
@@ -216,7 +218,7 @@ class FineGrainedBuildManager:
         self.previous_modules = get_module_to_path_map(manager)
         self.type_maps = extract_type_maps(graph)
 
-        return manager.errors.messages(), remaining, module
+        return manager.errors.messages(), remaining, (module, path), False
 
 
 def mark_all_meta_as_memory_only(graph: Dict[str, State],
@@ -321,7 +323,7 @@ def update_single_isolated(module: str,
             del manager.modules[id]
             del graph[id]
         if DEBUG:
-            print('--> %s (newly imported)' % module)
+            print('--> %r (newly imported)' % module)
     else:
         remaining_modules = []
 
