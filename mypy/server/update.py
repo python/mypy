@@ -138,8 +138,8 @@ class FineGrainedBuildManager:
         while changed_modules:
             next_id, next_path = changed_modules.pop(0)
             if next_id not in self.previous_modules and next_id not in initial_set:
-                 print('skip %r (module not in import graph)' % next_id)
-                 continue
+                print('skip %r (module not in import graph)' % next_id)
+                continue
             result = self.update_single(next_id, next_path)
             messages, remaining, (next_id, next_path), blocker = result
             changed_modules = [(id, path) for id, path in changed_modules
