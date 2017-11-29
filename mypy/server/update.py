@@ -93,6 +93,7 @@ class FineGrainedBuildManager:
         # Modules that had blocking errors in the previous run.
         # TODO: Handle blocking errors in the initial build
         self.blocking_errors = []  # type: List[str]
+        mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
 
     def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
@@ -112,58 +113,94 @@ class FineGrainedBuildManager:
         Returns:
             A list of errors.
         """
-        changed_ids = [id for id, _ in changed_modules]
         if DEBUG:
+            changed_ids = [id for id, _ in changed_modules]
             print('==== update %s ====' % changed_ids)
+        while changed_modules:
+            id, path = changed_modules.pop(0)
+            if DEBUG:
+                print('-- %s --' % id)
+            result, remaining = self.update_single(id, path)
+            changed_modules.extend(remaining)
+        return result
+
+    def update_single(self, module: str, path: str) -> Tuple[List[str],
+                                                             List[Tuple[str, str]]]:
+        """Update a single modified module.
+
+        If the module contains imports of previously unseen modules, only process one of
+        the new modules and return the remaining work to be done.
+
+        Returns:
+            Tuple with these items:
+
+            - Error messages
+            - Remaining modules to process as (module id, path) tuples
+        """
+        # TODO: If new module brings in other modules, we parse some files multiple times.
         if self.blocking_errors:
             # TODO: Relax this requirement
-            assert self.blocking_errors == changed_ids
+            assert self.blocking_errors == [module]
         manager = self.manager
         graph = self.graph
 
-        # Record symbol table snaphots of old versions of changed moduiles.
+        # Record symbol table snaphots of old versions of changed modules.
         old_snapshots = {}
-        for id, _ in changed_modules:
-            if id in manager.modules:
-                snapshot = snapshot_symbol_table(id, manager.modules[id].names)
-                old_snapshots[id] = snapshot
-            else:
-                old_snapshots[id] = {}
+        if module in manager.modules:
+            snapshot = snapshot_symbol_table(module, manager.modules[module].names)
+            old_snapshots[module] = snapshot
+        else:
+            old_snapshots[module] = {}
 
         manager.errors.reset()
         try:
-            new_modules, graph = build_incremental_step(manager, changed_modules, graph)
+            module, tree, graph, remaining = update_single_isolated(module, path, manager, graph)
         except CompileError as err:
-            self.blocking_errors = changed_ids
-            return err.messages
+            # TODO: Remaining modules
+            self.blocking_errors = [module]
+            return err.messages, []
         self.blocking_errors = []
 
+        if module not in old_snapshots:
+            old_snapshots[module] = {}
+
         # TODO: What to do with stale dependencies?
-        triggered = calculate_active_triggers(manager, old_snapshots, new_modules)
+        triggered = calculate_active_triggers(manager, old_snapshots, {module: tree})
         if DEBUG:
             print('triggered:', sorted(triggered))
-        update_dependencies(new_modules, self.deps, graph, self.options)
+        update_dependencies({module: tree}, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
-                                             set(changed_ids),
+                                             {module},
                                              self.previous_targets_with_errors,
                                              graph)
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = manager.errors.targets()
-        for id, _ in changed_modules:
-            # If deleted, module won't be in the graph.
-            if id in graph:
-                # Generate metadata so that we can reuse the AST in the next run.
-                graph[id].write_cache()
+        # If deleted, module won't be in the graph.
+        if module in graph:
+            # Generate metadata so that we can reuse the AST in the next run.
+            graph[module].write_cache()
         for id, state in graph.items():
             # Look up missing ASTs from saved cache.
             if state.tree is None and id in manager.saved_cache:
                 meta, tree, type_map = manager.saved_cache[id]
                 state.tree = tree
+        mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
         self.graph = graph
 
-        return manager.errors.messages()
+        return manager.errors.messages(), remaining
+
+
+def mark_all_meta_as_memory_only(graph: Dict[str, State],
+                                 manager: BuildManager) -> None:
+    for id, state in graph.items():
+        if id in manager.saved_cache:
+            # Don't look at disk.
+            old = manager.saved_cache[id]
+            manager.saved_cache[id] = (old[0]._replace(memory_only=True),
+                                       old[1],
+                                       old[2])
 
 
 def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
@@ -174,56 +211,70 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
     return deps
 
 
-def build_incremental_step(manager: BuildManager,
-                           changed_modules: List[Tuple[str, str]],
-                           graph: Dict[str, State]) -> Tuple[Dict[str, Optional[MypyFile]],
-                                                             Graph]:
-    """Build new versions of changed modules only.
+def update_single_isolated(module: str,
+                           path: str,
+                           manager: BuildManager,
+                           graph: Dict[str, State]) -> Tuple[str,
+                                                             Optional[MypyFile],
+                                                             Graph,
+                                                             List[Tuple[str, str]]]:
+    """Build a new version of one changed module only.
 
-    Raise CompleError on encountering a blocking error.
+    Don't propagate changes to elsewhere in the program. Raise CompleError on
+    encountering a blocking error.
 
-    Return the new ASTs for the changed modules and the entire build graph.
+    Args:
+        module: Changed module (modified, created or deleted)
+        path: Path of the changed module
+        manager: Build manager
+        graph: Build graph
+
+    Returns:
+        A 4-tuple with these items:
+
+        - Id of the changed module (can be different from the argument)
+        - New AST for the changed module (None if module was deleted)
+        - The entire build graph
+        - Remaining changed modules that are not processed yet as (module id, path)
+          tuples (non-empty if the original changed module imported other new
+          modules)
     """
-    # TODO: Handle multiple changed modules per step
-    assert len(changed_modules) == 1
-    id, path = changed_modules[0]
-    if id in manager.modules:
-        path1 = os.path.normpath(path)
-        path2 = os.path.normpath(manager.modules[id].path)
-        assert path1 == path2, '%s != %s' % (path1, path2)
+    if module in manager.modules:
+        assert_equivalent_paths(path, manager.modules[module].path)
 
     old_modules = dict(manager.modules)
-
-    sources = get_sources(graph, changed_modules)
-    changed_set = {id for id, _ in changed_modules}
-
-    invalidate_stale_cache_entries(manager.saved_cache, changed_modules)
+    sources = get_sources(graph, [(module, path)])
+    invalidate_stale_cache_entries(manager.saved_cache, [(module, path)])
 
     if not os.path.isfile(path):
-        graph = delete_module(id, graph, manager)
-        return {id: None}, graph
+        graph = delete_module(module, graph, manager)
+        return module, None, graph, []
 
     old_graph = graph
     manager.missing_modules = set()
     graph = load_graph(sources, manager)
 
     # Find any other modules brought in by imports.
-    for st in graph.values():
-        if st.id not in old_graph and st.id not in changed_set:
-            changed_set.add(st.id)
-            assert st.path
-            changed_modules.append((st.id, st.path))
-    # TODO: Handle multiple changed modules per step
-    assert len(changed_modules) == 1, changed_modules
+    changed_modules = get_all_changed_modules(module, path, old_graph, graph)
+    # If there are multiple modules to process, only process one of them and return the
+    # remaining ones to the caller.
+    if len(changed_modules) > 1:
+        remaining_modules = changed_modules[:-1]
+        # The remaining modules haven't been processed yet so drop them.
+        for id, _ in remaining_modules:
+            del manager.modules[id]
+            del graph[id]
+        module, path = changed_modules[-1]
+        if DEBUG:
+            print('--> %s (newly imported)' % module)
+    else:
+        remaining_modules = []
 
-    state = graph[id]
+    state = graph[module]
 
-    # Parse file and run first pass of semantic analysis.
+    # Process the changed file.
     state.parse_file()
-
     # TODO: state.fix_suppressed_dependencies()?
-
-    # Run remaining passes of semantic analysis.
     try:
         state.semantic_analysis()
     except CompileError as err:
@@ -231,13 +282,14 @@ def build_incremental_step(manager: BuildManager,
         # There was a blocking error, so module AST is incomplete. Restore old modules.
         manager.modules.clear()
         manager.modules.update(old_modules)
+        # TODO: Propagate remaining modules
         raise err
     state.semantic_analysis_pass_three()
     state.semantic_analysis_apply_patches()
 
     # Merge old and new ASTs.
     assert state.tree is not None, "file must be at least parsed"
-    new_modules = {id: state.tree}  # type: Dict[str, Optional[MypyFile]]
+    new_modules = {module: state.tree}  # type: Dict[str, Optional[MypyFile]]
     replace_modules_with_new_variants(manager, graph, old_modules, new_modules)
 
     # Perform type checking.
@@ -246,11 +298,16 @@ def build_incremental_step(manager: BuildManager,
     state.finish_passes()
     # TODO: state.write_cache()?
     # TODO: state.mark_as_rechecked()?
-    # TODO: Store new State in graph, as it has updated dependencies etc.
 
-    graph[id] = state
+    graph[module] = state
 
-    return new_modules, graph
+    return module, state.tree, graph, remaining_modules
+
+
+def assert_equivalent_paths(path1: str, path2: str) -> None:
+    path1 = os.path.normpath(path1)
+    path2 = os.path.normpath(path2)
+    assert path1 == path2, '%s != %s' % (path1, path2)
 
 
 def delete_module(module_id: str,
@@ -279,6 +336,20 @@ def get_sources(graph: Graph, changed_modules: List[Tuple[str, str]]) -> List[Bu
     return sources
 
 
+def get_all_changed_modules(root_module: str,
+                            root_path: str,
+                            old_graph: Dict[str, State],
+                            new_graph: Dict[str, State]) -> List[Tuple[str, str]]:
+    changed_set = {root_module}
+    changed_modules = [(root_module, root_path)]
+    for st in new_graph.values():
+        if st.id not in old_graph and st.id not in changed_set:
+            changed_set.add(st.id)
+            assert st.path
+            changed_modules.append((st.id, st.path))
+    return changed_modules
+
+
 def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
     """Preserve every module with an AST in the graph, including modules with errors."""
     saved_cache = {}
@@ -301,6 +372,8 @@ def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
                     state.source_hash,
                     state.ignore_all,
                     manager)
+            else:
+                meta = meta._replace(memory_only=True)
             saved_cache[id] = (meta, state.tree, state.type_map())
     return saved_cache
 
