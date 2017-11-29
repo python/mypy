@@ -310,15 +310,16 @@ def update_single_isolated(module: str,
 
     # Find any other modules brought in by imports.
     changed_modules = get_all_changed_modules(module, path, previous_modules, graph)
-    # If there are multiple modules to process, only process one of them and return the
-    # remaining ones to the caller.
+    # If there are multiple modules to process, only process the last one of them and return
+    # the remaining ones to the caller. Often the last one is going to be imported by
+    # one of the prior modules, making it more efficient to process it first.
     if len(changed_modules) > 1:
-        remaining_modules = changed_modules[:-1]
+        module, path = changed_modules.pop()
+        remaining_modules = changed_modules
         # The remaining modules haven't been processed yet so drop them.
         for id, _ in remaining_modules:
             del manager.modules[id]
             del graph[id]
-        module, path = changed_modules[-1]
         if DEBUG:
             print('--> %s (newly imported)' % module)
     else:
@@ -419,8 +420,8 @@ def get_all_changed_modules(root_module: str,
     changed_modules = [(root_module, root_path)]
     for st in new_graph.values():
         if st.id not in old_modules and st.id not in changed_set:
-            changed_set.add(st.id)
             assert st.path
+            changed_set.add(st.id)
             changed_modules.append((st.id, st.path))
     return changed_modules
 
