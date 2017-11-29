@@ -64,6 +64,21 @@ mypy_path = ./tmp/dir:./tmp/other_dir
 main:3: error: Cannot find module named 'pkg_or_ns.b'
 main:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
+[case testConflictingPackageAndNamespaceImportPackageLaterInPath]
+# flags: --config-file tmp/mypy.ini
+import pkg_or_ns.a
+import pkg_or_ns.b
+[file mypy.ini]
+[[mypy]
+namespace_packages = True
+mypy_path = ./tmp/other_dir:./tmp/dir
+[file dir/pkg_or_ns/__init__.py]
+[file dir/pkg_or_ns/a.py]
+[file other_dir/pkg_or_ns/b.py]
+[out]
+main:3: error: Cannot find module named 'pkg_or_ns.b'
+main:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
 [case testConflictingModuleAndNamespace]
 # flags: --config-file tmp/mypy.ini
 from mod_or_ns import a
@@ -76,7 +91,19 @@ mypy_path = ./tmp/dir:./tmp/other_dir
 a = None
 [file other_dir/mod_or_ns/b.py]
 
-[case testeNamespaceInsidePackage]
+[case testConflictingModuleAndNamespaceModuleLaterInPath]
+# flags: --config-file tmp/mypy.ini
+from mod_or_ns import a
+from mod_or_ns import b # E: Module 'mod_or_ns' has no attribute 'b'
+[file mypy.ini]
+[[mypy]
+namespace_packages = True
+mypy_path = ./tmp/other_dir:./tmp/dir
+[file dir/mod_or_ns.py]
+a = None
+[file other_dir/mod_or_ns/b.py]
+
+[case testNamespaceInsidePackage]
 # flags: --config-file tmp/mypy.ini
 from pkg.ns import a
 [file mypy.ini]

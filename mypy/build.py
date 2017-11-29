@@ -960,7 +960,11 @@ class ModuleDiscovery:
                 path = os.path.join(path_item, last_comp + ext)
                 ctx.maybe_add_path(path, ModuleType.module)
 
-            if self.namespaces_allowed:
+        if self.namespaces_allowed and not ctx.paths:
+            for path_item in paths:
+                if is_pkg_path(path_item):
+                    path_item = dirname(path_item)
+
                 path = os.path.join(path_item, last_comp)
                 ctx.maybe_add_path(path + os.sep, ModuleType.namespace)
 
