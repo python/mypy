@@ -405,8 +405,9 @@ def get_sources(modules: Dict[str, str],
                 changed_modules: List[Tuple[str, str]]) -> List[BuildSource]:
     # TODO: Race condition when reading from the file system; we should only read each
     #       bit of external state once during a build to have a consistent view of the world
+    items = sorted(modules.items(), key=lambda x: x[0])
     sources = [BuildSource(path, id, None)
-               for id, path in modules.items()
+               for id, path in items
                if os.path.isfile(path)]
     for id, path in changed_modules:
         if os.path.isfile(path) and id not in modules:
