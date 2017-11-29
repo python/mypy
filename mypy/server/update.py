@@ -90,7 +90,7 @@ class FineGrainedBuildManager:
         self.previous_modules = get_module_to_path_map(manager)
         self.deps = get_all_dependencies(manager, graph, self.options)
         self.previous_targets_with_errors = manager.errors.targets()
-        # Modules that had blocking errors in the previous run.
+        # Module, if any, that had blocking errors in the last run as (id, path) tuple.
         # TODO: Handle blocking errors in the initial build
         self.blocking_error = None  # type: Optional[Tuple[str, str]]
         # Module that we haven't processed yet but that are known to be stale.
@@ -122,10 +122,10 @@ class FineGrainedBuildManager:
         find_module_clear_caches()
 
         changed_modules = dedupe_modules(changed_modules + self.stale)
-        initial_set = {m[0] for m in changed_modules}
+        initial_set = {id for id, _ in changed_modules}
         if DEBUG:
-            changed_ids = [id for id, _ in changed_modules]
-            print('==== update %s ====' % str(changed_ids).strip('[]'))
+            print('==== update %s ====' % ', '.join(repr(id)
+                                                    for id, _ in changed_modules))
 
         if self.blocking_error:
             # Handle blocking errors first. We'll exit as soon as we find a
@@ -172,17 +172,16 @@ class FineGrainedBuildManager:
         manager = self.manager
         previous_modules = self.previous_modules
 
-        # Record symbol table snaphots of old versions of changed modules.
-        old_snapshots = {}  # type: Dict[str, Optional[Dict[str, SnapshotItem]]]
+        # Record symbol table snaphot of old version the changed module.
+        old_snapshots = {}  # type: Dict[str, Dict[str, SnapshotItem]]
         if module in manager.modules:
             snapshot = snapshot_symbol_table(module, manager.modules[module].names)
             old_snapshots[module] = snapshot
-        else:
-            old_snapshots[module] = None
 
         manager.errors.reset()
         result = update_single_isolated(module, path, manager, previous_modules)
         if isinstance(result, BlockedUpdate):
+            # Blocking error -- just give up
             module, path, remaining = result
             self.previous_modules = get_module_to_path_map(manager)
             self.blocking_error = (module, path)
@@ -190,9 +189,6 @@ class FineGrainedBuildManager:
         assert isinstance(result, NormalUpdate)  # Work around #4124
         module, path, tree, graph, remaining = result
         self.blocking_error = None
-
-        if module not in old_snapshots:
-            old_snapshots[module] = {}
 
         # TODO: What to do with stale dependencies?
         triggered = calculate_active_triggers(manager, old_snapshots, {module: tree})
@@ -246,7 +242,7 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
 #
 # - Id of the changed module (can be different from the module argument)
 # - Path of the changed module
-# - New AST for the changed module (None if module was deleted or on blocker)
+# - New AST for the changed module (None if module was deleted)
 # - The entire updated build graph
 # - Remaining changed modules that are not processed yet as (module id, path)
 #   tuples (non-empty if the original changed module imported other new
@@ -297,6 +293,10 @@ def update_single_isolated(module: str,
         # Parse error somewhere in the program -- a blocker
         assert err.module_with_blocker
         if err.module_with_blocker != module:
+            # Blocker is in a fresh module. Delete the state of the original target module
+            # since it will be stale.
+            #
+            # TODO: It would be more efficient to store the original target module
             path = manager.modules[module].path
             del manager.modules[module]
             remaining_modules = [(module, path)]
@@ -542,7 +542,7 @@ def update_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
 
 
 def calculate_active_triggers(manager: BuildManager,
-                              old_snapshots: Dict[str, Optional[Dict[str, SnapshotItem]]],
+                              old_snapshots: Dict[str, Dict[str, SnapshotItem]],
                               new_modules: Dict[str, Optional[MypyFile]]) -> Set[str]:
     """Determine activated triggers by comparing old and new symbol tables.
 
@@ -551,7 +551,7 @@ def calculate_active_triggers(manager: BuildManager,
     """
     names = set()  # type: Set[str]
     for id in new_modules:
-        snapshot1 = old_snapshots[id]
+        snapshot1 = old_snapshots.get(id)
         if snapshot1 is None:
             names.add(id)
             snapshot1 = {}

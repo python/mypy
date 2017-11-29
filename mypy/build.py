@@ -90,9 +90,9 @@ class BuildSource:
         self.text = text
 
     def __repr__(self) -> str:
-        return '<BuildSource path=%r module=%r text=%s>' % (self.path,
-                                                            self.module,
-                                                            bool(self.text))
+        return '<BuildSource path=%r module=%r has_text=%s>' % (self.path,
+                                                                self.module,
+                                                                self.text is not None)
 
 
 class BuildSourceSet:
