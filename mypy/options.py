@@ -180,6 +180,11 @@ class Options:
         return 'Options({})'.format(pprint.pformat(self.__dict__))
 
     def clone_for_module(self, module: str) -> 'Options':
+        """Create an Options object that incorporates per-module options.
+
+        NOTE: Once this method is called all Options objects should be
+        considered read-only, else the caching might be incorrect.
+        """
         res = self.clone_cache.get(module)
         if res is not None:
             return res
