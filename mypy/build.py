@@ -174,7 +174,9 @@ def build(sources: List[BuildSource],
         for source in sources:
             if source.path:
                 # Include directory of the program file in the module search path.
-                dir = remove_cwd_prefix_from_path(dirname(source.path))
+                dir = remove_cwd_prefix_from_path(
+                    dirname(source.path), namespaces_allowed=options.namespace_packages
+                )
                 if dir not in lib_path:
                     lib_path.insert(0, dir)
 
@@ -711,21 +713,23 @@ class BuildManager:
         return self.stats
 
 
-def remove_cwd_prefix_from_path(p: str) -> str:
+def remove_cwd_prefix_from_path(p: str, namespaces_allowed: bool) -> str:
     """Remove current working directory prefix from p, if present.
 
     Also crawl up until a directory without __init__.py is found.
 
     If the result would be empty, return '.' instead.
     """
+    def is_pkg(p: str) -> bool:
+        return (os.path.isfile(os.path.join(p, '__init__.py'))
+                or os.path.isfile(os.path.join(p, '__init__.pyi')))
+
     cur = os.getcwd()
     # Add separator to the end of the path, unless one is already present.
     if basename(cur) != '':
         cur += os.sep
     # Compute root path.
-    while (p and
-           (os.path.isfile(os.path.join(p, '__init__.py')) or
-            os.path.isfile(os.path.join(p, '__init__.pyi')))):
+    while (p and (namespaces_allowed or is_pkg(p))):
         dir, base = os.path.split(p)
         if not base:
             break
