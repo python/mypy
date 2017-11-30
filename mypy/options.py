@@ -46,7 +46,7 @@ class Options:
 
     def __init__(self) -> None:
         # Cache for clone_for_module()
-        self.clone_cache = {}
+        self.clone_cache = {}  # type: Dict[str, Options]
 
         # -- build options --
         self.build_type = BuildType.STANDARD
