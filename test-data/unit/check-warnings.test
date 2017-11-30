@@ -197,3 +197,15 @@ class Test(object):
             return None
 [builtins fixtures/list.pyi]
 [out]
+
+[case testReturnAnyDeferred]
+# flags: --warn-return-any
+def foo(a1: A) -> int:
+    if a1._x:
+        return 1
+    n = 1
+    return n
+
+class A:
+    def __init__(self, x: int) -> None:
+        self._x = x
