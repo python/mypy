@@ -20,6 +20,7 @@ import json
 import os.path
 import re
 import site
+import stat
 import sys
 import time
 from os.path import dirname, basename
@@ -950,13 +951,14 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # TODO: May need to take more build options into account
     meta_json, data_json = get_cache_names(id, path, manager)
     manager.trace('Looking for {} at {}'.format(id, meta_json))
-    if not os.path.exists(meta_json):
+    try:
+        with open(meta_json, 'r') as f:
+            meta_str = f.read()
+            manager.trace('Meta {} {}'.format(id, meta_str.rstrip()))
+            meta = json.loads(meta_str)  # TODO: Errors
+    except IOError:
         manager.log('Could not load cache for {}: could not find {}'.format(id, meta_json))
         return None
-    with open(meta_json, 'r') as f:
-        meta_str = f.read()
-        manager.trace('Meta {} {}'.format(id, meta_str.rstrip()))
-        meta = json.loads(meta_str)  # TODO: Errors
     if not isinstance(meta, dict):
         manager.log('Could not load cache for {}: meta cache is not a dict: {}'
                     .format(id, repr(meta)))
@@ -1056,11 +1058,10 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
     # TODO: Share stat() outcome with find_module()
     path = os.path.abspath(path)
-    # TODO: Don't use isfile() but check st.st_mode
-    if not os.path.isfile(path):
+    st = manager.get_stat(path)  # TODO: Errors
+    if not stat.S_ISREG(st.st_mode):
         manager.log('Metadata abandoned for {}: file {} does not exist'.format(id, path))
         return None
-    st = manager.get_stat(path)  # TODO: Errors
     size = st.st_size
     if size != meta.size:
         manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
