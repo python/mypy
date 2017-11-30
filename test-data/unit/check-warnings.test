@@ -209,5 +209,3 @@ def foo(a1: A) -> int:
 class A:
     def __init__(self, x: int) -> None:
         self._x = x
-
-
