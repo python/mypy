@@ -105,7 +105,7 @@ def fail() -> None:
     raise AssertionFailure()
 
 
-class ProtoTestCase:
+class BaseTestCase:
     def __init__(self, name: str) -> None:
         self.name = name
         self.old_cwd = None  # type: Optional[str]
@@ -129,7 +129,7 @@ class ProtoTestCase:
         self.tmpdir = None
 
 
-class TestCase(ProtoTestCase):
+class TestCase(BaseTestCase):
     def __init__(self, name: str, suite: 'Optional[Suite]' = None,
                  func: Optional[Callable[[], None]] = None) -> None:
         super().__init__(name)

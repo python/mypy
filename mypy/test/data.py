@@ -11,7 +11,7 @@ import pytest  # type: ignore  # no pytest in typeshed
 from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 import typing
 
-from mypy.myunit import ProtoTestCase
+from mypy.myunit import BaseTestCase
 from mypy.test.config import test_data_prefix, test_temp_dir
 
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -188,7 +188,7 @@ def parse_test_cases(
     return out
 
 
-class DataDrivenTestCase(ProtoTestCase):
+class DataDrivenTestCase(BaseTestCase):
     input = None  # type: List[str]
     output = None  # type: List[str]  # Output for the first pass
     output2 = None  # type: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
