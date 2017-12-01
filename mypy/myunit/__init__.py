@@ -1,13 +1,12 @@
 import importlib
 import os
 import sys
-import re
 import tempfile
 import time
 import traceback
 
-from typing import List, Tuple, Any, Callable, Union, cast, Optional
-from types import TracebackType
+from typing import List, Tuple, Any, Callable, Union, cast, Optional, Iterable
+from types import TracebackType, MethodType
 
 
 # TODO remove global state
@@ -106,6 +105,9 @@ def fail() -> None:
 
 
 class BaseTestCase:
+    """Common base class for _MyUnitTestCase and DataDrivenTestCase.
+
+    Handles temporary folder creation and deletion"""
     def __init__(self, name: str) -> None:
         self.name = name
         self.old_cwd = None  # type: Optional[str]
@@ -129,57 +131,50 @@ class BaseTestCase:
         self.tmpdir = None
 
 
-class TestCase(BaseTestCase):
-    def __init__(self, name: str, suite: 'Optional[Suite]' = None,
-                 func: Optional[Callable[[], None]] = None) -> None:
-        super().__init__(name)
-        self.func = func
-        self.suite = suite
+class _MyUnitTestCase(BaseTestCase):
+    """A concrete, myunit-specific test case, a wrapper around a method to run."""
 
-    def run(self) -> None:
-        if self.func:
-            self.func()
+    def __init__(self, name: str, suite: 'Suite', run: Callable[[], None]) -> None:
+        super().__init__(name)
+        self.run = run
+        self.suite = suite
 
     def set_up(self) -> None:
         super().set_up()
-        if self.suite:
-            self.suite.set_up()
+        self.suite.set_up()
 
     def tear_down(self) -> None:
-        if self.suite:
-            self.suite.tear_down()
+        self.suite.tear_down()  # No-op
         super().tear_down()
 
 
 class Suite:
+    """Abstract class for myunit test suites - node in the tree whose leaves are _MyUnitTestCases.
+
+    The children `cases` are looked up during __init__, looking for attributes named test_*
+    they are either no-arg methods or of a pair (name, Suite)."""
+
+    cases = None  # type: Iterable[Union[_MyUnitTestCase, Tuple[str, Suite]]]
+
     def __init__(self) -> None:
         self.prefix = typename(type(self)) + '.'
-        # Each test case is either a TestCase object or (str, function).
-        self._test_cases = []  # type: List[Any]
-        self.init()
+        self.cases = []
+        for m in dir(self):
+            if m.startswith('test_'):
+                t = getattr(self, m)
+                if isinstance(t, Suite):
+                    self.cases.append((m + '.', t))
+                else:
+                    assert isinstance(t, MethodType)
+                    self.cases.append(_MyUnitTestCase(m, self, t))
 
     def set_up(self) -> None:
+        """Set up fixtures"""
         pass
 
     def tear_down(self) -> None:
+        # This method is not overridden in practice
         pass
-
-    def init(self) -> None:
-        for m in dir(self):
-            if m.startswith('test'):
-                t = getattr(self, m)
-                if isinstance(t, Suite):
-                    self.add_test((m + '.', t))
-                else:
-                    self.add_test(TestCase(m, self, getattr(self, m)))
-
-    def add_test(self, test: Union[TestCase,
-                                   Tuple[str, Callable[[], None]],
-                                   Tuple[str, 'Suite']]) -> None:
-        self._test_cases.append(test)
-
-    def cases(self) -> List[Any]:
-        return self._test_cases[:]
 
     def skip(self) -> None:
         raise SkipTestCaseException()
@@ -261,10 +256,11 @@ def main(args: Optional[List[str]] = None) -> None:
         sys.exit(1)
 
 
-def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
+def run_test_recursive(test: Union[_MyUnitTestCase, Tuple[str, Suite], ListSuite],
+                       num_total: int, num_fail: int, num_skip: int,
                        prefix: str, depth: int) -> Tuple[int, int, int]:
-    """The first argument may be TestCase, Suite or (str, Suite)."""
-    if isinstance(test, TestCase):
+    """The first argument may be _MyUnitTestCase, Suite or (str, Suite)."""
+    if isinstance(test, _MyUnitTestCase):
         name = prefix + test.name
         for pattern in patterns:
             if match_pattern(name, pattern):
@@ -286,7 +282,7 @@ def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
             suite = test
             suite_prefix = test.prefix
 
-        for stest in suite.cases():
+        for stest in suite.cases:
             new_prefix = prefix
             if depth > 0:
                 new_prefix = prefix + suite_prefix
@@ -295,14 +291,14 @@ def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
     return num_total, num_fail, num_skip
 
 
-def run_single_test(name: str, test: Any) -> Tuple[bool, bool]:
+def run_single_test(name: str, test: _MyUnitTestCase) -> Tuple[bool, bool]:
     if is_verbose:
         sys.stderr.write(name)
         sys.stderr.flush()
 
     time0 = time.time()
     test.set_up()  # FIX: check exceptions
-    exc_traceback = None  # type: Any
+    exc_traceback = None  # type: TracebackType
     try:
         test.run()
     except BaseException as e:
