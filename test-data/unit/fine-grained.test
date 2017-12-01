@@ -1037,7 +1037,7 @@ a.py:3: error: Cannot find module named 'b'
 ==
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 
-[case testDecoratorSpecialCase]
+[case testDecoratorSpecialCase1]
 import a
 [file a.py]
 import contextlib
@@ -1085,3 +1085,36 @@ a.py:10: error: Cannot find module named 'b'
 a.py:11: error: Too many arguments for "h"
 ==
 a.py:11: error: Too many arguments for "h"
+
+[case testDecoratorSpecialCase2]
+import a
+[file a.py]
+from contextlib import contextmanager
+from typing import Iterator, List
+import b
+
+@contextmanager
+def f(x: List[int]) -> Iterator[None]:
+    x.append(1)
+    yield
+[file b.py]
+[delete b.py.2]
+[file b.py.3]
+[file a.py.4]
+from contextlib import contextmanager
+from typing import Iterator, List
+import b
+
+@contextmanager
+def f(x: List[int]) -> Iterator[None]:
+    x.append(1)
+    yield
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
+[out]
+==
+a.py:1: error: Cannot find module named 'b'
+a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+a.py:3: error: Cannot find module named 'b'
+==
+==

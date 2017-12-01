@@ -8,7 +8,7 @@ from typing import Union, Iterator, Optional
 
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
-    ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, UNBOUND_IMPORTED, GDEF
+    ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, UNBOUND_IMPORTED, GDEF
 )
 from mypy.traverser import TraverserVisitor
 
@@ -51,6 +51,12 @@ class NodeStripVisitor(TraverserVisitor):
         node.type = node.unanalyzed_type
         with self.enter_class(node.info) if node.info else nothing():
             super().visit_func_def(node)
+
+    def visit_decorator(self, node: Decorator) -> None:
+        node.var.type = None
+        for expr in node.decorators:
+            expr.accept(self)
+        # TODO: If not a top-level decorator, also recurside in node.func
 
     @contextlib.contextmanager
     def enter_class(self, info: TypeInfo) -> Iterator[None]:
