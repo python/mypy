@@ -110,6 +110,7 @@ class NodeStripVisitor(TraverserVisitor):
                 del self.type.names[node.name]
             node.is_inferred_def = False
             node.def_var = None
+        super().visit_member_expr(node)
 
     def is_duplicate_attribute_def(self, node: MemberExpr) -> bool:
         if not node.is_inferred_def:
