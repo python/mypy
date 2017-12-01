@@ -189,6 +189,11 @@ def parse_test_cases(
 
 
 class DataDrivenTestCase(BaseTestCase):
+    """Holds parsed data and handles directory setup and teardown for MypyDataCase."""
+
+    # TODO: rename to ParsedTestCase or merge with MypyDataCase (yet avoid multiple inheritance)
+    # TODO: only create files on setup, not during parsing
+
     input = None  # type: List[str]
     output = None  # type: List[str]  # Output for the first pass
     output2 = None  # type: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
@@ -233,8 +238,8 @@ class DataDrivenTestCase(BaseTestCase):
         self.deleted_paths = deleted_paths
         self.native_sep = native_sep
 
-    def set_up(self) -> None:
-        super().set_up()
+    def setup(self) -> None:
+        super().setup()
         encountered_files = set()
         self.clean_up = []
         for paths in self.deleted_paths.values():
@@ -276,7 +281,7 @@ class DataDrivenTestCase(BaseTestCase):
             os.mkdir(dir)
             return dirs
 
-    def tear_down(self) -> None:
+    def teardown(self) -> None:
         # First remove files.
         for is_dir, path in reversed(self.clean_up):
             if not is_dir:
@@ -310,7 +315,7 @@ class DataDrivenTestCase(BaseTestCase):
                     if path.startswith(test_temp_dir + '/') and os.path.isdir(path):
                         shutil.rmtree(path)
                     raise
-        super().tear_down()
+        super().teardown()
 
     def find_steps(self) -> List[List[FileOperation]]:
         """Return a list of descriptions of file operations for each incremental step.
@@ -546,9 +551,11 @@ def pytest_addoption(parser: Any) -> None:
 
 # This function name is special to pytest.  See
 # http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
-def pytest_pycollect_makeitem(collector: pytest.Collector, name: str,
-                              obj: object) -> 'Optional[pytest.Class]':  # type: ignore
-    """Called by pytest on each object in modules configured in conftest.py files"""
+def pytest_pycollect_makeitem(collector: Any, name: str,
+                              obj: object) -> 'Optional[Any]':
+    """Called by pytest on each object in modules configured in conftest.py files.
+
+    collector is pytest.Collector, returns Optional[pytest.Class]"""
 
     if isinstance(obj, type):
         # Only classes derived from DataSuite contain test cases, not the DataSuite class itself
@@ -607,10 +614,10 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
         self.parent.obj(update_data=update_data).run_case(self.case)
 
     def setup(self) -> None:
-        self.case.set_up()
+        self.case.setup()
 
     def teardown(self) -> None:
-        self.case.tear_down()
+        self.case.teardown()
 
     def reportinfo(self) -> Tuple[str, int, str]:
         return self.case.file, self.case.line, self.case.name

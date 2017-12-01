@@ -113,13 +113,13 @@ class BaseTestCase:
         self.old_cwd = None  # type: Optional[str]
         self.tmpdir = None  # type: Optional[tempfile.TemporaryDirectory[str]]
 
-    def set_up(self) -> None:
+    def setup(self) -> None:
         self.old_cwd = os.getcwd()
         self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-')
         os.chdir(self.tmpdir.name)
         os.mkdir('tmp')
 
-    def tear_down(self) -> None:
+    def teardown(self) -> None:
         assert self.old_cwd is not None and self.tmpdir is not None, \
             "test was not properly set up"
         os.chdir(self.old_cwd)
@@ -139,13 +139,13 @@ class _MyUnitTestCase(BaseTestCase):
         self.run = run
         self.suite = suite
 
-    def set_up(self) -> None:
-        super().set_up()
+    def setup(self) -> None:
+        super().setup()
         self.suite.set_up()
 
-    def tear_down(self) -> None:
+    def teardown(self) -> None:
         self.suite.tear_down()  # No-op
-        super().tear_down()
+        super().teardown()
 
 
 class Suite:
@@ -297,8 +297,8 @@ def run_single_test(name: str, test: _MyUnitTestCase) -> Tuple[bool, bool]:
         sys.stderr.flush()
 
     time0 = time.time()
-    test.set_up()  # FIX: check exceptions
-    exc_traceback = None  # type: TracebackType
+    test.setup()  # FIX: check exceptions
+    exc_traceback = None  # type: Optional[TracebackType]
     try:
         test.run()
     except BaseException as e:
@@ -306,7 +306,7 @@ def run_single_test(name: str, test: _MyUnitTestCase) -> Tuple[bool, bool]:
             raise
         exc_type, exc_value, exc_traceback = sys.exc_info()
     finally:
-        test.tear_down()
+        test.teardown()
     times.append((time.time() - time0, name))
 
     if exc_traceback:
