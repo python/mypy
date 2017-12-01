@@ -971,3 +971,28 @@ def g() -> str: pass
 ==
 ==
 main:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testTwoPassTypeChecking]
+import a
+[file a.py]
+[file a.py.2]
+class A:
+    def __init__(self, b: B) -> None:
+        self.a = b.a
+
+class B:
+    def __init__(self) -> None:
+        self.a = int()
+[file a.py.3]
+class A:
+    def __init__(self, b: B) -> None:
+        self.a = b.a
+        reveal_type(self.a) # E
+
+class B:
+    def __init__(self) -> None:
+        self.a = int()
+[out]
+==
+==
+a.py:4: error: Revealed type is 'builtins.int'

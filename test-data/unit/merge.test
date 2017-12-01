@@ -964,7 +964,7 @@ target:
 ==>
 __main__:
     TypeVar: Var<0>
-    f: UNBOUND_IMPORTED
+    f: Var<4>
     x: Var<2>
     y: Var<3>
 target:
@@ -987,7 +987,7 @@ target:
 __main__:
     T: TypeVarExpr<0>
     TypeVar: Var<1>
-    f: UNBOUND_IMPORTED
+    f: Var<3>
 target:
 
 [case testRefreshNamedTuple_symtable]
@@ -1008,7 +1008,7 @@ target:
 __main__:
     N: TypeInfo<0>
     NamedTuple: Var<1>
-    f: UNBOUND_IMPORTED
+    f: Var<3>
 target:
 
 [case testRefreshAttributeDefinedInClassBody_typeinfo]
