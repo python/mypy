@@ -996,3 +996,15 @@ class B:
 ==
 ==
 a.py:4: error: Revealed type is 'builtins.int'
+
+[case testStripRevealType]
+import a
+reveal_type(a.f())
+[file a.py]
+def f() -> int: pass
+[file a.py.2]
+def f() -> str: pass
+[out]
+main:2: error: Revealed type is 'builtins.int'
+==
+main:2: error: Revealed type is 'builtins.str'
