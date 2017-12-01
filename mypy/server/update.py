@@ -98,6 +98,8 @@ class FineGrainedBuildManager:
         mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
         self.type_maps = extract_type_maps(graph)
+        # Active triggers during the last update
+        self.triggered = []  # type: List[str]
 
     def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
         """Update previous build result by processing changed modules.
@@ -121,6 +123,7 @@ class FineGrainedBuildManager:
         # Reset global caches for the new build.
         find_module_clear_caches()
 
+        self.triggered = []
         changed_modules = dedupe_modules(changed_modules + self.stale)
         initial_set = {id for id, _ in changed_modules}
         if DEBUG:
@@ -195,7 +198,10 @@ class FineGrainedBuildManager:
         # TODO: What to do with stale dependencies?
         triggered = calculate_active_triggers(manager, old_snapshots, {module: tree})
         if DEBUG:
-            print('triggered:', sorted(triggered))
+            filtered = [trigger for trigger in triggered
+                        if not trigger.endswith('__>')]
+            print('triggered:', sorted(filtered))
+        self.triggered.extend(triggered)
         update_dependencies({module: tree}, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              {module},

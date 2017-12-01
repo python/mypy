@@ -1024,6 +1024,9 @@ def f() -> Iterator[None]:
 [file b.py.3]
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
+[triggered]
+2: <b>
+3: <b>
 [out]
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 ==
@@ -1033,3 +1036,52 @@ main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.Non
 a.py:3: error: Cannot find module named 'b'
 ==
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
+
+[case testDecoratorSpecialCase]
+import a
+[file a.py]
+import contextlib
+from typing import List, Iterator
+
+@contextlib.contextmanager
+def f(x: List[int]) -> Iterator[None]:
+    x.append(1)
+    yield
+
+def g() -> None:
+    import b
+    b.h(1)
+[file b.py]
+def h() -> None: pass
+[delete b.py.2]
+[file b.py.3]
+def h() -> None: pass
+[file a.py.4]
+import contextlib
+from typing import List, Iterator
+
+@contextlib.contextmanager
+def f(x: List[int]) -> Iterator[None]:
+    x.append(1)
+    yield
+
+def g() -> None:
+    import b
+    b.h(1)
+    pass
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
+[triggered]
+2: <b.h>, <b>
+3: <b.h>, <b>
+4:
+[out]
+a.py:11: error: Too many arguments for "h"
+==
+a.py:1: error: Cannot find module named 'b'
+a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+a.py:10: error: Cannot find module named 'b'
+==
+a.py:11: error: Too many arguments for "h"
+==
+a.py:11: error: Too many arguments for "h"

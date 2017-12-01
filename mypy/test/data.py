@@ -72,6 +72,7 @@ def parse_test_cases(
             deleted_paths = {}  # type: Dict[int, Set[str]]  # from run number of paths
             stale_modules = {}  # type: Dict[int, Set[str]]  # from run number to module names
             rechecked_modules = {}  # type: Dict[ int, Set[str]]  # from run number module names
+            triggered = []  # type: List[str]  # Active triggers (one line per incremental step)
             while i < len(p) and p[i].id != 'case':
                 if p[i].id == 'file' or p[i].id == 'outfile':
                     # Record an extra file needed for the test case.
@@ -149,6 +150,8 @@ def parse_test_cases(
                         output = [fix_win_path(line) for line in output]
                     tcout2[passnum] = output
                     ok = True
+                elif p[i].id == 'triggered' and p[i].arg is None:
+                    triggered = p[i].data
                 else:
                     raise ValueError(
                         'Invalid section header {} in {} at line {}'.format(
@@ -181,7 +184,8 @@ def parse_test_cases(
                 tc = DataDrivenTestCase(arg0, input, tcout, tcout2, path,
                                         p[i0].line, lastline, perform,
                                         files, output_files, stale_modules,
-                                        rechecked_modules, deleted_paths, native_sep)
+                                        rechecked_modules, deleted_paths, native_sep,
+                                        triggered)
                 out.append(tc)
         if not ok:
             raise ValueError(
@@ -222,6 +226,7 @@ class DataDrivenTestCase(TestCase):
                  expected_rechecked_modules: Dict[int, Set[str]],
                  deleted_paths: Dict[int, Set[str]],
                  native_sep: bool = False,
+                 triggered: Optional[List[str]] = None,
                  ) -> None:
         super().__init__(name)
         self.input = input
@@ -237,6 +242,7 @@ class DataDrivenTestCase(TestCase):
         self.expected_rechecked_modules = expected_rechecked_modules
         self.deleted_paths = deleted_paths
         self.native_sep = native_sep
+        self.triggered = triggered or []
 
     def set_up(self) -> None:
         super().set_up()
