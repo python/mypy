@@ -546,17 +546,25 @@ def pytest_addoption(parser: Any) -> None:
 
 # This function name is special to pytest.  See
 # http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
-def pytest_pycollect_makeitem(collector: Any, name: str, obj: Any) -> Any:
-    if not isinstance(obj, type) or not issubclass(obj, DataSuite):
-        return None
-    if obj is DataSuite:
-        return None
-    return MypyDataSuite(name, parent=collector)
+def pytest_pycollect_makeitem(collector: pytest.Collector, name: str,
+                              obj: object) -> 'Optional[pytest.Class]':  # type: ignore
+    """Called by pytest on each object in modules configured in conftest.py files"""
+
+    if isinstance(obj, type):
+        # Only classes derived from DataSuite contain test cases, not the DataSuite class itself
+        if issubclass(obj, DataSuite) and obj is not DataSuite:
+            # Non-None result means this obj is a test case
+            # result.collect will be called, with self.obj being obj
+            return MypyDataSuite(name, parent=collector)
+    return None
 
 
 class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
-    def collect(self) -> Iterator['MypyDataCase']:
-        cls = self.obj
+    def collect(self) -> Iterator[pytest.Item]:  # type: ignore
+        """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
+
+        # obj is the object for which pytest_pycollect_makeitem returned self.
+        cls = self.obj  # type: DataSuite
         for f in cls.files:
             for case in parse_test_cases(os.path.join(test_data_prefix, f),
                                          base_path=cls.base_path,
@@ -583,29 +591,29 @@ def has_stable_flags(testcase: DataDrivenTestCase) -> bool:
 
 
 class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
-    def __init__(self, name: str, parent: MypyDataSuite, obj: DataDrivenTestCase) -> None:
+    def __init__(self, name: str, parent: MypyDataSuite, case: DataDrivenTestCase) -> None:
         self.skip = False
         if name.endswith('-skip'):
             self.skip = True
             name = name[:-len('-skip')]
 
         super().__init__(name, parent)
-        self.obj = obj
+        self.case = case
 
     def runtest(self) -> None:
         if self.skip:
             pytest.skip()
         update_data = self.config.getoption('--update-data', False)
-        self.parent.obj(update_data=update_data).run_case(self.obj)
+        self.parent.obj(update_data=update_data).run_case(self.case)
 
     def setup(self) -> None:
-        self.obj.set_up()
+        self.case.set_up()
 
     def teardown(self) -> None:
-        self.obj.tear_down()
+        self.case.tear_down()
 
     def reportinfo(self) -> Tuple[str, int, str]:
-        return self.obj.file, self.obj.line, self.obj.name
+        return self.case.file, self.case.line, self.case.name
 
     def repr_failure(self, excinfo: Any) -> str:
         if excinfo.errisinstance(SystemExit):
@@ -618,7 +626,7 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
             self.parent._prunetraceback(excinfo)
             excrepr = excinfo.getrepr(style='short')
 
-        return "data: {}:{}:\n{}".format(self.obj.file, self.obj.line, excrepr)
+        return "data: {}:{}:\n{}".format(self.case.file, self.case.line, excrepr)
 
 
 class DataSuite:
