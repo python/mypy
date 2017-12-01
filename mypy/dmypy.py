@@ -238,7 +238,7 @@ def check_output(response: Dict[str, Any], quiet: bool) -> None:
 def show_stats(response: Mapping[str, object]) -> None:
     for key, value in sorted(response.items()):
         if key not in ('out', 'err'):
-            print("%20s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
+            print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
 
 
 @action(hang_parser)
