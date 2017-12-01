@@ -24,6 +24,7 @@ from mypy.options import Options
 
 from mypy import experiments
 from mypy import dmypy
+from mypy import dmypy_server
 
 # List of files that contain test case descriptions.
 files = [
@@ -63,7 +64,7 @@ class TypeCheckSuite(DataSuite):
                     raise ValueError(
                         'Output file {} exists though test case only has {} runs'.format(
                             file, num_steps))
-        self.server = None  # type: Optional[dmypy.Server]
+        self.server = None  # type: Optional[dmypy_server.Server]
         for step in range(1, num_steps + 1):
             self.run_case_once(testcase, step)
 
@@ -121,7 +122,7 @@ class TypeCheckSuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = self.parse_options(original_program_text, testcase, incremental_step)
         if incremental_step == 1:
-            self.server = dmypy.Server([])  # TODO: Fix ugly API
+            self.server = dmypy_server.Server([])  # TODO: Fix ugly API
             self.server.options = options
 
         assert self.server is not None  # Set in step 1 and survives into next steps
