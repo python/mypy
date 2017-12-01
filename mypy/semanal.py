@@ -312,7 +312,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         for d in file_node.defs:
             if isinstance(d, ClassDef):
                 self.refresh_class_def(d)
-            elif not isinstance(d, (FuncItem, Decorator)):
+            elif isinstance(d, Decorator):
+                self.visit_decorator(d, func_body=False)
+            elif not isinstance(d, FuncItem):
                 self.accept(d)
 
     def refresh_class_def(self, defn: ClassDef) -> None:
@@ -2880,7 +2882,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         self.fail(message, context)
         return [], [], False
 
-    def visit_decorator(self, dec: Decorator) -> None:
+    def visit_decorator(self, dec: Decorator, func_body: bool = True) -> None:
         for d in dec.decorators:
             d.accept(self)
         removed = []  # type: List[int]
@@ -2929,7 +2931,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 dec.var.is_initialized_in_class = True
                 self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec),
                                 dec)
-        if not no_type_check:
+        if not no_type_check and func_body:
             dec.func.accept(self)
         if dec.decorators and dec.var.is_property:
             self.fail('Decorated property not supported', dec)

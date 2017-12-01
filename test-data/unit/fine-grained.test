@@ -1008,3 +1008,28 @@ def f() -> str: pass
 main:2: error: Revealed type is 'builtins.int'
 ==
 main:2: error: Revealed type is 'builtins.str'
+
+[case testDecoratorTypeAfterReprocessing]
+import a
+reveal_type(a.f())
+[file a.py]
+from contextlib import contextmanager
+from typing import Iterator
+import b
+@contextmanager
+def f() -> Iterator[None]:
+    yield
+[file b.py]
+[delete b.py.2]
+[file b.py.3]
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
+[out]
+main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
+==
+a.py:1: error: Cannot find module named 'b'
+a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
+a.py:3: error: Cannot find module named 'b'
+==
+main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
