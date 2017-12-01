@@ -32,9 +32,9 @@ program_re = re.compile(r'\b_program.py\b')
 
 
 class PythonEvaluationSuite(DataSuite):
-    files = ['pythoneval.test', 'python2eval.test']  # type: typing.ClassVar[List[str]]
-    if sys.version_info.major == 3 and sys.version_info.minor >= 4:
-        files += ['pythoneval-asyncio.test']
+    files = ['pythoneval.test',
+             'python2eval.test',
+             'pythoneval-asyncio.test']  # type: typing.ClassVar[List[str]]
     base_path = test_temp_dir  # type: typing.ClassVar[str]
     optional_out = True  # type: typing.ClassVar[bool]
 
