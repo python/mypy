@@ -75,6 +75,9 @@ from mypy.server.trigger import make_trigger
 DEBUG = False
 
 
+MAX_ITER = 1000
+
+
 class FineGrainedBuildManager:
     def __init__(self,
                  manager: BuildManager,
@@ -603,11 +606,15 @@ def propagate_changes_using_dependencies(
         targets_with_errors: Set[str],
         modules: Iterable[str]) -> None:
     # TODO: Multiple type checking passes
-    # TODO: Restrict the number of iterations to some maximum to avoid infinite loops
+    num_iter = 0
 
     # Propagate changes until nothing visible has changed during the last
     # iteration.
     while triggered or targets_with_errors:
+        num_iter += 1
+        if num_iter > MAX_ITER:
+            raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
+
         todo = find_targets_recursive(triggered, deps, manager.modules, up_to_date_modules)
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
