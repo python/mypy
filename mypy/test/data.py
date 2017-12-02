@@ -6,9 +6,10 @@ import posixpath
 import re
 from os import remove, rmdir
 import shutil
+from abc import abstractmethod
 
 import pytest  # type: ignore  # no pytest in typeshed
-from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
+from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 
 from mypy.myunit import BaseTestCase
 from mypy.test.config import test_data_prefix, test_temp_dir
@@ -570,13 +571,14 @@ class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
         """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
 
         # obj is the object for which pytest_pycollect_makeitem returned self.
-        cls = self.obj  # type: DataSuite
-        for f in cls.files:
+        suite = self.obj  # type: DataSuite
+        for f in suite.files:
             for case in parse_test_cases(os.path.join(test_data_prefix, f),
-                                         base_path=cls.base_path,
-                                         optional_out=cls.optional_out,
-                                         native_sep=cls.native_sep):
-                yield MypyDataCase(case.name, self, case)
+                                         base_path=suite.base_path,
+                                         optional_out=suite.optional_out,
+                                         native_sep=suite.native_sep):
+                if suite.filter(case):
+                    yield MypyDataCase(case.name, self, case)
 
 
 def is_incremental(testcase: DataDrivenTestCase) -> bool:
@@ -641,5 +643,10 @@ class DataSuite:
     def __init__(self, *, update_data: bool) -> None:
         self.update_data = update_data
 
+    @abstractmethod
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         raise NotImplementedError
+
+    @classmethod
+    def filter(cls, testcase: DataDrivenTestCase) -> bool:
+        return True

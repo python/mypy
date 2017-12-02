@@ -37,9 +37,13 @@ class TypeCheckSuite(DataSuite):
     base_path = test_temp_dir  # type: str
     optional_out = True  # type: bool
 
+    @classmethod
+    def filter(cls, testcase: DataDrivenTestCase) -> bool:
+        return has_stable_flags(testcase) and is_incremental(testcase)
+
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        assert has_stable_flags(testcase)
-        assert is_incremental(testcase)
+        assert has_stable_flags(testcase), "Testcase is not incremental"
+        assert is_incremental(testcase), "Testcase has varying flags"
 
         # All tests run once with a cold cache, then at least once
         # with a warm cache and maybe changed files.  Expected output
