@@ -227,6 +227,17 @@ for all mypy runs in this tree, and also selectively turns on the
 package.  This issues an error for function definitions without
 type annotations in that subdirectory only.
 
+If you would like to ignore specific imports, instead of ignoring all missing
+imports with ``--ignore-missing-imports``, use a section of the configuration
+file per module such as the following to ignore missing imports from
+``lib_module``:
+
+.. code-block:: text
+
+    [mypy-lib_module]
+    ignore_missing_imports = True
+
+
 .. note::
 
    Configuration flags are liable to change between releases.
