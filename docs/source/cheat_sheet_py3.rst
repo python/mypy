@@ -34,6 +34,9 @@ Built-in types
    x = [1]  # type: List[int]
    x = {6, 7}  # type: Set[int]
 
+   # Empty Tuple types are a bit special
+   x = ()  # type: Tuple[()]
+
    # For mappings, we need the types of both keys and values.
    x = {'field': 2.0}  # type: Dict[str, float]
 
