@@ -9,7 +9,6 @@ import shutil
 
 import pytest  # type: ignore  # no pytest in typeshed
 from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
-import typing
 
 from mypy.myunit import BaseTestCase
 from mypy.test.config import test_data_prefix, test_temp_dir
@@ -633,10 +632,11 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
 
 
 class DataSuite:
-    files = None  # type: typing.ClassVar[List[str]]
-    base_path = '.'  # type: typing.ClassVar[str]
-    optional_out = False  # type: typing.ClassVar[bool]
-    native_sep = False  # type: typing.ClassVar[bool]
+    # option fields - class variables
+    files = None  # type: List[str]
+    base_path = '.'  # type: str
+    optional_out = False  # type: bool
+    native_sep = False  # type: bool
 
     def __init__(self, *, update_data: bool) -> None:
         self.update_data = update_data

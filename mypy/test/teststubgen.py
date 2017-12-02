@@ -8,7 +8,6 @@ import re
 from types import ModuleType
 
 from typing import List, Tuple
-import typing
 
 from mypy.myunit import Suite, assert_equal
 from mypy.test.helpers import assert_string_arrays_equal
@@ -93,7 +92,7 @@ class StubgenUtilSuite(Suite):
 
 
 class StubgenPythonSuite(DataSuite):
-    files = ['stubgen.test']  # type: typing.ClassVar[List[str]]
+    files = ['stubgen.test']  # type: List[str]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_stubgen(testcase)

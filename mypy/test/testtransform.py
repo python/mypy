@@ -2,7 +2,6 @@
 
 import os.path
 from typing import List
-import typing
 
 from mypy import build
 from mypy.build import BuildSource
@@ -26,9 +25,9 @@ class TransformSuite(DataSuite):
              'semanal-modules.test',
              'semanal-statements.test',
              'semanal-abstractclasses.test',
-             'semanal-python2.test']  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
-    native_sep = True  # type: typing.ClassVar[bool]
+             'semanal-python2.test']  # type: List[str]
+    base_path = test_temp_dir  # type: str
+    native_sep = True  # type: bool
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_transform(testcase)

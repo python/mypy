@@ -3,7 +3,6 @@
 import re
 
 from typing import Set, List
-import typing
 
 from mypy import build
 from mypy.build import BuildSource
@@ -20,8 +19,8 @@ from mypy.options import Options
 
 
 class TypeExportSuite(DataSuite):
-    files = ['typexport-basic.test']  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
+    files = ['typexport-basic.test']  # type: List[str]
+    base_path = test_temp_dir  # type: str
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         try:

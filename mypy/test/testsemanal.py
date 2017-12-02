@@ -3,7 +3,6 @@
 import os.path
 
 from typing import Dict, List
-import typing
 
 from mypy import build
 from mypy.build import BuildSource
@@ -43,10 +42,10 @@ def get_semanal_options() -> Options:
 
 
 class SemAnalSuite(DataSuite):
-    files = semanal_files  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
-    optional_out = True  # type: typing.ClassVar[bool]
-    native_sep = True  # type: typing.ClassVar[bool]
+    files = semanal_files  # type: List[str]
+    base_path = test_temp_dir  # type: str
+    optional_out = True  # type: bool
+    native_sep = True  # type: bool
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal(testcase)
@@ -97,9 +96,9 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
 # Semantic analyzer error test cases
 
 class SemAnalErrorSuite(DataSuite):
-    files = ['semanal-errors.test']  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
-    optional_out = True  # type: typing.ClassVar[bool]
+    files = ['semanal-errors.test']  # type: List[str]
+    base_path = test_temp_dir  # type: str
+    optional_out = True  # type: bool
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal_error(testcase)
@@ -127,8 +126,8 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
 # SymbolNode table export test cases
 
 class SemAnalSymtableSuite(DataSuite):
-    files = ['semanal-symtable.test']  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
+    files = ['semanal-symtable.test']  # type: List[str]
+    base_path = test_temp_dir  # type: str
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a test case."""
@@ -157,8 +156,8 @@ class SemAnalSymtableSuite(DataSuite):
 
 # Type info export test cases
 class SemAnalTypeInfoSuite(DataSuite):
-    files = ['semanal-typeinfo.test']  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
+    files = ['semanal-typeinfo.test']  # type: List[str]
+    base_path = test_temp_dir  # type: str
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a test case."""

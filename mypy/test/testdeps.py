@@ -2,7 +2,6 @@
 
 import os
 from typing import List, Tuple, Dict, Optional
-import typing
 
 from mypy import build, defaults
 from mypy.build import BuildSource
@@ -24,9 +23,9 @@ class GetDependenciesSuite(DataSuite):
         'deps-expressions.test',
         'deps-statements.test',
         'deps-classes.test',
-    ]  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
-    optional_out = True  # type: typing.ClassVar[bool]
+    ]  # type: List[str]
+    base_path = test_temp_dir  # type: str
+    optional_out = True  # type: bool
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)

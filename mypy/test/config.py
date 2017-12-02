@@ -1,7 +1,6 @@
 import os
 import os.path
 
-import typing
 
 
 this_file_dir = os.path.dirname(os.path.realpath(__file__))

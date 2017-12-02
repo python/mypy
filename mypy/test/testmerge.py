@@ -3,7 +3,6 @@
 import os
 import shutil
 from typing import List, Tuple, Dict, Optional
-import typing
 
 from mypy import build
 from mypy.build import BuildManager, BuildSource, State
@@ -35,9 +34,9 @@ NOT_DUMPED_MODULES = ('builtins', 'typing', 'abc')
 
 
 class ASTMergeSuite(DataSuite):
-    files = ['merge.test']  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
-    optional_out = True  # type: typing.ClassVar[bool]
+    files = ['merge.test']  # type: List[str]
+    base_path = test_temp_dir  # type: str
+    optional_out = True  # type: bool
 
     def __init__(self, *, update_data: bool) -> None:
         super().__init__(update_data=update_data)

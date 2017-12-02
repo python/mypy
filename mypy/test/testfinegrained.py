@@ -12,7 +12,6 @@ import re
 import shutil
 
 from typing import List, Tuple, Dict, Optional, Set
-import typing
 
 from mypy import build
 from mypy.build import BuildManager, BuildSource, Graph
@@ -37,9 +36,9 @@ class FineGrainedSuite(DataSuite):
         'fine-grained-cycles.test',
         'fine-grained-blockers.test',
         'fine-grained-modules.test',
-    ]  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
-    optional_out = True  # type: typing.ClassVar[bool]
+    ]  # type: List[str]
+    base_path = test_temp_dir  # type: str
+    optional_out = True  # type: bool
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         main_src = '\n'.join(testcase.input)

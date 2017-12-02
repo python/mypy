@@ -1,6 +1,5 @@
 """Tests for the mypy parser."""
 from typing import List
-import typing
 
 from mypy import defaults
 from mypy.myunit import AssertionFailure
@@ -13,7 +12,7 @@ from mypy.options import Options
 
 class ParserSuite(DataSuite):
     files = ['parse.test',
-             'parse-python2.test']  # type: typing.ClassVar[List[str]]
+             'parse-python2.test']  # type: List[str]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser(testcase)
@@ -50,7 +49,7 @@ INPUT_FILE_NAME = 'file'
 
 
 class ParseErrorSuite(DataSuite):
-    files = ['parse-errors.test']  # type: typing.ClassVar[List[str]]
+    files = ['parse-errors.test']  # type: List[str]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parse_error(testcase)

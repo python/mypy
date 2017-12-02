@@ -10,7 +10,6 @@ import subprocess
 import sys
 
 from typing import List
-import typing
 
 from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir
@@ -30,10 +29,10 @@ cmdline_files = [
 
 
 class PythonCmdlineSuite(DataSuite):
-    files = cmdline_files  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
-    optional_out = True  # type: typing.ClassVar[bool]
-    native_sep = True  # type: typing.ClassVar[bool]
+    files = cmdline_files  # type: List[str]
+    base_path = test_temp_dir  # type: str
+    optional_out = True  # type: bool
+    native_sep = True  # type: bool
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_python_cmdline(testcase)

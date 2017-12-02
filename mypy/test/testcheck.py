@@ -5,7 +5,6 @@ import re
 import shutil
 
 from typing import Dict, List, Optional, Set, Tuple
-import typing
 
 from mypy import build, defaults
 from mypy.main import process_options
@@ -81,9 +80,9 @@ typecheck_files = [
 
 
 class TypeCheckSuite(DataSuite):
-    files = typecheck_files  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
-    optional_out = True  # type: typing.ClassVar[bool]
+    files = typecheck_files  # type: List[str]
+    base_path = test_temp_dir  # type: str
+    optional_out = True  # type: bool
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         incremental = ('incremental' in testcase.name.lower()

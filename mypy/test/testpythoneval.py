@@ -18,7 +18,6 @@ import sys
 
 import pytest  # type: ignore  # no pytest in typeshed
 from typing import Dict, List, Tuple, Optional
-import typing
 
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -34,9 +33,9 @@ program_re = re.compile(r'\b_program.py\b')
 class PythonEvaluationSuite(DataSuite):
     files = ['pythoneval.test',
              'python2eval.test',
-             'pythoneval-asyncio.test']  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
-    optional_out = True  # type: typing.ClassVar[bool]
+             'pythoneval-asyncio.test']  # type: List[str]
+    base_path = test_temp_dir  # type: str
+    optional_out = True  # type: bool
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_python_evaluation(testcase)

@@ -6,7 +6,6 @@ import shutil
 import sys
 
 from typing import Dict, List, Optional, Set, Tuple
-import typing
 
 from mypy import build
 from mypy import defaults
@@ -34,9 +33,9 @@ else:
 
 
 class TypeCheckSuite(DataSuite):
-    files = dmypy_files  # type: typing.ClassVar[List[str]]
-    base_path = test_temp_dir  # type: typing.ClassVar[str]
-    optional_out = True  # type: typing.ClassVar[bool]
+    files = dmypy_files  # type: List[str]
+    base_path = test_temp_dir  # type: str
+    optional_out = True  # type: bool
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         assert has_stable_flags(testcase)
