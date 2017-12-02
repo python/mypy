@@ -577,10 +577,6 @@ class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
                                          base_path=cls.base_path,
                                          optional_out=cls.optional_out,
                                          native_sep=cls.native_sep):
-                if cls.require_stable and not has_stable_flags(case):
-                    continue
-                if cls.require_incremental and not is_incremental(case):
-                    continue
                 yield MypyDataCase(case.name, self, case)
 
 
@@ -641,8 +637,6 @@ class DataSuite:
     base_path = '.'  # type: typing.ClassVar[str]
     optional_out = False  # type: typing.ClassVar[bool]
     native_sep = False  # type: typing.ClassVar[bool]
-    require_stable = False  # type: typing.ClassVar[bool]
-    require_incremental = False  # type: typing.ClassVar[bool]
 
     def __init__(self, *, update_data: bool) -> None:
         self.update_data = update_data

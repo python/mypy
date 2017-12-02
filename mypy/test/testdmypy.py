@@ -13,7 +13,7 @@ from mypy import defaults
 from mypy.main import process_options
 from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir
-from mypy.test.data import DataDrivenTestCase, DataSuite
+from mypy.test.data import DataDrivenTestCase, DataSuite, has_stable_flags, is_incremental
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
     retry_on_error, testcase_pyversion, update_testcase_output,
@@ -37,10 +37,11 @@ class TypeCheckSuite(DataSuite):
     files = dmypy_files  # type: typing.ClassVar[List[str]]
     base_path = test_temp_dir  # type: typing.ClassVar[str]
     optional_out = True  # type: typing.ClassVar[bool]
-    require_stable = True  # type: typing.ClassVar[bool]
-    require_incremental = True  # type: typing.ClassVar[bool]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        assert has_stable_flags(testcase)
+        assert is_incremental(testcase)
+
         # All tests run once with a cold cache, then at least once
         # with a warm cache and maybe changed files.  Expected output
         # is specified separately for each run.
