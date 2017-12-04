@@ -485,7 +485,8 @@ the same line as the import:
 
    # to silence complaints about unused imports
    from typing import List  # noqa
-   a = None  # List[int]
+   a = None  # type: List[int]
+
 
 To silence the linter on the same line as a type comment
 put the linter comment *after* the type comment:
