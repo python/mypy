@@ -81,9 +81,6 @@ LITERAL_YES = 2
 LITERAL_TYPE = 1
 LITERAL_NO = 0
 
-# Hard coded name of Enum baseclass.
-ENUM_BASECLASS = "enum.Enum"
-
 node_kinds = {
     LDEF: 'Ldef',
     GDEF: 'Gdef',
@@ -2085,7 +2082,6 @@ class TypeInfo(SymbolNode):
         mro = linearize_hierarchy(self)
         assert mro, "Could not produce a MRO at all for %s" % (self,)
         self.mro = mro
-        self.is_enum = self._calculate_is_enum()
 
     def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         declared = self.declared_metaclass
@@ -2107,17 +2103,6 @@ class TypeInfo(SymbolNode):
     def is_metaclass(self) -> bool:
         return (self.has_base('builtins.type') or self.fullname() == 'abc.ABCMeta' or
                 self.fallback_to_any)
-
-    def _calculate_is_enum(self) -> bool:
-        """
-        If this is "enum.Enum" itself, then yes, it's an enum.
-        If the flag .is_enum has been set on anything in the MRO, it's an enum.
-        """
-        if self.fullname() == ENUM_BASECLASS:
-            return True
-        if self.mro:
-            return any(type_info.is_enum for type_info in self.mro)
-        return False
 
     def has_base(self, fullname: str) -> bool:
         """Return True if type has a base type with the specified name.

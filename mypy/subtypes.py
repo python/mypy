@@ -183,10 +183,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if isinstance(item, AnyType):
                     return True
                 if isinstance(item, Instance):
-                    # Special-case enum since we don't have better way of expressing it
-                    if (is_named_instance(left, 'enum.EnumMeta')
-                            and is_named_instance(item, 'enum.Enum')):
-                        return True
                     return is_named_instance(item, 'builtins.object')
         if isinstance(right, CallableType):
             # Special case: Instance can be a subtype of Callable.

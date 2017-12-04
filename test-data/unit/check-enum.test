@@ -6,10 +6,19 @@ class Medal(Enum):
     gold = 1
     silver = 2
     bronze = 3
+reveal_type(Medal.bronze)  # E: Revealed type is '__main__.Medal'
 m = Medal.gold
-m = 1
-[out]
-main:7: error: Incompatible types in assignment (expression has type "int", variable has type "Medal")
+m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
+
+[case testEnumFromEnumMetaBasics]
+from enum import EnumMeta
+class Medal(metaclass=EnumMeta):
+    gold = 1
+    silver = "hello"
+    bronze = None
+reveal_type(Medal.bronze)  # E: Revealed type is '__main__.Medal'
+m = Medal.gold
+m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
 
 [case testEnumNameAndValue]
 from enum import Enum
