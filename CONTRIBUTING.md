@@ -47,6 +47,17 @@ other people with respect and more generally to follow the guidelines
 articulated in the [Python Community Code of
 Conduct](https://www.python.org/psf/codeofconduct/).
 
+First Time Contributors
+-----------------------
+
+Mypy appreciates your contribution! If you are interested in helping improve
+mypy, there are several ways to get started:
+
+* Contributing to [typeshed](https://github.com/python/typeshed/issues) is a great way to
+become familiar with Python's type syntax.
+* Work on [documentation issues](https://github.com/python/mypy/labels/documentation).
+* Ask on [the chat](https://gitter.im/python/typing) or on
+[the issue tracker](https://github.com/python/mypy/issues) about good beginner issues.
 
 Submitting Changes
 ------------------
