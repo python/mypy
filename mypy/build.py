@@ -739,11 +739,19 @@ find_module_dir_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
 # gives us the case-correct filename on Windows and Mac.
 find_module_listdir_cache = {}  # type: Dict[str, Optional[List[str]]]
 
+# Cache for is_file()
+find_module_is_file_cache = {}  # type: Dict[str, bool]
+
+# Cache for isdir(join(head, tail))
+find_module_isdir_cache = {}  # type: Dict[Tuple[str, str], bool]
+
 
 def find_module_clear_caches() -> None:
     find_module_cache.clear()
     find_module_dir_cache.clear()
     find_module_listdir_cache.clear()
+    find_module_is_file_cache.clear()
+    find_module_isdir_cache.clear()
 
 
 def list_dir(path: str) -> Optional[List[str]]:
@@ -751,13 +759,13 @@ def list_dir(path: str) -> Optional[List[str]]:
 
     Returns None if the path doesn't exist or isn't a directory.
     """
-    if path in find_module_listdir_cache:
-        return find_module_listdir_cache[path]
-    try:
-        res = os.listdir(path)  # type: Optional[List[str]]
-    except OSError:
-        res = None
-    find_module_listdir_cache[path] = res
+    res = find_module_listdir_cache.get(path)
+    if res is None:
+        try:
+            res = os.listdir(path)
+        except OSError:
+            res = None
+        find_module_listdir_cache[path] = res
     return res
 
 
@@ -768,15 +776,16 @@ def is_file(path: str) -> bool:
     False if the case of the path's last component does not exactly
     match the case found in the filesystem.
     """
-    head, tail = os.path.split(path)
-    if not tail:
-        return False
-    names = list_dir(head)
-    if not names:
-        return False
-    if tail not in names:
-        return False
-    return os.path.isfile(path)
+    res = find_module_is_file_cache.get(path)
+    if res is None:
+        head, tail = os.path.split(path)
+        if not tail:
+            res = False
+        else:
+            names = list_dir(head)
+            res = names is not None and tail in names and os.path.isfile(path)
+        find_module_is_file_cache[path] = res
+    return res
 
 
 def find_module(id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
@@ -794,8 +803,12 @@ def find_module(id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
             dirs = []
             for pathitem in lib_path:
                 # e.g., '/usr/lib/python3.4/foo/bar'
-                dir = os.path.normpath(os.path.join(pathitem, dir_chain))
-                if os.path.isdir(dir):
+                isdir = find_module_isdir_cache.get((pathitem, dir_chain))
+                if isdir is None:
+                    dir = os.path.normpath(os.path.join(pathitem, dir_chain))
+                    isdir = os.path.isdir(dir)
+                    find_module_isdir_cache[pathitem, dir_chain] = isdir
+                if isdir:
                     dirs.append(dir)
             find_module_dir_cache[dir_chain, lib_path] = dirs
         candidate_base_dirs = find_module_dir_cache[dir_chain, lib_path]
@@ -864,7 +877,7 @@ def verify_module(id: str, path: str) -> bool:
         path = dirname(path)
     for i in range(id.count('.')):
         path = dirname(path)
-        if not any(os.path.isfile(os.path.join(path, '__init__{}'.format(extension)))
+        if not any(is_file(os.path.join(path, '__init__{}'.format(extension)))
                    for extension in PYTHON_EXTENSIONS):
             return False
     return True
@@ -1955,11 +1968,17 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     manager.add_stats(graph_size=len(graph),
                       stubs_found=sum(g.path is not None and g.path.endswith('.pyi')
                                       for g in graph.values()),
-                      graph_load_time=(t1 - t0))
+                      graph_load_time=(t1 - t0),
+                      fm_cache_size=len(find_module_cache),
+                      fm_dir_cache_size=len(find_module_dir_cache),
+                      fm_listdir_cache_size=len(find_module_listdir_cache),
+                      fm_is_file_cache_size=len(find_module_is_file_cache),
+                      fm_isdir_cache_size=len(find_module_isdir_cache),
+                      )
     if not graph:
         print("Nothing to do?!")
         return graph
-    manager.log("Loaded graph with %d nodes" % len(graph))
+    manager.log("Loaded graph with %d nodes (%.3f sec)" % (len(graph), t1 - t0))
     if manager.options.dump_graph:
         dump_graph(graph)
         return graph
