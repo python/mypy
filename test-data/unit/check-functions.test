@@ -1411,6 +1411,20 @@ f()
 f(1)
 [builtins fixtures/list.pyi]
 
+[case testDefineConditionallyAsImportedAndDecorated]
+from typing import Callable
+
+def dec(f: Callable[[], None]) -> Callable[[], None]: ...
+
+if int():
+    from m import f
+else:
+    @dec
+    def f():
+        yield
+[file m.py]
+def f(): pass
+
 
 -- Conditional method definition
 -- -----------------------------
