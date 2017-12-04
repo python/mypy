@@ -1,12 +1,13 @@
 """Plugin system for extending mypy."""
 
-from collections import OrderedDict
 from abc import abstractmethod
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
 
-from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr
+from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, \
+    DictExpr, TypeInfo, ClassDef, ARG_POS, ARG_OPT, Var, Argument, FuncDef, \
+    Block, SymbolTableNode, MDEF
 from mypy.types import (
-    Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
+    Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
     AnyType, TypeList, UnboundType, TypeOfAny
 )
 from mypy.messages import MessageBuilder
@@ -50,6 +51,14 @@ class CheckerPluginInterface:
 
     @abstractmethod
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
+        raise NotImplementedError
+
+
+class SemanticAnalyzerPluginInterface:
+    """Interface for accessing semantic analyzer functionality in plugins."""
+
+    @abstractmethod
+    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
         raise NotImplementedError
 
 
@@ -98,6 +107,11 @@ AttributeContext = NamedTuple(
         ('context', Context),
         ('api', CheckerPluginInterface)])
 
+ClassDefContext = NamedTuple(
+    'ClassDecoratorContext', [
+        ('cls', ClassDef),
+        ('api', SemanticAnalyzerPluginInterface)
+    ])
 
 class Plugin:
     """Base class of all type checker plugins.
@@ -136,7 +150,17 @@ class Plugin:
                            ) -> Optional[Callable[[AttributeContext], Type]]:
         return None
 
-    # TODO: metaclass / class decorator hook
+    def get_class_decorator_hook(self, fullname: str
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        return None
+
+    def get_class_metaclass_hook(self, fullname: str
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        return None
+
+    def get_class_base_hook(self, fullname: str
+                            ) -> Optional[Callable[[ClassDefContext], None]]:
+        return None
 
 
 T = TypeVar('T')
@@ -182,6 +206,18 @@ class ChainedPlugin(Plugin):
                            ) -> Optional[Callable[[AttributeContext], Type]]:
         return self._find_hook(lambda plugin: plugin.get_attribute_hook(fullname))
 
+    def get_class_decorator_hook(self, fullname: str
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self._find_hook(lambda plugin: plugin.get_class_decorator_hook(fullname))
+
+    def get_class_metaclass_hook(self, fullname: str
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self._find_hook(lambda plugin: plugin.get_class_metaclass_hook(fullname))
+
+    def get_class_base_hook(self, fullname: str
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self._find_hook(lambda plugin: plugin.get_class_base_hook(fullname))
+
     def _find_hook(self, lookup: Callable[[Plugin], T]) -> Optional[T]:
         for plugin in self._plugins:
             hook = lookup(plugin)
@@ -214,6 +250,11 @@ class DefaultPlugin(Plugin):
         elif fullname == 'builtins.int.__pow__':
             return int_pow_callback
         return None
+
+    def get_class_decorator_hook(self, fullname: str
+                                 ) -> Optional[Callable[[ClassDefContext], Type]]:
+        if fullname == 'attr.s':
+            return attr_s_callback
 
 
 def open_callback(ctx: FunctionContext) -> Type:
@@ -332,3 +373,52 @@ def int_pow_callback(ctx: MethodContext) -> Type:
         else:
             return ctx.api.named_generic_type('builtins.float', [])
     return ctx.default_return_type
+
+
+def add_method(
+        info: TypeInfo,
+        method_name: str,
+        args: List[Argument],
+        ret_type: Type,
+        self_type: Type,
+        function_type: Instance) -> None:
+    from mypy.semanal import set_callable_name
+
+    first = [Argument(Var('self'), self_type, None, ARG_POS)]
+    args = first + args
+
+    arg_types = [arg.type_annotation for arg in args]
+    arg_names = [arg.variable.name() for arg in args]
+    arg_kinds = [arg.kind for arg in args]
+    assert None not in arg_types
+    signature = CallableType(arg_types, arg_kinds, arg_names,
+                             ret_type, function_type)
+    func = FuncDef(method_name, args, Block([]))
+    func.info = info
+    func.is_class = False
+    func.type = set_callable_name(signature, func)
+    func._fullname = info.fullname() + '.' + method_name
+    info.names[method_name] = SymbolTableNode(MDEF, func)
+
+
+def attr_s_callback(ctx: ClassDefContext) -> None:
+    """Add an __init__ method to classes decorated with attr.s."""
+    info = ctx.cls.info
+    has_default = {}  # TODO: Handle these.
+    args = []
+
+    for name, table in info.names.items():
+        if table.type:
+            var = Var(name.lstrip("_"), table.type)
+            default = has_default.get(var.name(), None)
+            kind = ARG_POS if default is None else ARG_OPT
+            args.append(Argument(var, var.type, default, kind))
+
+    add_method(
+        info=info,
+        method_name='__init__',
+        args=args,
+        ret_type=NoneTyp(),
+        self_type=ctx.api.named_type(info.name()),
+        function_type=ctx.api.named_type('__builtins__.function'),
+    )

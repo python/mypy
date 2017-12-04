@@ -81,7 +81,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy import experiments
-from mypy.plugin import Plugin
+from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy import join
 from mypy.util import get_prefix
 
@@ -172,7 +172,7 @@ SUGGESTED_TEST_FIXTURES = {
 }
 
 
-class SemanticAnalyzerPass2(NodeVisitor[None]):
+class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a
@@ -719,6 +719,31 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 yield True
                 self.calculate_abstract_status(defn.info)
                 self.setup_type_promotion(defn)
+
+                for decorator in defn.decorators:
+                    if isinstance(decorator, CallExpr):
+                        fullname = decorator.callee.fullname
+                    else:
+                        fullname = decorator.fullname
+                    hook = self.plugin.get_class_decorator_hook(fullname)
+                    if hook:
+                        hook(ClassDefContext(defn, self))
+
+                if defn.metaclass:
+                    metaclass_name = None
+                    if isinstance(defn.metaclass, NameExpr):
+                        metaclass_name = defn.metaclass.name
+                    elif isinstance(defn.metaclass, MemberExpr):
+                        metaclass_name = get_member_expr_fullname(
+                            defn.metaclass)
+                    hook = self.plugin.get_class_metaclass_hook(metaclass_name)
+                    if hook:
+                        hook(ClassDefContext(defn, self))
+
+                for type_info in defn.info.bases:
+                    hook = self.plugin.get_class_base_hook(type_info.type.fullname())
+                    if hook:
+                        hook(ClassDefContext(defn, self))
 
                 self.leave_class()
 
