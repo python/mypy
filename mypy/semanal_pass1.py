@@ -267,7 +267,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
 
     def visit_decorator(self, d: Decorator) -> None:
         d.var._fullname = self.sem.qualified_name(d.var.name())
-        self.sem.add_symbol(d.var.name(), SymbolTableNode(self.kind_by_scope(), d.var), d)
+        self.sem.add_symbol(d.var.name(), SymbolTableNode(self.kind_by_scope(), d), d)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, pyversion=self.pyversion, platform=self.platform)

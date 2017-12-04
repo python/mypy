@@ -1326,6 +1326,19 @@ else:
     @dec # E: Name 'f' already defined
     def f(): pass
 
+[case testConditionalMethodDefinitionUsingDecorator]
+from typing import Callable
+
+def dec(f) -> Callable[['A', int], None]: pass
+
+class A:
+    x = int()
+    if x:
+        @dec
+        def f(self): pass
+    else:
+        def f(self, x: int) -> None: pass
+
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
 from typing import Any
 def f(x: str) -> None: pass

@@ -449,7 +449,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         . def f(): ...
         . def f(): ...  # Error: 'f' redefined
         """
-        if isinstance(previous, (FuncDef, Var)) and new.is_conditional:
+        if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
             new.original_def = previous
             return True
         else:
