@@ -1015,6 +1015,10 @@ class TypeConverter(ast3.NodeTransformer):
         if self.errors:
             self.errors.report(line, column, msg)
 
+    def note(self, msg: str, line: int, column: int) -> None:
+        if self.errors:
+            self.errors.report(line, column, msg, severity='note')
+
     def visit_raw_str(self, s: str) -> Type:
         # An escape hatch that allows the AST walker in fastparse2 to
         # directly hook into the Python 3.5 type converter in some cases
@@ -1031,12 +1035,19 @@ class TypeConverter(ast3.NodeTransformer):
 
     def visit_Call(self, e: ast3.Call) -> Type:
         # Parse the arg constructor
-        if not isinstance(self.parent(), ast3.List):
-            return self.generic_visit(e)
         f = e.func
         constructor = stringify_name(f)
+
+        if not isinstance(self.parent(), ast3.List):
+            self.fail(TYPE_COMMENT_AST_ERROR, self.line, e.col_offset)
+            if constructor:
+                self.note("Suggestion: use {}[...] instead of {}(...)".format(
+                    constructor, constructor),
+                    self.line, e.col_offset)
+            return AnyType(TypeOfAny.from_error)
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
+
         name = None  # type: Optional[str]
         default_type = AnyType(TypeOfAny.special_form)
         typ = default_type  # type: Type
