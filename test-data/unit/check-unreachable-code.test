@@ -390,7 +390,7 @@ class C:
 [builtins fixtures/ops.pyi]
 [out]
 
-[case testSysPlatformInFunctionImport]
+[case testSysPlatformInFunctionImport1]
 import sys
 def foo() -> None:
     if sys.platform != 'fictional':
@@ -398,6 +398,36 @@ def foo() -> None:
     else:
         import b as a
     a.x
+[file a.py]
+x = 1
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysPlatformInFunctionImport2]
+import sys
+def foo() -> None:
+    if sys.platform == 'fictional':
+        import b as a
+    else:
+        import a
+    a.x
+[file a.py]
+x = 1
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysPlatformInMethodImport2]
+import sys
+class A:
+    def foo(self) -> None:
+        if sys.platform == 'fictional':
+            # TODO: This is inconsistent with how top-level functions work
+            #     (https://github.com/python/mypy/issues/4324)
+            import b as a # E: Cannot find module named 'b' \
+            # N: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+        else:
+            import a
+        a.x
 [file a.py]
 x = 1
 [builtins fixtures/ops.pyi]
