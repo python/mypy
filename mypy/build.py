@@ -90,6 +90,11 @@ class BuildSource:
         self.module = module or '__main__'
         self.text = text
 
+    def __repr__(self) -> str:
+        return '<BuildSource path=%r module=%r has_text=%s>' % (self.path,
+                                                                self.module,
+                                                                self.text is not None)
+
 
 class BuildSourceSet:
     """Efficiently test a file's membership in the set of build sources."""
@@ -633,7 +638,7 @@ class BuildManager:
         Raise CompileError if there is a parse error.
         """
         num_errs = self.errors.num_messages()
-        tree = parse(source, path, self.errors, options=self.options)
+        tree = parse(source, path, id, self.errors, options=self.options)
         tree._fullname = id
         self.add_stats(files_parsed=1,
                        modules_parsed=int(not tree.is_stub),
@@ -2070,7 +2075,11 @@ def dump_graph(graph: Graph) -> None:
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
-    """Given some source files, load the full dependency graph."""
+    """Given some source files, load the full dependency graph.
+
+    As this may need to parse files, this can raise CompileError in case
+    there are syntax errors.
+    """
     graph = {}  # type: Graph
     # The deque is used to implement breadth-first traversal.
     # TODO: Consider whether to go depth-first instead.  This may

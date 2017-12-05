@@ -10,9 +10,6 @@
 -- --------
 
 
--- TODO:
--- - add file, blocking error
-
 [case testAddFile]
 import b
 [file b.py]
@@ -191,10 +188,10 @@ from p import q
 [file p/q.py.3]
 [out]
 ==
-main:1: error: Module 'p' has no attribute 'q'
--- TODO: The following messages are different compared to non-incremental mode
 main:1: error: Cannot find module named 'p.q'
+-- TODO: The following messages are different compared to non-incremental mode
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Module 'p' has no attribute 'q'
 ==
 
 [case testDeletionOfSubmoduleTriggersImportFrom2]
@@ -399,8 +396,8 @@ a.py:1: error: Cannot find module named 'b'
 a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 a.py:2: error: Cannot find module named 'c'
 ==
-c.py:3: error: Too many arguments for "f"
 b.py:3: error: Too many arguments for "g"
+c.py:3: error: Too many arguments for "f"
 
 [case testAddTwoFilesErrorsElsewhere]
 import a
@@ -434,6 +431,8 @@ def g() -> None: pass
 ==
 main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+-- TODO: Remove redundant error message
+main:1: error: Cannot find module named 'b'
 main:2: error: Cannot find module named 'b'
 
 [case testDeleteTwoFilesNoErrors]
@@ -475,6 +474,8 @@ a.py:3: error: Too many arguments for "g"
 ==
 main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+-- TODO: Remove redundant error message
+main:1: error: Cannot find module named 'b'
 main:2: error: Cannot find module named 'b'
 
 [case testAddFileWhichImportsLibModule]

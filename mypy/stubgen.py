@@ -205,7 +205,7 @@ def generate_stub(path: str,
     options = MypyOptions()
     options.python_version = pyversion
     try:
-        ast = mypy.parse.parse(source, fnam=path, errors=None, options=options)
+        ast = mypy.parse.parse(source, fnam=path, module=module, errors=None, options=options)
     except mypy.errors.CompileError as e:
         # Syntax error!
         for m in e.messages:
