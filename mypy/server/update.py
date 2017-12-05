@@ -190,7 +190,7 @@ class FineGrainedBuildManager:
             self.previous_modules = get_module_to_path_map(manager)
             return manager.errors.messages(), remaining, (module, path), True
         assert isinstance(result, NormalUpdate)  # Work around #4124
-        module, path, tree, graph, remaining = result
+        module, path, remaining, tree, graph = result
 
         # TODO: What to do with stale dependencies?
         triggered = calculate_active_triggers(manager, old_snapshots, {module: tree})
@@ -251,9 +251,9 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
 #   modules)
 NormalUpdate = NamedTuple('NormalUpdate', [('module', str),
                                            ('path', str),
+                                           ('remaining', List[Tuple[str, str]]),
                                            ('tree', Optional[MypyFile]),
-                                           ('graph', Graph),
-                                           ('remaining', List[Tuple[str, str]])])
+                                           ('graph', Graph)])
 
 # The result of update_single_isolated when there is a blocking error. Items
 # are similar to NormalUpdate (but there are fewer).
@@ -308,7 +308,7 @@ def update_single_isolated(module: str,
 
     if not os.path.isfile(path):
         graph = delete_module(module, graph, manager)
-        return NormalUpdate(module, path, None, graph, [])
+        return NormalUpdate(module, path, [], None, graph)
 
     # Find any other modules brought in by imports.
     changed_modules = get_all_changed_modules(module, path, previous_modules, graph)
@@ -357,7 +357,7 @@ def update_single_isolated(module: str,
 
     graph[module] = state
 
-    return NormalUpdate(module, path, state.tree, graph, remaining_modules)
+    return NormalUpdate(module, path, remaining_modules, state.tree, graph)
 
 
 def assert_equivalent_paths(path1: str, path2: str) -> None:
@@ -371,10 +371,8 @@ def delete_module(module_id: str,
                   manager: BuildManager) -> Dict[str, State]:
     # TODO: Deletion of a package
     # TODO: Remove deps for the module (this only affects memory use, not correctness)
+    assert module_id not in graph
     new_graph = graph.copy()
-    if module_id in new_graph:
-        # TODO: Why would this ever be reached?
-        del new_graph[module_id]
     del manager.modules[module_id]
     if module_id in manager.saved_cache:
         del manager.saved_cache[module_id]
