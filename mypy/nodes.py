@@ -566,7 +566,7 @@ class Decorator(SymbolNode, Statement):
         return self.func.info
 
     @property
-    def type(self) -> Optional['mypy.types.Type']:
+    def type(self) -> 'Optional[mypy.types.Type]':
         return self.var.type
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
