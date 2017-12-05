@@ -14,7 +14,7 @@ x = None # type: a + b  # E: invalid type comment or annotation
 -- This happens in both parsers.
 [case testFastParseFunctionAnnotationSyntaxError]
 
-def f():  # E: syntax error in type comment
+def f():  # E: syntax error in type comment # N: Suggestion: wrap input types in parens
   # type: None -> None
   pass
 
