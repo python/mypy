@@ -1,16 +1,20 @@
 """The semantic analyzer pass 1.
 
-This sets up externally visible names defined in a module but ignores
-imports and local definitions.  It helps enable (some) cyclic references
-between modules, such as module 'a' that imports module 'b' and used
-names defined in b *and* vice versa.  The first pass can be performed
-before dependent modules have been processed.
+This sets up externally visible names defined in a module but doesn't
+follow imports and mostly ignores local definitions.  It helps enable
+(some) cyclic references between modules, such as module 'a' that
+imports module 'b' and used names defined in b *and* vice versa.  The
+first pass can be performed before dependent modules have been
+processed.
 
 Since this pass can't assume that other modules have been processed,
-this pass cannot determine the types of certain definitions that can
-only be recognized in later passes. Examples of these include TypeVar
-and NamedTuple definitions, as these look like regular assignments until
-we are able to bind names, which only happens in pass 2.
+this pass cannot detect certain definitions that can only be recognized
+in later passes. Examples of these include TypeVar and NamedTuple
+definitions, as these look like regular assignments until we are able to
+bind names, which only happens in pass 2.
+
+This pass also infers the reachability of certain if staments, such as
+those with platform checks.
 """
 
 from typing import List, Tuple
@@ -154,7 +158,8 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         else:
             if at_module:
                 sem.globals[func.name()] = SymbolTableNode(GDEF, func)
-            # Also analyze the function body (in case there are conditional imports).
+            # Also analyze the function body (needed in case there are unreachable
+            # conditional imports).
             sem.function_stack.append(func)
             sem.errors.push_function(func.name())
             sem.enter()
