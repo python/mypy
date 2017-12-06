@@ -309,6 +309,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         # TODO: Recursion into block statements.
+        # TODO: Invoke patches in fine-grained incremental mode.
+        self.patches = []
         for d in file_node.defs:
             if isinstance(d, ClassDef):
                 self.refresh_class_def(d)

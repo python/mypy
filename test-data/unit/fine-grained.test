@@ -1137,7 +1137,7 @@ def f() -> None:
 [file b.py.3]
 2
 [file a.py.4]
-from typing import callable
+from typing import Callable
 import b
 
 def dec(f: Callable[[], None]) -> Callable[[], None]:
@@ -1147,4 +1147,9 @@ def dec(f: Callable[[], None]) -> Callable[[], None]:
 def f() -> None:
     1 + 2
 [out]
-x
+a.py:9: error: Unsupported operand types for + ("int" and "str")
+==
+a.py:9: error: Unsupported operand types for + ("int" and "str")
+==
+a.py:9: error: Unsupported operand types for + ("int" and "str")
+==

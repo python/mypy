@@ -876,7 +876,7 @@ target:
     Generic: Var<2>
     T: TypeVarExpr<3>
     TypeVar: Var<4>
-    X: Var<5>(type_override=target.A[builtins.int<6>]<1>)
+    X: Var<5>(type_override=target.A[builtins.int<6>]<1>)(def () -> target.A[builtins.int*<6>]<1>)
 ==>
 __main__:
     target: MypyFile<0>
@@ -885,7 +885,7 @@ target:
     Generic: Var<2>
     T: TypeVarExpr<3>
     TypeVar: Var<4>
-    X: Var<5>(type_override=target.A[builtins.str<7>]<1>)
+    X: Var<5>(type_override=target.A[builtins.str<7>]<1>)(def () -> target.A[builtins.str*<7>]<1>)
 
 [case testGenericFunction_types]
 import target
@@ -956,17 +956,17 @@ f = 1
 [out]
 __main__:
     TypeVar: Var<0>
-    f: Var<1>
-    x: Var<2>
-    y: Var<3>
+    f: Var<1>(builtins.int<2>)
+    x: Var<3>(builtins.int<2>)
+    y: Var<4>(builtins.str<5>)
 target:
-    f: Var<1>
+    f: Var<1>(builtins.int<2>)
 ==>
 __main__:
     TypeVar: Var<0>
-    f: Var<4>
-    x: Var<2>
-    y: Var<3>
+    f: Var<6>(Any)
+    x: Var<3>(builtins.int<2>)
+    y: Var<4>(builtins.str<5>)
 target:
 
 [case testRefreshTypeVar_symtable]
@@ -980,14 +980,14 @@ f = 1
 __main__:
     T: TypeVarExpr<0>
     TypeVar: Var<1>
-    f: Var<2>
+    f: Var<2>(builtins.int<3>)
 target:
-    f: Var<2>
+    f: Var<2>(builtins.int<3>)
 ==>
 __main__:
     T: TypeVarExpr<0>
     TypeVar: Var<1>
-    f: Var<3>
+    f: Var<4>
 target:
 
 [case testRefreshNamedTuple_symtable]
@@ -1001,14 +1001,14 @@ f = 1
 __main__:
     N: TypeInfo<0>
     NamedTuple: Var<1>
-    f: Var<2>
+    f: Var<2>(builtins.int<3>)
 target:
-    f: Var<2>
+    f: Var<2>(builtins.int<3>)
 ==>
 __main__:
     N: TypeInfo<0>
     NamedTuple: Var<1>
-    f: Var<3>
+    f: Var<4>(Any)
 target:
 
 [case testRefreshAttributeDefinedInClassBody_typeinfo]
@@ -1036,7 +1036,7 @@ TypeInfo<0>(
     a<2> (builtins.int<3>)
     b<4> (builtins.str<5>)))
 
-[case testDecoratorYYY_symtable]
+[case testDecorator_symtable]
 import target
 [file target.py]
 from contextlib import contextmanager
@@ -1062,7 +1062,7 @@ target:
     List: TypeInfo<2>
     Tuple: Var<3>
     contextmanager: FuncDef<4>
-    f: Var<5>
+    f: Decorator<5>
 ==>
 __main__:
     target: MypyFile<0>
@@ -1071,4 +1071,4 @@ target:
     List: TypeInfo<2>
     Tuple: Var<3>
     contextmanager: FuncDef<4>
-    f: Var<5>
+    f: Decorator<5>

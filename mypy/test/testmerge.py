@@ -177,7 +177,8 @@ class ASTMergeSuite(DataSuite):
         if node.type_override:
             override = self.format_type(node.type_override)
             s += '(type_override={})'.format(override)
-        if isinstance(node.node, Var) and node.node.type:
+        if (isinstance(node.node, Var) and node.node.type and
+                not node.node.fullname().startswith('typing.')):
             typestr = self.format_type(node.node.type)
             s += '({})'.format(typestr)
         return s
