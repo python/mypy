@@ -1,7 +1,7 @@
 """Plugin system for extending mypy."""
 
 from abc import abstractmethod
-from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
+from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 
 from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, \
     DictExpr, TypeInfo, ClassDef, ARG_POS, ARG_OPT, Var, Argument, FuncDef, \
@@ -252,9 +252,10 @@ class DefaultPlugin(Plugin):
         return None
 
     def get_class_decorator_hook(self, fullname: str
-                                 ) -> Optional[Callable[[ClassDefContext], Type]]:
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
         if fullname == 'attr.s':
             return attr_s_callback
+        return None
 
 
 def open_callback(ctx: FunctionContext) -> Type:
@@ -404,7 +405,7 @@ def add_method(
 def attr_s_callback(ctx: ClassDefContext) -> None:
     """Add an __init__ method to classes decorated with attr.s."""
     info = ctx.cls.info
-    has_default = {}  # TODO: Handle these.
+    has_default: Dict[str, Expression] = {}  # TODO: Handle these.
     args = []
 
     for name, table in info.names.items():

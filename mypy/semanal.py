@@ -721,13 +721,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 self.setup_type_promotion(defn)
 
                 for decorator in defn.decorators:
+                    fullname: Optional[str] = None
                     if isinstance(decorator, CallExpr):
-                        fullname = decorator.callee.fullname
-                    else:
+                        if isinstance(decorator.callee, RefExpr):
+                            fullname = decorator.callee.fullname
+                    elif isinstance(decorator, NameExpr):
                         fullname = decorator.fullname
-                    hook = self.plugin.get_class_decorator_hook(fullname)
-                    if hook:
-                        hook(ClassDefContext(defn, self))
+
+                    if fullname:
+                        hook = self.plugin.get_class_decorator_hook(fullname)
+                        if hook:
+                            hook(ClassDefContext(defn, self))
 
                 if defn.metaclass:
                     metaclass_name = None
