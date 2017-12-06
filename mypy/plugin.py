@@ -5,7 +5,8 @@ from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 
 from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, \
     DictExpr, TypeInfo, ClassDef, ARG_POS, ARG_OPT, Var, Argument, FuncDef, \
-    Block, SymbolTableNode, MDEF
+    Block, SymbolTableNode, MDEF, CallExpr, RefExpr, MemberExpr, NameExpr, \
+    AssignmentStmt, TempNode
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
     AnyType, TypeList, UnboundType, TypeOfAny
@@ -110,6 +111,7 @@ AttributeContext = NamedTuple(
 ClassDefContext = NamedTuple(
     'ClassDecoratorContext', [
         ('cls', ClassDef),
+        ('context', Optional[Expression]),
         ('api', SemanticAnalyzerPluginInterface)
     ])
 
@@ -402,15 +404,74 @@ def add_method(
     info.names[method_name] = SymbolTableNode(MDEF, func)
 
 
+
 def attr_s_callback(ctx: ClassDefContext) -> None:
     """Add an __init__ method to classes decorated with attr.s."""
+    # TODO: Add __cmp__ methods.
+
+    def get_bool_argument(call: CallExpr, name: str, default: bool):
+        for arg_name, arg_value in zip(call.arg_names, call.args):
+            if arg_name == name:
+                # TODO: Handle None being returned here.
+                return ctx.api.parse_bool(arg_value)
+        return default
+
+    def called_function(expr: Expression):
+        if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
+            return expr.callee.fullname
+
+    decorator = ctx.context
+    if isinstance(decorator, CallExpr):
+        # Update init and auto_attrib if this was a call.
+        init = get_bool_argument(decorator, "init", True)
+        auto_attribs = get_bool_argument(decorator, "auto_attribs", False)
+    else:
+        # Default values of attr.s()
+        init = True
+        auto_attribs = False
+
+    if not init:
+        print("Nothing to do", init)
+        return
+
+    print(f"{ctx.cls.info.fullname()} init={init} auto={auto_attribs}")
+
     info = ctx.cls.info
-    # TODO: Handle default arguments
+
+    # Walk the body looking for assignments.
+    items = []  # type: List[str]
+    types = []  # type: List[Type]
+    rhs = {}  # type: Dict[str, Expression]
+    for stmt in ctx.cls.defs.body:
+        if isinstance(stmt, AssignmentStmt):
+            name = stmt.lvalues[0].name
+            # print(name, stmt.type, stmt.rvalue)
+            items.append(name)
+            types.append(None
+                         if stmt.type is None
+                         else ctx.api.anal_type(stmt.type))
+
+
+            if isinstance(stmt.rvalue, TempNode):
+                # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
+                if rhs:
+                    print("DEFAULT ISSUE")
+            elif called_function(stmt.rvalue) == 'attr.ib':
+                # Look for a default value in the call.
+                expr = stmt.rvalue
+                print(f"{name} = attr.ib(...)")
+            else:
+                print(f"{name} = {stmt.rvalue}")
+                rhs[name] = stmt.rvalue
+
+    any_type = AnyType(TypeOfAny.unannotated)
+
+    import pdb; pdb.set_trace()
+
     has_default = {}  # type: Dict[str, Expression]
     args = []
-
     for name, table in info.names.items():
-        if table.type:
+        if isinstance(table.node, Var) and table.type:
             var = Var(name.lstrip("_"), table.type)
             default = has_default.get(var.name(), None)
             kind = ARG_POS if default is None else ARG_OPT

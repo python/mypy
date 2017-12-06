@@ -719,37 +719,45 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 yield True
                 self.calculate_abstract_status(defn.info)
                 self.setup_type_promotion(defn)
-
-                for decorator in defn.decorators:
-                    fullname = None
-                    if isinstance(decorator, CallExpr):
-                        if isinstance(decorator.callee, RefExpr):
-                            fullname = decorator.callee.fullname
-                    elif isinstance(decorator, NameExpr):
-                        fullname = decorator.fullname
-
-                    if fullname:
-                        hook = self.plugin.get_class_decorator_hook(fullname)
-                        if hook:
-                            hook(ClassDefContext(defn, self))
-
-                if defn.metaclass:
-                    metaclass_name = None
-                    if isinstance(defn.metaclass, NameExpr):
-                        metaclass_name = defn.metaclass.name
-                    elif isinstance(defn.metaclass, MemberExpr):
-                        metaclass_name = get_member_expr_fullname(
-                            defn.metaclass)
-                    hook = self.plugin.get_class_metaclass_hook(metaclass_name)
-                    if hook:
-                        hook(ClassDefContext(defn, self))
-
-                for type_info in defn.info.bases:
-                    hook = self.plugin.get_class_base_hook(type_info.type.fullname())
-                    if hook:
-                        hook(ClassDefContext(defn, self))
-
+                self.apply_class_plugin_hooks(defn)
                 self.leave_class()
+
+    def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
+        for decorator in defn.decorators:
+            fullname = None
+            if isinstance(decorator, CallExpr):
+                if isinstance(decorator.callee, RefExpr):
+                    fullname = decorator.callee.fullname
+            elif isinstance(decorator, (MemberExpr, NameExpr)):
+                fullname = decorator.fullname
+
+            if fullname:
+                hook = self.plugin.get_class_decorator_hook(fullname)
+                if hook:
+                    hook(ClassDefContext(defn, decorator, self))
+
+        if defn.metaclass:
+            metaclass_name = None
+            if isinstance(defn.metaclass, NameExpr):
+                metaclass_name = defn.metaclass.name
+            elif isinstance(defn.metaclass, MemberExpr):
+                metaclass_name = get_member_expr_fullname(defn.metaclass)
+            if metaclass_name:
+                hook = self.plugin.get_class_metaclass_hook(metaclass_name)
+                if hook:
+                    hook(ClassDefContext(defn, defn.metaclass, self))
+
+        for base in defn.base_type_exprs:
+            base_name = None
+            if isinstance(base, NameExpr):
+                base_name = base.name
+            elif isinstance(base, MemberExpr):
+                base_name = get_member_expr_fullname(base)
+
+            if base_name:
+                hook = self.plugin.get_class_base_hook(base_name)
+                if hook:
+                    hook(ClassDefContext(defn, base, self))
 
     def analyze_class_keywords(self, defn: ClassDef) -> None:
         for value in defn.keywords.values():
