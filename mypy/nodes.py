@@ -475,7 +475,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     is_conditional = False             # Defined conditionally (within block)?
     is_abstract = False
     is_property = False
-    original_def = None  # type: Union[None, FuncDef, Var]  # Original conditional definition
+    # Original conditional definition
+    original_def = None  # type: Union[None, FuncDef, Var, Decorator]
 
     FLAGS = FuncItem.FLAGS + [
         'is_decorated', 'is_conditional', 'is_abstract', 'is_property'
@@ -543,6 +544,7 @@ class Decorator(SymbolNode, Statement):
 
     func = None  # type: FuncDef                # Decorated function
     decorators = None  # type: List[Expression] # Decorators (may be empty)
+    # TODO: This is mostly used for the type; consider replacing with a 'type' attribute
     var = None  # type: Var                     # Represents the decorated function obj
     is_overload = False
 
@@ -562,6 +564,10 @@ class Decorator(SymbolNode, Statement):
     @property
     def info(self) -> 'TypeInfo':
         return self.func.info
+
+    @property
+    def type(self) -> 'Optional[mypy.types.Type]':
+        return self.var.type
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_decorator(self)

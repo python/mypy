@@ -1398,6 +1398,37 @@ f()
 f(1)
 [builtins fixtures/list.pyi]
 
+[case testDefineConditionallyAsImportedAndDecorated]
+from typing import Callable
+
+def dec(f: Callable[[], None]) -> Callable[[], None]: ...
+
+if int():
+    from m import f
+else:
+    @dec
+    def f():
+        yield
+[file m.py]
+def f(): pass
+
+[case testDefineConditionallyAsImportedAndDecoratedWithInference]
+if int():
+    from m import f
+else:
+    from contextlib import contextmanager
+
+    @contextmanager
+    def f():
+        yield
+[file m.py]
+from contextlib import contextmanager
+
+@contextmanager
+def f():
+    yield
+[typing fixtures/typing-full.pyi]
+
 
 -- Conditional method definition
 -- -----------------------------
@@ -1482,8 +1513,23 @@ f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 g('x')
 g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
 
+[case testConditionalMethodDefinitionUsingDecorator]
+from typing import Callable
+
+def dec(f) -> Callable[['A', int], None]: pass
+
+class A:
+    x = int()
+    if x:
+        @dec
+        def f(self): pass
+    else:
+        def f(self, x: int) -> None: pass
+
+
 -- Callable with specific arg list
 -- -------------------------------
+
 
 [case testCallableWithNamedArg]
 from typing import Callable

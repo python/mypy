@@ -1,16 +1,20 @@
 """The semantic analyzer pass 1.
 
-This sets up externally visible names defined in a module but ignores
-imports and local definitions.  It helps enable (some) cyclic references
-between modules, such as module 'a' that imports module 'b' and used
-names defined in b *and* vice versa.  The first pass can be performed
-before dependent modules have been processed.
+This sets up externally visible names defined in a module but doesn't
+follow imports and mostly ignores local definitions.  It helps enable
+(some) cyclic references between modules, such as module 'a' that
+imports module 'b' and used names defined in b *and* vice versa.  The
+first pass can be performed before dependent modules have been
+processed.
 
 Since this pass can't assume that other modules have been processed,
-this pass cannot determine the types of certain definitions that can
-only be recognized in later passes. Examples of these include TypeVar
-and NamedTuple definitions, as these look like regular assignments until
-we are able to bind names, which only happens in pass 2.
+this pass cannot detect certain definitions that can only be recognized
+in later passes. Examples of these include TypeVar and NamedTuple
+definitions, as these look like regular assignments until we are able to
+bind names, which only happens in pass 2.
+
+This pass also infers the reachability of certain if staments, such as
+those with platform checks.
 """
 
 from typing import List, Tuple
@@ -19,11 +23,13 @@ from mypy import experiments
 from mypy.nodes import (
     MypyFile, SymbolTable, SymbolTableNode, Var, Block, AssignmentStmt, FuncDef, Decorator,
     ClassDef, TypeInfo, ImportFrom, Import, ImportAll, IfStmt, WhileStmt, ForStmt, WithStmt,
-    TryStmt, OverloadedFuncDef, Lvalue, LDEF, GDEF, MDEF, UNBOUND_IMPORTED, implicit_module_attrs
+    TryStmt, OverloadedFuncDef, Lvalue, Context, LDEF, GDEF, MDEF, UNBOUND_IMPORTED, MODULE_REF,
+    implicit_module_attrs
 )
 from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp
 from mypy.semanal import SemanticAnalyzerPass2, infer_reachability_of_if_statement
 from mypy.options import Options
+from mypy.sametypes import is_same_type
 from mypy.visitor import NodeVisitor
 
 
@@ -133,6 +139,9 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
 
     def visit_func_def(self, func: FuncDef) -> None:
         sem = self.sem
+        if sem.type is not None:
+            # Don't process methods during pass 1.
+            return
         func.is_conditional = sem.block_depth[-1] > 0
         func._fullname = sem.qualified_name(func.name())
         at_module = sem.is_module_scope()
@@ -149,7 +158,8 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         else:
             if at_module:
                 sem.globals[func.name()] = SymbolTableNode(GDEF, func)
-            # Also analyze the function body (in case there are conditional imports).
+            # Also analyze the function body (needed in case there are unreachable
+            # conditional imports).
             sem.function_stack.append(func)
             sem.errors.push_function(func.name())
             sem.enter()
@@ -159,6 +169,9 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             sem.function_stack.pop()
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
+        if self.sem.type is not None:
+            # Don't process methods during pass 1.
+            return
         kind = self.kind_by_scope()
         if kind == GDEF:
             self.sem.check_no_global(func.name(), func, True)
@@ -228,7 +241,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         for name, as_name in node.names:
             imported_name = as_name or name
             if imported_name not in self.sem.globals:
-                self.sem.add_symbol(imported_name, SymbolTableNode(UNBOUND_IMPORTED, None), node)
+                self.add_symbol(imported_name, SymbolTableNode(UNBOUND_IMPORTED, None), node)
 
     def visit_import(self, node: Import) -> None:
         node.is_top_level = self.sem.is_module_scope()
@@ -240,7 +253,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             # For 'import a.b.c' we create symbol 'a'.
             imported_id = imported_id.split('.')[0]
             if imported_id not in self.sem.globals:
-                self.sem.add_symbol(imported_id, SymbolTableNode(UNBOUND_IMPORTED, None), node)
+                self.add_symbol(imported_id, SymbolTableNode(UNBOUND_IMPORTED, None), node)
 
     def visit_import_all(self, node: ImportAll) -> None:
         node.is_top_level = self.sem.is_module_scope()
@@ -266,8 +279,11 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             s.body.accept(self)
 
     def visit_decorator(self, d: Decorator) -> None:
+        if self.sem.type is not None:
+            # Don't process methods during pass 1.
+            return
         d.var._fullname = self.sem.qualified_name(d.var.name())
-        self.sem.add_symbol(d.var.name(), SymbolTableNode(self.kind_by_scope(), d.var), d)
+        self.add_symbol(d.var.name(), SymbolTableNode(self.kind_by_scope(), d), d)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, pyversion=self.pyversion, platform=self.platform)
@@ -293,3 +309,31 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             return LDEF
         else:
             assert False, "Couldn't determine scope"
+
+    def add_symbol(self, name: str, node: SymbolTableNode,
+                   context: Context) -> None:
+        # This is related to SemanticAnalyzerPass2.add_symbol. Since both methods will
+        # be called on top-level definitions, they need to co-operate.
+        if self.sem.is_func_scope():
+            assert self.sem.locals[-1] is not None
+            if name in self.sem.locals[-1]:
+                # Flag redefinition unless this is a reimport of a module.
+                if not (node.kind == MODULE_REF and
+                        self.sem.locals[-1][name].node == node.node):
+                    self.sem.name_already_defined(name, context)
+            self.sem.locals[-1][name] = node
+        else:
+            assert self.sem.type is None  # Pass 1 doesn't look inside classes
+            existing = self.sem.globals.get(name)
+            if existing and (not isinstance(node.node, MypyFile) or
+                             existing.node != node.node) and existing.kind != UNBOUND_IMPORTED:
+                # Modules can be imported multiple times to support import
+                # of multiple submodules of a package (e.g. a.x and a.y).
+                ok = False
+                # Only report an error if the symbol collision provides a different type.
+                if existing.type and node.type and is_same_type(existing.type, node.type):
+                    ok = True
+                if not ok:
+                    self.sem.name_already_defined(name, context)
+            elif not existing:
+                self.sem.globals[name] = node

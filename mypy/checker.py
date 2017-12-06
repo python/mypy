@@ -544,17 +544,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if not is_same_type(new_type, self.function_type(defn.original_def)):
                     self.msg.incompatible_conditional_function_def(defn)
             else:
-                # Function definition overrides a variable initialized via assignment.
+                # Function definition overrides a variable initialized via assignment or a
+                # decorated function.
                 orig_type = defn.original_def.type
                 if orig_type is None:
                     # XXX This can be None, as happens in
                     # test_testcheck_TypeCheckSuite.testRedefinedFunctionInTryWithElse
-                    self.msg.note("Internal mypy error checking function redefinition.", defn)
+                    self.msg.note("Internal mypy error checking function redefinition", defn)
                     return
                 if isinstance(orig_type, PartialType):
                     if orig_type.type is None:
                         # Ah this is a partial type. Give it the type of the function.
-                        var = defn.original_def
+                        orig_def = defn.original_def
+                        if isinstance(orig_def, Decorator):
+                            var = orig_def.var
+                        else:
+                            var = orig_def
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             var.type = new_type

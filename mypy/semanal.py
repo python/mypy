@@ -449,7 +449,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         . def f(): ...
         . def f(): ...  # Error: 'f' redefined
         """
-        if isinstance(previous, (FuncDef, Var)) and new.is_conditional:
+        if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
             new.original_def = previous
             return True
         else:
@@ -1496,7 +1496,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                                           module_symbol: SymbolTableNode,
                                           import_node: ImportBase) -> bool:
         if (existing_symbol.kind in (LDEF, GDEF, MDEF) and
-                isinstance(existing_symbol.node, (Var, FuncDef, TypeInfo))):
+                isinstance(existing_symbol.node, (Var, FuncDef, TypeInfo, Decorator))):
             # This is a valid import over an existing definition in the file. Construct a dummy
             # assignment that we'll use to type check the import.
             lvalue = NameExpr(imported_id)

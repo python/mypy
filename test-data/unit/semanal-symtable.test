@@ -82,3 +82,19 @@ sys:
   SymbolTable(
     platform : Gdef/Var (sys.platform)
     version_info : Gdef/Var (sys.version_info))
+
+[case testDecorator]
+from typing import Callable
+
+def dec(f: Callable[[], None]) -> Callable[[], None]:
+    return f
+
+@dec
+def g() -> None:
+    pass
+[out]
+__main__:
+  SymbolTable(
+    Callable : Gdef/Var (typing.Callable)
+    dec : Gdef/FuncDef (__main__.dec) : def (f: def ()) -> def ()
+    g : Gdef/Decorator (__main__.g) : def ())
