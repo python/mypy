@@ -1474,6 +1474,9 @@ class State:
     # Whether to ignore all errors
     ignore_all = False
 
+    # Whether the module has an error or any of its dependencies have one.
+    transitive_error = False
+
     # Type checker used for checking this file.  Use type_checker() for
     # access and to construct this on demand.
     _type_checker = None  # type: Optional[TypeChecker]
@@ -1944,7 +1947,7 @@ class State:
         if self.manager.options.quick_and_dirty:
             is_errors = self.manager.errors.is_errors_for_file(self.path)
         else:
-            is_errors = self.manager.errors.is_errors()
+            is_errors = self.transitive_error
         if is_errors:
             delete_cache(self.id, self.path, self.manager)
             self.meta = None
@@ -2257,6 +2260,10 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         else:
             fresh_msg = "stale due to deps (%s)" % " ".join(sorted(stale_deps))
 
+        if any(graph[dep].transitive_error for dep in deps if dep in graph):
+            for id in scc:
+                graph[id].transitive_error = True
+
         scc_str = " ".join(scc)
         if fresh:
             if not maybe_reuse_in_memory_tree(graph, scc, manager):
@@ -2464,6 +2471,9 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         for id in stale:
             if graph[id].type_check_second_pass():
                 more = True
+    if any(manager.errors.is_errors_for_file(graph[id].path) for id in stale):
+        for id in stale:
+            graph[id].transitive_error = True
     for id in stale:
         graph[id].finish_passes()
         graph[id].write_cache()
