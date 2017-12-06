@@ -405,7 +405,8 @@ def add_method(
 def attr_s_callback(ctx: ClassDefContext) -> None:
     """Add an __init__ method to classes decorated with attr.s."""
     info = ctx.cls.info
-    has_default: Dict[str, Expression] = {}  # TODO: Handle these.
+    # TODO: Handle default arguments
+    has_default = {}  # type: Dict[str, Expression]
     args = []
 
     for name, table in info.names.items():
