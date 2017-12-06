@@ -987,7 +987,7 @@ target:
 __main__:
     T: TypeVarExpr<0>
     TypeVar: Var<1>
-    f: Var<4>
+    f: Var<4>(Any)
 target:
 
 [case testRefreshNamedTuple_symtable]

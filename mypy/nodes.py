@@ -2333,11 +2333,11 @@ class SymbolTableNode:
         self.kind = kind
         self.node = node
         self.type_override = typ
-        self.module_hidden = module_hidden
         self.module_public = module_public
         self.normalized = normalized
         self.alias_tvars = alias_tvars
         self.implicit = implicit
+        self.module_hidden = module_hidden
 
     @property
     def fullname(self) -> Optional[str]:
@@ -2359,6 +2359,18 @@ class SymbolTableNode:
             return node.var.type
         else:
             return None
+
+    def copy(self) -> 'SymbolTableNode':
+        new = SymbolTableNode(self.kind,
+                              self.node,
+                              self.type_override,
+                              self.module_public,
+                              self.normalized,
+                              self.alias_tvars,
+                              self.implicit,
+                              self.module_hidden)
+        new.cross_ref = self.cross_ref
+        return new
 
     def __str__(self) -> str:
         s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
@@ -2449,6 +2461,10 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         a.insert(0, 'SymbolTable(')
         a[-1] += ')'
         return '\n'.join(a)
+
+    def copy(self) -> 'SymbolTable':
+        return SymbolTable((key, node.copy())
+                           for key, node in self.items())
 
     def serialize(self, fullname: str) -> JsonDict:
         data = {'.class': 'SymbolTable'}  # type: JsonDict

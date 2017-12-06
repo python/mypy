@@ -703,6 +703,7 @@ def reprocess_nodes(manager: BuildManager,
         return set()
 
     file_node = manager.modules[module_id]
+    old_symbols = file_node.names.copy()
 
     def key(node: DeferredNode) -> str:
         fullname = node.node.fullname()
@@ -737,6 +738,11 @@ def reprocess_nodes(manager: BuildManager,
                 options=manager.options,
                 active_type=deferred.active_typeinfo):
             manager.semantic_analyzer_pass3.refresh_partial(deferred.node)
+
+    # Merge symbol tables to preserve identities of AST nodes. We file node will remain
+    # the same, but other nodes may have been recreated with different identities, such as
+    # NamedTuples defined using assignment statements.
+    merge_asts(file_node, old_symbols, file_node, file_node.names)
 
     # Keep track of potentially affected attribute types before type checking.
     old_types_map = get_enclosing_namespace_types(nodes)
