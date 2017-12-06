@@ -253,7 +253,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             with self.binder.top_frame_context():
                 for d in node.defs:
                     # TODO: Type check class bodies.
-                    if not isinstance(d, (FuncDef, ClassDef)):
+                    if isinstance(d, Decorator):
+                        self.visit_decorator(d, check_body=False)
+                    elif not isinstance(d, (FuncDef, ClassDef)):
                         d.accept(self)
 
         assert not self.current_node_deferred
@@ -2484,7 +2486,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.binder.assign_type(elt, DeletedType(source=elt.name),
                                             get_declaration(elt), False)
 
-    def visit_decorator(self, e: Decorator) -> None:
+    def visit_decorator(self, e: Decorator, check_body: bool = True) -> None:
         for d in e.decorators:
             if isinstance(d, RefExpr):
                 if d.fullname == 'typing.no_type_check':
@@ -2492,7 +2494,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     e.var.is_ready = True
                     return
 
-        self.check_func_item(e.func, name=e.func.name())
+        if check_body:
+            self.check_func_item(e.func, name=e.func.name())
 
         # Process decorators from the inside out to determine decorated signature, which
         # may be different from the declared signature.
