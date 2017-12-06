@@ -28,6 +28,7 @@ if sys.platform != 'win32':
         'check-enum.test',
         'check-incremental.test',
         'check-newtype.test',
+        'check-dmypy-fine-grained.test',
     ]
 else:
     dmypy_files = []  # type: List[str]
@@ -72,16 +73,8 @@ class TypeCheckSuite(DataSuite):
         assert incremental_step >= 1
         build.find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
-        module_data = self.parse_module(original_program_text, incremental_step)
 
-        if incremental_step == 1:
-            # In run 1, copy program text to program file.
-            for module_name, program_path, program_text in module_data:
-                if module_name == '__main__':
-                    with open(program_path, 'w') as f:
-                        f.write(program_text)
-                    break
-        elif incremental_step > 1:
+        if incremental_step > 1:
             # In runs 2+, copy *.[num] files to * files.
             for dn, dirs, files in os.walk(os.curdir):
                 for file in files:
@@ -101,10 +94,23 @@ class TypeCheckSuite(DataSuite):
                 # Use retries to work around potential flakiness on Windows (AppVeyor).
                 retry_on_error(lambda: os.remove(path))
 
+        module_data = self.parse_module(original_program_text, incremental_step)
+
+        if incremental_step == 1:
+            # In run 1, copy program text to program file.
+            for module_name, program_path, program_text in module_data:
+                if module_name == '__main__':
+                    with open(program_path, 'w') as f:
+                        f.write(program_text)
+                    break
+
         # Parse options after moving files (in case mypy.ini is being moved).
         options = self.parse_options(original_program_text, testcase, incremental_step)
         if incremental_step == 1:
-            self.server = dmypy_server.Server([])  # TODO: Fix ugly API
+            server_options = []  # type: List[str]
+            if 'fine-grained' in testcase.file:
+                server_options.append('--experimental')
+            self.server = dmypy_server.Server(server_options)  # TODO: Fix ugly API
             self.server.options = options
 
         assert self.server is not None  # Set in step 1 and survives into next steps

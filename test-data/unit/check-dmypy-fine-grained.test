@@ -1,0 +1,80 @@
+[case testCleanFineGrainedIncremental]
+# cmd: mypy -m a b
+[file b.py]
+import a
+x = a.f()
+
+[file a.py]
+def f() -> int:
+    return 1
+
+[file a.py.2]
+def f() -> str:
+    return ''
+[out1]
+[out2]
+
+[case testErrorFineGrainedIncremental]
+# cmd: mypy -m a b
+[file b.py]
+import a
+x = a.f()
+x = 1
+
+[file a.py]
+def f() -> int:
+    return 1
+
+[file a.py.2]
+def f() -> str:
+    return ''
+[out1]
+[out2]
+tmp/b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAddFileFineGrainedIncremental]
+# cmd: mypy -m a
+# cmd2: mypy -m a b
+[file a.py]
+import b
+b.f(1)
+[file b.py.2]
+def f(x: str) -> None: pass
+[out1]
+tmp/a.py:1: error: Cannot find module named 'b'
+tmp/a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+[out2]
+tmp/a.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testDeleteFileFineGrainedIncremental]
+# cmd: mypy -m a b
+# cmd2: mypy -m a
+[file a.py]
+import b
+b.f(1)
+[file b.py]
+def f(x: str) -> None: pass
+[delete b.py.2]
+[out1]
+tmp/a.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+[out2]
+tmp/a.py:1: error: Cannot find module named 'b'
+tmp/a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testInitialErrorFineGrainedIncremental]
+# cmd: mypy -m a b
+[file b.py]
+import a
+x = a.f()
+x = ''
+
+[file a.py]
+def f() -> int:
+    return 1
+
+[file a.py.2]
+def f() -> str:
+    return ''
+[out1]
+tmp/b.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+[out2]
