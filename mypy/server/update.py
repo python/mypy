@@ -572,7 +572,7 @@ def update_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
     for id, node in new_modules.items():
         if node is None:
             continue
-        if '/typeshed/' in node.path:
+        if '/typeshed/' in node.path or node.path.startswith('typeshed/'):
             # We don't track changes to typeshed -- the assumption is that they are only changed
             # as part of mypy updates, which will invalidate everything anyway.
             #
