@@ -360,7 +360,8 @@ class ASTConverter(ast3.NodeTransformer):
             except SyntaxError:
                 self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
                 if n.type_comment and n.type_comment[0] != "(":
-                    self.note('Suggestion: wrap input types in parens', n.lineno, n.col_offset)
+                    self.note('Suggestion: wrap argument types in parentheses',
+                              n.lineno, n.col_offset)
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
                 return_type = AnyType(TypeOfAny.from_error)
         else:

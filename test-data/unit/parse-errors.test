@@ -169,7 +169,7 @@ def f(): # type: x
   pass
 [out]
 file:1: error: syntax error in type comment
-file:1: note: Suggestion: wrap input types in parens
+file:1: note: Suggestion: wrap argument types in parentheses
 
 [case testInvalidSignatureInComment2]
 def f(): # type:
