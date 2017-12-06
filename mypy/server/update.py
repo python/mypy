@@ -132,6 +132,9 @@ class FineGrainedBuildManager:
         if DEBUG:
             print('==== update %s ====' % ', '.join(repr(id)
                                                     for id, _ in changed_modules))
+            if self.previous_targets_with_errors:
+                print('previous targets with errors: %s' %
+                      sorted(self.previous_targets_with_errors))
 
         if self.blocking_error:
             # Handle blocking errors first. We'll exit as soon as we find a
@@ -292,6 +295,8 @@ def update_single_isolated(module: str,
     """
     if module in manager.modules:
         assert_equivalent_paths(path, manager.modules[module].path)
+    elif DEBUG:
+        print('new module %r' % module)
 
     old_modules = dict(manager.modules)
     sources = get_sources(previous_modules, [(module, path)])
@@ -378,6 +383,8 @@ def assert_equivalent_paths(path1: str, path2: str) -> None:
 def delete_module(module_id: str,
                   graph: Dict[str, State],
                   manager: BuildManager) -> Dict[str, State]:
+    if DEBUG:
+        print('delete module %r' % module_id)
     # TODO: Deletion of a package
     # TODO: Remove deps for the module (this only affects memory use, not correctness)
     assert module_id not in graph

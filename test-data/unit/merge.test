@@ -1035,3 +1035,40 @@ TypeInfo<0>(
   Names(
     a<2> (builtins.int<3>)
     b<4> (builtins.str<5>)))
+
+[case testDecoratorYYY_symtable]
+import target
+[file target.py]
+from contextlib import contextmanager
+from typing import Iterator, List, Tuple
+
+@contextmanager
+def f(x: List[Tuple[int]]) -> Iterator[None]:
+    yield
+[file target.py.next]
+from contextlib import contextmanager
+from typing import Iterator, List, Tuple
+
+@contextmanager
+def f(x: List[Tuple[int]]) -> Iterator[None]:
+    yield
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    Iterator: TypeInfo<1>
+    List: TypeInfo<2>
+    Tuple: Var<3>
+    contextmanager: FuncDef<4>
+    f: Var<5>
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    Iterator: TypeInfo<1>
+    List: TypeInfo<2>
+    Tuple: Var<3>
+    contextmanager: FuncDef<4>
+    f: Var<5>
