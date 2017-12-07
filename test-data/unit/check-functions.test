@@ -2212,7 +2212,7 @@ foo(y=2)  # E: Missing positional arguments
 def dec(f): pass
 
 @dec
-def test(a: str) -> (str,): # E: Invalid tuple literal type
+def test(a: str) -> (str,): # E: Invalid tuple literal type # N: Suggestion: Is there a spurious trailing comma?
     return None
 
 [case testReturnTypeLineNumberNewLine]

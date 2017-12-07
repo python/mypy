@@ -423,3 +423,15 @@ def call() -> str: pass
 [case testNoCrashOnImportFromStarPython2]
 # flags: --py2
 from . import * # E: No parent module -- cannot perform relative import
+
+[case testSpuriousTrailingComma_python2]
+from typing import Optional
+
+def update_state(tid,                # type: int
+                 vid,                # type: int
+                 update_ts=None,     # type: Optional[float],
+                 ):         # type: (...) -> str
+    pass
+[out]
+main:3: error: Invalid tuple literal type
+main:3: note: Suggestion: Is there a spurious trailing comma?
