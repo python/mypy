@@ -45,6 +45,8 @@ class NodeStripVisitor(TraverserVisitor):
         node.info.abstract_attributes = []
         node.info.mro = []
         node.info.add_type_vars()
+        node.base_type_exprs.extend(node.removed_base_type_exprs)
+        node.removed_base_type_exprs = []
         with self.enter_class(node.info):
             super().visit_class_def(node)
 

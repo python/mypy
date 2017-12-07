@@ -862,6 +862,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             if defn.info:
                 defn.info.type_vars = [name for name, _ in declared_tvars]
         for i in reversed(removed):
+            defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
             del defn.base_type_exprs[i]
         tvar_defs = []  # type: List[TypeVarDef]
         for name, tvar_expr in declared_tvars:

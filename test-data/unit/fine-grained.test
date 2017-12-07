@@ -1207,3 +1207,21 @@ main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 main:1: error: Cannot find module named 'n'
 main:2: error: Cannot find module named 'm'
 main:14: error: Cannot find module named 'n'
+
+[case testRefreshGenericClass]
+from typing import TypeVar, Generic
+from a import A
+
+X = TypeVar('X')
+
+class C(Generic[X]):
+    def f(self, x: A) -> X: ...
+[file a.py]
+class A: pass
+[file a.py.2]
+[file a.py.3]
+class A: pass
+[out]
+==
+main:2: error: Module 'a' has no attribute 'A'
+==

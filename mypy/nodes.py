@@ -670,6 +670,8 @@ class ClassDef(Statement):
     type_vars = None  # type: List[mypy.types.TypeVarDef]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs = None  # type: List[Expression]
+    # Special base classes like Generic[...] get moved here during semantic analysis
+    removed_base_type_exprs = None  # type: List[Expression]
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = None  # type: Optional[Expression]
     decorators = None  # type: List[Expression]
@@ -688,6 +690,7 @@ class ClassDef(Statement):
         self.defs = defs
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []
+        self.removed_base_type_exprs = []
         self.metaclass = metaclass
         self.decorators = []
         self.keywords = OrderedDict(keywords or [])
