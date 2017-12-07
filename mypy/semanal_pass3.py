@@ -43,9 +43,13 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         self.modules = modules
         self.errors = errors
         self.sem = sem
+        # If True, process function definitions. If False, don't. This is used
+        # for processing module top levels in fine-grained incremental mode.
+        self.recurse_into_functions = True
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
                    patches: List[Callable[[], None]]) -> None:
+        self.recurse_into_functions = True
         self.errors.set_file(fnam, file_node.fullname())
         self.options = options
         self.sem.options = options
@@ -59,16 +63,16 @@ class SemanticAnalyzerPass3(TraverserVisitor):
     def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         if isinstance(node, MypyFile):
+            self.recurse_into_functions = False
             self.refresh_top_level(node)
         else:
+            self.recurse_into_functions = True
             self.accept(node)
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         for d in file_node.defs:
-            # TODO: Refresh class bodies (but not methods)
-            if not isinstance(d, (FuncItem, ClassDef, OverloadedFuncDef)):
-                self.accept(d)
+            self.accept(d)
 
     def accept(self, node: Node) -> None:
         try:
@@ -82,12 +86,16 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         super().visit_block(b)
 
     def visit_func_def(self, fdef: FuncDef) -> None:
+        if not self.recurse_into_functions:
+            return
         self.errors.push_function(fdef.name())
         self.analyze(fdef.type, fdef)
         super().visit_func_def(fdef)
         self.errors.pop_function()
 
     def visit_overloaded_func_def(self, fdef: OverloadedFuncDef) -> None:
+        if not self.recurse_into_functions:
+            return
         self.analyze(fdef.type, fdef)
         super().visit_overloaded_func_def(fdef)
 
@@ -135,7 +143,13 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         This basically uses a simple special-purpose type inference
         engine just for decorators.
         """
-        super().visit_decorator(dec)
+        # Don't just call the super method since we don't unconditionally traverse the decorated
+        # function.
+        dec.var.accept(self)
+        for decorator in dec.decorators:
+            decorator.accept(self)
+        if self.recurse_into_functions:
+            dec.func.accept(self)
         if dec.var.is_property:
             # Decorators are expected to have a callable type (it's a little odd).
             if dec.func.type is None:

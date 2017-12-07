@@ -703,13 +703,20 @@ def reprocess_nodes(manager: BuildManager,
         return set()
 
     file_node = manager.modules[module_id]
-    old_symbols = file_node.names.copy()
+    old_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
+    old_symbols = {name: names.copy() for name, names in old_symbols.items()}
 
     def key(node: DeferredNode) -> str:
         fullname = node.node.fullname()
-        if isinstance(node.node, FuncDef) and fullname is None:
-            assert node.node.info is not None
-            fullname = '%s.%s' % (node.node.info.fullname(), node.node.name())
+        if fullname is None:
+            if isinstance(node.node, FuncDef):
+                info = node.node.info
+            elif isinstance(node.node, OverloadedFuncDef):
+                info = node.node.items[0].info
+            else:
+                assert False, "'None' fullname for %s instance" % type(node.node)
+            assert info is not None
+            fullname = '%s.%s' % (info.fullname(), node.node.name())
         return fullname
 
     # Some nodes by full name so that the order of processing is deterministic.
@@ -739,10 +746,13 @@ def reprocess_nodes(manager: BuildManager,
                 active_type=deferred.active_typeinfo):
             manager.semantic_analyzer_pass3.refresh_partial(deferred.node)
 
-    # Merge symbol tables to preserve identities of AST nodes. We file node will remain
+    # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as
     # NamedTuples defined using assignment statements.
-    merge_asts(file_node, old_symbols, file_node, file_node.names)
+    new_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
+    for name in old_symbols:
+        if name in new_symbols:
+            merge_asts(file_node, old_symbols[name], file_node, new_symbols[name])
 
     # Keep track of potentially affected attribute types before type checking.
     old_types_map = get_enclosing_namespace_types(nodes)
@@ -763,6 +773,25 @@ def reprocess_nodes(manager: BuildManager,
     verify_dependencies(graph[module_id], manager)
 
     return new_triggered
+
+
+def find_symbol_tables_recursive(prefix: str, symbols: SymbolTable) -> Dict[str, SymbolTable]:
+    """Find all nested symbol tables.
+
+    Args:
+        prefix: Full name prefix (used for return value keys and to filter result so that
+            cross references to other modules aren't included)
+        symbols: Root symbol table
+
+    Returns a dictionary from full name to corresponding symbol table.
+    """
+    result = {}
+    result[prefix] = symbols
+    for name, node in symbols.items():
+        if isinstance(node.node, TypeInfo) and node.node.fullname().startswith(prefix + '.'):
+            more = find_symbol_tables_recursive(prefix + '.' + name, node.node.names)
+            result.update(more)
+    return result
 
 
 NamespaceNode = Union[TypeInfo, MypyFile]

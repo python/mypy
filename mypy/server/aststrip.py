@@ -27,39 +27,45 @@ class NodeStripVisitor(TraverserVisitor):
     def __init__(self) -> None:
         self.type = None  # type: Optional[TypeInfo]
         self.names = None  # type: Optional[SymbolTable]
+        self.is_class_body = False
+        # By default, process function definitions. If False, don't -- this is used for
+        # processing module top levels.
+        self.recurse_into_functions = True
 
     def strip_file_top_level(self, file_node: MypyFile) -> None:
         """Strip a module top-level (don't recursive into functions)."""
         self.names = file_node.names
-        # TODO: Functions nested within statements
-        for node in file_node.defs:
-            if not isinstance(node, (FuncItem, ClassDef, OverloadedFuncDef)):
-                node.accept(self)
-            elif isinstance(node, ClassDef):
-                self.strip_class_body(node)
+        self.recurse_into_functions = False
+        file_node.accept(self)
 
-    def strip_class_body(self, node: ClassDef) -> None:
+    def visit_class_def(self, node: ClassDef) -> None:
         """Strip class body and type info, but don't strip methods."""
-        # TODO: Statements in class body
         node.info.type_vars = []
         node.info.bases = []
         node.info.abstract_attributes = []
         node.info.mro = []
         node.info.add_type_vars()
+        with self.enter_class(node.info):
+            super().visit_class_def(node)
 
     def visit_func_def(self, node: FuncDef) -> None:
+        if not self.recurse_into_functions:
+            return
         node.expanded = []
         node.type = node.unanalyzed_type
-        with self.enter_class(node.info) if node.info else nothing():
+        with self.enter_method(node.info) if node.info else nothing():
             super().visit_func_def(node)
 
     def visit_decorator(self, node: Decorator) -> None:
         node.var.type = None
         for expr in node.decorators:
             expr.accept(self)
-        # TODO: If not a top-level decorator, also recurside in node.func
+        if self.recurse_into_functions:
+            node.func.accept(self)
 
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> None:
+        if not self.recurse_into_functions:
+            return
         if node.impl:
             # Revert change made during semantic analysis pass 2.
             assert node.items[-1] is not node.impl
@@ -69,13 +75,38 @@ class NodeStripVisitor(TraverserVisitor):
     @contextlib.contextmanager
     def enter_class(self, info: TypeInfo) -> Iterator[None]:
         # TODO: Update and restore self.names
-        old = self.type
+        old_type = self.type
+        old_is_class_body = self.is_class_body
         self.type = info
+        self.is_class_body = True
         yield
-        self.type = old
+        self.type = old_type
+        self.is_class_body = old_is_class_body
+
+    @contextlib.contextmanager
+    def enter_method(self, info: TypeInfo) -> Iterator[None]:
+        # TODO: Update and restore self.names
+        old_type = self.type
+        old_is_class_body = self.is_class_body
+        self.type = info
+        self.is_class_body = False
+        yield
+        self.type = old_type
+        self.is_class_body = old_is_class_body
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         node.type = node.unanalyzed_type
+        if node.type and self.is_class_body:
+            # Remove attribute defined in the class body from the class namespace to avoid
+            # bogus "Name already defined" errors.
+            #
+            # TODO: Handle multiple assignment, other lvalues
+            # TODO: What about assignments without type annotations?
+            assert len(node.lvalues) == 1
+            lvalue = node.lvalues[0]
+            assert isinstance(lvalue, NameExpr)
+            assert self.type is not None  # Because self.is_class_body is True
+            del self.type.names[lvalue.name]
         super().visit_assignment_stmt(node)
 
     def visit_import_from(self, node: ImportFrom) -> None:

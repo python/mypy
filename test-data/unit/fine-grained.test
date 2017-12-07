@@ -1177,3 +1177,33 @@ main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 main:1: error: Cannot find module named 'n'
 main:2: error: Cannot find module named 'm'
 main:9: error: Cannot find module named 'n'
+
+[case testOverloadSpecialCase]
+from typing import overload
+import m
+import sys
+
+class C:
+    if sys.platform == 'nonexistent':
+        def f(self, x): pass
+    else:
+        @overload
+        def f(self, x: m.A) -> None: pass
+        @overload
+        def f(self, x: int) -> None: pass
+        def f(self, x: object) -> None:
+            from n import g
+[file m.py]
+class A: pass
+[file n.py]
+def g() -> None: pass
+[delete m.py.2]
+[delete n.py.2]
+[builtins fixtures/ops.pyi]
+[out]
+==
+main:1: error: Cannot find module named 'm'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'n'
+main:2: error: Cannot find module named 'm'
+main:14: error: Cannot find module named 'n'
