@@ -389,6 +389,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
         # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
         if t.implicit and not self.allow_tuple_literal:
             self.fail('Invalid tuple literal type', t)
+            if len(t.items) == 1:
+                self.note_func('Suggestion: Is there a spurious trailing comma?', t)
             return AnyType(TypeOfAny.from_error)
         star_count = sum(1 for item in t.items if isinstance(item, StarType))
         if star_count > 1:
