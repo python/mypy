@@ -35,7 +35,7 @@ TYPES = 'TYPES'
 AST = 'AST'
 
 
-NOT_DUMPED_MODULES = ('builtins', 'typing', 'abc', 'contextlib')
+NOT_DUMPED_MODULES = ('builtins', 'typing', 'abc', 'contextlib', 'sys')
 
 
 class ASTMergeSuite(DataSuite):
