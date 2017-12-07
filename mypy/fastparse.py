@@ -158,6 +158,9 @@ class ASTConverter(ast3.NodeTransformer):
         self.is_stub = is_stub
         self.errors = errors
 
+    def note(self, msg: str, line: int, column: int) -> None:
+        self.errors.report(line, column, msg, severity='note')
+
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, blocker=True)
 
@@ -357,6 +360,9 @@ class ASTConverter(ast3.NodeTransformer):
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
+                if n.type_comment and n.type_comment[0] != "(":
+                    self.note('Suggestion: wrap argument types in parentheses',
+                              n.lineno, n.col_offset)
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
                 return_type = AnyType(TypeOfAny.from_error)
         else:
