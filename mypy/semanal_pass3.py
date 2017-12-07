@@ -56,7 +56,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         with experiments.strict_optional_set(options.strict_optional):
             self.accept(file_node)
 
-    def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
+    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
@@ -66,7 +66,8 @@ class SemanticAnalyzerPass3(TraverserVisitor):
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         for d in file_node.defs:
-            if not isinstance(d, (FuncItem, ClassDef)):
+            # TODO: Refresh class bodies (but not methods)
+            if not isinstance(d, (FuncItem, ClassDef, OverloadedFuncDef)):
                 self.accept(d)
 
     def accept(self, node: Node) -> None:

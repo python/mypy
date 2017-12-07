@@ -8,12 +8,13 @@ from typing import Union, Iterator, Optional
 
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
-    ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, UNBOUND_IMPORTED, GDEF
+    ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
+    UNBOUND_IMPORTED, GDEF
 )
 from mypy.traverser import TraverserVisitor
 
 
-def strip_target(node: Union[MypyFile, FuncItem]) -> None:
+def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
     """Strip a fine-grained incremental mode target from semantic information."""
     visitor = NodeStripVisitor()
     if isinstance(node, MypyFile):
@@ -32,7 +33,7 @@ class NodeStripVisitor(TraverserVisitor):
         self.names = file_node.names
         # TODO: Functions nested within statements
         for node in file_node.defs:
-            if not isinstance(node, (FuncItem, ClassDef)):
+            if not isinstance(node, (FuncItem, ClassDef, OverloadedFuncDef)):
                 node.accept(self)
             elif isinstance(node, ClassDef):
                 self.strip_class_body(node)
@@ -57,6 +58,13 @@ class NodeStripVisitor(TraverserVisitor):
         for expr in node.decorators:
             expr.accept(self)
         # TODO: If not a top-level decorator, also recurside in node.func
+
+    def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> None:
+        if node.impl:
+            # Revert change made during semantic analysis pass 2.
+            assert node.items[-1] is not node.impl
+            node.items.append(node.impl)
+        super().visit_overloaded_func_def(node)
 
     @contextlib.contextmanager
     def enter_class(self, info: TypeInfo) -> Iterator[None]:

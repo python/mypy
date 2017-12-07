@@ -1153,3 +1153,27 @@ a.py:9: error: Unsupported operand types for + ("int" and "str")
 ==
 a.py:9: error: Unsupported operand types for + ("int" and "str")
 ==
+
+[case testOverloadRefresh]
+from typing import overload
+import m
+
+@overload
+def f(x: m.A) -> None: ...
+@overload
+def f(x: int) -> None: ...
+def f(x: object) -> None:
+    from n import g
+[file m.py]
+class A: pass
+[file n.py]
+def g() -> None: pass
+[delete m.py.2]
+[delete n.py.2]
+[out]
+==
+main:1: error: Cannot find module named 'm'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'n'
+main:2: error: Cannot find module named 'm'
+main:9: error: Cannot find module named 'n'

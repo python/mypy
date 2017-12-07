@@ -57,7 +57,7 @@ from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator,
-    Import, ImportFrom, SymbolTable
+    Import, ImportFrom, OverloadedFuncDef, SymbolTable
 )
 from mypy.options import Options
 from mypy.types import Type
@@ -854,7 +854,9 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
     if isinstance(node, Decorator):
         # Decorator targets actually refer to the function definition only.
         node = node.func
-    assert isinstance(node, (FuncDef, MypyFile)), 'unexpected type: %s' % type(node)
+    assert isinstance(node, (FuncDef,
+                             MypyFile,
+                             OverloadedFuncDef)), 'unexpected type: %s' % type(node)
     return [DeferredNode(node, active_class_name, active_class)]
 
 

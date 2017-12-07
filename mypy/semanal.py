@@ -299,7 +299,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             del self.options
             del self.patches
 
-    def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
+    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
@@ -316,7 +316,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 self.refresh_class_def(d)
             elif isinstance(d, Decorator):
                 self.visit_decorator(d, func_body=False)
-            elif not isinstance(d, FuncItem):
+            elif not isinstance(d, (FuncItem, OverloadedFuncDef)):
                 self.accept(d)
 
     def refresh_class_def(self, defn: ClassDef) -> None:

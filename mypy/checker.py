@@ -74,7 +74,7 @@ DeferredNode = NamedTuple(
     'DeferredNode',
     [
         # In batch mode only FuncDef and LambdaExpr are supported
-        ('node', Union[FuncDef, LambdaExpr, MypyFile]),
+        ('node', Union[FuncDef, LambdaExpr, MypyFile, OverloadedFuncDef]),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
         ('active_typeinfo', Optional[TypeInfo]),  # And its TypeInfo (for semantic analysis
                                                   # self type handling)
@@ -226,7 +226,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 assert not self.deferred_nodes
             self.deferred_nodes = []
-            done = set()  # type: Set[Union[FuncDef, LambdaExpr, MypyFile]]
+            done = set()  # type: Set[Union[FuncDef, LambdaExpr, MypyFile, OverloadedFuncDef]]
             for node, type_name, active_typeinfo in todo:
                 if node in done:
                     continue
@@ -239,7 +239,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.check_partial(node)
             return True
 
-    def check_partial(self, node: Union[FuncDef, LambdaExpr, MypyFile]) -> None:
+    def check_partial(self, node: Union[FuncDef,
+                                        LambdaExpr,
+                                        MypyFile,
+                                        OverloadedFuncDef]) -> None:
         if isinstance(node, MypyFile):
             self.check_top_level(node)
         elif isinstance(node, LambdaExpr):
@@ -255,7 +258,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # TODO: Type check class bodies.
                     if isinstance(d, Decorator):
                         self.visit_decorator(d, check_body=False)
-                    elif not isinstance(d, (FuncDef, ClassDef)):
+                    elif not isinstance(d, (FuncDef, ClassDef, OverloadedFuncDef)):
                         d.accept(self)
 
         assert not self.current_node_deferred
