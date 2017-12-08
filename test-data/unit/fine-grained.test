@@ -1225,3 +1225,18 @@ class A: pass
 ==
 main:2: error: Module 'a' has no attribute 'A'
 ==
+
+[case testPrintStatement_python2]
+# flags: --py2
+import a
+[file a.py]
+def f(x): # type: (int) -> int
+    return 1
+print f(1)
+[file a.py.2]
+def f(x): # type: (int) -> int
+    return 1
+print f('')
+[out]
+==
+a.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
