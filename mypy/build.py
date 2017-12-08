@@ -2260,6 +2260,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         else:
             fresh_msg = "stale due to deps (%s)" % " ".join(sorted(stale_deps))
 
+        # Initialize transitive_error for all SCC members from union
+        # of transitive_error of dependencies.
         if any(graph[dep].transitive_error for dep in deps if dep in graph):
             for id in scc:
                 graph[id].transitive_error = True
@@ -2278,6 +2280,11 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 # Note that `process_graph` may end with us not having processed every
                 # single fresh SCC. This is intentional -- we don't need those modules
                 # loaded if there are no more stale SCCs to be rechecked.
+                #
+                # Also note we shouldn't have to worry about transitive_error here,
+                # since modules with transitive errors aren't written to the cache,
+                # and if any dependencies were changed, this SCC would be stale.
+                # (Also, in quick_and_dirty mode we don't care about transitive errors.)
                 #
                 # TODO: see if it's possible to determine if we need to process only a
                 # _subset_ of the past SCCs instead of having to process them all.
@@ -2423,6 +2430,7 @@ def can_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManager
         # Check that all dependencies were loaded from memory.
         # If not, some dependency was reparsed but the interface hash
         # wasn't changed -- in that case we can't reuse the tree.
+        # TODO: Pass deps in from process_graph(), via maybe_reuse_in_memory_tree()?
         deps = set(dep for id in scc for dep in graph[id].dependencies if dep in graph)
         deps -= set(scc)  # Subtract the SCC itself (else nothing will be safe)
         if all(graph[dep].is_from_saved_cache for dep in deps):
