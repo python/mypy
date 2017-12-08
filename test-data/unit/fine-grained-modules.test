@@ -549,3 +549,24 @@ a.py:2: error: Module has no attribute "x"
 --   - delete two files that form a package
 -- - order of processing makes a difference
 -- - mix of modify, add and delete in one iteration
+
+
+-- Controlling imports using command line options
+-- ----------------------------------------------
+
+
+[case testIgnoreMissingImports]
+# flags: --ignore-missing-imports
+import a
+[file a.py]
+import b
+import c
+[file c.py]
+[delete c.py.2]
+[file b.py.3]
+import d
+1 + ''
+[out]
+==
+==
+b.py:2: error: Unsupported operand types for + ("int" and "str")

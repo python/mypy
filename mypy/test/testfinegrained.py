@@ -24,7 +24,7 @@ from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv, indent
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite, UpdateFile
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, parse_options
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type
@@ -42,7 +42,7 @@ class FineGrainedSuite(DataSuite):
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         main_src = '\n'.join(testcase.input)
-        messages, manager, graph = self.build(main_src)
+        messages, manager, graph = self.build(main_src, testcase)
 
         a = []
         if messages:
@@ -85,8 +85,11 @@ class FineGrainedSuite(DataSuite):
                 'Invalid active triggers ({}, line {})'.format(testcase.file,
                                                                testcase.line))
 
-    def build(self, source: str) -> Tuple[List[str], BuildManager, Graph]:
-        options = Options()
+    def build(self, source: str, testcase: DataDrivenTestCase) -> Tuple[List[str],
+                                                                        BuildManager,
+                                                                        Graph]:
+        # This handles things like '# flags: --foo'.
+        options = parse_options(source, testcase, incremental_step=1)
         options.incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
