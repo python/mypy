@@ -23,7 +23,9 @@ from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv, indent
 from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite, UpdateFile
+from mypy.test.data import (
+    parse_test_cases, DataDrivenTestCase, DataSuite, UpdateFile, module_from_path
+)
 from mypy.test.helpers import assert_string_arrays_equal, parse_options
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
@@ -42,7 +44,8 @@ class FineGrainedSuite(DataSuite):
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         main_src = '\n'.join(testcase.input)
-        messages, manager, graph = self.build(main_src, testcase)
+        sources_override = self.parse_sources(main_src)
+        messages, manager, graph = self.build(main_src, testcase, sources_override)
 
         a = []
         if messages:
@@ -63,6 +66,10 @@ class FineGrainedSuite(DataSuite):
                     # Delete file
                     os.remove(op.path)
                     modules.append((op.module, op.path))
+            if sources_override is not None:
+                modules = [(module, path)
+                           for module, path in sources_override
+                           if any(m == module for m, _ in modules)]
             new_messages = fine_grained_manager.update(modules)
             all_triggered.append(fine_grained_manager.triggered)
             new_messages = normalize_messages(new_messages)
@@ -85,9 +92,12 @@ class FineGrainedSuite(DataSuite):
                 'Invalid active triggers ({}, line {})'.format(testcase.file,
                                                                testcase.line))
 
-    def build(self, source: str, testcase: DataDrivenTestCase) -> Tuple[List[str],
-                                                                        BuildManager,
-                                                                        Graph]:
+    def build(self,
+              source: str,
+              testcase: DataDrivenTestCase,
+              sources_override: Optional[List[Tuple[str, str]]]) -> Tuple[List[str],
+                                                                          BuildManager,
+                                                                          Graph]:
         # This handles things like '# flags: --foo'.
         options = parse_options(source, testcase, incremental_step=1)
         options.incremental = True
@@ -96,8 +106,14 @@ class FineGrainedSuite(DataSuite):
         main_path = os.path.join(test_temp_dir, 'main')
         with open(main_path, 'w') as f:
             f.write(source)
+        if sources_override is not None:
+            sources = [BuildSource(path, module, None)
+                       for module, path in sources_override]
+        else:
+            sources = [BuildSource(main_path, None, None)]
+        print(sources)
         try:
-            result = build.build(sources=[BuildSource(main_path, None, None)],
+            result = build.build(sources=sources,
                                  options=options,
                                  alt_lib_path=test_temp_dir)
         except CompileError as e:
@@ -114,6 +130,27 @@ class FineGrainedSuite(DataSuite):
             filtered = sorted(filtered)
             result.append(('%d: %s' % (n + 2, ', '.join(filtered))).strip())
         return result
+
+    def parse_sources(self, program_text: str) -> Optional[List[Tuple[str, str]]]:
+        """Return target (module, path) tuples for a test case, if not using the defaults.
+
+        These are defined through a comment like '# cmd: main a.py' in the test case
+        description.
+        """
+        # TODO: Support defining sepately for each incremental step.
+        m = re.search('# cmd: mypy ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
+        if m:
+            # The test case wants to use a non-default set of files.
+            paths = m.group(1).strip().split()
+            result = []
+            for path in paths:
+                path = os.path.join(test_temp_dir, path)
+                module = module_from_path(path)
+                if module == 'main':
+                    module = '__main__'
+                result.append((module, path))
+            return result
+        return None
 
 
 def normalize_messages(messages: List[str]) -> List[str]:

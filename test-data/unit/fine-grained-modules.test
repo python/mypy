@@ -570,3 +570,52 @@ import d
 ==
 ==
 b.py:2: error: Unsupported operand types for + ("int" and "str")
+
+[case testSkipImports]
+# cmd: mypy main a.py
+# flags: --follow-imports=skip --ignore-missing-imports
+import a
+[file a.py]
+import b
+[file b.py]
+1 + ''
+class A: pass
+[file a.py.2]
+import b
+reveal_type(b)
+reveal_type(b.A)
+[file a.py.3]
+import b
+reveal_type(b)
+reveal_type(b.A)
+[file b.py.3]
+1 + ''
+class A: pass
+[out]
+==
+a.py:2: error: Revealed type is 'Any'
+a.py:3: error: Revealed type is 'Any'
+==
+a.py:2: error: Revealed type is 'Any'
+a.py:3: error: Revealed type is 'Any'
+
+[case testSkipImportsWithinPackage]
+# cmd: mypy a/b.py
+# flags: --follow-imports=skip --ignore-missing-imports
+[file a/__init__.py]
+1 + ''
+[file a/b.py]
+import a.c
+[file a/b.py.2]
+import a.c
+import x
+reveal_type(a.c)
+[file a/b.py.3]
+import a.c
+import x
+1 + ''
+[out]
+==
+a/b.py:3: error: Revealed type is 'Any'
+==
+a/b.py:3: error: Unsupported operand types for + ("int" and "str")
