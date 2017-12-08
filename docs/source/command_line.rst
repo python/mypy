@@ -176,7 +176,7 @@ same directory on the search path, only the stub file is used.
 in the earlier directory is used.)
 
 NOTE: These rules are relevant to the following section too:
-the ``--follow-imports`` flag described below is applied _after_ the
+the ``--follow-imports`` flag described below is applied *after* the
 above algorithm has determined which package, stub or module to use.
 
 .. _follow-imports:
