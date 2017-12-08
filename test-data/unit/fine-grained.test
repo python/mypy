@@ -1240,3 +1240,25 @@ print f('')
 [out]
 ==
 a.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+
+[case testUnannotatedClass]
+import a
+[file a.py]
+class A:
+    def f(self, x):
+        self.y = x
+        self.g()
+
+    def g(self): pass
+[file a.py.2]
+class A:
+    def f(self, x, y):
+        self.y = x
+        self.z = y
+        self.g()
+
+    def g(self): pass
+[triggered]
+2: <a.A.f>, <a.A.z>
+[out]
+==
