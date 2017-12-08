@@ -2479,7 +2479,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         for id in stale:
             if graph[id].type_check_second_pass():
                 more = True
-    if any(manager.errors.is_errors_for_file(graph[id].path) for id in stale):
+    if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
