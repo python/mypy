@@ -723,37 +723,35 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 self.leave_class()
 
     def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
-        for decorator in defn.decorators:
-            fullname = None
-            if isinstance(decorator, CallExpr):
-                if isinstance(decorator.callee, RefExpr):
-                    fullname = decorator.callee.fullname
-            elif isinstance(decorator, (MemberExpr, NameExpr)):
-                fullname = decorator.fullname
+        """Apply a plugin hook that may infer a more precise definition for a class."""
+        def get_fullname(expr: Expression) -> Optional[str]:
+            # We support @foo.bar(...) @foo.bar and @bar
+            # TODO: Support IndexExpressions?
+            if isinstance(expr, CallExpr):
+                if isinstance(expr.callee, RefExpr):
+                    return expr.callee.fullname
+            elif isinstance(expr, MemberExpr):
+                return get_member_expr_fullname(expr)
+            elif isinstance(expr, NameExpr):
+                return expr.fullname
+            return None
 
-            if fullname:
-                hook = self.plugin.get_class_decorator_hook(fullname)
+        for decorator in defn.decorators:
+            decorator_name = get_fullname(decorator)
+            if decorator_name:
+                hook = self.plugin.get_class_decorator_hook(decorator_name)
                 if hook:
                     hook(ClassDefContext(defn, decorator, self))
 
         if defn.metaclass:
-            metaclass_name = None
-            if isinstance(defn.metaclass, NameExpr):
-                metaclass_name = defn.metaclass.name
-            elif isinstance(defn.metaclass, MemberExpr):
-                metaclass_name = get_member_expr_fullname(defn.metaclass)
+            metaclass_name = get_fullname(defn.metaclass)
             if metaclass_name:
                 hook = self.plugin.get_class_metaclass_hook(metaclass_name)
                 if hook:
                     hook(ClassDefContext(defn, defn.metaclass, self))
 
         for base in defn.base_type_exprs:
-            base_name = None
-            if isinstance(base, NameExpr):
-                base_name = base.name
-            elif isinstance(base, MemberExpr):
-                base_name = get_member_expr_fullname(base)
-
+            base_name = get_fullname(base)
             if base_name:
                 hook = self.plugin.get_class_base_hook(base_name)
                 if hook:

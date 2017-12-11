@@ -1,14 +1,12 @@
 """Plugin system for extending mypy."""
 
+from collections import OrderedDict
 from abc import abstractmethod
-from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
+from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
 
-from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, \
-    DictExpr, TypeInfo, ClassDef, ARG_POS, ARG_OPT, Var, Argument, FuncDef, \
-    Block, SymbolTableNode, MDEF, CallExpr, RefExpr, MemberExpr, NameExpr, \
-    AssignmentStmt, TempNode
+from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef
 from mypy.types import (
-    Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
+    Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
     AnyType, TypeList, UnboundType, TypeOfAny
 )
 from mypy.messages import MessageBuilder
@@ -62,6 +60,15 @@ class SemanticAnalyzerPluginInterface:
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
         raise NotImplementedError
 
+    @abstractmethod
+    def parse_bool(self, expr: Expression) -> Optional[bool]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+             blocker: bool = False) -> None:
+        raise NotImplementedError
+
 
 # A context for a function hook that infers the return type of a function with
 # a special signature.
@@ -108,12 +115,14 @@ AttributeContext = NamedTuple(
         ('context', Context),
         ('api', CheckerPluginInterface)])
 
+# A context for a class hook that modifies the class definition.
 ClassDefContext = NamedTuple(
     'ClassDecoratorContext', [
-        ('cls', ClassDef),
-        ('context', Optional[Expression]),
+        ('cls', ClassDef),       # The class definition
+        ('reason', Expression),  # The expression being applied (decorator, metaclass, base class)
         ('api', SemanticAnalyzerPluginInterface)
     ])
+
 
 class Plugin:
     """Base class of all type checker plugins.
@@ -217,7 +226,7 @@ class ChainedPlugin(Plugin):
         return self._find_hook(lambda plugin: plugin.get_class_metaclass_hook(fullname))
 
     def get_class_base_hook(self, fullname: str
-                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+                            ) -> Optional[Callable[[ClassDefContext], None]]:
         return self._find_hook(lambda plugin: plugin.get_class_base_hook(fullname))
 
     def _find_hook(self, lookup: Callable[[Plugin], T]) -> Optional[T]:
@@ -251,12 +260,6 @@ class DefaultPlugin(Plugin):
             return typed_dict_get_callback
         elif fullname == 'builtins.int.__pow__':
             return int_pow_callback
-        return None
-
-    def get_class_decorator_hook(self, fullname: str
-                                 ) -> Optional[Callable[[ClassDefContext], None]]:
-        if fullname == 'attr.s':
-            return attr_s_callback
         return None
 
 
@@ -376,112 +379,3 @@ def int_pow_callback(ctx: MethodContext) -> Type:
         else:
             return ctx.api.named_generic_type('builtins.float', [])
     return ctx.default_return_type
-
-
-def add_method(
-        info: TypeInfo,
-        method_name: str,
-        args: List[Argument],
-        ret_type: Type,
-        self_type: Type,
-        function_type: Instance) -> None:
-    from mypy.semanal import set_callable_name
-
-    first = [Argument(Var('self'), self_type, None, ARG_POS)]
-    args = first + args
-
-    arg_types = [arg.type_annotation for arg in args]
-    arg_names = [arg.variable.name() for arg in args]
-    arg_kinds = [arg.kind for arg in args]
-    assert None not in arg_types
-    signature = CallableType(arg_types, arg_kinds, arg_names,
-                             ret_type, function_type)
-    func = FuncDef(method_name, args, Block([]))
-    func.info = info
-    func.is_class = False
-    func.type = set_callable_name(signature, func)
-    func._fullname = info.fullname() + '.' + method_name
-    info.names[method_name] = SymbolTableNode(MDEF, func)
-
-
-
-def attr_s_callback(ctx: ClassDefContext) -> None:
-    """Add an __init__ method to classes decorated with attr.s."""
-    # TODO: Add __cmp__ methods.
-
-    def get_bool_argument(call: CallExpr, name: str, default: bool):
-        for arg_name, arg_value in zip(call.arg_names, call.args):
-            if arg_name == name:
-                # TODO: Handle None being returned here.
-                return ctx.api.parse_bool(arg_value)
-        return default
-
-    def called_function(expr: Expression):
-        if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
-            return expr.callee.fullname
-
-    decorator = ctx.context
-    if isinstance(decorator, CallExpr):
-        # Update init and auto_attrib if this was a call.
-        init = get_bool_argument(decorator, "init", True)
-        auto_attribs = get_bool_argument(decorator, "auto_attribs", False)
-    else:
-        # Default values of attr.s()
-        init = True
-        auto_attribs = False
-
-    if not init:
-        print("Nothing to do", init)
-        return
-
-    print(f"{ctx.cls.info.fullname()} init={init} auto={auto_attribs}")
-
-    info = ctx.cls.info
-
-    # Walk the body looking for assignments.
-    items = []  # type: List[str]
-    types = []  # type: List[Type]
-    rhs = {}  # type: Dict[str, Expression]
-    for stmt in ctx.cls.defs.body:
-        if isinstance(stmt, AssignmentStmt):
-            name = stmt.lvalues[0].name
-            # print(name, stmt.type, stmt.rvalue)
-            items.append(name)
-            types.append(None
-                         if stmt.type is None
-                         else ctx.api.anal_type(stmt.type))
-
-
-            if isinstance(stmt.rvalue, TempNode):
-                # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
-                if rhs:
-                    print("DEFAULT ISSUE")
-            elif called_function(stmt.rvalue) == 'attr.ib':
-                # Look for a default value in the call.
-                expr = stmt.rvalue
-                print(f"{name} = attr.ib(...)")
-            else:
-                print(f"{name} = {stmt.rvalue}")
-                rhs[name] = stmt.rvalue
-
-    any_type = AnyType(TypeOfAny.unannotated)
-
-    import pdb; pdb.set_trace()
-
-    has_default = {}  # type: Dict[str, Expression]
-    args = []
-    for name, table in info.names.items():
-        if isinstance(table.node, Var) and table.type:
-            var = Var(name.lstrip("_"), table.type)
-            default = has_default.get(var.name(), None)
-            kind = ARG_POS if default is None else ARG_OPT
-            args.append(Argument(var, var.type, default, kind))
-
-    add_method(
-        info=info,
-        method_name='__init__',
-        args=args,
-        ret_type=NoneTyp(),
-        self_type=ctx.api.named_type(info.name()),
-        function_type=ctx.api.named_type('__builtins__.function'),
-    )
