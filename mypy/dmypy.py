@@ -28,9 +28,9 @@ subparsers = parser.add_subparsers()
 
 start_parser = p = subparsers.add_parser('start', help="Start daemon")
 p.add_argument('--log-file', metavar='FILE', type=str,
-                          help="Direct daemon stdout/stderr to FILE")
+               help="Direct daemon stdout/stderr to FILE")
 p.add_argument('flags', metavar='FLAG', nargs='*', type=str,
-                          help="Regular mypy flags (precede with --)")
+               help="Regular mypy flags (precede with --)")
 
 restart_parser = p = subparsers.add_parser('restart',
     help="Restart daemon (stop or kill followed by start)")
@@ -46,7 +46,8 @@ stop_parser = p = subparsers.add_parser('stop', help="Stop daemon (asks it polit
 
 kill_parser = p = subparsers.add_parser('kill', help="Kill daemon (kills the process)")
 
-check_parser = p = subparsers.add_parser('check', help="Check some files (requires running daemon)")
+check_parser = p = subparsers.add_parser('check',
+                                         help="Check some files (requires running daemon)")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
 p.add_argument('files', metavar='FILE', nargs='+', help="File (or directory) to check")
@@ -252,7 +253,7 @@ def check_output(response: Dict[str, Any], verbose: bool) -> None:
     sys.stderr.write(err)
     if verbose:
         show_stats(response)
-    if status:
+    if status_code:
         sys.exit(status_code)
 
 
