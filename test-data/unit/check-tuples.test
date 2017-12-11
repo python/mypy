@@ -225,13 +225,75 @@ from typing import Tuple
 t1 = None # type: Tuple[A, B]
 t2 = None # type: Tuple[A, B, A]
 a, b = None, None # type: (A, B)
+(a1, b1) = None, None # type: Tuple[A, B]
+
+reveal_type(a1)  # E: Revealed type is '__main__.A'
+reveal_type(b1)  # E: Revealed type is '__main__.B'
 
 a, a = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 b, b = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a, b, b = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 a, b = t1
-a, b, a = t2
+a, b, a1 = t2
+
+class A: pass
+class B: pass
+[builtins fixtures/tuple.pyi]
+
+[case testMultipleAssignmentWithSquareBracketTuples]
+from typing import Tuple
+
+def avoid_confusing_test_parser() -> None:
+    t1 = None # type: Tuple[A, B]
+    t2 = None # type: Tuple[A, B, A]
+    [a, b] = None, None # type: (A, B)
+    [a1, b1] = None, None # type: Tuple[A, B]
+
+    reveal_type(a)  # E: Revealed type is '__main__.A'
+    reveal_type(b)  # E: Revealed type is '__main__.B'
+    reveal_type(a1)  # E: Revealed type is '__main__.A'
+    reveal_type(b1)  # E: Revealed type is '__main__.B'
+
+    [a, a] = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    [b, b] = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    [a, b, b] = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+    [a, b] = t1
+    [a, b, a1] = t2
+
+    [a2, b2] = t1
+    reveal_type(a2)  # E: Revealed type is '__main__.A'
+    reveal_type(b2)  # E: Revealed type is '__main__.B'
+
+class A: pass
+class B: pass
+[builtins fixtures/tuple.pyi]
+
+[case testMultipleAssignmentWithSquareBracketTuplesPython2]
+# flags: --python-version 2.7
+from typing import Tuple
+
+def avoid_confusing_test_parser():
+    # type: () -> None
+    t1 = None # type: Tuple[A, B]
+    t2 = None # type: Tuple[A, B, A]
+    [a, b] = None, None # type: Tuple[A, B]
+    [a1, b1] = None, None # type: Tuple[A, B]
+
+    reveal_type(a1)  # E: Revealed type is '__main__.A'
+    reveal_type(b1)  # E: Revealed type is '__main__.B'
+
+    [a, a] = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    [b, b] = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    [a, b, b] = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+    [a, b] = t1
+    [a, b, a1] = t2
+
+    [a2, b2] = t1
+    reveal_type(a2)  # E: Revealed type is '__main__.A'
+    reveal_type(b2)  # E: Revealed type is '__main__.B'
 
 class A: pass
 class B: pass
