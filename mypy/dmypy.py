@@ -26,42 +26,45 @@ parser = argparse.ArgumentParser(description="Client for mypy daemon mode",
 parser.set_defaults(action=None)
 subparsers = parser.add_subparsers()
 
-start_parser = subparsers.add_parser('start', help="Start daemon")
-start_parser.add_argument('--log-file', metavar='FILE', type=str,
+start_parser = p = subparsers.add_parser('start', help="Start daemon")
+p.add_argument('--log-file', metavar='FILE', type=str,
                           help="Direct daemon stdout/stderr to FILE")
-start_parser.add_argument('flags', metavar='FLAG', nargs='*', type=str,
+p.add_argument('flags', metavar='FLAG', nargs='*', type=str,
                           help="Regular mypy flags (precede with --)")
 
-restart_parser = subparsers.add_parser('restart',
+restart_parser = p = subparsers.add_parser('restart',
     help="Restart daemon (stop or kill followed by start)")
-restart_parser.add_argument('--log-file', metavar='FILE', type=str,
-                            help="Direct daemon stdout/stderr to FILE")
-restart_parser.add_argument('flags', metavar='FLAG', nargs='*', type=str,
-                            help="Regular mypy flags (precede with --)")
+p.add_argument('--log-file', metavar='FILE', type=str,
+               help="Direct daemon stdout/stderr to FILE")
+p.add_argument('flags', metavar='FLAG', nargs='*', type=str,
+               help="Regular mypy flags (precede with --)")
 
-status_parser = subparsers.add_parser('status', help="Show daemon status")
+status_parser = p = subparsers.add_parser('status', help="Show daemon status")
+p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 
-stop_parser = subparsers.add_parser('stop', help="Stop daemon (asks it politely to go away)")
+stop_parser = p = subparsers.add_parser('stop', help="Stop daemon (asks it politely to go away)")
 
-kill_parser = subparsers.add_parser('kill', help="Kill daemon (kills the process)")
+kill_parser = p = subparsers.add_parser('kill', help="Kill daemon (kills the process)")
 
-check_parser = subparsers.add_parser('check', help="Check some files (requires running daemon)")
-check_parser.add_argument('-q', '--quiet', action='store_true',
-                          help="Suppress instrumentation stats")
-check_parser.add_argument('files', metavar='FILE', nargs='+', help="File (or directory) to check")
+check_parser = p = subparsers.add_parser('check', help="Check some files (requires running daemon)")
+p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
+p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
+p.add_argument('files', metavar='FILE', nargs='+', help="File (or directory) to check")
 
-recheck_parser = subparsers.add_parser('recheck',
+recheck_parser = p = subparsers.add_parser('recheck',
     help="Check the same files as the most previous  check run (requires running daemon)")
-recheck_parser.add_argument('-q', '--quiet', action='store_true',
-                            help="Suppress instrumentation stats")
+p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
+p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
 
-hang_parser = subparsers.add_parser('hang', help="Hang for 100 seconds")
+hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
-daemon_parser = subparsers.add_parser('daemon', help="Run daemon in foreground")
-daemon_parser.add_argument('flags', metavar='FLAG', nargs='*', type=str,
-                           help="Regular mypy flags (precede with --)")
+daemon_parser = p = subparsers.add_parser('daemon', help="Run daemon in foreground")
+p.add_argument('flags', metavar='FLAG', nargs='*', type=str,
+               help="Regular mypy flags (precede with --)")
 
-help_parser = subparsers.add_parser('help')
+help_parser = p = subparsers.add_parser('help')
+
+del p
 
 
 class BadStatus(Exception):
@@ -165,7 +168,8 @@ def do_status(args: argparse.Namespace) -> None:
     This verifies that it is responsive to requests.
     """
     status = read_status()
-    show_stats(status)
+    if args.verbose:
+        show_stats(status)
     check_status(status)
     try:
         response = request('status', timeout=5)
@@ -175,7 +179,11 @@ def do_status(args: argparse.Namespace) -> None:
         print("Daemon is stuck; consider %s kill" % sys.argv[0])
         raise
     else:
-        show_stats(response)
+        if args.verbose:
+            show_stats(response)
+        if 'error' in response:
+            sys.exit(response['error'])
+        print("Daemon is up and running")
 
 
 @action(stop_parser)
@@ -213,7 +221,7 @@ def do_check(args: argparse.Namespace) -> None:
     response = request('check', files=args.files)
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
-    check_output(response, args.quiet)
+    check_output(response, args.verbose)
 
 
 @action(recheck_parser)
@@ -226,27 +234,37 @@ def do_recheck(args: argparse.Namespace) -> None:
     response = request('recheck')
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
-    check_output(response, args.quiet)
+    check_output(response, args.verbose)
 
 
-def check_output(response: Dict[str, Any], quiet: bool) -> None:
-    """Print the output from a check or recheck command."""
+def check_output(response: Dict[str, Any], verbose: bool) -> None:
+    """Print the output from a check or recheck command.
+
+    Call sys.exit() unless the status code is zero.
+    """
+    if 'error' in response:
+        sys.exit(response['error'])
     try:
-        out, err, status = response['out'], response['err'], response['status']
+        out, err, status_code = response['out'], response['err'], response['status']
     except KeyError:
         sys.exit("Response: %s" % str(response))
     sys.stdout.write(out)
     sys.stderr.write(err)
-    if not quiet:
+    if verbose:
         show_stats(response)
     if status:
-        sys.exit(status)
+        sys.exit(status_code)
 
 
 def show_stats(response: Mapping[str, object]) -> None:
     for key, value in sorted(response.items()):
         if key not in ('out', 'err'):
             print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
+        else:
+            value = str(value).replace('\n', '\\n')
+            if len(value) > 50:
+                value = value[:40] + ' ...'
+            print("%-24s: %s" % (key, value))
 
 
 @action(hang_parser)
@@ -272,7 +290,8 @@ def do_help(args: argparse.Namespace) -> None:
 # Client-side infrastructure.
 
 
-def request(command: str, **kwds: object) -> Dict[str, Any]:
+def request(command: str, *, timeout: Optional[float] = None,
+            **kwds: object) -> Dict[str, Any]:
     """Send a request to the daemon.
 
     Return the JSON dict with the response.
@@ -280,12 +299,8 @@ def request(command: str, **kwds: object) -> Dict[str, Any]:
     Raise BadStatus if there is something wrong with the status file.
 
     Return {'error': <message>} if there was something wrong with the
-    response.
+    response (including OSError raised by a socket operation).
     """
-    if 'timeout' in kwds:
-        timeout = kwds.pop('timeout')
-    else:
-        timeout = None
     args = dict(kwds)
     args.update(command=command)
     bdata = json.dumps(args).encode('utf8')
