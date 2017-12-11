@@ -117,11 +117,15 @@ annotations have no effect at runtime:
 Abstract base classes and multiple inheritance
 **********************************************
 
-Mypy uses Python abstract base classes for protocol types. There are
-several built-in abstract base classes types (for example,
-``Sequence``, ``Iterable`` and ``Iterator``). You can define abstract
-base classes using the ``abc.ABCMeta`` metaclass and the
-``abc.abstractmethod`` function decorator.
+Mypy supports Python abstract base classes (ABCs). Abstract classes
+have at least one abstract method or property that must be implemented
+by a subclass. You can define abstract base classes using the
+``abc.ABCMeta`` metaclass, and the ``abc.abstractmethod`` and
+``abc.abstractproperty`` function decorators.
+
+Note that mypy performs checking for unimplemented abstract methods
+even if you omit the ``ABCMeta`` metaclass. This can be useful if the
+metaclass would cause runtime metaclass conflicts.
 
 .. code-block:: python
 
@@ -143,24 +147,18 @@ base classes using the ``abc.ABCMeta`` metaclass and the
    a = A() # Error: A is abstract
    b = B() # OK
 
-Unlike most Python code, abstract base classes are likely to play a
-significant role in many complex mypy programs.
-
 A class can inherit any number of classes, both abstract and
 concrete. As with normal overrides, a dynamically typed method can
-implement a statically typed abstract method defined in an abstract
-base class.
+implement a statically typed method defined in any base class,
+including an abstract method defined in an abstract base class.
+
+You can implement an abstract property using either a normal
+property or an instance variable.
 
 .. _protocol-types:
 
 Protocols and structural subtyping
 **********************************
-
-.. note::
-
-   Structural subtyping is experimental. Some things may not
-   work as expected. Mypy may pass unsafe code or it can reject
-   valid code.
 
 Mypy supports two ways of deciding whether two classes are compatible
 as types: nominal subtyping and structural subtyping. *Nominal*
@@ -174,16 +172,231 @@ a structural subtype of class ``C`` if the former has all attributes
 and methods of the latter, and with compatible types.
 
 Structural subtyping can be seen as a static equivalent of duck
-typing, which is well known to Python programmers. Mypy provides an
-opt-in support for structural subtyping via protocol classes described
+typing, which is well known to Python programmers. Mypy provides
+support for structural subtyping via protocol classes described
 below.  See `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ for
 the detailed specification of protocols and structural subtyping in
 Python.
 
+Built-in protocols
+******************
+
+The ``typing`` module defines various protocol classes that correspond
+to common Python protocols, such as ``Iterable[T]``.  If a class
+defines a suitable ``__iter__`` method, mypy understands that it
+implements the iterable protocol and is compatible with ``Iterable[T]``.
+For example, ``IntList`` below is iterable, over ``int`` values:
+
+.. code-block:: python
+
+   from typing import Iterator, Iterable, Optional
+
+   class IntList:
+       def __init__(self, value: int, next: Optional[IntList]) -> None:
+           self.value = value
+           self.next = next
+
+       def __iter__(self) -> Iterator[int]:
+           current = self
+           while current:
+               yield current.value
+               current = current.next
+
+   def print_numbered(items: Iterable[int]) -> None:
+       for n, x in enumerate(items):
+           print(n + 1, x)
+
+   x = IntList(3, IntList(5, None))
+   print_numbered(x)  # Okay
+   print_numbered([4, 5])  # Also okay
+
+The subsections below introduce all built-in protocols defined in
+``typing`` and the corresponding methods you need to define to
+implement each protocol.
+
+Iteration protocols
+...................
+
+The iteration protocols are useful is numerous contexts. For example, they allow
+iteration of objects in for loops.
+
+``Iterable[T]``
+---------------
+
+.. code-block:: python
+
+   def __iter__(self) -> Iterator[T]
+
+``Iterator[T]``
+---------------
+
+.. code-block:: python
+
+   def __next__(self) -> T
+   def __iter__(self) -> Iterator[T]
+
+Collection protocols
+....................
+
+Many of these are implemented by built-in container types such as
+``list`` and ``dict``, and these are also useful for user-defined
+collection objects.
+
+``Sized``
+---------
+
+This defined for objects that support ``len(x)``.
+
+.. code-block:: python
+
+   def __len__(self) -> int
+
+``Container[T]``
+----------------
+
+.. code-block:: python
+
+   def __contains__(self, x: object) -> bool
+
+``Collection[T]``
+-----------------
+
+.. code-block:: python
+
+   def __len__(self) -> int
+   def __iter__(self) -> Iterator[T]
+   def __contains__(self, x: object) -> bool
+
+One-off protocols
+.................
+
+These protocols are typically only useful with a single standard
+library function or class.
+
+``Reversible[T]``
+-----------------
+
+This is defined for objects that support ``reversed(x)``.
+
+.. code-block:: python
+
+   def __reversed__(self) -> Iterator[T]
+
+``SupportsAbs[T]``
+------------------
+
+This is defined for objects that support ``abs(x)``. ``T`` is the type of
+value returned by ``abs(x)``.
+
+.. code-block:: python
+
+   def __abs__(self) -> T
+
+``SupportsBytes``
+-----------------
+
+This is defined for objects that support ``bytes(x)``.
+
+.. code-block:: python
+
+   def __bytes__(self) -> bytes
+
+``SupportsComplex``
+-------------------
+
+This is defined for objects that support ``complex(x)``.
+
+.. code-block:: python
+
+   def __complex__(self) -> complex
+
+``SupportsFloat``
+-----------------
+
+This is defined for objects that support ``float(x)``.
+
+.. code-block:: python
+
+   def __float__(self) -> float
+
+``SupportsInt``
+---------------
+
+This is defined for objects that support ``int(x)``.
+
+.. code-block:: python
+
+   def __int__(self) -> int
+
+``SupportsRound[T]``
+--------------------
+
+This is defined for objects that support ``round(x)``.
+
+.. code-block:: python
+
+   def __round__(self) -> T
+
+Async protocols
+...............
+
+These protocols are only useful in async code.
+
+``Awaitable[T]``
+----------------
+
+.. code-block:: python
+
+   def __await__(self) -> Generator[Any, None, T]
+
+``AsyncIterable[T]``
+--------------------
+
+.. code-block:: python
+
+   def __aiter__(self) -> AsyncIterator[T]
+
+``AsyncIterator[T]``
+--------------------
+
+.. code-block:: python
+
+   def __anext__(self) -> Awaitable[T]
+   def __aiter__(self) -> AsyncIterator[T]
+
+Context manager protocols
+.........................
+
+There are two protocols for context managers -- one for regular context
+managers and one for async ones. These allow defining objects that can
+be used in with and async with statements.
+
+``ContextManager[T]``
+---------------------
+
+.. code-block:: python
+
+   def __enter__(self) -> T
+   def __exit__(self,
+                exc_type: Optional[Type[BaseException]],
+                exc_value: Optional[BaseException],
+                traceback: Optional[TracebackType]) -> Optional[bool]
+
+``AsyncContextManager[T]``
+--------------------------
+
+.. code-block:: python
+
+   def __aenter__(self) -> Awaitable[T]
+   def __aexit__(self,
+                 exc_type: Optional[Type[BaseException]],
+                 exc_value: Optional[BaseException],
+                 traceback: Optional[TracebackType]) -> Awaitable[Optional[bool]]
+
 Simple user-defined protocols
 *****************************
 
-You can define a protocol class by inheriting the special
+You can define your own protocol class by inheriting the special
 ``typing_extensions.Protocol`` class:
 
 .. code-block:: python
@@ -216,9 +429,7 @@ similarly compatible with the protocol, as they support ``close()``.
    The ``Protocol`` base class is currently provided in the ``typing_extensions``
    package. Once structural subtyping is mature and
    `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ has been accepted,
-   ``Protocol`` will be included in the ``typing`` module. Several library
-   types such as ``typing.Sized`` and ``typing.Iterable`` will also be changed
-   into protocols. They are currently treated as regular ABCs by mypy.
+   ``Protocol`` will be included in the ``typing`` module.
 
 Defining subprotocols
 *********************
