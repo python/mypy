@@ -121,16 +121,11 @@ Mypy supports Python abstract base classes (ABCs). Abstract classes
 have at least one abstract method or property that must be implemented
 by a subclass. You can define abstract base classes using the
 ``abc.ABCMeta`` metaclass, and the ``abc.abstractmethod`` and
-``abc.abstractproperty`` function decorators.
-
-Note that mypy performs checking for unimplemented abstract methods
-even if you omit the ``ABCMeta`` metaclass. This can be useful if the
-metaclass would cause runtime metaclass conflicts.
+``abc.abstractproperty`` function decorators. Example:
 
 .. code-block:: python
 
    from abc import ABCMeta, abstractmethod
-   import typing
 
    class A(metaclass=ABCMeta):
        @abstractmethod
@@ -144,8 +139,12 @@ metaclass would cause runtime metaclass conflicts.
        def bar(self) -> str:
            return 'x'
 
-   a = A() # Error: A is abstract
-   b = B() # OK
+   a = A()  # Error: A is abstract
+   b = B()  # OK
+
+Note that mypy performs checking for unimplemented abstract methods
+even if you omit the ``ABCMeta`` metaclass. This can be useful if the
+metaclass would cause runtime metaclass conflicts.
 
 A class can inherit any number of classes, both abstract and
 concrete. As with normal overrides, a dynamically typed method can
@@ -163,7 +162,8 @@ Protocols and structural subtyping
 Mypy supports two ways of deciding whether two classes are compatible
 as types: nominal subtyping and structural subtyping. *Nominal*
 subtyping is strictly based on the class hierarchy. If class ``D``
-inherits class ``C``, it's also a subtype of ``C``. This form of
+inherits class ``C``, it's also a subtype of ``C``, and instances of
+``D`` can be used when ``C`` instances are expected. This form of
 subtyping is used by default in mypy, since it's easy to understand
 and produces clear and concise error messages, and since it matches
 how the native ``isinstance()`` check works -- based on class
@@ -178,8 +178,10 @@ below.  See `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ for
 the detailed specification of protocols and structural subtyping in
 Python.
 
-Built-in protocols
-******************
+.. _predefined_protocols:
+
+Predefined protocols
+********************
 
 The ``typing`` module defines various protocol classes that correspond
 to common Python protocols, such as ``Iterable[T]``.  If a class
@@ -207,21 +209,25 @@ For example, ``IntList`` below is iterable, over ``int`` values:
            print(n + 1, x)
 
    x = IntList(3, IntList(5, None))
-   print_numbered(x)  # Okay
-   print_numbered([4, 5])  # Also okay
+   print_numbered(x)  # OK
+   print_numbered([4, 5])  # Also OK
 
 The subsections below introduce all built-in protocols defined in
-``typing`` and the corresponding methods you need to define to
-implement each protocol.
+``typing`` and the signatures of the corresponding methods you need to define
+to implement each protocol (the signatures can be left out, as always, but mypy
+won't type check unannotated methods).
 
 Iteration protocols
 ...................
 
-The iteration protocols are useful is numerous contexts. For example, they allow
+The iteration protocols are useful in many contexts. For example, they allow
 iteration of objects in for loops.
 
 ``Iterable[T]``
 ---------------
+
+The :ref:`example above <predefined_protocols>` has a simple implementation of an
+``__iter__`` method.
 
 .. code-block:: python
 
@@ -253,6 +259,8 @@ This defined for objects that support ``len(x)``.
 
 ``Container[T]``
 ----------------
+
+This is defined for objects that support the ``in`` operator.
 
 .. code-block:: python
 
@@ -340,7 +348,7 @@ This is defined for objects that support ``round(x)``.
 Async protocols
 ...............
 
-These protocols are only useful in async code.
+These protocols can be useful in async code.
 
 ``Awaitable[T]``
 ----------------
@@ -369,7 +377,7 @@ Context manager protocols
 
 There are two protocols for context managers -- one for regular context
 managers and one for async ones. These allow defining objects that can
-be used in with and async with statements.
+be used in ``with`` and ``async with`` statements.
 
 ``ContextManager[T]``
 ---------------------
@@ -536,6 +544,9 @@ adds support for basic runtime structural checks:
    mug = Mug()
    if isinstance(mug, Portable):
       use(mug.handles)  # Works statically and at runtime
+
+``isinstance()`` also works with the :ref:`predefined protocols <predefined_protocols>`
+in ``typing`` such as ``Iterable``.
 
 .. note::
    ``isinstance()`` with protocols is not completely safe at runtime.
