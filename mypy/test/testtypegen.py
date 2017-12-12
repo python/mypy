@@ -19,8 +19,8 @@ from mypy.options import Options
 
 
 class TypeExportSuite(DataSuite):
-    files = ['typexport-basic.test']  # type: List[str]
-    base_path = test_temp_dir  # type: str
+    files = ['typexport-basic.test']
+    base_path = test_temp_dir
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         try:

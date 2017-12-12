@@ -34,9 +34,9 @@ NOT_DUMPED_MODULES = ('builtins', 'typing', 'abc')
 
 
 class ASTMergeSuite(DataSuite):
-    files = ['merge.test']  # type: List[str]
-    base_path = test_temp_dir  # type: str
-    optional_out = True  # type: bool
+    files = ['merge.test']
+    base_path = test_temp_dir
+    optional_out = True
 
     def __init__(self, *, update_data: bool) -> None:
         super().__init__(update_data=update_data)

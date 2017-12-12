@@ -33,9 +33,9 @@ else:
 
 
 class TypeCheckSuite(DataSuite):
-    files = dmypy_files  # type: List[str]
-    base_path = test_temp_dir  # type: str
-    optional_out = True  # type: bool
+    files = dmypy_files
+    base_path = test_temp_dir
+    optional_out = True
 
     @classmethod
     def filter(cls, testcase: DataDrivenTestCase) -> bool:

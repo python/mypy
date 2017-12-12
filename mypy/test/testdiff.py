@@ -15,9 +15,9 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 
 class ASTDiffSuite(DataSuite):
-    files = ['diff.test']  # type: List[str]
-    base_path = test_temp_dir  # type: str
-    optional_out = True  # type: bool
+    files = ['diff.test']
+    base_path = test_temp_dir
+    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         first_src = '\n'.join(testcase.input)

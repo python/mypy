@@ -23,9 +23,9 @@ class GetDependenciesSuite(DataSuite):
         'deps-expressions.test',
         'deps-statements.test',
         'deps-classes.test',
-    ]  # type: List[str]
-    base_path = test_temp_dir  # type: str
-    optional_out = True  # type: bool
+    ]
+    base_path = test_temp_dir
+    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)

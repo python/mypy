@@ -29,10 +29,10 @@ cmdline_files = [
 
 
 class PythonCmdlineSuite(DataSuite):
-    files = cmdline_files  # type: List[str]
-    base_path = test_temp_dir  # type: str
-    optional_out = True  # type: bool
-    native_sep = True  # type: bool
+    files = cmdline_files
+    base_path = test_temp_dir
+    optional_out = True
+    native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_python_cmdline(testcase)

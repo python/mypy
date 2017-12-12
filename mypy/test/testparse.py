@@ -12,7 +12,7 @@ from mypy.options import Options
 
 class ParserSuite(DataSuite):
     files = ['parse.test',
-             'parse-python2.test']  # type: List[str]
+             'parse-python2.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser(testcase)
@@ -49,7 +49,7 @@ INPUT_FILE_NAME = 'file'
 
 
 class ParseErrorSuite(DataSuite):
-    files = ['parse-errors.test']  # type: List[str]
+    files = ['parse-errors.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parse_error(testcase)

@@ -36,9 +36,9 @@ class FineGrainedSuite(DataSuite):
         'fine-grained-cycles.test',
         'fine-grained-blockers.test',
         'fine-grained-modules.test',
-    ]  # type: List[str]
-    base_path = test_temp_dir  # type: str
-    optional_out = True  # type: bool
+    ]
+    base_path = test_temp_dir
+    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         main_src = '\n'.join(testcase.input)

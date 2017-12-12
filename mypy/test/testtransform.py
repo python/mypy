@@ -25,9 +25,9 @@ class TransformSuite(DataSuite):
              'semanal-modules.test',
              'semanal-statements.test',
              'semanal-abstractclasses.test',
-             'semanal-python2.test']  # type: List[str]
-    base_path = test_temp_dir  # type: str
-    native_sep = True  # type: bool
+             'semanal-python2.test']
+    base_path = test_temp_dir
+    native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_transform(testcase)

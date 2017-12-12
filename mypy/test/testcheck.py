@@ -80,9 +80,9 @@ typecheck_files = [
 
 
 class TypeCheckSuite(DataSuite):
-    files = typecheck_files  # type: List[str]
-    base_path = test_temp_dir  # type: str
-    optional_out = True  # type: bool
+    files = typecheck_files
+    base_path = test_temp_dir
+    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         incremental = ('incremental' in testcase.name.lower()
