@@ -89,8 +89,9 @@ ActionFunction = Callable[[argparse.Namespace], None]
 
 def action(subparser: argparse.ArgumentParser) -> Callable[[ActionFunction], None]:
     """Decorator to tie an action function to a subparser."""
-    def register(func: ActionFunction) -> None:
+    def register(func: ActionFunction) -> ActionFunction:
         subparser.set_defaults(action=func)
+        return func
     return register
 
 
@@ -100,23 +101,21 @@ def action(subparser: argparse.ArgumentParser) -> Callable[[ActionFunction], Non
 def do_start(args: argparse.Namespace) -> None:
     """Start daemon (it must not already be running).
 
-    This is where mypy flags are set.  Setting flags is a bit awkward;
-    you have to use e.g.:
+    This is where mypy flags are set from the command line.
+
+    Setting flags is a bit awkward; you have to use e.g.:
 
       dmypy start -- --strict
 
     since we don't want to duplicate mypy's huge list of flags.
     """
     try:
-        pid, sockname = get_status()
+        get_status()
     except BadStatus as err:
-        # Lazy import so this import doesn't slow down other commands.
-        from mypy.dmypy_server import daemonize, Server
-        if daemonize(Server(args.flags).serve, args.log_file) != 0:
-            sys.exit(1)
-        wait_for_server()
+        pass
     else:
         sys.exit("Daemon is still alive")
+    start_server(args)
 
 
 @action(restart_parser)
@@ -124,17 +123,17 @@ def do_restart(args: argparse.Namespace) -> None:
     """Restart daemon (it may or may not be running; but not hanging).
 
     We first try to stop it politely if it's running.  This also sets
-    mypy flags (like start).
+    mypy flags from the command line (see do_start()).
     """
     try:
-        response = request('stop')
+        do_stop(args)
     except BadStatus:
         pass
-    else:
-        if response != {}:
-            sys.exit("Status: %s" % str(response))
-        else:
-            print("Daemon stopped")
+    start_server(args)
+
+
+def start_server(args: argparse.Namespace) -> None:
+    """Start the server from command arguments and wait for it."""
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import daemonize, Server
     if daemonize(Server(args.flags).serve, args.log_file) != 0:
@@ -175,15 +174,17 @@ def do_status(args: argparse.Namespace) -> None:
     try:
         response = request('status', timeout=5)
     except BadStatus:
-        raise
+        raise  # main() will turn this into sys.exit().
     except Exception as err:
-        print("Daemon is stuck; consider %s kill" % sys.argv[0])
-        raise
-    else:
         if args.verbose:
+            raise  # Python will print a traceback and sys.exit(1).
+        else:
+            sys.exit("%s: %s" % (err.__class__.__name__, str(err)))
+    else:
+        if args.verbose or 'error' in response:
             show_stats(response)
         if 'error' in response:
-            sys.exit(response['error'])
+            sys.exit("Daemon is stuck; consider %s kill" % sys.argv[0])
         print("Daemon is up and running")
 
 
@@ -195,10 +196,12 @@ def do_stop(args: argparse.Namespace) -> None:
     except BadStatus:
         raise
     except Exception as err:
+        print("%s: %s" % (err.__class__.__name__, str(err)))
         sys.exit("Daemon is stuck; consider %s kill" % sys.argv[0])
     else:
         if response:
-            print("Stop response:", response)
+            show_stats(response)
+            sys.exit("Daemon is stuck; consider %s kill" % sys.argv[0])
         else:
             print("Daemon stopped")
 
