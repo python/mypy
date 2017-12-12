@@ -2271,7 +2271,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
         scc_str = " ".join(scc)
         if fresh:
-            if not maybe_reuse_in_memory_tree(graph, scc, manager):
+            if maybe_reuse_in_memory_tree(graph, scc, manager):
+                manager.add_stats(sccs_kept=1, nodes_kept=len(scc))
+            else:
                 manager.trace("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
                 fresh_scc_queue.append(scc)
         else:
