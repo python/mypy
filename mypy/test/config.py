@@ -1,8 +1,4 @@
-import os
 import os.path
-
-import typing
-
 
 this_file_dir = os.path.dirname(os.path.realpath(__file__))
 PREFIX = os.path.dirname(os.path.dirname(this_file_dir))

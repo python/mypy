@@ -15,17 +15,12 @@ from mypy.server.astmerge import merge_asts
 from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv, indent
-from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type, IdMapper
-
-
-files = [
-    'merge.test'
-]
 
 
 # Which data structures to dump in a test case?
@@ -39,20 +34,16 @@ NOT_DUMPED_MODULES = ('builtins', 'typing', 'abc')
 
 
 class ASTMergeSuite(DataSuite):
+    files = ['merge.test']
+    base_path = test_temp_dir
+    optional_out = True
+
     def __init__(self, *, update_data: bool) -> None:
         super().__init__(update_data=update_data)
         self.str_conv = StrConv(show_ids=True)
         assert self.str_conv.id_mapper is not None
         self.id_mapper = self.str_conv.id_mapper  # type: IdMapper
         self.type_str_conv = TypeStrVisitor(self.id_mapper)
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         name = testcase.name

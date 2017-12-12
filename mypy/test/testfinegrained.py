@@ -10,6 +10,7 @@ information.
 import os
 import re
 import shutil
+
 from typing import List, Tuple, Dict, Optional, Set
 
 from mypy import build
@@ -29,22 +30,15 @@ from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type
 
 
-files = [
-    'fine-grained.test',
-    'fine-grained-cycles.test',
-    'fine-grained-blockers.test',
-    'fine-grained-modules.test',
-]
-
-
 class FineGrainedSuite(DataSuite):
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
+    files = [
+        'fine-grained.test',
+        'fine-grained-cycles.test',
+        'fine-grained-blockers.test',
+        'fine-grained-modules.test',
+    ]
+    base_path = test_temp_dir
+    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         main_src = '\n'.join(testcase.input)

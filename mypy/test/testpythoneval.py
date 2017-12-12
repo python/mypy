@@ -19,17 +19,11 @@ import sys
 import pytest  # type: ignore  # no pytest in typeshed
 from typing import Dict, List, Tuple, Optional
 
-from mypy.test.config import test_data_prefix, test_temp_dir
-from mypy.test.data import DataDrivenTestCase, parse_test_cases, DataSuite
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.util import try_find_python2_interpreter
 from mypy import api
-
-# Files which contain test case descriptions.
-python_eval_files = ['pythoneval.test',
-                     'python2eval.test']
-
-python_34_eval_files = ['pythoneval-asyncio.test']
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
@@ -37,17 +31,11 @@ program_re = re.compile(r'\b_program.py\b')
 
 
 class PythonEvaluationSuite(DataSuite):
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in python_eval_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_python_evaluation, test_temp_dir, True)
-        if sys.version_info.major == 3 and sys.version_info.minor >= 4:
-            for f in python_34_eval_files:
-                c += parse_test_cases(os.path.join(test_data_prefix, f),
-                    test_python_evaluation, test_temp_dir, True)
-        return c
+    files = ['pythoneval.test',
+             'python2eval.test',
+             'pythoneval-asyncio.test']
+    base_path = test_temp_dir
+    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_python_evaluation(testcase)

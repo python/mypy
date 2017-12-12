@@ -3,9 +3,6 @@
 import os
 import re
 import shutil
-import sys
-import time
-import typed_ast
 
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -13,8 +10,8 @@ from mypy import build, defaults
 from mypy.main import process_options
 from mypy.build import BuildSource, find_module_clear_caches
 from mypy.myunit import AssertionFailure
-from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
     retry_on_error, testcase_pyversion, update_testcase_output,
@@ -25,7 +22,7 @@ from mypy.options import Options
 from mypy import experiments
 
 # List of files that contain test case descriptions.
-files = [
+typecheck_files = [
     'check-basic.test',
     'check-callable.test',
     'check-classes.test',
@@ -83,14 +80,9 @@ files = [
 
 
 class TypeCheckSuite(DataSuite):
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
+    files = typecheck_files
+    base_path = test_temp_dir
+    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         incremental = ('incremental' in testcase.name.lower()

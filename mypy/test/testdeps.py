@@ -9,30 +9,23 @@ from mypy.errors import CompileError
 from mypy.nodes import MypyFile, Expression
 from mypy.options import Options
 from mypy.server.deps import get_dependencies
-from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.types import Type
 
-files = [
-    'deps.test',
-    'deps-types.test',
-    'deps-generics.test',
-    'deps-expressions.test',
-    'deps-statements.test',
-    'deps-classes.test',
-]
-
 
 class GetDependenciesSuite(DataSuite):
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
+    files = [
+        'deps.test',
+        'deps-types.test',
+        'deps-generics.test',
+        'deps-expressions.test',
+        'deps-statements.test',
+        'deps-classes.test',
+    ]
+    base_path = test_temp_dir
+    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)
