@@ -2877,7 +2877,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         self.fail(message, context)
         return [], [], False
 
-    def visit_decorator(self, dec: Decorator, func_body: bool = True) -> None:
+    def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:
             d.accept(self)
         removed = []  # type: List[int]
