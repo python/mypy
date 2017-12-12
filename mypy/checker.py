@@ -2897,17 +2897,36 @@ def conditional_type_map(expr: Expression,
         return {}, {}
 
 
-def intersect_instance_callable(type: Instance, callable_type: CallableType) -> Type:
+def gen_unique_name(base: str, table: SymbolTable) -> str:
+    """Generate a name that does not appear in table by appending numbers to base."""
+    if base not in table:
+        return base
+    i = 1
+    while base + str(i) in table:
+        i += 1
+    return base + str(i)
+
+
+def intersect_instance_callable(type: Instance, callable_type: CallableType,
+                                typechecker: TypeChecker) -> Type:
     """Creates a fake type that represents the intersection of an
     Instance and a CallableType.
 
     It operates by creating a bare-minimum dummy TypeInfo that
     subclasses type and adds a __call__ method matching callable_type."""
 
+    # In order for this to work in incremental mode, the type we generate needs to
+    # have a valid fullname and a corresponding entry in a symbol table. We generate
+    # a unique name inside the symbol table of the current module.
+    cur_module = cast(MypyFile, typechecker.scope.stack[0])
+    gen_name = gen_unique_name("<callable subtype of {}>".format(type.type.name()),
+                               cur_module.names)
+
     # Build the fake ClassDef and TypeInfo together.
     # The ClassDef is full of lies and doesn't actually contain a body.
-    cdef = ClassDef("<callable subtype of {}>".format(type.type.name()), Block([]))
-    info = TypeInfo(SymbolTable(), cdef, '<dummy>')
+    cdef = ClassDef(type.type.name(), Block([]))
+    cdef.fullname = cur_module.fullname() + '.' + gen_name
+    info = TypeInfo(SymbolTable(), cdef, cur_module.fullname())
     cdef.info = info
     info.bases = [type]
     info.calculate_mro()
@@ -2916,6 +2935,8 @@ def intersect_instance_callable(type: Instance, callable_type: CallableType) -> 
     func_def = FuncDef('__call__', [], Block([]), callable_type)
     func_def.info = info
     info.names['__call__'] = SymbolTableNode(MDEF, func_def, callable_type)
+
+    cur_module.names[gen_name] = SymbolTableNode(GDEF, info)
 
     return Instance(info, [])
 
@@ -2932,7 +2953,7 @@ def make_fake_callable(type: Instance, typechecker: TypeChecker) -> Type:
                                  fallback=fallback,
                                  is_ellipsis_args=True)
 
-    return intersect_instance_callable(type, callable_type)
+    return intersect_instance_callable(type, callable_type, typechecker)
 
 
 def partition_by_callable(type: Type, typechecker: TypeChecker) -> Tuple[List[Type], List[Type]]:
