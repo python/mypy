@@ -724,9 +724,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
     def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
         """Apply a plugin hook that may infer a more precise definition for a class."""
+
         def get_fullname(expr: Expression) -> Optional[str]:
-            # We support @foo.bar(...) @foo.bar and @bar
-            # TODO: Support IndexExpressions?
+            # We support foo.bar(...) foo.bar and bar
             if isinstance(expr, CallExpr):
                 if isinstance(expr.callee, RefExpr):
                     return expr.callee.fullname
@@ -750,12 +750,22 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 if hook:
                     hook(ClassDefContext(defn, defn.metaclass, self))
 
-        for base in defn.base_type_exprs:
-            base_name = get_fullname(base)
+        for base_expr in defn.base_type_exprs:
+            try:
+                base = expr_to_unanalyzed_type(base_expr)
+            except TypeTranslationError:
+                continue  # This will be reported later
+            if not isinstance(base, UnboundType):
+                continue
+            sym = self.lookup_qualified(base.name, base)
+            if sym is None or sym.node is None:
+                continue
+            base_name = sym.node.fullname()
+
             if base_name:
                 hook = self.plugin.get_class_base_hook(base_name)
                 if hook:
-                    hook(ClassDefContext(defn, base, self))
+                    hook(ClassDefContext(defn, base_expr, self))
 
     def analyze_class_keywords(self, defn: ClassDef) -> None:
         for value in defn.keywords.values():
