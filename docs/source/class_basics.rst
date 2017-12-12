@@ -251,7 +251,7 @@ collection objects.
 ``Sized``
 ---------
 
-This defined for objects that support ``len(x)``.
+This is a type for objects that support ``len(x)``.
 
 .. code-block:: python
 
@@ -260,7 +260,7 @@ This defined for objects that support ``len(x)``.
 ``Container[T]``
 ----------------
 
-This is defined for objects that support the ``in`` operator.
+This is a type for objects that support the ``in`` operator.
 
 .. code-block:: python
 
@@ -284,7 +284,7 @@ library function or class.
 ``Reversible[T]``
 -----------------
 
-This is defined for objects that support ``reversed(x)``.
+This is a type for objects that support ``reversed(x)``.
 
 .. code-block:: python
 
@@ -293,7 +293,7 @@ This is defined for objects that support ``reversed(x)``.
 ``SupportsAbs[T]``
 ------------------
 
-This is defined for objects that support ``abs(x)``. ``T`` is the type of
+This is a type for objects that support ``abs(x)``. ``T`` is the type of
 value returned by ``abs(x)``.
 
 .. code-block:: python
@@ -303,7 +303,7 @@ value returned by ``abs(x)``.
 ``SupportsBytes``
 -----------------
 
-This is defined for objects that support ``bytes(x)``.
+This is a type for objects that support ``bytes(x)``.
 
 .. code-block:: python
 
@@ -312,7 +312,7 @@ This is defined for objects that support ``bytes(x)``.
 ``SupportsComplex``
 -------------------
 
-This is defined for objects that support ``complex(x)``.
+This is a type for objects that support ``complex(x)``.
 
 .. code-block:: python
 
@@ -321,7 +321,7 @@ This is defined for objects that support ``complex(x)``.
 ``SupportsFloat``
 -----------------
 
-This is defined for objects that support ``float(x)``.
+This is a type for objects that support ``float(x)``.
 
 .. code-block:: python
 
@@ -330,7 +330,7 @@ This is defined for objects that support ``float(x)``.
 ``SupportsInt``
 ---------------
 
-This is defined for objects that support ``int(x)``.
+This is a type for objects that support ``int(x)``.
 
 .. code-block:: python
 
@@ -339,7 +339,7 @@ This is defined for objects that support ``int(x)``.
 ``SupportsRound[T]``
 --------------------
 
-This is defined for objects that support ``round(x)``.
+This is a type for objects that support ``round(x)``.
 
 .. code-block:: python
 
