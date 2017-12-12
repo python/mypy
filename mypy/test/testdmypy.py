@@ -42,8 +42,8 @@ class TypeCheckSuite(DataSuite):
         return has_stable_flags(testcase) and is_incremental(testcase)
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        assert has_stable_flags(testcase), "Testcase is not incremental"
-        assert is_incremental(testcase), "Testcase has varying flags"
+        assert has_stable_flags(testcase), "Testcase has varying flags"
+        assert is_incremental(testcase), "Testcase is not incremental"
 
         # All tests run once with a cold cache, then at least once
         # with a warm cache and maybe changed files.  Expected output
