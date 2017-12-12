@@ -300,10 +300,12 @@ def request(command: str, *, timeout: Optional[float] = None,
 
     Return the JSON dict with the response.
 
-    Raise BadStatus if there is something wrong with the status file.
+    Raise BadStatus if there is something wrong with the status file
+    or if the process whose pid is in the status file has died.
 
-    Return {'error': <message>} if there was something wrong with the
-    response (including OSError raised by a socket operation).
+    Return {'error': <message>} if a socket operation or receive()
+    raised OSError.  This covers cases such as connection refused or
+    closed prematurely as well as invalid JSON received.
     """
     args = dict(kwds)
     args.update(command=command)
