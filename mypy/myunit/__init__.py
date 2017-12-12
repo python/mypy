@@ -107,7 +107,8 @@ def fail() -> None:
 class BaseTestCase:
     """Common base class for _MyUnitTestCase and DataDrivenTestCase.
 
-    Handles temporary folder creation and deletion"""
+    Handles temporary folder creation and deletion.
+    """
     def __init__(self, name: str) -> None:
         self.name = name
         self.old_cwd = None  # type: Optional[str]
@@ -141,10 +142,10 @@ class _MyUnitTestCase(BaseTestCase):
 
     def setup(self) -> None:
         super().setup()
-        self.suite.set_up()
+        self.suite.setup()
 
     def teardown(self) -> None:
-        self.suite.tear_down()  # No-op
+        self.suite.teardown()  # No-op
         super().teardown()
 
 
@@ -152,7 +153,8 @@ class Suite:
     """Abstract class for myunit test suites - node in the tree whose leaves are _MyUnitTestCases.
 
     The children `cases` are looked up during __init__, looking for attributes named test_*
-    they are either no-arg methods or of a pair (name, Suite)."""
+    they are either no-arg methods or of a pair (name, Suite).
+    """
 
     cases = None  # type: Iterable[Union[_MyUnitTestCase, Tuple[str, Suite]]]
 
@@ -168,11 +170,11 @@ class Suite:
                     assert isinstance(t, MethodType)
                     self.cases.append(_MyUnitTestCase(m, self, t))
 
-    def set_up(self) -> None:
+    def setup(self) -> None:
         """Set up fixtures"""
         pass
 
-    def tear_down(self) -> None:
+    def teardown(self) -> None:
         # This method is not overridden in practice
         pass
 

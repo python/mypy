@@ -555,13 +555,14 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
                               obj: object) -> 'Optional[Any]':
     """Called by pytest on each object in modules configured in conftest.py files.
 
-    collector is pytest.Collector, returns Optional[pytest.Class]"""
-
+    collector is pytest.Collector, returns Optional[pytest.Class]
+    """
     if isinstance(obj, type):
         # Only classes derived from DataSuite contain test cases, not the DataSuite class itself
         if issubclass(obj, DataSuite) and obj is not DataSuite:
-            # Non-None result means this obj is a test case
-            # result.collect will be called, with self.obj being obj
+            # Non-None result means this obj is a test case.
+            # The collect method of the returned MypyDataSuite instance will be called later,
+            # with self.obj being obj.
             return MypyDataSuite(name, parent=collector)
     return None
 
