@@ -439,8 +439,8 @@ similarly compatible with the protocol, as they support ``close()``.
    `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ has been accepted,
    ``Protocol`` will be included in the ``typing`` module.
 
-Defining subprotocols
-*********************
+Defining subprotocols and subclassing protocols
+***********************************************
 
 You can also define subprotocols. Existing protocols can be extended
 and merged using multiple inheritance. Example:
@@ -468,7 +468,7 @@ and merged using multiple inheritance. Example:
 
 Note that inheriting from an existing protocol does not automatically
 turn the subclass into a protocol -- it just creates a regular
-(non-protocol) ABC that implements the given protocol (or
+(non-protocol) class or ABC that implements the given protocol (or
 protocols). The ``typing_extensions.Protocol`` base class must always
 be explicitly present if you are defining a protocol:
 
@@ -485,6 +485,13 @@ be explicitly present if you are defining a protocol:
 
    # Error: nominal subtyping used by default
    x: NewProtocol = Concrete()  # Error!
+
+You can also include default implementations of methods in
+protocols. If you explicitly subclass these protocols you can inherit
+these default implementations. Explicitly including a protocol as a
+base class is also a way of documenting that your class implements a
+particular protocol, and it forces mypy to verify that your class
+implementation is actually compatible with the protocol.
 
 .. note::
 
