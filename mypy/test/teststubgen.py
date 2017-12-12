@@ -92,7 +92,7 @@ class StubgenUtilSuite(Suite):
 
 
 class StubgenPythonSuite(DataSuite):
-    files = ['stubgen.test']  # type: List[str]
+    files = ['stubgen.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_stubgen(testcase)
