@@ -69,6 +69,13 @@ del p
 
 
 class BadStatus(Exception):
+    """Exception raised when there is something wrong with the status file.
+
+    For example:
+    - No status file found
+    - Status file malformed
+    - Process whose pid is in the status file does not exist
+    """
     pass
 
 
@@ -87,7 +94,7 @@ def main() -> None:
 ActionFunction = Callable[[argparse.Namespace], None]
 
 
-def action(subparser: argparse.ArgumentParser) -> Callable[[ActionFunction], None]:
+def action(subparser: argparse.ArgumentParser) -> Callable[[ActionFunction], ActionFunction]:
     """Decorator to tie an action function to a subparser."""
     def register(func: ActionFunction) -> ActionFunction:
         subparser.set_defaults(action=func)
@@ -112,6 +119,7 @@ def do_start(args: argparse.Namespace) -> None:
     try:
         get_status()
     except BadStatus as err:
+        # Bad or missing status file or dead process; good to start.
         pass
     else:
         sys.exit("Daemon is still alive")
@@ -128,6 +136,7 @@ def do_restart(args: argparse.Namespace) -> None:
     try:
         do_stop(args)
     except BadStatus:
+        # Bad or missing status file or dead process; good to start.
         pass
     start_server(args)
 
@@ -170,40 +179,27 @@ def do_status(args: argparse.Namespace) -> None:
     status = read_status()
     if args.verbose:
         show_stats(status)
+    # Both check_status() and request() may raise BadStatus,
+    # which will be handled by main().
     check_status(status)
-    try:
-        response = request('status', timeout=5)
-    except BadStatus:
-        raise  # main() will turn this into sys.exit().
-    except Exception as err:
-        if args.verbose:
-            raise  # Python will print a traceback and sys.exit(1).
-        else:
-            sys.exit("%s: %s" % (err.__class__.__name__, str(err)))
-    else:
-        if args.verbose or 'error' in response:
-            show_stats(response)
-        if 'error' in response:
-            sys.exit("Daemon is stuck; consider %s kill" % sys.argv[0])
-        print("Daemon is up and running")
+    response = request('status', timeout=5)
+    if args.verbose or 'error' in response:
+        show_stats(response)
+    if 'error' in response:
+        sys.exit("Daemon is stuck; consider %s kill" % sys.argv[0])
+    print("Daemon is up and running")
 
 
 @action(stop_parser)
 def do_stop(args: argparse.Namespace) -> None:
     """Stop daemon via a 'stop' request."""
-    try:
-        response = request('stop', timeout=5)
-    except BadStatus:
-        raise
-    except Exception as err:
-        print("%s: %s" % (err.__class__.__name__, str(err)))
+    # May raise BadStatus, which will be handled by main().
+    response = request('stop', timeout=5)
+    if response:
+        show_stats(response)
         sys.exit("Daemon is stuck; consider %s kill" % sys.argv[0])
     else:
-        if response:
-            show_stats(response)
-            sys.exit("Daemon is stuck; consider %s kill" % sys.argv[0])
-        else:
-            print("Daemon stopped")
+        print("Daemon stopped")
 
 
 @action(kill_parser)
