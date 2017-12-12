@@ -1156,8 +1156,11 @@ def write_cache(id: str, path: str, tree: MypyFile,
       tree: the fully checked module data
       dependencies: module IDs on which this module depends
       suppressed: module IDs which were suppressed as dependencies
+      child_modules: module IDs which are this package's direct submodules
       dep_prios: priorities (parallel array to dependencies)
       old_interface_hash: the hash from the previous version of the data cache file
+      source_hash: the hash of the source code
+      ignore_all: the ignore_all flag for this module
       manager: the build manager (for pyversion, log/trace)
 
     Returns:
@@ -2268,7 +2271,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
         scc_str = " ".join(scc)
         if fresh:
-            if not maybe_reuse_in_memory_tree(graph, scc, manager):
+            if maybe_reuse_in_memory_tree(graph, scc, manager):
+                manager.add_stats(sccs_kept=1, nodes_kept=len(scc))
+            else:
                 manager.trace("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
                 fresh_scc_queue.append(scc)
         else:
