@@ -254,11 +254,11 @@ class TypeCheckSuite(DataSuite):
             out = []
             for module_name in module_names.split(' '):
                 md = build.ModuleDiscovery([test_temp_dir])
-                path = md.find_module(module_name)
-                assert path is not None, "Can't find ad hoc case file"
-                with open(path) as f:
+                src = md.find_module(module_name)
+                assert src is not None and src.path is not None, "Can't find ad hoc case file"
+                with open(src.path) as f:
                     program_text = f.read()
-                out.append((module_name, path, program_text))
+                out.append((module_name, src.path, program_text))
             return out
         else:
             return [('__main__', 'main', program_text)]
