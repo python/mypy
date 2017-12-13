@@ -1967,8 +1967,8 @@ class State:
             is_errors = self.transitive_error
         if is_errors:
             new_interface_hash = compute_interface_hash(self.tree, self.manager)
+            delete_cache(self.id, self.path, self.manager)
             if new_interface_hash != self.interface_hash:
-                delete_cache(self.id, self.path, self.manager)
                 self.meta = None
                 self.mark_interface_stale(on_errors=True)
                 self.interface_hash = new_interface_hash
