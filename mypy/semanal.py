@@ -724,20 +724,20 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
     def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
         """Apply a plugin hook that may infer a more precise definition for a class."""
-
         def get_fullname(expr: Expression) -> Optional[str]:
             if isinstance(expr, CallExpr):
                 return get_fullname(expr.callee)
-            elif isinstance(expr, (MemberExpr, NameExpr)):
+            elif isinstance(expr, IndexExpr):
+                return get_fullname(expr.base)
+            elif isinstance(expr, RefExpr):
                 if expr.fullname:
                     return expr.fullname
-
-                # If we don't have a fullname look it up.
+                # If we don't have a fullname look it up. This happens because base classes are
+                # analyzed in a different manner (see exprtotype.py) and therefore those AST
+                # nodes will not have full names.
                 sym = self.lookup_type_node(expr)
                 if sym:
                     return sym.fullname
-            elif isinstance(expr, IndexExpr):
-                return get_fullname(expr.base)
             return None
 
         for decorator in defn.decorators:
@@ -750,7 +750,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         if defn.metaclass:
             metaclass_name = get_fullname(defn.metaclass)
             if metaclass_name:
-                hook = self.plugin.get_class_metaclass_hook(metaclass_name)
+                hook = self.plugin.get_metaclass_hook(metaclass_name)
                 if hook:
                     hook(ClassDefContext(defn, defn.metaclass, self))
 
