@@ -214,7 +214,7 @@ if not callable(b):
     5 + 'test'
 
 if callable(c):
-    reveal_type(c)  # E: Revealed type is 'Union[__main__.<callable subtype of A>1, __main__.B]'
+    reveal_type(c)  # E: Revealed type is '__main__.B'
 else:
     reveal_type(c)  # E: Revealed type is '__main__.A'
 
@@ -227,7 +227,7 @@ T = Union[Union[int, Callable[[], int]], Union[str, Callable[[], str]]]
 
 def f(t: T) -> None:
     if callable(t):
-        reveal_type(t())  # E: Revealed type is 'Union[Any, builtins.int, builtins.str]'
+        reveal_type(t())  # E: Revealed type is 'Union[builtins.int, builtins.str]'
     else:
         reveal_type(t)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
 
@@ -255,7 +255,7 @@ def f(t: T) -> None:
     if callable(t):
         reveal_type(t())  # E: Revealed type is 'Any'  \
             # E: Revealed type is 'builtins.int'  \
-            # E: Revealed type is 'Union[Any, builtins.str]'
+            # E: Revealed type is 'builtins.str'
     else:
         reveal_type(t)  # E: Revealed type is 'builtins.int*'  # E: Revealed type is 'builtins.str'
 

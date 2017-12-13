@@ -2956,7 +2956,8 @@ def make_fake_callable(type: Instance, typechecker: TypeChecker) -> Type:
     return intersect_instance_callable(type, callable_type, typechecker)
 
 
-def partition_by_callable(type: Type, typechecker: TypeChecker) -> Tuple[List[Type], List[Type]]:
+def partition_by_callable(type: Type, typechecker: TypeChecker,
+                          unsound_partition: bool) -> Tuple[List[Type], List[Type]]:
     """Takes in a type and partitions that type into callable subtypes and
     uncallable subtypes.
 
@@ -2966,7 +2967,13 @@ def partition_by_callable(type: Type, typechecker: TypeChecker) -> Tuple[List[Ty
     If we assert `callable(type)` then `type` has type Union[*callables], and
     If we assert `not callable(type)` then `type` has type Union[*uncallables]
 
-    Guaranteed to not return [], []"""
+    If unsound_partition is set, assume that anything that is not
+    clearly callable is in fact not callable. Otherwise we generate a
+    new subtype that *is* callable.
+
+    Guaranteed to not return [], []
+
+    """
     if isinstance(type, FunctionLike) or isinstance(type, TypeType):
         return [type], []
 
@@ -2977,7 +2984,10 @@ def partition_by_callable(type: Type, typechecker: TypeChecker) -> Tuple[List[Ty
         callables = []
         uncallables = []
         for subtype in type.relevant_items():
-            subcallables, subuncallables = partition_by_callable(subtype, typechecker)
+            # Use unsound_partition when handling unions in order to
+            # allow the expected type discrimination.
+            subcallables, subuncallables = partition_by_callable(subtype, typechecker,
+                                                                 unsound_partition=True)
             callables.extend(subcallables)
             uncallables.extend(subuncallables)
         return callables, uncallables
@@ -2991,24 +3001,30 @@ def partition_by_callable(type: Type, typechecker: TypeChecker) -> Tuple[List[Ty
         # do better.
         # If it is possible for the false branch to execute, return the original
         # type to avoid losing type information.
-        callables, uncallables = partition_by_callable(type.erase_to_union_or_bound(), typechecker)
+        callables, uncallables = partition_by_callable(type.erase_to_union_or_bound(), typechecker,
+                                                       unsound_partition)
         uncallables = [type] if len(uncallables) else []
         return callables, uncallables
 
     if isinstance(type, Instance):
         method = type.type.get_method('__call__')
         if method and method.type:
-            callables, uncallables = partition_by_callable(method.type, typechecker)
+            callables, uncallables = partition_by_callable(method.type, typechecker,
+                                                           unsound_partition=False)
             if len(callables) and not len(uncallables):
                 # Only consider the type callable if its __call__ method is
                 # definitely callable.
                 return [type], []
 
-        ret = make_fake_callable(type, typechecker)
-        return [ret], [type]
+        if not unsound_partition:
+            ret = make_fake_callable(type, typechecker)
+            return [ret], [type]
 
-    # We don't know how properly make the type callable.
-    return [type], [type]
+    if unsound_partition:
+        return [], [type]
+    else:
+        # We don't know how properly make the type callable.
+        return [type], [type]
 
 
 def conditional_callable_type_map(expr: Expression,
@@ -3027,7 +3043,8 @@ def conditional_callable_type_map(expr: Expression,
     if isinstance(current_type, AnyType):
         return {}, {}
 
-    callables, uncallables = partition_by_callable(current_type, typechecker)
+    callables, uncallables = partition_by_callable(current_type, typechecker,
+                                                   unsound_partition=False)
 
     if len(callables) and len(uncallables):
         callable_map = {expr: UnionType.make_union(callables)} if len(callables) else None
