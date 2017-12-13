@@ -733,9 +733,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     return expr.fullname
 
                 # If we don't have a fullname look it up.
-                node = self.lookup_type_node(expr)
-                if node:
-                    return node.node.fullname()
+                sym = self.lookup_type_node(expr)
+                if sym:
+                    return sym.fullname
             elif isinstance(expr, IndexExpr):
                 return get_fullname(expr.base)
             return None
