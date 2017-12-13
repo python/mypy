@@ -383,5 +383,13 @@ def snapshot_untyped_signature(func: Union[OverloadedFuncDef, FuncItem]) -> Tupl
     if isinstance(func, FuncItem):
         return (tuple(func.arg_names), tuple(func.arg_kinds))
     else:
-        return tuple(snapshot_untyped_signature(item)
-                     for item in func.items)
+        result = []
+        for item in func.items:
+            if isinstance(item, Decorator):
+                if item.var.type:
+                    result.append(snapshot_type(item.var.type))
+                else:
+                    result.append(('DecoratorWithoutType',))
+            else:
+                result.append(snapshot_untyped_signature(item))
+        return tuple(result)
