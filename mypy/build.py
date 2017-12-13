@@ -1272,7 +1272,8 @@ def write_cache(id: str, path: str, tree: MypyFile,
     return interface_hash, cache_meta_from_dict(meta, data_json)
 
 
-def delete_cache(id: str, path: str, manager: BuildManager) -> None:
+def delete_cache(id: str, path: str, manager: BuildManager,
+                 keep_in_memory: bool = False) -> None:
     """Delete cache files for a module.
 
     The cache files for a module are deleted when mypy finds errors there.
@@ -1282,7 +1283,7 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     path = os.path.abspath(path)
     meta_json, data_json = get_cache_names(id, path, manager)
     manager.log('Deleting {} {} {} {}'.format(id, path, meta_json, data_json))
-    if id in manager.saved_cache:
+    if id in manager.saved_cache and not keep_in_memory:
         del manager.saved_cache[id]
 
     for filename in [data_json, meta_json]:
@@ -1967,11 +1968,13 @@ class State:
             is_errors = self.transitive_error
         if is_errors:
             new_interface_hash = compute_interface_hash(self.tree, self.manager)
-            delete_cache(self.id, self.path, self.manager)
             if new_interface_hash != self.interface_hash:
+                delete_cache(self.id, self.path, self.manager)
                 self.meta = None
                 self.mark_interface_stale(on_errors=True)
                 self.interface_hash = new_interface_hash
+            else:
+                delete_cache(self.id, self.path, self.manager, keep_in_memory=True)
             return
         dep_prios = self.dependency_priorities()
         new_interface_hash, self.meta = write_cache(
