@@ -2924,7 +2924,9 @@ def intersect_instance_callable(type: Instance, callable_type: CallableType,
 
     # Build the fake ClassDef and TypeInfo together.
     # The ClassDef is full of lies and doesn't actually contain a body.
-    cdef = ClassDef(type.type.name(), Block([]))
+    # Use format_bare to generate a nice name for error messages.
+    short_name = typechecker.msg.format_bare(type)
+    cdef = ClassDef(short_name, Block([]))
     cdef.fullname = cur_module.fullname() + '.' + gen_name
     info = TypeInfo(SymbolTable(), cdef, cur_module.fullname())
     cdef.info = info

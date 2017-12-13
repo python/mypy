@@ -373,3 +373,41 @@ def g(o: Foo) -> None:
         o.bar()
 
 [builtins fixtures/callable.pyi]
+[case testCallableObjectAny]
+
+from typing import Any
+
+class Foo(Any):
+    def bar(self) -> None:
+        pass
+
+def g(o: Foo) -> None:
+    o.bar()
+    o.baz()
+    if callable(o):
+        o('test')
+        o.lurr(1,2,3)
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableObjectGeneric]
+
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class Test(Generic[T]):
+    def __self__(self, x: T) -> None:
+        self.x = x
+
+def g(o: Test[T], x: T) -> T:
+    if callable(o):
+        o.foo()  # E: "Test[T]" has no attribute "foo"
+        o(1,2,3)
+        o.x = x
+        o.x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "T")
+        1 + o.x  # E: Unsupported operand types for + ("int" and "T")
+        return o.x
+
+    return x
+
+[builtins fixtures/callable.pyi]
