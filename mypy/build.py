@@ -1139,6 +1139,20 @@ def compute_hash(text: str) -> str:
     return hashlib.md5(text.encode('utf-8')).hexdigest()
 
 
+def compute_interface_hash(tree: MypyFile, manager: BuildManager) -> str:
+    """Compute interface hash for a tree.
+
+    Should be called when we want to interface hash but don't want to
+    write the cache.
+    """
+    data = tree.serialize()
+    if manager.options.debug_cache:
+        data_str = json.dumps(data, indent=2, sort_keys=True)
+    else:
+        data_str = json.dumps(data, sort_keys=True)
+    return compute_hash(data_str)
+
+
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
@@ -1952,9 +1966,12 @@ class State:
         else:
             is_errors = self.transitive_error
         if is_errors:
-            delete_cache(self.id, self.path, self.manager)
-            self.meta = None
-            self.mark_interface_stale(on_errors=True)
+            new_interface_hash = compute_interface_hash(self.tree, self.manager)
+            if new_interface_hash != self.interface_hash:
+                delete_cache(self.id, self.path, self.manager)
+                self.meta = None
+                self.mark_interface_stale(on_errors=True)
+                self.interface_hash = new_interface_hash
             return
         dep_prios = self.dependency_priorities()
         new_interface_hash, self.meta = write_cache(
