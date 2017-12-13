@@ -208,7 +208,7 @@ b = B()  # type: B
 c = A()  # type: Union[A, B]
 
 if callable(a):
-    5 + 'test' # E: Unsupported operand types for + ("int" and "str")
+    5 + 'test'  # E: Unsupported operand types for + ("int" and "str")
 
 if not callable(b):
     5 + 'test'
@@ -240,7 +240,7 @@ T = TypeVar('T')
 
 def f(t: T) -> T:
     if callable(t):
-        return 5 # E: Incompatible return value type (got "int", expected "T")
+        return 5  # E: Incompatible return value type (got "int", expected "T")
     else:
         return t
 
@@ -253,7 +253,9 @@ T = TypeVar('T', int, Callable[[], int], Union[str, Callable[[], str]])
 
 def f(t: T) -> None:
     if callable(t):
-        reveal_type(t())  # E: Revealed type is 'Any'  # E: Revealed type is 'builtins.int'  # E: Revealed type is 'Union[Any, builtins.str]'
+        reveal_type(t())  # E: Revealed type is 'Any'  \
+            # E: Revealed type is 'builtins.int'  \
+            # E: Revealed type is 'Union[Any, builtins.str]'
     else:
         reveal_type(t)  # E: Revealed type is 'builtins.int*'  # E: Revealed type is 'builtins.str'
 
@@ -348,9 +350,10 @@ else:
 
 def f(o: object) -> None:
     if callable(o):
-        o()
+        o(1,2,3)
         1 + 'boom'  # E: Unsupported operand types for + ("int" and "str")
-        o()
+        o('hi') + 12
+        reveal_type(o)  # E: Revealed type is '__main__.<callable subtype of object>'
 
 [builtins fixtures/callable.pyi]
 
@@ -363,8 +366,9 @@ class Foo(object):
 def g(o: Foo) -> None:
     o.bar()
     if callable(o):
+        o.foo()  # E: "Foo" has no attribute "foo"
         o.bar()
-        o()
+        o(1,2,3)
     else:
         o.bar()
 
