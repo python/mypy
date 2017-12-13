@@ -726,7 +726,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         """Apply a plugin hook that may infer a more precise definition for a class."""
 
         def get_fullname(expr: Expression) -> Optional[str]:
-            # We support foo.bar(...), foo.bar, and bar.
             if isinstance(expr, CallExpr):
                 return get_fullname(expr.callee)
             elif isinstance(expr, (MemberExpr, NameExpr)):
