@@ -1262,3 +1262,20 @@ class A:
 2: <a.A.f>, <a.A.z>
 [out]
 ==
+
+[case testSuperBasics]
+import a
+[file a.py]
+class A:
+    def f(self) -> None: pass
+class B(A):
+    def f(self) -> None:
+        super(B, self).f()
+[file a.py.2]
+class A:
+    def f(self) -> None: pass
+class B(A):
+    def f(self) -> None:
+        super(B, self).f()
+[out]
+==

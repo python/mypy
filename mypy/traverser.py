@@ -10,7 +10,7 @@ from mypy.nodes import (
     GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt,
+    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr,
 )
 
 
@@ -249,6 +249,9 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_await_expr(self, o: AwaitExpr) -> None:
         o.expr.accept(self)
+
+    def visit_super_expr(self, o: SuperExpr) -> None:
+        o.call.accept(self)
 
     def visit_import(self, o: Import) -> None:
         for a in o.assignments:
