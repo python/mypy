@@ -18,6 +18,7 @@ from mypy.types import (
     FunctionLike, ForwardRef, Overloaded
 )
 from mypy.server.trigger import make_trigger
+from mypy.util import correct_relative_import
 
 
 def get_dependencies(target: MypyFile,
@@ -70,6 +71,7 @@ class DependencyVisitor(TraverserVisitor):
         self.python2 = python_version[0] == 2
         self.map = {}  # type: Dict[str, Set[str]]
         self.is_class = False
+        self.is_package_init_file = False
 
     # TODO (incomplete):
     #   from m import *
@@ -80,12 +82,12 @@ class DependencyVisitor(TraverserVisitor):
     #   metaclasses
     #   type aliases
     #   super()
-    #   relative imports
     #   functional enum
     #   type variable with value restriction
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.enter_file_scope(o.fullname())
+        self.is_package_init_file = o.is_package_init_file()
         super().visit_mypy_file(o)
         self.leave_scope()
 
@@ -153,9 +155,12 @@ class DependencyVisitor(TraverserVisitor):
             self.add_dependency(make_trigger(id), self.current_target())
 
     def visit_import_from(self, o: ImportFrom) -> None:
-        assert o.relative == 0  # Relative imports not supported
+        module_id, _ = correct_relative_import(self.current_module_id(),
+                                               o.relative,
+                                               o.id,
+                                               self.is_package_init_file)
         for name, as_name in o.names:
-            self.add_dependency(make_trigger(o.id + '.' + name))
+            self.add_dependency(make_trigger(module_id + '.' + name))
 
     def visit_block(self, o: Block) -> None:
         if not o.is_unreachable:
@@ -476,8 +481,12 @@ class DependencyVisitor(TraverserVisitor):
         if typ:
             self.add_attribute_dependency(typ, '__iter__')
 
+    def current_module_id(self) -> str:
+        return self.target_stack[0]
+
     def enter_file_scope(self, prefix: str) -> None:
         """Enter a module target scope."""
+        assert not self.target_stack
         self.target_stack.append(prefix)
         self.full_target_stack.append(prefix)
         self.scope_stack.append(None)
