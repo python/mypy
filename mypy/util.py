@@ -146,7 +146,6 @@ def correct_relative_import(cur_mod_id: str,
                             relative: int,
                             target: str,
                             is_cur_package_init_file: bool) -> Tuple[str, bool]:
-    print(cur_mod_id, relative, target, is_cur_package_init_file)
     if relative == 0:
         return target, True
     parts = cur_mod_id.split(".")
