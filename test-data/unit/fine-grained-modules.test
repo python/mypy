@@ -524,6 +524,23 @@ c.f(1)
 ==
 a.py:2: error: Too many arguments for "f"
 
+[case testDeleteFileWithinPackage]
+import a
+[file a.py]
+import m.x
+m.x.g(1)
+[file m/__init__.py]
+[file m/x.py]
+def g() -> None: pass
+[delete m/x.py.2]
+[builtins fixtures/module.pyi]
+[out]
+a.py:2: error: Too many arguments for "g"
+==
+a.py:1: error: Cannot find module named 'm.x'
+a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+a.py:2: error: Module has no attribute "x"
+
 -- TODO:
 -- - add one file which imports another new file, blocking error in new file
 -- - arbitrary blocking errors

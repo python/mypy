@@ -57,7 +57,7 @@ from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator,
-    Import, ImportFrom, SymbolTable
+    Import, ImportFrom, OverloadedFuncDef, SymbolTable
 )
 from mypy.options import Options
 from mypy.types import Type
@@ -73,6 +73,9 @@ from mypy.server.trigger import make_trigger
 
 # If True, print out debug logging output.
 DEBUG = False
+
+
+MAX_ITER = 1000
 
 
 class FineGrainedBuildManager:
@@ -98,6 +101,8 @@ class FineGrainedBuildManager:
         mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
         self.type_maps = extract_type_maps(graph)
+        # Active triggers during the last update
+        self.triggered = []  # type: List[str]
 
     def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
         """Update previous build result by processing changed modules.
@@ -121,11 +126,15 @@ class FineGrainedBuildManager:
         # Reset global caches for the new build.
         find_module_clear_caches()
 
+        self.triggered = []
         changed_modules = dedupe_modules(changed_modules + self.stale)
         initial_set = {id for id, _ in changed_modules}
         if DEBUG:
             print('==== update %s ====' % ', '.join(repr(id)
                                                     for id, _ in changed_modules))
+            if self.previous_targets_with_errors:
+                print('previous targets with errors: %s' %
+                      sorted(self.previous_targets_with_errors))
 
         if self.blocking_error:
             # Handle blocking errors first. We'll exit as soon as we find a
@@ -195,7 +204,10 @@ class FineGrainedBuildManager:
         # TODO: What to do with stale dependencies?
         triggered = calculate_active_triggers(manager, old_snapshots, {module: tree})
         if DEBUG:
-            print('triggered:', sorted(triggered))
+            filtered = [trigger for trigger in triggered
+                        if not trigger.endswith('__>')]
+            print('triggered:', sorted(filtered))
+        self.triggered.extend(triggered)
         update_dependencies({module: tree}, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              {module},
@@ -283,6 +295,8 @@ def update_single_isolated(module: str,
     """
     if module in manager.modules:
         assert_equivalent_paths(path, manager.modules[module].path)
+    elif DEBUG:
+        print('new module %r' % module)
 
     old_modules = dict(manager.modules)
     sources = get_sources(previous_modules, [(module, path)])
@@ -369,6 +383,8 @@ def assert_equivalent_paths(path1: str, path2: str) -> None:
 def delete_module(module_id: str,
                   graph: Dict[str, State],
                   manager: BuildManager) -> Dict[str, State]:
+    if DEBUG:
+        print('delete module %r' % module_id)
     # TODO: Deletion of a package
     # TODO: Remove deps for the module (this only affects memory use, not correctness)
     assert module_id not in graph
@@ -597,11 +613,15 @@ def propagate_changes_using_dependencies(
         targets_with_errors: Set[str],
         modules: Iterable[str]) -> None:
     # TODO: Multiple type checking passes
-    # TODO: Restrict the number of iterations to some maximum to avoid infinite loops
+    num_iter = 0
 
     # Propagate changes until nothing visible has changed during the last
     # iteration.
     while triggered or targets_with_errors:
+        num_iter += 1
+        if num_iter > MAX_ITER:
+            raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
+
         todo = find_targets_recursive(triggered, deps, manager.modules, up_to_date_modules)
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
@@ -683,12 +703,20 @@ def reprocess_nodes(manager: BuildManager,
         return set()
 
     file_node = manager.modules[module_id]
+    old_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
+    old_symbols = {name: names.copy() for name, names in old_symbols.items()}
 
     def key(node: DeferredNode) -> str:
         fullname = node.node.fullname()
-        if isinstance(node.node, FuncDef) and fullname is None:
-            assert node.node.info is not None
-            fullname = '%s.%s' % (node.node.info.fullname(), node.node.name())
+        if fullname is None:
+            if isinstance(node.node, FuncDef):
+                info = node.node.info
+            elif isinstance(node.node, OverloadedFuncDef):
+                info = node.node.items[0].info
+            else:
+                assert False, "'None' fullname for %s instance" % type(node.node)
+            assert info is not None
+            fullname = '%s.%s' % (info.fullname(), node.node.name())
         return fullname
 
     # Some nodes by full name so that the order of processing is deterministic.
@@ -718,6 +746,14 @@ def reprocess_nodes(manager: BuildManager,
                 active_type=deferred.active_typeinfo):
             manager.semantic_analyzer_pass3.refresh_partial(deferred.node)
 
+    # Merge symbol tables to preserve identities of AST nodes. The file node will remain
+    # the same, but other nodes may have been recreated with different identities, such as
+    # NamedTuples defined using assignment statements.
+    new_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
+    for name in old_symbols:
+        if name in new_symbols:
+            merge_asts(file_node, old_symbols[name], file_node, new_symbols[name])
+
     # Keep track of potentially affected attribute types before type checking.
     old_types_map = get_enclosing_namespace_types(nodes)
 
@@ -737,6 +773,25 @@ def reprocess_nodes(manager: BuildManager,
     verify_dependencies(graph[module_id], manager)
 
     return new_triggered
+
+
+def find_symbol_tables_recursive(prefix: str, symbols: SymbolTable) -> Dict[str, SymbolTable]:
+    """Find all nested symbol tables.
+
+    Args:
+        prefix: Full name prefix (used for return value keys and to filter result so that
+            cross references to other modules aren't included)
+        symbols: Root symbol table
+
+    Returns a dictionary from full name to corresponding symbol table.
+    """
+    result = {}
+    result[prefix] = symbols
+    for name, node in symbols.items():
+        if isinstance(node.node, TypeInfo) and node.node.fullname().startswith(prefix + '.'):
+            more = find_symbol_tables_recursive(prefix + '.' + name, node.node.names)
+            result.update(more)
+    return result
 
 
 NamespaceNode = Union[TypeInfo, MypyFile]
@@ -828,7 +883,9 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
     if isinstance(node, Decorator):
         # Decorator targets actually refer to the function definition only.
         node = node.func
-    assert isinstance(node, (FuncDef, MypyFile)), 'unexpected type: %s' % type(node)
+    assert isinstance(node, (FuncDef,
+                             MypyFile,
+                             OverloadedFuncDef)), 'unexpected type: %s' % type(node)
     return [DeferredNode(node, active_class_name, active_class)]
 
 

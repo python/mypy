@@ -449,3 +449,30 @@ C = list
 [builtins fixtures/list.pyi]
 [out]
 __main__.C
+
+[case testDecoratorChangesSignature]
+from contextlib import contextmanager
+from typing import Iterator, List, Tuple
+
+@contextmanager
+def f(x: List[Tuple[int]]) -> Iterator[None]:
+    yield
+
+@contextmanager
+def g(x: str) -> Iterator[None]:
+    yield
+[file next.py]
+from contextlib import contextmanager
+from typing import Iterator, List, Tuple
+
+@contextmanager
+def f(x: List[Tuple[int]]) -> Iterator[None]:
+    yield
+
+@contextmanager
+def g(x: object) -> Iterator[None]:
+    yield
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
+[out]
+__main__.g

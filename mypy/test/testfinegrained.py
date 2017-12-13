@@ -51,6 +51,7 @@ class FineGrainedSuite(DataSuite):
         fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
         steps = testcase.find_steps()
+        all_triggered = []
         for operations in steps:
             modules = []
             for op in operations:
@@ -63,6 +64,7 @@ class FineGrainedSuite(DataSuite):
                     os.remove(op.path)
                     modules.append((op.module, op.path))
             new_messages = fine_grained_manager.update(modules)
+            all_triggered.append(fine_grained_manager.triggered)
             new_messages = normalize_messages(new_messages)
 
             a.append('==')
@@ -75,6 +77,13 @@ class FineGrainedSuite(DataSuite):
             testcase.output, a,
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
+
+        if testcase.triggered:
+            assert_string_arrays_equal(
+                testcase.triggered,
+                self.format_triggered(all_triggered),
+                'Invalid active triggers ({}, line {})'.format(testcase.file,
+                                                               testcase.line))
 
     def build(self, source: str) -> Tuple[List[str], BuildManager, Graph]:
         options = Options()
@@ -93,6 +102,15 @@ class FineGrainedSuite(DataSuite):
             assert False, str('\n'.join(e.messages))
             return e.messages, None, None
         return result.errors, result.manager, result.graph
+
+    def format_triggered(self, triggered: List[List[str]]) -> List[str]:
+        result = []
+        for n, triggers in enumerate(triggered):
+            filtered = [trigger for trigger in triggers
+                        if not trigger.endswith('__>')]
+            filtered = sorted(filtered)
+            result.append(('%d: %s' % (n + 2, ', '.join(filtered))).strip())
+        return result
 
 
 def normalize_messages(messages: List[str]) -> List[str]:

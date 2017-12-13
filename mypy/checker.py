@@ -74,7 +74,7 @@ DeferredNode = NamedTuple(
     'DeferredNode',
     [
         # In batch mode only FuncDef and LambdaExpr are supported
-        ('node', Union[FuncDef, LambdaExpr, MypyFile]),
+        ('node', Union[FuncDef, LambdaExpr, MypyFile, OverloadedFuncDef]),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
         ('active_typeinfo', Optional[TypeInfo]),  # And its TypeInfo (for semantic analysis
                                                   # self type handling)
@@ -177,6 +177,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.suppress_none_errors = not any(fnmatch.fnmatch(path, pattern)
                                                 for pattern
                                                 in options.strict_optional_whitelist)
+        # If True, process function definitions. If False, don't. This is used
+        # for processing module top levels in fine-grained incremental mode.
+        self.recurse_into_functions = True
 
     def check_first_pass(self) -> None:
         """Type check the entire file, but defer functions with unresolved references.
@@ -188,6 +191,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Deferred functions will be processed by check_second_pass().
         """
+        self.recurse_into_functions = True
         with experiments.strict_optional_set(self.options.strict_optional):
             self.errors.set_file(self.path, self.tree.fullname())
             with self.enter_partial_types():
@@ -216,6 +220,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         This goes through deferred nodes, returning True if there were any.
         """
+        self.recurse_into_functions = True
         with experiments.strict_optional_set(self.options.strict_optional):
             if not todo and not self.deferred_nodes:
                 return False
@@ -226,7 +231,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 assert not self.deferred_nodes
             self.deferred_nodes = []
-            done = set()  # type: Set[Union[FuncDef, LambdaExpr, MypyFile]]
+            done = set()  # type: Set[Union[FuncDef, LambdaExpr, MypyFile, OverloadedFuncDef]]
             for node, type_name, active_typeinfo in todo:
                 if node in done:
                     continue
@@ -239,22 +244,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.check_partial(node)
             return True
 
-    def check_partial(self, node: Union[FuncDef, LambdaExpr, MypyFile]) -> None:
+    def check_partial(self, node: Union[FuncDef,
+                                        LambdaExpr,
+                                        MypyFile,
+                                        OverloadedFuncDef]) -> None:
         if isinstance(node, MypyFile):
             self.check_top_level(node)
-        elif isinstance(node, LambdaExpr):
-            self.expr_checker.accept(node)
         else:
-            self.accept(node)
+            self.recurse_into_functions = True
+            if isinstance(node, LambdaExpr):
+                self.expr_checker.accept(node)
+            else:
+                self.accept(node)
 
     def check_top_level(self, node: MypyFile) -> None:
         """Check only the top-level of a module, skipping function definitions."""
+        self.recurse_into_functions = False
         with self.enter_partial_types():
             with self.binder.top_frame_context():
                 for d in node.defs:
-                    # TODO: Type check class bodies.
-                    if not isinstance(d, (FuncDef, ClassDef)):
-                        d.accept(self)
+                    d.accept(self)
 
         assert not self.current_node_deferred
         # TODO: Handle __all__
@@ -313,6 +322,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     #
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
+        if not self.recurse_into_functions:
+            return
         num_abstract = 0
         if not defn.items:
             # In this case we have already complained about none of these being
@@ -531,6 +542,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def visit_func_def(self, defn: FuncDef) -> None:
         """Type check a function definition."""
+        if not self.recurse_into_functions:
+            return
         self.check_func_item(defn, name=defn.name())
         if defn.info:
             if not defn.is_dynamic():
@@ -2492,7 +2505,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     e.var.is_ready = True
                     return
 
-        self.check_func_item(e.func, name=e.func.name())
+        if self.recurse_into_functions:
+            self.check_func_item(e.func, name=e.func.name())
 
         # Process decorators from the inside out to determine decorated signature, which
         # may be different from the declared signature.

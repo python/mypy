@@ -8,7 +8,7 @@ from mypy import build
 from mypy.build import BuildManager, BuildSource, State
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
-    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, UNBOUND_IMPORTED
+    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, UNBOUND_IMPORTED
 )
 from mypy.options import Options
 from mypy.server.astmerge import merge_asts
@@ -30,7 +30,7 @@ TYPES = 'TYPES'
 AST = 'AST'
 
 
-NOT_DUMPED_MODULES = ('builtins', 'typing', 'abc')
+NOT_DUMPED_MODULES = ('builtins', 'typing', 'abc', 'contextlib', 'sys')
 
 
 class ASTMergeSuite(DataSuite):
@@ -168,6 +168,10 @@ class ASTMergeSuite(DataSuite):
         if node.type_override:
             override = self.format_type(node.type_override)
             s += '(type_override={})'.format(override)
+        if (isinstance(node.node, Var) and node.node.type and
+                not node.node.fullname().startswith('typing.')):
+            typestr = self.format_type(node.node.type)
+            s += '({})'.format(typestr)
         return s
 
     def dump_typeinfos(self, modules: Dict[str, MypyFile]) -> List[str]:
