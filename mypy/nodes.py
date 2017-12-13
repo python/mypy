@@ -616,7 +616,7 @@ class Var(SymbolNode):
     is_suppressed_import = False
 
     FLAGS = [
-        'is_self', 'is_ready', 'is_initialized_in_class', 'is_staticmethod',
+        'is_self', 'is_initialized_in_class', 'is_staticmethod',
         'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
         'is_classvar', 'is_abstract_var'
     ]
