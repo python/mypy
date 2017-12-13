@@ -728,12 +728,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         def get_fullname(expr: Expression) -> Optional[str]:
             # We support foo.bar(...), foo.bar, and bar.
             if isinstance(expr, CallExpr):
-                if isinstance(expr.callee, RefExpr):
-                    return expr.callee.fullname
-            elif isinstance(expr, MemberExpr):
-                return get_member_expr_fullname(expr)
-            elif isinstance(expr, NameExpr):
-                return expr.fullname
+                return get_fullname(expr.callee)
+            elif isinstance(expr, (MemberExpr, NameExpr)):
+                if expr.fullname:
+                    return expr.fullname
+
+                # If we don't have a fullname look it up.
+                node = self.lookup_type_node(expr)
+                if node:
+                    return node.node.fullname()
+            elif isinstance(expr, IndexExpr):
+                return get_fullname(expr.base)
             return None
 
         for decorator in defn.decorators:
@@ -751,17 +756,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     hook(ClassDefContext(defn, defn.metaclass, self))
 
         for base_expr in defn.base_type_exprs:
-            try:
-                base = expr_to_unanalyzed_type(base_expr)
-            except TypeTranslationError:
-                continue  # This will be reported later
-            if not isinstance(base, UnboundType):
-                continue
-            sym = self.lookup_qualified(base.name, base)
-            if sym is None or sym.node is None:
-                continue
-            base_name = sym.node.fullname()
-
+            base_name = get_fullname(base_expr)
             if base_name:
                 hook = self.plugin.get_class_base_hook(base_name)
                 if hook:
