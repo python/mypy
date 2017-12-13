@@ -99,9 +99,6 @@ class BuildSource:
         self.text = text
         self.type = type
 
-    def __repr__(self) -> str:
-        return 'BuildSource(%s)' % self.module
-
     @property
     def path(self) -> Optional[str]:
         if self.paths:
@@ -771,7 +768,7 @@ find_module_dir_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
 # of os.stat() calls is quickly more expensive than caching the
 # os.listdir() outcome, and the advantage of the latter is that it
 # gives us the case-correct filename on Windows and Mac.
-find_module_listdir_cache = {}  # type: Dict[str, Optional[List[str]]]
+find_module_listdir_cache = {}  # type: Dict[str, Set[str]]
 
 # Cache for is_file()
 find_module_is_file_cache = {}  # type: Dict[str, bool]
@@ -787,7 +784,7 @@ def find_module_clear_caches() -> None:
     find_module_isdir_cache.clear()
 
 
-def list_dir(path: str) -> Optional[List[str]]:
+def list_dir(path: str) -> Set[str]:
     """Return a cached directory listing.
 
     Returns None if the path doesn't exist or isn't a directory.
@@ -797,7 +794,7 @@ def list_dir(path: str) -> Optional[List[str]]:
         try:
             res = os.listdir(path)
         except OSError:
-            res = None
+            res = set()
         find_module_listdir_cache[path] = res
     return res
 
@@ -816,7 +813,7 @@ def is_file(path: str) -> bool:
             res = False
         else:
             names = list_dir(head)
-            res = names is not None and tail in names and os.path.isfile(path)
+            res = tail in names and os.path.isfile(path)
         find_module_is_file_cache[path] = res
     return res
 
@@ -879,12 +876,12 @@ class ModuleDiscovery:
 
         self.lib_path = [os.path.normpath(p) for p in lib_path]  # type: List[str]
         self.namespaces_allowed = namespaces_allowed
-        self._find_module_cache = {}  # type: Dict[str, Optional[BuildSource]]
+        self.find_module_cache = {}  # type: Dict[str, Optional[BuildSource]]
 
     def find_module(self, id: str) -> Optional[BuildSource]:
-        if id not in self._find_module_cache:
-            self._find_module_cache[id] = self._find_module(id)
-        return self._find_module_cache[id]
+        if id not in self.find_module_cache:
+            self.find_module_cache[id] = self._find_module(id)
+        return self.find_module_cache[id]
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
         """
@@ -923,7 +920,7 @@ class ModuleDiscovery:
         return srcs
 
     def _find_submodules(self, module: str, path: str) -> Iterator[str]:
-        for item in list_dir(path) or []:
+        for item in list_dir(path):
             if item.startswith(('__', '.')):
                 continue
 
@@ -2072,7 +2069,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
                       stubs_found=sum(g.path is not None and g.path.endswith('.pyi')
                                       for g in graph.values()),
                       graph_load_time=(t1 - t0),
-                      fm_cache_size=len(find_module_cache),
+                      fm_cache_size=len(manager.module_discovery.find_module_cache),
                       fm_dir_cache_size=len(find_module_dir_cache),
                       fm_listdir_cache_size=len(find_module_listdir_cache),
                       fm_is_file_cache_size=len(find_module_is_file_cache),
