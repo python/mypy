@@ -169,7 +169,7 @@ class Plugin:
                            ) -> Optional[Callable[[ClassDefContext], None]]:
         return None
 
-    def get_class_base_hook(self, fullname: str
+    def get_base_class_hook(self, fullname: str
                             ) -> Optional[Callable[[ClassDefContext], None]]:
         return None
 
@@ -225,9 +225,9 @@ class ChainedPlugin(Plugin):
                            ) -> Optional[Callable[[ClassDefContext], None]]:
         return self._find_hook(lambda plugin: plugin.get_metaclass_hook(fullname))
 
-    def get_class_base_hook(self, fullname: str
+    def get_base_class_hook(self, fullname: str
                             ) -> Optional[Callable[[ClassDefContext], None]]:
-        return self._find_hook(lambda plugin: plugin.get_class_base_hook(fullname))
+        return self._find_hook(lambda plugin: plugin.get_base_class_hook(fullname))
 
     def _find_hook(self, lookup: Callable[[Plugin], T]) -> Optional[T]:
         for plugin in self._plugins:

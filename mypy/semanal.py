@@ -757,7 +757,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         for base_expr in defn.base_type_exprs:
             base_name = get_fullname(base_expr)
             if base_name:
-                hook = self.plugin.get_class_base_hook(base_name)
+                hook = self.plugin.get_base_class_hook(base_name)
                 if hook:
                     hook(ClassDefContext(defn, base_expr, self))
 
