@@ -201,7 +201,7 @@ def foo() -> int:
         return "foo"
     return inner2()
 
-[rechecked mod1, mod2]
+[rechecked mod2]
 [stale]
 [out2]
 tmp/mod2.py:4: error: Incompatible return value type (got "str", expected "int")
