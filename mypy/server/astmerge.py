@@ -207,7 +207,9 @@ class TypeReplaceVisitor(TypeVisitor[None]):
             value.accept(self)
 
     def visit_typeddict_type(self, typ: TypedDictType) -> None:
-        raise NotImplementedError
+        for value_type in typ.items.values():
+            value_type.accept(self)
+        typ.fallback.accept(self)
 
     def visit_unbound_type(self, typ: UnboundType) -> None:
         for arg in typ.args:

@@ -30,7 +30,14 @@ TYPES = 'TYPES'
 AST = 'AST'
 
 
-NOT_DUMPED_MODULES = ('builtins', 'typing', 'abc', 'contextlib', 'sys')
+NOT_DUMPED_MODULES = (
+    'builtins',
+    'typing',
+    'abc',
+    'contextlib',
+    'sys',
+    'mypy_extensions',
+)
 
 
 class ASTMergeSuite(DataSuite):
