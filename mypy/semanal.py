@@ -253,6 +253,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
         self.plugin = plugin
+        # If True, process function definitions. If False, don't. This is used
+        # for processing module top levels in fine-grained incremental mode.
+        self.recurse_into_functions = True
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
                    patches: List[Callable[[], None]]) -> None:
@@ -261,6 +264,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         Add callbacks by mutating the patches list argument. They will be called
         after all semantic analysis phases but before type checking.
         """
+        self.recurse_into_functions = True
         self.options = options
         self.errors.set_file(fnam, file_node.fullname())
         self.cur_mod_node = file_node
@@ -299,32 +303,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             del self.options
             del self.patches
 
-    def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
+    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
         else:
+            self.recurse_into_functions = True
             self.accept(node)
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
-        # TODO: Recursion into block statements.
+        # TODO: Invoke patches in fine-grained incremental mode.
+        self.patches = []
+        self.recurse_into_functions = False
         for d in file_node.defs:
-            if isinstance(d, ClassDef):
-                self.refresh_class_def(d)
-            elif not isinstance(d, (FuncItem, Decorator)):
-                self.accept(d)
-
-    def refresh_class_def(self, defn: ClassDef) -> None:
-        # TODO: Recursion into block statements.
-        with self.analyze_class_body(defn) as should_continue:
-            if should_continue:
-                for d in defn.defs.body:
-                    # TODO: Make sure refreshing class bodies works.
-                    if isinstance(d, ClassDef):
-                        self.refresh_class_def(d)
-                    elif not isinstance(d, (FuncItem, Decorator)):
-                        self.accept(d)
+            self.accept(d)
 
     @contextmanager
     def file_context(self, file_node: MypyFile, fnam: str, options: Options,
@@ -349,7 +342,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
-
+        if not self.recurse_into_functions:
+            return
         phase_info = self.postpone_nested_functions_stack[-1]
         if phase_info != FUNCTION_SECOND_PHASE:
             self.function_stack.append(defn)
@@ -466,6 +460,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             fun_type.variables = a.bind_function_type_variables(fun_type, defn)
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
+        if not self.recurse_into_functions:
+            return
         # OverloadedFuncDef refers to any legitimate situation where you have
         # more than one declaration for the same function in a row.  This occurs
         # with a @property with a setter or a deleter, and for a classic
@@ -866,6 +862,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             if defn.info:
                 defn.info.type_vars = [name for name, _ in declared_tvars]
         for i in reversed(removed):
+            defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
             del defn.base_type_exprs[i]
         tvar_defs = []  # type: List[TypeVarDef]
         for name, tvar_expr in declared_tvars:
@@ -2929,7 +2926,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 dec.var.is_initialized_in_class = True
                 self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec),
                                 dec)
-        if not no_type_check:
+        if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
         if dec.decorators and dec.var.is_property:
             self.fail('Decorated property not supported', dec)

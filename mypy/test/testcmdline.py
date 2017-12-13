@@ -9,12 +9,12 @@ import re
 import subprocess
 import sys
 
-from typing import Tuple, List, Dict, Set
+from typing import List
 
-from mypy.myunit import Suite, SkipTestCaseException, AssertionFailure
-from mypy.test.config import test_data_prefix, test_temp_dir
+from mypy.myunit import AssertionFailure
+from mypy.test.config import test_temp_dir
 from mypy.test.data import fix_cobertura_filename
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
 from mypy.version import __version__, base_version
 
@@ -28,24 +28,17 @@ cmdline_files = [
 ]
 
 
-class PythonEvaluationSuite(DataSuite):
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in cmdline_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_python_evaluation,
-                                  base_path=test_temp_dir,
-                                  optional_out=True,
-                                  native_sep=True)
-        return c
+class PythonCmdlineSuite(DataSuite):
+    files = cmdline_files
+    base_path = test_temp_dir
+    optional_out = True
+    native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        test_python_evaluation(testcase)
+        test_python_cmdline(testcase)
 
 
-def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
+def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     assert testcase.old_cwd is not None, "test was not properly set up"
     # Write the program to a file.
     program = '_program.py'

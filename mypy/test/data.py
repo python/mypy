@@ -6,13 +6,13 @@ import posixpath
 import re
 from os import remove, rmdir
 import shutil
+from abc import abstractmethod
 
 import pytest  # type: ignore  # no pytest in typeshed
-from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
+from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 
-from mypy.myunit import TestCase, SkipTestCaseException
-from mypy.test.config import test_temp_dir
-
+from mypy.myunit import BaseTestCase
+from mypy.test.config import test_data_prefix, test_temp_dir
 
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
@@ -30,16 +30,14 @@ FileOperation = Union[UpdateFile, DeleteFile]
 
 def parse_test_cases(
         path: str,
-        perform: Optional[Callable[['DataDrivenTestCase'], None]],
         base_path: str = '.',
         optional_out: bool = False,
-        include_path: Optional[str] = None,
         native_sep: bool = False) -> List['DataDrivenTestCase']:
     """Parse a file with test case descriptions.
 
     Return an array of test cases.
 
-    NB this function and DataDrivenTestCase are shared between the
+    NB: this function and DataDrivenTestCase were shared between the
     myunit and pytest codepaths -- if something looks redundant,
     that's likely the reason.
     """
@@ -47,8 +45,7 @@ def parse_test_cases(
         join = os.path.join
     else:
         join = posixpath.join  # type: ignore
-    if not include_path:
-        include_path = os.path.dirname(path)
+    include_path = os.path.dirname(path)
     with open(path, encoding='utf-8') as f:
         lst = f.readlines()
     for i in range(len(lst)):
@@ -72,6 +69,7 @@ def parse_test_cases(
             deleted_paths = {}  # type: Dict[int, Set[str]]  # from run number of paths
             stale_modules = {}  # type: Dict[int, Set[str]]  # from run number to module names
             rechecked_modules = {}  # type: Dict[ int, Set[str]]  # from run number module names
+            triggered = []  # type: List[str]  # Active triggers (one line per incremental step)
             while i < len(p) and p[i].id != 'case':
                 if p[i].id == 'file' or p[i].id == 'outfile':
                     # Record an extra file needed for the test case.
@@ -149,6 +147,8 @@ def parse_test_cases(
                         output = [fix_win_path(line) for line in output]
                     tcout2[passnum] = output
                     ok = True
+                elif p[i].id == 'triggered' and p[i].arg is None:
+                    triggered = p[i].data
                 else:
                     raise ValueError(
                         'Invalid section header {} in {} at line {}'.format(
@@ -179,9 +179,10 @@ def parse_test_cases(
                 arg0 = p[i0].arg
                 assert arg0 is not None
                 tc = DataDrivenTestCase(arg0, input, tcout, tcout2, path,
-                                        p[i0].line, lastline, perform,
+                                        p[i0].line, lastline,
                                         files, output_files, stale_modules,
-                                        rechecked_modules, deleted_paths, native_sep)
+                                        rechecked_modules, deleted_paths, native_sep,
+                                        triggered)
                 out.append(tc)
         if not ok:
             raise ValueError(
@@ -191,7 +192,12 @@ def parse_test_cases(
     return out
 
 
-class DataDrivenTestCase(TestCase):
+class DataDrivenTestCase(BaseTestCase):
+    """Holds parsed data and handles directory setup and teardown for MypyDataCase."""
+
+    # TODO: rename to ParsedTestCase or merge with MypyDataCase (yet avoid multiple inheritance)
+    # TODO: only create files on setup, not during parsing
+
     input = None  # type: List[str]
     output = None  # type: List[str]  # Output for the first pass
     output2 = None  # type: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
@@ -215,13 +221,13 @@ class DataDrivenTestCase(TestCase):
                  file: str,
                  line: int,
                  lastline: int,
-                 perform: Optional[Callable[['DataDrivenTestCase'], None]],
                  files: List[Tuple[str, str]],
                  output_files: List[Tuple[str, str]],
                  expected_stale_modules: Dict[int, Set[str]],
                  expected_rechecked_modules: Dict[int, Set[str]],
                  deleted_paths: Dict[int, Set[str]],
                  native_sep: bool = False,
+                 triggered: Optional[List[str]] = None,
                  ) -> None:
         super().__init__(name)
         self.input = input
@@ -230,16 +236,16 @@ class DataDrivenTestCase(TestCase):
         self.lastline = lastline
         self.file = file
         self.line = line
-        self.perform = perform
         self.files = files
         self.output_files = output_files
         self.expected_stale_modules = expected_stale_modules
         self.expected_rechecked_modules = expected_rechecked_modules
         self.deleted_paths = deleted_paths
         self.native_sep = native_sep
+        self.triggered = triggered or []
 
-    def set_up(self) -> None:
-        super().set_up()
+    def setup(self) -> None:
+        super().setup()
         encountered_files = set()
         self.clean_up = []
         for paths in self.deleted_paths.values():
@@ -281,14 +287,7 @@ class DataDrivenTestCase(TestCase):
             os.mkdir(dir)
             return dirs
 
-    def run(self) -> None:
-        if self.name.endswith('-skip'):
-            raise SkipTestCaseException()
-        else:
-            assert self.perform is not None, 'Tests without `perform` should not be `run`'
-            self.perform(self)
-
-    def tear_down(self) -> None:
+    def teardown(self) -> None:
         # First remove files.
         for is_dir, path in reversed(self.clean_up):
             if not is_dir:
@@ -322,7 +321,7 @@ class DataDrivenTestCase(TestCase):
                     if path.startswith(test_temp_dir + '/') and os.path.isdir(path):
                         shutil.rmtree(path)
                     raise
-        super().tear_down()
+        super().teardown()
 
     def find_steps(self) -> List[List[FileOperation]]:
         """Return a list of descriptions of file operations for each incremental step.
@@ -558,42 +557,74 @@ def pytest_addoption(parser: Any) -> None:
 
 # This function name is special to pytest.  See
 # http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
-def pytest_pycollect_makeitem(collector: Any, name: str, obj: Any) -> Any:
-    if not isinstance(obj, type) or not issubclass(obj, DataSuite):
-        return None
-    return MypyDataSuite(name, parent=collector)
+def pytest_pycollect_makeitem(collector: Any, name: str,
+                              obj: object) -> 'Optional[Any]':
+    """Called by pytest on each object in modules configured in conftest.py files.
+
+    collector is pytest.Collector, returns Optional[pytest.Class]
+    """
+    if isinstance(obj, type):
+        # Only classes derived from DataSuite contain test cases, not the DataSuite class itself
+        if issubclass(obj, DataSuite) and obj is not DataSuite:
+            # Non-None result means this obj is a test case.
+            # The collect method of the returned MypyDataSuite instance will be called later,
+            # with self.obj being obj.
+            return MypyDataSuite(name, parent=collector)
+    return None
 
 
 class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
-    def collect(self) -> Iterator['MypyDataCase']:
-        for case in self.obj.cases():
-            yield MypyDataCase(case.name, self, case)
+    def collect(self) -> Iterator[pytest.Item]:  # type: ignore
+        """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
+
+        # obj is the object for which pytest_pycollect_makeitem returned self.
+        suite = self.obj  # type: DataSuite
+        for f in suite.files:
+            for case in parse_test_cases(os.path.join(test_data_prefix, f),
+                                         base_path=suite.base_path,
+                                         optional_out=suite.optional_out,
+                                         native_sep=suite.native_sep):
+                if suite.filter(case):
+                    yield MypyDataCase(case.name, self, case)
+
+
+def is_incremental(testcase: DataDrivenTestCase) -> bool:
+    return 'incremental' in testcase.name.lower() or 'incremental' in testcase.file
+
+
+def has_stable_flags(testcase: DataDrivenTestCase) -> bool:
+    if any(re.match(r'# flags[2-9]:', line) for line in testcase.input):
+        return False
+    for filename, contents in testcase.files:
+        if os.path.basename(filename).startswith('mypy.ini.'):
+            return False
+    return True
 
 
 class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
-    def __init__(self, name: str, parent: MypyDataSuite, obj: DataDrivenTestCase) -> None:
+    def __init__(self, name: str, parent: MypyDataSuite, case: DataDrivenTestCase) -> None:
         self.skip = False
         if name.endswith('-skip'):
             self.skip = True
             name = name[:-len('-skip')]
 
         super().__init__(name, parent)
-        self.obj = obj
+        self.case = case
 
     def runtest(self) -> None:
         if self.skip:
             pytest.skip()
         update_data = self.config.getoption('--update-data', False)
-        self.parent.obj(update_data=update_data).run_case(self.obj)
+        self.parent.obj(update_data=update_data).run_case(self.case)
 
     def setup(self) -> None:
-        self.obj.set_up()
+        self.case.setup()
 
     def teardown(self) -> None:
-        self.obj.tear_down()
+        self.case.teardown()
 
     def reportinfo(self) -> Tuple[str, int, str]:
-        return self.obj.file, self.obj.line, self.obj.name
+        return self.case.file, self.case.line, self.case.name
 
     def repr_failure(self, excinfo: Any) -> str:
         if excinfo.errisinstance(SystemExit):
@@ -606,16 +637,23 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
             self.parent._prunetraceback(excinfo)
             excrepr = excinfo.getrepr(style='short')
 
-        return "data: {}:{}:\n{}".format(self.obj.file, self.obj.line, excrepr)
+        return "data: {}:{}:\n{}".format(self.case.file, self.case.line, excrepr)
 
 
 class DataSuite:
+    # option fields - class variables
+    files = None  # type: List[str]
+    base_path = '.'  # type: str
+    optional_out = False  # type: bool
+    native_sep = False  # type: bool
+
     def __init__(self, *, update_data: bool) -> None:
         self.update_data = update_data
 
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        return []
-
+    @abstractmethod
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         raise NotImplementedError
+
+    @classmethod
+    def filter(cls, testcase: DataDrivenTestCase) -> bool:
+        return True

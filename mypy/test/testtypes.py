@@ -93,7 +93,7 @@ class TypesSuite(Suite):
 
 
 class TypeOpsSuite(Suite):
-    def set_up(self) -> None:
+    def setup(self) -> None:
         self.fx = TypeFixture(INVARIANT)
         self.fx_co = TypeFixture(COVARIANT)
         self.fx_contra = TypeFixture(CONTRAVARIANT)
@@ -358,7 +358,7 @@ class TypeOpsSuite(Suite):
 
 
 class JoinSuite(Suite):
-    def set_up(self) -> None:
+    def setup(self) -> None:
         self.fx = TypeFixture()
 
     def test_trivial_cases(self) -> None:
@@ -628,7 +628,7 @@ class JoinSuite(Suite):
 
 
 class MeetSuite(Suite):
-    def set_up(self) -> None:
+    def setup(self) -> None:
         self.fx = TypeFixture()
 
     def test_trivial_cases(self) -> None:
