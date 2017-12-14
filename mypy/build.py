@@ -1272,8 +1272,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     return interface_hash, cache_meta_from_dict(meta, data_json)
 
 
-def delete_cache(id: str, path: str, manager: BuildManager,
-                 keep_in_memory: bool = False) -> None:
+def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     """Delete cache files for a module.
 
     The cache files for a module are deleted when mypy finds errors there.
@@ -1283,7 +1282,7 @@ def delete_cache(id: str, path: str, manager: BuildManager,
     path = os.path.abspath(path)
     meta_json, data_json = get_cache_names(id, path, manager)
     manager.log('Deleting {} {} {} {}'.format(id, path, meta_json, data_json))
-    if id in manager.saved_cache and not keep_in_memory:
+    if id in manager.saved_cache:
         del manager.saved_cache[id]
 
     for filename in [data_json, meta_json]:
@@ -1962,8 +1961,9 @@ class State:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         if not self.path or self.options.cache_dir == os.devnull:
             return
+        is_errors_for_file = self.manager.errors.is_errors_for_file(self.path)
         if self.manager.options.quick_and_dirty:
-            is_errors = self.manager.errors.is_errors_for_file(self.path)
+            is_errors = is_errors_for_file
         else:
             is_errors = self.transitive_error
         if is_errors:
@@ -1973,9 +1973,11 @@ class State:
                 self.meta = None
                 self.mark_interface_stale(on_errors=True)
                 self.interface_hash = new_interface_hash
-            else:
-                delete_cache(self.id, self.path, self.manager, keep_in_memory=True)
-            return
+                return
+            if is_errors_for_file:
+                delete_cache(self.id, self.path, self.manager)
+                self.meta = None
+                return
         dep_prios = self.dependency_priorities()
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
