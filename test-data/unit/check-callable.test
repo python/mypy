@@ -373,6 +373,7 @@ def g(o: Foo) -> None:
         o.bar()
 
 [builtins fixtures/callable.pyi]
+
 [case testCallableObjectAny]
 
 from typing import Any
@@ -409,5 +410,33 @@ def g(o: Test[T], x: T) -> T:
         return o.x
 
     return x
+
+[builtins fixtures/callable.pyi]
+
+[case testCallablePromote]
+
+def take_float(f: float) -> None:
+    pass
+
+def g(o: int) -> None:
+    if callable(o):
+        take_float(o)
+        o(1,2,3)
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableTuple]
+
+from typing import NamedTuple
+
+Thing = NamedTuple('Thing', [('s', str), ('n', int)])
+
+def g(o: Thing) -> None:
+    if callable(o):
+        o.s + o.n  # E: Unsupported operand types for + ("str" and "int")
+        i, s = o
+        i + s  # E: Unsupported operand types for + ("str" and "int")
+        # Tuples can't be called yet but this should work at least
+        o.__call__(1,2,3)
 
 [builtins fixtures/callable.pyi]

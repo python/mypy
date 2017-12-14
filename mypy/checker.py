@@ -2907,31 +2907,36 @@ def gen_unique_name(base: str, table: SymbolTable) -> str:
     return base + str(i)
 
 
-def intersect_instance_callable(type: Instance, callable_type: CallableType,
-                                typechecker: TypeChecker) -> Type:
+def intersect_instance_callable(typ: Instance, callable_type: CallableType,
+                                typechecker: TypeChecker) -> Instance:
     """Creates a fake type that represents the intersection of an
     Instance and a CallableType.
 
     It operates by creating a bare-minimum dummy TypeInfo that
-    subclasses type and adds a __call__ method matching callable_type."""
+    subclasses type and adds a __call__ method matching callable_type.
+    """
 
     # In order for this to work in incremental mode, the type we generate needs to
     # have a valid fullname and a corresponding entry in a symbol table. We generate
     # a unique name inside the symbol table of the current module.
     cur_module = cast(MypyFile, typechecker.scope.stack[0])
-    gen_name = gen_unique_name("<callable subtype of {}>".format(type.type.name()),
+    gen_name = gen_unique_name("<callable subtype of {}>".format(typ.type.name()),
                                cur_module.names)
 
     # Build the fake ClassDef and TypeInfo together.
     # The ClassDef is full of lies and doesn't actually contain a body.
     # Use format_bare to generate a nice name for error messages.
-    short_name = typechecker.msg.format_bare(type)
+    # We skip filling fully filling out a handful of TypeInfo fields because they
+    # should be irrelevant for a generated type like this:
+    # is_protocol, protocol_members, is_abstract
+    short_name = typechecker.msg.format_bare(typ)
     cdef = ClassDef(short_name, Block([]))
     cdef.fullname = cur_module.fullname() + '.' + gen_name
     info = TypeInfo(SymbolTable(), cdef, cur_module.fullname())
     cdef.info = info
-    info.bases = [type]
+    info.bases = [typ]
     info.calculate_mro()
+    info.calculate_metaclass_type()
 
     # Build up a fake FuncDef so we can populate the symbol table.
     func_def = FuncDef('__call__', [], Block([]), callable_type)
@@ -2943,7 +2948,7 @@ def intersect_instance_callable(type: Instance, callable_type: CallableType,
     return Instance(info, [])
 
 
-def make_fake_callable(type: Instance, typechecker: TypeChecker) -> Type:
+def make_fake_callable(typ: Instance, typechecker: TypeChecker) -> Instance:
     """Produce a new type that makes type Callable with a generic callable type."""
 
     fallback = typechecker.named_type('builtins.function')
@@ -2955,10 +2960,10 @@ def make_fake_callable(type: Instance, typechecker: TypeChecker) -> Type:
                                  fallback=fallback,
                                  is_ellipsis_args=True)
 
-    return intersect_instance_callable(type, callable_type, typechecker)
+    return intersect_instance_callable(typ, callable_type, typechecker)
 
 
-def partition_by_callable(type: Type, typechecker: TypeChecker,
+def partition_by_callable(typ: Type, typechecker: TypeChecker,
                           unsound_partition: bool) -> Tuple[List[Type], List[Type]]:
     """Takes in a type and partitions that type into callable subtypes and
     uncallable subtypes.
@@ -2976,16 +2981,16 @@ def partition_by_callable(type: Type, typechecker: TypeChecker,
     Guaranteed to not return [], []
 
     """
-    if isinstance(type, FunctionLike) or isinstance(type, TypeType):
-        return [type], []
+    if isinstance(typ, FunctionLike) or isinstance(typ, TypeType):
+        return [typ], []
 
-    if isinstance(type, AnyType):
-        return [type], [type]
+    if isinstance(typ, AnyType):
+        return [typ], [typ]
 
-    if isinstance(type, UnionType):
+    if isinstance(typ, UnionType):
         callables = []
         uncallables = []
-        for subtype in type.relevant_items():
+        for subtype in typ.relevant_items():
             # Use unsound_partition when handling unions in order to
             # allow the expected type discrimination.
             subcallables, subuncallables = partition_by_callable(subtype, typechecker,
@@ -2994,7 +2999,7 @@ def partition_by_callable(type: Type, typechecker: TypeChecker,
             uncallables.extend(subuncallables)
         return callables, uncallables
 
-    if isinstance(type, TypeVarType):
+    if isinstance(typ, TypeVarType):
         # We could do better probably?
         # Refine the the type variable's bound as our type in the case that
         # callable() is true. This unfortuantely loses the information that
@@ -3003,30 +3008,39 @@ def partition_by_callable(type: Type, typechecker: TypeChecker,
         # do better.
         # If it is possible for the false branch to execute, return the original
         # type to avoid losing type information.
-        callables, uncallables = partition_by_callable(type.erase_to_union_or_bound(), typechecker,
+        callables, uncallables = partition_by_callable(typ.erase_to_union_or_bound(), typechecker,
                                                        unsound_partition)
-        uncallables = [type] if len(uncallables) else []
+        uncallables = [typ] if len(uncallables) else []
         return callables, uncallables
 
-    if isinstance(type, Instance):
-        method = type.type.get_method('__call__')
+    # A TupleType is callable if its fallback is, but needs special handling
+    # when we dummy up a new type.
+    ityp = typ
+    if isinstance(typ, TupleType):
+        ityp = typ.fallback
+
+    if isinstance(ityp, Instance):
+        method = ityp.type.get_method('__call__')
         if method and method.type:
             callables, uncallables = partition_by_callable(method.type, typechecker,
                                                            unsound_partition=False)
             if len(callables) and not len(uncallables):
                 # Only consider the type callable if its __call__ method is
                 # definitely callable.
-                return [type], []
+                return [typ], []
 
         if not unsound_partition:
-            ret = make_fake_callable(type, typechecker)
-            return [ret], [type]
+            fake = make_fake_callable(ityp, typechecker)
+            if isinstance(typ, TupleType):
+                fake.type.tuple_type = TupleType(typ.items, fake)
+                return [fake.type.tuple_type], [typ]
+            return [fake], [typ]
 
     if unsound_partition:
-        return [], [type]
+        return [], [typ]
     else:
         # We don't know how properly make the type callable.
-        return [type], [type]
+        return [typ], [typ]
 
 
 def conditional_callable_type_map(expr: Expression,
@@ -3038,7 +3052,8 @@ def conditional_callable_type_map(expr: Expression,
     Returns a 2-tuple: The first element is a map from the expression to
     the restricted type if it were callable. The second element is a
     map from the expression to the type it would hold if it weren't
-    callable."""
+    callable.
+    """
     if not current_type:
         return {}, {}
 
