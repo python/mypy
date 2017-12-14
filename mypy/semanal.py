@@ -2123,6 +2123,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info
+        init_func._fullname = self.qualified_name(name) + '.__init__'
         info.names['__init__'] = SymbolTableNode(MDEF, init_func)
 
         return info

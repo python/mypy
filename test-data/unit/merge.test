@@ -1302,3 +1302,34 @@ target:
     D: TypeInfo<2>
     TypedDict: FuncDef<3>
     d: Var<4>(TypedDict('target.D', {'a': target.A<1>, 'b': builtins.int<5>}))
+
+[case testNewType_symtable]
+import target
+[file target.py]
+from typing import NewType
+class A: pass
+B = NewType('B', A)
+C = NewType('C', A)
+[file target.py.next]
+from typing import NewType
+class A: pass
+B = NewType('B', A)
+C = NewType('C', B)
+D = NewType('D', int)
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    A: TypeInfo<1>
+    B: TypeInfo<2>
+    C: TypeInfo<3>
+    NewType: Var<4>
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    A: TypeInfo<1>
+    B: TypeInfo<2>
+    C: TypeInfo<3>
+    D: TypeInfo<5>
+    NewType: Var<4>
