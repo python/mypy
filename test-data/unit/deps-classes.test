@@ -19,3 +19,22 @@ class A: pass
 <m.N.a> -> m.f
 <m.N> -> m.f
 <a.A> -> <m.N.a>, m
+
+[case testIfFalseInClassBody]
+class A:
+    if False:
+        x = None  # type: str
+        x.foo()
+[builtins fixtures/bool.pyi]
+[out]
+<m.A> -> m.A
+
+[case testAlwaysFalseIsinstanceInClassBody]
+class A:
+    x: int
+    if isinstance(x, str):
+        y: str = None
+        y.foo()
+[builtins fixtures/isinstance.pyi]
+[out]
+<m.A> -> m.A
