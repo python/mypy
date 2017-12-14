@@ -739,7 +739,7 @@ find_module_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], Optional[str]]
 # elements of lib_path have even the subdirectory they'd need for the module
 # to exist.  This is shared among different module ids when they differ only
 # in the last component.
-find_module_dir_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
+find_module_dir_cache = {}  # type: Dict[str, List[str]]
 
 # Cache directory listings.  We assume that while one os.listdir()
 # call may be more expensive than one os.stat() call, a small number
@@ -808,7 +808,7 @@ def find_module(id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
         # that will require the same subdirectory.
         components = id.split('.')
         dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
-        if (dir_chain, lib_path) not in find_module_dir_cache:
+        if dir_chain not in find_module_dir_cache:
             dirs = []
             for pathitem in lib_path:
                 # e.g., '/usr/lib/python3.4/foo/bar'
@@ -819,8 +819,8 @@ def find_module(id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
                     find_module_isdir_cache[pathitem, dir_chain] = isdir
                 if isdir:
                     dirs.append(dir)
-            find_module_dir_cache[dir_chain, lib_path] = dirs
-        candidate_base_dirs = find_module_dir_cache[dir_chain, lib_path]
+            find_module_dir_cache[dir_chain] = dirs
+        candidate_base_dirs = find_module_dir_cache[dir_chain]
 
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
