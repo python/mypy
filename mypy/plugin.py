@@ -13,7 +13,7 @@ from mypy.messages import MessageBuilder
 from mypy.options import Options
 
 
-class AnalyzerPluginInterface:
+class TypeAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins."""
 
     @abstractmethod
@@ -40,7 +40,7 @@ AnalyzeTypeContext = NamedTuple(
     'AnalyzeTypeContext', [
         ('type', UnboundType),  # Type to analyze
         ('context', Context),
-        ('api', AnalyzerPluginInterface)])
+        ('api', TypeAnalyzerPluginInterface)])
 
 
 class CheckerPluginInterface:
