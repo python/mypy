@@ -81,7 +81,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy import experiments
-from mypy.plugin import Plugin
+from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy import join
 from mypy.util import get_prefix
 
@@ -172,7 +172,7 @@ SUGGESTED_TEST_FIXTURES = {
 }
 
 
-class SemanticAnalyzerPass2(NodeVisitor[None]):
+class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a
@@ -715,8 +715,47 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 yield True
                 self.calculate_abstract_status(defn.info)
                 self.setup_type_promotion(defn)
-
+                self.apply_class_plugin_hooks(defn)
                 self.leave_class()
+
+    def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
+        """Apply a plugin hook that may infer a more precise definition for a class."""
+        def get_fullname(expr: Expression) -> Optional[str]:
+            if isinstance(expr, CallExpr):
+                return get_fullname(expr.callee)
+            elif isinstance(expr, IndexExpr):
+                return get_fullname(expr.base)
+            elif isinstance(expr, RefExpr):
+                if expr.fullname:
+                    return expr.fullname
+                # If we don't have a fullname look it up. This happens because base classes are
+                # analyzed in a different manner (see exprtotype.py) and therefore those AST
+                # nodes will not have full names.
+                sym = self.lookup_type_node(expr)
+                if sym:
+                    return sym.fullname
+            return None
+
+        for decorator in defn.decorators:
+            decorator_name = get_fullname(decorator)
+            if decorator_name:
+                hook = self.plugin.get_class_decorator_hook(decorator_name)
+                if hook:
+                    hook(ClassDefContext(defn, decorator, self))
+
+        if defn.metaclass:
+            metaclass_name = get_fullname(defn.metaclass)
+            if metaclass_name:
+                hook = self.plugin.get_metaclass_hook(metaclass_name)
+                if hook:
+                    hook(ClassDefContext(defn, defn.metaclass, self))
+
+        for base_expr in defn.base_type_exprs:
+            base_name = get_fullname(base_expr)
+            if base_name:
+                hook = self.plugin.get_base_class_hook(base_name)
+                if hook:
+                    hook(ClassDefContext(defn, base_expr, self))
 
     def analyze_class_keywords(self, defn: ClassDef) -> None:
         for value in defn.keywords.values():
