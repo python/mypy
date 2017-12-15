@@ -967,3 +967,16 @@ t: Type[C]
 t.g()  # E: "Type[C]" has no attribute "g"
 t.f()
 [builtins fixtures/classmethod.pyi]
+
+[case testTypeTupleCall]
+from typing import Tuple
+
+def foo(o: CallableTuple) -> int:
+    reveal_type(o)  # E: Revealed type is 'Tuple[builtins.str, builtins.int, fallback=__main__.CallableTuple]'
+    return o(1, 2)
+
+class CallableTuple(Tuple[str, int]):
+    def __call__(self, n: int, m: int) -> int:
+        return n
+
+[builtins fixtures/tuple.pyi]
