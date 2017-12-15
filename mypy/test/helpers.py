@@ -3,12 +3,14 @@ import re
 import sys
 import time
 
-from typing import List, Dict, Tuple, Callable, Any
+from typing import List, Dict, Tuple, Callable, Any, Optional
 
 from mypy import defaults
-from mypy.myunit import AssertionFailure
+import pytest  # type: ignore  # no pytest in typeshed
+from unittest import TestCase as Suite
 from mypy.test.data import DataDrivenTestCase
 
+skip = pytest.mark.skip
 
 # AssertStringArraysEqual displays special line alignment helper messages if
 # the first different line has at least this many characters,
@@ -308,3 +310,62 @@ def retry_on_error(func: Callable[[], Any], max_wait: float = 1.0) -> None:
                 # Done enough waiting, the error seems persistent.
                 raise
             time.sleep(wait_time)
+
+
+class AssertionFailure(Exception):
+    """Exception used to signal failed test cases."""
+    def __init__(self, s: Optional[str] = None) -> None:
+        if s:
+            super().__init__(s)
+        else:
+            super().__init__()
+
+
+class SkipTestCaseException(Exception):
+    """Exception used to signal skipped test cases."""
+    pass
+
+
+def assert_true(b: bool, msg: Optional[str] = None) -> None:
+    if not b:
+        raise AssertionFailure(msg)
+
+
+def assert_false(b: bool, msg: Optional[str] = None) -> None:
+    if b:
+        raise AssertionFailure(msg)
+
+
+def good_repr(obj: object) -> str:
+    if isinstance(obj, str):
+        if obj.count('\n') > 1:
+            bits = ["'''\\"]
+            for line in obj.split('\n'):
+                # force repr to use ' not ", then cut it off
+                bits.append(repr('"' + line)[2:-1])
+            bits[-1] += "'''"
+            return '\n'.join(bits)
+    return repr(obj)
+
+
+def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
+    if a != b:
+        raise AssertionFailure(fmt.format(good_repr(a), good_repr(b)))
+
+
+def assert_not_equal(a: object, b: object, fmt: str = '{} == {}') -> None:
+    if a == b:
+        raise AssertionFailure(fmt.format(good_repr(a), good_repr(b)))
+
+
+def typename(t: type) -> str:
+    if '.' in str(t):
+        return str(t).split('.')[-1].rstrip("'>")
+    else:
+        return str(t)[8:-2]
+
+
+def assert_type(typ: type, value: object) -> None:
+    if type(value) != typ:
+        raise AssertionFailure('Invalid type {}, expected {}'.format(
+            typename(type(value)), typename(typ)))

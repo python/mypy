@@ -10,11 +10,10 @@ from typing import Dict, List, Optional, Set, Tuple
 from mypy import build
 from mypy import defaults
 from mypy.main import process_options
-from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, has_stable_flags, is_incremental
 from mypy.test.helpers import (
-    assert_string_arrays_equal, normalize_error_messages,
+    assert_string_arrays_equal, normalize_error_messages, AssertionFailure,
     retry_on_error, testcase_pyversion, update_testcase_output,
 )
 from mypy.options import Options
@@ -33,7 +32,7 @@ else:
     dmypy_files = []
 
 
-class TypeCheckSuite(DataSuite):
+class DmypySuite(DataSuite):
     files = dmypy_files
     base_path = test_temp_dir
     optional_out = True

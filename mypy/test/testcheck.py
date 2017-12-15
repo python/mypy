@@ -9,11 +9,10 @@ from typing import Dict, List, Optional, Set, Tuple
 from mypy import build, defaults
 from mypy.main import process_options
 from mypy.build import BuildSource, find_module_clear_caches
-from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
-    assert_string_arrays_equal, normalize_error_messages,
+    assert_string_arrays_equal, normalize_error_messages, AssertionFailure,
     retry_on_error, testcase_pyversion, update_testcase_output,
 )
 from mypy.errors import CompileError

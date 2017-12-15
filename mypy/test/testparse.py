@@ -1,9 +1,7 @@
 """Tests for the mypy parser."""
-from typing import List
 
 from mypy import defaults
-from mypy.myunit import AssertionFailure
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, AssertionFailure
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.parse import parse
 from mypy.errors import CompileError

@@ -11,7 +11,7 @@ import sys
 
 from typing import List
 
-from mypy.myunit import AssertionFailure
+from mypy.test.helpers import AssertionFailure
 from mypy.test.config import test_temp_dir
 from mypy.test.data import fix_cobertura_filename
 from mypy.test.data import DataDrivenTestCase, DataSuite
