@@ -3,6 +3,16 @@ Revision history
 
 List of major changes:
 
+- December 2017
+    * Publish ``mypy`` version 0.560 on PyPI.
+
+      * Various types in ``typing`` that used to be ABCs
+        :ref:`are now protocols <predefined_protocols>`
+        and support :ref:`structural subtyping <protocol-types>`.
+
+      * Explain how to :ref:`silence invalid complaints <silencing-linters>`
+        by linters about unused imports due to type comments.
+
 - November 2017
     * Publish ``mypy`` version 0.550 on PyPI.
 
