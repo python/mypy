@@ -171,21 +171,6 @@ def show_align_message(s1: str, s2: str) -> None:
     sys.stderr.write('\n')
 
 
-def assert_string_arrays_equal_wildcards(expected: List[str],
-                                         actual: List[str],
-                                         msg: str) -> None:
-    # Like above, but let a line with only '...' in expected match any number
-    # of lines in actual.
-    actual = clean_up(actual)
-
-    while actual != [] and actual[-1] == '':
-        actual = actual[:-1]
-
-    # Expand "..." wildcards away.
-    expected = match_array(expected, actual)
-    assert_string_arrays_equal(expected, actual, msg)
-
-
 def clean_up(a: List[str]) -> List[str]:
     """Remove common directory prefix from all strings in a.
 
@@ -202,52 +187,6 @@ def clean_up(a: List[str]) -> List[str]:
         # Ignore spaces at end of line.
         ss = re.sub(' +$', '', ss)
         res.append(re.sub('\\r$', '', ss))
-    return res
-
-
-def match_array(pattern: List[str], target: List[str]) -> List[str]:
-    """Expand '...' wildcards in pattern by matching against target."""
-
-    res = []  # type: List[str]
-    i = 0
-    j = 0
-
-    while i < len(pattern):
-        if pattern[i] == '...':
-            # Wildcard in pattern.
-            if i + 1 == len(pattern):
-                # Wildcard at end of pattern; match the rest of target.
-                res.extend(target[j:])
-                # Finished.
-                break
-            else:
-                # Must find the instance of the next pattern line in target.
-                jj = j
-                while jj < len(target):
-                    if target[jj] == pattern[i + 1]:
-                        break
-                    jj += 1
-                if jj == len(target):
-                    # No match. Get out.
-                    res.extend(pattern[i:])
-                    break
-                res.extend(target[j:jj])
-                i += 1
-                j = jj
-        elif (j < len(target) and (pattern[i] == target[j]
-                                   or (i + 1 < len(pattern)
-                                       and j + 1 < len(target)
-                                       and pattern[i + 1] == target[j + 1]))):
-            # In sync; advance one line. The above condition keeps sync also if
-            # only a single line is different, but loses it if two consecutive
-            # lines fail to match.
-            res.append(pattern[i])
-            i += 1
-            j += 1
-        else:
-            # Out of sync. Get out.
-            res.extend(pattern[i:])
-            break
     return res
 
 
@@ -321,11 +260,6 @@ class AssertionFailure(Exception):
             super().__init__()
 
 
-class SkipTestCaseException(Exception):
-    """Exception used to signal skipped test cases."""
-    pass
-
-
 def assert_true(b: bool, msg: Optional[str] = None) -> None:
     if not b:
         raise AssertionFailure(msg)
@@ -350,11 +284,6 @@ def good_repr(obj: object) -> str:
 
 def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
     if a != b:
-        raise AssertionFailure(fmt.format(good_repr(a), good_repr(b)))
-
-
-def assert_not_equal(a: object, b: object, fmt: str = '{} == {}') -> None:
-    if a == b:
         raise AssertionFailure(fmt.format(good_repr(a), good_repr(b)))
 
 
