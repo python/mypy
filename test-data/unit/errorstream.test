@@ -1,0 +1,46 @@
+-- Test cases for incremental error streaming. Each test case consists of two
+-- sections.
+-- The first section contains [case NAME] followed by the input code, while
+-- the second section contains [out] followed by the output from the checker.
+-- Each time errors are reported, '==== Errors flushed ====' is printed.
+-- The log.log_checking() function will immediately emit a message from
+-- a plugin when a call to it is checked, which can be used to verify that
+-- error messages are printed before doing later typechecking work.
+--
+-- The input file name in errors is "file".
+--
+-- Comments starting with "--" in this file will be ignored, except for lines
+-- starting with "----" that are not ignored. The first two dashes of these
+-- lines are interpreted as escapes and removed.
+
+[case testErrorStream]
+import b
+[file log.py]
+def log_checking(msg: str) -> None: ...
+[file a.py]
+1 + ''
+[file b.py]
+import a
+import log
+log.log_checking('Checking b')  # Make sure that a has been flushed before this is checked
+'' / 2
+[out]
+==== Errors flushed ====
+a.py:1: error: Unsupported operand types for + ("int" and "str")
+==== Errors flushed ====
+Checking b
+==== Errors flushed ====
+b.py:4: error: Unsupported operand types for / ("str" and "int")
+
+[case testBlockers]
+import b
+[file a.py]
+1 + ''
+[file b.py]
+import a
+break
+[out]
+==== Errors flushed ====
+a.py:1: error: Unsupported operand types for + ("int" and "str")
+==== Blocking error ====
+b.py:2: error: 'break' outside loop

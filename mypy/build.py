@@ -133,6 +133,8 @@ def build(sources: List[BuildSource],
           alt_lib_path: Optional[str] = None,
           bin_dir: Optional[str] = None,
           saved_cache: Optional[SavedCache] = None,
+          flush_errors: Optional[Callable[[List[str]], None]] = None,
+          plugin: Optional[Plugin] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -150,6 +152,8 @@ def build(sources: List[BuildSource],
       bin_dir: directory containing the mypy script, used for finding data
         directories; if omitted, use '.' as the data directory
       saved_cache: optional dict with saved cache state for dmypy (read-write!)
+      flush_errors: optional function to flush errors after a file is processed
+      plugin: optional plugin that overrides the configured one
     """
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(50000)
@@ -199,7 +203,7 @@ def build(sources: List[BuildSource],
     reports = Reports(data_dir, options.report_dirs)
     source_set = BuildSourceSet(sources)
     errors = Errors(options.show_error_context, options.show_column_numbers)
-    plugin = load_plugins(options, errors)
+    plugin = plugin or load_plugins(options, errors)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -212,10 +216,12 @@ def build(sources: List[BuildSource],
                            version_id=__version__,
                            plugin=plugin,
                            errors=errors,
-                           saved_cache=saved_cache)
+                           saved_cache=saved_cache,
+                           flush_errors=flush_errors)
 
     try:
         graph = dispatch(sources, manager)
+        manager.error_flush(manager.errors.new_messages())
         return BuildResult(manager, graph)
     finally:
         manager.log("Build finished in %.3f seconds with %d modules, and %d errors" %
@@ -518,6 +524,7 @@ class BuildManager:
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
+      flush_errors:    A function for optionally processing errors after each SCC
       saved_cache:     Dict with saved cache state for dmypy and fine-grained incremental mode
                        (read-write!)
       stats:           Dict with various instrumentation numbers
@@ -532,6 +539,7 @@ class BuildManager:
                  version_id: str,
                  plugin: Plugin,
                  errors: Errors,
+                 flush_errors: Optional[Callable[[List[str]], None]] = None,
                  saved_cache: Optional[SavedCache] = None,
                  ) -> None:
         self.start_time = time.time()
@@ -555,6 +563,7 @@ class BuildManager:
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
         self.plugin = plugin
+        self.flush_errors = flush_errors
         self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
 
@@ -702,6 +711,10 @@ class BuildManager:
 
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
+
+    def error_flush(self, msgs: List[str]) -> None:
+        if self.flush_errors:
+            self.flush_errors(msgs)
 
 
 def remove_cwd_prefix_from_path(p: str) -> str:
@@ -1973,6 +1986,10 @@ class State:
     def dependency_priorities(self) -> List[int]:
         return [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
 
+    def generate_unused_ignore_notes(self) -> None:
+        if self.options.warn_unused_ignores:
+            self.manager.errors.generate_unused_ignore_notes(self.xpath)
+
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     set_orig = set(manager.saved_cache)
@@ -1999,9 +2016,6 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         dump_graph(graph)
         return graph
     process_graph(graph, manager)
-    if manager.options.warn_unused_ignores:
-        # TODO: This could also be a per-module option.
-        manager.errors.generate_unused_ignore_notes()
     updated = preserve_cache(graph)
     set_updated = set(updated)
     manager.saved_cache.clear()
@@ -2490,6 +2504,8 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
             graph[id].transitive_error = True
     for id in stale:
         graph[id].finish_passes()
+        graph[id].generate_unused_ignore_notes()
+        manager.error_flush(manager.errors.new_file_messages(graph[id].xpath))
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 

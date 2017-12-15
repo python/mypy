@@ -400,9 +400,9 @@ bla bla
 [file error.py]
 bla bla
 [out]
+normal.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:4: note: Import of 'error' ignored
 main.py:4: note: (Using --follow-imports=error, module not passed on command line)
-normal.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:5: error: Revealed type is 'builtins.int'
 main.py:6: error: Revealed type is 'builtins.int'
 main.py:7: error: Revealed type is 'Any'

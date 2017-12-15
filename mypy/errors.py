@@ -90,8 +90,16 @@ class Errors:
     current error context (nested imports).
     """
 
-    # List of generated error messages.
-    error_info = None  # type: List[ErrorInfo]
+    # Map from files to generated error messages. Is an OrderedDict so
+    # that it can be used to order messages based on the order the
+    # files were processed.
+    error_info_map = None  # type: Dict[str, List[ErrorInfo]]
+
+    # The size of error_info the last time that error messages were flushed
+    new_errors_start_map = None  # type: Dict[str, int]
+
+    # A cache of the formatted messages
+    formatted_messages = None  # type: List[str]
 
     # Current error context: nested import context/stack, as a list of (path, line) pairs.
     import_ctx = None  # type: List[Tuple[str, int]]
@@ -141,8 +149,10 @@ class Errors:
         self.initialize()
 
     def initialize(self) -> None:
-        self.error_info = []
+        self.error_info_map = OrderedDict()
+        self.new_errors_start_map = defaultdict(int)
         self.import_ctx = []
+        self.formatted_messages = []
         self.error_files = set()
         self.type_name = [None]
         self.function_or_member = [None]
@@ -289,6 +299,11 @@ class Errors:
                          target=self.current_target())
         self.add_error_info(info)
 
+    def _add_error_info(self, info: ErrorInfo) -> None:
+        if info.file not in self.error_info_map:
+            self.error_info_map[info.file] = []
+        self.error_info_map[info.file].append(info)
+
     def add_error_info(self, info: ErrorInfo) -> None:
         (file, line) = cast(Tuple[str, int], info.origin)  # see issue 1855
         if not info.blocker:  # Blockers cannot be ignored
@@ -302,18 +317,18 @@ class Errors:
             if info.message in self.only_once_messages:
                 return
             self.only_once_messages.add(info.message)
-        self.error_info.append(info)
+        self._add_error_info(info)
         self.error_files.add(file)
 
-    def generate_unused_ignore_notes(self) -> None:
-        for file, ignored_lines in self.ignored_lines.items():
-            if not self.is_typeshed_file(file):
-                for line in ignored_lines - self.used_ignored_lines[file]:
-                    # Don't use report since add_error_info will ignore the error!
-                    info = ErrorInfo(self.import_context(), file, self.current_module(), None,
-                                     None, line, -1, 'note', "unused 'type: ignore' comment",
-                                     False, False)
-                    self.error_info.append(info)
+    def generate_unused_ignore_notes(self, file: str) -> None:
+        ignored_lines = self.ignored_lines[file]
+        if not self.is_typeshed_file(file):
+            for line in ignored_lines - self.used_ignored_lines[file]:
+                # Don't use report since add_error_info will ignore the error!
+                info = ErrorInfo(self.import_context(), file, self.current_module(), None,
+                                 None, line, -1, 'note', "unused 'type: ignore' comment",
+                                 False, False)
+                self._add_error_info(info)
 
     def is_typeshed_file(self, file: str) -> bool:
         # gross, but no other clear way to tell
@@ -321,21 +336,22 @@ class Errors:
 
     def num_messages(self) -> int:
         """Return the number of generated messages."""
-        return len(self.error_info)
+        return sum(len(x) for x in self.error_info_map.values())
 
     def is_errors(self) -> bool:
         """Are there any generated errors?"""
-        return bool(self.error_info)
+        return bool(self.error_info_map)
 
     def is_blockers(self) -> bool:
         """Are the any errors that are blockers?"""
-        return any(err for err in self.error_info if err.blocker)
+        return any(err for errs in self.error_info_map.values() for err in errs if err.blocker)
 
     def blocker_module(self) -> Optional[str]:
         """Return the module with a blocking error, or None if not possible."""
-        for err in self.error_info:
-            if err.blocker:
-                return err.module
+        for errs in self.error_info_map.values():
+            for err in errs:
+                if err.blocker:
+                    return err.module
         return None
 
     def is_errors_for_file(self, file: str) -> bool:
@@ -347,17 +363,22 @@ class Errors:
 
         Render the messages suitable for displaying.
         """
+        # self.new_messages() will format all messages that haven't already
+        # been returned from a new_module_messages() call. Count how many
+        # we've seen before that.
+        already_seen = len(self.formatted_messages)
         raise CompileError(self.messages(),
                            use_stdout=True,
-                           module_with_blocker=self.blocker_module())
+                           module_with_blocker=self.blocker_module(),
+                           num_already_seen=already_seen)
 
-    def messages(self) -> List[str]:
+    def format_messages(self, error_info: List[ErrorInfo]) -> List[str]:
         """Return a string list that represents the error messages.
 
         Use a form suitable for displaying to the user.
         """
         a = []  # type: List[str]
-        errors = self.render_messages(self.sort_messages(self.error_info))
+        errors = self.render_messages(self.sort_messages(error_info))
         errors = self.remove_duplicates(errors)
         for file, line, column, severity, message in errors:
             s = ''
@@ -375,12 +396,48 @@ class Errors:
             a.append(s)
         return a
 
+    def new_file_messages(self, path: str) -> List[str]:
+        """Return a string list of new error messages from a given file.
+
+        Use a form suitable for displaying to the user.
+        Formatted messages are cached in the order they are generated
+        by new_file_messages() in order to have consistency in output
+        between incrementally generated messages and .messages() calls.
+        """
+        if path not in self.error_info_map:
+            return []
+        msgs = self.format_messages(self.error_info_map[path][self.new_errors_start_map[path]:])
+        self.new_errors_start_map[path] = len(self.error_info_map[path])
+        self.formatted_messages += msgs
+        return msgs
+
+    def new_messages(self) -> List[str]:
+        """Return a string list of new error messages.
+
+        Use a form suitable for displaying to the user.
+        Errors from different files are ordered based on the order in which
+        they first generated an error.
+        """
+        msgs = []
+        for key in self.error_info_map.keys():
+            msgs.extend(self.new_file_messages(key))
+        return msgs
+
+    def messages(self) -> List[str]:
+        """Return a string list that represents the error messages.
+
+        Use a form suitable for displaying to the user.
+        """
+        self.new_messages()
+        return self.formatted_messages
+
     def targets(self) -> Set[str]:
         """Return a set of all targets that contain errors."""
         # TODO: Make sure that either target is always defined or that not being defined
         #       is okay for fine-grained incremental checking.
         return set(info.target
-                   for info in self.error_info
+                   for errs in self.error_info_map.values()
+                   for info in errs
                    if info.target)
 
     def render_messages(self, errors: List[ErrorInfo]) -> List[Tuple[Optional[str], int, int,
@@ -517,15 +574,18 @@ class CompileError(Exception):
     use_stdout = False
     # Can be set in case there was a module with a blocking error
     module_with_blocker = None  # type: Optional[str]
+    num_already_seen = 0
 
     def __init__(self,
                  messages: List[str],
                  use_stdout: bool = False,
-                 module_with_blocker: Optional[str] = None) -> None:
+                 module_with_blocker: Optional[str] = None,
+                 num_already_seen: int = 0) -> None:
         super().__init__('\n'.join(messages))
         self.messages = messages
         self.use_stdout = use_stdout
         self.module_with_blocker = module_with_blocker
+        self.num_already_seen = num_already_seen
 
 
 class DecodeError(Exception):
