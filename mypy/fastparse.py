@@ -33,6 +33,7 @@ from mypy import experiments
 from mypy import messages
 from mypy.errors import Errors
 from mypy.options import Options
+from mypy.plugin import Plugin, DocstringParserContext, TypeMap
 
 try:
     from typed_ast import ast3
@@ -64,13 +65,16 @@ _dummy_fallback = None  # type: Any
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
+TYPE_COMMENT_DOCSTRING_ERROR = ('One or more arguments specified in docstring are not '
+                                'present in function signature: {}')
 
 
 def parse(source: Union[str, bytes],
           fnam: str,
           module: Optional[str],
           errors: Optional[Errors] = None,
-          options: Optional[Options] = None) -> MypyFile:
+          options: Optional[Options] = None,
+          plugin: Optional[Plugin] = None) -> MypyFile:
 
     """Parse a source file, without doing any semantic analysis.
 
@@ -83,6 +87,8 @@ def parse(source: Union[str, bytes],
         raise_on_error = True
     if options is None:
         options = Options()
+    if plugin is None:
+        plugin = Plugin(options)
     errors.set_file(fnam, module)
     is_stub_file = fnam.endswith('.pyi')
     try:
@@ -96,6 +102,7 @@ def parse(source: Union[str, bytes],
         tree = ASTConverter(options=options,
                             is_stub=is_stub_file,
                             errors=errors,
+                            plugin=plugin,
                             ).visit(ast)
         tree.path = fnam
         tree.is_stub = is_stub_file
@@ -121,6 +128,25 @@ def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -
     else:
         assert isinstance(typ, ast3.Expression)
         return TypeConverter(errors, line=line).visit(typ.body)
+
+
+def parse_docstring(hook: Callable[[DocstringParserContext], TypeMap], docstring: str,
+                    arg_names: List[str], line: int, errors: Errors
+                    ) -> Optional[Tuple[List[Type], Type]]:
+    """Parse a docstring and return type representations.
+
+    Returns a 2-tuple: (list of arguments Types, and return Type).
+    """
+    type_map = hook(DocstringParserContext(docstring, line, errors))
+    if type_map:
+        arg_types = [type_map.pop(name, AnyType(TypeOfAny.unannotated))
+                     for name in arg_names]
+        return_type = type_map.pop('return', AnyType(TypeOfAny.unannotated))
+        if type_map:
+            errors.report(line, 0,
+                          TYPE_COMMENT_DOCSTRING_ERROR.format(list(type_map)))
+        return arg_types, return_type
+    return None
 
 
 def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
@@ -152,13 +178,15 @@ class ASTConverter(ast3.NodeTransformer):
     def __init__(self,
                  options: Options,
                  is_stub: bool,
-                 errors: Errors) -> None:
+                 errors: Errors,
+                 plugin: Plugin) -> None:
         self.class_nesting = 0
         self.imports = []  # type: List[ImportBase]
 
         self.options = options
         self.is_stub = is_stub
         self.errors = errors
+        self.plugin = plugin
 
     def note(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, severity='note')
@@ -324,53 +352,72 @@ class ASTConverter(ast3.NodeTransformer):
         args = self.transform_args(n.args, n.lineno, no_type_check=no_type_check)
 
         arg_kinds = [arg.kind for arg in args]
-        arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
-        arg_names = [None if argument_elide_name(name) else name for name in arg_names]
+        real_names = [arg.variable.name() for arg in args]  # type: List[str]
+        arg_names = [None if argument_elide_name(name) else name
+                     for name in real_names]  # type: List[Optional[str]]
         if special_function_elide_names(n.name):
             arg_names = [None] * len(arg_names)
         arg_types = []  # type: List[Optional[Type]]
         if no_type_check:
             arg_types = [None] * len(args)
             return_type = None
-        elif n.type_comment is not None:
-            try:
-                func_type_ast = ast3.parse(n.type_comment, '<func_type>', 'func_type')
-                assert isinstance(func_type_ast, ast3.FunctionType)
-                # for ellipsis arg
-                if (len(func_type_ast.argtypes) == 1 and
-                        isinstance(func_type_ast.argtypes[0], ast3.Ellipsis)):
-                    if n.returns:
-                        # PEP 484 disallows both type annotations and type comments
-                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
-                    arg_types = [a.type_annotation
-                                 if a.type_annotation is not None
-                                 else AnyType(TypeOfAny.unannotated)
-                                 for a in args]
-                else:
-                    # PEP 484 disallows both type annotations and type comments
-                    if n.returns or any(a.type_annotation is not None for a in args):
-                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
-                    translated_args = (TypeConverter(self.errors, line=n.lineno)
-                                       .translate_expr_list(func_type_ast.argtypes))
-                    arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated)
-                                for a in translated_args]
-                return_type = TypeConverter(self.errors,
-                                            line=n.lineno).visit(func_type_ast.returns)
-
-                # add implicit self type
-                if self.in_class() and len(arg_types) < len(args):
-                    arg_types.insert(0, AnyType(TypeOfAny.special_form))
-            except SyntaxError:
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
-                if n.type_comment and n.type_comment[0] != "(":
-                    self.note('Suggestion: wrap argument types in parentheses',
-                              n.lineno, n.col_offset)
-                arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
-                return_type = AnyType(TypeOfAny.from_error)
         else:
-            arg_types = [a.type_annotation for a in args]
-            return_type = TypeConverter(self.errors, line=n.returns.lineno
-                                        if n.returns else n.lineno).visit(n.returns)
+            doc_types = None  # type: Optional[Tuple[List[Type], Type]]
+            docstring_hook = self.plugin.get_docstring_parser_hook()
+            if docstring_hook is not None:
+                doc = ast3.get_docstring(n, clean=False)
+                if doc:
+                    doc_types = parse_docstring(docstring_hook, doc, real_names, n.lineno,
+                                                self.errors)
+
+            if n.type_comment is not None:
+                if doc_types is not None:
+                    # PEP 484 disallows both type annotations and type comments
+                    self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
+                try:
+                    func_type_ast = ast3.parse(n.type_comment, '<func_type>', 'func_type')
+                    assert isinstance(func_type_ast, ast3.FunctionType)
+                    # for ellipsis arg
+                    if (len(func_type_ast.argtypes) == 1 and
+                            isinstance(func_type_ast.argtypes[0], ast3.Ellipsis)):
+                        if n.returns:
+                            # PEP 484 disallows both type annotations and type comments
+                            self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
+                        arg_types = [a.type_annotation
+                                     if a.type_annotation is not None
+                                     else AnyType(TypeOfAny.unannotated)
+                                     for a in args]
+                    else:
+                        # PEP 484 disallows both type annotations and type comments
+                        if n.returns or any(a.type_annotation is not None for a in args):
+                            self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
+                        translated_args = (TypeConverter(self.errors, line=n.lineno)
+                                           .translate_expr_list(func_type_ast.argtypes))
+                        arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated)
+                                     for a in translated_args]
+                    return_type = TypeConverter(self.errors,
+                                                line=n.lineno).visit(func_type_ast.returns)
+
+                    # add implicit self type
+                    if self.in_class() and len(arg_types) < len(args):
+                        arg_types.insert(0, AnyType(TypeOfAny.special_form))
+                except SyntaxError:
+                    self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
+                    if n.type_comment and n.type_comment[0] != "(":
+                        self.note('Suggestion: wrap argument types in parentheses',
+                                  n.lineno, n.col_offset)
+                    arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
+                    return_type = AnyType(TypeOfAny.from_error)
+            elif doc_types is not None:
+                # PEP 484 disallows both type annotations and type comments
+                if (n.type_comment is not None or n.returns or
+                        any(a.type_annotation is not None for a in args)):
+                    self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
+                arg_types, return_type = doc_types
+            else:
+                arg_types = [a.type_annotation for a in args]
+                return_type = TypeConverter(self.errors, line=n.returns.lineno
+                                            if n.returns else n.lineno).visit(n.returns)
 
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)

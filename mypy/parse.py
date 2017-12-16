@@ -2,6 +2,7 @@ from typing import List, Tuple, Set, cast, Union, Optional
 
 from mypy.errors import Errors
 from mypy.options import Options
+from mypy.plugin import Plugin
 from mypy.nodes import MypyFile
 
 
@@ -9,7 +10,8 @@ def parse(source: Union[str, bytes],
           fnam: str,
           module: Optional[str],
           errors: Optional[Errors],
-          options: Options) -> MypyFile:
+          options: Options,
+          plugin: Optional[Plugin]) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
@@ -24,11 +26,13 @@ def parse(source: Union[str, bytes],
                                     fnam=fnam,
                                     module=module,
                                     errors=errors,
-                                    options=options)
+                                    options=options,
+                                    plugin=plugin)
     else:
         import mypy.fastparse2
         return mypy.fastparse2.parse(source,
                                      fnam=fnam,
                                      module=module,
                                      errors=errors,
-                                     options=options)
+                                     options=options,
+                                     plugin=plugin)

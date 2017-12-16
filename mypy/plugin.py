@@ -2,7 +2,7 @@
 
 from collections import OrderedDict
 from abc import abstractmethod
-from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
+from typing import Callable, Dict, List, Tuple, Optional, NamedTuple, TypeVar
 
 from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef
 from mypy.types import (
@@ -12,6 +12,10 @@ from mypy.types import (
 from mypy.messages import MessageBuilder
 from mypy.options import Options
 
+# Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
+MYPY = False
+if MYPY:
+    from mypy.errors import Errors
 
 class TypeAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins."""
@@ -123,6 +127,24 @@ ClassDefContext = NamedTuple(
         ('api', SemanticAnalyzerPluginInterface)
     ])
 
+# A context for a hook that extracts type annotations from docstrings.
+#
+# Called for each unannotated function that has a docstring.
+# The function's return type, if specified, is stored in the mapping with the special
+# key 'return'.  Other than 'return', each key of the mapping must be one of the
+# arguments of the documented function; otherwise, an error will be raised.
+DocstringParserContext = NamedTuple(
+    'DocstringParserContext', [
+        ('docstring', str),     # The docstring to be parsed
+        ('line', int),          # The line number where the docstring begins
+        ('errors', 'Errors')    # Errors object for reporting errors, warnings, and info
+    ])
+
+TypeMap = Dict[
+    str,  # Argument name, or 'return' for return type.
+    Type  # Corresponding type extracted from docstring
+]
+
 
 class Plugin:
     """Base class of all type checker plugins.
@@ -171,6 +193,10 @@ class Plugin:
 
     def get_base_class_hook(self, fullname: str
                             ) -> Optional[Callable[[ClassDefContext], None]]:
+        return None
+
+    def get_docstring_parser_hook(self
+                                  ) -> Optional[Callable[[DocstringParserContext], TypeMap]]:
         return None
 
 
@@ -228,6 +254,10 @@ class ChainedPlugin(Plugin):
     def get_base_class_hook(self, fullname: str
                             ) -> Optional[Callable[[ClassDefContext], None]]:
         return self._find_hook(lambda plugin: plugin.get_base_class_hook(fullname))
+
+    def get_docstring_parser_hook(self
+                                  ) -> Optional[Callable[[DocstringParserContext], TypeMap]]:
+        return self._find_hook(lambda plugin: plugin.get_docstring_parser_hook())
 
     def _find_hook(self, lookup: Callable[[Plugin], T]) -> Optional[T]:
         for plugin in self._plugins:
