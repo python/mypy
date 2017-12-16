@@ -754,6 +754,9 @@ find_module_is_file_cache = {}  # type: Dict[str, bool]
 # Cache for isdir(join(head, tail))
 find_module_isdir_cache = {}  # type: Dict[Tuple[str, str], bool]
 
+# Cache packages for Python executable
+package_dirs_cache = []  # type: List[str]
+
 
 def find_module_clear_caches() -> None:
     find_module_cache.clear()
@@ -797,19 +800,28 @@ def is_file(path: str) -> bool:
     return res
 
 
-package_dirs_cache = []
+def get_package_dirs(python: Optional[str]) -> List[str]:
+    """Find package directories for given python (default to Python running
+    mypy."""
+    global package_dirs_cache
+    if package_dirs_cache:
+        return package_dirs_cache
+    if python:
+        # Use subprocess to get the package directory of given Python
+        # executable
+        return []
+    else:
+        # Use running Python's package dirs
+        try:
+            user_dir = site.getusersitepackages()
+            package_dirs = site.getsitepackages() + [user_dir]
+        except AttributeError:
+            package_dirs = [get_python_lib()]
+        package_dirs_cache = package_dirs
+        return package_dirs
 
 
-def get_package_dirs() -> List[str]:
-    try:
-        user_dir = site.getusersitepackages()
-        package_dirs = site.getsitepackages() + [user_dir]
-    except AttributeError:
-        package_dirs = [get_python_lib()]
-    return package_dirs
-
-
-def find_module(id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
+def find_module(id: str, lib_path_arg: Iterable[str], python: str) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
     package_dirs = get_package_dirs()
@@ -821,35 +833,37 @@ def find_module(id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
         # that will require the same subdirectory.
         components = id.split('.')
         dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
-        if dir_chain not in find_module_dir_cache:
-            dirs = []
+        if dir_chain:
+            if dir_chain not in find_module_dir_cache:
+                dirs = []
 
-            # Regular packages on the PATH
-            for pathitem in lib_path:
-                # e.g., '/usr/lib/python3.4/foo/bar'
-                isdir = find_module_isdir_cache.get((pathitem, dir_chain))
-                if isdir is None:
-                    dir = os.path.normpath(os.path.join(pathitem, dir_chain))
-                    isdir = os.path.isdir(dir)
-                    find_module_isdir_cache[pathitem, dir_chain] = isdir
-                if isdir:
-                    dirs.append(dir)
+                # Regular packages on the PATH
+                for pathitem in lib_path:
+                    # e.g., '/usr/lib/python3.4/foo/bar'
+                    isdir = find_module_isdir_cache.get((pathitem, dir_chain))
+                    if isdir is None:
+                        dir = os.path.normpath(os.path.join(pathitem, dir_chain))
+                        isdir = os.path.isdir(dir)
+                        find_module_isdir_cache[pathitem, dir_chain] = isdir
+                    if isdir:
+                        dirs.append(dir)
 
-            # Third-party stub/typed packages
-            for pkg_dir in package_dirs:
-                stub_name = components[0] + '_stubs'
-                stub_pkg = os.path.join(pkg_dir, stub_name)
-                dir = os.path.join(pkg_dir, dir_chain)
-                if os.path.isfile(os.path.join(stub_pkg, 'py.typed')):
-                    components[0] = stub_name
-                    dirs.append(os.path.join(pkg_dir, os.sep.join(components[:-1])))
-                elif os.path.isfile(os.path.join(pkg_dir, components[0], 'py.typed')) \
-                        and os.path.isdir(dir):
-                    dirs.append(os.path.join(pkg_dir, dir_chain))
+                # Third-party stub/typed packages
+                for pkg_dir in package_dirs:
+                    stub_name = components[0] + '_stubs'
+                    stub_pkg = os.path.join(pkg_dir, stub_name)
+                    dir = os.path.join(pkg_dir, dir_chain)
+                    if os.path.isfile(os.path.join(stub_pkg, 'py.typed')):
+                        components[0] = stub_name
+                        dirs.append(os.path.join(pkg_dir, os.sep.join(components[:-1])))
+                    elif os.path.isfile(os.path.join(pkg_dir, components[0], 'py.typed')) \
+                            and os.path.isdir(dir):
+                        dirs.append(os.path.join(pkg_dir, dir_chain))
 
-            find_module_dir_cache[dir_chain] = dirs
-        candidate_base_dirs = find_module_dir_cache[dir_chain]
-
+                find_module_dir_cache[dir_chain] = dirs
+            candidate_base_dirs = find_module_dir_cache[dir_chain]
+        else:
+            candidate_base_dirs = lib_path + tuple(package_dirs)
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
         # elements of lib_path.  This is probably much shorter than lib_path itself.
@@ -1551,6 +1565,8 @@ class State:
                 file_id = '__builtin__'
             path = find_module(file_id, manager.lib_path)
             if path:
+                if any((path.startswith(d) for d in package_dirs_cache)):
+                    self.ignore_all = True
                 # For non-stubs, look at options.follow_imports:
                 # - normal (default) -> fully analyze
                 # - silent -> analyze but silence errors
