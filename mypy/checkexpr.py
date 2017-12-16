@@ -639,6 +639,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             item = self.analyze_type_type_callee(callee.item, callee)
             return self.check_call(item, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
+        elif isinstance(callee, TupleType):
+            return self.check_call(callee.fallback, args, arg_kinds, context,
+                                   arg_names, callable_node, arg_messages, callable_name,
+                                   object_type)
         else:
             return self.msg.not_callable(callee, context), AnyType(TypeOfAny.from_error)
 
