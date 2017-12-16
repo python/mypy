@@ -19,6 +19,9 @@ more accurate.
 - Continue making error messages more useful and informative.
   ([issue](https://github.com/python/mypy/labels/topic-usability))
 
+- Switch completely to pytest and remove the custom testing framework.
+  ([issue](https://github.com/python/mypy/issues/1673))
+
 - Make it possible to run mypy as a daemon to avoid reprocessing the
   entire program on each run. This will improve performance
   significantly. Even when using the incremental mode, processing a

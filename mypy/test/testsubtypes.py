@@ -69,6 +69,7 @@ class SubtypingSuite(Suite):
 
     @skip
     def test_generic_interface_subtyping(self) -> None:
+        # TODO make this work
         fx2 = InterfaceTypeFixture()
 
         self.assert_subtype(fx2.m1, fx2.gfa)
