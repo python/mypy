@@ -802,7 +802,7 @@ def is_file(path: str) -> bool:
 
 def get_package_dirs(python: Optional[str]) -> List[str]:
     """Find package directories for given python (default to Python running
-    mypy."""
+    mypy)."""
     global package_dirs_cache
     if package_dirs_cache:
         return package_dirs_cache
@@ -821,10 +821,10 @@ def get_package_dirs(python: Optional[str]) -> List[str]:
         return package_dirs
 
 
-def find_module(id: str, lib_path_arg: Iterable[str], python: str) -> Optional[str]:
+def find_module(id: str, lib_path_arg: Iterable[str], python: Optional[str] = None) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
-    package_dirs = get_package_dirs()
+    package_dirs = get_package_dirs(python)
 
     def find() -> Optional[str]:
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
