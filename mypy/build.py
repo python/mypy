@@ -21,6 +21,7 @@ import os.path
 import re
 import site
 import stat
+from subprocess import check_output, STDOUT
 import sys
 import time
 from os.path import dirname, basename
@@ -800,16 +801,45 @@ def is_file(path: str) -> bool:
     return res
 
 
+SITE_PACKAGE_COMMANDS = (
+    # User site packages
+    '"import site;print(site.getusersitepackages())"',
+    # Usual site packages/python directory
+    '"import site;print(*site.getsitepackages(), sep=\'\\n\')"',
+    # for virtualenvs
+    '"from distutils.sysconfig import get_python_lib;print(get_python_lib())"',
+)
+
+
+def call_python(python: str, command) -> str:
+    return check_output([python, '-c', command], stderr=STDOUT).decode('UTF-8')
+
+
 def get_package_dirs(python: Optional[str]) -> List[str]:
     """Find package directories for given python (default to Python running
     mypy)."""
     global package_dirs_cache
     if package_dirs_cache:
         return package_dirs_cache
+    package_dirs = []
     if python:
         # Use subprocess to get the package directory of given Python
         # executable
-        return []
+        check = check_output([python, '-V'], stderr=STDOUT).decode('UTF-8')
+        if not check.startswith('Python'):
+            return package_dirs
+        # If we have a working python executable, query information from it
+        for command in SITE_PACKAGE_COMMANDS[:2]:
+            output = call_python(python, command)
+            for line in output.splitlines():
+                if os.path.isdir(line):
+                    package_dirs.append(line)
+        if not package_dirs:
+            # if no paths are found, we fall back on sysconfig
+            output = call_python(python, SITE_PACKAGE_COMMANDS[2])
+            for line in output.splitlines():
+                if os.path.isdir(line):
+                    package_dirs.append(line)
     else:
         # Use running Python's package dirs
         try:
@@ -817,8 +847,8 @@ def get_package_dirs(python: Optional[str]) -> List[str]:
             package_dirs = site.getsitepackages() + [user_dir]
         except AttributeError:
             package_dirs = [get_python_lib()]
-        package_dirs_cache = package_dirs
-        return package_dirs
+    package_dirs_cache = package_dirs
+    return package_dirs
 
 
 def find_module(id: str, lib_path_arg: Iterable[str], python: Optional[str] = None) -> Optional[str]:
