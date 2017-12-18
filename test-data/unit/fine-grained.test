@@ -1279,3 +1279,18 @@ class B(A):
         super(B, self).f()
 [out]
 ==
+
+[case testErrorInTypeCheckSecondPassThroughPropagation]
+import a
+
+def f() -> None:
+    x = a.C()
+[file a.py]
+[file a.py.2]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+class C(Generic[T]): pass
+[out]
+main:4: error: "object" has no attribute "C"
+==
+main:4: error: Need type annotation for variable

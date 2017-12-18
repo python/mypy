@@ -722,6 +722,9 @@ def reprocess_nodes(manager: BuildManager,
     # Some nodes by full name so that the order of processing is deterministic.
     nodes = sorted(nodeset, key=key)
 
+    # TODO: ignore_all argument to set_file_ignored_lines
+    manager.errors.set_file_ignored_lines(file_node.path, file_node.ignored_lines)
+
     # Strip semantic analysis information.
     for deferred in nodes:
         strip_target(deferred.node)
