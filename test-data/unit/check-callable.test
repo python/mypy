@@ -436,7 +436,6 @@ def g(o: Thing) -> None:
         o.s + o.n  # E: Unsupported operand types for + ("str" and "int")
         i, s = o
         i + s  # E: Unsupported operand types for + ("str" and "int")
-        # Tuples can't be called yet but this should work at least
-        o.__call__(1,2,3)
+        o(1,2,3)
 
 [builtins fixtures/callable.pyi]
