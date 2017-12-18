@@ -2659,7 +2659,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Build the fake ClassDef and TypeInfo together.
         # The ClassDef is full of lies and doesn't actually contain a body.
         # Use format_bare to generate a nice name for error messages.
-        # We skip filling fully filling out a handful of TypeInfo fields because they
+        # We skip fully filling out a handful of TypeInfo fields because they
         # should be irrelevant for a generated type like this:
         # is_protocol, protocol_members, is_abstract
         short_name = self.msg.format_bare(typ)
