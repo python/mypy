@@ -10,7 +10,7 @@ belongs to a module involved in an import loop.
 """
 
 from collections import OrderedDict
-from typing import Dict, List, Callable, Optional, Union, Set, cast
+from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple
 
 from mypy import messages, experiments
 from mypy.nodes import (
@@ -26,8 +26,9 @@ from mypy.types import (
 from mypy.errors import Errors, report_internal_error
 from mypy.options import Options
 from mypy.traverser import TraverserVisitor
-from mypy.typeanal import TypeAnalyserPass3, collect_any_types
+from mypy.typeanal import TypeAnalyserPass3, collect_any_types, TypeVariableChecker
 from mypy.typevars import has_no_typevars
+from mypy.semanal_shared import PRIORITY_FORWARD_REF, PRIORITY_TYPEVAR_VALUES
 import mypy.semanal
 
 
@@ -48,7 +49,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         self.recurse_into_functions = True
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
-                   patches: List[Callable[[], None]]) -> None:
+                   patches: List[Tuple[int, Callable[[], None]]]) -> None:
         self.recurse_into_functions = True
         self.errors.set_file(fnam, file_node.fullname())
         self.options = options
@@ -349,12 +350,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
-            if indicator.get('forward') or indicator.get('synthetic'):
-                def patch() -> None:
-                    self.perform_transform(node,
-                        lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
-                                                                      node, warn)))
-                self.patches.append(patch)
+            self.generate_type_patches(node, indicator, warn)
 
     def analyze_types(self, types: List[Type], node: Node) -> None:
         # Similar to above but for nodes with multiple types.
@@ -363,12 +359,24 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
+        self.generate_type_patches(node, indicator, warn=False)
+
+    def generate_type_patches(self,
+                              node: Union[Node, SymbolTableNode],
+                              indicator: Dict[str, bool],
+                              warn: bool) -> None:
         if indicator.get('forward') or indicator.get('synthetic'):
             def patch() -> None:
                 self.perform_transform(node,
                     lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
-                                                                  node, warn=False)))
-            self.patches.append(patch)
+                                                                  node, warn)))
+            self.patches.append((PRIORITY_FORWARD_REF, patch))
+        if indicator.get('typevar'):
+            def patch() -> None:
+                self.perform_transform(node,
+                    lambda tp: tp.accept(TypeVariableChecker(self.fail)))
+
+            self.patches.append((PRIORITY_TYPEVAR_VALUES, patch))
 
     def analyze_info(self, info: TypeInfo) -> None:
         # Similar to above but for nodes with synthetic TypeInfos (NamedTuple and NewType).
@@ -387,7 +395,8 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                                  self.sem.plugin,
                                  self.options,
                                  self.is_typeshed_file,
-                                 indicator)
+                                 indicator,
+                                 self.patches)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
         if not self.options.disallow_any_generics or self.is_typeshed_file:

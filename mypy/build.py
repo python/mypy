@@ -1853,14 +1853,14 @@ class State:
 
     def semantic_analysis(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        patches = []  # type: List[Callable[[], None]]
+        patches = []  # type: List[Tuple[int, Callable[[], None]]]
         with self.wrap_context():
             self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, patches)
         self.patches = patches
 
     def semantic_analysis_pass_three(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        patches = []  # type: List[Callable[[], None]]
+        patches = []  # type: List[Tuple[int, Callable[[], None]]]
         with self.wrap_context():
             self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath,
                                                             self.options, patches)
@@ -1869,7 +1869,8 @@ class State:
         self.patches = patches + self.patches
 
     def semantic_analysis_apply_patches(self) -> None:
-        for patch_func in self.patches:
+        patches_by_priority = sorted(self.patches, key=lambda x: x[0])
+        for priority, patch_func in patches_by_priority:
             patch_func()
 
     def type_check_first_pass(self) -> None:
