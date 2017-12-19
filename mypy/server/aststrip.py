@@ -109,6 +109,14 @@ class NodeStripVisitor(TraverserVisitor):
             assert isinstance(lvalue, NameExpr)
             assert self.type is not None  # Because self.is_class_body is True
             del self.type.names[lvalue.name]
+        if self.type and not self.is_class_body:
+            # TODO: Handle multiple assignment
+            # TODO: Merge with above
+            if len(node.lvalues) == 1:
+                lvalue = node.lvalues[0]
+                if isinstance(lvalue, MemberExpr) and lvalue.is_new_def:
+                    # Remove defined attribute from the class symbol table.
+                    del self.type.names[lvalue.name]
         super().visit_assignment_stmt(node)
 
     def visit_import_from(self, node: ImportFrom) -> None:
