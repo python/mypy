@@ -243,7 +243,13 @@ class DependencyVisitor(TraverserVisitor):
             if isinstance(lvalue.node, Var) and lvalue.node.type:
                 lvalue_type = lvalue.node.type
             else:
-                assert False, "Unexpected partial type"
+                # Probably a secondary, non-definition assignment that doesn't
+                # result in a non-partial type. We won't be able to infer any
+                # dependencies from this so just return something. (The first,
+                # definition assignment with a partial type is handled
+                # differently, in the semantic analyzer.)
+                assert not lvalue.is_new_def
+                return UninhabitedType()
         return lvalue_type
 
     def visit_operator_assignment_stmt(self, o: OperatorAssignmentStmt) -> None:

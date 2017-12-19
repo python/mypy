@@ -38,3 +38,12 @@ class A:
 [builtins fixtures/isinstance.pyi]
 [out]
 <m.A> -> m.A
+
+[case testDoubleAttributeInitializationToNone]
+class C:
+    def __init__(self) -> None:
+        self.x = None
+        self.x = None
+[out]
+<m.C.x> -> m.C.__init__
+<m.C> -> m.C
