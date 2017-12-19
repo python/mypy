@@ -126,6 +126,9 @@ class TraverserVisitor(NodeVisitor[None]):
             if tp is not None:
                 tp.accept(self)
             o.handlers[i].accept(self)
+        for v in o.vars:
+            if v is not None:
+                v.accept(self)
         if o.else_body is not None:
             o.else_body.accept(self)
         if o.finally_body is not None:

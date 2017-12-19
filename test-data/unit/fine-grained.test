@@ -1330,3 +1330,19 @@ def g() -> int: pass
 main:5: error: Need type annotation for variable
 ==
 main:5: error: Need type annotation for variable
+
+[case testRefreshTryExcept]
+import a
+def f() -> None:
+    a.g()
+    try:
+        pass
+    except BaseException as e:
+        e
+[file a.py]
+def g() -> int: pass
+[file a.py.2]
+def g() -> str: pass
+[builtins fixtures/exception.pyi]
+[out]
+==
