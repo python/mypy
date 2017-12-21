@@ -819,6 +819,21 @@ def find_module(id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
                     find_module_isdir_cache[pathitem, dir_chain] = isdir
                 if isdir:
                     dirs.append(dir)
+            try:
+                user_dir = site.getusersitepackages()
+                package_dirs = site.getsitepackages() + [user_dir]
+            except AttributeError:
+                package_dirs = [get_python_lib()]
+
+            for pkg_dir in package_dirs:
+                # Third-party stub packages
+                stub_pkg = os.path.join(pkg_dir, components[0] + '_stubs')
+                if os.path.isfile(os.path.join(stub_pkg, 'py.typed')):
+                    components[0] = components[0] + '_stubs'
+                    dirs.append(os.path.join(pkg_dir, os.sep.join(components[:-1])))
+                elif os.path.isfile(os.path.join(pkg_dir, components[0], 'py.typed')):
+                    dirs.append(os.path.join(pkg_dir, dir_chain))
+
             find_module_dir_cache[dir_chain, lib_path] = dirs
         candidate_base_dirs = find_module_dir_cache[dir_chain, lib_path]
 
