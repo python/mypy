@@ -764,7 +764,15 @@ def reprocess_nodes(manager: BuildManager,
     meta, file_node, type_map = manager.saved_cache[module_id]
     graph[module_id].tree = file_node
     graph[module_id].type_checker().type_map = type_map
-    graph[module_id].type_checker().check_second_pass(nodes)  # TODO: check return value
+    checker = graph[module_id].type_checker()
+    # We seem to need additional passes in fine-grained incremental mode.
+    checker.pass_num = 0
+    checker.last_pass = 3
+    more = checker.check_second_pass(nodes)
+    while more:
+        more = False
+        if graph[module_id].type_checker().check_second_pass():
+            more = True
 
     # Check if any attribute types were changed and need to be propagated further.
     new_triggered = get_triggered_namespace_items(old_types_map)
