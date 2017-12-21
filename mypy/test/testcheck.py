@@ -169,15 +169,22 @@ class TypeCheckSuite(DataSuite):
             # Always set to none so we're forced to reread the module in incremental mode
             sources.append(BuildSource(program_path, module_name,
                                        None if incremental_step else program_text))
+        streamed_messages = []
+
+        def flush_errors(msgs: List[str], serious: bool) -> None:
+            streamed_messages.extend(msgs)
+
         res = None
         try:
             res = build.build(sources=sources,
                               options=options,
-                              alt_lib_path=test_temp_dir)
+                              alt_lib_path=test_temp_dir,
+                              flush_errors=flush_errors)
             a = res.errors
         except CompileError as e:
             a = e.messages
         a = normalize_error_messages(a)
+        streamed_messages = normalize_error_messages(streamed_messages)
 
         # Make sure error messages match
         if incremental_step == 0:
@@ -197,6 +204,9 @@ class TypeCheckSuite(DataSuite):
         if output != a and self.update_data:
             update_testcase_output(testcase, a)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
+        assert_string_arrays_equal(a, streamed_messages,
+                                   "Streamed/reported error mismatch: " +
+                                   msg.format(testcase.file, testcase.line))
 
         if incremental_step and res:
             if options.follow_imports == 'normal' and testcase.output is None:
