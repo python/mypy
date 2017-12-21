@@ -810,7 +810,8 @@ SITE_PACKAGE_COMMANDS = (
 
 
 def call_python(python: str, command: str) -> str:
-    return check_output([python, '-c', command], stderr=STDOUT).decode('UTF-8')
+    return check_output(python + ' -c ' + command,
+                        stderr=STDOUT).decode('UTF-8')
 
 
 def get_package_dirs(python: Optional[str]) -> List[str]:
