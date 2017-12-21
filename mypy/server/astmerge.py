@@ -96,8 +96,9 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_func_def(node)
 
     def visit_class_def(self, node: ClassDef) -> None:
-        # TODO additional things like the MRO
+        # TODO additional things like type_vars?
         node.defs.body = self.replace_statements(node.defs.body)
+        node.info = self.fixup(node.info)
         self.process_type_info(node.info)
         super().visit_class_def(node)
 

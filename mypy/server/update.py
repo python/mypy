@@ -207,7 +207,7 @@ class FineGrainedBuildManager:
             filtered = [trigger for trigger in triggered
                         if not trigger.endswith('__>')]
             print('triggered:', sorted(filtered))
-        self.triggered.extend(triggered)
+        self.triggered.extend(triggered | self.previous_targets_with_errors)
         update_dependencies({module: tree}, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              {module},
