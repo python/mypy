@@ -156,6 +156,10 @@ class NodeStripVisitor(TraverserVisitor):
 
     def visit_member_expr(self, node: MemberExpr) -> None:
         self.strip_ref_expr(node)
+        # These need to cleared for member expressions but not for other RefExprs since
+        # these can change based on changed in a base class.
+        node.is_new_ref = False
+        node.is_inferred_def = False
         if self.is_duplicate_attribute_def(node):
             # This is marked as an instance variable definition but a base class
             # defines an attribute with the same name, and we can't have
