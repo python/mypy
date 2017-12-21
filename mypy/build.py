@@ -848,7 +848,8 @@ def get_package_dirs(python: Optional[str]) -> List[str]:
     return package_dirs
 
 
-def find_module(id: str, lib_path_arg: Iterable[str], python: Optional[str] = None) -> Optional[str]:
+def find_module(id: str, lib_path_arg: Iterable[str],
+                python: Optional[str] = None) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
     package_dirs = get_package_dirs(python)
@@ -916,7 +917,8 @@ def find_module(id: str, lib_path_arg: Iterable[str], python: Optional[str] = No
     return find_module_cache[key]
 
 
-def find_modules_recursive(module: str, lib_path: List[str], python: Optional[str]) -> List[BuildSource]:
+def find_modules_recursive(module: str, lib_path: List[str],
+                           python: Optional[str]) -> List[BuildSource]:
     module_path = find_module(module, lib_path, python)
     if not module_path:
         return []
