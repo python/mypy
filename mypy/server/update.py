@@ -725,6 +725,9 @@ def reprocess_nodes(manager: BuildManager,
     # TODO: ignore_all argument to set_file_ignored_lines
     manager.errors.set_file_ignored_lines(file_node.path, file_node.ignored_lines)
 
+    # Keep track of potentially affected attribute types before type checking.
+    old_types_map = get_enclosing_namespace_types(nodes)
+
     # Strip semantic analysis information.
     for deferred in nodes:
         strip_target(deferred.node)
@@ -756,9 +759,6 @@ def reprocess_nodes(manager: BuildManager,
     for name in old_symbols:
         if name in new_symbols:
             merge_asts(file_node, old_symbols[name], file_node, new_symbols[name])
-
-    # Keep track of potentially affected attribute types before type checking.
-    old_types_map = get_enclosing_namespace_types(nodes)
 
     # Type check.
     meta, file_node, type_map = manager.saved_cache[module_id]
