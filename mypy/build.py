@@ -25,9 +25,10 @@ import sys
 import time
 from os.path import dirname, basename
 import errno
+from functools import wraps
 
 from typing import (AbstractSet, Any, cast, Dict, Iterable, Iterator, List,
-                    Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
+                    Mapping, NamedTuple, Optional, Set, Tuple, TypeVar, Union, Callable)
 # Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
 MYPY = False
 if MYPY:
@@ -127,13 +128,32 @@ class BuildSourceSet:
 # be updated in place with newly computed cache data.  See dmypy.py.
 SavedCache = Dict[str, Tuple['CacheMeta', MypyFile, Dict[Expression, Type]]]
 
+F = TypeVar('F', bound=Callable[..., Any])
 
+
+def flush_compile_errors(f: F) -> F:
+    """Catch and flush out any messages from a CompileError thrown in build."""
+    @wraps(f)
+    def func(*args, **kwargs):
+        # type: (*Any, **Any) -> Any
+        try:
+            return f(*args, **kwargs)
+        except CompileError as e:
+            serious = not e.use_stdout
+            error_flush = kwargs.get('flush_errors', None)
+            if error_flush:
+                error_flush(e.messages[e.num_already_seen:], serious)
+            raise
+    return cast(F, func)
+
+
+@flush_compile_errors
 def build(sources: List[BuildSource],
           options: Options,
           alt_lib_path: Optional[str] = None,
           bin_dir: Optional[str] = None,
           saved_cache: Optional[SavedCache] = None,
-          flush_errors: Optional[Callable[[List[str]], None]] = None,
+          flush_errors: Optional[Callable[[List[str], bool], None]] = None,
           plugin: Optional[Plugin] = None,
           ) -> BuildResult:
     """Analyze a program.
@@ -539,7 +559,7 @@ class BuildManager:
                  version_id: str,
                  plugin: Plugin,
                  errors: Errors,
-                 flush_errors: Optional[Callable[[List[str]], None]] = None,
+                 flush_errors: Optional[Callable[[List[str], bool], None]] = None,
                  saved_cache: Optional[SavedCache] = None,
                  ) -> None:
         self.start_time = time.time()
@@ -712,9 +732,9 @@ class BuildManager:
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
 
-    def error_flush(self, msgs: List[str]) -> None:
+    def error_flush(self, msgs: List[str], serious: bool=False) -> None:
         if self.flush_errors:
-            self.flush_errors(msgs)
+            self.flush_errors(msgs, serious)
 
 
 def remove_cwd_prefix_from_path(p: str) -> str:

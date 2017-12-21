@@ -428,7 +428,7 @@ class Errors:
 
         Use a form suitable for displaying to the user.
         """
-        self.new_messages()
+        self.new_messages()  # Updates formatted_messages as a side effect
         return self.formatted_messages
 
     def targets(self) -> Set[str]:

@@ -31,28 +31,34 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
     options = Options()
     options.show_traceback = True
 
-    a = []
+    logged_messages: List[str] = []
+    real_messages: List[str] = []
 
-    def flush_errors(msgs: List[str]) -> None:
-        nonlocal a
+    def flush_errors(msgs: List[str], serious: bool, is_real: bool=True) -> None:
         if msgs:
-            a.append('==== Errors flushed ====')
-            a += msgs
+            logged_messages.append('==== Errors flushed ====')
+            logged_messages.extend(msgs)
+        if is_real:
+            real_messages.extend(msgs)
+
     plugin = ChainedPlugin(options, [LoggingPlugin(options, flush_errors), DefaultPlugin(options)])
 
     sources = [BuildSource('main', '__main__', '\n'.join(testcase.input))]
     try:
-        build.build(sources=sources,
-                    options=options,
-                    alt_lib_path=test_temp_dir,
-                    flush_errors=flush_errors,
-                    plugin=plugin)
+        res = build.build(sources=sources,
+                          options=options,
+                          alt_lib_path=test_temp_dir,
+                          flush_errors=flush_errors,
+                          plugin=plugin)
+        reported_messages = res.errors
     except CompileError as e:
-        a.append('==== Blocking error ====')
-        a += e.messages[e.num_already_seen:]
+        reported_messages = e.messages
 
-    assert_string_arrays_equal(testcase.output, a,
+    assert_string_arrays_equal(testcase.output, logged_messages,
                                'Invalid output ({}, line {})'.format(
+                                   testcase.file, testcase.line))
+    assert_string_arrays_equal(reported_messages, real_messages,
+                               'Streamed/reported mismatch ({}, line {})'.format(
                                    testcase.file, testcase.line))
 
 
@@ -60,7 +66,7 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
 # during typechecking. This allows us to verify that error messages
 # from one SCC are printed before later ones are typechecked.
 class LoggingPlugin(Plugin):
-    def __init__(self, options: Options, log: Callable[[List[str]], None]) -> None:
+    def __init__(self, options: Options, log: Callable[[List[str], bool, bool], None]) -> None:
         super().__init__(options)
         self.log = log
 
@@ -72,5 +78,5 @@ class LoggingPlugin(Plugin):
     def hook(self, ctx: FunctionContext) -> Type:
         assert(isinstance(ctx.context, CallExpr) and len(ctx.context.args) > 0 and
                isinstance(ctx.context.args[0], StrExpr))
-        self.log([ctx.context.args[0].value])
+        self.log([ctx.context.args[0].value], False, False)
         return ctx.default_return_type

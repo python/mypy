@@ -61,13 +61,8 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if args is None:
         args = sys.argv[1:]
     sources, options = process_options(args)
-    serious = False
-    errors = False
 
-    def flush_errors(a: List[str]) -> None:
-        nonlocal errors
-        if a:
-            errors = True
+    def flush_errors(a: List[str], serious: bool) -> None:
         f = sys.stderr if serious else sys.stdout
         try:
             for m in a:
@@ -75,6 +70,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         except BrokenPipeError:
             pass
 
+    serious = False
     try:
         res = type_check_only(sources, bin_dir, options, flush_errors)
         a = res.errors
@@ -82,7 +78,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         a = e.messages
         if not e.use_stdout:
             serious = True
-        flush_errors(a[e.num_already_seen:])
     if options.warn_unused_configs and options.unused_configs:
         print("Warning: unused section(s) in %s: %s" %
               (options.config_file,
@@ -91,7 +86,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if options.junit_xml:
         t1 = time.time()
         util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
-    if errors:
+    if a:
         sys.exit(1)
 
 
@@ -121,7 +116,7 @@ def readlinkabs(link: str) -> str:
 
 def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
                     options: Options,
-                    flush_errors: Optional[Callable[[List[str]], None]]) -> BuildResult:
+                    flush_errors: Optional[Callable[[List[str], bool], None]]) -> BuildResult:
     # Type-check the program and dependencies.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
