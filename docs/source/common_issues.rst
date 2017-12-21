@@ -474,7 +474,9 @@ Here's the above example modified to use ``MYPY``:
        return [arg]
 
 
-Silencing Linters
+.. _silencing-linters:
+
+Silencing linters
 -----------------
 
 In some cases, linters will complain about unused imports or code. In

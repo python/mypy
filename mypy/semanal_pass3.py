@@ -162,6 +162,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                     name=dec.var.name())
             elif isinstance(dec.func.type, CallableType):
                 dec.var.type = dec.func.type
+                self.analyze(dec.var.type, dec.var)
             return
         decorator_preserves_type = True
         for expr in dec.decorators:
@@ -189,6 +190,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 orig_sig = function_type(dec.func, self.builtin_type('function'))
                 sig.name = orig_sig.items()[0].name
                 dec.var.type = sig
+        self.analyze(dec.var.type, dec.var)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         """Traverse the assignment statement.

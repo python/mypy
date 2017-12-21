@@ -27,7 +27,7 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.subtypes import is_subtype
-from mypy.plugin import Plugin, AnalyzerPluginInterface, AnalyzeTypeContext
+from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
 from mypy import nodes, messages
 
 
@@ -132,7 +132,7 @@ def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
     return msg
 
 
-class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
+class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     """Semantic analyzer for types (semantic analysis pass 2).
 
     Converts unbound types into bound types.

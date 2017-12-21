@@ -30,7 +30,7 @@ if sys.platform != 'win32':
         'check-newtype.test',
     ]
 else:
-    dmypy_files = []
+    dmypy_files = []  # type: List[str]
 
 
 class TypeCheckSuite(DataSuite):

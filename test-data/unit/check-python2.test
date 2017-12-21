@@ -13,7 +13,7 @@ s = b'foo'
 from typing import TypeVar
 T = TypeVar(u'T')
 
-[case testNamedTuple*sh Unicode]
+[case testNamedTupleUnicode]
 from typing import NamedTuple
 from collections import namedtuple
 N = NamedTuple(u'N', [(u'x', int)])
