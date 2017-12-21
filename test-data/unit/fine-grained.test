@@ -1025,8 +1025,8 @@ def f() -> Iterator[None]:
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b>
-3: <b>
+2: <b>, __main__
+3: <b>, __main__, a
 [out]
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 ==
@@ -1072,9 +1072,9 @@ def g() -> None:
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b.h>, <b>
-3: <b.h>, <b>
-4:
+2: <b.h>, <b>, a.g
+3: <b.h>, <b>, a
+4: a.g
 [out]
 a.py:11: error: Too many arguments for "h"
 ==
@@ -1346,3 +1346,32 @@ def g() -> str: pass
 [builtins fixtures/exception.pyi]
 [out]
 ==
+
+[case testMroSpecialCase]
+import b
+import a
+
+[file a.py]
+class C: pass
+class D(C):
+    1()
+class E(D): pass
+
+[file b.py]
+import a
+
+[file a.py.2]
+class C: pass
+class D(C):
+    1()
+class E(D): pass
+
+[file b.py.2]
+import a
+
+[triggered]
+2: a, a
+[out]
+a.py:3: error: "int" not callable
+==
+a.py:3: error: "int" not callable
