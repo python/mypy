@@ -719,7 +719,7 @@ def reprocess_nodes(manager: BuildManager,
             fullname = '%s.%s' % (info.fullname(), node.node.name())
         return fullname
 
-    # Some nodes by full name so that the order of processing is deterministic.
+    # Sort nodes by full name so that the order of processing is deterministic.
     nodes = sorted(nodeset, key=key)
 
     # TODO: ignore_all argument to set_file_ignored_lines
