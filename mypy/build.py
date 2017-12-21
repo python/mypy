@@ -631,7 +631,7 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return find_module(id, self.lib_path) is not None
+        return find_module(id, self.lib_path, self.options.python) is not None
 
     def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
         """Parse the source of a file with the given name.
@@ -803,15 +803,13 @@ def is_file(path: str) -> bool:
 
 SITE_PACKAGE_COMMANDS = (
     # User site packages
-    '"import site;print(site.getusersitepackages())"',
-    # Usual site packages/python directory
-    '"import site;print(*site.getsitepackages(), sep=\'\\n\')"',
+    '"import site;print(site.getusersitepackages());print(*site.getsitepackages(), sep=\'\\n\')"',
     # for virtualenvs
     '"from distutils.sysconfig import get_python_lib;print(get_python_lib())"',
 )
 
 
-def call_python(python: str, command) -> str:
+def call_python(python: str, command: str) -> str:
     return check_output([python, '-c', command], stderr=STDOUT).decode('UTF-8')
 
 
@@ -821,7 +819,7 @@ def get_package_dirs(python: Optional[str]) -> List[str]:
     global package_dirs_cache
     if package_dirs_cache:
         return package_dirs_cache
-    package_dirs = []
+    package_dirs = []  # type: List[str]
     if python:
         # Use subprocess to get the package directory of given Python
         # executable
@@ -829,14 +827,13 @@ def get_package_dirs(python: Optional[str]) -> List[str]:
         if not check.startswith('Python'):
             return package_dirs
         # If we have a working python executable, query information from it
-        for command in SITE_PACKAGE_COMMANDS[:2]:
-            output = call_python(python, command)
-            for line in output.splitlines():
-                if os.path.isdir(line):
-                    package_dirs.append(line)
+        output = call_python(python, SITE_PACKAGE_COMMANDS[0])
+        for line in output.splitlines():
+            if os.path.isdir(line):
+                package_dirs.append(line)
         if not package_dirs:
             # if no paths are found, we fall back on sysconfig
-            output = call_python(python, SITE_PACKAGE_COMMANDS[2])
+            output = call_python(python, SITE_PACKAGE_COMMANDS[1])
             for line in output.splitlines():
                 if os.path.isdir(line):
                     package_dirs.append(line)
@@ -882,18 +879,17 @@ def find_module(id: str, lib_path_arg: Iterable[str], python: Optional[str] = No
                 for pkg_dir in package_dirs:
                     stub_name = components[0] + '_stubs'
                     stub_pkg = os.path.join(pkg_dir, stub_name)
-                    dir = os.path.join(pkg_dir, dir_chain)
+                    typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
                     if os.path.isfile(os.path.join(stub_pkg, 'py.typed')):
                         components[0] = stub_name
                         dirs.append(os.path.join(pkg_dir, os.sep.join(components[:-1])))
-                    elif os.path.isfile(os.path.join(pkg_dir, components[0], 'py.typed')) \
-                            and os.path.isdir(dir):
+                    elif os.path.isfile(typed_file):
                         dirs.append(os.path.join(pkg_dir, dir_chain))
 
                 find_module_dir_cache[dir_chain] = dirs
             candidate_base_dirs = find_module_dir_cache[dir_chain]
         else:
-            candidate_base_dirs = lib_path + tuple(package_dirs)
+            candidate_base_dirs = list(lib_path_arg) + package_dirs
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
         # elements of lib_path.  This is probably much shorter than lib_path itself.
@@ -920,8 +916,8 @@ def find_module(id: str, lib_path_arg: Iterable[str], python: Optional[str] = No
     return find_module_cache[key]
 
 
-def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource]:
-    module_path = find_module(module, lib_path)
+def find_modules_recursive(module: str, lib_path: List[str], python: Optional[str]) -> List[BuildSource]:
+    module_path = find_module(module, lib_path, python)
     if not module_path:
         return []
     result = [BuildSource(module_path, module, None)]
@@ -941,14 +937,14 @@ def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource
                     (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
                     os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
                 hits.add(item)
-                result += find_modules_recursive(module + '.' + item, lib_path)
+                result += find_modules_recursive(module + '.' + item, lib_path, python)
             elif item != '__init__.py' and item != '__init__.pyi' and \
                     item.endswith(('.py', '.pyi')):
                 mod = item.split('.')[0]
                 if mod not in hits:
                     hits.add(mod)
-                    result += find_modules_recursive(
-                        module + '.' + mod, lib_path)
+                    result += find_modules_recursive(module + '.' + mod,
+                                                     lib_path, python)
     return result
 
 
@@ -1593,7 +1589,7 @@ class State:
                 # difference and just assume 'builtins' everywhere,
                 # which simplifies code.
                 file_id = '__builtin__'
-            path = find_module(file_id, manager.lib_path)
+            path = find_module(file_id, manager.lib_path, manager.options.python)
             if path:
                 if any((path.startswith(d) for d in package_dirs_cache)):
                     self.ignore_all = True

@@ -245,6 +245,7 @@ def process_options(args: List[str],
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y')
+    parser.add_argument('--python', action='store', help="Point to a Python executable.")
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
                         help="typecheck special-cased code for the given OS platform "
                         "(defaults to sys.platform).")
@@ -508,7 +509,7 @@ def process_options(args: List[str],
                  .format(special_opts.package))
         options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
-        targets = build.find_modules_recursive(special_opts.package, lib_path)
+        targets = build.find_modules_recursive(special_opts.package, lib_path, options.python)
         if not targets:
             fail("Can't find package '{}'".format(special_opts.package))
         return targets, options
