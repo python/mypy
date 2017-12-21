@@ -112,6 +112,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         self.visit_ref_expr(node)
 
     def visit_member_expr(self, node: MemberExpr) -> None:
+        if node.def_var:
+            node.def_var = self.fixup(node.def_var)
         self.visit_ref_expr(node)
         super().visit_member_expr(node)
 
