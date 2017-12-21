@@ -1458,3 +1458,48 @@ _testNoCrashOnGenericUnionUnpacking.py:10: error: Revealed type is 'Union[builti
 _testNoCrashOnGenericUnionUnpacking.py:11: error: Revealed type is 'Union[builtins.str, builtins.int]'
 _testNoCrashOnGenericUnionUnpacking.py:15: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
 _testNoCrashOnGenericUnionUnpacking.py:16: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
+
+[case testEnumIteration]
+from enum import Enum
+class E(Enum):
+    A = 'a'
+l = [e for e in E]
+reveal_type(l[0])
+for e in E:
+    reveal_type(e)
+[out]
+_testEnumIteration.py:5: error: Revealed type is '_testEnumIteration.E*'
+_testEnumIteration.py:7: error: Revealed type is '_testEnumIteration.E*'
+
+[case testEnumIterable]
+from enum import Enum
+from typing import Iterable
+class E(Enum):
+    a = 'a'
+def f(ie:Iterable[E]):
+    pass
+f(E)
+
+[case testIntEnumIterable]
+from enum import IntEnum
+from typing import Iterable
+class N(IntEnum):
+    x = 1
+def f(ni: Iterable[N]):
+    pass
+def g(ii: Iterable[int]):
+    pass
+f(N)
+g(N)
+
+[case testDerivedEnumIterable]
+from enum import Enum
+from typing import Iterable
+class E(str, Enum):
+    a = 'foo'
+def f(ei: Iterable[E]):
+    pass
+def g(si: Iterable[str]):
+    pass
+f(E)
+g(E)
