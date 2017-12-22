@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import os
 import sys
 
@@ -9,15 +10,18 @@ from mypy.test.helpers import run
 
 class TestPackages(TestCase):
 
-    def install_pkg(self, pkg: str) -> None:
+    @contextmanager
+    def installed_package(self, pkg: str) -> None:
         working_dir = os.path.join(package_path, pkg)
         out, lines = run([sys.executable, 'setup.py', 'install'],
                          cwd=working_dir)
         if out != 0:
             self.fail('\n'.join(lines))
+        yield
+        out, _ = run([sys.executable, '-m', 'pip', 'uninstall', '-y', pkg], cwd=working_dir)
+        assert out == 0
 
     def setUp(self) -> None:
-        self.install_pkg('typed')
         self.dirs = get_package_dirs(None)
         self.assertNotEqual(self.dirs, [])
 
@@ -32,13 +36,14 @@ class TestPackages(TestCase):
             self.fail("Could not locate {}, path is {}".format(pkg, path))
 
     def test_find_typed_package(self) -> None:
-        self.find_package('typedpkg')
-        self.find_package('typedpkg.sample')
+        with self.installed_package('typedpkg'):
+            self.find_package('typedpkg')
+            self.find_package('typedpkg.sample')
 
     def test_find_stub_pacakage(self) -> None:
-        self.install_pkg('stubs')
-        self.find_package('typedpkg')
-        self.find_package('typedpkg.sample')
+        with self.installed_package('typedpkg_stubs'):
+            self.find_package('typedpkg')
+            self.find_package('typedpkg.sample')
 
 
 if __name__ == '__main__':
