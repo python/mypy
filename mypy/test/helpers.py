@@ -1,12 +1,14 @@
 import os
 import re
+import subprocess
 import sys
 import time
 
-from typing import List, Dict, Tuple, Callable, Any
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from mypy import defaults
 from mypy.myunit import AssertionFailure
+from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 
 
@@ -308,3 +310,30 @@ def retry_on_error(func: Callable[[], Any], max_wait: float = 1.0) -> None:
                 # Done enough waiting, the error seems persistent.
                 raise
             time.sleep(wait_time)
+
+
+def split_lines(*streams: bytes) -> List[str]:
+    """Returns a single list of string lines from the byte streams in args."""
+    return [
+        s.rstrip('\n\r')
+        for stream in streams
+        for s in str(stream, 'utf8').splitlines()
+    ]
+
+
+def run(cmdline: List[str], *, env: Optional[Dict[str, str]] = None,
+        timeout: int = 300, cwd: str = test_temp_dir) -> Tuple[int, List[str]]:
+    """A poor man's subprocess.run() for 3.4 compatibility."""
+    process = subprocess.Popen(
+        cmdline,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=cwd,
+    )
+    try:
+        out, err = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        out = err = b''
+        process.kill()
+    return process.returncode, split_lines(out, err)

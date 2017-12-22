@@ -212,6 +212,7 @@ PYTEST_FILES = test_path(
     'testmerge',
     'testtransform',
     'testtypegen',
+    'testpackages',
     'testparse',
     'testsemanal'
 )
