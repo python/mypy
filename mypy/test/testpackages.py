@@ -53,6 +53,9 @@ class TestPackages(TestCase):
             self.fail("Could not locate {}, path is {}".format(pkg, path))
 
     def test_typed_package(self) -> None:
+        """Tests checking information based on installed packages.
+        This test CANNOT be split up, concurrency means that simultaneously
+        installing/uninstalling will break tests"""
         with self.installed_package('typedpkg_stubs'):
             out, err, ret = run_mypy(['simple.py'])
             assert ret == 1
