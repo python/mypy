@@ -1375,3 +1375,18 @@ import a
 a.py:3: error: "int" not callable
 ==
 a.py:3: error: "int" not callable
+
+[case testMetaclassDefinition_python2]
+# flags: --py2
+import abc
+import m
+m.f()
+
+class A:
+    __metaclass__ = abc.ABCMeta
+[file m.py]
+def f(): pass
+[file m.py.2]
+def f(x=1): pass
+[out]
+==
