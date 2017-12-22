@@ -734,7 +734,7 @@ def remove_cwd_prefix_from_path(p: str) -> str:
 
 
 # Cache find_module: (id, lib_path) -> result.
-find_module_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], Optional[str]]
+find_module_cache = {}  # type: Dict[str, Optional[str]]
 
 # Cache some repeated work within distinct find_module calls: finding which
 # elements of lib_path have even the subdirectory they'd need for the module
@@ -880,13 +880,15 @@ def find_module(id: str, lib_path_arg: Iterable[str],
                 # Third-party stub/typed packages
                 for pkg_dir in package_dirs:
                     stub_name = components[0] + '_stubs'
-                    stub_pkg = os.path.join(pkg_dir, stub_name)
                     typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
-                    if os.path.isfile(os.path.join(stub_pkg, 'py.typed')):
+                    stub_typed_file = os.path.join(pkg_dir, stub_name, 'py.typed')
+                    if os.path.isfile(stub_typed_file):
                         components[0] = stub_name
-                        dirs.append(os.path.join(pkg_dir, os.sep.join(components[:-1])))
+                        path = os.path.join(pkg_dir, stub_name, *components[1:-1])
+                        dirs.append(path)
                     elif os.path.isfile(typed_file):
-                        dirs.append(os.path.join(pkg_dir, dir_chain))
+                        path = os.path.join(pkg_dir, dir_chain)
+                        dirs.append(path)
 
                 find_module_dir_cache[dir_chain] = dirs
             candidate_base_dirs = find_module_dir_cache[dir_chain]
@@ -903,8 +905,11 @@ def find_module(id: str, lib_path_arg: Iterable[str],
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
+                path_stubs = base_path + '_stubs' + sepinit + extension
                 if is_file(path) and verify_module(id, path):
                     return path
+                elif is_file(path_stubs) and verify_module(id, path_stubs):
+                    return path_stubs
             # No package, look for module.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + extension
@@ -912,10 +917,9 @@ def find_module(id: str, lib_path_arg: Iterable[str],
                     return path
         return None
 
-    key = (id, lib_path)
-    if key not in find_module_cache:
-        find_module_cache[key] = find()
-    return find_module_cache[key]
+    if id not in find_module_cache:
+        find_module_cache[id] = find()
+    return find_module_cache[id]
 
 
 def find_modules_recursive(module: str, lib_path: List[str],

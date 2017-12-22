@@ -10,4 +10,5 @@ setup(
     version='0.1',
     package_data={'typedpkg': ['py.typed']},
     packages=['typedpkg'],
+    include_package_data=True,
 )
