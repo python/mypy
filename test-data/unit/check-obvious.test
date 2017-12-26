@@ -3,10 +3,22 @@
 [case testObviousLiteralString]
 # flags: --obvious-return
 def foo():
+    "" + 1
     return ""
 
 def bar():
+    1 + ""
     return 1
 
 reveal_type(foo() + "")  # E: Revealed type is 'builtins.str'
 bar() + foo()  # E: Unsupported operand types for + ("int" and "str")
+
+[case testObviousOverride]
+# flags: --obvious-return
+class A:
+    def foo(self):
+        return ""
+
+class B(A):
+    def foo(self):  # E: Return type of "foo" incompatible with supertype "A"
+        return 1

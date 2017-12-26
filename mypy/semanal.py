@@ -588,18 +588,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
-            if self.options.obvious_return:
-                # FIX: if we need names, it can't be done here since it's out of scope
-                if isinstance(defn.type, CallableType):
-                    if isinstance(defn.type.ret_type, AnyType):
-                        if defn.type.ret_type.type_of_any == TypeOfAny.unannotated:
-                            finder = RetFinder()
-                            defn.accept(finder)
-                            ret_types = [self.analyze_simple_literal_type(ret) for ret in finder.rets]
-                            if None not in ret_types:
-                                defn.type.ret_type = UnionType.make_simplified_union(ret_types)
 
-            if defn.type:
+            if defn.type is not None and defn.is_checkable:
                 self.check_classvar_in_signature(defn.type)
                 assert isinstance(defn.type, CallableType)
                 # Signature must be analyzed in the surrounding scope so that
@@ -612,9 +602,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 if arg.initializer:
                     arg.initializer.accept(self)
             # Bind the type variables again to visit the body.
-            if defn.type:
+            if defn.type is not None and defn.is_checkable:
                 a = self.type_analyzer()
-                a.bind_function_type_variables(cast(CallableType, defn.type), defn)
+                assert isinstance(defn.type, CallableType)
+                a.bind_function_type_variables(defn.type, defn)
             self.function_stack.append(defn)
             self.enter()
             for arg in defn.arguments:
@@ -637,6 +628,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 postponed.accept(self)
             self.postpone_nested_functions_stack.pop()
             self.postponed_functions_stack.pop()
+
+            if self.options.obvious_return:
+                if isinstance(defn.type, CallableType):
+                    if isinstance(defn.type.ret_type, AnyType):
+                        if defn.type.ret_type.type_of_any == TypeOfAny.unannotated:
+                            finder = RetFinder()
+                            defn.accept(finder)
+                            # Ad-hoc join: trivial identity
+                            ret_types = {self.analyze_simple_literal_type(ret) for ret in finder.rets}
+                            if None not in ret_types and len(ret_types) == 1:
+                                defn.type.ret_type = ret_types.pop()
 
             self.leave()
             self.function_stack.pop()
@@ -1714,7 +1716,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
             if len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr):
                 if s.lvalues[0].is_inferred_def:
-                    s.type = self.analyze_simple_literal_type(s.rvalue)
+                    if self.options.semantic_analysis_only or self.function_stack:
+                        # Skip this if we're only doing the semantic analysis pass.
+                        # This is mostly to avoid breaking unit tests.
+                        # Also skip inside a function; this is to avoid confusing
+                        # the code that handles dead code due to isinstance()
+                        # inside type variables with value restrictions (like
+                        # AnyStr).
+                        s.type = None
+                    else:
+                        s.type = self.analyze_simple_literal_type(s.rvalue)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1735,14 +1746,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
     def analyze_simple_literal_type(self, rvalue: Expression) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc."""
-        if self.options.semantic_analysis_only or self.function_stack:
-            # Skip this if we're only doing the semantic analysis pass.
-            # This is mostly to avoid breaking unit tests.
-            # Also skip inside a function; this is to avoid confusing
-            # the code that handles dead code due to isinstance()
-            # inside type variables with value restrictions (like
-            # AnyStr).
-            return None
         if isinstance(rvalue, IntExpr):
             return self.named_type_or_none('builtins.int')
         if isinstance(rvalue, FloatExpr):

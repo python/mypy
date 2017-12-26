@@ -376,27 +376,26 @@ class ASTConverter(ast3.NodeTransformer):
             self.set_type_optional(arg_type, arg.initializer)
 
         func_type = None
-        if any(arg_types) or return_type or self.options.obvious_return:
-            if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
-                self.fail("Ellipses cannot accompany other argument types "
-                          "in function type signature.", n.lineno, 0)
-            elif len(arg_types) > len(arg_kinds):
-                self.fail('Type signature has too many arguments', n.lineno, 0)
-            elif len(arg_types) < len(arg_kinds):
-                self.fail('Type signature has too few arguments', n.lineno, 0)
-            else:
-                func_type = CallableType([a if a is not None else
-                                          AnyType(TypeOfAny.unannotated) for a in arg_types],
-                                         arg_kinds,
-                                         arg_names,
-                                         return_type if return_type is not None else
-                                         AnyType(TypeOfAny.unannotated),
-                                         _dummy_fallback)
+        if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
+            self.fail("Ellipses cannot accompany other argument types "
+                      "in function type signature.", n.lineno, 0)
+        elif len(arg_types) > len(arg_kinds):
+            self.fail('Type signature has too many arguments', n.lineno, 0)
+        elif len(arg_types) < len(arg_kinds):
+            self.fail('Type signature has too few arguments', n.lineno, 0)
+        else:
+            func_type = CallableType([a if a is not None else
+                                      AnyType(TypeOfAny.unannotated) for a in arg_types],
+                                     arg_kinds,
+                                     arg_names,
+                                     return_type if return_type is not None else
+                                     AnyType(TypeOfAny.unannotated),
+                                     _dummy_fallback)
 
-        func_def = FuncDef(n.name,
-                       args,
-                       self.as_required_block(n.body, n.lineno),
-                       func_type)
+        func_def = FuncDef(n.name, args,
+                           self.as_required_block(n.body, n.lineno),
+                           func_type)
+        func_def.is_checkable = bool(any(arg_types) or return_type)
         if is_coroutine:
             # A coroutine is also a generator, mostly for internal reasons.
             func_def.is_generator = func_def.is_coroutine = True

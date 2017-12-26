@@ -647,7 +647,7 @@ class CallableType(FunctionLike):
                  arg_kinds: List[int],
                  arg_names: Sequence[Optional[str]],
                  ret_type: Type,
-                 fallback: Instance,
+                 fallback: Instance,  # or none at parsing time
                  name: Optional[str] = None,
                  definition: Optional[SymbolNode] = None,
                  variables: Optional[List[TypeVarDef]] = None,
@@ -720,7 +720,8 @@ class CallableType(FunctionLike):
         )
 
     def is_type_obj(self) -> bool:
-        return self.fallback.type.is_metaclass()
+        # self.fallback is None at initialization
+        return self.fallback is not None and self.fallback.type.is_metaclass()
 
     def is_concrete_type_obj(self) -> bool:
         return self.is_type_obj() and self.is_classmethod_class

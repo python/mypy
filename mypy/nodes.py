@@ -429,12 +429,13 @@ class FuncItem(FuncBase):
     is_awaitable_coroutine = False  # Decorated with '@{typing,asyncio}.coroutine'?
     is_static = False      # Uses @staticmethod?
     is_class = False       # Uses @classmethod?
+    is_checkable = False
     # Variants of function with type variables with values expanded
     expanded = None  # type: List[FuncItem]
 
     FLAGS = [
         'is_overload', 'is_generator', 'is_coroutine', 'is_async_generator',
-        'is_awaitable_coroutine', 'is_static', 'is_class',
+        'is_awaitable_coroutine', 'is_static', 'is_class', 'is_checkable',
     ]
 
     def __init__(self, arguments: List[Argument], body: 'Block',
