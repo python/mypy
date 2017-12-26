@@ -293,7 +293,7 @@ def process_options(args: List[str],
     add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
                         help="warn about unneeded '# type: ignore' comments")
     add_invertible_flag('--warn-unused-configs', default=False, strict_flag=True,
-                        help="warn about unnused '[mypy-<pattern>]' config sections")
+                        help="warn about unused '[mypy-<pattern>]' config sections")
     add_invertible_flag('--show-error-context', default=False,
                         dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
