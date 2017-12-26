@@ -55,6 +55,7 @@ typecheck_files = [
     'check-serialize.test',
     'check-bound.test',
     'check-optional.test',
+    'check-obvious.test',
     'check-fastparse.test',
     'check-warnings.test',
     'check-async-await.test',

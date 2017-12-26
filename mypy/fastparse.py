@@ -376,7 +376,7 @@ class ASTConverter(ast3.NodeTransformer):
             self.set_type_optional(arg_type, arg.initializer)
 
         func_type = None
-        if any(arg_types) or return_type:
+        if any(arg_types) or return_type or self.options.obvious_return:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
                           "in function type signature.", n.lineno, 0)

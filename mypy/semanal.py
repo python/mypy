@@ -588,6 +588,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
+            if self.options.obvious_return:
+                # FIX: if we need names, it can't be done here since it's out of scope
+                if isinstance(defn.type, CallableType):
+                    if isinstance(defn.type.ret_type, AnyType):
+                        if defn.type.ret_type.type_of_any == TypeOfAny.unannotated:
+                            finder = RetFinder()
+                            defn.accept(finder)
+                            ret_types = [self.analyze_simple_literal_type(ret) for ret in finder.rets]
+                            if None not in ret_types:
+                                defn.type.ret_type = UnionType.make_simplified_union(ret_types)
+
             if defn.type:
                 self.check_classvar_in_signature(defn.type)
                 assert isinstance(defn.type, CallableType)
@@ -4230,6 +4241,16 @@ class MarkImportsMypyOnlyVisitor(TraverserVisitor):
 def make_any_non_explicit(t: Type) -> Type:
     """Replace all Any types within in with Any that has attribute 'explicit' set to False"""
     return t.accept(MakeAnyNonExplicit())
+
+
+class RetFinder(TraverserVisitor):
+    rets = None  # type: List[Expression]
+
+    def __init__(self) -> None:
+        self.rets = []
+
+    def visit_return_stmt(self, ret: ReturnStmt) -> None:
+        self.rets.append(ret.expr or NameExpr("None"))
 
 
 class MakeAnyNonExplicit(TypeTranslator):

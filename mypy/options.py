@@ -39,6 +39,7 @@ class Options:
         "no_implicit_optional",
         "strict_optional",
         "disallow_untyped_decorators",
+        "obvious_return",
     }
 
     OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS | {"quick_and_dirty", "platform"})
@@ -111,6 +112,8 @@ class Options:
 
         # Apply strict None checking
         self.strict_optional = False
+
+        self.obvious_return = False
 
         # Show "note: In function "foo":" messages.
         self.show_error_context = False
