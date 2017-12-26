@@ -213,7 +213,8 @@ PYTEST_FILES = test_path(
     'testtransform',
     'testtypegen',
     'testparse',
-    'testsemanal'
+    'testsemanal',
+    'testmodulediscovery',
 )
 
 SLOW_FILES = test_path(

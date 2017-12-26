@@ -182,8 +182,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
     This is the second phase of semantic analysis.
     """
 
-    # Library search paths
-    lib_path = None  # type: List[str]
     # Module name space
     modules = None  # type: Dict[str, MypyFile]
     # Global name space for current module
@@ -229,13 +227,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
     def __init__(self,
                  modules: Dict[str, MypyFile],
                  missing_modules: Set[str],
-                 lib_path: List[str], errors: Errors,
+                 errors: Errors,
                  plugin: Plugin) -> None:
-        """Construct semantic analyzer.
-
-        Use lib_path to search for modules, and report analysis errors
-        using the Errors instance.
-        """
+        """Construct semantic analyzer."""
         self.locals = [None]
         self.imports = set()
         self.type = None
@@ -244,7 +238,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         self.function_stack = []
         self.block_depth = [0]
         self.loop_depth = 0
-        self.lib_path = lib_path
         self.errors = errors
         self.modules = modules
         self.msg = MessageBuilder(errors, modules)
