@@ -620,6 +620,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         If type_override is provided, use it as the function type.
         """
+        if not defn.is_checkable:
+            return
         # We may be checking a function definition or an anonymous function. In
         # the first case, set up another reference with the precise type.
         fdef = None  # type: Optional[FuncDef]

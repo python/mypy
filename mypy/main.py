@@ -318,6 +318,9 @@ def process_options(args: List[str],
                         "(experimental -- read documentation before using!).  "
                         "Implies --strict-optional.  Has the undesirable side-effect of "
                         "suppressing other errors in non-whitelisted files.")
+    add_invertible_flag('--obvious-return', default=False, strict_flag=True,
+                        help="Treat obvious return values as function annotations")
+
     parser.add_argument('--junit-xml', help="write junit.xml to the given file")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--show-traceback', '--tb', action='store_true',
