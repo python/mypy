@@ -13,7 +13,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, TypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded
+    Overloaded, TypeVarDef
 )
 from mypy.util import get_prefix
 
@@ -96,11 +96,18 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_func_def(node)
 
     def visit_class_def(self, node: ClassDef) -> None:
-        # TODO additional things like type_vars?
+        # TODO additional things?
         node.defs.body = self.replace_statements(node.defs.body)
         node.info = self.fixup(node.info)
+        for tv in node.type_vars:
+            self.process_type_var_def(tv)
         self.process_type_info(node.info)
         super().visit_class_def(node)
+
+    def process_type_var_def(self, tv: TypeVarDef) -> None:
+        for value in tv.values:
+            self.fixup_type(value)
+        self.fixup_type(tv.upper_bound)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         if node.type:
