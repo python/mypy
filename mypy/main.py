@@ -67,6 +67,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         try:
             for m in a:
                 f.write(m + '\n')
+            f.flush()
         except BrokenPipeError:
             pass
 
