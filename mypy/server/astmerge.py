@@ -144,7 +144,13 @@ class NodeReplaceVisitor(TraverserVisitor):
         typ.accept(TypeReplaceVisitor(self.replacements))
 
     def process_type_info(self, info: TypeInfo) -> None:
-        # TODO additional things like the MRO
+        # TODO: Additional things:
+        # - declared_metaclass
+        # - metaclass_type
+        # - _promote
+        # - tuple_type
+        # - typeddict_type
+        # - replaced
         replace_nodes_in_symbol_table(info.names, self.replacements)
         for i, item in enumerate(info.mro):
             info.mro[i] = self.fixup(info.mro[i])
