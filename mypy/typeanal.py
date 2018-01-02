@@ -25,9 +25,7 @@ from mypy.nodes import (
     Decorator, Node
 )
 from mypy.tvar_scope import TypeVarScope
-from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.subtypes import is_subtype
 from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
 from mypy import nodes, messages
 
@@ -996,58 +994,3 @@ def make_optional_type(t: Type) -> Type:
         return UnionType(items + [NoneTyp()], t.line, t.column)
     else:
         return UnionType([t, NoneTyp()], t.line, t.column)
-
-
-class TypeVariableChecker(TypeTranslator):
-    """Visitor that checks that type variables in generic types have valid values.
-
-    Note: This must be run at the end of semantic analysis when MROs are
-    complete and forward references have been resolved.
-
-    This does two things:
-
-    - If type variable in C has a value restriction, check that X in C[X] conforms
-      to the restriction.
-    - If type variable in C has a non-default upper bound, check that X in C[X]
-      conforms to the upper bound.
-
-    (This doesn't need to be a type translator, but it simplifies the implementation.)
-    """
-
-    def __init__(self, fail: Callable[[str, Context], None]) -> None:
-        self.fail = fail
-
-    def visit_instance(self, t: Instance) -> Type:
-        info = t.type
-        for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
-            if tvar.values:
-                if isinstance(arg, TypeVarType):
-                    arg_values = arg.values
-                    if not arg_values:
-                        self.fail('Type variable "{}" not valid as type '
-                                  'argument value for "{}"'.format(
-                                      arg.name, info.name()), t)
-                        continue
-                else:
-                    arg_values = [arg]
-                self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
-            if not is_subtype(arg, tvar.upper_bound):
-                self.fail('Type argument "{}" of "{}" must be '
-                          'a subtype of "{}"'.format(
-                              arg, info.name(), tvar.upper_bound), t)
-        return t
-
-    def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
-                              valids: List[Type], arg_number: int, context: Context) -> None:
-        for actual in actuals:
-            if (not isinstance(actual, AnyType) and
-                    not any(is_same_type(actual, value)
-                            for value in valids)):
-                if len(actuals) > 1 or not isinstance(actual, Instance):
-                    self.fail('Invalid type argument value for "{}"'.format(
-                        type.name()), context)
-                else:
-                    class_name = '"{}"'.format(type.name())
-                    actual_type_name = '"{}"'.format(actual.type.name())
-                    self.fail(messages.INCOMPATIBLE_TYPEVAR_VALUE.format(
-                        arg_name, class_name, actual_type_name), context)
