@@ -1390,3 +1390,25 @@ def f(): pass
 def f(x=1): pass
 [out]
 ==
+
+[case testRefreshGenericSubclass]
+from typing import Generic, TypeVar
+import m
+m.x
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, x: T) -> None:
+        pass
+
+class D(C[T]):
+    def __init__(self, x: T) -> None:
+        m.x
+        super(D, self).__init__(x)
+[file m.py]
+x = 0
+[file m.py.2]
+x = ''
+[out]
+==
