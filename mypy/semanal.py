@@ -671,6 +671,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             if self.analyze_typeddict_classdef(defn):
                 yield False
                 return
+            self.setup_class_def_analysis(defn)
             named_tuple_info = self.analyze_namedtuple_classdef(defn)
             if named_tuple_info is not None:
                 # Temporarily clear the names dict so we don't get errors about duplicate names
@@ -704,7 +705,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     if key not in named_tuple_info.names or key != '__doc__'
                 })
             else:
-                self.setup_class_def_analysis(defn)
                 self.analyze_base_classes(defn)
                 self.analyze_metaclass(defn)
                 defn.info.is_protocol = is_protocol
