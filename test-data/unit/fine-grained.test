@@ -1412,3 +1412,19 @@ x = 0
 x = ''
 [out]
 ==
+
+[case testRefreshNamedTupleSubclass]
+from typing import NamedTuple
+import m
+m.x
+
+N = NamedTuple('N', [('x', int)])
+
+class C(N):
+    pass
+[file m.py]
+x = 0
+[file m.py.2]
+x = ''
+[out]
+==
