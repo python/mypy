@@ -81,6 +81,32 @@ DeferredNode = NamedTuple(
     ])
 
 
+# Data structure returned by find_isinstance_check representing
+# information learned from the truth or falsehood of a condition.  The
+# dict maps nodes representing expressions like 'a[0].x' to their
+# refined types under the assumption that the condition has a
+# particular truth value. A value of None means that the condition can
+# never have that truth value.
+
+# NB: The keys of this dict are nodes in the original source program,
+# which are compared by reference equality--effectively, being *the
+# same* expression of the program, not just two identical expressions
+# (such as two references to the same variable). TODO: it would
+# probably be better to have the dict keyed by the nodes' literal_hash
+# field instead.
+
+TypeMap = Optional[Dict[Expression, Type]]
+
+# An object that represents either a precise type or a type with an upper bound;
+# it is important for correct type inference with isinstance.
+TypeRange = NamedTuple(
+    'TypeRange',
+    [
+        ('item', Type),
+        ('is_upper_bound', bool),  # False => precise type
+    ])
+
+
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     """Mypy type checker.
 
@@ -2615,6 +2641,306 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.binder.handle_continue()
         return None
 
+    def intersect_instance_callable(self, typ: Instance, callable_type: CallableType) -> Instance:
+        """Creates a fake type that represents the intersection of an
+        Instance and a CallableType.
+
+        It operates by creating a bare-minimum dummy TypeInfo that
+        subclasses type and adds a __call__ method matching callable_type.
+        """
+
+        # In order for this to work in incremental mode, the type we generate needs to
+        # have a valid fullname and a corresponding entry in a symbol table. We generate
+        # a unique name inside the symbol table of the current module.
+        cur_module = cast(MypyFile, self.scope.stack[0])
+        gen_name = gen_unique_name("<callable subtype of {}>".format(typ.type.name()),
+                                   cur_module.names)
+
+        # Build the fake ClassDef and TypeInfo together.
+        # The ClassDef is full of lies and doesn't actually contain a body.
+        # Use format_bare to generate a nice name for error messages.
+        # We skip fully filling out a handful of TypeInfo fields because they
+        # should be irrelevant for a generated type like this:
+        # is_protocol, protocol_members, is_abstract
+        short_name = self.msg.format_bare(typ)
+        cdef = ClassDef(short_name, Block([]))
+        cdef.fullname = cur_module.fullname() + '.' + gen_name
+        info = TypeInfo(SymbolTable(), cdef, cur_module.fullname())
+        cdef.info = info
+        info.bases = [typ]
+        info.calculate_mro()
+        info.calculate_metaclass_type()
+
+        # Build up a fake FuncDef so we can populate the symbol table.
+        func_def = FuncDef('__call__', [], Block([]), callable_type)
+        func_def.info = info
+        info.names['__call__'] = SymbolTableNode(MDEF, func_def, callable_type)
+
+        cur_module.names[gen_name] = SymbolTableNode(GDEF, info)
+
+        return Instance(info, [])
+
+    def make_fake_callable(self, typ: Instance) -> Instance:
+        """Produce a new type that makes type Callable with a generic callable type."""
+
+        fallback = self.named_type('builtins.function')
+        callable_type = CallableType([AnyType(TypeOfAny.explicit),
+                                      AnyType(TypeOfAny.explicit)],
+                                     [nodes.ARG_STAR, nodes.ARG_STAR2],
+                                     [None, None],
+                                     ret_type=AnyType(TypeOfAny.explicit),
+                                     fallback=fallback,
+                                     is_ellipsis_args=True)
+
+        return self.intersect_instance_callable(typ, callable_type)
+
+    def partition_by_callable(self, typ: Type,
+                              unsound_partition: bool) -> Tuple[List[Type], List[Type]]:
+        """Takes in a type and partitions that type into callable subtypes and
+        uncallable subtypes.
+
+        Thus, given:
+        `callables, uncallables = partition_by_callable(type)`
+
+        If we assert `callable(type)` then `type` has type Union[*callables], and
+        If we assert `not callable(type)` then `type` has type Union[*uncallables]
+
+        If unsound_partition is set, assume that anything that is not
+        clearly callable is in fact not callable. Otherwise we generate a
+        new subtype that *is* callable.
+
+        Guaranteed to not return [], []
+
+        """
+        if isinstance(typ, FunctionLike) or isinstance(typ, TypeType):
+            return [typ], []
+
+        if isinstance(typ, AnyType):
+            return [typ], [typ]
+
+        if isinstance(typ, UnionType):
+            callables = []
+            uncallables = []
+            for subtype in typ.relevant_items():
+                # Use unsound_partition when handling unions in order to
+                # allow the expected type discrimination.
+                subcallables, subuncallables = self.partition_by_callable(subtype,
+                                                                          unsound_partition=True)
+                callables.extend(subcallables)
+                uncallables.extend(subuncallables)
+            return callables, uncallables
+
+        if isinstance(typ, TypeVarType):
+            # We could do better probably?
+            # Refine the the type variable's bound as our type in the case that
+            # callable() is true. This unfortuantely loses the information that
+            # the type is a type variable in that branch.
+            # This matches what is done for isinstance, but it may be possible to
+            # do better.
+            # If it is possible for the false branch to execute, return the original
+            # type to avoid losing type information.
+            callables, uncallables = self.partition_by_callable(typ.erase_to_union_or_bound(),
+                                                                unsound_partition)
+            uncallables = [typ] if len(uncallables) else []
+            return callables, uncallables
+
+        # A TupleType is callable if its fallback is, but needs special handling
+        # when we dummy up a new type.
+        ityp = typ
+        if isinstance(typ, TupleType):
+            ityp = typ.fallback
+
+        if isinstance(ityp, Instance):
+            method = ityp.type.get_method('__call__')
+            if method and method.type:
+                callables, uncallables = self.partition_by_callable(method.type,
+                                                                    unsound_partition=False)
+                if len(callables) and not len(uncallables):
+                    # Only consider the type callable if its __call__ method is
+                    # definitely callable.
+                    return [typ], []
+
+            if not unsound_partition:
+                fake = self.make_fake_callable(ityp)
+                if isinstance(typ, TupleType):
+                    fake.type.tuple_type = TupleType(typ.items, fake)
+                    return [fake.type.tuple_type], [typ]
+                return [fake], [typ]
+
+        if unsound_partition:
+            return [], [typ]
+        else:
+            # We don't know how properly make the type callable.
+            return [typ], [typ]
+
+    def conditional_callable_type_map(self, expr: Expression,
+                                      current_type: Optional[Type],
+                                      ) -> Tuple[TypeMap, TypeMap]:
+        """Takes in an expression and the current type of the expression.
+
+        Returns a 2-tuple: The first element is a map from the expression to
+        the restricted type if it were callable. The second element is a
+        map from the expression to the type it would hold if it weren't
+        callable.
+        """
+        if not current_type:
+            return {}, {}
+
+        if isinstance(current_type, AnyType):
+            return {}, {}
+
+        callables, uncallables = self.partition_by_callable(current_type,
+                                                            unsound_partition=False)
+
+        if len(callables) and len(uncallables):
+            callable_map = {expr: UnionType.make_union(callables)} if len(callables) else None
+            uncallable_map = {
+                expr: UnionType.make_union(uncallables)} if len(uncallables) else None
+            return callable_map, uncallable_map
+
+        elif len(callables):
+            return {}, None
+
+        return None, {}
+
+    def find_isinstance_check(self, node: Expression
+                              ) -> Tuple[TypeMap, TypeMap]:
+        """Find any isinstance checks (within a chain of ands).  Includes
+        implicit and explicit checks for None and calls to callable.
+
+        Return value is a map of variables to their types if the condition
+        is true and a map of variables to their types if the condition is false.
+
+        If either of the values in the tuple is None, then that particular
+        branch can never occur.
+
+        Guaranteed to not return None, None. (But may return {}, {})
+        """
+        type_map = self.type_map
+        if is_true_literal(node):
+            return {}, None
+        elif is_false_literal(node):
+            return None, {}
+        elif isinstance(node, CallExpr):
+            if refers_to_fullname(node.callee, 'builtins.isinstance'):
+                if len(node.args) != 2:  # the error will be reported later
+                    return {}, {}
+                expr = node.args[0]
+                if literal(expr) == LITERAL_TYPE:
+                    vartype = type_map[expr]
+                    type = get_isinstance_type(node.args[1], type_map)
+                    return conditional_type_map(expr, vartype, type)
+            elif refers_to_fullname(node.callee, 'builtins.issubclass'):
+                expr = node.args[0]
+                if literal(expr) == LITERAL_TYPE:
+                    vartype = type_map[expr]
+                    type = get_isinstance_type(node.args[1], type_map)
+                    if isinstance(vartype, UnionType):
+                        union_list = []
+                        for t in vartype.items:
+                            if isinstance(t, TypeType):
+                                union_list.append(t.item)
+                            else:
+                                #  this is an error that should be reported earlier
+                                #  if we reach here, we refuse to do any type inference
+                                return {}, {}
+                        vartype = UnionType(union_list)
+                    elif isinstance(vartype, TypeType):
+                        vartype = vartype.item
+                    else:
+                        # any other object whose type we don't know precisely
+                        # for example, Any or Instance of type type
+                        return {}, {}  # unknown type
+                    yes_map, no_map = conditional_type_map(expr, vartype, type)
+                    yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
+                    return yes_map, no_map
+            elif refers_to_fullname(node.callee, 'builtins.callable'):
+                expr = node.args[0]
+                if literal(expr) == LITERAL_TYPE:
+                    vartype = type_map[expr]
+                    return self.conditional_callable_type_map(expr, vartype)
+        elif isinstance(node, ComparisonExpr) and experiments.STRICT_OPTIONAL:
+            # Check for `x is None` and `x is not None`.
+            is_not = node.operators == ['is not']
+            if any(is_literal_none(n) for n in node.operands) and (
+                    is_not or node.operators == ['is']):
+                if_vars = {}  # type: TypeMap
+                else_vars = {}  # type: TypeMap
+                for expr in node.operands:
+                    if (literal(expr) == LITERAL_TYPE and not is_literal_none(expr)
+                            and expr in type_map):
+                        # This should only be true at most once: there should be
+                        # two elements in node.operands, and at least one of them
+                        # should represent a None.
+                        vartype = type_map[expr]
+                        none_typ = [TypeRange(NoneTyp(), is_upper_bound=False)]
+                        if_vars, else_vars = conditional_type_map(expr, vartype, none_typ)
+                        break
+
+                if is_not:
+                    if_vars, else_vars = else_vars, if_vars
+                return if_vars, else_vars
+            # Check for `x == y` where x is of type Optional[T] and y is of type T
+            # or a type that overlaps with T (or vice versa).
+            elif node.operators == ['==']:
+                first_type = type_map[node.operands[0]]
+                second_type = type_map[node.operands[1]]
+                if is_optional(first_type) != is_optional(second_type):
+                    if is_optional(first_type):
+                        optional_type, comp_type = first_type, second_type
+                        optional_expr = node.operands[0]
+                    else:
+                        optional_type, comp_type = second_type, first_type
+                        optional_expr = node.operands[1]
+                    if is_overlapping_types(optional_type, comp_type):
+                        return {optional_expr: remove_optional(optional_type)}, {}
+            elif node.operators in [['in'], ['not in']]:
+                expr = node.operands[0]
+                left_type = type_map[expr]
+                right_type = builtin_item_type(type_map[node.operands[1]])
+                right_ok = right_type and (not is_optional(right_type) and
+                                           (not isinstance(right_type, Instance) or
+                                            right_type.type.fullname() != 'builtins.object'))
+                if (right_type and right_ok and is_optional(left_type) and
+                        literal(expr) == LITERAL_TYPE and not is_literal_none(expr) and
+                        is_overlapping_types(left_type, right_type)):
+                    if node.operators == ['in']:
+                        return {expr: remove_optional(left_type)}, {}
+                    if node.operators == ['not in']:
+                        return {}, {expr: remove_optional(left_type)}
+        elif isinstance(node, RefExpr):
+            # Restrict the type of the variable to True-ish/False-ish in the if and else branches
+            # respectively
+            vartype = type_map[node]
+            if_type = true_only(vartype)
+            else_type = false_only(vartype)
+            ref = node  # type: Expression
+            if_map = {ref: if_type} if not isinstance(if_type, UninhabitedType) else None
+            else_map = {ref: else_type} if not isinstance(else_type, UninhabitedType) else None
+            return if_map, else_map
+        elif isinstance(node, OpExpr) and node.op == 'and':
+            left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
+            right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
+
+            # (e1 and e2) is true if both e1 and e2 are true,
+            # and false if at least one of e1 and e2 is false.
+            return (and_conditional_maps(left_if_vars, right_if_vars),
+                    or_conditional_maps(left_else_vars, right_else_vars))
+        elif isinstance(node, OpExpr) and node.op == 'or':
+            left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
+            right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
+
+            # (e1 or e2) is true if at least one of e1 or e2 is true,
+            # and false if both e1 and e2 are false.
+            return (or_conditional_maps(left_if_vars, right_if_vars),
+                    and_conditional_maps(left_else_vars, right_else_vars))
+        elif isinstance(node, UnaryExpr) and node.op == 'not':
+            left, right = self.find_isinstance_check(node.expr)
+            return right, left
+
+        # Not a supported isinstance check
+        return {}, {}
+
     #
     # Helpers
     #
@@ -2822,41 +3148,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type('builtins.function'))
 
-    def find_isinstance_check(self, n: Expression) -> 'Tuple[TypeMap, TypeMap]':
-        return find_isinstance_check(n, self.type_map)
-
     def push_type_map(self, type_map: 'TypeMap') -> None:
         if type_map is None:
             self.binder.unreachable()
         else:
             for expr, type in type_map.items():
                 self.binder.put(expr, type)
-
-# Data structure returned by find_isinstance_check representing
-# information learned from the truth or falsehood of a condition.  The
-# dict maps nodes representing expressions like 'a[0].x' to their
-# refined types under the assumption that the condition has a
-# particular truth value. A value of None means that the condition can
-# never have that truth value.
-
-# NB: The keys of this dict are nodes in the original source program,
-# which are compared by reference equality--effectively, being *the
-# same* expression of the program, not just two identical expressions
-# (such as two references to the same variable). TODO: it would
-# probably be better to have the dict keyed by the nodes' literal_hash
-# field instead.
-
-
-TypeMap = Optional[Dict[Expression, Type]]
-
-# An object that represents either a precise type or a type with an upper bound;
-# it is important for correct type inference with isinstance.
-TypeRange = NamedTuple(
-    'TypeRange',
-    [
-        ('item', Type),
-        ('is_upper_bound', bool),  # False => precise type
-    ])
 
 
 def conditional_type_map(expr: Expression,
@@ -2897,74 +3194,14 @@ def conditional_type_map(expr: Expression,
         return {}, {}
 
 
-def partition_by_callable(type: Type) -> Tuple[List[Type], List[Type]]:
-    """Takes in a type and partitions that type into callable subtypes and
-    uncallable subtypes.
-
-    Thus, given:
-    `callables, uncallables = partition_by_callable(type)`
-
-    If we assert `callable(type)` then `type` has type Union[*callables], and
-    If we assert `not callable(type)` then `type` has type Union[*uncallables]
-
-    Guaranteed to not return [], []"""
-    if isinstance(type, FunctionLike) or isinstance(type, TypeType):
-        return [type], []
-
-    if isinstance(type, AnyType):
-        return [type], [type]
-
-    if isinstance(type, UnionType):
-        callables = []
-        uncallables = []
-        for subtype in type.relevant_items():
-            subcallables, subuncallables = partition_by_callable(subtype)
-            callables.extend(subcallables)
-            uncallables.extend(subuncallables)
-        return callables, uncallables
-
-    if isinstance(type, TypeVarType):
-        return partition_by_callable(type.erase_to_union_or_bound())
-
-    if isinstance(type, Instance):
-        method = type.type.get_method('__call__')
-        if method and method.type:
-            callables, uncallables = partition_by_callable(method.type)
-            if len(callables) and not len(uncallables):
-                # Only consider the type callable if its __call__ method is
-                # definitely callable.
-                return [type], []
-        return [], [type]
-
-    return [], [type]
-
-
-def conditional_callable_type_map(expr: Expression,
-                                  current_type: Optional[Type],
-                                  ) -> Tuple[TypeMap, TypeMap]:
-    """Takes in an expression and the current type of the expression.
-
-    Returns a 2-tuple: The first element is a map from the expression to
-    the restricted type if it were callable. The second element is a
-    map from the expression to the type it would hold if it weren't
-    callable."""
-    if not current_type:
-        return {}, {}
-
-    if isinstance(current_type, AnyType):
-        return {}, {}
-
-    callables, uncallables = partition_by_callable(current_type)
-
-    if len(callables) and len(uncallables):
-        callable_map = {expr: UnionType.make_union(callables)} if len(callables) else None
-        uncallable_map = {expr: UnionType.make_union(uncallables)} if len(uncallables) else None
-        return callable_map, uncallable_map
-
-    elif len(callables):
-        return {}, None
-
-    return None, {}
+def gen_unique_name(base: str, table: SymbolTable) -> str:
+    """Generate a name that does not appear in table by appending numbers to base."""
+    if base not in table:
+        return base
+    i = 1
+    while base + str(i) in table:
+        i += 1
+    return base + str(i)
 
 
 def is_true_literal(n: Expression) -> bool:
@@ -3079,144 +3316,6 @@ def convert_to_typetype(type_map: TypeMap) -> TypeMap:
             return {}
         converted_type_map[expr] = TypeType.make_normalized(typ)
     return converted_type_map
-
-
-def find_isinstance_check(node: Expression,
-                          type_map: Dict[Expression, Type],
-                          ) -> Tuple[TypeMap, TypeMap]:
-    """Find any isinstance checks (within a chain of ands).  Includes
-    implicit and explicit checks for None and calls to callable.
-
-    Return value is a map of variables to their types if the condition
-    is true and a map of variables to their types if the condition is false.
-
-    If either of the values in the tuple is None, then that particular
-    branch can never occur.
-
-    Guaranteed to not return None, None. (But may return {}, {})
-    """
-    if is_true_literal(node):
-        return {}, None
-    elif is_false_literal(node):
-        return None, {}
-    elif isinstance(node, CallExpr):
-        if refers_to_fullname(node.callee, 'builtins.isinstance'):
-            if len(node.args) != 2:  # the error will be reported later
-                return {}, {}
-            expr = node.args[0]
-            if literal(expr) == LITERAL_TYPE:
-                vartype = type_map[expr]
-                type = get_isinstance_type(node.args[1], type_map)
-                return conditional_type_map(expr, vartype, type)
-        elif refers_to_fullname(node.callee, 'builtins.issubclass'):
-            expr = node.args[0]
-            if literal(expr) == LITERAL_TYPE:
-                vartype = type_map[expr]
-                type = get_isinstance_type(node.args[1], type_map)
-                if isinstance(vartype, UnionType):
-                    union_list = []
-                    for t in vartype.items:
-                        if isinstance(t, TypeType):
-                            union_list.append(t.item)
-                        else:
-                            #  this is an error that should be reported earlier
-                            #  if we reach here, we refuse to do any type inference
-                            return {}, {}
-                    vartype = UnionType(union_list)
-                elif isinstance(vartype, TypeType):
-                    vartype = vartype.item
-                else:
-                    # any other object whose type we don't know precisely
-                    # for example, Any or Instance of type type
-                    return {}, {}  # unknown type
-                yes_map, no_map = conditional_type_map(expr, vartype, type)
-                yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
-                return yes_map, no_map
-        elif refers_to_fullname(node.callee, 'builtins.callable'):
-            expr = node.args[0]
-            if literal(expr) == LITERAL_TYPE:
-                vartype = type_map[expr]
-                return conditional_callable_type_map(expr, vartype)
-    elif isinstance(node, ComparisonExpr) and experiments.STRICT_OPTIONAL:
-        # Check for `x is None` and `x is not None`.
-        is_not = node.operators == ['is not']
-        if any(is_literal_none(n) for n in node.operands) and (is_not or node.operators == ['is']):
-            if_vars = {}  # type: TypeMap
-            else_vars = {}  # type: TypeMap
-            for expr in node.operands:
-                if (literal(expr) == LITERAL_TYPE and not is_literal_none(expr)
-                        and expr in type_map):
-                    # This should only be true at most once: there should be
-                    # two elements in node.operands, and at least one of them
-                    # should represent a None.
-                    vartype = type_map[expr]
-                    none_typ = [TypeRange(NoneTyp(), is_upper_bound=False)]
-                    if_vars, else_vars = conditional_type_map(expr, vartype, none_typ)
-                    break
-
-            if is_not:
-                if_vars, else_vars = else_vars, if_vars
-            return if_vars, else_vars
-        # Check for `x == y` where x is of type Optional[T] and y is of type T
-        # or a type that overlaps with T (or vice versa).
-        elif node.operators == ['==']:
-            first_type = type_map[node.operands[0]]
-            second_type = type_map[node.operands[1]]
-            if is_optional(first_type) != is_optional(second_type):
-                if is_optional(first_type):
-                    optional_type, comp_type = first_type, second_type
-                    optional_expr = node.operands[0]
-                else:
-                    optional_type, comp_type = second_type, first_type
-                    optional_expr = node.operands[1]
-                if is_overlapping_types(optional_type, comp_type):
-                    return {optional_expr: remove_optional(optional_type)}, {}
-        elif node.operators in [['in'], ['not in']]:
-            expr = node.operands[0]
-            left_type = type_map[expr]
-            right_type = builtin_item_type(type_map[node.operands[1]])
-            right_ok = right_type and (not is_optional(right_type) and
-                                       (not isinstance(right_type, Instance) or
-                                        right_type.type.fullname() != 'builtins.object'))
-            if (right_type and right_ok and is_optional(left_type) and
-                    literal(expr) == LITERAL_TYPE and not is_literal_none(expr) and
-                    is_overlapping_types(left_type, right_type)):
-                if node.operators == ['in']:
-                    return {expr: remove_optional(left_type)}, {}
-                if node.operators == ['not in']:
-                    return {}, {expr: remove_optional(left_type)}
-    elif isinstance(node, RefExpr):
-        # Restrict the type of the variable to True-ish/False-ish in the if and else branches
-        # respectively
-        vartype = type_map[node]
-        if_type = true_only(vartype)
-        else_type = false_only(vartype)
-        ref = node  # type: Expression
-        if_map = {ref: if_type} if not isinstance(if_type, UninhabitedType) else None
-        else_map = {ref: else_type} if not isinstance(else_type, UninhabitedType) else None
-        return if_map, else_map
-    elif isinstance(node, OpExpr) and node.op == 'and':
-        left_if_vars, left_else_vars = find_isinstance_check(node.left, type_map)
-        right_if_vars, right_else_vars = find_isinstance_check(node.right, type_map)
-
-        # (e1 and e2) is true if both e1 and e2 are true,
-        # and false if at least one of e1 and e2 is false.
-        return (and_conditional_maps(left_if_vars, right_if_vars),
-                or_conditional_maps(left_else_vars, right_else_vars))
-    elif isinstance(node, OpExpr) and node.op == 'or':
-        left_if_vars, left_else_vars = find_isinstance_check(node.left, type_map)
-        right_if_vars, right_else_vars = find_isinstance_check(node.right, type_map)
-
-        # (e1 or e2) is true if at least one of e1 or e2 is true,
-        # and false if both e1 and e2 are false.
-        return (or_conditional_maps(left_if_vars, right_if_vars),
-                and_conditional_maps(left_else_vars, right_else_vars))
-    elif isinstance(node, UnaryExpr) and node.op == 'not':
-        left, right = find_isinstance_check(node.expr, type_map)
-        return right, left
-
-    # Not a supported isinstance check
-    return {}, {}
 
 
 def flatten(t: Expression) -> List[Expression]:

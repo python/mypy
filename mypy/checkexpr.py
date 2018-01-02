@@ -2288,7 +2288,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.accept(condition)
 
                 # values are only part of the comprehension when all conditions are true
-                true_map, _ = mypy.checker.find_isinstance_check(condition, self.chk.type_map)
+                true_map, _ = self.chk.find_isinstance_check(condition)
 
                 if true_map:
                     for var, type in true_map.items():

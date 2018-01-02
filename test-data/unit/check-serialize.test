@@ -1247,3 +1247,24 @@ def f() -> None: pass
 main:2: error: Too many arguments for "f"
 [out2]
 main:2: error: Too many arguments for "f"
+
+[case testSerializeDummyType]
+import a
+[file a.py]
+import b
+reveal_type(b.Test(None).foo)
+[file a.py.2]
+import b
+reveal_type(b.Test(b.Foo()).foo)
+[file b.py]
+class Foo(object): pass
+class Test:
+    def __init__(self, o: Foo) -> None:
+        self.foo = None
+        if callable(o):
+            self.foo = o
+[builtins fixtures/callable.pyi]
+[out1]
+tmp/a.py:2: error: Revealed type is 'b.<callable subtype of Foo>'
+[out2]
+tmp/a.py:2: error: Revealed type is 'b.<callable subtype of Foo>'
