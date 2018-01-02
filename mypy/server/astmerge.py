@@ -128,7 +128,8 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_super_expr(self, node: SuperExpr) -> None:
         super().visit_super_expr(node)
-        node.info = self.fixup(node.info)
+        if node.info is not None:
+            node.info = self.fixup(node.info)
 
     # Helpers
 

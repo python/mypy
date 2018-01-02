@@ -9,7 +9,7 @@ from typing import Union, Iterator, Optional
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
-    UNBOUND_IMPORTED, GDEF, MDEF
+    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF
 )
 from mypy.traverser import TraverserVisitor
 
@@ -184,6 +184,10 @@ class NodeStripVisitor(TraverserVisitor):
     def visit_call_expr(self, node: CallExpr) -> None:
         node.analyzed = None
         super().visit_call_expr(node)
+
+    def visit_super_expr(self, node: SuperExpr) -> None:
+        node.info = None
+        super().visit_super_expr(node)
 
     # TODO: handle more node types
 
