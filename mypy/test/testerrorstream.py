@@ -31,8 +31,8 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
     options = Options()
     options.show_traceback = True
 
-    logged_messages: List[str] = []
-    real_messages: List[str] = []
+    logged_messages = []  # type: List[str]
+    real_messages = []  # type: List[str]
 
     def flush_errors(msgs: List[str], serious: bool, is_real: bool=True) -> None:
         if msgs:
