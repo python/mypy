@@ -801,17 +801,12 @@ def is_file(path: str) -> bool:
     return res
 
 
-SITE_PACKAGE_COMMANDS = (
-    # User site packages
-    '"import site;print(site.getusersitepackages());print(*site.getsitepackages(), sep=\'\\n\')"',
-    # for virtualenvs
-    '"from distutils.sysconfig import get_python_lib;print(get_python_lib())"',
-)
+USER_SITE_PACKAGES = '"import site;print(site.getusersitepackages());print(*site.getsitepackages(), sep=\'\\n\')"'
+VIRTUALENV_SITE_PACKAGES = '"from distutils.sysconfig import get_python_lib;print(get_python_lib())"'
 
 
 def call_python(python: str, command: str) -> str:
-    return check_output(python + ' -c ' + command,
-                        stderr=STDOUT).decode('UTF-8')
+    return check_output(python + ' -c ' + command).decode(sys.stdout.encoding)
 
 
 def get_package_dirs(python: Optional[str]) -> List[str]:
@@ -828,13 +823,13 @@ def get_package_dirs(python: Optional[str]) -> List[str]:
         if not check.startswith('Python'):
             return package_dirs
         # If we have a working python executable, query information from it
-        output = call_python(python, SITE_PACKAGE_COMMANDS[0])
+        output = call_python(python, USER_SITE_PACKAGES)
         for line in output.splitlines():
             if os.path.isdir(line):
                 package_dirs.append(line)
         if not package_dirs:
             # if no paths are found, we fall back on sysconfig
-            output = call_python(python, SITE_PACKAGE_COMMANDS[1])
+            output = call_python(python, VIRTUALENV_SITE_PACKAGES)
             for line in output.splitlines():
                 if os.path.isdir(line):
                     package_dirs.append(line)

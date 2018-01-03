@@ -5,7 +5,31 @@ Using Installed Packages
 Making PEP 561 compatible packages
 **********************************
 
-Packages that supply type information should put a ``py.typed``.
+Packages that supply type information should put a ``py.typed`` in their package
+directory. For example, with a directory structure as follows:
+
+.. code-block:: text
+
+setup.py
+package_a/
+    __init__.py
+    lib.py
+    py.typed
+
+the setup.py might look like:
+
+.. code-block:: python
+
+from distutils.core import setup
+
+setup(
+    name="SuperPackage",
+    author="Me",
+    version="0.1",
+    package_data={"package_a": ["py.typed"]},
+    packages=["package_a"]
+)
+
 
 Using PEP 561 compatible packages with mypy
 *******************************************
