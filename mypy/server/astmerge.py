@@ -8,7 +8,7 @@ from typing import Dict, List, cast, TypeVar, Optional
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
-    OverloadedFuncDef, LambdaExpr, TypedDictExpr, MDEF
+    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, MDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -162,6 +162,11 @@ class NodeReplaceVisitor(TraverserVisitor):
     def visit_typeddict_expr(self, node: TypedDictExpr) -> None:
         node.info = self.fixup(node.info)
         super().visit_typeddict_expr(node)
+
+    def visit_enum_call_expr(self, node: EnumCallExpr) -> None:
+        node.info = self.fixup(node.info)
+        self.process_type_info(node.info)
+        super().visit_enum_call_expr(node)
 
     # Others
 
