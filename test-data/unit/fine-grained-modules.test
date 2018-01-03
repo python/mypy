@@ -549,3 +549,73 @@ a.py:2: error: Module has no attribute "x"
 --   - delete two files that form a package
 -- - order of processing makes a difference
 -- - mix of modify, add and delete in one iteration
+
+
+-- Controlling imports using command line options
+-- ----------------------------------------------
+
+
+[case testIgnoreMissingImports]
+# flags: --ignore-missing-imports
+import a
+[file a.py]
+import b
+import c
+[file c.py]
+[delete c.py.2]
+[file b.py.3]
+import d
+1 + ''
+[out]
+==
+==
+b.py:2: error: Unsupported operand types for + ("int" and "str")
+
+[case testSkipImports]
+# cmd: mypy main a.py
+# flags: --follow-imports=skip --ignore-missing-imports
+import a
+[file a.py]
+import b
+[file b.py]
+1 + ''
+class A: pass
+[file a.py.2]
+import b
+reveal_type(b)
+reveal_type(b.A)
+[file a.py.3]
+import b
+reveal_type(b)
+reveal_type(b.A)
+[file b.py.3]
+1 + ''
+class A: pass
+[out]
+==
+a.py:2: error: Revealed type is 'Any'
+a.py:3: error: Revealed type is 'Any'
+==
+a.py:2: error: Revealed type is 'Any'
+a.py:3: error: Revealed type is 'Any'
+
+[case testSkipImportsWithinPackage]
+# cmd: mypy a/b.py
+# flags: --follow-imports=skip --ignore-missing-imports
+[file a/__init__.py]
+1 + ''
+[file a/b.py]
+import a.c
+[file a/b.py.2]
+import a.c
+import x
+reveal_type(a.c)
+[file a/b.py.3]
+import a.c
+import x
+1 + ''
+[out]
+==
+a/b.py:3: error: Revealed type is 'Any'
+==
+a/b.py:3: error: Unsupported operand types for + ("int" and "str")

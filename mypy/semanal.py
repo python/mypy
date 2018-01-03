@@ -480,6 +480,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         first_item.is_overload = True
         first_item.accept(self)
 
+        defn._fullname = self.qualified_name(defn.name())
+
         if isinstance(first_item, Decorator) and first_item.func.is_property:
             first_item.func.is_overload = True
             self.analyze_property_with_multi_part_definition(defn)

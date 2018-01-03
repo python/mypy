@@ -1225,3 +1225,57 @@ class A: pass
 ==
 main:2: error: Module 'a' has no attribute 'A'
 ==
+
+[case testPrintStatement_python2]
+# flags: --py2
+import a
+[file a.py]
+def f(x): # type: (int) -> int
+    return 1
+print f(1)
+[file a.py.2]
+def f(x): # type: (int) -> int
+    return 1
+print f('')
+[out]
+==
+a.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+
+[case testUnannotatedClass]
+import a
+[file a.py]
+class A:
+    def f(self, x):
+        self.y = x
+        self.g()
+
+    def g(self): pass
+[file a.py.2]
+class A:
+    def f(self, x, y):
+        self.y = x
+        self.z = y
+        self.g()
+
+    def g(self): pass
+[triggered]
+2: <a.A.f>, <a.A.z>
+[out]
+==
+
+[case testSuperBasics]
+import a
+[file a.py]
+class A:
+    def f(self) -> None: pass
+class B(A):
+    def f(self) -> None:
+        super(B, self).f()
+[file a.py.2]
+class A:
+    def f(self) -> None: pass
+class B(A):
+    def f(self) -> None:
+        super(B, self).f()
+[out]
+==
