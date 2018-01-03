@@ -417,8 +417,8 @@ class Errors:
         they first generated an error.
         """
         msgs = []
-        for key in self.error_info_map.keys():
-            msgs.extend(self.new_file_messages(key))
+        for path in self.error_info_map.keys():
+            msgs.extend(self.new_file_messages(path))
         return msgs
 
     def messages(self) -> List[str]:
