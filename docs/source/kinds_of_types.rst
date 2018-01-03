@@ -986,6 +986,9 @@ annotated the first example as the following:
    def squares(n: int) -> Generator[int, None, None]:
        for i in range(n):
            yield i * i
+           
+This is slightly different from using ``Iterable[int]`` or ``Iterator[int]``,
+since generators have a ``close()`` method that generic iterables don't.
 
 .. _async-and-await:
 
