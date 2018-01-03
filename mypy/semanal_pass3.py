@@ -10,7 +10,7 @@ belongs to a module involved in an import loop.
 """
 
 from collections import OrderedDict
-from typing import Dict, List, Callable, Optional, Union, Set, cast
+from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple
 
 from mypy import messages, experiments
 from mypy.nodes import (
@@ -28,6 +28,9 @@ from mypy.options import Options
 from mypy.traverser import TraverserVisitor
 from mypy.typeanal import TypeAnalyserPass3, collect_any_types
 from mypy.typevars import has_no_typevars
+from mypy.semanal_shared import PRIORITY_FORWARD_REF, PRIORITY_TYPEVAR_VALUES
+from mypy.subtypes import is_subtype
+from mypy.sametypes import is_same_type
 import mypy.semanal
 
 
@@ -48,7 +51,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         self.recurse_into_functions = True
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
-                   patches: List[Callable[[], None]]) -> None:
+                   patches: List[Tuple[int, Callable[[], None]]]) -> None:
         self.recurse_into_functions = True
         self.errors.set_file(fnam, file_node.fullname())
         self.options = options
@@ -349,12 +352,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
-            if indicator.get('forward') or indicator.get('synthetic'):
-                def patch() -> None:
-                    self.perform_transform(node,
-                        lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
-                                                                      node, warn)))
-                self.patches.append(patch)
+            self.generate_type_patches(node, indicator, warn)
 
     def analyze_types(self, types: List[Type], node: Node) -> None:
         # Similar to above but for nodes with multiple types.
@@ -363,12 +361,24 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
+        self.generate_type_patches(node, indicator, warn=False)
+
+    def generate_type_patches(self,
+                              node: Union[Node, SymbolTableNode],
+                              indicator: Dict[str, bool],
+                              warn: bool) -> None:
         if indicator.get('forward') or indicator.get('synthetic'):
             def patch() -> None:
                 self.perform_transform(node,
                     lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
-                                                                  node, warn=False)))
-            self.patches.append(patch)
+                                                                  node, warn)))
+            self.patches.append((PRIORITY_FORWARD_REF, patch))
+        if indicator.get('typevar'):
+            def patch() -> None:
+                self.perform_transform(node,
+                    lambda tp: tp.accept(TypeVariableChecker(self.fail)))
+
+            self.patches.append((PRIORITY_TYPEVAR_VALUES, patch))
 
     def analyze_info(self, info: TypeInfo) -> None:
         # Similar to above but for nodes with synthetic TypeInfos (NamedTuple and NewType).
@@ -387,7 +397,8 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                                  self.sem.plugin,
                                  self.options,
                                  self.is_typeshed_file,
-                                 indicator)
+                                 indicator,
+                                 self.patches)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
         if not self.options.disallow_any_generics or self.is_typeshed_file:
@@ -606,3 +617,58 @@ class ForwardReferenceResolver(TypeTranslator):
         if self.check_recursion(t):
             return AnyType(TypeOfAny.from_error)
         return super().visit_type_type(t)
+
+
+class TypeVariableChecker(TypeTranslator):
+    """Visitor that checks that type variables in generic types have valid values.
+
+    Note: This must be run at the end of semantic analysis when MROs are
+    complete and forward references have been resolved.
+
+    This does two things:
+
+    - If type variable in C has a value restriction, check that X in C[X] conforms
+      to the restriction.
+    - If type variable in C has a non-default upper bound, check that X in C[X]
+      conforms to the upper bound.
+
+    (This doesn't need to be a type translator, but it simplifies the implementation.)
+    """
+
+    def __init__(self, fail: Callable[[str, Context], None]) -> None:
+        self.fail = fail
+
+    def visit_instance(self, t: Instance) -> Type:
+        info = t.type
+        for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
+            if tvar.values:
+                if isinstance(arg, TypeVarType):
+                    arg_values = arg.values
+                    if not arg_values:
+                        self.fail('Type variable "{}" not valid as type '
+                                  'argument value for "{}"'.format(
+                                      arg.name, info.name()), t)
+                        continue
+                else:
+                    arg_values = [arg]
+                self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
+            if not is_subtype(arg, tvar.upper_bound):
+                self.fail('Type argument "{}" of "{}" must be '
+                          'a subtype of "{}"'.format(
+                              arg, info.name(), tvar.upper_bound), t)
+        return t
+
+    def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
+                              valids: List[Type], arg_number: int, context: Context) -> None:
+        for actual in actuals:
+            if (not isinstance(actual, AnyType) and
+                    not any(is_same_type(actual, value)
+                            for value in valids)):
+                if len(actuals) > 1 or not isinstance(actual, Instance):
+                    self.fail('Invalid type argument value for "{}"'.format(
+                        type.name()), context)
+                else:
+                    class_name = '"{}"'.format(type.name())
+                    actual_type_name = '"{}"'.format(actual.type.name())
+                    self.fail(messages.INCOMPATIBLE_TYPEVAR_VALUE.format(
+                        arg_name, class_name, actual_type_name), context)

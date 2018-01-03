@@ -84,6 +84,7 @@ from mypy import experiments
 from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy import join
 from mypy.util import get_prefix
+from mypy.semanal_shared import PRIORITY_FALLBACKS
 
 
 T = TypeVar('T')
@@ -258,11 +259,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         self.recurse_into_functions = True
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
-                   patches: List[Callable[[], None]]) -> None:
+                   patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Run semantic analysis phase 2 over a file.
 
-        Add callbacks by mutating the patches list argument. They will be called
-        after all semantic analysis phases but before type checking.
+        Add (priority, callback) pairs by mutating the 'patches' list argument. They
+        will be called after all semantic analysis phases but before type checking,
+        lowest priority values first.
         """
         self.recurse_into_functions = True
         self.options = options
@@ -477,6 +479,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         first_item = defn.items[0]
         first_item.is_overload = True
         first_item.accept(self)
+
+        defn._fullname = self.qualified_name(defn.name())
 
         if isinstance(first_item, Decorator) and first_item.func.is_property:
             first_item.func.is_overload = True
@@ -2454,7 +2458,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise MROs might be incomplete. Postpone a callback
         # function that patches the fallback.
-        self.patches.append(patch)
+        self.patches.append((PRIORITY_FALLBACKS, patch))
 
         def add_field(var: Var, is_initialized_in_class: bool = False,
                       is_property: bool = False) -> None:
@@ -2693,7 +2697,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise MROs might be incomplete. Postpone a callback
         # function that patches the fallback.
-        self.patches.append(patch)
+        self.patches.append((PRIORITY_FALLBACKS, patch))
         return info
 
     def check_classvar(self, s: AssignmentStmt) -> None:
