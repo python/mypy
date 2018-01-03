@@ -135,7 +135,6 @@ def build(sources: List[BuildSource],
           bin_dir: Optional[str] = None,
           saved_cache: Optional[SavedCache] = None,
           flush_errors: Optional[Callable[[List[str], bool], None]] = None,
-          plugin: Optional[Plugin] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -154,10 +153,9 @@ def build(sources: List[BuildSource],
         directories; if omitted, use '.' as the data directory
       saved_cache: optional dict with saved cache state for dmypy (read-write!)
       flush_errors: optional function to flush errors after a file is processed
-      plugin: optional plugin that overrides the configured one
     """
     try:
-        return _build(sources, options, alt_lib_path, bin_dir, saved_cache, flush_errors, plugin)
+        return _build(sources, options, alt_lib_path, bin_dir, saved_cache, flush_errors)
     except CompileError as e:
         serious = not e.use_stdout
         if flush_errors:
@@ -171,7 +169,6 @@ def _build(sources: List[BuildSource],
            bin_dir: Optional[str] = None,
            saved_cache: Optional[SavedCache] = None,
            flush_errors: Optional[Callable[[List[str], bool], None]] = None,
-           plugin: Optional[Plugin] = None,
            ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(50000)
@@ -221,7 +218,7 @@ def _build(sources: List[BuildSource],
     reports = Reports(data_dir, options.report_dirs)
     source_set = BuildSourceSet(sources)
     errors = Errors(options.show_error_context, options.show_column_numbers)
-    plugin = plugin or load_plugins(options, errors)
+    plugin = load_plugins(options, errors)
 
     # Construct a build manager object to hold state during the build.
     #
