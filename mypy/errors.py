@@ -104,9 +104,6 @@ class Errors:
     # Current error context: nested import context/stack, as a list of (path, line) pairs.
     import_ctx = None  # type: List[Tuple[str, int]]
 
-    # Set of files with errors.
-    error_files = None  # type: Set[str]
-
     # Path name prefix that is removed from all paths, if set.
     ignore_prefix = None  # type: str
 
@@ -153,7 +150,6 @@ class Errors:
         self.fresh_error_info_map = OrderedDict()
         self.import_ctx = []
         self.formatted_messages = []
-        self.error_files = set()
         self.type_name = [None]
         self.function_or_member = [None]
         self.ignored_lines = OrderedDict()
@@ -320,7 +316,6 @@ class Errors:
                 return
             self.only_once_messages.add(info.message)
         self._add_error_info(info)
-        self.error_files.add(file)
 
     def generate_unused_ignore_notes(self, file: str) -> None:
         ignored_lines = self.ignored_lines[file]
@@ -358,7 +353,7 @@ class Errors:
 
     def is_errors_for_file(self, file: str) -> bool:
         """Are there any errors for the given file?"""
-        return file in self.error_files
+        return file in self.error_info_map
 
     def raise_error(self) -> None:
         """Raise a CompileError with the generated messages.
