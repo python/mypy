@@ -1455,3 +1455,29 @@ def f(self, x: N) -> None:
 [builtins fixtures/dict.pyi]
 [out]
 ==
+
+[case testRefreshFunctionalEnum]
+import a
+
+[file a.py]
+from typing import Dict
+from enum import Enum
+
+N = Enum('N', 'x')
+a: Dict[N, int]
+
+def f(self, x: N) -> None:
+    a.get(x)
+
+[file a.py.2]
+from typing import Dict
+from enum import Enum
+
+N = Enum('N', 'x')
+a: Dict[N, int]
+
+def f(self, x: N) -> None:
+    a.get(x)
+[builtins fixtures/dict.pyi]
+[out]
+==
