@@ -324,6 +324,7 @@ class FuncBase(Node):
     # Original, not semantically analyzed type (used for reprocessing)
     unanalyzed_type = None  # type: Optional[mypy.types.Type]
     # If method, reference to TypeInfo
+    # TODO: The type should be Optional[TypeInfo]
     info = None  # type: TypeInfo
     is_property = False
     _fullname = None  # type: str       # Name with module prefix
