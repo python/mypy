@@ -2845,6 +2845,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             var = Var(item)
             var.info = info
             var.is_property = True
+            var._fullname = '{}.{}'.format(fullname, item)
             info.names[item] = SymbolTableNode(MDEF, var)
         return info
 
