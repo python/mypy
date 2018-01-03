@@ -667,3 +667,11 @@ class HasStaticMethod(NamedTuple):
         return 4
 
 [builtins fixtures/property.pyi]
+
+[case testNamedTupleLocalScope]
+from typing import NamedTuple, Any, Tuple
+
+def function() -> Tuple:
+    class InnerNamedTuple(NamedTuple):
+        x: int
+    return InnerNamedTuple(x=0)
