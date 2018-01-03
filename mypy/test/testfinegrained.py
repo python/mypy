@@ -137,7 +137,7 @@ class FineGrainedSuite(DataSuite):
         These are defined through a comment like '# cmd: main a.py' in the test case
         description.
         """
-        # TODO: Support defining sepately for each incremental step.
+        # TODO: Support defining separately for each incremental step.
         m = re.search('# cmd: mypy ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
         if m:
             # The test case wants to use a non-default set of files.
