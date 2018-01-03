@@ -854,46 +854,47 @@ def find_module(id: str, lib_path_arg: Iterable[str],
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
     package_dirs = get_package_dirs(python)
+    components = id.split('.')
+    dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
 
     def find() -> Optional[str]:
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
         # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
         # that only once and cache it for when we look for modules like 'foo.bar.blah'
         # that will require the same subdirectory.
-        components = id.split('.')
-        dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
-        if dir_chain:
-            if dir_chain not in find_module_dir_cache:
-                dirs = []
 
-                # Regular packages on the PATH
-                for pathitem in lib_path:
-                    # e.g., '/usr/lib/python3.4/foo/bar'
-                    isdir = find_module_isdir_cache.get((pathitem, dir_chain))
-                    if isdir is None:
-                        dir = os.path.normpath(os.path.join(pathitem, dir_chain))
-                        isdir = os.path.isdir(dir)
-                        find_module_isdir_cache[pathitem, dir_chain] = isdir
-                    if isdir:
-                        dirs.append(dir)
+        if dir_chain not in find_module_dir_cache:
+            dirs = []
 
-                # Third-party stub/typed packages
-                for pkg_dir in package_dirs:
-                    stub_name = components[0] + '_stubs'
-                    typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
-                    stub_typed_file = os.path.join(pkg_dir, stub_name, 'py.typed')
-                    if os.path.isfile(stub_typed_file):
-                        components[0] = stub_name
-                        path = os.path.join(pkg_dir, stub_name, *components[1:-1])
+            # Regular packages on the PATH
+            for pathitem in lib_path:
+                # e.g., '/usr/lib/python3.4/foo/bar'
+                isdir = find_module_isdir_cache.get((pathitem, dir_chain))
+                if isdir is None:
+                    dir = os.path.normpath(os.path.join(pathitem, dir_chain))
+                    isdir = os.path.isdir(dir)
+                    find_module_isdir_cache[pathitem, dir_chain] = isdir
+                if isdir:
+                    dirs.append(dir)
+
+            # Third-party stub/typed packages
+            for pkg_dir in package_dirs:
+                stub_name = components[0] + '_stubs'
+                typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
+                stub_typed_file = os.path.join(pkg_dir, stub_name, 'py.typed')
+                if os.path.isfile(stub_typed_file):
+                    components[0] = stub_name
+                    rest = components[:-1]
+                    path = os.path.join(pkg_dir, *rest)
+                    if os.path.isdir(path):
                         dirs.append(path)
-                    elif os.path.isfile(typed_file):
-                        path = os.path.join(pkg_dir, dir_chain)
-                        dirs.append(path)
+                elif os.path.isfile(typed_file):
+                    path = os.path.join(pkg_dir, dir_chain)
+                    dirs.append(path)
 
-                find_module_dir_cache[dir_chain] = dirs
-            candidate_base_dirs = find_module_dir_cache[dir_chain]
-        else:
-            candidate_base_dirs = list(lib_path_arg) + package_dirs
+            find_module_dir_cache[dir_chain] = dirs
+        candidate_base_dirs = find_module_dir_cache[dir_chain]
+
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
         # elements of lib_path.  This is probably much shorter than lib_path itself.
@@ -919,6 +920,13 @@ def find_module(id: str, lib_path_arg: Iterable[str],
 
     if id not in find_module_cache:
         find_module_cache[id] = find()
+
+    #  If we searched for items with a base directory of site-packages/ we need to
+    # remove it to avoid searching it for non-typed ids.
+    if len(find_module_dir_cache[dir_chain]) > 0 and \
+            find_module_dir_cache[dir_chain][-1] in package_dirs:
+        find_module_dir_cache[dir_chain].pop()
+
     return find_module_cache[id]
 
 
