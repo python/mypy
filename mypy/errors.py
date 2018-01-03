@@ -95,8 +95,8 @@ class Errors:
     # files were processed.
     error_info_map = None  # type: Dict[str, List[ErrorInfo]]
 
-    # The size of error_info the last time that error messages were flushed
-    new_errors_start_map = None  # type: Dict[str, int]
+    # Errors that haven't been flushed out yet
+    fresh_error_info_map = None  # type: Dict[str, List[ErrorInfo]]
 
     # A cache of the formatted messages
     formatted_messages = None  # type: List[str]
@@ -150,7 +150,7 @@ class Errors:
 
     def initialize(self) -> None:
         self.error_info_map = OrderedDict()
-        self.new_errors_start_map = defaultdict(int)
+        self.fresh_error_info_map = OrderedDict()
         self.import_ctx = []
         self.formatted_messages = []
         self.error_files = set()
@@ -302,7 +302,9 @@ class Errors:
     def _add_error_info(self, info: ErrorInfo) -> None:
         if info.file not in self.error_info_map:
             self.error_info_map[info.file] = []
+            self.fresh_error_info_map[info.file] = []
         self.error_info_map[info.file].append(info)
+        self.fresh_error_info_map[info.file].append(info)
 
     def add_error_info(self, info: ErrorInfo) -> None:
         (file, line) = cast(Tuple[str, int], info.origin)  # see issue 1855
@@ -365,12 +367,13 @@ class Errors:
         """
         # self.new_messages() will format all messages that haven't already
         # been returned from a new_module_messages() call. Count how many
-        # we've seen before that.
+        # we've seen before that so we can determine which are fresh.
         already_seen = len(self.formatted_messages)
-        raise CompileError(self.messages(),
+        messages = self.messages()
+        raise CompileError(messages,
                            use_stdout=True,
                            module_with_blocker=self.blocker_module(),
-                           num_already_seen=already_seen)
+                           fresh_messages=messages[already_seen:])
 
     def format_messages(self, error_info: List[ErrorInfo]) -> List[str]:
         """Return a string list that represents the error messages.
@@ -406,8 +409,8 @@ class Errors:
         """
         if path not in self.error_info_map:
             return []
-        msgs = self.format_messages(self.error_info_map[path][self.new_errors_start_map[path]:])
-        self.new_errors_start_map[path] = len(self.error_info_map[path])
+        msgs = self.format_messages(self.fresh_error_info_map[path])
+        self.fresh_error_info_map[path] = []
         self.formatted_messages += msgs
         return msgs
 
@@ -518,7 +521,7 @@ class Errors:
     def sort_messages(self, errors: List[ErrorInfo]) -> List[ErrorInfo]:
         """Sort an array of error messages locally by line number.
 
-        I.e., sort a run of consecutive messages with the same file
+        I.e., sort a run of consecutive messages with the same
         context by line number, but otherwise retain the general
         ordering of the messages.
         """
@@ -574,18 +577,18 @@ class CompileError(Exception):
     use_stdout = False
     # Can be set in case there was a module with a blocking error
     module_with_blocker = None  # type: Optional[str]
-    num_already_seen = 0
+    fresh_messages = None  # type: List[str]
 
     def __init__(self,
                  messages: List[str],
                  use_stdout: bool = False,
                  module_with_blocker: Optional[str] = None,
-                 num_already_seen: int = 0) -> None:
+                 fresh_messages: Optional[List[str]] = None) -> None:
         super().__init__('\n'.join(messages))
         self.messages = messages
         self.use_stdout = use_stdout
         self.module_with_blocker = module_with_blocker
-        self.num_already_seen = num_already_seen
+        self.fresh_messages = fresh_messages if fresh_messages is not None else messages
 
 
 class DecodeError(Exception):

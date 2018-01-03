@@ -161,7 +161,7 @@ def build(sources: List[BuildSource],
     except CompileError as e:
         serious = not e.use_stdout
         if flush_errors:
-            flush_errors(e.messages[e.num_already_seen:], serious)
+            flush_errors(e.fresh_messages, serious)
         raise
 
 

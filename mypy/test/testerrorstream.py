@@ -34,7 +34,7 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
     logged_messages = []  # type: List[str]
     real_messages = []  # type: List[str]
 
-    def flush_errors(msgs: List[str], serious: bool, is_real: bool=True) -> None:
+    def flush_errors(msgs: List[str], serious: bool, is_real: bool = True) -> None:
         if msgs:
             logged_messages.append('==== Errors flushed ====')
             logged_messages.extend(msgs)
