@@ -159,6 +159,15 @@ class NodeReplaceVisitor(TraverserVisitor):
             node.info = self.fixup(node.info)
         super().visit_lambda_expr(node)
 
+    # Others
+
+    def visit_var(self, node: Var) -> None:
+        if node.info:
+            node.info = self.fixup(node.info)
+        if node.type:
+            self.fixup_type(node.type)
+        super().visit_var(node)
+
     # Helpers
 
     def fixup(self, node: SN) -> SN:
