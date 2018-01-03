@@ -28,7 +28,7 @@ import errno
 from functools import wraps
 
 from typing import (AbstractSet, Any, cast, Dict, Iterable, Iterator, List,
-                    Mapping, NamedTuple, Optional, Set, Tuple, TypeVar, Union, Callable)
+                    Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
 # Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
 MYPY = False
 if MYPY:
@@ -128,26 +128,7 @@ class BuildSourceSet:
 # be updated in place with newly computed cache data.  See dmypy.py.
 SavedCache = Dict[str, Tuple['CacheMeta', MypyFile, Dict[Expression, Type]]]
 
-F = TypeVar('F', bound=Callable[..., Any])
 
-
-def flush_compile_errors(f: F) -> F:
-    """Catch and flush out any messages from a CompileError thrown in build."""
-    @wraps(f)
-    def func(*args, **kwargs):
-        # type: (*Any, **Any) -> Any
-        try:
-            return f(*args, **kwargs)
-        except CompileError as e:
-            serious = not e.use_stdout
-            error_flush = kwargs.get('flush_errors', None)
-            if error_flush:
-                error_flush(e.messages[e.num_already_seen:], serious)
-            raise
-    return cast(F, func)
-
-
-@flush_compile_errors
 def build(sources: List[BuildSource],
           options: Options,
           alt_lib_path: Optional[str] = None,
@@ -175,6 +156,23 @@ def build(sources: List[BuildSource],
       flush_errors: optional function to flush errors after a file is processed
       plugin: optional plugin that overrides the configured one
     """
+    try:
+        return _build(sources, options, alt_lib_path, bin_dir, saved_cache, flush_errors, plugin)
+    except CompileError as e:
+        serious = not e.use_stdout
+        if flush_errors:
+            flush_errors(e.messages[e.num_already_seen:], serious)
+        raise
+
+
+def _build(sources: List[BuildSource],
+           options: Options,
+           alt_lib_path: Optional[str] = None,
+           bin_dir: Optional[str] = None,
+           saved_cache: Optional[SavedCache] = None,
+           flush_errors: Optional[Callable[[List[str], bool], None]] = None,
+           plugin: Optional[Plugin] = None,
+           ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(50000)
 
