@@ -407,16 +407,6 @@ class Errors:
                 msgs.extend(self.file_messages(path))
         return msgs
 
-    def messages(self) -> List[str]:
-        """Return a string list that represents the error messages.
-
-        Use a form suitable for displaying to the user.
-        """
-        msgs = []
-        for path in self.error_info_map.keys():
-            msgs.extend(self.file_messages(path))
-        return msgs
-
     def targets(self) -> Set[str]:
         """Return a set of all targets that contain errors."""
         # TODO: Make sure that either target is always defined or that not being defined
@@ -603,7 +593,8 @@ def report_internal_error(err: Exception, file: Optional[str], line: int,
     # Dump out errors so far, they often provide a clue.
     # But catch unexpected errors rendering them.
     try:
-        for msg in errors.messages():
+        errors.flushed_files = set()  # Print out already flushed messages too
+        for msg in errors.new_messages():
             print(msg)
     except Exception as e:
         print("Failed to dump errors:", repr(e), file=sys.stderr)
