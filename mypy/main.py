@@ -62,21 +62,22 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         args = sys.argv[1:]
     sources, options = process_options(args)
 
+    messages = []
+
     def flush_errors(a: List[str], serious: bool) -> None:
+        messages.extend(a)
         f = sys.stderr if serious else sys.stdout
         try:
             for m in a:
                 f.write(m + '\n')
             f.flush()
         except BrokenPipeError:
-            pass
+            sys.exit(1)
 
     serious = False
     try:
-        res = type_check_only(sources, bin_dir, options, flush_errors)
-        a = res.errors
+        type_check_only(sources, bin_dir, options, flush_errors)
     except CompileError as e:
-        a = e.messages
         if not e.use_stdout:
             serious = True
     if options.warn_unused_configs and options.unused_configs:
@@ -86,8 +87,8 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
               file=sys.stderr)
     if options.junit_xml:
         t1 = time.time()
-        util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
-    if a:
+        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml)
+    if messages:
         sys.exit(1)
 
 

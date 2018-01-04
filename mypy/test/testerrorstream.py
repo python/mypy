@@ -31,27 +31,21 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
     options.show_traceback = True
 
     logged_messages = []  # type: List[str]
-    real_messages = []  # type: List[str]
 
     def flush_errors(msgs: List[str], serious: bool) -> None:
         if msgs:
             logged_messages.append('==== Errors flushed ====')
             logged_messages.extend(msgs)
-        real_messages.extend(msgs)
 
     sources = [BuildSource('main', '__main__', '\n'.join(testcase.input))]
     try:
-        res = build.build(sources=sources,
-                          options=options,
-                          alt_lib_path=test_temp_dir,
-                          flush_errors=flush_errors)
-        reported_messages = res.errors
+        build.build(sources=sources,
+                    options=options,
+                    alt_lib_path=test_temp_dir,
+                    flush_errors=flush_errors)
     except CompileError as e:
-        reported_messages = e.messages
+        pass
 
     assert_string_arrays_equal(testcase.output, logged_messages,
                                'Invalid output ({}, line {})'.format(
-                                   testcase.file, testcase.line))
-    assert_string_arrays_equal(reported_messages, real_messages,
-                               'Streamed/reported mismatch ({}, line {})'.format(
                                    testcase.file, testcase.line))
