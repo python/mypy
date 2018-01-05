@@ -326,11 +326,12 @@ def update_single_isolated(module: str,
 
     # Find any other modules brought in by imports.
     changed_modules = get_all_changed_modules(module, path, previous_modules, graph)
-    # If there are multiple modules to process, only process the last one of them and return
-    # the remaining ones to the caller. Often the last one is going to be imported by
-    # one of the prior modules, making it more efficient to process it first.
+    # If there are multiple modules to process, only process one of them and return
+    # the remaining ones to the caller.
     if len(changed_modules) > 1:
-        module, path = changed_modules.pop()
+        # As an optimization, look for a module that imports no other changed modules.
+        module, path = find_relative_leaf_module(changed_modules, graph)
+        changed_modules.remove((module, path))
         remaining_modules = changed_modules
         # The remaining modules haven't been processed yet so drop them.
         for id, _ in remaining_modules:
@@ -372,6 +373,33 @@ def update_single_isolated(module: str,
     graph[module] = state
 
     return NormalUpdate(module, path, remaining_modules, state.tree, graph)
+
+
+def find_relative_leaf_module(modules: List[Tuple[str, str]], graph: Graph) -> Tuple[str, str]:
+    """Find a module in a list that directly imports no other module in the list.
+
+    If no such module exists, return the lexicographically first module from the list.
+    Always return one of the items in the modules list.
+
+    NOTE: If both 'abc' and 'typing' have changed, an effect of the above rule is that
+        we prefer 'abc', even if both are in the same SCC. This works around a false
+        positive in 'typing', at least in tests.
+
+    Args:
+        modules: List of (module, path) tuples (non-empty)
+        graph: Program import graph that contains all modules in the module list
+    """
+    assert modules
+    # Sort for repeatable results.
+    modules = sorted(modules)
+    module_set = {module for module, _ in modules}
+    for module, path in modules:
+        state = graph[module]
+        if len(set(state.dependencies) & module_set) == 0:
+            # Found it!
+            return module, path
+    # Could not find any. Just return the first module (by lexicographic order).
+    return modules[0]
 
 
 def assert_equivalent_paths(path1: str, path2: str) -> None:
