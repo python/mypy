@@ -988,7 +988,9 @@ annotated the first example as the following:
            yield i * i
            
 This is slightly different from using ``Iterable[int]`` or ``Iterator[int]``,
-since generators have a ``close()`` method that generic iterables don't.
+since generators have ``close()``, ``send()``, and ``throw()`` methods that
+generic iterables don't. If you will call these methods on the returned
+generator, use the ``Generator`` type instead of ``Iterable`` or ``Iterator``.
 
 .. _async-and-await:
 
