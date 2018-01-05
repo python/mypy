@@ -253,7 +253,6 @@ def _build(sources: List[BuildSource],
 
     try:
         graph = dispatch(sources, manager)
-        manager.error_flush(manager.errors.new_messages())
         return BuildResult(manager, graph)
     finally:
         manager.log("Build finished in %.3f seconds with %d modules, and %d errors" %

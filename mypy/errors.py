@@ -51,6 +51,9 @@ class ErrorInfo:
     # Only report this particular messages once per program.
     only_once = False
 
+    # Actual origin of the error message
+    origin = None  # type: Tuple[str, int]
+
     # Fine-grained incremental target where this was reported
     target = None  # type: Optional[str]
 
@@ -291,13 +294,13 @@ class Errors:
                          target=self.current_target())
         self.add_error_info(info)
 
-    def _add_error_info(self, info: ErrorInfo) -> None:
-        if info.file not in self.error_info_map:
-            self.error_info_map[info.file] = []
-        self.error_info_map[info.file].append(info)
+    def _add_error_info(self, file: str, info: ErrorInfo) -> None:
+        if file not in self.error_info_map:
+            self.error_info_map[file] = []
+        self.error_info_map[file].append(info)
 
     def add_error_info(self, info: ErrorInfo) -> None:
-        (file, line) = cast(Tuple[str, int], info.origin)  # see issue 1855
+        file, line = info.origin
         if not info.blocker:  # Blockers cannot be ignored
             if file in self.ignored_lines and line in self.ignored_lines[file]:
                 # Annotation requests us to ignore all errors on this line.
@@ -309,7 +312,7 @@ class Errors:
             if info.message in self.only_once_messages:
                 return
             self.only_once_messages.add(info.message)
-        self._add_error_info(info)
+        self._add_error_info(file, info)
 
     def generate_unused_ignore_notes(self, file: str) -> None:
         ignored_lines = self.ignored_lines[file]
@@ -319,7 +322,7 @@ class Errors:
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
                                  None, line, -1, 'note', "unused 'type: ignore' comment",
                                  False, False)
-                self._add_error_info(info)
+                self._add_error_info(file, info)
 
     def is_typeshed_file(self, file: str) -> bool:
         # gross, but no other clear way to tell
