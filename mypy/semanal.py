@@ -83,7 +83,7 @@ from mypy.options import Options
 from mypy import experiments
 from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy import join
-from mypy.util import get_prefix
+from mypy.util import get_prefix, correct_relative_import
 from mypy.semanal_shared import PRIORITY_FALLBACKS
 
 
@@ -1582,21 +1582,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     SUGGESTED_TEST_FIXTURES[fullname]), ctx)
 
     def correct_relative_import(self, node: Union[ImportFrom, ImportAll]) -> str:
-        if node.relative == 0:
-            return node.id
-
-        parts = self.cur_mod_id.split(".")
-        cur_mod_id = self.cur_mod_id
-
-        rel = node.relative
-        if self.cur_mod_node.is_package_init_file():
-            rel -= 1
-        if len(parts) < rel:
+        import_id, ok = correct_relative_import(self.cur_mod_id, node.relative, node.id,
+                                                self.cur_mod_node.is_package_init_file())
+        if not ok:
             self.fail("Relative import climbs too many namespaces", node)
-        if rel != 0:
-            cur_mod_id = ".".join(parts[:-rel])
-
-        return cur_mod_id + (("." + node.id) if node.id else "")
+        return import_id
 
     def visit_import_all(self, i: ImportAll) -> None:
         i_id = self.correct_relative_import(i)
@@ -2133,6 +2123,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info
+        init_func._fullname = self.qualified_name(name) + '.__init__'
         info.names['__init__'] = SymbolTableNode(MDEF, init_func)
 
         return info

@@ -1443,7 +1443,7 @@ class State:
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
     is_from_saved_cache = False  # True if the tree came from the in-memory cache
-    dependencies = None  # type: List[str]
+    dependencies = None  # type: List[str]  # Modules directly imported by the module
     suppressed = None  # type: List[str]  # Suppressed/missing dependencies
     priorities = None  # type: Dict[str, int]
 

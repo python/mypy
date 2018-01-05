@@ -15,6 +15,10 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypy.types import Type
 
 
+# Only dependencies in these modules are dumped
+dumped_modules = ['__main__', 'pkg', 'pkg.mod']
+
+
 class GetDependenciesSuite(DataSuite):
     files = [
         'deps.test',
@@ -39,7 +43,11 @@ class GetDependenciesSuite(DataSuite):
             if not a:
                 a = ['Unknown compile error (likely syntax error in test case or fixture)']
         else:
-            deps = get_dependencies(files['__main__'], type_map, python_version)
+            deps = {}
+            for module in dumped_modules:
+                if module in files:
+                    new_deps = get_dependencies(files[module], type_map, python_version)
+                    deps.update(new_deps)
 
             for source, targets in sorted(deps.items()):
                 line = '%s -> %s' % (source, ', '.join(sorted(targets)))

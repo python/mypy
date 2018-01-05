@@ -747,9 +747,11 @@ class NonlocalDecl(Statement):
 
 class Block(Statement):
     body = None  # type: List[Statement]
-    # True if we can determine that this block is not executed. For example,
-    # this applies to blocks that are protected by something like "if PY3:"
-    # when using Python 2.
+    # True if we can determine that this block is not executed during semantic
+    # analysis. For example, this applies to blocks that are protected by
+    # something like "if PY3:" when using Python 2. However, some code is
+    # only considered unreachable during type checking and this is not true
+    # in those cases.
     is_unreachable = False
 
     def __init__(self, body: List[Statement]) -> None:

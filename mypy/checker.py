@@ -65,7 +65,7 @@ from mypy import experiments
 
 T = TypeVar('T')
 
-LAST_PASS = 1  # Pass numbers start at 0
+DEFAULT_LAST_PASS = 1  # Pass numbers start at 0
 
 
 # A node which is postponed to be processed during the next pass.
@@ -146,6 +146,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     deferred_nodes = None  # type: List[DeferredNode]
     # Type checking pass number (0 = first pass)
     pass_num = 0
+    # Last pass number to take
+    last_pass = DEFAULT_LAST_PASS
     # Have we deferred the current function? If yes, don't infer additional
     # types during this pass within the function.
     current_node_deferred = False
@@ -296,7 +298,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         node = self.scope.top_non_lambda_function()
-        if self.pass_num < LAST_PASS and isinstance(node, FuncDef):
+        if self.pass_num < self.last_pass and isinstance(node, FuncDef):
             # Don't report an error yet. Just defer. Note that we don't defer
             # lambdas because they are coupled to the surrounding function
             # through the binder and the inferred type of the lambda, so it

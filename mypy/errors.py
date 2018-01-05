@@ -177,8 +177,7 @@ class Errors:
         return remove_path_prefix(file, self.ignore_prefix)
 
     def set_file(self, file: str,
-                 module: Optional[str],
-                 ignored_lines: Optional[Set[int]] = None) -> None:
+                 module: Optional[str]) -> None:
         """Set the path and module id of the current file."""
         # The path will be simplified later, in render_messages. That way
         #  * 'file' is always a key that uniquely identifies a source file

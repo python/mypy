@@ -396,8 +396,8 @@ a.py:1: error: Cannot find module named 'b'
 a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 a.py:2: error: Cannot find module named 'c'
 ==
-b.py:3: error: Too many arguments for "g"
 c.py:3: error: Too many arguments for "f"
+b.py:3: error: Too many arguments for "g"
 
 [case testAddTwoFilesErrorsElsewhere]
 import a

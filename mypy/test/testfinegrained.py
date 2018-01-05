@@ -111,7 +111,6 @@ class FineGrainedSuite(DataSuite):
                        for module, path in sources_override]
         else:
             sources = [BuildSource(main_path, None, None)]
-        print(sources)
         try:
             result = build.build(sources=sources,
                                  options=options,

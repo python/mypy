@@ -112,6 +112,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         self.visit_ref_expr(node)
 
     def visit_member_expr(self, node: MemberExpr) -> None:
+        if node.def_var:
+            node.def_var = self.fixup(node.def_var)
         self.visit_ref_expr(node)
         super().visit_member_expr(node)
 
@@ -207,7 +209,9 @@ class TypeReplaceVisitor(TypeVisitor[None]):
             value.accept(self)
 
     def visit_typeddict_type(self, typ: TypedDictType) -> None:
-        raise NotImplementedError
+        for value_type in typ.items.values():
+            value_type.accept(self)
+        typ.fallback.accept(self)
 
     def visit_unbound_type(self, typ: UnboundType) -> None:
         for arg in typ.args:

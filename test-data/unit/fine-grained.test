@@ -1279,3 +1279,70 @@ class B(A):
         super(B, self).f()
 [out]
 ==
+
+[case testErrorInTypeCheckSecondPassThroughPropagation]
+import a
+
+def f() -> None:
+    x = a.C()
+[file a.py]
+[file a.py.2]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+class C(Generic[T]): pass
+[out]
+main:4: error: "object" has no attribute "C"
+==
+main:4: error: Need type annotation for variable
+
+[case testPartialTypeInNestedClass]
+import a
+class C:
+    def f(self) -> None:
+        a.g()
+        class D:
+            def __init__(self) -> None:
+                self.x = {}
+                self.x['a'] = 'b'
+[file a.py]
+def g() -> None: pass
+[file a.py.2]
+def g() -> int: pass
+[builtins fixtures/dict.pyi]
+[out]
+main:7: error: Need type annotation for variable
+==
+main:7: error: Need type annotation for variable
+
+[case testRefreshPartialTypeInClass]
+import a
+class D:
+    def __init__(self) -> None:
+        a.g()
+        self.x = {}
+        self.x['a'] = 'b'
+[file a.py]
+def g() -> None: pass
+[file a.py.2]
+def g() -> int: pass
+[builtins fixtures/dict.pyi]
+[out]
+main:5: error: Need type annotation for variable
+==
+main:5: error: Need type annotation for variable
+
+[case testRefreshTryExcept]
+import a
+def f() -> None:
+    a.g()
+    try:
+        pass
+    except BaseException as e:
+        e
+[file a.py]
+def g() -> int: pass
+[file a.py.2]
+def g() -> str: pass
+[builtins fixtures/exception.pyi]
+[out]
+==
