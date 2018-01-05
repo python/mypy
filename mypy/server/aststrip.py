@@ -115,7 +115,9 @@ class NodeStripVisitor(TraverserVisitor):
             if len(node.lvalues) == 1:
                 lvalue = node.lvalues[0]
                 if isinstance(lvalue, MemberExpr) and lvalue.is_new_def:
-                    # Remove defined attribute from the class symbol table.
+                    # Remove defined attribute from the class symbol table. If is_new_def is
+                    # true for a MemberExpr, we know that it must be an assignment through
+                    # self, since only those can define new attributes.
                     del self.type.names[lvalue.name]
         super().visit_assignment_stmt(node)
 

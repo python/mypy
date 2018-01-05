@@ -236,7 +236,7 @@ class DependencyVisitor(TraverserVisitor):
 
     def get_non_partial_lvalue_type(self, lvalue: RefExpr) -> Type:
         if lvalue not in self.type_map:
-            # Likely a block considered unreacable during type checking.
+            # Likely a block considered unreachable during type checking.
             return UninhabitedType()
         lvalue_type = self.type_map[lvalue]
         if isinstance(lvalue_type, PartialType):
