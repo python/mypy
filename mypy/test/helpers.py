@@ -303,6 +303,7 @@ def assert_type(typ: type, value: object) -> None:
         raise AssertionFailure('Invalid type {}, expected {}'.format(
             typename(type(value)), typename(typ)))
 
+
 def parse_options(program_text: str, testcase: DataDrivenTestCase,
                   incremental_step: int) -> Options:
     """Parse comments like '# flags: --foo' in a test case."""
