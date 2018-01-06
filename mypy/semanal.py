@@ -81,9 +81,10 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy import experiments
-from mypy.plugin import Plugin
+from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy import join
-from mypy.util import get_prefix
+from mypy.util import get_prefix, correct_relative_import
+from mypy.semanal_shared import PRIORITY_FALLBACKS
 
 
 T = TypeVar('T')
@@ -172,7 +173,7 @@ SUGGESTED_TEST_FIXTURES = {
 }
 
 
-class SemanticAnalyzerPass2(NodeVisitor[None]):
+class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a
@@ -258,11 +259,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         self.recurse_into_functions = True
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
-                   patches: List[Callable[[], None]]) -> None:
+                   patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Run semantic analysis phase 2 over a file.
 
-        Add callbacks by mutating the patches list argument. They will be called
-        after all semantic analysis phases but before type checking.
+        Add (priority, callback) pairs by mutating the 'patches' list argument. They
+        will be called after all semantic analysis phases but before type checking,
+        lowest priority values first.
         """
         self.recurse_into_functions = True
         self.options = options
@@ -477,6 +479,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         first_item = defn.items[0]
         first_item.is_overload = True
         first_item.accept(self)
+
+        defn._fullname = self.qualified_name(defn.name())
 
         if isinstance(first_item, Decorator) and first_item.func.is_property:
             first_item.func.is_overload = True
@@ -715,8 +719,47 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                 yield True
                 self.calculate_abstract_status(defn.info)
                 self.setup_type_promotion(defn)
-
+                self.apply_class_plugin_hooks(defn)
                 self.leave_class()
+
+    def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
+        """Apply a plugin hook that may infer a more precise definition for a class."""
+        def get_fullname(expr: Expression) -> Optional[str]:
+            if isinstance(expr, CallExpr):
+                return get_fullname(expr.callee)
+            elif isinstance(expr, IndexExpr):
+                return get_fullname(expr.base)
+            elif isinstance(expr, RefExpr):
+                if expr.fullname:
+                    return expr.fullname
+                # If we don't have a fullname look it up. This happens because base classes are
+                # analyzed in a different manner (see exprtotype.py) and therefore those AST
+                # nodes will not have full names.
+                sym = self.lookup_type_node(expr)
+                if sym:
+                    return sym.fullname
+            return None
+
+        for decorator in defn.decorators:
+            decorator_name = get_fullname(decorator)
+            if decorator_name:
+                hook = self.plugin.get_class_decorator_hook(decorator_name)
+                if hook:
+                    hook(ClassDefContext(defn, decorator, self))
+
+        if defn.metaclass:
+            metaclass_name = get_fullname(defn.metaclass)
+            if metaclass_name:
+                hook = self.plugin.get_metaclass_hook(metaclass_name)
+                if hook:
+                    hook(ClassDefContext(defn, defn.metaclass, self))
+
+        for base_expr in defn.base_type_exprs:
+            base_name = get_fullname(base_expr)
+            if base_name:
+                hook = self.plugin.get_base_class_hook(base_name)
+                if hook:
+                    hook(ClassDefContext(defn, base_expr, self))
 
     def analyze_class_keywords(self, defn: ClassDef) -> None:
         for value in defn.keywords.values():
@@ -1539,21 +1582,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
                     SUGGESTED_TEST_FIXTURES[fullname]), ctx)
 
     def correct_relative_import(self, node: Union[ImportFrom, ImportAll]) -> str:
-        if node.relative == 0:
-            return node.id
-
-        parts = self.cur_mod_id.split(".")
-        cur_mod_id = self.cur_mod_id
-
-        rel = node.relative
-        if self.cur_mod_node.is_package_init_file():
-            rel -= 1
-        if len(parts) < rel:
+        import_id, ok = correct_relative_import(self.cur_mod_id, node.relative, node.id,
+                                                self.cur_mod_node.is_package_init_file())
+        if not ok:
             self.fail("Relative import climbs too many namespaces", node)
-        if rel != 0:
-            cur_mod_id = ".".join(parts[:-rel])
-
-        return cur_mod_id + (("." + node.id) if node.id else "")
+        return import_id
 
     def visit_import_all(self, i: ImportAll) -> None:
         i_id = self.correct_relative_import(i)
@@ -2090,6 +2123,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info
+        init_func._fullname = self.qualified_name(name) + '.__init__'
         info.names['__init__'] = SymbolTableNode(MDEF, init_func)
 
         return info
@@ -2415,7 +2449,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise MROs might be incomplete. Postpone a callback
         # function that patches the fallback.
-        self.patches.append(patch)
+        self.patches.append((PRIORITY_FALLBACKS, patch))
 
         def add_field(var: Var, is_initialized_in_class: bool = False,
                       is_property: bool = False) -> None:
@@ -2654,7 +2688,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None]):
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise MROs might be incomplete. Postpone a callback
         # function that patches the fallback.
-        self.patches.append(patch)
+        self.patches.append((PRIORITY_FALLBACKS, patch))
         return info
 
     def check_classvar(self, s: AssignmentStmt) -> None:
@@ -3899,8 +3933,6 @@ def calculate_class_mro(defn: ClassDef, fail: Callable[[str, Context], None]) ->
         fail("Cannot determine consistent method resolution order "
              '(MRO) for "%s"' % defn.name, defn)
         defn.info.mro = []
-    # The property of falling back to Any is inherited.
-    defn.info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in defn.info.mro)
 
 
 def find_duplicate(list: List[T]) -> Optional[T]:

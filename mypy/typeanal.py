@@ -1,7 +1,7 @@
 """Semantic analysis of types"""
 
 from collections import OrderedDict
-from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Dict
+from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Dict, Union
 from itertools import chain
 
 from contextlib import contextmanager
@@ -14,20 +14,19 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded
+    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded,
+    TypeTranslator
 )
 
 from mypy.nodes import (
     TVAR, TYPE_ALIAS, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef, CallExpr, NameExpr,
-    Decorator
+    Decorator, Node
 )
 from mypy.tvar_scope import TypeVarScope
-from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.subtypes import is_subtype
-from mypy.plugin import Plugin, AnalyzerPluginInterface, AnalyzeTypeContext
+from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
 from mypy import nodes, messages
 
 
@@ -132,7 +131,7 @@ def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
     return msg
 
 
-class TypeAnalyser(SyntheticTypeVisitor[Type], AnalyzerPluginInterface):
+class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     """Semantic analyzer for types (semantic analysis pass 2).
 
     Converts unbound types into bound types.
@@ -656,7 +655,8 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                  plugin: Plugin,
                  options: Options,
                  is_typeshed_stub: bool,
-                 indicator: Dict[str, bool]) -> None:
+                 indicator: Dict[str, bool],
+                 patches: List[Tuple[int, Callable[[], None]]]) -> None:
         self.lookup_func = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
@@ -665,6 +665,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         self.plugin = plugin
         self.is_typeshed_stub = is_typeshed_stub
         self.indicator = indicator
+        self.patches = patches
 
     def visit_instance(self, t: Instance) -> None:
         info = t.type
@@ -707,63 +708,20 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             t.args = [AnyType(TypeOfAny.from_error) for _ in info.type_vars]
             t.invalid = True
         elif info.defn.type_vars:
-            # Check type argument values.
-            # TODO: Calling is_subtype and is_same_types in semantic analysis is a bad idea
-            for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
-                if tvar.values:
-                    if isinstance(arg, TypeVarType):
-                        arg_values = arg.values
-                        if not arg_values:
-                            self.fail('Type variable "{}" not valid as type '
-                                      'argument value for "{}"'.format(
-                                          arg.name, info.name()), t)
-                            continue
-                    else:
-                        arg_values = [arg]
-                    self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
-                # TODO: These hacks will be not necessary when this will be moved to later stage.
-                arg = self.resolve_type(arg)
-                bound = self.resolve_type(tvar.upper_bound)
-                if not is_subtype(arg, bound):
-                    self.fail('Type argument "{}" of "{}" must be '
-                              'a subtype of "{}"'.format(
-                                  arg, info.name(), bound), t)
+            # Check type argument values. This is postponed to the end of semantic analysis
+            # since we need full MROs and resolved forward references.
+            for tvar in info.defn.type_vars:
+                if (tvar.values
+                        or not isinstance(tvar.upper_bound, Instance)
+                        or tvar.upper_bound.type.fullname() != 'builtins.object'):
+                    # Some restrictions on type variable. These can only be checked later
+                    # after we have final MROs and forward references have been resolved.
+                    self.indicator['typevar'] = True
         for arg in t.args:
             arg.accept(self)
         if info.is_newtype:
             for base in info.bases:
                 base.accept(self)
-
-    def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
-                              valids: List[Type], arg_number: int, context: Context) -> None:
-        for actual in actuals:
-            actual = self.resolve_type(actual)
-            if (not isinstance(actual, AnyType) and
-                    not any(is_same_type(actual, self.resolve_type(value))
-                            for value in valids)):
-                if len(actuals) > 1 or not isinstance(actual, Instance):
-                    self.fail('Invalid type argument value for "{}"'.format(
-                        type.name()), context)
-                else:
-                    class_name = '"{}"'.format(type.name())
-                    actual_type_name = '"{}"'.format(actual.type.name())
-                    self.fail(messages.INCOMPATIBLE_TYPEVAR_VALUE.format(
-                        arg_name, class_name, actual_type_name), context)
-
-    def resolve_type(self, tp: Type) -> Type:
-        # This helper is only needed while is_subtype and is_same_type are
-        # called in third pass. This can be removed when TODO in visit_instance is fixed.
-        if isinstance(tp, ForwardRef):
-            if tp.resolved is None:
-                return tp.unbound
-            tp = tp.resolved
-        if isinstance(tp, Instance) and tp.type.replaced:
-            replaced = tp.type.replaced
-            if replaced.tuple_type:
-                tp = replaced.tuple_type
-            if replaced.typeddict_type:
-                tp = replaced.typeddict_type
-        return tp
 
     def visit_callable_type(self, t: CallableType) -> None:
         t.ret_type.accept(self)

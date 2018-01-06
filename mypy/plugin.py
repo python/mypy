@@ -4,7 +4,7 @@ from collections import OrderedDict
 from abc import abstractmethod
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
 
-from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr
+from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
     AnyType, TypeList, UnboundType, TypeOfAny
@@ -13,7 +13,7 @@ from mypy.messages import MessageBuilder
 from mypy.options import Options
 
 
-class AnalyzerPluginInterface:
+class TypeAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins."""
 
     @abstractmethod
@@ -40,7 +40,7 @@ AnalyzeTypeContext = NamedTuple(
     'AnalyzeTypeContext', [
         ('type', UnboundType),  # Type to analyze
         ('context', Context),
-        ('api', AnalyzerPluginInterface)])
+        ('api', TypeAnalyzerPluginInterface)])
 
 
 class CheckerPluginInterface:
@@ -50,6 +50,23 @@ class CheckerPluginInterface:
 
     @abstractmethod
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
+        raise NotImplementedError
+
+
+class SemanticAnalyzerPluginInterface:
+    """Interface for accessing semantic analyzer functionality in plugins."""
+
+    @abstractmethod
+    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
+        raise NotImplementedError
+
+    @abstractmethod
+    def parse_bool(self, expr: Expression) -> Optional[bool]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+             blocker: bool = False) -> None:
         raise NotImplementedError
 
 
@@ -98,6 +115,14 @@ AttributeContext = NamedTuple(
         ('context', Context),
         ('api', CheckerPluginInterface)])
 
+# A context for a class hook that modifies the class definition.
+ClassDefContext = NamedTuple(
+    'ClassDecoratorContext', [
+        ('cls', ClassDef),       # The class definition
+        ('reason', Expression),  # The expression being applied (decorator, metaclass, base class)
+        ('api', SemanticAnalyzerPluginInterface)
+    ])
+
 
 class Plugin:
     """Base class of all type checker plugins.
@@ -136,7 +161,17 @@ class Plugin:
                            ) -> Optional[Callable[[AttributeContext], Type]]:
         return None
 
-    # TODO: metaclass / class decorator hook
+    def get_class_decorator_hook(self, fullname: str
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        return None
+
+    def get_metaclass_hook(self, fullname: str
+                           ) -> Optional[Callable[[ClassDefContext], None]]:
+        return None
+
+    def get_base_class_hook(self, fullname: str
+                            ) -> Optional[Callable[[ClassDefContext], None]]:
+        return None
 
 
 T = TypeVar('T')
@@ -181,6 +216,18 @@ class ChainedPlugin(Plugin):
     def get_attribute_hook(self, fullname: str
                            ) -> Optional[Callable[[AttributeContext], Type]]:
         return self._find_hook(lambda plugin: plugin.get_attribute_hook(fullname))
+
+    def get_class_decorator_hook(self, fullname: str
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self._find_hook(lambda plugin: plugin.get_class_decorator_hook(fullname))
+
+    def get_metaclass_hook(self, fullname: str
+                           ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self._find_hook(lambda plugin: plugin.get_metaclass_hook(fullname))
+
+    def get_base_class_hook(self, fullname: str
+                            ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self._find_hook(lambda plugin: plugin.get_base_class_hook(fullname))
 
     def _find_hook(self, lookup: Callable[[Plugin], T]) -> Optional[T]:
         for plugin in self._plugins:

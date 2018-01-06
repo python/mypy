@@ -616,7 +616,7 @@ class Var(SymbolNode):
     is_suppressed_import = False
 
     FLAGS = [
-        'is_self', 'is_ready', 'is_initialized_in_class', 'is_staticmethod',
+        'is_self', 'is_initialized_in_class', 'is_staticmethod',
         'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
         'is_classvar', 'is_abstract_var'
     ]
@@ -747,9 +747,11 @@ class NonlocalDecl(Statement):
 
 class Block(Statement):
     body = None  # type: List[Statement]
-    # True if we can determine that this block is not executed. For example,
-    # this applies to blocks that are protected by something like "if PY3:"
-    # when using Python 2.
+    # True if we can determine that this block is not executed during semantic
+    # analysis. For example, this applies to blocks that are protected by
+    # something like "if PY3:" when using Python 2. However, some code is
+    # only considered unreachable during type checking and this is not true
+    # in those cases.
     is_unreachable = False
 
     def __init__(self, body: List[Statement]) -> None:
@@ -2095,6 +2097,8 @@ class TypeInfo(SymbolNode):
         assert mro, "Could not produce a MRO at all for %s" % (self,)
         self.mro = mro
         self.is_enum = self._calculate_is_enum()
+        # The property of falling back to Any is inherited.
+        self.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in self.mro)
 
     def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         declared = self.declared_metaclass

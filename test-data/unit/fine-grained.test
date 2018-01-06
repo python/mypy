@@ -1225,3 +1225,124 @@ class A: pass
 ==
 main:2: error: Module 'a' has no attribute 'A'
 ==
+
+[case testPrintStatement_python2]
+# flags: --py2
+import a
+[file a.py]
+def f(x): # type: (int) -> int
+    return 1
+print f(1)
+[file a.py.2]
+def f(x): # type: (int) -> int
+    return 1
+print f('')
+[out]
+==
+a.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+
+[case testUnannotatedClass]
+import a
+[file a.py]
+class A:
+    def f(self, x):
+        self.y = x
+        self.g()
+
+    def g(self): pass
+[file a.py.2]
+class A:
+    def f(self, x, y):
+        self.y = x
+        self.z = y
+        self.g()
+
+    def g(self): pass
+[triggered]
+2: <a.A.f>, <a.A.z>
+[out]
+==
+
+[case testSuperBasics]
+import a
+[file a.py]
+class A:
+    def f(self) -> None: pass
+class B(A):
+    def f(self) -> None:
+        super(B, self).f()
+[file a.py.2]
+class A:
+    def f(self) -> None: pass
+class B(A):
+    def f(self) -> None:
+        super(B, self).f()
+[out]
+==
+
+[case testErrorInTypeCheckSecondPassThroughPropagation]
+import a
+
+def f() -> None:
+    x = a.C()
+[file a.py]
+[file a.py.2]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+class C(Generic[T]): pass
+[out]
+main:4: error: "object" has no attribute "C"
+==
+main:4: error: Need type annotation for variable
+
+[case testPartialTypeInNestedClass]
+import a
+class C:
+    def f(self) -> None:
+        a.g()
+        class D:
+            def __init__(self) -> None:
+                self.x = {}
+                self.x['a'] = 'b'
+[file a.py]
+def g() -> None: pass
+[file a.py.2]
+def g() -> int: pass
+[builtins fixtures/dict.pyi]
+[out]
+main:7: error: Need type annotation for variable
+==
+main:7: error: Need type annotation for variable
+
+[case testRefreshPartialTypeInClass]
+import a
+class D:
+    def __init__(self) -> None:
+        a.g()
+        self.x = {}
+        self.x['a'] = 'b'
+[file a.py]
+def g() -> None: pass
+[file a.py.2]
+def g() -> int: pass
+[builtins fixtures/dict.pyi]
+[out]
+main:5: error: Need type annotation for variable
+==
+main:5: error: Need type annotation for variable
+
+[case testRefreshTryExcept]
+import a
+def f() -> None:
+    a.g()
+    try:
+        pass
+    except BaseException as e:
+        e
+[file a.py]
+def g() -> int: pass
+[file a.py.2]
+def g() -> str: pass
+[builtins fixtures/exception.pyi]
+[out]
+==

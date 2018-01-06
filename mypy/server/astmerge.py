@@ -7,7 +7,7 @@ from typing import Dict, List, cast, TypeVar, Optional
 
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
-    FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, MDEF
+    FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, MDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -112,6 +112,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         self.visit_ref_expr(node)
 
     def visit_member_expr(self, node: MemberExpr) -> None:
+        if node.def_var:
+            node.def_var = self.fixup(node.def_var)
         self.visit_ref_expr(node)
         super().visit_member_expr(node)
 
@@ -122,6 +124,10 @@ class NodeReplaceVisitor(TraverserVisitor):
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> None:
         super().visit_namedtuple_expr(node)
         self.process_type_info(node.info)
+
+    def visit_super_expr(self, node: SuperExpr) -> None:
+        super().visit_super_expr(node)
+        node.info = self.fixup(node.info)
 
     # Helpers
 
@@ -203,7 +209,9 @@ class TypeReplaceVisitor(TypeVisitor[None]):
             value.accept(self)
 
     def visit_typeddict_type(self, typ: TypedDictType) -> None:
-        raise NotImplementedError
+        for value_type in typ.items.values():
+            value_type.accept(self)
+        typ.fallback.accept(self)
 
     def visit_unbound_type(self, typ: UnboundType) -> None:
         for arg in typ.args:

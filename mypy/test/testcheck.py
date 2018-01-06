@@ -7,13 +7,12 @@ import shutil
 from typing import Dict, List, Optional, Set, Tuple
 
 from mypy import build, defaults
-from mypy.main import process_options
 from mypy.build import BuildSource, find_module_clear_caches
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, AssertionFailure,
-    retry_on_error, testcase_pyversion, update_testcase_output,
+    retry_on_error, update_testcase_output, parse_options
 )
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -154,7 +153,7 @@ class TypeCheckSuite(DataSuite):
                     retry_on_error(lambda: os.remove(path))
 
         # Parse options after moving files (in case mypy.ini is being moved).
-        options = self.parse_options(original_program_text, testcase, incremental_step)
+        options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
         if 'optional' in testcase.file:
@@ -327,30 +326,3 @@ class TypeCheckSuite(DataSuite):
             return out
         else:
             return [('__main__', 'main', program_text)]
-
-    def parse_options(self, program_text: str, testcase: DataDrivenTestCase,
-                      incremental_step: int) -> Options:
-        options = Options()
-        flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
-        if incremental_step > 1:
-            flags2 = re.search('# flags{}: (.*)$'.format(incremental_step), program_text,
-                               flags=re.MULTILINE)
-            if flags2:
-                flags = flags2
-
-        flag_list = None
-        if flags:
-            flag_list = flags.group(1).split()
-            targets, options = process_options(flag_list, require_targets=False)
-            if targets:
-                # TODO: support specifying targets via the flags pragma
-                raise RuntimeError('Specifying targets via the flags pragma is not supported.')
-        else:
-            options = Options()
-
-        # Allow custom python version to override testcase_pyversion
-        if (not flag_list or
-                all(flag not in flag_list for flag in ['--python-version', '-2', '--py2'])):
-            options.python_version = testcase_pyversion(testcase.file, testcase.name)
-
-        return options

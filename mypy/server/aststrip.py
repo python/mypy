@@ -109,6 +109,16 @@ class NodeStripVisitor(TraverserVisitor):
             assert isinstance(lvalue, NameExpr)
             assert self.type is not None  # Because self.is_class_body is True
             del self.type.names[lvalue.name]
+        if self.type and not self.is_class_body:
+            # TODO: Handle multiple assignment
+            # TODO: Merge with above
+            if len(node.lvalues) == 1:
+                lvalue = node.lvalues[0]
+                if isinstance(lvalue, MemberExpr) and lvalue.is_new_def:
+                    # Remove defined attribute from the class symbol table. If is_new_def is
+                    # true for a MemberExpr, we know that it must be an assignment through
+                    # self, since only those can define new attributes.
+                    del self.type.names[lvalue.name]
         super().visit_assignment_stmt(node)
 
     def visit_import_from(self, node: ImportFrom) -> None:
@@ -148,6 +158,10 @@ class NodeStripVisitor(TraverserVisitor):
 
     def visit_member_expr(self, node: MemberExpr) -> None:
         self.strip_ref_expr(node)
+        # These need to cleared for member expressions but not for other RefExprs since
+        # these can change based on changed in a base class.
+        node.is_new_def = False
+        node.is_inferred_def = False
         if self.is_duplicate_attribute_def(node):
             # This is marked as an instance variable definition but a base class
             # defines an attribute with the same name, and we can't have

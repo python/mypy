@@ -940,3 +940,10 @@ x: Union[ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[int],
 def takes_int(arg: int) -> None: pass
 
 takes_int(x)  # E: Argument 1 to "takes_int" has incompatible type <union: 6 items>; expected "int"
+
+[case testRecursiveForwardReferenceInUnion]
+from typing import List, Union
+MYTYPE = List[Union[str, "MYTYPE"]]
+[builtins fixtures/list.pyi]
+[out]
+main:2: error: Recursive types not fully supported yet, nested types replaced with "Any"

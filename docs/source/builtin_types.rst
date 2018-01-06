@@ -13,7 +13,7 @@ Type                Description
 ``bytes``           8-bit string
 ``object``          an arbitrary object (``object`` is the common base class)
 ``List[str]``       list of ``str`` objects
-``Tuple[int, int]`` tuple of two ``int``s (``Tuple[()]`` is the empty tuple)
+``Tuple[int, int]`` tuple of two ``int`` objects (``Tuple[()]`` is the empty tuple)
 ``Tuple[int, ...]`` tuple of an arbitrary number of ``int`` objects
 ``Dict[str, int]``  dictionary from ``str`` keys to ``int`` values
 ``Iterable[int]``   iterable object containing ints

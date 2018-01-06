@@ -524,3 +524,18 @@ class A:
 <m.A> -> m.A
 <m.C.__init__> -> m.A.f
 <m.C> -> <m.A.x>, m.A.f, m.C
+
+[case testRelativeImport]
+import pkg  # Magic package name in test runner
+[file pkg/__init__.py]
+from . import mod
+from .a import x
+[file pkg/mod.py]
+from . import a
+[file pkg/a.py]
+x = 1
+[out]
+<pkg.a.x> -> pkg
+<pkg.a> -> pkg.mod
+<pkg.mod> -> pkg
+<pkg> -> m

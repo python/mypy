@@ -6,8 +6,12 @@ import time
 from typing import List, Dict, Tuple, Callable, Any, Optional
 
 from mypy import defaults
+
 import pytest  # type: ignore  # no pytest in typeshed
 from unittest import TestCase as Suite
+
+from mypy.main import process_options
+from mypy.options import Options
 from mypy.test.data import DataDrivenTestCase
 
 skip = pytest.mark.skip
@@ -298,3 +302,31 @@ def assert_type(typ: type, value: object) -> None:
     if type(value) != typ:
         raise AssertionFailure('Invalid type {}, expected {}'.format(
             typename(type(value)), typename(typ)))
+
+def parse_options(program_text: str, testcase: DataDrivenTestCase,
+                  incremental_step: int) -> Options:
+    """Parse comments like '# flags: --foo' in a test case."""
+    options = Options()
+    flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
+    if incremental_step > 1:
+        flags2 = re.search('# flags{}: (.*)$'.format(incremental_step), program_text,
+                           flags=re.MULTILINE)
+        if flags2:
+            flags = flags2
+
+    flag_list = None
+    if flags:
+        flag_list = flags.group(1).split()
+        targets, options = process_options(flag_list, require_targets=False)
+        if targets:
+            # TODO: support specifying targets via the flags pragma
+            raise RuntimeError('Specifying targets via the flags pragma is not supported.')
+    else:
+        options = Options()
+
+    # Allow custom python version to override testcase_pyversion
+    if (not flag_list or
+            all(flag not in flag_list for flag in ['--python-version', '-2', '--py2'])):
+        options.python_version = testcase_pyversion(testcase.file, testcase.name)
+
+    return options

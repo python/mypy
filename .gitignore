@@ -13,6 +13,7 @@ docs/build/
 .incremental_checker_cache.json
 .cache
 .runtest_log.json
+dmypy.json
 
 # Packages
 *.egg
