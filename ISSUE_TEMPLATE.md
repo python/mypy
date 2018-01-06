@@ -5,7 +5,7 @@ Please provide more information to help us understand the issue:
   or a mock-up repro if the source is private. We would appreciate
   if you try to simplify your case to a minimal repro.
 * What is the actual behavior/output?
-* What is the behaviour/output you expect?
+* What is the behavior/output you expect?
 * What are the versions of mypy and Python you are using?
   Do you see the same issue after installing mypy from Git master?
 * What are the mypy flags you are using? (For example --strict-optional)
