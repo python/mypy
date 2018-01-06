@@ -9,25 +9,15 @@ from mypy.errors import CompileError
 from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.server.astdiff import snapshot_symbol_table, compare_symbol_table_snapshots
-from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 
 
-files = [
-    'diff.test'
-]
-
-
 class ASTDiffSuite(DataSuite):
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
+    files = ['diff.test']
+    base_path = test_temp_dir
+    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         first_src = '\n'.join(testcase.input)

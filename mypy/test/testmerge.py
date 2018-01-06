@@ -8,24 +8,19 @@ from mypy import build
 from mypy.build import BuildManager, BuildSource, State
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
-    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, UNBOUND_IMPORTED
+    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, UNBOUND_IMPORTED
 )
 from mypy.options import Options
 from mypy.server.astmerge import merge_asts
 from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv, indent
-from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type, IdMapper
-
-
-files = [
-    'merge.test'
-]
 
 
 # Which data structures to dump in a test case?
@@ -35,24 +30,27 @@ TYPES = 'TYPES'
 AST = 'AST'
 
 
-NOT_DUMPED_MODULES = ('builtins', 'typing', 'abc')
+NOT_DUMPED_MODULES = (
+    'builtins',
+    'typing',
+    'abc',
+    'contextlib',
+    'sys',
+    'mypy_extensions',
+)
 
 
 class ASTMergeSuite(DataSuite):
+    files = ['merge.test']
+    base_path = test_temp_dir
+    optional_out = True
+
     def __init__(self, *, update_data: bool) -> None:
         super().__init__(update_data=update_data)
         self.str_conv = StrConv(show_ids=True)
         assert self.str_conv.id_mapper is not None
         self.id_mapper = self.str_conv.id_mapper  # type: IdMapper
         self.type_str_conv = TypeStrVisitor(self.id_mapper)
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         name = testcase.name
@@ -79,13 +77,13 @@ class ASTMergeSuite(DataSuite):
         target_path = os.path.join(test_temp_dir, 'target.py')
         shutil.copy(os.path.join(test_temp_dir, 'target.py.next'), target_path)
 
-        a.extend(self.dump(manager, fine_grained_manager.graph, kind))
+        a.extend(self.dump(manager, kind))
         old_subexpr = get_subexpressions(manager.modules['target'])
 
         a.append('==>')
 
         new_file, new_types = self.build_increment(fine_grained_manager, 'target', target_path)
-        a.extend(self.dump(manager, fine_grained_manager.graph, kind))
+        a.extend(self.dump(manager, kind))
 
         for expr in old_subexpr:
             # Verify that old AST nodes are removed from the expression type map.
@@ -120,12 +118,11 @@ class ASTMergeSuite(DataSuite):
                                                             Dict[Expression, Type]]:
         manager.update([(module_id, path)])
         module = manager.manager.modules[module_id]
-        type_map = manager.graph[module_id].type_map()
+        type_map = manager.type_maps[module_id]
         return module, type_map
 
     def dump(self,
              manager: BuildManager,
-             graph: Dict[str, State],
              kind: str) -> List[str]:
         modules = manager.modules
         if kind == AST:
@@ -178,6 +175,10 @@ class ASTMergeSuite(DataSuite):
         if node.type_override:
             override = self.format_type(node.type_override)
             s += '(type_override={})'.format(override)
+        if (isinstance(node.node, Var) and node.node.type and
+                not node.node.fullname().startswith('typing.')):
+            typestr = self.format_type(node.node.type)
+            s += '({})'.format(typestr)
         return s
 
     def dump_typeinfos(self, modules: Dict[str, MypyFile]) -> List[str]:

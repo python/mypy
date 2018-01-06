@@ -449,3 +449,103 @@ C = list
 [builtins fixtures/list.pyi]
 [out]
 __main__.C
+
+[case testDecoratorChangesSignature]
+from contextlib import contextmanager
+from typing import Iterator, List, Tuple
+
+@contextmanager
+def f(x: List[Tuple[int]]) -> Iterator[None]:
+    yield
+
+@contextmanager
+def g(x: str) -> Iterator[None]:
+    yield
+[file next.py]
+from contextlib import contextmanager
+from typing import Iterator, List, Tuple
+
+@contextmanager
+def f(x: List[Tuple[int]]) -> Iterator[None]:
+    yield
+
+@contextmanager
+def g(x: object) -> Iterator[None]:
+    yield
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
+[out]
+__main__.g
+
+[case testOverloadedMethod]
+from typing import overload
+
+class A:
+    @overload
+    def f(self, x: int) -> int: pass
+    @overload
+    def f(self, x: str) -> str: pass
+    def f(self, x): pass
+
+    @overload
+    def g(self, x: int) -> int: pass
+    @overload
+    def g(self, x: str) -> str: pass
+    def g(self, x): pass
+[file next.py]
+from typing import overload
+
+class A:
+    @overload
+    def f(self, x: int) -> int: pass
+    @overload
+    def f(self, x: str) -> str: pass
+    def f(self, x): pass
+
+    @overload
+    def g(self, x: int) -> int: pass
+    @overload
+    def g(self, x: object) -> object: pass
+    def g(self, x): pass
+[out]
+__main__.A.g
+
+[case testPropertyWithSetter]
+class A:
+    @property
+    def x(self) -> int:
+        pass
+
+    @x.setter
+    def x(self, o: int) -> None:
+        pass
+
+class B:
+    @property
+    def x(self) -> int:
+        pass
+
+    @x.setter
+    def x(self, o: int) -> None:
+        pass
+[file next.py]
+class A:
+    @property
+    def x(self) -> int:
+        pass
+
+    @x.setter
+    def x(self, o: int) -> None:
+        pass
+
+class B:
+    @property
+    def x(self) -> str:
+        pass
+
+    @x.setter
+    def x(self, o: str) -> None:
+        pass
+[builtins fixtures/property.pyi]
+[out]
+__main__.B.x

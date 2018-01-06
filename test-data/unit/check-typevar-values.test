@@ -573,3 +573,18 @@ from typing import Sequence, Iterable, TypeVar
 S = TypeVar('S', Sequence, Iterable)
 def my_len(s: S) -> None: pass
 def crash() -> None: my_len((0,))
+
+[case testReferenceToDecoratedFunctionAndTypeVarValues]
+from typing import TypeVar, Callable
+
+T = TypeVar('T')
+S = TypeVar('S', int, str)
+
+def dec(f: Callable[..., T]) -> Callable[..., T]: ...
+
+@dec
+def g(s: S) -> Callable[[S], None]: ...
+
+def f(x: S) -> None:
+    h = g(x)
+    h(x)

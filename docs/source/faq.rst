@@ -108,10 +108,11 @@ Mypy provides support for both `nominal subtyping
 <https://en.wikipedia.org/wiki/Nominative_type_system>`_ and
 `structural subtyping
 <https://en.wikipedia.org/wiki/Structural_type_system>`_.
-Support for structural subtyping is considered experimental.
 Some argue that structural subtyping is better suited for languages with duck
 typing such as Python. Mypy however primarily uses nominal subtyping,
-leaving structural subtyping opt-in. Here are some reasons why:
+leaving structural subtyping mostly opt-in (except for built-in protocols
+such as ``Iterable`` that always support structural subtyping). Here are some
+reasons why:
 
 1. It is easy to generate short and informative error messages when
    using a nominal type system. This is especially important when
@@ -119,12 +120,12 @@ leaving structural subtyping opt-in. Here are some reasons why:
 
 2. Python provides built-in support for nominal ``isinstance()`` tests and
    they are widely used in programs. Only limited support for structural
-   ``isinstance()`` exists for ABCs in ``collections.abc`` and ``typing``
-   standard library modules.
+   ``isinstance()`` is available, and it's less type safe than
+   nominal type tests.
 
-3. Many programmers are already familiar with nominal subtyping and it
+3. Many programmers are already familiar with static, nominal subtyping and it
    has been successfully used in languages such as Java, C++ and
-   C#. Only few languages use structural subtyping.
+   C#. Fewer languages use structural subtyping.
 
 However, structural subtyping can also be useful. For example, a "public API"
 may be more flexible if it is typed with protocols. Also, using protocol types

@@ -649,3 +649,16 @@ d: Type[D]
 d.g()  # E: "Type[D]" has no attribute "g"
 d.f()
 [builtins fixtures/classmethod.pyi]
+
+[case testTypeNamedTupleCall]
+
+from typing import NamedTuple
+
+Thing = NamedTuple('Thing', [('s', str), ('n', int)])
+
+class CallableTuple(Thing):
+    def __call__(self) -> None:
+        pass
+
+o = CallableTuple('hello ', 12)
+o()

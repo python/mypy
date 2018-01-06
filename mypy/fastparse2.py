@@ -79,8 +79,9 @@ TYPE_COMMENT_AST_ERROR = 'invalid type comment'
 
 def parse(source: Union[str, bytes],
           fnam: str,
+          module: Optional[str],
           errors: Optional[Errors] = None,
-          options: Options = Options()) -> MypyFile:
+          options: Optional[Options] = None) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
@@ -90,7 +91,9 @@ def parse(source: Union[str, bytes],
     if errors is None:
         errors = Errors()
         raise_on_error = True
-    errors.set_file(fnam, None)
+    if options is None:
+        options = Options()
+    errors.set_file(fnam, module)
     is_stub_file = fnam.endswith('.pyi')
     try:
         assert options.python_version[0] < 3 and not is_stub_file
@@ -103,7 +106,7 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg)
+        errors.report(e.lineno, e.offset, e.msg, blocker=True)
         tree = MypyFile([], [], False, set())
 
     if raise_on_error and errors.is_errors():
@@ -150,7 +153,7 @@ class ASTConverter(ast27.NodeTransformer):
         self.errors = errors
 
     def fail(self, msg: str, line: int, column: int) -> None:
-        self.errors.report(line, column, msg)
+        self.errors.report(line, column, msg, blocker=True)
 
     def generic_visit(self, node: ast27.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))

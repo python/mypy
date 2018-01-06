@@ -90,6 +90,11 @@ class BuildSource:
         self.module = module or '__main__'
         self.text = text
 
+    def __repr__(self) -> str:
+        return '<BuildSource path=%r module=%r has_text=%s>' % (self.path,
+                                                                self.module,
+                                                                self.text is not None)
+
 
 class BuildSourceSet:
     """Efficiently test a file's membership in the set of build sources."""
@@ -633,7 +638,7 @@ class BuildManager:
         Raise CompileError if there is a parse error.
         """
         num_errs = self.errors.num_messages()
-        tree = parse(source, path, self.errors, options=self.options)
+        tree = parse(source, path, id, self.errors, options=self.options)
         tree._fullname = id
         self.add_stats(files_parsed=1,
                        modules_parsed=int(not tree.is_stub),
@@ -646,12 +651,16 @@ class BuildManager:
         self.errors.set_file_ignored_lines(path, tree.ignored_lines, ignore_errors)
         return tree
 
-    def module_not_found(self, path: str, id: str, line: int, target: str) -> None:
-        self.errors.set_file(path, id)
+    def module_not_found(self, path: str, source: str, line: int, target: str) -> None:
+        self.errors.set_file(path, source)
         stub_msg = "(Stub files are from https://github.com/python/typeshed)"
-        if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(target)) or
-                (self.options.python_version[0] >= 3 and
-                 moduleinfo.is_py3_std_lib_module(target))):
+        if target == 'builtins':
+            self.errors.report(line, 0, "Cannot find 'builtins' module. Typeshed appears broken!",
+                               blocker=True)
+            self.errors.raise_error()
+        elif ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(target))
+              or (self.options.python_version[0] >= 3
+                  and moduleinfo.is_py3_std_lib_module(target))):
             self.errors.report(
                 line, 0, "No library stub file for standard library module '{}'".format(target))
             self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
@@ -1147,8 +1156,11 @@ def write_cache(id: str, path: str, tree: MypyFile,
       tree: the fully checked module data
       dependencies: module IDs on which this module depends
       suppressed: module IDs which were suppressed as dependencies
+      child_modules: module IDs which are this package's direct submodules
       dep_prios: priorities (parallel array to dependencies)
       old_interface_hash: the hash from the previous version of the data cache file
+      source_hash: the hash of the source code
+      ignore_all: the ignore_all flag for this module
       manager: the build manager (for pyversion, log/trace)
 
     Returns:
@@ -1431,7 +1443,7 @@ class State:
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
     is_from_saved_cache = False  # True if the tree came from the in-memory cache
-    dependencies = None  # type: List[str]
+    dependencies = None  # type: List[str]  # Modules directly imported by the module
     suppressed = None  # type: List[str]  # Suppressed/missing dependencies
     priorities = None  # type: Dict[str, int]
 
@@ -1464,6 +1476,9 @@ class State:
 
     # Whether to ignore all errors
     ignore_all = False
+
+    # Whether the module has an error or any of its dependencies have one.
+    transitive_error = False
 
     # Type checker used for checking this file.  Use type_checker() for
     # access and to construct this on demand.
@@ -1838,14 +1853,14 @@ class State:
 
     def semantic_analysis(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        patches = []  # type: List[Callable[[], None]]
+        patches = []  # type: List[Tuple[int, Callable[[], None]]]
         with self.wrap_context():
             self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, patches)
         self.patches = patches
 
     def semantic_analysis_pass_three(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        patches = []  # type: List[Callable[[], None]]
+        patches = []  # type: List[Tuple[int, Callable[[], None]]]
         with self.wrap_context():
             self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath,
                                                             self.options, patches)
@@ -1854,7 +1869,8 @@ class State:
         self.patches = patches + self.patches
 
     def semantic_analysis_apply_patches(self) -> None:
-        for patch_func in self.patches:
+        patches_by_priority = sorted(self.patches, key=lambda x: x[0])
+        for priority, patch_func in patches_by_priority:
             patch_func()
 
     def type_check_first_pass(self) -> None:
@@ -1935,7 +1951,7 @@ class State:
         if self.manager.options.quick_and_dirty:
             is_errors = self.manager.errors.is_errors_for_file(self.path)
         else:
-            is_errors = self.manager.errors.is_errors()
+            is_errors = self.transitive_error
         if is_errors:
             delete_cache(self.id, self.path, self.manager)
             self.meta = None
@@ -2070,7 +2086,11 @@ def dump_graph(graph: Graph) -> None:
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
-    """Given some source files, load the full dependency graph."""
+    """Given some source files, load the full dependency graph.
+
+    As this may need to parse files, this can raise CompileError in case
+    there are syntax errors.
+    """
     graph = {}  # type: Graph
     # The deque is used to implement breadth-first traversal.
     # TODO: Consider whether to go depth-first instead.  This may
@@ -2244,9 +2264,17 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         else:
             fresh_msg = "stale due to deps (%s)" % " ".join(sorted(stale_deps))
 
+        # Initialize transitive_error for all SCC members from union
+        # of transitive_error of dependencies.
+        if any(graph[dep].transitive_error for dep in deps if dep in graph):
+            for id in scc:
+                graph[id].transitive_error = True
+
         scc_str = " ".join(scc)
         if fresh:
-            if not maybe_reuse_in_memory_tree(graph, scc, manager):
+            if maybe_reuse_in_memory_tree(graph, scc, manager):
+                manager.add_stats(sccs_kept=1, nodes_kept=len(scc))
+            else:
                 manager.trace("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
                 fresh_scc_queue.append(scc)
         else:
@@ -2258,6 +2286,11 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 # Note that `process_graph` may end with us not having processed every
                 # single fresh SCC. This is intentional -- we don't need those modules
                 # loaded if there are no more stale SCCs to be rechecked.
+                #
+                # Also note we shouldn't have to worry about transitive_error here,
+                # since modules with transitive errors aren't written to the cache,
+                # and if any dependencies were changed, this SCC would be stale.
+                # (Also, in quick_and_dirty mode we don't care about transitive errors.)
                 #
                 # TODO: see if it's possible to determine if we need to process only a
                 # _subset_ of the past SCCs instead of having to process them all.
@@ -2403,6 +2436,7 @@ def can_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManager
         # Check that all dependencies were loaded from memory.
         # If not, some dependency was reparsed but the interface hash
         # wasn't changed -- in that case we can't reuse the tree.
+        # TODO: Pass deps in from process_graph(), via maybe_reuse_in_memory_tree()?
         deps = set(dep for id in scc for dep in graph[id].dependencies if dep in graph)
         deps -= set(scc)  # Subtract the SCC itself (else nothing will be safe)
         if all(graph[dep].is_from_saved_cache for dep in deps):
@@ -2451,6 +2485,9 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         for id in stale:
             if graph[id].type_check_second_pass():
                 more = True
+    if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
+        for id in stale:
+            graph[id].transitive_error = True
     for id in stale:
         graph[id].finish_passes()
         graph[id].write_cache()

@@ -7,16 +7,16 @@ that are stale because of the changes.
 Only look at detail at definitions at the current module.
 """
 
-from typing import Set, List, TypeVar, Dict, Tuple, Optional, Sequence
+from typing import Set, List, TypeVar, Dict, Tuple, Optional, Sequence, Union
 
 from mypy.nodes import (
-    SymbolTable, SymbolTableNode, FuncBase, TypeInfo, Var, MypyFile, SymbolNode, Decorator,
-    TypeVarExpr, MODULE_REF, TYPE_ALIAS, UNBOUND_IMPORTED, TVAR
+    SymbolTable, SymbolTableNode, TypeInfo, Var, MypyFile, SymbolNode, Decorator, TypeVarExpr,
+    OverloadedFuncDef, FuncItem, MODULE_REF, TYPE_ALIAS, UNBOUND_IMPORTED, TVAR
 )
 from mypy.types import (
     Type, TypeVisitor, UnboundType, TypeList, AnyType, NoneTyp, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
-    UnionType, Overloaded, PartialType, TypeType
+    UnionType, Overloaded, PartialType, TypeType, function_type
 )
 from mypy.util import get_prefix
 
@@ -232,9 +232,13 @@ def snapshot_definition(node: Optional[SymbolNode],
     The representation is nested tuples and dicts. Only externally
     visible attributes are included.
     """
-    if isinstance(node, FuncBase):
+    if isinstance(node, (OverloadedFuncDef, FuncItem)):
         # TODO: info
-        return ('Func', common, node.is_property, snapshot_type(node.type))
+        if node.type:
+            signature = snapshot_type(node.type)
+        else:
+            signature = snapshot_untyped_signature(node)
+        return ('Func', common, node.is_property, signature)
     elif isinstance(node, Var):
         return ('Var', common, snapshot_optional_type(node.type))
     elif isinstance(node, Decorator):
@@ -373,3 +377,19 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
 
     def visit_type_type(self, typ: TypeType) -> SnapshotItem:
         return ('TypeType', snapshot_type(typ.item))
+
+
+def snapshot_untyped_signature(func: Union[OverloadedFuncDef, FuncItem]) -> Tuple[object, ...]:
+    if isinstance(func, FuncItem):
+        return (tuple(func.arg_names), tuple(func.arg_kinds))
+    else:
+        result = []
+        for item in func.items:
+            if isinstance(item, Decorator):
+                if item.var.type:
+                    result.append(snapshot_type(item.var.type))
+                else:
+                    result.append(('DecoratorWithoutType',))
+            else:
+                result.append(snapshot_untyped_signature(item))
+        return tuple(result)

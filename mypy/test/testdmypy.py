@@ -4,8 +4,6 @@ import os
 import re
 import shutil
 import sys
-import time
-import typed_ast
 
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -13,44 +11,41 @@ from mypy import build
 from mypy import defaults
 from mypy.main import process_options
 from mypy.myunit import AssertionFailure
-from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite, has_stable_flags, is_incremental
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
     retry_on_error, testcase_pyversion, update_testcase_output,
 )
-from mypy.errors import CompileError
 from mypy.options import Options
 
-from mypy import experiments
 from mypy import dmypy
 from mypy import dmypy_server
 
 # List of files that contain test case descriptions.
-files = [
-    'check-enum.test',
-    'check-incremental.test',
-    'check-newtype.test',
-]
+if sys.platform != 'win32':
+    dmypy_files = [
+        'check-enum.test',
+        'check-incremental.test',
+        'check-newtype.test',
+    ]
+else:
+    dmypy_files = []  # type: List[str]
 
 
 class TypeCheckSuite(DataSuite):
+    files = dmypy_files
+    base_path = test_temp_dir
+    optional_out = True
 
     @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        if sys.platform == 'win32':
-            return []  # Nothing here works on Windows.
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            tc = parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-            c += [case for case in tc
-                  if cls.has_stable_flags(case) and cls.is_incremental(case)]
-        return c
+    def filter(cls, testcase: DataDrivenTestCase) -> bool:
+        return has_stable_flags(testcase) and is_incremental(testcase)
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        assert self.is_incremental(testcase), "Testcase is not incremental"
-        assert self.has_stable_flags(testcase), "Testcase has varying flags"
+        assert has_stable_flags(testcase), "Testcase has varying flags"
+        assert is_incremental(testcase), "Testcase is not incremental"
+
         # All tests run once with a cold cache, then at least once
         # with a warm cache and maybe changed files.  Expected output
         # is specified separately for each run.
@@ -67,19 +62,6 @@ class TypeCheckSuite(DataSuite):
         self.server = None  # type: Optional[dmypy_server.Server]
         for step in range(1, num_steps + 1):
             self.run_case_once(testcase, step)
-
-    @classmethod
-    def is_incremental(cls, testcase: DataDrivenTestCase) -> bool:
-        return 'incremental' in testcase.name.lower() or 'incremental' in testcase.file
-
-    @classmethod
-    def has_stable_flags(cls, testcase: DataDrivenTestCase) -> bool:
-        if any(re.match(r'# flags[2-9]:', line) for line in testcase.input):
-            return False
-        for filename, contents in testcase.files:
-            if os.path.basename(filename).startswith('mypy.ini.'):
-                return False
-        return True
 
     def clear_cache(self) -> None:
         dn = defaults.CACHE_DIR

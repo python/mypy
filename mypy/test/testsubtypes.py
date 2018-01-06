@@ -6,7 +6,7 @@ from mypy.types import Type
 
 
 class SubtypingSuite(Suite):
-    def set_up(self) -> None:
+    def setup(self) -> None:
         self.fx = TypeFixture(INVARIANT)
         self.fx_contra = TypeFixture(CONTRAVARIANT)
         self.fx_co = TypeFixture(COVARIANT)

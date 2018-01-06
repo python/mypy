@@ -14,8 +14,14 @@ x = None # type: a + b  # E: invalid type comment or annotation
 -- This happens in both parsers.
 [case testFastParseFunctionAnnotationSyntaxError]
 
-def f():  # E: syntax error in type comment
+def f():  # E: syntax error in type comment # N: Suggestion: wrap argument types in parentheses
   # type: None -> None
+  pass
+
+[case testFastParseFunctionAnnotationSyntaxErrorSpaces]
+
+def f():  # E: syntax error in type comment # N: Suggestion: wrap argument types in parentheses
+  # type:             None -> None
   pass
 
 [case testFastParseInvalidFunctionAnnotation]
@@ -235,6 +241,30 @@ def f(a):
     pass
 [out]
 main:3: error: invalid type comment or annotation
+main:3: note: Suggestion: use Tuple[...] instead of Tuple(...)
+
+[case testFasterParseTypeErrorList_python2]
+
+from typing import List
+def f(a):
+    # type: (List(int)) -> int
+    pass
+[out]
+main:3: error: invalid type comment or annotation
+main:3: note: Suggestion: use List[...] instead of List(...)
+
+[case testFasterParseTypeErrorCustom]
+
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Foo(Generic[T]):
+  pass
+
+def f(a: Foo(int)) -> int:
+    pass
+[out]
+main:7: error: invalid type comment or annotation
+main:7: note: Suggestion: use Foo[...] instead of Foo(...)
 
 [case testFastParseMatMul]
 
@@ -393,3 +423,15 @@ def call() -> str: pass
 [case testNoCrashOnImportFromStarPython2]
 # flags: --py2
 from . import * # E: No parent module -- cannot perform relative import
+
+[case testSpuriousTrailingComma_python2]
+from typing import Optional
+
+def update_state(tid,                # type: int
+                 vid,                # type: int
+                 update_ts=None,     # type: Optional[float],
+                 ):         # type: (...) -> str
+    pass
+[out]
+main:3: error: Invalid tuple literal type
+main:3: note: Suggestion: Is there a spurious trailing comma?

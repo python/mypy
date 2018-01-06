@@ -39,6 +39,7 @@ import base64
 import json
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -125,7 +126,7 @@ def run_mypy(target_file_path: Optional[str],
              *,
              incremental: bool = False,
              daemon: bool = False,
-             verbose: bool = False) -> Tuple[float, str]:
+             verbose: bool = False) -> Tuple[float, str, Dict[str, Any]]:
     """Runs mypy against `target_file_path` and returns what mypy prints to stdout as a string.
 
     If `incremental` is set to True, this function will use store and retrieve all caching data
@@ -134,8 +135,9 @@ def run_mypy(target_file_path: Optional[str],
 
     If `daemon` is True, we use daemon mode; the daemon must be started and stopped by the caller.
     """
+    stats = {}  # type: Dict[str, Any]
     if daemon:
-        command = DAEMON_CMD + ["check", "-q"]
+        command = DAEMON_CMD + ["check", "-v"]
     else:
         if mypy_script is None:
             command = ["python3", "-m", "mypy"]
@@ -152,8 +154,27 @@ def run_mypy(target_file_path: Optional[str],
     output, stderr, _ = execute(command, False)
     if stderr != "":
         output = stderr
+    else:
+        if daemon:
+            output, stats = filter_daemon_stats(output)
     runtime = time.time() - start
-    return runtime, output
+    return runtime, output, stats
+
+
+def filter_daemon_stats(output: str) -> Tuple[str, Dict[str, Any]]:
+    stats = {}  # type: Dict[str, Any]
+    lines = output.splitlines()
+    output_lines = []
+    for line in lines:
+        m = re.match('(\w+)\s+:\s+(.*)', line)
+        if m:
+            key, value = m.groups()
+            stats[key] = value
+        else:
+            output_lines.append(line)
+    if output_lines:
+        output_lines.append('\n')
+    return '\n'.join(output_lines), stats
 
 
 def start_daemon(mypy_cache_path: str) -> None:
@@ -197,8 +218,8 @@ def set_expected(commits: List[Tuple[str, str]],
         else:
             print('Caching expected output for commit {0}: "{1}"'.format(commit_id, message))
             execute(["git", "-C", temp_repo_path, "checkout", commit_id])
-            runtime, output = run_mypy(target_file_path, mypy_cache_path, mypy_script,
-                                       incremental=False)
+            runtime, output, stats = run_mypy(target_file_path, mypy_cache_path, mypy_script,
+                                              incremental=False)
             cache[commit_id] = {'runtime': runtime, 'output': output}
             if output == "":
                 print("    Clean output ({:.3f} sec)".format(runtime))
@@ -224,11 +245,13 @@ def test_incremental(commits: List[Tuple[str, str]],
     """
     print("Note: first commit is evaluated twice to warm up cache")
     commits = [commits[0]] + commits
+    overall_stats = {}  # type: Dict[str, float]
     for commit_id, message in commits:
         print('Now testing commit {0}: "{1}"'.format(commit_id, message))
         execute(["git", "-C", temp_repo_path, "checkout", commit_id])
-        runtime, output = run_mypy(target_file_path, mypy_cache_path, mypy_script,
-                                   incremental=True, daemon=daemon)
+        runtime, output, stats = run_mypy(target_file_path, mypy_cache_path, mypy_script,
+                                          incremental=True, daemon=daemon)
+        relevant_stats = combine_stats(overall_stats, stats)
         expected_runtime = cache[commit_id]['runtime']  # type: float
         expected_output = cache[commit_id]['output']  # type: str
         if output != expected_output:
@@ -243,6 +266,23 @@ def test_incremental(commits: List[Tuple[str, str]],
             print("    Output matches expected result!")
             print("    Incremental: {:.3f} sec".format(runtime))
             print("    Original:    {:.3f} sec".format(expected_runtime))
+            if relevant_stats:
+                print("    Stats:       {}".format(relevant_stats))
+    if overall_stats:
+        print("Overall stats:", overall_stats)
+
+
+def combine_stats(overall_stats: Dict[str, float],
+                  new_stats: Dict[str, Any]) -> Dict[str, float]:
+    INTERESTING_KEYS = ['build_time', 'gc_time']
+    # For now, we only support float keys
+    relevant_stats = {}  # type: Dict[str, float]
+    for key in INTERESTING_KEYS:
+        if key in new_stats:
+            value = float(new_stats[key])
+            relevant_stats[key] = value
+            overall_stats[key] = overall_stats.get(key, 0.0) + value
+    return relevant_stats
 
 
 def cleanup(temp_repo_path: str, mypy_cache_path: str) -> None:

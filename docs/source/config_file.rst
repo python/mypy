@@ -142,13 +142,13 @@ overridden by the pattern sections matching the module name.
   ``error``.  For explanations see the discussion for the
   :ref:`--follow-imports <follow-imports>` command line flag.  Note
   that if pattern matching is used, the pattern should match the name
-  of the _imported_ module, not the module containing the import
+  of the *imported* module, not the module containing the import
   statement.
 
 - ``ignore_missing_imports`` (Boolean, default False) suppress error
   messages about imports that cannot be resolved.  Note that if
   pattern matching is used, the pattern should match the name of the
-  _imported_ module, not the module containing the import statement.
+  *imported* module, not the module containing the import statement.
 
 - ``silent_imports`` (Boolean, deprecated) equivalent to
   ``follow_imports=skip`` plus ``ignore_missing_imports=True``.
