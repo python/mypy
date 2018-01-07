@@ -26,7 +26,8 @@ class list(Generic[T]):
 
 class tuple(Generic[T]): pass
 class function: pass
-class int: pass
+class int:
+    def __add__(self, other: 'int') -> 'int': pass
 class float: pass
 class str: pass
 class bool(int): pass

@@ -1403,7 +1403,7 @@ b[{}] = 1
 
 [case testInferDictInitializedToEmptyAndUpdatedFromMethod]
 map = {}
-def add():
+def add() -> None:
     map[1] = 2
 [builtins fixtures/dict.pyi]
 [out]
@@ -1959,7 +1959,7 @@ class C:
 
 if bool():
     f()
-    1 + '' # E: Unsupported left operand type for + ("int")
+    1 + '' # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1976,7 +1976,7 @@ class C:
 
 if bool():
     f()
-    1 + '' # E: Unsupported left operand type for + ("int")
+    1 + '' # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1992,6 +1992,6 @@ class C:
 
 if bool():
     f([])
-    1 + '' # E: Unsupported left operand type for + ("int")
+    1 + '' # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/list.pyi]
 [out]

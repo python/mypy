@@ -353,7 +353,7 @@ a @= 1  # E: Argument 1 to "__imatmul__" of "A" has incompatible type "int"; exp
 
 [case testInplaceSetitem]
 class A(object):
-    def __init__(self):
+    def __init__(self) -> None:
         self.a = 0
 
     def __iadd__(self, a):
