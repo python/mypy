@@ -79,7 +79,9 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
                                            path))
     else:
         out = normalize_error_messages(out)
-        out.append('== Return code: {}'.format(result))
+        obvious_result = 1 if out else 0
+        if obvious_result != result:
+            out.append('== Return code: {}'.format(result))
         assert_string_arrays_equal(testcase.output, out,
                                    'Invalid output ({}, line {})'.format(
                                        testcase.file, testcase.line))

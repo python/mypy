@@ -72,8 +72,6 @@ def untyped_function():
 
 [case testAnyExprReportDivisionByZero]
 # cmd: mypy --any-exprs-report=out -c 'pass'
-[out]
-== Return code: 0
 
 [case testClassDefIsTreatedAsEmpty]
 # cmd: mypy --html-report report n.py
@@ -339,5 +337,3 @@ def foo():
     n             0          0            0                  0       0              0
 ---------------------------------------------------------------------------------------
 Total             0          0            0                  0       0              0
-[out]
-== Return code: 0
