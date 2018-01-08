@@ -125,13 +125,18 @@ class A:
     def __init__(self) -> None:
         self.x = object()
 a = None # type: A
-a.y
-a.y = object()
+a.y  # E: "A" has no attribute "y"
+a.y = object()  # E: "A" has no attribute "y"
 a.x
 a.x = object()
-[out]
-main:6: error: "A" has no attribute "y"
-main:7: error: "A" has no attribute "y"
+
+[case testInferAttributeUnannotatedInit]
+class A:
+    def __init__(self):
+        self.x = object()
+
+a.x
+a.x = object()
 
 [case testArgumentTypeInference]
 

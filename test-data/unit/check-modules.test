@@ -1313,8 +1313,13 @@ class A:
 class B(A):
     def f(self) -> str: return self.x
     def initialize(self) -> None: self.x = 'bar'
-[out]
 
+[case testDeferredClassContextUnannotated]
+class A:
+    def f(self) -> str: return 'foo'
+class B(A):
+    def f(self) -> str: return self.x
+    def initialize(self): self.x = 'bar'
 
 -- Scripts and __main__
 
