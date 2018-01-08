@@ -1,10 +1,57 @@
-"""Compare two versions of a module symbol table.
+"""Utilities for comparing two versions of a module symbol table.
 
 The goal is to find which AST nodes have externally visible changes, so
-that we can fire triggers and re-type-check other parts of the program
+that we can fire triggers and re-process other parts of the program
 that are stale because of the changes.
 
-Only look at detail at definitions at the current module.
+Only look at detail at definitions at the current module -- don't
+recurse into other modules.
+
+A summary of the module contents:
+
+* snapshot_symbol_table(...) creates an opaque snapshot description of a
+  module/class symbol table (recursing into nested class symbol tables).
+
+* compare_symbol_table_snapshots(...) compares two snapshots for the same
+  module id and returns fully qualified names of differences (which act as
+  triggers).
+
+* is_identical_type(t, s) determines whether two Type objects are equivalent.
+
+* is_identical_types(a, b) is like the above, but for lists of types.
+
+To compare two versions of a module symbol table, take snapshots of both
+versions and compare the snapshots. The use of snapshots makes it easy to
+compare two versions of the *same* symbol table that is being mutated.
+
+Summary of how this works for certain kinds of differences:
+
+* If a symbol table node is deleted or added (only present in old/new version
+  of the symbol table), it is considered different, of course.
+
+* If a symbol table node refers to a different sort of thing in the new version,
+  it is considered different (for example, if a class is replaced with a
+  function).
+
+* If the signature of a function has changed, it is considered different.
+
+* If the type of a variable changes, it is considered different.
+
+* If the MRO of a class changes, or a non-generic class is turned into to
+  generic class, the class is considered different (there are other such "big"
+  differences that cause a class to be considered changed). However, just changes
+  to attributes or methods don't generally constitute a difference at the
+  class level -- these are handled at attribute level (say, 'mod.Cls.method'
+  is different rather than 'mod.Cls' being different).
+
+* If an imported name targets a different name (say, 'from x import y' is
+  replaced with 'from z import y'), the name in the module is considered
+  different. If the target of an import continues to have the same name,
+  but it's specifics change, this doesn't mean that the imported name is
+  treated as changed. Say, there is 'from x import y' in 'm', and the
+  type of 'x.y' has changed. This doesn't mean that that 'm.y' is considered
+  changed. Instead, processing the difference in 'm' will be handled through
+  fine-grained dependencies.
 """
 
 from typing import Set, List, TypeVar, Dict, Tuple, Optional, Sequence, Union
@@ -149,10 +196,12 @@ def compare_symbol_table_snapshots(
         snapshot2: Dict[str, SnapshotItem]) -> Set[str]:
     """Return names that are different in two snapshots of a symbol table.
 
-    Return a set of fully-qualified names (e.g., 'mod.func' or 'mod.Class.method').
-
     Only shallow (intra-module) differences are considered. References to things defined
     outside the module are compared based on the name of the target only.
+
+    Recurse into class symbol tables (if the class is defined in the target module).
+
+    Return a set of fully-qualified names (e.g., 'mod.func' or 'mod.Class.method').
     """
     # Find names only defined only in one version.
     names1 = {'%s.%s' % (name_prefix, name) for name in snapshot1}
@@ -380,6 +429,14 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
 
 
 def snapshot_untyped_signature(func: Union[OverloadedFuncDef, FuncItem]) -> Tuple[object, ...]:
+    """Create a snapshot of the signature of a function that has no explicit signature.
+
+    If the arguments to a function without signature change, it must be
+    considered as different. We have this special casing since we don't store
+    the implicit signature anywhere, and we'd rather not construct new
+    Callable objects in this module (the idea is to only read properties of
+    the AST here).
+    """
     if isinstance(func, FuncItem):
         return (tuple(func.arg_names), tuple(func.arg_kinds))
     else:
