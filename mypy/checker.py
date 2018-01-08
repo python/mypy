@@ -2675,7 +2675,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         # Build up a fake FuncDef so we can populate the symbol table.
         func_def = FuncDef('__call__', [], Block([]), callable_type)
-        func_def._fullname = gen_name + '.__call__'
+        func_def._fullname = '__call__'
         func_def.info = info
         info.names['__call__'] = SymbolTableNode(MDEF, func_def, callable_type)
 
