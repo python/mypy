@@ -58,6 +58,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     outb = process.stdout.read()
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
+    result = process.wait()
     # Remove temp file.
     os.remove(program_path)
     # Compare actual output to expected.
@@ -78,6 +79,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
                                            path))
     else:
         out = normalize_error_messages(out)
+        out.append('== Return code: {}'.format(result))
         assert_string_arrays_equal(testcase.output, out,
                                    'Invalid output ({}, line {})'.format(
                                        testcase.file, testcase.line))

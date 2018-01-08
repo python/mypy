@@ -21,6 +21,7 @@ import pkg.subpkg.a
 [out]
 pkg/a.py:1: error: Name 'undef' is not defined
 pkg/subpkg/a.py:1: error: Name 'undef' is not defined
+== Return code: 1
 
 [case testCmdlinePackageSlash]
 # cmd: mypy pkg/
@@ -34,6 +35,7 @@ import pkg.subpkg.a
 [out]
 pkg/a.py:1: error: Name 'undef' is not defined
 pkg/subpkg/a.py:1: error: Name 'undef' is not defined
+== Return code: 1
 
 [case testCmdlineNonPackage]
 # cmd: mypy dir
@@ -43,6 +45,7 @@ undef
 undef
 [out]
 dir/a.py:1: error: Name 'undef' is not defined
+== Return code: 1
 
 [case testCmdlineNonPackageSlash]
 # cmd: mypy dir/
@@ -52,6 +55,7 @@ undef
 undef
 [out]
 dir/a.py:1: error: Name 'undef' is not defined
+== Return code: 1
 
 [case testCmdlinePackageContainingSubdir]
 # cmd: mypy pkg
@@ -62,6 +66,7 @@ undef
 undef
 [out]
 pkg/a.py:1: error: Name 'undef' is not defined
+== Return code: 1
 
 [case testCmdlineNonPackageContainingPackage]
 # cmd: mypy dir
@@ -74,6 +79,7 @@ undef
 [out]
 dir/subpkg/a.py:1: error: Name 'undef' is not defined
 dir/a.py:1: error: Name 'undef' is not defined
+== Return code: 1
 
 [case testCmdlineInvalidPackageName]
 # cmd: mypy dir/sub.pkg/a.py
@@ -82,6 +88,7 @@ dir/a.py:1: error: Name 'undef' is not defined
 undef
 [out]
 sub.pkg is not a valid Python package name
+== Return code: 1
 
 [case testBadFileEncoding]
 # cmd: mypy a.py
@@ -89,6 +96,7 @@ sub.pkg is not a valid Python package name
 # coding: uft-8
 [out]
 mypy: can't decode file 'a.py': unknown encoding: uft-8
+== Return code: 2
 
 [case testCannotIgnoreDuplicateModule]
 # cmd: mypy one/mod/__init__.py two/mod/__init__.py
@@ -98,6 +106,7 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 # type: ignore
 [out]
 two/mod/__init__.py: error: Duplicate module named 'mod'
+== Return code: 2
 
 [case testFlagsFile]
 # cmd: mypy @flagsfile
@@ -110,6 +119,8 @@ def f():
         1/0
     except ZeroDivisionError, err:
         print err
+[out]
+== Return code: 0
 
 [case testConfigFile]
 # cmd: mypy main.py
@@ -122,6 +133,8 @@ def f():
         1/0
     except ZeroDivisionError, err:
         print err
+[out]
+== Return code: 0
 
 [case testErrorContextConfig]
 # cmd: mypy main.py
@@ -134,6 +147,7 @@ def f() -> None:
 [out]
 main.py: note: In function "f":
 main.py:2: error: Unsupported operand types for + ("int" and "str")
+== Return code: 1
 
 [case testAltConfigFile]
 # cmd: mypy --config-file config.ini main.py
@@ -146,6 +160,8 @@ def f():
         1/0
     except ZeroDivisionError, err:
         print err
+[out]
+== Return code: 0
 
 [case testPerFileConfigSection]
 # cmd: mypy x.py y.py z.py
@@ -175,6 +191,7 @@ def g(a: int) -> int:
 z.py:1: error: Function is missing a type annotation
 z.py:4: error: Call to untyped function "f" in typed context
 x.py:1: error: Function is missing a type annotation
+== Return code: 1
 
 [case testPerFileConfigSectionMultipleMatches]
 # cmd: mypy xx.py xy.py yx.py yy.py
@@ -203,6 +220,7 @@ yx.py:2: error: Call to untyped function "f" in typed context
 xy.py:1: error: Function is missing a type annotation
 xy.py:2: error: Call to untyped function "f" in typed context
 xx.py:1: error: Function is missing a type annotation
+== Return code: 1
 
 [case testMultipleGlobConfigSection]
 # cmd: mypy x.py y.py z.py
@@ -219,12 +237,14 @@ def f(a): pass
 [out]
 z.py:1: error: Function is missing a type annotation
 x.py:1: error: Function is missing a type annotation
+== Return code: 1
 
 [case testConfigErrorNoSection]
 # cmd: mypy -c pass
 [file mypy.ini]
 [out]
 mypy.ini: No [mypy] section in config file
+== Return code: 0
 
 [case testConfigErrorUnknownFlag]
 # cmd: mypy -c pass
@@ -233,6 +253,7 @@ mypy.ini: No [mypy] section in config file
 bad = 0
 [out]
 mypy.ini: [mypy]: Unrecognized option: bad = 0
+== Return code: 0
 
 [case testConfigErrorBadBoolean]
 # cmd: mypy -c pass
@@ -241,6 +262,7 @@ mypy.ini: [mypy]: Unrecognized option: bad = 0
 ignore_missing_imports = nah
 [out]
 mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
+== Return code: 0
 
 [case testConfigErrorNotPerFile]
 # cmd: mypy -c pass
@@ -250,6 +272,7 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 python_version = 3.4
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
+== Return code: 0
 
 [case testConfigMypyPath]
 # cmd: mypy file.py
@@ -275,6 +298,7 @@ baz(bar(foo('oof')))
 file.py:1: error: Cannot find module named 'no_stubs'
 file.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
+== Return code: 1
 
 [case testIgnoreErrorsConfig]
 # cmd: mypy x.py y.py
@@ -288,6 +312,7 @@ ignore_errors = True
 "" + 0
 [out]
 y.py:1: error: Unsupported operand types for + ("str" and "int")
+== Return code: 1
 
 [case testConfigFollowImportsNormal]
 # cmd: mypy main.py
@@ -312,6 +337,7 @@ main.py:3: error: Unsupported operand types for + ("int" and "str")
 main.py:6: error: Unsupported operand types for + ("int" and "str")
 main.py:7: error: Module has no attribute "y"
 main.py:8: error: Unsupported operand types for + (Module and "int")
+== Return code: 1
 
 [case testConfigFollowImportsSilent]
 # cmd: mypy main.py
@@ -333,6 +359,7 @@ main.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:4: error: Unsupported operand types for + ("int" and "str")
 main.py:5: error: Module has no attribute "y"
 main.py:6: error: Unsupported operand types for + (Module and "int")
+== Return code: 1
 
 [case testConfigFollowImportsSkip]
 # cmd: mypy main.py
@@ -349,6 +376,7 @@ follow_imports = skip
 [out]
 main.py:2: error: Revealed type is 'Any'
 main.py:4: error: Revealed type is 'Any'
+== Return code: 1
 
 [case testConfigFollowImportsError]
 # cmd: mypy main.py
@@ -367,6 +395,7 @@ main.py:1: note: Import of 'a' ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 main.py:2: error: Revealed type is 'Any'
 main.py:4: error: Revealed type is 'Any'
+== Return code: 1
 
 [case testConfigFollowImportsSelective]
 # cmd: mypy main.py
@@ -407,6 +436,7 @@ main.py:5: error: Revealed type is 'builtins.int'
 main.py:6: error: Revealed type is 'builtins.int'
 main.py:7: error: Revealed type is 'Any'
 main.py:8: error: Revealed type is 'Any'
+== Return code: 1
 
 [case testConfigSilentMissingImportsOff]
 # cmd: mypy main.py
@@ -420,6 +450,7 @@ ignore_missing_imports = False
 main.py:1: error: Cannot find module named 'missing'
 main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main.py:2: error: Revealed type is 'Any'
+== Return code: 1
 
 [case testConfigSilentMissingImportsOn]
 # cmd: mypy main.py
@@ -431,6 +462,7 @@ reveal_type(missing.x)  # Expect Any
 ignore_missing_imports = True
 [out]
 main.py:2: error: Revealed type is 'Any'
+== Return code: 1
 
 [case testDotInFilenameOKScript]
 # cmd: mypy a.b.py c.d.pyi
@@ -441,6 +473,7 @@ whatever
 [out]
 c.d.pyi:1: error: Name 'whatever' is not defined
 a.b.py:1: error: Name 'undef' is not defined
+== Return code: 1
 
 [case testDotInFilenameOKFolder]
 # cmd: mypy my.folder
@@ -448,6 +481,7 @@ a.b.py:1: error: Name 'undef' is not defined
 undef
 [out]
 my.folder/tst.py:1: error: Name 'undef' is not defined
+== Return code: 1
 
 [case testDotInFilenameNoImport]
 # cmd: mypy main.py
@@ -459,6 +493,7 @@ whatever
 main.py:1: error: Cannot find module named 'a'
 main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main.py:1: error: Cannot find module named 'a.b'
+== Return code: 1
 
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass
@@ -467,6 +502,7 @@ main.py:1: error: Cannot find module named 'a.b'
 python_version = 1.0
 [out]
 mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 2 or 3)
+== Return code: 0
 
 [case testPythonVersionTooOld26]
 # cmd: mypy -c pass
@@ -475,6 +511,7 @@ mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be
 python_version = 2.6
 [out]
 mypy.ini: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
+== Return code: 0
 
 [case testPythonVersionTooOld32]
 # cmd: mypy -c pass
@@ -483,6 +520,7 @@ mypy.ini: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
 python_version = 3.2
 [out]
 mypy.ini: [mypy]: python_version: Python 3.2 is not supported (must be 3.3 or higher)
+== Return code: 0
 
 [case testPythonVersionTooNew28]
 # cmd: mypy -c pass
@@ -491,6 +529,7 @@ mypy.ini: [mypy]: python_version: Python 3.2 is not supported (must be 3.3 or hi
 python_version = 2.8
 [out]
 mypy.ini: [mypy]: python_version: Python 2.8 is not supported (must be 2.7)
+== Return code: 0
 
 [case testPythonVersionTooNew40]
 # cmd: mypy -c pass
@@ -499,6 +538,7 @@ mypy.ini: [mypy]: python_version: Python 2.8 is not supported (must be 2.7)
 python_version = 4.0
 [out]
 mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be 2 or 3)
+== Return code: 0
 
 [case testPythonVersionAccepted27]
 # cmd: mypy -c pass
@@ -506,6 +546,7 @@ mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be
 [[mypy]
 python_version = 2.7
 [out]
+== Return code: 0
 
 [case testPythonVersionAccepted33]
 # cmd: mypy -c pass
@@ -513,6 +554,7 @@ python_version = 2.7
 [[mypy]
 python_version = 3.3
 [out]
+== Return code: 0
 
 [case testPythonVersionAccepted36]
 # cmd: mypy -c pass
@@ -520,6 +562,7 @@ python_version = 3.3
 [[mypy]
 python_version = 3.6
 [out]
+== Return code: 0
 
 [case testDisallowAnyUnimported]
 # cmd: mypy main.py
@@ -533,6 +576,7 @@ from unreal import F
 def f(x: F) -> None: pass
 [out]
 main.py:3: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
+== Return code: 1
 
 [case testDisallowAnyExplicitDefSignature]
 # cmd: mypy m.py
@@ -557,6 +601,7 @@ def h() -> List[Any]:
 m.py:3: error: Explicit "Any" is not allowed
 m.py:6: error: Explicit "Any" is not allowed
 m.py:9: error: Explicit "Any" is not allowed
+== Return code: 1
 
 [case testDisallowAnyExplicitVarDeclaration]
 # cmd: mypy m.py
@@ -577,6 +622,7 @@ class X:
 m.py:2: error: Explicit "Any" is not allowed
 m.py:3: error: Explicit "Any" is not allowed
 m.py:5: error: Explicit "Any" is not allowed
+== Return code: 1
 
 [case testDisallowAnyExplicitGenericVarDeclaration]
 # cmd: mypy m.py
@@ -591,6 +637,7 @@ from typing import Any, List
 v: List[Any] = []
 [out]
 m.py:2: error: Explicit "Any" is not allowed
+== Return code: 1
 
 [case testDisallowAnyExplicitInheritance]
 # cmd: mypy m.py
@@ -611,6 +658,7 @@ class D(List[Any]):
 [out]
 m.py:3: error: Explicit "Any" is not allowed
 m.py:6: error: Explicit "Any" is not allowed
+== Return code: 1
 
 [case testDisallowAnyExplicitAlias]
 # cmd: mypy m.py
@@ -633,6 +681,7 @@ def foo(x: X) -> Y:  # no error
 [out]
 m.py:3: error: Explicit "Any" is not allowed
 m.py:4: error: Explicit "Any" is not allowed
+== Return code: 1
 
 [case testDisallowAnyExplicitGenericAlias]
 # cmd: mypy m.py
@@ -658,6 +707,7 @@ def goo(x: TupleAny[Any]) -> None:  # error
 [out]
 m.py:5: error: Explicit "Any" is not allowed
 m.py:10: error: Explicit "Any" is not allowed
+== Return code: 1
 
 [case testDisallowAnyExplicitCast]
 # cmd: mypy m.py
@@ -676,6 +726,7 @@ z = cast(List[Any], x)
 [out]
 m.py:4: error: Explicit "Any" is not allowed
 m.py:5: error: Explicit "Any" is not allowed
+== Return code: 1
 
 [case testDisallowAnyExplicitNamedTuple]
 # cmd: mypy m.py
@@ -693,6 +744,7 @@ Point = NamedTuple('Point', [('x', List[Any]),
 
 [out]
 m.py:3: error: Explicit "Any" is not allowed
+== Return code: 1
 
 [case testDisallowAnyExplicitTypeVarConstraint]
 # cmd: mypy m.py
@@ -708,6 +760,7 @@ from typing import Any, List, TypeVar
 T = TypeVar('T', Any, List[Any])
 [out]
 m.py:3: error: Explicit "Any" is not allowed
+== Return code: 1
 
 [case testDisallowAnyExplicitNewType]
 # cmd: mypy m.py
@@ -726,6 +779,7 @@ Bar = NewType('Bar', List[Any])
 [out]
 m.py:3: error: Argument 2 to NewType(...) must be subclassable (got "Any")
 m.py:4: error: Explicit "Any" is not allowed
+== Return code: 1
 
 [case testDisallowAnyExplicitTypedDictSimple]
 # cmd: mypy m.py
@@ -744,6 +798,7 @@ M(x='x', y=2)  # no error
 def f(m: M) -> None: pass  # no error
 [out]
 m.py:4: error: Explicit "Any" is not allowed
+== Return code: 1
 
 [case testDisallowAnyExplicitTypedDictGeneric]
 # cmd: mypy m.py
@@ -761,6 +816,7 @@ M = TypedDict('M', {'x': str, 'y': List[Any]})  # error
 N = TypedDict('N', {'x': str, 'y': List})  # no error
 [out]
 m.py:4: error: Explicit "Any" is not allowed
+== Return code: 1
 
 [case testDisallowAnyGenericsTupleNoTypeParams]
 # cmd: mypy m.py
@@ -782,6 +838,7 @@ x: Tuple = ()  # error
 m.py:3: error: Missing type parameters for generic type
 m.py:4: error: Missing type parameters for generic type
 m.py:8: error: Missing type parameters for generic type
+== Return code: 1
 
 [case testDisallowAnyGenericsTupleWithNoTypeParamsGeneric]
 # cmd: mypy m.py
@@ -797,6 +854,7 @@ def f(s: List[Tuple]) -> None: pass  # error
 def g(s: List[Tuple[str, str]]) -> None: pass  # no error
 [out]
 m.py:3: error: Missing type parameters for generic type
+== Return code: 1
 
 [case testDisallowAnyGenericsTypeType]
 # cmd: mypy m.py
@@ -817,6 +875,7 @@ x: Type = g(0)  # error
 [out]
 m.py:4: error: Missing type parameters for generic type
 m.py:8: error: Missing type parameters for generic type
+== Return code: 1
 
 [case testDisallowAnyGenericsAliasGenericType]
 # cmd: mypy m.py
@@ -834,6 +893,7 @@ def f(l: L) -> None: pass  # error
 def g(l: L[str]) -> None: pass  # no error
 [out]
 m.py:5: error: Missing type parameters for generic type
+== Return code: 1
 
 [case testDisallowAnyGenericsGenericAlias]
 # cmd: mypy m.py
@@ -858,6 +918,7 @@ x: A = ('a', 'b', 1)  # error
 m.py:6: error: Missing type parameters for generic type
 m.py:7: error: Missing type parameters for generic type
 m.py:11: error: Missing type parameters for generic type
+== Return code: 1
 
 [case testDisallowAnyGenericsPlainList]
 # cmd: mypy m.py
@@ -882,6 +943,7 @@ m.py:5: error: Missing type parameters for generic type
 m.py:6: error: Missing type parameters for generic type
 m.py:8: error: Need type annotation for variable
 m.py:9: error: Missing type parameters for generic type
+== Return code: 1
 
 [case testDisallowAnyGenericsCustomGenericClass]
 # cmd: mypy m.py
@@ -905,6 +967,7 @@ y: G = x  # error
 [out]
 m.py:6: error: Missing type parameters for generic type
 m.py:10: error: Missing type parameters for generic type
+== Return code: 1
 
 [case testDisallowAnyGenericsBuiltinCollections]
 # cmd: mypy m.py
@@ -927,6 +990,7 @@ m.py:4: error: Implicit generic "Any". Use 'typing.List' and specify generic par
 m.py:5: error: Implicit generic "Any". Use 'typing.Dict' and specify generic parameters
 m.py:6: error: Implicit generic "Any". Use 'typing.Set' and specify generic parameters
 m.py:7: error: Implicit generic "Any". Use 'typing.FrozenSet' and specify generic parameters
+== Return code: 1
 
 [case testDisallowAnyGenericsTypingCollections]
 # cmd: mypy m.py
@@ -949,6 +1013,7 @@ m.py:4: error: Missing type parameters for generic type
 m.py:5: error: Missing type parameters for generic type
 m.py:6: error: Missing type parameters for generic type
 m.py:7: error: Missing type parameters for generic type
+== Return code: 1
 
 [case testDisallowSubclassingAny]
 # cmd: mypy m.py y.py
@@ -973,6 +1038,7 @@ x = None  # type: Any
 class ShouldNotBeFine(x): ...
 [out]
 y.py:5: error: Class cannot subclass 'x' (has type 'Any')
+== Return code: 1
 
 [case testDeterministicSectionOrdering]
 # cmd: mypy a
@@ -996,6 +1062,7 @@ ignore_errors = True
 ignore_errors = False
 [out]
 a/b/c/d/e/__init__.py:1: error: "int" not callable
+== Return code: 1
 
 [case testDisallowUntypedDefsAndGenerics]
 # cmd: mypy a.py
@@ -1008,3 +1075,28 @@ def get_tasks(self):
     return 'whatever'
 [out]
 a.py:1: error: Function is missing a type annotation
+== Return code: 1
+
+[case testMissingFile]
+# cmd: mypy nope.py
+[out]
+mypy: can't read file 'nope.py': No such file or directory
+== Return code: 2
+
+[case testParseError]
+# cmd: mypy a.py
+[file a.py]
+def foo(
+[out]
+a.py:1: error: unexpected EOF while parsing
+== Return code: 2
+
+[case testParseErrorAnnots]
+# cmd: mypy a.py
+[file a.py]
+def foo(x):
+    # type: (str, int) -> None
+    return
+[out]
+a.py:1: error: Type signature has too many arguments
+== Return code: 2

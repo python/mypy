@@ -72,12 +72,14 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
                 f.write(m + '\n')
             f.flush()
         except BrokenPipeError:
-            sys.exit(1)
+            sys.exit(2)
 
     serious = False
+    blockers = False
     try:
         type_check_only(sources, bin_dir, options, flush_errors)
     except CompileError as e:
+        blockers = True
         if not e.use_stdout:
             serious = True
     if options.warn_unused_configs and options.unused_configs:
@@ -89,7 +91,8 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         t1 = time.time()
         util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml)
     if messages:
-        sys.exit(1)
+        code = 2 if blockers else 1
+        sys.exit(code)
 
 
 def find_bin_directory(script_path: str) -> str:
