@@ -519,18 +519,21 @@ mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be
 [file mypy.ini]
 [[mypy]
 python_version = 2.7
+[out]
 
 [case testPythonVersionAccepted33]
 # cmd: mypy -c pass
 [file mypy.ini]
 [[mypy]
 python_version = 3.3
+[out]
 
 [case testPythonVersionAccepted36]
 # cmd: mypy -c pass
 [file mypy.ini]
 [[mypy]
 python_version = 3.6
+[out]
 
 [case testDisallowAnyUnimported]
 # cmd: mypy main.py
