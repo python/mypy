@@ -207,7 +207,7 @@ class FineGrainedBuildManager:
             filtered = [trigger for trigger in triggered
                         if not trigger.endswith('__>')]
             print('triggered:', sorted(filtered))
-        self.triggered.extend(triggered)
+        self.triggered.extend(triggered | self.previous_targets_with_errors)
         update_dependencies({module: tree}, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              {module},
@@ -572,7 +572,7 @@ def update_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
     for id, node in new_modules.items():
         if node is None:
             continue
-        if '/typeshed/' in node.path:
+        if '/typeshed/' in node.path or node.path.startswith('typeshed/'):
             # We don't track changes to typeshed -- the assumption is that they are only changed
             # as part of mypy updates, which will invalidate everything anyway.
             #

@@ -7,13 +7,14 @@ from typing import Dict, List, cast, TypeVar, Optional
 
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
-    FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, MDEF
+    FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
+    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, MDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, TypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded
+    Overloaded, TypeVarDef
 )
 from mypy.util import get_prefix
 
@@ -93,13 +94,28 @@ class NodeReplaceVisitor(TraverserVisitor):
         node = self.fixup(node)
         if node.type:
             self.fixup_type(node.type)
+        if node.info:
+            node.info = self.fixup(node.info)
         super().visit_func_def(node)
 
+    def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> None:
+        if node.info:
+            node.info = self.fixup(node.info)
+        super().visit_overloaded_func_def(node)
+
     def visit_class_def(self, node: ClassDef) -> None:
-        # TODO additional things like the MRO
+        # TODO additional things?
         node.defs.body = self.replace_statements(node.defs.body)
+        node.info = self.fixup(node.info)
+        for tv in node.type_vars:
+            self.process_type_var_def(tv)
         self.process_type_info(node.info)
         super().visit_class_def(node)
+
+    def process_type_var_def(self, tv: TypeVarDef) -> None:
+        for value in tv.values:
+            self.fixup_type(value)
+        self.fixup_type(tv.upper_bound)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         if node.type:
@@ -127,7 +143,39 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_super_expr(self, node: SuperExpr) -> None:
         super().visit_super_expr(node)
+        if node.info is not None:
+            node.info = self.fixup(node.info)
+
+    def visit_newtype_expr(self, node: NewTypeExpr) -> None:
+        if node.info:
+            node.info = self.fixup(node.info)
+            self.process_type_info(node.info)
+        if node.old_type:
+            self.fixup_type(node.old_type)
+        super().visit_newtype_expr(node)
+
+    def visit_lambda_expr(self, node: LambdaExpr) -> None:
+        if node.info:
+            node.info = self.fixup(node.info)
+        super().visit_lambda_expr(node)
+
+    def visit_typeddict_expr(self, node: TypedDictExpr) -> None:
         node.info = self.fixup(node.info)
+        super().visit_typeddict_expr(node)
+
+    def visit_enum_call_expr(self, node: EnumCallExpr) -> None:
+        node.info = self.fixup(node.info)
+        self.process_type_info(node.info)
+        super().visit_enum_call_expr(node)
+
+    # Others
+
+    def visit_var(self, node: Var) -> None:
+        if node.info:
+            node.info = self.fixup(node.info)
+        if node.type:
+            self.fixup_type(node.type)
+        super().visit_var(node)
 
     # Helpers
 
@@ -142,7 +190,13 @@ class NodeReplaceVisitor(TraverserVisitor):
         typ.accept(TypeReplaceVisitor(self.replacements))
 
     def process_type_info(self, info: TypeInfo) -> None:
-        # TODO additional things like the MRO
+        # TODO: Additional things:
+        # - declared_metaclass
+        # - metaclass_type
+        # - _promote
+        # - tuple_type
+        # - typeddict_type
+        # - replaced
         replace_nodes_in_symbol_table(info.names, self.replacements)
         for i, item in enumerate(info.mro):
             info.mro[i] = self.fixup(info.mro[i])

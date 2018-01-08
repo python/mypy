@@ -9,7 +9,7 @@ from typing import Union, Iterator, Optional
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
-    UNBOUND_IMPORTED, GDEF
+    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF
 )
 from mypy.traverser import TraverserVisitor
 
@@ -45,6 +45,10 @@ class NodeStripVisitor(TraverserVisitor):
         node.info.abstract_attributes = []
         node.info.mro = []
         node.info.add_type_vars()
+        node.info.tuple_type = None
+        node.info.typeddict_type = None
+        node.info._cache = set()
+        node.info._cache_proper = set()
         node.base_type_exprs.extend(node.removed_base_type_exprs)
         node.removed_base_type_exprs = []
         with self.enter_class(node.info):
@@ -98,20 +102,8 @@ class NodeStripVisitor(TraverserVisitor):
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         node.type = node.unanalyzed_type
-        if node.type and self.is_class_body:
-            # Remove attribute defined in the class body from the class namespace to avoid
-            # bogus "Name already defined" errors.
-            #
-            # TODO: Handle multiple assignment, other lvalues
-            # TODO: What about assignments without type annotations?
-            assert len(node.lvalues) == 1
-            lvalue = node.lvalues[0]
-            assert isinstance(lvalue, NameExpr)
-            assert self.type is not None  # Because self.is_class_body is True
-            del self.type.names[lvalue.name]
         if self.type and not self.is_class_body:
             # TODO: Handle multiple assignment
-            # TODO: Merge with above
             if len(node.lvalues) == 1:
                 lvalue = node.lvalues[0]
                 if isinstance(lvalue, MemberExpr) and lvalue.is_new_def:
@@ -154,6 +146,9 @@ class NodeStripVisitor(TraverserVisitor):
         # Global assignments are processed in semantic analysis pass 1, and we
         # only want to strip changes made in passes 2 or later.
         if not (node.kind == GDEF and node.is_new_def):
+            # Remove defined attributes so that they can recreated during semantic analysis.
+            if node.kind == MDEF and node.is_new_def:
+                self.strip_class_attr(node.name)
             self.strip_ref_expr(node)
 
     def visit_member_expr(self, node: MemberExpr) -> None:
@@ -167,11 +162,13 @@ class NodeStripVisitor(TraverserVisitor):
             # defines an attribute with the same name, and we can't have
             # multiple definitions for an attribute. Defer to the base class
             # definition.
-            if self.type is not None:
-                del self.type.names[node.name]
-            node.is_inferred_def = False
+            self.strip_class_attr(node.name)
             node.def_var = None
         super().visit_member_expr(node)
+
+    def strip_class_attr(self, name: str) -> None:
+        if self.type is not None:
+            del self.type.names[name]
 
     def is_duplicate_attribute_def(self, node: MemberExpr) -> bool:
         if not node.is_inferred_def:
@@ -185,10 +182,16 @@ class NodeStripVisitor(TraverserVisitor):
         node.kind = None
         node.node = None
         node.fullname = None
+        node.is_new_def = False
+        node.is_inferred_def = False
 
     def visit_call_expr(self, node: CallExpr) -> None:
         node.analyzed = None
         super().visit_call_expr(node)
+
+    def visit_super_expr(self, node: SuperExpr) -> None:
+        node.info = None
+        super().visit_super_expr(node)
 
     # TODO: handle more node types
 

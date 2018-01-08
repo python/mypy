@@ -129,10 +129,20 @@ class Errors:
     # Set to True to show column numbers in error messages.
     show_column_numbers = False  # type: bool
 
-    # Stack of active fine-grained incremental checking targets within
-    # a module. The first item is always the current module id.
+    # State for keeping track of the current fine-grained incremental mode target.
     # (See mypy.server.update for more about targets.)
-    target = None  # type: List[str]
+    #
+    # Current module id.
+    target_module = None  # type: Optional[str]
+    # Partially qualified name of target class; without module prefix (examples: 'C' is top-level,
+    # 'C.D' nested).
+    target_class = None  # type: Optional[str]
+    # Short name of the outermost function/method.
+    target_function = None  # type: Optional[str]
+    # Nesting depth of functions/classes within the outermost function/method. These aren't
+    # separate targets and they are included in the surrounding function, but we this counter
+    # for internal bookkeeping.
+    target_ignore_depth = 0
 
     def __init__(self, show_error_context: bool = False,
                  show_column_numbers: bool = False) -> None:
@@ -150,7 +160,10 @@ class Errors:
         self.used_ignored_lines = defaultdict(set)
         self.ignored_files = set()
         self.only_once_messages = set()
-        self.target = []
+        self.target_module = None
+        self.target_class = None
+        self.target_function = None
+        self.target_ignore_depth = 0
 
     def reset(self) -> None:
         self.initialize()
@@ -161,7 +174,10 @@ class Errors:
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
         new.function_or_member = self.function_or_member[:]
-        new.target = self.target[:]
+        new.target_module = self.target_module
+        new.target_class = self.target_class
+        new.target_function = self.target_function
+        new.target_ignore_depth = self.target_ignore_depth
         return new
 
     def set_ignore_prefix(self, prefix: str) -> None:
@@ -186,8 +202,10 @@ class Errors:
         #    reporting errors for files other than the one currently being
         #    processed.
         self.file = file
-        if module:
-            self.target = [module]
+        self.target_module = module
+        self.target_class = None
+        self.target_function = None
+        self.target_ignore_depth = 0
 
     def set_file_ignored_lines(self, file: str,
                                ignored_lines: Set[int],
@@ -198,12 +216,18 @@ class Errors:
 
     def push_function(self, name: str) -> None:
         """Set the current function or member short name (it can be None)."""
-        self.push_target_component(name)
+        if self.target_function is None:
+            self.target_function = name
+        else:
+            self.target_ignore_depth += 1
         self.function_or_member.append(name)
 
     def pop_function(self) -> None:
         self.function_or_member.pop()
-        self.pop_target_component()
+        if self.target_ignore_depth > 0:
+            self.target_ignore_depth -= 1
+        else:
+            self.target_function = None
 
     @contextmanager
     def enter_function(self, name: str) -> Iterator[None]:
@@ -213,30 +237,41 @@ class Errors:
 
     def push_type(self, name: str) -> None:
         """Set the short name of the current type (it can be None)."""
-        self.push_target_component(name)
+        if self.target_function is not None:
+            self.target_ignore_depth += 1
+        elif self.target_class is None:
+            self.target_class = name
+        else:
+            self.target_class += '.' + name
         self.type_name.append(name)
 
     def pop_type(self) -> None:
         self.type_name.pop()
-        self.pop_target_component()
-
-    def push_target_component(self, name: str) -> None:
-        if self.target and not self.function_or_member[-1]:
-            self.target.append('{}.{}'.format(self.target[-1], name))
-
-    def pop_target_component(self) -> None:
-        if self.target and not self.function_or_member[-1]:
-            self.target.pop()
+        if self.target_ignore_depth > 0:
+            self.target_ignore_depth -= 1
+        else:
+            assert self.target_class is not None
+            if '.' in self.target_class:
+                self.target_class = '.'.join(self.target_class.split('.')[:-1])
+            else:
+                self.target_class = None
 
     def current_target(self) -> Optional[str]:
-        if self.target:
-            return self.target[-1]
-        return None
+        if self.target_module is None:
+            return None
+        target = self.target_module
+        if self.target_function is not None:
+            # Only include class name if we are inside a method, since a class
+            # target also includes all methods, which is not what we want
+            # here. Instead, the current target for a class body is the
+            # enclosing module top level.
+            if self.target_class is not None:
+                target += '.' + self.target_class
+            target += '.' + self.target_function
+        return target
 
     def current_module(self) -> Optional[str]:
-        if self.target:
-            return self.target[0]
-        return None
+        return self.target_module
 
     @contextmanager
     def enter_type(self, name: str) -> Iterator[None]:

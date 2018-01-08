@@ -549,3 +549,15 @@ class B:
 [builtins fixtures/property.pyi]
 [out]
 __main__.B.x
+
+[case testFunctionalEnum]
+from enum import Enum
+A = Enum('A', 'x')
+B = Enum('B', 'x')
+[file next.py]
+from enum import Enum
+A = Enum('A', 'x')
+B = Enum('B', 'y')
+[out]
+__main__.B.x
+__main__.B.y
