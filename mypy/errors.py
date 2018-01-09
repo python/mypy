@@ -295,6 +295,7 @@ class Errors:
         self.add_error_info(info)
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:
+        assert file not in self.flushed_files
         if file not in self.error_info_map:
             self.error_info_map[file] = []
         self.error_info_map[file].append(info)
@@ -358,7 +359,7 @@ class Errors:
         Render the messages suitable for displaying.
         """
         # self.new_messages() will format all messages that haven't already
-        # been returned from a new_module_messages() call.
+        # been returned from a file_messages() call.
         raise CompileError(self.new_messages(),
                            use_stdout=True,
                            module_with_blocker=self.blocker_module())
@@ -596,7 +597,6 @@ def report_internal_error(err: Exception, file: Optional[str], line: int,
     # Dump out errors so far, they often provide a clue.
     # But catch unexpected errors rendering them.
     try:
-        errors.flushed_files = set()  # Print out already flushed messages too
         for msg in errors.new_messages():
             print(msg)
     except Exception as e:

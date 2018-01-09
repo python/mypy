@@ -44,7 +44,7 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
                     alt_lib_path=test_temp_dir,
                     flush_errors=flush_errors)
     except CompileError as e:
-        pass
+        assert e.messages == []
 
     assert_string_arrays_equal(testcase.output, logged_messages,
                                'Invalid output ({}, line {})'.format(

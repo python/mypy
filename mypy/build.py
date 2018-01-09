@@ -25,7 +25,6 @@ import sys
 import time
 from os.path import dirname, basename
 import errno
-from functools import wraps
 
 from typing import (AbstractSet, Any, cast, Dict, Iterable, Iterator, List,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
@@ -174,6 +173,10 @@ def build(sources: List[BuildSource],
         result.errors = messages
         return result
     except CompileError as e:
+        # CompileErrors raised from an errors object carry all of the
+        # messages that have not been reported out by error streaming.
+        # Patch it up to contain either none or all none of the messages,
+        # depending on whether we are flushing errors.
         serious = not e.use_stdout
         flush_errors(e.messages, serious)
         e.messages = messages
@@ -742,9 +745,6 @@ class BuildManager:
 
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
-
-    def error_flush(self, msgs: List[str], serious: bool=False) -> None:
-        self.flush_errors(msgs, serious)
 
 
 def remove_cwd_prefix_from_path(p: str) -> str:
@@ -2535,7 +2535,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
     for id in stale:
         graph[id].finish_passes()
         graph[id].generate_unused_ignore_notes()
-        manager.error_flush(manager.errors.file_messages(graph[id].xpath))
+        manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 

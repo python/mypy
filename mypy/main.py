@@ -64,12 +64,12 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
 
     messages = []
 
-    def flush_errors(a: List[str], serious: bool) -> None:
-        messages.extend(a)
+    def flush_errors(new_messages: List[str], serious: bool) -> None:
+        messages.extend(new_messages)
         f = sys.stderr if serious else sys.stdout
         try:
-            for m in a:
-                f.write(m + '\n')
+            for msg in new_messages:
+                f.write(msg + '\n')
             f.flush()
         except BrokenPipeError:
             sys.exit(1)
