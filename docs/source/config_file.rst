@@ -74,9 +74,6 @@ The following global flags may only be set in the global section
 - ``warn_redundant_casts`` (Boolean, default False) warns about
   casting an expression to its inferred type.
 
-- ``warn_unused_ignores`` (Boolean, default False) warns about
-  unneeded ``# type: ignore`` comments.
-
 - ``warn_unused_configs`` (Boolean, default False) warns about
   per-module sections in the config file that didn't match any
   files processed in the current run.
@@ -202,6 +199,9 @@ overridden by the pattern sections matching the module name.
 - ``warn_return_any`` (Boolean, default False) shows a warning when
   returning a value with type ``Any`` from a function declared with a
   non- ``Any`` return type.
+
+- ``warn_unused_ignores`` (Boolean, default False) warns about
+  unneeded ``# type: ignore`` comments.
 
 - ``strict_boolean`` (Boolean, default False) makes using non-boolean
   expressions in conditions an error.
