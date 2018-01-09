@@ -124,17 +124,20 @@ A().f = None # E: Cannot assign to a method
 class A:
     def __init__(self) -> None:
         self.x = object()
-a = None # type: A
+a: A
 a.y  # E: "A" has no attribute "y"
 a.y = object()  # E: "A" has no attribute "y"
 a.x
 a.x = object()
 
-[case testInferAttributeUnannotatedInit]
+[case testReferToInvalidAttributeUnannotatedInit]
 class A:
     def __init__(self):
         self.x = object()
 
+a: A
+a.y  # E: "A" has no attribute "y"
+a.y = object()  # E: "A" has no attribute "y"
 a.x
 a.x = object()
 
