@@ -307,7 +307,7 @@ Variance of generic types
 
 There are three main kinds of generic types with respect to subtype
 relations between them: invariant, covariant, and contravariant.
-Assuming that we have a pair of types types ``A`` and ``B`` and ``B`` is
+Assuming that we have a pair of types ``A`` and ``B``, and ``B`` is
 a subtype of ``A``, these are defined as follows:
 
 * A generic class ``MyCovGen[T, ...]`` is called covariant in type variable
