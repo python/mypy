@@ -1032,8 +1032,8 @@ main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.Non
 ==
 a.py:1: error: Cannot find module named 'b'
 a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 a.py:3: error: Cannot find module named 'b'
+main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 ==
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 

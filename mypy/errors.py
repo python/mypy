@@ -51,6 +51,9 @@ class ErrorInfo:
     # Only report this particular messages once per program.
     only_once = False
 
+    # Actual origin of the error message
+    origin = None  # type: Tuple[str, int]
+
     # Fine-grained incremental target where this was reported
     target = None  # type: Optional[str]
 
@@ -90,14 +93,16 @@ class Errors:
     current error context (nested imports).
     """
 
-    # List of generated error messages.
-    error_info = None  # type: List[ErrorInfo]
+    # Map from files to generated error messages. Is an OrderedDict so
+    # that it can be used to order messages based on the order the
+    # files were processed.
+    error_info_map = None  # type: Dict[str, List[ErrorInfo]]
+
+    # Files that we have reported the errors for
+    flushed_files = None  # type: Set[str]
 
     # Current error context: nested import context/stack, as a list of (path, line) pairs.
     import_ctx = None  # type: List[Tuple[str, int]]
-
-    # Set of files with errors.
-    error_files = None  # type: Set[str]
 
     # Path name prefix that is removed from all paths, if set.
     ignore_prefix = None  # type: str
@@ -141,9 +146,9 @@ class Errors:
         self.initialize()
 
     def initialize(self) -> None:
-        self.error_info = []
+        self.error_info_map = OrderedDict()
+        self.flushed_files = set()
         self.import_ctx = []
-        self.error_files = set()
         self.type_name = [None]
         self.function_or_member = [None]
         self.ignored_lines = OrderedDict()
@@ -288,8 +293,14 @@ class Errors:
                          target=self.current_target())
         self.add_error_info(info)
 
+    def _add_error_info(self, file: str, info: ErrorInfo) -> None:
+        assert file not in self.flushed_files
+        if file not in self.error_info_map:
+            self.error_info_map[file] = []
+        self.error_info_map[file].append(info)
+
     def add_error_info(self, info: ErrorInfo) -> None:
-        (file, line) = cast(Tuple[str, int], info.origin)  # see issue 1855
+        file, line = info.origin
         if not info.blocker:  # Blockers cannot be ignored
             if file in self.ignored_lines and line in self.ignored_lines[file]:
                 # Annotation requests us to ignore all errors on this line.
@@ -301,18 +312,17 @@ class Errors:
             if info.message in self.only_once_messages:
                 return
             self.only_once_messages.add(info.message)
-        self.error_info.append(info)
-        self.error_files.add(file)
+        self._add_error_info(file, info)
 
-    def generate_unused_ignore_notes(self) -> None:
-        for file, ignored_lines in self.ignored_lines.items():
-            if not self.is_typeshed_file(file):
-                for line in ignored_lines - self.used_ignored_lines[file]:
-                    # Don't use report since add_error_info will ignore the error!
-                    info = ErrorInfo(self.import_context(), file, self.current_module(), None,
-                                     None, line, -1, 'note', "unused 'type: ignore' comment",
-                                     False, False)
-                    self.error_info.append(info)
+    def generate_unused_ignore_notes(self, file: str) -> None:
+        ignored_lines = self.ignored_lines[file]
+        if not self.is_typeshed_file(file):
+            for line in ignored_lines - self.used_ignored_lines[file]:
+                # Don't use report since add_error_info will ignore the error!
+                info = ErrorInfo(self.import_context(), file, self.current_module(), None,
+                                 None, line, -1, 'note', "unused 'type: ignore' comment",
+                                 False, False)
+                self._add_error_info(file, info)
 
     def is_typeshed_file(self, file: str) -> bool:
         # gross, but no other clear way to tell
@@ -320,43 +330,46 @@ class Errors:
 
     def num_messages(self) -> int:
         """Return the number of generated messages."""
-        return len(self.error_info)
+        return sum(len(x) for x in self.error_info_map.values())
 
     def is_errors(self) -> bool:
         """Are there any generated errors?"""
-        return bool(self.error_info)
+        return bool(self.error_info_map)
 
     def is_blockers(self) -> bool:
         """Are the any errors that are blockers?"""
-        return any(err for err in self.error_info if err.blocker)
+        return any(err for errs in self.error_info_map.values() for err in errs if err.blocker)
 
     def blocker_module(self) -> Optional[str]:
         """Return the module with a blocking error, or None if not possible."""
-        for err in self.error_info:
-            if err.blocker:
-                return err.module
+        for errs in self.error_info_map.values():
+            for err in errs:
+                if err.blocker:
+                    return err.module
         return None
 
     def is_errors_for_file(self, file: str) -> bool:
         """Are there any errors for the given file?"""
-        return file in self.error_files
+        return file in self.error_info_map
 
     def raise_error(self) -> None:
         """Raise a CompileError with the generated messages.
 
         Render the messages suitable for displaying.
         """
-        raise CompileError(self.messages(),
+        # self.new_messages() will format all messages that haven't already
+        # been returned from a file_messages() call.
+        raise CompileError(self.new_messages(),
                            use_stdout=True,
                            module_with_blocker=self.blocker_module())
 
-    def messages(self) -> List[str]:
+    def format_messages(self, error_info: List[ErrorInfo]) -> List[str]:
         """Return a string list that represents the error messages.
 
         Use a form suitable for displaying to the user.
         """
         a = []  # type: List[str]
-        errors = self.render_messages(self.sort_messages(self.error_info))
+        errors = self.render_messages(self.sort_messages(error_info))
         errors = self.remove_duplicates(errors)
         for file, line, column, severity, message in errors:
             s = ''
@@ -374,12 +387,36 @@ class Errors:
             a.append(s)
         return a
 
+    def file_messages(self, path: str) -> List[str]:
+        """Return a string list of new error messages from a given file.
+
+        Use a form suitable for displaying to the user.
+        """
+        if path not in self.error_info_map:
+            return []
+        self.flushed_files.add(path)
+        return self.format_messages(self.error_info_map[path])
+
+    def new_messages(self) -> List[str]:
+        """Return a string list of new error messages.
+
+        Use a form suitable for displaying to the user.
+        Errors from different files are ordered based on the order in which
+        they first generated an error.
+        """
+        msgs = []
+        for path in self.error_info_map.keys():
+            if path not in self.flushed_files:
+                msgs.extend(self.file_messages(path))
+        return msgs
+
     def targets(self) -> Set[str]:
         """Return a set of all targets that contain errors."""
         # TODO: Make sure that either target is always defined or that not being defined
         #       is okay for fine-grained incremental checking.
         return set(info.target
-                   for info in self.error_info
+                   for errs in self.error_info_map.values()
+                   for info in errs
                    if info.target)
 
     def render_messages(self, errors: List[ErrorInfo]) -> List[Tuple[Optional[str], int, int,
@@ -460,7 +497,7 @@ class Errors:
     def sort_messages(self, errors: List[ErrorInfo]) -> List[ErrorInfo]:
         """Sort an array of error messages locally by line number.
 
-        I.e., sort a run of consecutive messages with the same file
+        I.e., sort a run of consecutive messages with the same
         context by line number, but otherwise retain the general
         ordering of the messages.
         """
@@ -510,6 +547,12 @@ class CompileError(Exception):
 
     It can be a parse, semantic analysis, type check or other
     compilation-related error.
+
+    CompileErrors raised from an errors object carry all of the
+    messages that have not been reported out by error streaming.
+    This is patched up by build.build to contain either all error
+    messages (if errors were streamed) or none (if they were not).
+
     """
 
     messages = None  # type: List[str]
@@ -553,7 +596,7 @@ def report_internal_error(err: Exception, file: Optional[str], line: int,
     # Dump out errors so far, they often provide a clue.
     # But catch unexpected errors rendering them.
     try:
-        for msg in errors.messages():
+        for msg in errors.new_messages():
             print(msg)
     except Exception as e:
         print("Failed to dump errors:", repr(e), file=sys.stderr)

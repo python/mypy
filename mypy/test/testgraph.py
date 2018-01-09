@@ -49,6 +49,7 @@ class GraphSuite(Suite):
             version_id=__version__,
             plugin=Plugin(options),
             errors=errors,
+            flush_errors=lambda msgs, serious: None,
         )
         return manager
 

@@ -390,8 +390,16 @@ A.B(x=1)  # E: Unexpected keyword argument "x" for "B"
 
 [case testUnexpectedMethodKwargFromOtherModule]
 import m
-m.A(x=1)  # E: Unexpected keyword argument "x" for "A"
+m.A(x=1)
 [file m.py]
+1+'asdf'
 class A:
-    def __init__(self) -> None:  # N: "A" defined here
+    def __init__(self) -> None:
         pass
+[out]
+-- Note that the messages appear "out of order" because the m.py:3
+-- message is really an attachment to the main:2 error and should be
+-- reported with it.
+tmp/m.py:1: error: Unsupported operand types for + ("int" and "str")
+main:2: error: Unexpected keyword argument "x" for "A"
+tmp/m.py:3: note: "A" defined here

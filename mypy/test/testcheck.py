@@ -169,6 +169,7 @@ class TypeCheckSuite(DataSuite):
             # Always set to none so we're forced to reread the module in incremental mode
             sources.append(BuildSource(program_path, module_name,
                                        None if incremental_step else program_text))
+
         res = None
         try:
             res = build.build(sources=sources,

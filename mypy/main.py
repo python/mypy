@@ -8,7 +8,7 @@ import re
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple, Callable
 
 from mypy import build
 from mypy import defaults
@@ -61,12 +61,23 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if args is None:
         args = sys.argv[1:]
     sources, options = process_options(args)
+
+    messages = []
+
+    def flush_errors(new_messages: List[str], serious: bool) -> None:
+        messages.extend(new_messages)
+        f = sys.stderr if serious else sys.stdout
+        try:
+            for msg in new_messages:
+                f.write(msg + '\n')
+            f.flush()
+        except BrokenPipeError:
+            sys.exit(1)
+
     serious = False
     try:
-        res = type_check_only(sources, bin_dir, options)
-        a = res.errors
+        type_check_only(sources, bin_dir, options, flush_errors)
     except CompileError as e:
-        a = e.messages
         if not e.use_stdout:
             serious = True
     if options.warn_unused_configs and options.unused_configs:
@@ -76,14 +87,8 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
               file=sys.stderr)
     if options.junit_xml:
         t1 = time.time()
-        util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
-    if a:
-        f = sys.stderr if serious else sys.stdout
-        try:
-            for m in a:
-                f.write(m + '\n')
-        except BrokenPipeError:
-            pass
+        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml)
+    if messages:
         sys.exit(1)
 
 
@@ -112,11 +117,13 @@ def readlinkabs(link: str) -> str:
 
 
 def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
-                    options: Options) -> BuildResult:
+                    options: Options,
+                    flush_errors: Optional[Callable[[List[str], bool], None]]) -> BuildResult:
     # Type-check the program and dependencies.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
-                       options=options)
+                       options=options,
+                       flush_errors=flush_errors)
 
 
 FOOTER = """environment variables:
