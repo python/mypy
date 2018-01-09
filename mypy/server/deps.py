@@ -1,4 +1,83 @@
-"""Generate fine-grained dependencies for AST nodes."""
+"""Generate fine-grained dependencies for AST nodes, for use in the daemon mode.
+
+Dependencies are stored in a map from *triggers* to *sets of affected locations*.
+
+A trigger is a string that represents a program property that has changed, such
+as the signature of a specific function. Triggers are written as '<...>' (angle
+brackets). When a program property changes, we determine the relevant trigger(s)
+and all affected locations. The latter are stale and will have to be reprocessed.
+
+An affected location is a string than can refer to a *target* (a non-nested
+function or method, or a module top level), a class, or a trigger (for
+recursively triggering other triggers).
+
+Here's an example represention of a simple dependency map (in format
+"<trigger> -> locations"):
+
+  <m.A.g> -> m.f
+  <m.A> -> <m.f>, m.A, m.f
+
+Assuming 'A' is a class, this means that
+
+1) if a property of 'm.A.g', such as the signature, is changed, we need
+   to process target (function) 'm.f'
+
+2) if the MRO or other significant property of class 'm.A' changes, we
+   need to process target 'm.f', the entire class 'm.A', and locations
+   triggered by trigger '<m.f>' (this explanation is a bit simplified;
+   see below for more details).
+
+The triggers to fire are determined using mypy.server.astdiff.
+
+Examples of triggers:
+
+* '<mod.x>' represents a module attribute/function/class. If any externally
+  visible property of 'x' changes, this gets fired. For changes within
+  classes, only "big" changes cause the class to be triggered (such as a
+  change in MRO). Smaller changes, such as changes to some attributes, don't
+  trigger the entire class.
+* '<mod.Cls.x>' represents the type and kind of attribute/method 'x' of
+  class 'mod.Cls'. This can also refer to an attribute inherited from a
+  base class (relevant if it's accessed through a value of type 'Cls'
+  instead of the base class type).
+* '<package.mod>' represents the existence of module 'package.mod'. This
+  gets triggered if 'package.mod' is created or deleted, or if it gets
+  changed into something other than a module.
+
+Examples of locations:
+
+* 'mod' is the top level of module 'mod' (doesn't include any function bodies,
+  but includes class bodies not nested within a function).
+* 'mod.f' is function 'f' in module 'mod' (module-level variables aren't separate
+  locations but are included in the module top level). Functions also include
+  any nested functions and classes -- such nested definitions aren't separate
+  locations, for simplicity of implementation.
+* 'mod.Cls.f' is method 'f' of 'mod.Cls'. Non-method attributes aren't locations.
+* 'mod.Cls' represents each method in class 'mod.Cls' + the top-level of the
+  module 'mod'. (To simplify the implementation, there is no location that only
+  includes the body of a class without the entire surrounding module top level.)
+* Trigger '<...>' as a location is an indirect way of referring to to all
+  locations triggered by the trigger. These indirect locations keep the
+  dependency map smaller and easier to manage.
+
+Triggers can be triggered by program changes such as these:
+
+* Addition or deletion of an attribute (or module).
+* Change of the kind of thing a name represents (such as a change from a function
+  to a class).
+* Change of the static type of a name.
+
+Changes in the body of a function that aren't reflected in the signature don't
+cause the function to be triggered. More generally, we trigger only on changes
+that may affect type checking results outside the module that contains the
+change.
+
+We don't generate dependencies from builtins and certain other stdlib modules,
+since these change very rarely, and they would just increase the size of the
+dependency map significantly without significant benefit.
+
+Test cases for this module live in 'test-data/unit/deps*.test'.
+"""
 
 from typing import Dict, List, Set, Optional, Tuple, Union
 

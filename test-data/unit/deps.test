@@ -1,7 +1,16 @@
 -- Test cases for generating dependencies between ASTs nodes.
 --
--- The dependencies are used for fined-grained incremental checking.
-
+-- The dependencies are used for fined-grained incremental checking and
+-- the daemon mode.
+--
+-- The output of each test case includes the dependency map for whitelisted
+-- modules (includes the main module and the modules 'pkg' and 'pkg.mod' at
+-- least).
+--
+-- Dependencies are formatted as "<trigger> -> affected locations".
+--
+-- Look at the docstring of mypy.server.deps for an explanation of
+-- how fine-grained dependencies are represented.
 
 [case testCallFunction]
 def f() -> None:
