@@ -37,7 +37,7 @@ Summary of how this works for certain kinds of differences:
 
 * If the type of a variable changes, it is considered different.
 
-* If the MRO of a class changes, or a non-generic class is turned into to
+* If the MRO of a class changes, or a non-generic class is turned into a
   generic class, the class is considered different (there are other such "big"
   differences that cause a class to be considered changed). However, just changes
   to attributes or methods don't generally constitute a difference at the
