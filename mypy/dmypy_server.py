@@ -294,6 +294,8 @@ class Server:
         for source in omitted:
             path = source.path
             assert path
+            # Note that a file could be removed from the list of root sources but still continue
+            # to exist on the file system.
             if not os.path.isfile(path):
                 changed.append((source.module, path))
                 if source.path in self.file_modified:
