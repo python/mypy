@@ -1481,3 +1481,17 @@ def f(self, x: N) -> None:
 [builtins fixtures/dict.pyi]
 [out]
 ==
+
+[case testFineGrainedCallable]
+import a
+[file a.py]
+def f(o: object) -> None:
+    if callable(o):
+        o()
+[file a.py.2]
+def f(o: object) -> None:
+    if callable(o):
+        o()
+[builtins fixtures/callable.pyi]
+[out]
+==

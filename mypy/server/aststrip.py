@@ -1,6 +1,40 @@
-"""Strip AST from semantic information.
+"""Strip/reset AST in-place to match state after semantic analysis pass 1.
 
-This is used in fine-grained incremental checking to reprocess existing AST nodes.
+Fine-grained incremental mode reruns semantic analysis (passes 2 and 3)
+and type checking for *existing* AST nodes (targets) when changes are
+propagated using fine-grained dependencies.  AST nodes attributes are
+often changed during semantic analysis passes 2 and 3, and running
+semantic analysis again on those nodes would produce incorrect
+results, since these passes aren't idempotent. This pass resets AST
+nodes to reflect the state after semantic analysis pass 1, so that we
+can rerun semantic analysis.
+
+(The above is in contrast to behavior with modules that have source code
+changes, for which we reparse the entire module and reconstruct a fresh
+AST. No stripping is required in this case. Both modes of operation should
+have the same outcome.)
+
+Notes:
+
+* This is currently pretty fragile, as we must carefully undo whatever
+  changes can be made in semantic analysis passes 2 and 3, including changes
+  to symbol tables.
+
+* We reuse existing AST nodes because it makes it relatively straightforward
+  to reprocess only a single target within a module efficiently. If there
+  was a way to parse a single target within a file, in time proportional to
+  the size of the target, we'd rather create fresh AST nodes than strip them.
+  Alas, no such facility exists and building it is non-trivial.
+
+* Currently we don't actually reset all changes, but only those known to affect
+  non-idempotent semantic analysis behavior.
+  TODO: It would be more principled and less fragile to reset everything
+      changed in semantic analysis pass 2 and later.
+
+* Reprocessing may recreate AST nodes (such as Var nodes, and TypeInfo nodes
+  created with assignment statements) that will get different identities from
+  the original AST. Thus running an AST merge is necessary after stripping,
+  even though some identities are preserved.
 """
 
 import contextlib
@@ -15,7 +49,11 @@ from mypy.traverser import TraverserVisitor
 
 
 def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
-    """Strip a fine-grained incremental mode target from semantic information."""
+    """Reset a fine-grained incremental target to state after semantic analysis pass 1.
+
+    NOTE: Currently we opportunistically only reset changes that are known to otherwise
+        cause trouble.
+    """
     visitor = NodeStripVisitor()
     if isinstance(node, MypyFile):
         visitor.strip_file_top_level(node)
