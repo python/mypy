@@ -243,6 +243,10 @@ class Server:
             return self.fine_grained_increment(sources)
 
     def initialize_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+        self.file_modified = {}  # type: Dict[str, float]
+        for source in sources:
+            assert source.path
+            self.file_modified[source.path] = os.stat(source.path).st_mtime
         try:
             # TODO: alt_lib_path
             result = mypy.build.build(sources=sources,
@@ -256,15 +260,9 @@ class Server:
         self.fine_grained_manager = mypy.server.update.FineGrainedBuildManager(manager, graph)
         status = 1 if messages else 0
         self.previous_messages = messages[:]
-        if messages:
-            messages.append('')
         self.fine_grained_initialized = True
-        self.file_modified = {}  # type: Dict[str, float]
-        for source in sources:
-            assert source.path
-            self.file_modified[source.path] = os.stat(source.path).st_mtime
         self.previous_sources = sources
-        return {'out': '\n'.join(messages), 'err': '', 'status': status}
+        return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
         changed = self.find_changed(sources)
@@ -275,10 +273,8 @@ class Server:
             messages = self.fine_grained_manager.update(changed)
         status = 1 if messages else 0
         self.previous_messages = messages[:]
-        if messages:
-            messages.append('')
         self.previous_sources = sources
-        return {'out': '\n'.join(messages), 'err': '', 'status': status}
+        return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def find_changed(self, sources: List[mypy.build.BuildSource]) -> List[Tuple[str, str]]:
         changed = []
