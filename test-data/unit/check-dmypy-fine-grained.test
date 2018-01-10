@@ -96,3 +96,17 @@ tmp/a.py:1: error: invalid syntax
 [out2]
 tmp/b.py:2: error: Incompatible return value type (got "str", expected "int")
 [out3]
+
+[case testNoOpUpdateFineGrainedIncremental]
+# cmd: mypy -m a
+[file a.py]
+1()
+[file b.py.2]
+# Note: this file is not part of the build
+[file a.py.3]
+x = 1
+[out1]
+tmp/a.py:1: error: "int" not callable
+[out2]
+tmp/a.py:1: error: "int" not callable
+[out3]
