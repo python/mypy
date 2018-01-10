@@ -252,11 +252,11 @@ class Server:
             result = mypy.build.build(sources=sources,
                                       options=self.options)
         except mypy.errors.CompileError as e:
-            messages = ''.join(s + '\n' for s in e.messages)
+            output = ''.join(s + '\n' for s in e.messages)
             if e.use_stdout:
-                out, err = messages, ''
+                out, err = output, ''
             else:
-                out, err = '', messages
+                out, err = '', output
             return {'out': out, 'err': err, 'status': 2}
         messages = result.errors
         manager = result.manager
