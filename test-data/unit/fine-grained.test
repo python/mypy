@@ -1495,3 +1495,42 @@ def f(o: object) -> None:
 [builtins fixtures/callable.pyi]
 [out]
 ==
+
+[case testRefreshFunctionalNamedTuple]
+import a
+
+[file a.py]
+from typing import NamedTuple
+from b import L
+
+A = NamedTuple('A', [])
+a: A
+
+def g() -> None:
+    x = L(A())
+    x.f(a)
+
+[file b.pyi]
+from typing import TypeVar, Generic, overload
+
+T = TypeVar('T')
+
+class L(Generic[T]):
+    def __init__(self, x: T) -> None: pass
+    @overload
+    def f(self) -> None: pass
+    @overload
+    def f(self, a: T) -> None: pass
+
+[file a.py.2]
+from typing import NamedTuple
+from b import L
+
+A = NamedTuple('A', [])
+a: A
+
+def g() -> None:
+    x = L(A())
+    x.f(a)
+[out]
+==

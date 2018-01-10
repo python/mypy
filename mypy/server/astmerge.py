@@ -203,6 +203,7 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> None:
         super().visit_namedtuple_expr(node)
+        node.info = self.fixup(node.info)
         self.process_type_info(node.info)
 
     def visit_super_expr(self, node: SuperExpr) -> None:
@@ -300,7 +301,7 @@ class TypeReplaceVisitor(TypeVisitor[None]):
         if typ.definition:
             # No need to fixup since this is just a cross-reference.
             typ.definition = self.replacements.get(typ.definition, typ.definition)
-        # TODO: typ.fallback
+        typ.fallback.accept(self)
         for tv in typ.variables:
             tv.upper_bound.accept(self)
             for value in tv.values:
@@ -309,6 +310,7 @@ class TypeReplaceVisitor(TypeVisitor[None]):
     def visit_overloaded(self, t: Overloaded) -> None:
         for item in t.items():
             item.accept(self)
+        t.fallback.accept(self)
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
@@ -319,6 +321,7 @@ class TypeReplaceVisitor(TypeVisitor[None]):
     def visit_tuple_type(self, typ: TupleType) -> None:
         for item in typ.items:
             item.accept(self)
+        typ.fallback.accept(self)
 
     def visit_type_type(self, typ: TypeType) -> None:
         typ.item.accept(self)
