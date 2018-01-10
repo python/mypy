@@ -195,9 +195,9 @@ class FineGrainedBuildManager:
         result = update_single_isolated(module, path, manager, previous_modules)
         if isinstance(result, BlockedUpdate):
             # Blocking error -- just give up
-            module, path, remaining = result
+            module, path, remaining, errors = result
             self.previous_modules = get_module_to_path_map(manager)
-            return manager.errors.messages(), remaining, (module, path), True
+            return errors, remaining, (module, path), True
         assert isinstance(result, NormalUpdate)  # Work around #4124
         module, path, remaining, tree, graph = result
 
@@ -207,7 +207,7 @@ class FineGrainedBuildManager:
             filtered = [trigger for trigger in triggered
                         if not trigger.endswith('__>')]
             print('triggered:', sorted(filtered))
-        self.triggered.extend(triggered)
+        self.triggered.extend(triggered | self.previous_targets_with_errors)
         update_dependencies({module: tree}, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              {module},
@@ -230,7 +230,7 @@ class FineGrainedBuildManager:
         self.previous_modules = get_module_to_path_map(manager)
         self.type_maps = extract_type_maps(graph)
 
-        return manager.errors.messages(), remaining, (module, path), False
+        return manager.errors.new_messages(), remaining, (module, path), False
 
 
 def mark_all_meta_as_memory_only(graph: Dict[str, State],
@@ -271,7 +271,8 @@ NormalUpdate = NamedTuple('NormalUpdate', [('module', str),
 # are similar to NormalUpdate (but there are fewer).
 BlockedUpdate = NamedTuple('BlockedUpdate', [('module', str),
                                              ('path', str),
-                                             ('remaining', List[Tuple[str, str]])])
+                                             ('remaining', List[Tuple[str, str]]),
+                                             ('messages', List[str])])
 
 UpdateResult = Union[NormalUpdate, BlockedUpdate]
 
@@ -318,7 +319,7 @@ def update_single_isolated(module: str,
             remaining_modules = [(module, path)]
         else:
             remaining_modules = []
-        return BlockedUpdate(err.module_with_blocker, path, remaining_modules)
+        return BlockedUpdate(err.module_with_blocker, path, remaining_modules, err.messages)
 
     if not os.path.isfile(path):
         graph = delete_module(module, graph, manager)
@@ -354,7 +355,7 @@ def update_single_isolated(module: str,
         manager.modules.clear()
         manager.modules.update(old_modules)
         del graph[module]
-        return BlockedUpdate(module, path, remaining_modules)
+        return BlockedUpdate(module, path, remaining_modules, err.messages)
     state.semantic_analysis_pass_three()
     state.semantic_analysis_apply_patches()
 

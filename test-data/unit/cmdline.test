@@ -4,7 +4,10 @@
 -- The initial line specifies the command line, in the format
 --
 --   # cmd: mypy <options>
-
+--
+-- '== Return code: <value>' is added to the output when the process return code
+-- is "nonobvious" -- that is, when it is something other than 0 if there are no
+-- messages and 1 if there are.
 
 -- Directories/packages on the command line
 -- ----------------------------------------
@@ -89,6 +92,7 @@ sub.pkg is not a valid Python package name
 # coding: uft-8
 [out]
 mypy: can't decode file 'a.py': unknown encoding: uft-8
+== Return code: 2
 
 [case testCannotIgnoreDuplicateModule]
 # cmd: mypy one/mod/__init__.py two/mod/__init__.py
@@ -98,6 +102,7 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 # type: ignore
 [out]
 two/mod/__init__.py: error: Duplicate module named 'mod'
+== Return code: 2
 
 [case testFlagsFile]
 # cmd: mypy @flagsfile
@@ -225,6 +230,7 @@ x.py:1: error: Function is missing a type annotation
 [file mypy.ini]
 [out]
 mypy.ini: No [mypy] section in config file
+== Return code: 0
 
 [case testConfigErrorUnknownFlag]
 # cmd: mypy -c pass
@@ -233,6 +239,7 @@ mypy.ini: No [mypy] section in config file
 bad = 0
 [out]
 mypy.ini: [mypy]: Unrecognized option: bad = 0
+== Return code: 0
 
 [case testConfigErrorBadBoolean]
 # cmd: mypy -c pass
@@ -241,6 +248,7 @@ mypy.ini: [mypy]: Unrecognized option: bad = 0
 ignore_missing_imports = nah
 [out]
 mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
+== Return code: 0
 
 [case testConfigErrorNotPerFile]
 # cmd: mypy -c pass
@@ -250,6 +258,7 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 python_version = 3.4
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
+== Return code: 0
 
 [case testConfigMypyPath]
 # cmd: mypy file.py
@@ -400,9 +409,9 @@ bla bla
 [file error.py]
 bla bla
 [out]
+normal.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:4: note: Import of 'error' ignored
 main.py:4: note: (Using --follow-imports=error, module not passed on command line)
-normal.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:5: error: Revealed type is 'builtins.int'
 main.py:6: error: Revealed type is 'builtins.int'
 main.py:7: error: Revealed type is 'Any'
@@ -467,6 +476,7 @@ main.py:1: error: Cannot find module named 'a.b'
 python_version = 1.0
 [out]
 mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 2 or 3)
+== Return code: 0
 
 [case testPythonVersionTooOld26]
 # cmd: mypy -c pass
@@ -475,6 +485,7 @@ mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be
 python_version = 2.6
 [out]
 mypy.ini: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
+== Return code: 0
 
 [case testPythonVersionTooOld32]
 # cmd: mypy -c pass
@@ -483,6 +494,7 @@ mypy.ini: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
 python_version = 3.2
 [out]
 mypy.ini: [mypy]: python_version: Python 3.2 is not supported (must be 3.3 or higher)
+== Return code: 0
 
 [case testPythonVersionTooNew28]
 # cmd: mypy -c pass
@@ -491,6 +503,7 @@ mypy.ini: [mypy]: python_version: Python 3.2 is not supported (must be 3.3 or hi
 python_version = 2.8
 [out]
 mypy.ini: [mypy]: python_version: Python 2.8 is not supported (must be 2.7)
+== Return code: 0
 
 [case testPythonVersionTooNew40]
 # cmd: mypy -c pass
@@ -499,6 +512,7 @@ mypy.ini: [mypy]: python_version: Python 2.8 is not supported (must be 2.7)
 python_version = 4.0
 [out]
 mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be 2 or 3)
+== Return code: 0
 
 [case testPythonVersionAccepted27]
 # cmd: mypy -c pass
@@ -1008,3 +1022,27 @@ def get_tasks(self):
     return 'whatever'
 [out]
 a.py:1: error: Function is missing a type annotation
+
+[case testMissingFile]
+# cmd: mypy nope.py
+[out]
+mypy: can't read file 'nope.py': No such file or directory
+== Return code: 2
+
+[case testParseError]
+# cmd: mypy a.py
+[file a.py]
+def foo(
+[out]
+a.py:1: error: unexpected EOF while parsing
+== Return code: 2
+
+[case testParseErrorAnnots]
+# cmd: mypy a.py
+[file a.py]
+def foo(x):
+    # type: (str, int) -> None
+    return
+[out]
+a.py:1: error: Type signature has too many arguments
+== Return code: 2

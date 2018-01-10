@@ -34,6 +34,7 @@ class Options:
         "show_none_errors",
         "warn_no_return",
         "warn_return_any",
+        "warn_unused_ignores",
         "ignore_errors",
         "strict_boolean",
         "no_implicit_optional",

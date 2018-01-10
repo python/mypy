@@ -80,7 +80,7 @@ class BuildResult:
         self.graph = graph
         self.files = manager.modules
         self.types = manager.all_types  # Non-empty for tests only or if dumping deps
-        self.errors = manager.errors.messages()
+        self.errors = []  # type: List[str]  # Filled in by build if desired
 
 
 class BuildSource:
@@ -133,6 +133,7 @@ def build(sources: List[BuildSource],
           alt_lib_path: Optional[str] = None,
           bin_dir: Optional[str] = None,
           saved_cache: Optional[SavedCache] = None,
+          flush_errors: Optional[Callable[[List[str], bool], None]] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -142,6 +143,11 @@ def build(sources: List[BuildSource],
     Return BuildResult if successful or only non-blocking errors were found;
     otherwise raise CompileError.
 
+    If a flush_errors callback is provided, all error messages will be
+    passed to it and the errors and messages fields of BuildResult and
+    CompileError (respectively) will be empty. Otherwise those fields will
+    report any error messages.
+
     Args:
       sources: list of sources to build
       options: build options
@@ -150,7 +156,40 @@ def build(sources: List[BuildSource],
       bin_dir: directory containing the mypy script, used for finding data
         directories; if omitted, use '.' as the data directory
       saved_cache: optional dict with saved cache state for dmypy (read-write!)
+      flush_errors: optional function to flush errors after a file is processed
+
     """
+    # If we were not given a flush_errors, we use one that will populate those
+    # fields for callers that want the traditional API.
+    messages = []
+
+    def default_flush_errors(new_messages: List[str], is_serious: bool) -> None:
+        messages.extend(new_messages)
+
+    flush_errors = flush_errors or default_flush_errors
+
+    try:
+        result = _build(sources, options, alt_lib_path, bin_dir, saved_cache, flush_errors)
+        result.errors = messages
+        return result
+    except CompileError as e:
+        # CompileErrors raised from an errors object carry all of the
+        # messages that have not been reported out by error streaming.
+        # Patch it up to contain either none or all none of the messages,
+        # depending on whether we are flushing errors.
+        serious = not e.use_stdout
+        flush_errors(e.messages, serious)
+        e.messages = messages
+        raise
+
+
+def _build(sources: List[BuildSource],
+           options: Options,
+           alt_lib_path: Optional[str],
+           bin_dir: Optional[str],
+           saved_cache: Optional[SavedCache],
+           flush_errors: Callable[[List[str], bool], None],
+           ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(50000)
 
@@ -212,7 +251,8 @@ def build(sources: List[BuildSource],
                            version_id=__version__,
                            plugin=plugin,
                            errors=errors,
-                           saved_cache=saved_cache)
+                           saved_cache=saved_cache,
+                           flush_errors=flush_errors)
 
     try:
         graph = dispatch(sources, manager)
@@ -518,6 +558,7 @@ class BuildManager:
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
+      flush_errors:    A function for processing errors after each SCC
       saved_cache:     Dict with saved cache state for dmypy and fine-grained incremental mode
                        (read-write!)
       stats:           Dict with various instrumentation numbers
@@ -532,6 +573,7 @@ class BuildManager:
                  version_id: str,
                  plugin: Plugin,
                  errors: Errors,
+                 flush_errors: Callable[[List[str], bool], None],
                  saved_cache: Optional[SavedCache] = None,
                  ) -> None:
         self.start_time = time.time()
@@ -555,6 +597,7 @@ class BuildManager:
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
         self.plugin = plugin
+        self.flush_errors = flush_errors
         self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
 
@@ -1973,6 +2016,10 @@ class State:
     def dependency_priorities(self) -> List[int]:
         return [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
 
+    def generate_unused_ignore_notes(self) -> None:
+        if self.options.warn_unused_ignores:
+            self.manager.errors.generate_unused_ignore_notes(self.xpath)
+
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     set_orig = set(manager.saved_cache)
@@ -1999,9 +2046,6 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         dump_graph(graph)
         return graph
     process_graph(graph, manager)
-    if manager.options.warn_unused_ignores:
-        # TODO: This could also be a per-module option.
-        manager.errors.generate_unused_ignore_notes()
     updated = preserve_cache(graph)
     set_updated = set(updated)
     manager.saved_cache.clear()
@@ -2490,6 +2534,8 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
             graph[id].transitive_error = True
     for id in stale:
         graph[id].finish_passes()
+        graph[id].generate_unused_ignore_notes()
+        manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 
