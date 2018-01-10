@@ -122,16 +122,24 @@ A().f = None # E: Cannot assign to a method
 [case testReferToInvalidAttribute]
 
 class A:
-    def __init__(self):
+    def __init__(self) -> None:
         self.x = object()
-a = None # type: A
-a.y
-a.y = object()
+a: A
+a.y  # E: "A" has no attribute "y"
+a.y = object()  # E: "A" has no attribute "y"
 a.x
 a.x = object()
-[out]
-main:6: error: "A" has no attribute "y"
-main:7: error: "A" has no attribute "y"
+
+[case testReferToInvalidAttributeUnannotatedInit]
+class A:
+    def __init__(self):
+        self.x = object()
+
+a: A
+a.y  # E: "A" has no attribute "y"
+a.y = object()  # E: "A" has no attribute "y"
+a.x
+a.x = object()
 
 [case testArgumentTypeInference]
 
