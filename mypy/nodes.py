@@ -324,6 +324,7 @@ class FuncBase(Node):
     # Original, not semantically analyzed type (used for reprocessing)
     unanalyzed_type = None  # type: Optional[mypy.types.Type]
     # If method, reference to TypeInfo
+    # TODO: The type should be Optional[TypeInfo]
     info = None  # type: TypeInfo
     is_property = False
     _fullname = None  # type: str       # Name with module prefix
@@ -597,6 +598,7 @@ class Var(SymbolNode):
 
     _name = None      # type: str   # Name without module prefix
     _fullname = None  # type: str   # Name with module prefix
+    # TODO: The following should be Optional[TypeInfo]
     info = None  # type: TypeInfo   # Defining class (for member variables)
     type = None  # type: Optional[mypy.types.Type] # Declared or inferred type, or None
     # Is this the first argument to an ordinary method (usually "self")?
@@ -1468,7 +1470,7 @@ class SuperExpr(Expression):
     """Expression super().name"""
 
     name = ''
-    info = None  # type: TypeInfo  # Type that contains this super expression
+    info = None  # type: Optional[TypeInfo]  # Type that contains this super expression
     call = None  # type: CallExpr  # The expression super(...)
 
     def __init__(self, name: str, call: CallExpr) -> None:

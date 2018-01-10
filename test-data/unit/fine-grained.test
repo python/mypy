@@ -1025,8 +1025,8 @@ def f() -> Iterator[None]:
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b>
-3: <b>
+2: <b>, __main__
+3: <b>, __main__, a
 [out]
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 ==
@@ -1072,9 +1072,9 @@ def g() -> None:
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b.h>, <b>
-3: <b.h>, <b>
-4:
+2: <b.h>, <b>, a.g
+3: <b.h>, <b>, a
+4: a.g
 [out]
 a.py:11: error: Too many arguments for "h"
 ==
@@ -1344,6 +1344,141 @@ def g() -> int: pass
 [file a.py.2]
 def g() -> str: pass
 [builtins fixtures/exception.pyi]
+[out]
+==
+
+[case testMroSpecialCase]
+import b
+import a
+
+[file a.py]
+class C: pass
+class D(C):
+    1()
+class E(D): pass
+
+[file b.py]
+import a
+
+[file a.py.2]
+class C: pass
+class D(C):
+    1()
+class E(D): pass
+
+[file b.py.2]
+import a
+
+[triggered]
+2: a, a
+[out]
+a.py:3: error: "int" not callable
+==
+a.py:3: error: "int" not callable
+
+[case testMetaclassDefinition_python2]
+# flags: --py2
+import abc
+import m
+m.f()
+
+class A:
+    __metaclass__ = abc.ABCMeta
+[file m.py]
+def f(): pass
+[file m.py.2]
+def f(x=1): pass
+[out]
+==
+
+[case testRefreshGenericSubclass]
+from typing import Generic, TypeVar
+import m
+m.x
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, x: T) -> None:
+        pass
+
+class D(C[T]):
+    def __init__(self, x: T) -> None:
+        m.x
+        super(D, self).__init__(x)
+[file m.py]
+x = 0
+[file m.py.2]
+x = ''
+[out]
+==
+
+[case testRefreshNamedTupleSubclass]
+from typing import NamedTuple
+import m
+m.x
+
+N = NamedTuple('N', [('x', int)])
+
+class C(N):
+    pass
+[file m.py]
+x = 0
+[file m.py.2]
+x = ''
+[out]
+==
+
+[case testNewTypeRefresh]
+import a
+
+[file a.py]
+from typing import Dict, NewType
+
+N = NewType('N', int)
+
+a: Dict[N, int]
+
+def f(self, x: N) -> None:
+    a.get(x)
+
+[file a.py.2]
+from typing import Dict, NewType  # dummy change
+
+N = NewType('N', int)
+
+a: Dict[N, int]
+
+def f(self, x: N) -> None:
+    a.get(x)
+
+[builtins fixtures/dict.pyi]
+[out]
+==
+
+[case testRefreshFunctionalEnum]
+import a
+
+[file a.py]
+from typing import Dict
+from enum import Enum
+
+N = Enum('N', 'x')
+a: Dict[N, int]
+
+def f(self, x: N) -> None:
+    a.get(x)
+
+[file a.py.2]
+from typing import Dict
+from enum import Enum
+
+N = Enum('N', 'x')
+a: Dict[N, int]
+
+def f(self, x: N) -> None:
+    a.get(x)
+[builtins fixtures/dict.pyi]
 [out]
 ==
 
