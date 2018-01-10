@@ -56,10 +56,10 @@ Here's a summary of how a fine-grained incremental program update happens:
 * Determine which modules have changes in their source code since the
   previous update.
 
-* Process changed modules one at a time. Perform a full update for each
-  module, but only report the final set of error messages, since the
-  intermediate states can generate bogus errors due to only seeing a
-  partial set of changes.
+* Process changed modules one at a time. Perform a separate full update
+  for each changed module, but only report the errors after all modules
+  have been processed, since the intermediate states can generate bogus
+  errors due to only seeing a partial set of changes.
 
 * Each changed module is processed in full. We parse the module, and
   run semantic analysis to create a new AST and symbol table for the
