@@ -78,3 +78,21 @@ def f() -> str:
 [out1]
 tmp/b.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out2]
+
+[case testInitialBlockerFineGrainedIncremental]
+# cmd: mypy -m a b
+[file a.py]
+1 1
+[file b.py]
+def f() -> int:
+    return ''
+[file a.py.2]
+x = 1
+[file b.py.3]
+def f() -> int:
+    return 0
+[out1]
+tmp/a.py:1: error: invalid syntax
+[out2]
+tmp/b.py:2: error: Incompatible return value type (got "str", expected "int")
+[out3]

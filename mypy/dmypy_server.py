@@ -252,8 +252,12 @@ class Server:
             result = mypy.build.build(sources=sources,
                                       options=self.options)
         except mypy.errors.CompileError as e:
-            # TODO: Handle blockers here
-            assert False, str('\n'.join(e.messages))
+            messages = ''.join(s + '\n' for s in e.messages)
+            if e.use_stdout:
+                out, err = messages, ''
+            else:
+                out, err = '', messages
+            return {'out': out, 'err': err, 'status': 2}
         messages = result.errors
         manager = result.manager
         graph = result.graph
