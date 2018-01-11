@@ -1,13 +1,7 @@
 [case testAttrsSimple]
 # TODO(David):
 # Add tests for:
-# o type aliases (both inside and outside of a class)
-# o type variables
-# o decorated generic classes
 # o type inference
-# o forward references (both inside and outside of class)
-# o importing decorated classes
-# o instance and class methods in decorated types
 
 import attr
 @attr.s
@@ -16,8 +10,7 @@ class A:
     _b = attr.ib()
     c = attr.ib(18)
     _d = attr.ib(validator=None, default=18)
-    CLASS_VAR = 18
-
+    E = 18
 
 reveal_type(A)  # E: Revealed type is 'def (a: Any, b: Any, c: Any =, d: Any =) -> __main__.A'
 reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
@@ -30,12 +23,11 @@ A(1,2)
 import attr
 @attr.s
 class A:
-    normal = attr.ib()  # E: Need type annotation for variable
-    _private = attr.ib()  # E: Need type annotation for variable
-    def_arg = attr.ib(18)  # E: Need type annotation for variable
-    _def_kwarg = attr.ib(validator=None, default=18)   # E: Need type annotation for variable
-
-    CLASS_VAR = 18
+    a = attr.ib()  # E: Need type annotation for variable
+    _b = attr.ib()  # E: Need type annotation for variable
+    c = attr.ib(18)  # E: Need type annotation for variable
+    _d = attr.ib(validator=None, default=18)   # E: Need type annotation for variable
+    E = 18
 [builtins fixtures/bool.pyi]
 
 [case testAttrsAnnotated]
@@ -196,3 +188,86 @@ reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __ma
 reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
 A(1, ['2'])
 [builtins fixtures/list.pyi]
+
+[case testAttrsTypeAlias]
+from typing import List
+import attr
+Alias = List[int]
+@attr.s(auto_attribs=True)
+class A:
+    Alias2 = List[str]
+    x: Alias
+    y: Alias2 = attr.ib()
+reveal_type(A) # E: Revealed type is 'def (x: builtins.list[builtins.int], y: builtins.list[builtins.str]) -> __main__.A'
+[builtins fixtures/list.pyi]
+
+[case testAttrsTypeVariable]
+from typing import TypeVar, Generic, List
+import attr
+T = TypeVar('T')
+@attr.s(auto_attribs=True)
+class A(Generic[T]):
+    x: List[T]
+    y: T = attr.ib()
+reveal_type(A) # E: Revealed type is 'def [T] (x: builtins.list[T`1], y: T`1) -> __main__.A[T`1]'
+
+a = A([1], 2)
+reveal_type(a)  # E: Revealed type is '__main__.A[builtins.int*]'
+[builtins fixtures/list.pyi]
+
+[case testAttrsForwardReference]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    parent: B
+
+@attr.s(auto_attribs=True)
+class B:
+    parent: A
+
+reveal_type(A) # E: Revealed type is 'def (parent: __main__.B) -> __main__.A'
+reveal_type(B) # E: Revealed type is 'def (parent: __main__.A) -> __main__.B'
+A(B(None))
+[builtins fixtures/list.pyi]
+
+[case testAttrsForwardReferenceInClass]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    parent: A.B
+
+    @attr.s(auto_attribs=True)
+    class B:
+        parent: A
+
+reveal_type(A) # E: Revealed type is 'def (parent: __main__.A.B) -> __main__.A'
+reveal_type(A.B) # E: Revealed type is 'def (parent: __main__.A) -> __main__.A.B'
+A(A.B(None))
+[builtins fixtures/list.pyi]
+
+[case testAttrsImporting]
+from helper import A
+reveal_type(A)  # E: Revealed type is 'def (a: builtins.int, b: builtins.str) -> helper.A'
+[file helper.py]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+   a: int
+   b: str = attr.ib()
+[builtins fixtures/list.pyi]
+
+[case testAttrsOtherMethods]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    a: int
+    b: str = attr.ib()
+    @classmethod
+    def new(cls) -> A:
+       return A(6, 'hello')
+    def foo(self) -> int:
+       return self.a
+reveal_type(A)  # E: Revealed type is 'def (a: builtins.int, b: builtins.str) -> __main__.A'
+a = A.new()
+reveal_type(a.foo) # E: Revealed type is 'def () -> builtins.int'
+[builtins fixtures/classmethod.pyi]
