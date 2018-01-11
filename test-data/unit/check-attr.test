@@ -334,3 +334,18 @@ reveal_type(B)  # E: Revealed type is 'def () -> __main__.B'
 
 A([B()])
 [builtins fixtures/list.pyi]
+
+[case testAttrsUsingConvert]
+import attr
+
+def convert(s:int) -> str:
+    return 'hello'
+
+@attr.s
+class C:
+    x: str = attr.ib(convert=convert)
+
+# Because of the convert the __init__ takes an int, but the variable is a str.
+reveal_type(C)  # E: Revealed type is 'def (x: builtins.int) -> __main__.C'
+reveal_type(C(15).x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/list.pyi]

@@ -10,7 +10,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var,
     FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode,
-    ARG_POS, ARG_OPT, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt
+    ARG_POS, ARG_OPT, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt, FuncBase
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
@@ -430,7 +430,8 @@ AttribMaker = NamedTuple(
     'AttribMaker', [
         ('default', ArgumentInfo),
         ('init', ArgumentInfo),
-        ("type", ArgumentInfo),
+        ('type', ArgumentInfo),
+        ('convert', ArgumentInfo),
     ]
 )
 
@@ -442,7 +443,8 @@ attrs_arguments = AttrClassMaker(
 )
 attrib_arguments = AttribMaker(
     default=ArgumentInfo(None, 'default', 0),
-    init=ArgumentInfo(True, "init", 5),
+    init=ArgumentInfo(True, 'init', 5),
+    convert=ArgumentInfo(None, 'convert', 6),
     type=ArgumentInfo(None, 'type', 8),
 )
 
@@ -599,6 +601,18 @@ def attr_class_maker_callback(
                                 # If there is no annotation, add one.
                                 lhs.node.type = typ
                                 lhs.is_inferred_def = False
+
+                    # If the attrib has a convert function take the type of the first argument
+                    # for the init type.
+                    convert = get_argument(stmt.rvalue, attrib.convert)
+                    if (convert
+                            and isinstance(convert, RefExpr)
+                            and convert.node
+                            and isinstance(convert.node, FuncBase)
+                            and convert.node.type
+                            and isinstance(convert.node.type, CallableType)
+                            and convert.node.type.arg_types):
+                        typ = convert.node.type.arg_types[0]
 
                     add_attribute(name, typ, attr_has_default,
                                   get_bool_argument(stmt.rvalue, attrib.init),
