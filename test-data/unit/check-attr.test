@@ -17,6 +17,8 @@ class A:
     c = attr.ib(18)
     _d = attr.ib(validator=None, default=18)
     CLASS_VAR = 18
+
+
 reveal_type(A)  # E: Revealed type is 'def (a: Any, b: Any, c: Any =, d: Any =) -> __main__.A'
 reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
 reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'

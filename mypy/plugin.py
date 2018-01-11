@@ -394,32 +394,6 @@ def int_pow_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-def add_method(
-        info: TypeInfo,
-        method_name: str,
-        args: List[Argument],
-        ret_type: Type,
-        self_type: Type,
-        function_type: Instance) -> None:
-    from mypy.semanal import set_callable_name
-
-    first = [Argument(Var('self'), self_type, None, ARG_POS)]
-    args = first + args
-
-    arg_types = [arg.type_annotation for arg in args]
-    arg_names = [arg.variable.name() for arg in args]
-    arg_kinds = [arg.kind for arg in args]
-    assert None not in arg_types
-    signature = CallableType(cast(List[Type], arg_types), arg_kinds, arg_names,
-                             ret_type, function_type)
-    func = FuncDef(method_name, args, Block([]))
-    func.info = info
-    func.is_class = False
-    func.type = set_callable_name(signature, func)
-    func._fullname = info.fullname() + '.' + method_name
-    info.names[method_name] = SymbolTableNode(MDEF, func)
-
-
 attr_class_makers = {
     'attr.s',
     'attr.attrs',
@@ -454,6 +428,16 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
     # o Cleanup builtins in tests.
     # o Fix inheritance with attribute override.
     # o Handle None from get_bool_argument
+    # o Support frozen=True
+
+    # attrs is a package that lets you define classes without writing dull boilerplate code.
+    #
+    # At a quick glance, the decorator searches the class object for instances of attr.ibs (or
+    # annotated variables if auto_attribs=True) and tries to add a bunch of helpful methods to
+    # the object.  The most important for type checking purposes are __init__ and all the cmp
+    # methods.
+    #
+    # See http://www.attrs.org/en/stable/how-does-it-work.html for information on how this works.
 
     def get_argument(call: CallExpr, name: Optional[str],
                      num: Optional[int]) -> Optional[Expression]:
@@ -496,10 +480,20 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
         # Nothing to add.
         return
 
-    # To support nested classes we use fullname(). But fullname is <filename>.<variable name>
-    # and named_type() expects only the name.
-    self_type = ctx.api.named_type(ctx.cls.info.fullname().split(".", 1)[1])
     function_type = ctx.api.named_type('__builtins__.function')
+
+    def add_method(method_name: str, args: List[Argument], ret_type: Type) -> None:
+        """Create a method: def <method_name>(self, <args>) -> <ret_type>): ..."""
+        args = [Argument(Var('self'), AnyType(TypeOfAny.unannotated), None, ARG_POS)] + args
+        arg_types = [arg.type_annotation for arg in args]
+        arg_names = [arg.variable.name() for arg in args]
+        arg_kinds = [arg.kind for arg in args]
+        assert None not in arg_types
+        signature = CallableType(cast(List[Type], arg_types), arg_kinds, arg_names,
+                                 ret_type, function_type)
+        func = FuncDef(method_name, args, Block([]), signature)
+        ctx.api.accept(func)
+        ctx.cls.info.names[method_name] = SymbolTableNode(MDEF, func)
 
     if init:
         # Walk the body looking for assignments.
@@ -569,27 +563,13 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                      ARG_OPT if name in has_default else ARG_POS)
             for (name, typ) in zip(names, types)
         ]
-
-        add_method(
-            info=ctx.cls.info,
-            method_name='__init__',
-            args=init_args,
-            ret_type=NoneTyp(),
-            self_type=self_type,
-            function_type=function_type,
-        )
+        add_method('__init__', init_args, NoneTyp())
 
     if cmp:
         bool_type = ctx.api.named_type('__builtins__.bool')
-        args = [Argument(Var('other', self_type), self_type, None, ARG_POS)]
+        other_type = UnboundType(ctx.cls.info.fullname().split(".", 1)[1])
+        args = [Argument(Var('other', other_type), other_type, None, ARG_POS)]
         for method in ['__ne__', '__eq__',
                        '__lt__', '__le__',
                        '__gt__', '__ge__']:
-            add_method(
-                info=ctx.cls.info,
-                method_name=method,
-                args=args,
-                ret_type=bool_type,
-                self_type=self_type,
-                function_type=function_type,
-            )
+            add_method(method, args, bool_type)
