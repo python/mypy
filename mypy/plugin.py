@@ -490,7 +490,6 @@ def attr_s_callback(ctx: ClassDefContext) -> None:
             lhs = stmt.lvalues[0]
             name = lhs.name.lstrip("_")
             typ = stmt.type
-            print(name, typ, is_class_var(lhs))
 
             if called_function(stmt.rvalue) == 'attr.ib':
                 # Look for a default value in the call.
