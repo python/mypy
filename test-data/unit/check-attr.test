@@ -18,15 +18,10 @@ UnTyped(normal=1, private=2, def_arg=3, def_kwarg=4)
 UnTyped()  # E: Too few arguments for "UnTyped"
 UnTyped(1, 2) == UnTyped(2, 3)
 UnTyped(1, 2) >= UnTyped(2, 3)
-[builtins fixtures/bool.pyi]
-[file attr.pyi]
-from typing import TypeVar
-_T = TypeVar('_T')
-def ib(default: _T = ..., validator = ...) -> _T: ...
-def s(cls: _T) -> _T: ...
+[builtins fixtures/attr_builtins.pyi]
+[add-module fixtures/attr.pyi]
 
 [case testTypedAttrS]
-[builtins fixtures/bool.pyi]
 import attr
 import typing
 @attr.s
@@ -45,14 +40,10 @@ Typed(1, 2, def_kwarg=5)
 Typed(1, 2, def_kwarg=5)
 Typed(normal=1, private=2, def_arg=3, def_kwarg=4)
 Typed()  # E: Too few arguments for "Typed"
-[file attr.pyi]
-from typing import TypeVar
-_T = TypeVar('_T')
-def ib(default: _T = ..., validator = ...) -> _T: ...
-def s(cls: _T) -> _T: ...
+[builtins fixtures/attr_builtins.pyi]
+[add-module fixtures/attr.pyi]
 
 [case testAutoAttribAttrS]
-[builtins fixtures/bool.pyi]
 import attr
 import typing
 @attr.s(auto_attribs=True)
@@ -64,6 +55,7 @@ class Auto:
 
     UNTYPED_CLASS_VAR = 18
     TYPED_CLASS_VAR: typing.ClassVar[int] = 18
+
 reveal_type(Auto)  # E: Revealed type is 'def (normal: builtins.int, private: builtins.int, def_arg: builtins.int =, def_kwarg: builtins.int =) -> __main__.Auto'
 Auto(1, 2)
 Auto(1, 2, 3)
@@ -72,14 +64,10 @@ Auto(1, 2, def_kwarg=5)
 Auto(1, 2, def_kwarg=5)
 Auto(normal=1, private=2, def_arg=3, def_kwarg=4)
 Auto()  # E: Too few arguments for "Auto"
-[file attr.pyi]
-from typing import TypeVar
-_T = TypeVar('_T')
-def ib(default: _T = ..., validator = ...) -> _T: ...
-def s(cls: _T) -> _T: ...
+[builtins fixtures/attr_builtins.pyi]
+[add-module fixtures/attr.pyi]
 
 [case testSeriousNamesAttrS]
-[builtins fixtures/bool.pyi]
 import typing
 from attr import attrib, attrs
 @attrs(auto_attribs=True)
@@ -98,8 +86,33 @@ Auto(1, 2, def_kwarg=5)
 Auto(1, 2, def_kwarg=5)
 Auto(normal=1, private=2, def_arg=3, def_kwarg=4)
 Auto()  # E: Too few arguments for "Auto"
-[file attr.pyi]
-from typing import TypeVar
-_T = TypeVar('_T')
-def attrib(default: _T = ..., validator = ...) -> _T: ...
-def attrs(cls: _T) -> _T: ...
+[builtins fixtures/attr_builtins.pyi]
+[add-module fixtures/attr.pyi]
+
+[case testNoInitAttrS]
+from attr import attrib, attrs
+@attrs(auto_attribs=True, init=False)
+class Auto:
+    normal: int
+    _private: int
+    def_arg: int = 18
+    _def_kwarg: int = attrib(validator=None, default=18)
+reveal_type(Auto)  # E: Revealed type is 'def () -> __main__.Auto'
+Auto()
+Auto() == Auto()
+Auto() >= Auto()
+[builtins fixtures/attr_builtins.pyi]
+[add-module fixtures/attr.pyi]
+
+[case testNoCmpAttrS]
+from attr import attrib, attrs
+@attrs(auto_attribs=True, cmp=False)
+class A:
+    b: int
+reveal_type(A)  # E: Revealed type is 'def (b: builtins.int) -> __main__.A'
+A(5)
+A(5) == A(5)
+A(5) >= A(5)  # E: Unsupported left operand type for >= ("A")
+[builtins fixtures/attr_builtins.pyi]
+[add-module fixtures/attr.pyi]
+

@@ -2,6 +2,16 @@ import attr
 import typing
 
 
+@attr.s(cmp=False)
+class A:
+    x = attr.ib()
+
+a = A()
+
+A() == A()
+
+import pdb; pdb.set_trace()
+
 @attr.s(auto_attribs=True)
 class Auto:
     normal: int
