@@ -140,11 +140,11 @@ class A:
 @attr.s
 class B(A):
     b: str = attr.ib()
-    x: int = attr.ib(default='value')
+    x: int = attr.ib(default=22)
 
 @attr.s
 class C(B):
-    c: bool = attr.ib()  # No error here because the x below overwrite the x above.
+    c: bool = attr.ib()  # No error here because the x below overwrites the x above.
     x: int = attr.ib()
 
 reveal_type(A)  # E: Revealed type is 'def (a: builtins.int, x: builtins.int) -> __main__.A'
@@ -158,7 +158,8 @@ import attr
 @attr.s
 class A:
     a = attr.ib(type=int)
-reveal_type(A) # E: Revealed type is 'def (a: builtins.int) -> __main__.A'
+    b = attr.ib(18, type=int)
+reveal_type(A) # E: Revealed type is 'def (a: builtins.int, b: builtins.int =) -> __main__.A'
 [builtins fixtures/bool.pyi]
 
 [case testAttrsFrozen]

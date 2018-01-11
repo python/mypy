@@ -571,6 +571,7 @@ def attr_class_maker_callback(
         for stmt in info.defn.defs.body:
             if isinstance(stmt, AssignmentStmt) and isinstance(stmt.lvalues[0], NameExpr):
                 lhs = stmt.lvalues[0]
+                assert isinstance(lhs, NameExpr)
                 name = lhs.name
                 typ = stmt.type
 
@@ -594,6 +595,10 @@ def attr_class_maker_callback(
                             ctx.api.fail('Invalid argument to type', type_arg)
                         else:
                             typ = ctx.api.anal_type(un_type)
+                            if typ and isinstance(lhs.node, Var) and not lhs.node.type:
+                                # If there is no annotation, add one.
+                                lhs.node.type = typ
+                                lhs.is_inferred_def = False
 
                     add_attribute(name, typ, attr_has_default,
                                   get_bool_argument(stmt.rvalue, attrib.init),
