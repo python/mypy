@@ -434,7 +434,7 @@ attr_attrib_makers = {
 
 
 def attr_class_maker_callback(ctx: ClassDefContext) -> None:
-    """Add an __init__ method to classes decorated with attr.s."""
+    """Add __init__ and __cmp__ methods to classes decorated with attr.s."""
 
     def get_argument(call: CallExpr, name: Optional[str],
                      num: Optional[int]) -> Optional[Expression]:

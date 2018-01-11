@@ -101,13 +101,6 @@ def parse_test_cases(
                     src_path = join(os.path.dirname(path), arg)
                     with open(src_path) as f:
                         files.append((join(base_path, 'typing.pyi'), f.read()))
-                elif p[i].id == 'add-module':
-                    arg = p[i].arg
-                    assert arg is not None
-                    src_path = join(os.path.dirname(path), arg)
-                    name = os.path.basename(src_path)
-                    with open(src_path) as f:
-                        files.append((join(base_path, name), f.read()))
                 elif re.match(r'stale[0-9]*$', p[i].id):
                     if p[i].id == 'stale':
                         passnum = 1
