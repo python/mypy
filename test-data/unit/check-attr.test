@@ -87,3 +87,33 @@ _T = TypeVar('_T')
 def ib(default: _T = ..., validator = ...) -> _T: ...
 def s(cls: _T) -> _T: ...
 
+[case testSeriousNamesAttrS]
+import typing
+from attr import attrib, attrs
+
+@attrs(auto_attribs=True)
+class Auto:
+    normal: int
+    _private: int
+    def_arg: int = 18
+    _def_kwarg: int = attrib(validator=None, default=18)
+
+    UNTYPED_CLASS_VAR = 18
+    TYPED_CLASS_VAR: typing.ClassVar[int] = 18
+
+reveal_type(Auto)  # E: Revealed type is 'def (normal: builtins.int, private: builtins.int, def_arg: builtins.int =, def_kwarg: builtins.int =) -> __main__.Auto'
+
+Auto(1, 2)
+Auto(1, 2, 3)
+Auto(1, 2, 3, 4)
+Auto(1, 2, def_kwarg=5)
+Auto(1, 2, def_kwarg=5)
+Auto(normal=1, private=2, def_arg=3, def_kwarg=4)
+Auto()  # E: Too few arguments for "Auto"
+
+
+[file attr.pyi]
+from typing import TypeVar
+_T = TypeVar('_T')
+def attrib(default: _T = ..., validator = ...) -> _T: ...
+def attrs(cls: _T) -> _T: ...

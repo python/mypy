@@ -269,8 +269,8 @@ class DefaultPlugin(Plugin):
 
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
-        if fullname == 'attr.s':
-            return attr_s_callback
+        if fullname in attr_class_makers:
+            return attr_class_maker_callback
         return None
 
 
@@ -418,10 +418,21 @@ def add_method(
     info.names[method_name] = SymbolTableNode(MDEF, func)
 
 
-def attr_s_callback(ctx: ClassDefContext) -> None:
-    """Add an __init__ method to classes decorated with attr.s."""
-    # TODO: Add __cmp__ methods.
+attr_class_makers = {
+    'attr.s',
+    'attr.attrs',
+    'attr.attributes',
+}
 
+attr_attrib_makers = {
+    'attr.ib',
+    'attr.attrib',
+    'attr.attr'
+}
+
+
+def attr_class_maker_callback(ctx: ClassDefContext) -> None:
+    """Add an __init__ method to classes decorated with attr.s."""
     def get_bool_argument(call: CallExpr, name: str, default: Optional[bool]) -> Optional[bool]:
         for arg_name, arg_value in zip(call.arg_names, call.args):
             if arg_name == name:
@@ -455,7 +466,7 @@ def attr_s_callback(ctx: ClassDefContext) -> None:
     if not init:
         return
 
-    print(f"{ctx.cls.info.fullname()} init={init} auto={auto_attribs}")
+    # print(f"{ctx.cls.info.fullname()} init={init} auto={auto_attribs}")
 
     info = ctx.cls.info
 
@@ -491,13 +502,14 @@ def attr_s_callback(ctx: ClassDefContext) -> None:
             name = lhs.name.lstrip("_")
             typ = stmt.type
 
-            if called_function(stmt.rvalue) == 'attr.ib':
-                # Look for a default value in the call.
+            if called_function(stmt.rvalue) in attr_attrib_makers:
                 assert isinstance(stmt.rvalue, CallExpr)
+                # Look for default=  in the call.
+                default = get_argument(stmt.rvalue, "default", 0)
                 add_init_argument(
                     name,
                     typ,
-                    bool(get_argument(stmt.rvalue, "default", 0)),
+                    bool(default),
                     stmt)
             else:
                 if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
@@ -519,3 +531,4 @@ def attr_s_callback(ctx: ClassDefContext) -> None:
         self_type=ctx.api.named_type(info.name()),
         function_type=ctx.api.named_type('__builtins__.function'),
     )
+    # TODO: Add __cmp__ methods.
