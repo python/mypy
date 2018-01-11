@@ -13,8 +13,6 @@ class A:
     E = 18
 
 reveal_type(A)  # E: Revealed type is 'def (a: Any, b: Any, c: Any =, d: Any =) -> __main__.A'
-reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
-reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
 A(1,2)
 [builtins fixtures/bool.pyi]
 
@@ -42,8 +40,6 @@ class A:
     E = 7
     F: ClassVar[int] = 22
 reveal_type(A)  # E: Revealed type is 'def (a: builtins.int, b: builtins.list[builtins.str], c: builtins.str =, d: builtins.int =) -> __main__.A'
-reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
-reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
 A(1, ['2'])
 [builtins fixtures/list.pyi]
 
@@ -59,8 +55,6 @@ class A:
     E = 7
     F: ClassVar[int] = 22
 reveal_type(A)  # E: Revealed type is 'def (a: builtins.int, b: builtins.list[builtins.str], c: builtins.str =, d: builtins.int =) -> __main__.A'
-reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
-reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
 A(1, ['2'])
 [builtins fixtures/list.pyi]
 
@@ -76,8 +70,6 @@ class A:
     E = 7
     F: ClassVar[int] = 22
 reveal_type(A)  # E: Revealed type is 'def (a: builtins.int, b: builtins.list[builtins.str], c: builtins.str =, d: builtins.int =) -> __main__.A'
-reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
-reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
 A(1, ['2'])
 [builtins fixtures/list.pyi]
 
@@ -91,8 +83,6 @@ class A:
     _d = attrib(validator=None, default=18)
     CLASS_VAR = 18
 reveal_type(A)  # E: Revealed type is 'def (a: Any, b: builtins.int, c: Any =, d: Any =) -> __main__.A'
-reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
-reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
 A(1,2)
 [builtins fixtures/bool.pyi]
 
@@ -105,8 +95,6 @@ class A:
     c: int = 18
     _d: int = attrib(validator=None, default=18)
 reveal_type(A)  # E: Revealed type is 'def () -> __main__.A'
-reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
-reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
 [builtins fixtures/bool.pyi]
 
 [case testAttrsCmpFalse]
@@ -202,8 +190,6 @@ class A:
     E = 7
     F: ClassVar[int] = 22
 reveal_type(A)  # E: Revealed type is 'def (a: builtins.int, b: builtins.list[builtins.str], c: builtins.str =, d: builtins.int =) -> __main__.A'
-reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
-reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
 A(1, ['2'])
 [builtins fixtures/list.pyi]
 
@@ -348,4 +334,50 @@ class C:
 # Because of the convert the __init__ takes an int, but the variable is a str.
 reveal_type(C)  # E: Revealed type is 'def (x: builtins.int) -> __main__.C'
 reveal_type(C(15).x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/list.pyi]
+
+[case testAttrsCmpWithSubclasses]
+import attr
+@attr.s
+class A: pass
+@attr.s
+class B: pass
+@attr.s
+class C(A, B): pass
+@attr.s
+class D(A): pass
+
+reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(B.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(C.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(D.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+
+A() < A()
+B() < B()
+A() < B() # E: Unsupported operand types for > ("B" and "A")
+
+C() > A()
+C() > B()
+C() > C()
+C() > D() # E: Unsupported operand types for < ("D" and "C")
+
+D() >= A()
+D() >= B()  # E: Unsupported operand types for <= ("B" and "D")
+D() >= C()  # E: Unsupported operand types for <= ("C" and "D")
+D() >= D()
+
+A() <= 1  # E: Unsupported operand types for <= ("A" and "int")
+B() <= 1  # E: Unsupported operand types for <= ("B" and "int")
+C() <= 1  # E: Unsupported operand types for <= ("C" and "int")
+D() <= 1  # E: Unsupported operand types for <= ("D" and "int")
+
+A() == A()
+B() == A()
+C() == A()
+D() == A()
+
+A() == int
+B() == int
+C() == int
+D() == int
 [builtins fixtures/list.pyi]

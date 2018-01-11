@@ -15,7 +15,7 @@ from mypy.nodes import (
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
-    AnyType, TypeList, UnboundType, TypeOfAny
+    AnyType, TypeList, UnboundType, TypeOfAny, TypeVarDef
 )
 from mypy.messages import MessageBuilder
 from mypy.options import Options
@@ -648,7 +648,8 @@ def attr_class_maker_callback(
     function_type = ctx.api.named_type('__builtins__.function')
 
     def add_method(method_name: str, args: List[Argument], ret_type: Type,
-                   add_to_body: bool = False) -> None:
+                   self_type: Type = self_type,
+                   tvd: Optional[TypeVarDef] = None) -> None:
         """Create a method: def <method_name>(self, <args>) -> <ret_type>): ..."""
         from mypy.semanal import set_callable_name
         args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
@@ -658,14 +659,15 @@ def attr_class_maker_callback(
         assert None not in arg_types
         signature = CallableType(cast(List[Type], arg_types), arg_kinds, arg_names,
                                  ret_type, function_type)
+        if tvd:
+            signature.variables = [tvd]
         func = FuncDef(method_name, args, Block([PassStmt()]))
         func.info = info
         func.type = set_callable_name(signature, func)
         func._fullname = info.fullname() + '.' + method_name
         func.line = ctx.cls.line
         info.names[method_name] = SymbolTableNode(MDEF, func)
-        if add_to_body:
-            info.defn.defs.body.append(func)
+        info.defn.defs.body.append(func)
 
     if get_bool_argument(decorator, attrs.init):
         # Generate the __init__ method.
@@ -685,7 +687,7 @@ def attr_class_maker_callback(
         add_method('__init__',
                    [attribute.argument() for attribute in attributes.values()
                     if attribute.init],
-                   NoneTyp(), add_to_body=True)
+                   NoneTyp())
 
         for stmt in ctx.cls.defs.body:
             # The implicit first type of cls methods will be wrong because it's based on
@@ -708,7 +710,19 @@ def attr_class_maker_callback(
         #   def __ne__(self, other: '<class name>') -> bool: ...
         # We use fullname to handle nested classes, splitting to remove the module name.
         bool_type = ctx.api.named_type('__builtins__.bool')
-        args = [Argument(Var('other', self_type), self_type, None, ARG_POS)]
-        for method in ['__ne__', '__eq__', '__lt__', '__le__', '__gt__', '__ge__']:
-            # Don't add these to the body to avoid incompatible with supertype when subclassing.
+        object_type = ctx.api.named_type('__builtins__.object')
+
+        # For __ne__ and __eq__ the type is: def __ne__(self, other: object) -> bool
+        args = [Argument(Var('other', object_type), object_type, None, ARG_POS)]
+        for method in ['__ne__', '__eq__']:
             add_method(method, args, bool_type)
+
+        # For the rest we use:
+        #    T = TypeVar('T')
+        #    def __lt__(self: T, other: T) -> bool
+        # This way we comparisons with subclasses will work correctly.
+        tvd = TypeVarDef('AT', 'AT', 1, [], object_type)
+        tvd_type = TypeVarType(tvd)
+        args = [Argument(Var('other', tvd_type), tvd_type, None, ARG_POS)]
+        for method in ['__lt__', '__le__', '__gt__', '__ge__']:
+            add_method(method, args, bool_type, self_type=tvd_type, tvd=tvd)
