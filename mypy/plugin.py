@@ -433,6 +433,7 @@ AttribMaker = NamedTuple(
         ('init', ArgumentInfo),
         ('type', ArgumentInfo),
         ('convert', ArgumentInfo),
+        ('converter', ArgumentInfo),
     ]
 )
 
@@ -447,6 +448,7 @@ attrib_arguments = AttribMaker(
     init=ArgumentInfo(True, 'init', 5),
     convert=ArgumentInfo(None, 'convert', 6),
     type=ArgumentInfo(None, 'type', 8),
+    converter=ArgumentInfo(None, 'converter', 9),
 )
 
 
@@ -575,17 +577,25 @@ def attr_class_maker_callback(
                                 lhs.node.type = typ
                                 lhs.is_inferred_def = False
 
-                    # If the attrib has a convert function take the type of the first argument
+                    # If the attrib has a converter function take the type of the first argument
                     # as the init type.
+                    converter = get_argument(stmt.rvalue, attrib.converter)
                     convert = get_argument(stmt.rvalue, attrib.convert)
-                    if (convert
-                            and isinstance(convert, RefExpr)
-                            and convert.node
-                            and isinstance(convert.node, FuncBase)
-                            and convert.node.type
-                            and isinstance(convert.node.type, CallableType)
-                            and convert.node.type.arg_types):
-                        typ = convert.node.type.arg_types[0]
+
+                    if convert and converter:
+                        ctx.api.fail("Can't pass both `convert` and `converter`.", stmt.rvalue)
+                    elif convert:
+                        # Note: Convert is deprecated but works the same.
+                        converter = convert
+
+                    if (converter
+                            and isinstance(converter, RefExpr)
+                            and converter.node
+                            and isinstance(converter.node, FuncBase)
+                            and converter.node.type
+                            and isinstance(converter.node.type, CallableType)
+                            and converter.node.type.arg_types):
+                        typ = converter.node.type.arg_types[0]
 
                     # Does this even have to go in init?
                     init = get_bool_argument(stmt.rvalue, attrib.init)

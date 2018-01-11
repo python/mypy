@@ -347,6 +347,34 @@ reveal_type(C)  # E: Revealed type is 'def (x: builtins.int) -> __main__.C'
 reveal_type(C(15).x)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/list.pyi]
 
+[case testAttrsUsingConverter]
+import attr
+
+def converter(s:int) -> str:
+    return 'hello'
+
+@attr.s
+class C:
+    x: str = attr.ib(converter=converter)
+
+# Because of the converter the __init__ takes an int, but the variable is a str.
+reveal_type(C)  # E: Revealed type is 'def (x: builtins.int) -> __main__.C'
+reveal_type(C(15).x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingConvertAndConverter]
+import attr
+
+def converter(s:int) -> str:
+    return 'hello'
+
+@attr.s
+class C:
+    x: str = attr.ib(converter=converter, convert=converter)  # E: Can't pass both `convert` and `converter`.
+
+[builtins fixtures/list.pyi]
+
+
 [case testAttrsCmpWithSubclasses]
 import attr
 @attr.s
