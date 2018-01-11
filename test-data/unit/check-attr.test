@@ -47,6 +47,23 @@ reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __ma
 A(1, ['2'])
 [builtins fixtures/list.pyi]
 
+[case testAttrsPython2Annotations]
+import attr
+from typing import List, ClassVar
+@attr.s
+class A:
+    a = attr.ib()   # type: int
+    _b = attr.ib()  # type: List[str]
+    c = attr.ib('18') # type: str
+    _d = attr.ib(validator=None, default=18) # type: int
+    E = 7
+    F: ClassVar[int] = 22
+reveal_type(A)  # E: Revealed type is 'def (a: builtins.int, b: builtins.list[builtins.str], c: builtins.str =, d: builtins.int =) -> __main__.A'
+reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
+A(1, ['2'])
+[builtins fixtures/list.pyi]
+
 [case testAttrsAutoAttribs]
 import attr
 from typing import List, ClassVar
