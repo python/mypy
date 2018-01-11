@@ -15,6 +15,7 @@ _I = TypeVar('_I', bound=Collection)
 _ValidatorType = Callable[[Any, 'Attribute', _T], Any]
 _ConverterType = Callable[[Any], _T]
 _FilterType = Callable[['Attribute', Any], bool]
+_ValidatorArgType = Union[_ValidatorType[_T], Sequence[_ValidatorType[_T]]]
 
 # _make --
 
@@ -37,15 +38,25 @@ class Attribute(Generic[_T]):
     type: Optional[Type[_T]]
 
 
-# FIXME: if no type arg or annotation is provided when using `attr` it will result in an error:
-# error: Need type annotation for variable
-# See discussion here: https://github.com/python/mypy/issues/4227
-# tl;dr: Waiting on a fix to https://github.com/python/typing/issues/253
+# `attr` also lies about its return type to make the following possible:
+#     attr()    -> Any
+#     attr(8)   -> int
+#     attr(validator=<some callable>)  -> Whatever the callable expects.
+# This makes this type of assignments possible:
+#     x: int = attr(8)
+#
+# 1st form catches a default value set.  Can't use = ... or you get "overloaded overlap" error.
 @overload
-def attr(default: _T, validator: Union[_ValidatorType[_T], Sequence[_ValidatorType[_T]]] = ...,
+def attr(default: _T, validator: Optional[_ValidatorArgType[_T]] = ...,
          repr: bool = ..., cmp: bool = ..., hash: Optional[bool] = ..., init: bool = ...,
          convert: _ConverterType[_T] = ..., metadata: Mapping = ...,
          type: Type[_T] = ...) -> _T: ...
+@overload
+def attr(default: Optional[_T] = ..., validator: Optional[_ValidatorArgType[_T]] = ...,
+         repr: bool = ..., cmp: bool = ..., hash: Optional[bool] = ..., init: bool = ...,
+         convert: _ConverterType[_T] = ..., metadata: Mapping = ...,
+         type: Type[_T] = ...) -> _T: ...
+# 3rd form catches nothing set. So returns Any.
 @overload
 def attr(default: None = ..., validator: None = ...,
          repr: bool = ..., cmp: bool = ..., hash: Optional[bool] = ..., init: bool = ...,
