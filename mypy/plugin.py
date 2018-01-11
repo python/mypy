@@ -418,17 +418,14 @@ attrs_arguments = OrderedDict([
 
 
 def attr_class_maker_callback(ctx: ClassDefContext) -> None:
-    """Add __init__ and __cmp__ methods to classes decorated with attr.s."""
+    """Add necessary dunder methods to classes decorated with attr.s."""
     # TODO(David):
-    # o Comment explaining how attrs work so people know what this is doing.
-    # o Figure out Self Type
-    # o Explain strip("_")
     # o Remove magic numbers
     # o Figure out what to do with type=...
     # o Cleanup builtins in tests.
     # o Fix inheritance with attribute override.
     # o Handle None from get_bool_argument
-    # o Support frozen=True
+    # o Support frozen=True?
 
     # attrs is a package that lets you define classes without writing dull boilerplate code.
     #
@@ -532,6 +529,7 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
             for stmt in info.defn.defs.body:
                 if isinstance(stmt, AssignmentStmt) and isinstance(stmt.lvalues[0], NameExpr):
                     lhs = stmt.lvalues[0]
+                    # Attrs removes leading underscores when creating the __init__ arguments.
                     name = lhs.name.lstrip("_")
                     typ = stmt.type
 
@@ -566,8 +564,11 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
         add_method('__init__', init_args, NoneTyp())
 
     if cmp:
-        bool_type = ctx.api.named_type('__builtins__.bool')
+        # Generate cmp methods that look like this:
+        #   def __ne__(self, other: '<class name>') -> bool: ...
+        # We use fullname to handle nested classes.
         other_type = UnboundType(ctx.cls.info.fullname().split(".", 1)[1])
+        bool_type = ctx.api.named_type('__builtins__.bool')
         args = [Argument(Var('other', other_type), other_type, None, ARG_POS)]
         for method in ['__ne__', '__eq__',
                        '__lt__', '__le__',
