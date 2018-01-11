@@ -264,6 +264,7 @@ class A:
     b: str = attr.ib()
     @classmethod
     def new(cls) -> A:
+       reveal_type(cls)  # E: Revealed type is 'def (a: builtins.int, b: builtins.str) -> __main__.A'
        return cls(6, 'hello')
     def foo(self) -> int:
        return self.a
@@ -283,3 +284,16 @@ class C(object):
         return self.x + 1
 C()
 [builtins fixtures/list.pyi]
+
+[case testAttrsLocalVariablesInClassMethod]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    a: int
+    b: int = attr.ib()
+    @classmethod
+    def new(cls, foo: int) -> A:
+       a = foo
+       b = a
+       return cls(a, b)
+[builtins fixtures/classmethod.pyi]

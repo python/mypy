@@ -9,8 +9,9 @@ from mypy import messages
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var,
-    FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode, ARG_POS,
-    ARG_OPT, EllipsisExpr, NameExpr, Node, Decorator, MemberExpr)
+    FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode,
+    ARG_POS, ARG_OPT, EllipsisExpr, NameExpr, Decorator, MemberExpr, TypeInfo
+)
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
@@ -18,6 +19,7 @@ from mypy.types import (
 )
 from mypy.messages import MessageBuilder
 from mypy.options import Options
+from mypy.typevars import fill_typevars
 
 
 class TypeAnalyzerPluginInterface:
@@ -79,15 +81,14 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def accept(self, node: Node) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
     def anal_type(self, t: Type, *,
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
                   aliasing: bool = False,
                   third_pass: bool = False) -> Type:
+        raise NotImplementedError
+
+    def class_type(self, info: TypeInfo) -> Type:
         raise NotImplementedError
 
 
@@ -597,21 +598,25 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
                 for dec in remove_me:
                     stmt.decorators.remove(dec)
 
+    info = ctx.cls.info
+    self_type = fill_typevars(info)
     function_type = ctx.api.named_type('__builtins__.function')
 
     def add_method(method_name: str, args: List[Argument], ret_type: Type) -> None:
         """Create a method: def <method_name>(self, <args>) -> <ret_type>): ..."""
-        args = [Argument(Var('self'), AnyType(TypeOfAny.unannotated), None, ARG_POS)] + args
+        from mypy.semanal import set_callable_name
+        args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
         arg_types = [arg.type_annotation for arg in args]
         arg_names = [arg.variable.name() for arg in args]
         arg_kinds = [arg.kind for arg in args]
         assert None not in arg_types
         signature = CallableType(cast(List[Type], arg_types), arg_kinds, arg_names,
                                  ret_type, function_type)
-        func = FuncDef(method_name, args, Block([]), signature)
-        # The accept will resolve all unbound variables, etc.
-        ctx.api.accept(func)
-        ctx.cls.info.names[method_name] = SymbolTableNode(MDEF, func)
+        func = FuncDef(method_name, args, Block([]))
+        func.info = info
+        func.type = set_callable_name(signature, func)
+        func._fullname = info.fullname() + '.' + method_name
+        info.names[method_name] = SymbolTableNode(MDEF, func)
 
     if get_bool_argument(decorator, "init", attrs_arguments):
         # Generate the __init__ method.
@@ -633,12 +638,11 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
 
         for stmt in ctx.cls.defs.body:
             # The implicit first type of cls methods will be wrong because it's based on
-            # the non-existent init.  Set it back to any and accept it to correct it.
+            # the non-existent init.  Set it correctly.
             if isinstance(stmt, Decorator) and stmt.func.is_class:
                 func_type = stmt.func.type
                 if isinstance(func_type, CallableType):
-                    func_type.arg_types[0] = AnyType(TypeOfAny.unannotated)
-                    ctx.api.accept(stmt.func)
+                    func_type.arg_types[0] = ctx.api.class_type(ctx.cls.info)
 
     if get_bool_argument(decorator, "frozen", attrs_arguments):
         # If the class is frozen then all the attributes need to be turned into properties.
@@ -652,8 +656,7 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
         # Generate cmp methods that look like this:
         #   def __ne__(self, other: '<class name>') -> bool: ...
         # We use fullname to handle nested classes, splitting to remove the module name.
-        other_type = UnboundType(ctx.cls.info.fullname().split(".", 1)[1])
         bool_type = ctx.api.named_type('__builtins__.bool')
-        args = [Argument(Var('other', other_type), other_type, None, ARG_POS)]
+        args = [Argument(Var('other', self_type), self_type, None, ARG_POS)]
         for method in ['__ne__', '__eq__', '__lt__', '__le__', '__gt__', '__ge__']:
             add_method(method, args, bool_type)
