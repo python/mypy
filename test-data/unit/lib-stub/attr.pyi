@@ -12,3 +12,4 @@ def attributes(maybe_cls: None = ..., cmp: bool = ..., init: bool = ..., frozen:
 # aliases
 s = attrs = attributes
 ib = attrib = attr
+dataclass = attrs # Technically, partial(attrs, auto_attribs=True) ;)

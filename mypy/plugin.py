@@ -2,7 +2,8 @@
 
 from collections import OrderedDict
 from abc import abstractmethod
-from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, cast, Dict
+from functools import partial
+from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, cast, Dict, Any
 
 from mypy import messages
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -287,7 +288,7 @@ class DefaultPlugin(Plugin):
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
         if fullname in attr_class_makers:
-            return attr_class_maker_callback
+            return partial(attr_class_maker_callback, attr_class_makers[fullname])
         return None
 
 
@@ -410,10 +411,6 @@ def int_pow_callback(ctx: MethodContext) -> Type:
 
 
 # These are the argument to the functions with their defaults in their correct order.
-attrib_arguments = OrderedDict([
-    ('default', None), ('validator', None), ('repr', True), ('cmp', True), ('hash', None),
-    ('init', True), ('convert', None), ('metadata', {}), ('type', None)
-])
 attrs_arguments = OrderedDict([
     ('maybe_cls', None), ('these', None), ('repr_ns', None), ('repr', True), ('cmp', True),
     ('hash', None), ('init', True), ('slots', False), ('frozen', False), ('str', False),
@@ -423,7 +420,12 @@ attr_class_makers = {
     'attr.s': attrs_arguments,
     'attr.attrs': attrs_arguments,
     'attr.attributes': attrs_arguments,
+    'attr.dataclass': OrderedDict(attrs_arguments, auto_attribs=True),
 }
+attrib_arguments = OrderedDict([
+    ('default', None), ('validator', None), ('repr', True), ('cmp', True), ('hash', None),
+    ('init', True), ('convert', None), ('metadata', {}), ('type', None)
+])
 attr_attrib_makers = {
     'attr.ib': attrib_arguments,
     'attr.attrib': attrib_arguments,
@@ -431,12 +433,8 @@ attr_attrib_makers = {
 }
 
 
-def attr_class_maker_callback(ctx: ClassDefContext) -> None:
+def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]', ctx: ClassDefContext) -> None:
     """Add necessary dunder methods to classes decorated with attr.s."""
-    # TODO(David):
-    # o Support @dataclass
-    # o Moar Tests!
-
     # attrs is a package that lets you define classes without writing dull boilerplate code.
     #
     # At a quick glance, the decorator searches the class object for instances of attr.ibs (or
@@ -453,7 +451,7 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
         return None
 
     def get_argument(call: CallExpr, arg_name: str,
-                     func_args: OrderedDict) -> Optional[Expression]:
+                     func_args: 'OrderedDict[str, Any]') -> Optional[Expression]:
         """Return the expression for the specific argument."""
         arg_num = list(func_args).index(arg_name)
         assert arg_num >= 0, "Function doesn't have arg {}".format(arg_name)
@@ -464,7 +462,7 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                 return attr_value
         return None
 
-    def get_bool_argument(expr: Expression, arg_name: str, func_args: OrderedDict) -> bool:
+    def get_bool_argument(expr: Expression, arg_name: str, func_args: 'OrderedDict[str, Any]') -> bool:
         """Return the value of an argument name in the give Expression.
 
         If it's a CallExpr and the argument is one of the args then return it.
@@ -485,18 +483,19 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
         return default
 
     def is_class_var(expr: NameExpr) -> bool:
+        """Return whether the expression is ClassVar[...]"""
         if isinstance(expr.node, Var):
             return expr.node.is_classvar
         return False
 
     decorator = ctx.reason
 
-    # Step 1. Walk the class body (including the MRO) looking for the attributes.
+    # Walk the class body (including the MRO) looking for the attributes.
 
     class Attribute(NamedTuple('Attribute', [('name', str), ('type', Type), ('has_default', bool),
                                              ('init', bool), ('context', Context)])):
 
-        def argument(self):
+        def argument(self) -> Argument:
             # Attrs removes leading underscores when creating the __init__ arguments.
             return Argument(Var(self.name.strip("_"), self.type), self.type,
                             EllipsisExpr() if self.has_default else None,
@@ -520,6 +519,7 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
             del attributes[name]
         attributes[name] = Attribute(name, typ, default, init, context)
 
+    # auto_attribs means we generate attributes from annotated variables.
     auto_attribs = get_bool_argument(decorator, "auto_attribs", attrs_arguments)
 
     # Walk the mro in reverse looking for those yummy attributes.
@@ -570,6 +570,7 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
         signature = CallableType(cast(List[Type], arg_types), arg_kinds, arg_names,
                                  ret_type, function_type)
         func = FuncDef(method_name, args, Block([]), signature)
+        # The accept will resolve all unbound variables, etc.
         ctx.api.accept(func)
         ctx.cls.info.names[method_name] = SymbolTableNode(MDEF, func)
 
