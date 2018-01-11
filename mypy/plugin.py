@@ -467,14 +467,6 @@ attr_attrib_makers = {
 }
 
 
-class LastUpdatedOrderedDict(OrderedDict):
-    """Store items in the order the keys were last added."""
-    def __setitem__(self, key, value):
-        if key in self:
-            del self[key]
-        OrderedDict.__setitem__(self, key, value)
-
-
 def attr_class_maker_callback(
         attrs: AttrClassMaker,
         ctx: ClassDefContext,
@@ -543,7 +535,7 @@ def attr_class_maker_callback(
     auto_attribs = get_bool_argument(decorator, attrs.auto_attribs)
 
     def get_attributes_for_body(body: List[Statement]) -> List[Attribute]:
-        attributes = LastUpdatedOrderedDict()  # type: OrderedDict[str, Attribute]
+        attributes = OrderedDict()  # type: OrderedDict[str, Attribute]
 
         for stmt in body:
             if isinstance(stmt, AssignmentStmt) and isinstance(stmt.lvalues[0], NameExpr):
@@ -600,10 +592,14 @@ def attr_class_maker_callback(
                     # Does this even have to go in init?
                     init = get_bool_argument(stmt.rvalue, attrib.init)
 
+                    if name in attributes:
+                        del attributes[name]
                     attributes[name] = Attribute(name, typ, attr_has_default, init, stmt)
                 elif auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
                     # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
                     has_rhs = not isinstance(stmt.rvalue, TempNode)
+                    if name in attributes:
+                        del attributes[name]
                     attributes[name] = Attribute(name, typ, has_rhs, True, stmt)
 
             elif isinstance(stmt, Decorator):
