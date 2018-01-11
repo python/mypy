@@ -488,6 +488,12 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                     "Non-default attributes not allowed after default attributes.",
                     context)
             if not typ:
+                if ctx.api.options.disallow_untyped_defs:
+                    # This is a compromise.  If you don't have a type here then the init will be untyped.
+                    # But since the __init__ method doesn't have a line number it's difficult to point
+                    # to the correct line number.  So instead we just show the error in the assignment.
+                    # Which is where you would fix the issue.
+                    ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
                 typ = AnyType(TypeOfAny.unannotated)
 
             names.append(name)
@@ -509,8 +515,6 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
 
                 if called_function(stmt.rvalue) in attr_attrib_makers:
                     assert isinstance(stmt.rvalue, CallExpr)
-                    if not stmt.type:
-                        stmt.type = AnyType(TypeOfAny.explicit)
 
                     # Is it an init=False argument?
                     attr_init = get_argument(stmt.rvalue, "init", 5)
