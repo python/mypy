@@ -1,130 +1,115 @@
-[case testUntypedAttrS]
+[case testAttrsSimple]
+# TODO(David):
+# Add tests for:
+# o type aliases (both inside and outside of a class)
+# o type variables
+# o decorated generic classes
+# o type inference
+# o forward references (both inside and outside of class)
+# o importing decorated classes
+# o instance and class methods in decorated types
+
 import attr
 @attr.s
-class UnTyped:
-    normal = attr.ib()
-    _private = attr.ib()
-    def_arg = attr.ib(18)
-    _def_kwarg = attr.ib(validator=None, default=18)
-
+class A:
+    a = attr.ib()
+    _b = attr.ib()
+    c = attr.ib(18)
+    _d = attr.ib(validator=None, default=18)
     CLASS_VAR = 18
-reveal_type(UnTyped)  # E: Revealed type is 'def (normal: Any, private: Any, def_arg: Any =, def_kwarg: Any =) -> __main__.UnTyped'
-UnTyped(1, 2)
-UnTyped('1', '2', '3')
-UnTyped('1', '2', '3', 4)
-UnTyped('1', '2', def_kwarg='5')
-UnTyped('1', '2', def_kwarg='5')
-UnTyped(normal=1, private=2, def_arg=3, def_kwarg=4)
-UnTyped()  # E: Too few arguments for "UnTyped"
-UnTyped(1, 2) == UnTyped(2, 3)
-UnTyped(1, 2) >= UnTyped(2, 3)
-[builtins fixtures/attr.pyi]
+reveal_type(A)  # E: Revealed type is 'def (a: Any, b: Any, c: Any =, d: Any =) -> __main__.A'
+reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
+A(1,2)
+[builtins fixtures/bool.pyi]
 
 [case testUntypedNoUntypedAttrS]
 # flags: --disallow-untyped-defs
 import attr
 @attr.s
-class UnTyped:
+class A:
     normal = attr.ib()  # E: Need type annotation for variable
     _private = attr.ib()  # E: Need type annotation for variable
     def_arg = attr.ib(18)  # E: Need type annotation for variable
     _def_kwarg = attr.ib(validator=None, default=18)   # E: Need type annotation for variable
 
     CLASS_VAR = 18
-[builtins fixtures/attr.pyi]
+[builtins fixtures/bool.pyi]
 
-[case testTypedAttrS]
+[case testAttrsAnnotated]
 import attr
-import typing
+from typing import List, ClassVar
 @attr.s
-class Typed:
-    normal: int = attr.ib()
-    _private: int = attr.ib()
-    def_arg: int = attr.ib(18)
-    _def_kwarg: int = attr.ib(validator=None, default=18)
-    UNTYPED_CLASS_VAR = 7
-    TYPED_CLASS_VAR: typing.ClassVar[int] = 22
-reveal_type(Typed)  # E: Revealed type is 'def (normal: builtins.int, private: builtins.int, def_arg: builtins.int =, def_kwarg: builtins.int =) -> __main__.Typed'
-Typed(1, 2)
-Typed(1, 2, 3)
-Typed(1, 2, 3, 4)
-Typed(1, 2, def_kwarg=5)
-Typed(1, 2, def_kwarg=5)
-Typed(normal=1, private=2, def_arg=3, def_kwarg=4)
-Typed()  # E: Too few arguments for "Typed"
-[builtins fixtures/attr.pyi]
+class A:
+    a: int = attr.ib()
+    _b: List[str] = attr.ib()
+    c: str = attr.ib('18')
+    _d: int = attr.ib(validator=None, default=18)
+    E = 7
+    F: ClassVar[int] = 22
+reveal_type(A)  # E: Revealed type is 'def (a: builtins.int, b: builtins.list[builtins.str], c: builtins.str =, d: builtins.int =) -> __main__.A'
+reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
+A(1, ['2'])
+[builtins fixtures/list.pyi]
 
-[case testAutoAttribAttrS]
+[case testAttrsAutoAttribs]
 import attr
-import typing
+from typing import List, ClassVar
 @attr.s(auto_attribs=True)
-class Auto:
-    normal: int
-    _private: int
-    def_arg: int = 18
-    _def_kwarg: int = attr.ib(validator=None, default=18)
+class A:
+    a: int = attr.ib()
+    _b: List[str] = attr.ib()
+    c: str = attr.ib('18')
+    _d: int = attr.ib(validator=None, default=18)
+    E = 7
+    F: ClassVar[int] = 22
+reveal_type(A)  # E: Revealed type is 'def (a: builtins.int, b: builtins.list[builtins.str], c: builtins.str =, d: builtins.int =) -> __main__.A'
+reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
+A(1, ['2'])
+[builtins fixtures/list.pyi]
 
-    UNTYPED_CLASS_VAR = 18
-    TYPED_CLASS_VAR: typing.ClassVar[int] = 18
-
-reveal_type(Auto)  # E: Revealed type is 'def (normal: builtins.int, private: builtins.int, def_arg: builtins.int =, def_kwarg: builtins.int =) -> __main__.Auto'
-Auto(1, 2)
-Auto(1, 2, 3)
-Auto(1, 2, 3, 4)
-Auto(1, 2, def_kwarg=5)
-Auto(1, 2, def_kwarg=5)
-Auto(normal=1, private=2, def_arg=3, def_kwarg=4)
-Auto()  # E: Too few arguments for "Auto"
-[builtins fixtures/attr.pyi]
-
-[case testSeriousNamesAttrS]
-import typing
+[case testAttrsSeriousNames]
 from attr import attrib, attrs
-@attrs(auto_attribs=True)
-class Auto:
-    normal: int
-    _private: int
-    def_arg: int = 18
-    _def_kwarg: int = attrib(validator=None, default=18)
-    UNTYPED_CLASS_VAR = 18
-    TYPED_CLASS_VAR: typing.ClassVar[int] = 18
-reveal_type(Auto)  # E: Revealed type is 'def (normal: builtins.int, private: builtins.int, def_arg: builtins.int =, def_kwarg: builtins.int =) -> __main__.Auto'
-Auto(1, 2)
-Auto(1, 2, 3)
-Auto(1, 2, 3, 4)
-Auto(1, 2, def_kwarg=5)
-Auto(1, 2, def_kwarg=5)
-Auto(normal=1, private=2, def_arg=3, def_kwarg=4)
-Auto()  # E: Too few arguments for "Auto"
-[builtins fixtures/attr.pyi]
+@attrs
+class A:
+    a = attrib()
+    _b: int = attrib()
+    c = attrib(18)
+    _d = attrib(validator=None, default=18)
+    CLASS_VAR = 18
+reveal_type(A)  # E: Revealed type is 'def (a: Any, b: builtins.int, c: Any =, d: Any =) -> __main__.A'
+reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
+A(1,2)
+[builtins fixtures/bool.pyi]
 
-[case testNoInitAttrS]
+[case testAttrsInitFalse]
 from attr import attrib, attrs
 @attrs(auto_attribs=True, init=False)
-class Auto:
-    normal: int
-    _private: int
-    def_arg: int = 18
-    _def_kwarg: int = attrib(validator=None, default=18)
-reveal_type(Auto)  # E: Revealed type is 'def () -> __main__.Auto'
-Auto()
-Auto() == Auto()
-Auto() >= Auto()
-[builtins fixtures/attr.pyi]
+class A:
+    a: int
+    _b: int
+    c: int = 18
+    _d: int = attrib(validator=None, default=18)
+reveal_type(A)  # E: Revealed type is 'def () -> __main__.A'
+reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __main__.A) -> builtins.bool'
+[builtins fixtures/bool.pyi]
 
-[case testNoCmpAttrS]
+[case testAttrsCmpFalse]
 from attr import attrib, attrs
 @attrs(auto_attribs=True, cmp=False)
 class A:
-    b: int
-reveal_type(A)  # E: Revealed type is 'def (b: builtins.int) -> __main__.A'
-A(5)
-A(5) == A(5)
-A(5) >= A(5)  # E: Unsupported left operand type for >= ("A")
+    a: int
+reveal_type(A)  # E: Revealed type is 'def (a: builtins.int) -> __main__.A'
+reveal_type(A.__eq__)  # E: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
+A(1) < A(2)  # E: Unsupported left operand type for < ("A")
 [builtins fixtures/attr.pyi]
 
 
-[case testInheritanceAttrS]
+[case testAttrsInheritance]
 import attr
 @attr.s
 class A:
@@ -132,13 +117,13 @@ class A:
 @attr.s
 class B:
     b: str = attr.ib()
-@attr.s  # type: ignore  # Incompatible base classes in re cmp methods
+@attr.s  # type: ignore  # Incompatible base classes because of __cmp__ methods.
 class C(B, A):
     c: bool = attr.ib()
 reveal_type(C)  # E: Revealed type is 'def (a: builtins.int, b: builtins.str, c: builtins.bool) -> __main__.C'
-[builtins fixtures/attr.pyi]
+[builtins fixtures/bool.pyi]
 
-[case testNestedClassAttrS]
+[case testAttrsNestedInClasses]
 import attr
 @attr.s
 class C:
@@ -148,4 +133,4 @@ class C:
         x: int = attr.ib()
 reveal_type(C)  # E: Revealed type is 'def (y: Any) -> __main__.C'
 reveal_type(C.D)  # E: Revealed type is 'def (x: builtins.int) -> __main__.C.D'
-[builtins fixtures/attr.pyi]
+[builtins fixtures/bool.pyi]

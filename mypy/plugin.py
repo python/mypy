@@ -2,14 +2,14 @@
 
 from collections import OrderedDict
 from abc import abstractmethod
-from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Set, \
-    cast
+from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Set, cast
 
 from mypy import messages
-from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, \
-    DictExpr, ClassDef, Argument, Var, TypeInfo, FuncDef, Block, \
-    SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode, \
-    ARG_POS, ARG_OPT, EllipsisExpr, NameExpr
+from mypy.nodes import (
+    Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var, TypeInfo,
+    FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode, ARG_POS,
+    ARG_OPT, EllipsisExpr, NameExpr
+)
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
     AnyType, TypeList, UnboundType, TypeOfAny
@@ -431,10 +431,29 @@ attr_attrib_makers = {
     'attr.attrib',
     'attr.attr'
 }
+# These are the argument to the functions with their defaults in their correct order.
+attrib_arguments = OrderedDict([
+    ('default', None), ('validator', None), ('repr', True), ('cmp', True), ('hash', None),
+    ('init', True), ('convert', None), ('metadata', {}), ('type', None)
+])
+attrs_arguments = OrderedDict([
+    ('maybe_cls', None), ('these', None), ('repr_ns', None), ('repr', True), ('cmp', True),
+    ('hash', None), ('init', True), ('slots', False), ('frozen', False), ('str', False),
+    ('auto_attribs', False)
+])
 
 
 def attr_class_maker_callback(ctx: ClassDefContext) -> None:
     """Add __init__ and __cmp__ methods to classes decorated with attr.s."""
+    # TODO(David):
+    # o Comment explaining how attrs work so people know what this is doing.
+    # o Figure out Self Type
+    # o Explain strip("_")
+    # o Remove magic numbers
+    # o Figure out what to do with type=...
+    # o Cleanup builtins in tests.
+    # o Fix inheritance with attribute override.
+    # o Handle None from get_bool_argument
 
     def get_argument(call: CallExpr, name: Optional[str],
                      num: Optional[int]) -> Optional[Expression]:
@@ -537,11 +556,7 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                             # TODO: Can we do something useful with this?
                             pass
 
-                        add_init_argument(
-                            name,
-                            typ,
-                            bool(default),
-                            stmt)
+                        add_init_argument(name, typ, bool(default), stmt)
                     else:
                         if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
                             # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
