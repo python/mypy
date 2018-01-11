@@ -10,7 +10,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var,
     FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode,
-    ARG_POS, ARG_OPT, EllipsisExpr, NameExpr, Decorator, MemberExpr, TypeInfo
+    ARG_POS, ARG_OPT, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
@@ -515,7 +515,7 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
             """Return this attribute as an argument to __init__."""
             # Attrs removes leading underscores when creating the __init__ arguments.
             return Argument(Var(self.name.strip("_"), self.type), self.type,
-                            EllipsisExpr() if self.has_default else None,
+                            None,
                             ARG_OPT if self.has_default else ARG_POS)
 
     attributes = OrderedDict()  # type: OrderedDict[str, Attribute]
@@ -602,7 +602,8 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
     self_type = fill_typevars(info)
     function_type = ctx.api.named_type('__builtins__.function')
 
-    def add_method(method_name: str, args: List[Argument], ret_type: Type) -> None:
+    def add_method(method_name: str, args: List[Argument], ret_type: Type,
+                   add_to_body: bool = False) -> None:
         """Create a method: def <method_name>(self, <args>) -> <ret_type>): ..."""
         from mypy.semanal import set_callable_name
         args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
@@ -612,11 +613,14 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
         assert None not in arg_types
         signature = CallableType(cast(List[Type], arg_types), arg_kinds, arg_names,
                                  ret_type, function_type)
-        func = FuncDef(method_name, args, Block([]))
+        func = FuncDef(method_name, args, Block([PassStmt()]))
         func.info = info
         func.type = set_callable_name(signature, func)
         func._fullname = info.fullname() + '.' + method_name
+        func.line = ctx.cls.line
         info.names[method_name] = SymbolTableNode(MDEF, func)
+        if add_to_body:
+            info.defn.defs.body.append(func)
 
     if get_bool_argument(decorator, "init", attrs_arguments):
         # Generate the __init__ method.
@@ -631,10 +635,12 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
                     attribute.context)
             last_default = attribute.has_default
 
+        # __init__ gets added to the body so that it can get further semantic analysis.
+        # e.g. Forward Reference Resolution.
         add_method('__init__',
                    [attribute.argument() for attribute in attributes.values()
                     if attribute.init],
-                   NoneTyp())
+                   NoneTyp(), add_to_body=True)
 
         for stmt in ctx.cls.defs.body:
             # The implicit first type of cls methods will be wrong because it's based on
@@ -659,4 +665,5 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
         bool_type = ctx.api.named_type('__builtins__.bool')
         args = [Argument(Var('other', self_type), self_type, None, ARG_POS)]
         for method in ['__ne__', '__eq__', '__lt__', '__le__', '__gt__', '__ge__']:
+            # Don't add these to the body to avoid incompatible with supertype when subclassing.
             add_method(method, args, bool_type)

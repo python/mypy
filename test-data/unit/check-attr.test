@@ -18,10 +18,10 @@ reveal_type(A.__lt__)  # E: Revealed type is 'def (self: __main__.A, other: __ma
 A(1,2)
 [builtins fixtures/bool.pyi]
 
-[case testUntypedNoUntypedAttrS]
+[case testAttrsUntypedNoUntypedDefs]
 # flags: --disallow-untyped-defs
 import attr
-@attr.s
+@attr.s    # E: Function is missing a type annotation for one or more arguments
 class A:
     a = attr.ib()  # E: Need type annotation for variable
     _b = attr.ib()  # E: Need type annotation for variable
@@ -297,3 +297,22 @@ class A:
        b = a
        return cls(a, b)
 [builtins fixtures/classmethod.pyi]
+
+[case testAttrsUnionForward]
+import attr
+from typing import Union, List
+
+@attr.s(auto_attribs=True)
+class A:
+    frob: List['AOrB']
+
+class B:
+   pass
+
+AOrB = Union[A, B]
+
+reveal_type(A)  # E: Revealed type is 'def (frob: builtins.list[Union[__main__.A, __main__.B]]) -> __main__.A'
+reveal_type(B)  # E: Revealed type is 'def () -> __main__.B'
+
+A([B()])
+[builtins fixtures/list.pyi]
