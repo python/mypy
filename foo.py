@@ -38,5 +38,6 @@ class UnTyped:
     FOO = 18
 
 reveal_type(UnTyped)
+reveal_type(UnTyped.FOO)
 UnTyped(1, 2, 3)
 

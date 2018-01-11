@@ -464,7 +464,8 @@ def attr_s_callback(ctx: ClassDefContext) -> None:
     types = []  # type: List[Type]
     has_default = set()  # type: Set[str]
 
-    def add_init_argument(name: str, typ:Optional[Type], default: bool, context:Context) -> None:
+    def add_init_argument(name: str, typ: Optional[Type], default: bool,
+                          context: Context) -> None:
         if not default and has_default:
             ctx.api.fail(
                 "Non-default attributes not allowed after default attributes.",
@@ -480,7 +481,6 @@ def attr_s_callback(ctx: ClassDefContext) -> None:
             has_default.add(name)
 
     def is_class_var(expr: NameExpr) -> bool:
-        # import pdb; pdb.set_trace()
         if isinstance(expr.node, Var):
             return expr.node.is_classvar
         return False
@@ -494,9 +494,13 @@ def attr_s_callback(ctx: ClassDefContext) -> None:
             if called_function(stmt.rvalue) == 'attr.ib':
                 # Look for a default value in the call.
                 assert isinstance(stmt.rvalue, CallExpr)
-                add_init_argument(name, typ, bool(get_argument(stmt.rvalue, "default", 0)), stmt)
+                add_init_argument(
+                    name,
+                    typ,
+                    bool(get_argument(stmt.rvalue, "default", 0)),
+                    stmt)
             else:
-                if auto_attribs and not is_class_var(lhs):
+                if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
                     # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
                     has_rhs = not isinstance(stmt.rvalue, TempNode)
                     add_init_argument(name, typ, has_rhs, stmt)

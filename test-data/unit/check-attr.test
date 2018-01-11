@@ -28,6 +28,7 @@ def s(cls: _T) -> _T: ...
 
 [case testTypedAttrS]
 import attr
+import typing
 
 @attr.s
 class Typed:
@@ -36,7 +37,8 @@ class Typed:
     def_arg: int = attr.ib(18)
     _def_kwarg: int = attr.ib(validator=None, default=18)
 
-    FOO: int = 18
+    UNTYPED_CLASS_VAR = 5+2
+    TYPED_CLASS_VAR: typing.ClassVar[int] = 22
 
 reveal_type(Typed)  # E: Revealed type is 'def (normal: builtins.int, private: builtins.int, def_arg: builtins.int =, def_kwarg: builtins.int =) -> __main__.Typed'
 
@@ -65,7 +67,8 @@ class Auto:
     def_arg: int = 18
     _def_kwarg: int = attr.ib(validator=None, default=18)
 
-    FOO: typing.ClassVar[int] = 18
+    UNTYPED_CLASS_VAR = 18
+    TYPED_CLASS_VAR: typing.ClassVar[int] = 18
 
 reveal_type(Auto)  # E: Revealed type is 'def (normal: builtins.int, private: builtins.int, def_arg: builtins.int =, def_kwarg: builtins.int =) -> __main__.Auto'
 
