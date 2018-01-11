@@ -477,7 +477,9 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
         # Nothing to add.
         return
 
-    self_type = ctx.api.named_type(ctx.cls.info.name())
+    # To support nested classes we use fullname(). But fullname is <filename>.<variable name>
+    # and named_type() expects only the name.
+    self_type = ctx.api.named_type(ctx.cls.info.fullname().split(".", 1)[1])
     function_type = ctx.api.named_type('__builtins__.function')
 
     if init:

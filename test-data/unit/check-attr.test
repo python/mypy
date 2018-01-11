@@ -133,19 +133,28 @@ A(5) >= A(5)  # E: Unsupported left operand type for >= ("A")
 
 [case testInheritanceAttrS]
 import attr
-
 @attr.s
 class A:
     a: int = attr.ib()
-
 @attr.s
 class B:
     b: str = attr.ib()
-
 @attr.s  # type: ignore  # Incompatible base classes in re cmp methods
 class C(B, A):
     c: bool = attr.ib()
-
 reveal_type(C)  # E: Revealed type is 'def (a: builtins.int, b: builtins.str, c: builtins.bool) -> __main__.C'
+[builtins fixtures/attr_builtins.pyi]
+[add-module fixtures/attr.pyi]
+
+[case testNestedClassAttrS]
+import attr
+@attr.s
+class C:
+    y = attr.ib()
+    @attr.s
+    class D:
+        x: int = attr.ib()
+reveal_type(C)  # E: Revealed type is 'def (y: Any) -> __main__.C'
+reveal_type(C.D)  # E: Revealed type is 'def (x: builtins.int) -> __main__.C.D'
 [builtins fixtures/attr_builtins.pyi]
 [add-module fixtures/attr.pyi]
