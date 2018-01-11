@@ -10,8 +10,9 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var,
     FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode,
-    ARG_POS, ARG_OPT, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt, FuncBase, Statement
-)
+    ARG_POS, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt, FuncBase,
+    Statement,
+    Attribute)
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
@@ -536,27 +537,6 @@ def attr_class_maker_callback(
 
     # Walk the class body (including the MRO) looking for the attributes.
 
-    class Attribute:
-        """An attribute that belongs to this class."""
-
-        def __init__(self, name: str, type: Optional[Type],
-                     has_default: bool, init: bool,
-                     context: Context) -> None:
-            self.name = name
-            self.type = type
-            self.has_default = has_default
-            self.init = init
-            self.context = context
-
-        def argument(self) -> Argument:
-            """Return this attribute as an argument to __init__."""
-            # Convert type not set to Any.
-            _type = self.type or AnyType(TypeOfAny.unannotated)
-            # Attrs removes leading underscores when creating the __init__ arguments.
-            return Argument(Var(self.name.strip("_"), _type), _type,
-                            None,
-                            ARG_OPT if self.has_default else ARG_POS)
-
     # auto_attribs means we generate attributes from annotated variables.
     auto_attribs = get_bool_argument(decorator, attrs.auto_attribs)
 
@@ -633,7 +613,6 @@ def attr_class_maker_callback(
                             # class creation time.  In order to not trigger a type error later we
                             # just remove them.  This might leave us with a Decorator with no
                             # decorators (Emperor's new clothes?)
-                            # XXX: Subclasses might still need this, sigh.
                             remove_me.append(func_decorator)
 
                 for dec in remove_me:
@@ -647,8 +626,7 @@ def attr_class_maker_callback(
 
         # Traverse the MRO and collect attributes.
         for super_info in info.mro[1:-1]:
-            sub_attrs = get_attributes(super_info)
-            for a in sub_attrs:
+            for a in super_info.attributes:
                 prev_a = taken_attr_names.get(a.name)
                 # Only add an attribute if it hasn't been defined before.  This
                 # allows for overwriting attribute definitions by subclassing.
@@ -659,6 +637,7 @@ def attr_class_maker_callback(
         return super_attrs + own_attrs
 
     attributes = get_attributes(ctx.cls.info)
+    ctx.cls.info.attributes = attributes
 
     if ctx.api.options.disallow_untyped_defs:
         for attribute in attributes:
@@ -693,6 +672,8 @@ def attr_class_maker_callback(
         func._fullname = info.fullname() + '.' + method_name
         func.line = ctx.cls.line
         info.names[method_name] = SymbolTableNode(MDEF, func)
+        # Add the created methods to the body so that they can get further semantic analysis.
+        # e.g. Forward Reference Resolution.
         info.defn.defs.body.append(func)
 
     if get_bool_argument(decorator, attrs.init):
@@ -708,12 +689,11 @@ def attr_class_maker_callback(
                     attribute.context)
             last_default = attribute.has_default
 
-        # __init__ gets added to the body so that it can get further semantic analysis.
-        # e.g. Forward Reference Resolution.
-        add_method('__init__',
-                   [attribute.argument() for attribute in attributes
-                    if attribute.init],
-                   NoneTyp())
+        add_method(
+            '__init__',
+            [attribute.argument() for attribute in attributes if attribute.init],
+            NoneTyp()
+        )
 
         for stmt in ctx.cls.defs.body:
             # The implicit first type of cls methods will be wrong because it's based on

@@ -1988,6 +1988,10 @@ class TypeInfo(SymbolNode):
     # needed during the semantic passes.)
     replaced = None  # type: TypeInfo
 
+    # attr modified classes need to know what their attributes are in case they are
+    # subclassed.
+    attributes = None  # type: List[Attribute]
+
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol'
@@ -2010,6 +2014,7 @@ class TypeInfo(SymbolNode):
         self.inferring = []
         self._cache = set()
         self._cache_proper = set()
+        self.attributes = []
         self.add_type_vars()
 
     def add_type_vars(self) -> None:
@@ -2607,3 +2612,25 @@ def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callab
             fail("Duplicate argument '{}' in {}".format(name, description), node)
             break
         seen_names.add(name)
+
+
+class Attribute:
+    """The value of an attr.ib() call."""
+
+    def __init__(self, name: str, type: 'Optional[mypy.types.Type]',
+                 has_default: bool, init: bool,
+                 context: Context) -> None:
+        self.name = name
+        self.type = type
+        self.has_default = has_default
+        self.init = init
+        self.context = context
+
+    def argument(self) -> Argument:
+        """Return this attribute as an argument to __init__."""
+        # Convert type not set to Any.
+        _type = self.type or mypy.types.AnyType(mypy.types.TypeOfAny.unannotated)
+        # Attrs removes leading underscores when creating the __init__ arguments.
+        return Argument(Var(self.name.strip("_"), _type), _type,
+                        None,
+                        ARG_OPT if self.has_default else ARG_POS)
