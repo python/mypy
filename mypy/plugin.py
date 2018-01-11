@@ -474,8 +474,7 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
         # Nothing to add.
         return
 
-    info = ctx.cls.info
-    self_type = ctx.api.named_type(info.name())
+    self_type = ctx.api.named_type(ctx.cls.info.name())
     function_type = ctx.api.named_type('__builtins__.function')
 
     if init:
@@ -510,37 +509,39 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                 return expr.node.is_classvar
             return False
 
-        for stmt in ctx.cls.defs.body:
-            if isinstance(stmt, AssignmentStmt) and isinstance(stmt.lvalues[0], NameExpr):
-                lhs = stmt.lvalues[0]
-                name = lhs.name.lstrip("_")
-                typ = stmt.type
+        # Walk the mro in reverse looking for those yummy attributes.
+        for info in reversed(ctx.cls.info.mro):
+            for stmt in info.defn.defs.body:
+                if isinstance(stmt, AssignmentStmt) and isinstance(stmt.lvalues[0], NameExpr):
+                    lhs = stmt.lvalues[0]
+                    name = lhs.name.lstrip("_")
+                    typ = stmt.type
 
-                if called_function(stmt.rvalue) in attr_attrib_makers:
-                    assert isinstance(stmt.rvalue, CallExpr)
+                    if called_function(stmt.rvalue) in attr_attrib_makers:
+                        assert isinstance(stmt.rvalue, CallExpr)
 
-                    # Is it an init=False argument?
-                    attr_init = get_argument(stmt.rvalue, "init", 5)
-                    if attr_init and ctx.api.parse_bool(attr_init) is False:
-                        continue
+                        # Is it an init=False argument?
+                        attr_init = get_argument(stmt.rvalue, "init", 5)
+                        if attr_init and ctx.api.parse_bool(attr_init) is False:
+                            continue
 
-                    # Look for default=  in the call.
-                    default = get_argument(stmt.rvalue, "default", 0)
-                    attr_typ = get_argument(stmt.rvalue, "type", 15)
-                    if attr_typ:
-                        # TODO: Can we do something useful with this?
-                        pass
+                        # Look for default=  in the call.
+                        default = get_argument(stmt.rvalue, "default", 0)
+                        attr_typ = get_argument(stmt.rvalue, "type", 15)
+                        if attr_typ:
+                            # TODO: Can we do something useful with this?
+                            pass
 
-                    add_init_argument(
-                        name,
-                        typ,
-                        bool(default),
-                        stmt)
-                else:
-                    if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
-                        # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
-                        has_rhs = not isinstance(stmt.rvalue, TempNode)
-                        add_init_argument(name, typ, has_rhs, stmt)
+                        add_init_argument(
+                            name,
+                            typ,
+                            bool(default),
+                            stmt)
+                    else:
+                        if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
+                            # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
+                            has_rhs = not isinstance(stmt.rvalue, TempNode)
+                            add_init_argument(name, typ, has_rhs, stmt)
 
         init_args = [
             Argument(Var(name, typ), typ,
@@ -550,7 +551,7 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
         ]
 
         add_method(
-            info=info,
+            info=ctx.cls.info,
             method_name='__init__',
             args=init_args,
             ret_type=NoneTyp(),
@@ -565,7 +566,7 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                        '__lt__', '__le__',
                        '__gt__', '__ge__']:
             add_method(
-                info=info,
+                info=ctx.cls.info,
                 method_name=method,
                 args=args,
                 ret_type=bool_type,
