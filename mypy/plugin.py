@@ -2,12 +2,14 @@
 
 from collections import OrderedDict
 from abc import abstractmethod
-from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
+from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Set, \
+    cast
 
+from mypy import messages
 from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, \
     DictExpr, ClassDef, Argument, Var, TypeInfo, FuncDef, Block, \
     SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode, \
-    ARG_POS, ARG_OPT, EllipsisExpr
+    ARG_POS, ARG_OPT, EllipsisExpr, NameExpr
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
     AnyType, TypeList, UnboundType, TypeOfAny
@@ -269,6 +271,7 @@ class DefaultPlugin(Plugin):
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
         if fullname == 'attr.s':
             return attr_s_callback
+        return None
 
 
 def open_callback(ctx: FunctionContext) -> Type:
@@ -405,7 +408,7 @@ def add_method(
     arg_names = [arg.variable.name() for arg in args]
     arg_kinds = [arg.kind for arg in args]
     assert None not in arg_types
-    signature = CallableType(arg_types, arg_kinds, arg_names,
+    signature = CallableType(cast(List[Type], arg_types), arg_kinds, arg_names,
                              ret_type, function_type)
     func = FuncDef(method_name, args, Block([]))
     func.info = info
@@ -419,24 +422,25 @@ def attr_s_callback(ctx: ClassDefContext) -> None:
     """Add an __init__ method to classes decorated with attr.s."""
     # TODO: Add __cmp__ methods.
 
-    def get_bool_argument(call: CallExpr, name: str, default: bool):
+    def get_bool_argument(call: CallExpr, name: str, default: Optional[bool]) -> Optional[bool]:
         for arg_name, arg_value in zip(call.arg_names, call.args):
             if arg_name == name:
                 # TODO: Handle None being returned here.
                 return ctx.api.parse_bool(arg_value)
         return default
 
-    def get_argument(call: CallExpr, name: Optional[str], num: Optional[int]):
+    def get_argument(call: CallExpr, name: Optional[str], num: Optional[int]) -> Optional[Expression]:
         for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
-            if num is not None and i == num:
+            if num is not None and not attr_name and i == num:
                 return attr_value
             if name and attr_name == name:
                 return attr_value
         return None
 
-    def called_function(expr: Expression):
+    def called_function(expr: Expression) -> Optional[str]:
         if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
             return expr.callee.fullname
+        return None
 
     decorator = ctx.reason
     if isinstance(decorator, CallExpr):
@@ -449,7 +453,6 @@ def attr_s_callback(ctx: ClassDefContext) -> None:
         auto_attribs = False
 
     if not init:
-        print("Nothing to do", init)
         return
 
     print(f"{ctx.cls.info.fullname()} init={init} auto={auto_attribs}")
@@ -460,47 +463,55 @@ def attr_s_callback(ctx: ClassDefContext) -> None:
     names = []  # type: List[str]
     types = []  # type: List[Type]
     has_default = set()  # type: Set[str]
+
+    def add_init_argument(name: str, typ:Optional[Type], default: bool, context:Context) -> None:
+        if not default and has_default:
+            ctx.api.fail(
+                "Non-default attributes not allowed after default attributes.",
+                context)
+        if not typ:
+            ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+            typ = AnyType(TypeOfAny.unannotated)
+
+        names.append(name)
+        assert typ is not None
+        types.append(typ)
+        if default:
+            has_default.add(name)
+
+    def is_class_var(expr: NameExpr) -> bool:
+        # import pdb; pdb.set_trace()
+        if isinstance(expr.node, Var):
+            return expr.node.is_classvar
+        return False
+
     for stmt in ctx.cls.defs.body:
-        if isinstance(stmt, AssignmentStmt):
-            name = stmt.lvalues[0].name.lstrip("_")
-            typ = (AnyType(TypeOfAny.unannotated) if stmt.type is None
-                   else ctx.api.anal_type(stmt.type))
+        if isinstance(stmt, AssignmentStmt) and isinstance(stmt.lvalues[0], NameExpr):
+            lhs = stmt.lvalues[0]
+            name = lhs.name.lstrip("_")
+            typ = stmt.type
+            print(name, typ, is_class_var(lhs))
 
-            if isinstance(stmt.rvalue, TempNode):
-                print(f"{name}: {typ}")
-                # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
-                if has_default:
-                    print("DEFAULT ISSUE")
-            elif called_function(stmt.rvalue) == 'attr.ib':
+            if called_function(stmt.rvalue) == 'attr.ib':
                 # Look for a default value in the call.
-                if get_argument(stmt.rvalue, "default", 0):
-                    has_default.add(name)
-                    print(f"{name} = attr.ib(default=...)")
-                else:
-                    if has_default:
-                        ctx.api.fail("Non-default attributes not allowed after default attributes.", stmt.rvalue)
-                    print(f"{name} = attr.ib()")
-
-                names.append(name)
-                types.append(typ)
+                assert isinstance(stmt.rvalue, CallExpr)
+                add_init_argument(name, typ, bool(get_argument(stmt.rvalue, "default", 0)), stmt)
             else:
-                print(f"{name} = {stmt.rvalue}")
-                # rhs[name] = stmt.rvalue
+                if auto_attribs and not is_class_var(lhs):
+                    # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
+                    has_rhs = not isinstance(stmt.rvalue, TempNode)
+                    add_init_argument(name, typ, has_rhs, stmt)
 
-    any_type = AnyType(TypeOfAny.unannotated)
-
-    print(names, types, has_default)
-
-    args = []
-    for (name, typ) in zip(names, types):
-        var = Var(name, typ)
-        kind = ARG_OPT if name in has_default else ARG_POS
-        args.append(Argument(var, var.type, EllipsisExpr(), kind))
+    init_args = [
+        Argument(Var(name, typ), typ, EllipsisExpr(),
+                 ARG_OPT if name in has_default else ARG_POS)
+        for (name, typ) in zip(names, types)
+    ]
 
     add_method(
         info=info,
         method_name='__init__',
-        args=args,
+        args=init_args,
         ret_type=NoneTyp(),
         self_type=ctx.api.named_type(info.name()),
         function_type=ctx.api.named_type('__builtins__.function'),
