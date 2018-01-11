@@ -10,9 +10,9 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var,
     FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode,
-    ARG_POS, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt, FuncBase,
-    Statement,
-    Attribute)
+    ARG_OPT, ARG_POS, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt, FuncBase,
+    Statement
+)
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
@@ -263,6 +263,10 @@ class ChainedPlugin(Plugin):
 class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
+    def __init__(self, options: Options) -> None:
+        super().__init__(options)
+        self._attr_classes = {}  # type: Dict[TypeInfo, List[Attribute]]
+
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
         if fullname == 'contextlib.contextmanager':
@@ -288,7 +292,11 @@ class DefaultPlugin(Plugin):
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
         if fullname in attr_class_makers:
-            return partial(attr_class_maker_callback, attr_class_makers[fullname])
+            return partial(
+                attr_class_maker_callback,
+                attr_class_makers[fullname],
+                self._attr_classes
+            )
         return None
 
 
@@ -467,8 +475,31 @@ attr_attrib_makers = {
 }
 
 
+class Attribute:
+    """The value of an attr.ib() call."""
+
+    def __init__(self, name: str, type: Optional[Type],
+                 has_default: bool, init: bool,
+                 context: Context) -> None:
+        self.name = name
+        self.type = type
+        self.has_default = has_default
+        self.init = init
+        self.context = context
+
+    def argument(self) -> Argument:
+        """Return this attribute as an argument to __init__."""
+        # Convert type not set to Any.
+        _type = self.type or AnyType(TypeOfAny.unannotated)
+        # Attrs removes leading underscores when creating the __init__ arguments.
+        return Argument(Var(self.name.strip("_"), _type), _type,
+                        None,
+                        ARG_OPT if self.has_default else ARG_POS)
+
+
 def attr_class_maker_callback(
         attrs: AttrClassMaker,
+        attr_classes: Dict[TypeInfo, List[Attribute]],
         ctx: ClassDefContext,
         attribs: Dict[str, AttribMaker] = attr_attrib_makers
 ) -> None:
@@ -632,18 +663,19 @@ def attr_class_maker_callback(
 
         # Traverse the MRO and collect attributes.
         for super_info in info.mro[1:-1]:
-            for a in super_info.attributes:
-                prev_a = taken_attr_names.get(a.name)
-                # Only add an attribute if it hasn't been defined before.  This
-                # allows for overwriting attribute definitions by subclassing.
-                if prev_a is None:
-                    super_attrs.append(a)
-                    taken_attr_names[a.name] = a
+            if super_info in attr_classes:
+                for a in attr_classes[super_info]:
+                    prev_a = taken_attr_names.get(a.name)
+                    # Only add an attribute if it hasn't been defined before.  This
+                    # allows for overwriting attribute definitions by subclassing.
+                    if prev_a is None:
+                        super_attrs.append(a)
+                        taken_attr_names[a.name] = a
 
         return super_attrs + own_attrs
 
     attributes = get_attributes(ctx.cls.info)
-    ctx.cls.info.attributes = attributes
+    attr_classes[ctx.cls.info] = attributes
 
     if ctx.api.options.disallow_untyped_defs:
         for attribute in attributes:
