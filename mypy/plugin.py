@@ -462,7 +462,7 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
 
     # Default values of attr.s()
     init = True  # type: Optional[bool]
-    cmp: Optional[bool] = True  # type: Optional[bool]
+    cmp = True  # type: Optional[bool]
     auto_attribs = False  # type: Optional[bool]
 
     if isinstance(decorator, CallExpr):
