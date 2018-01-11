@@ -18,8 +18,7 @@ UnTyped(normal=1, private=2, def_arg=3, def_kwarg=4)
 UnTyped()  # E: Too few arguments for "UnTyped"
 UnTyped(1, 2) == UnTyped(2, 3)
 UnTyped(1, 2) >= UnTyped(2, 3)
-[builtins fixtures/attr_builtins.pyi]
-[add-module fixtures/attr.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testUntypedNoUntypedAttrS]
 # flags: --disallow-untyped-defs
@@ -32,8 +31,7 @@ class UnTyped:
     _def_kwarg = attr.ib(validator=None, default=18)   # E: Need type annotation for variable
 
     CLASS_VAR = 18
-[builtins fixtures/attr_builtins.pyi]
-[add-module fixtures/attr.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testTypedAttrS]
 import attr
@@ -54,8 +52,7 @@ Typed(1, 2, def_kwarg=5)
 Typed(1, 2, def_kwarg=5)
 Typed(normal=1, private=2, def_arg=3, def_kwarg=4)
 Typed()  # E: Too few arguments for "Typed"
-[builtins fixtures/attr_builtins.pyi]
-[add-module fixtures/attr.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAutoAttribAttrS]
 import attr
@@ -78,8 +75,7 @@ Auto(1, 2, def_kwarg=5)
 Auto(1, 2, def_kwarg=5)
 Auto(normal=1, private=2, def_arg=3, def_kwarg=4)
 Auto()  # E: Too few arguments for "Auto"
-[builtins fixtures/attr_builtins.pyi]
-[add-module fixtures/attr.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testSeriousNamesAttrS]
 import typing
@@ -100,8 +96,7 @@ Auto(1, 2, def_kwarg=5)
 Auto(1, 2, def_kwarg=5)
 Auto(normal=1, private=2, def_arg=3, def_kwarg=4)
 Auto()  # E: Too few arguments for "Auto"
-[builtins fixtures/attr_builtins.pyi]
-[add-module fixtures/attr.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testNoInitAttrS]
 from attr import attrib, attrs
@@ -115,8 +110,7 @@ reveal_type(Auto)  # E: Revealed type is 'def () -> __main__.Auto'
 Auto()
 Auto() == Auto()
 Auto() >= Auto()
-[builtins fixtures/attr_builtins.pyi]
-[add-module fixtures/attr.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testNoCmpAttrS]
 from attr import attrib, attrs
@@ -127,8 +121,7 @@ reveal_type(A)  # E: Revealed type is 'def (b: builtins.int) -> __main__.A'
 A(5)
 A(5) == A(5)
 A(5) >= A(5)  # E: Unsupported left operand type for >= ("A")
-[builtins fixtures/attr_builtins.pyi]
-[add-module fixtures/attr.pyi]
+[builtins fixtures/attr.pyi]
 
 
 [case testInheritanceAttrS]
@@ -143,8 +136,7 @@ class B:
 class C(B, A):
     c: bool = attr.ib()
 reveal_type(C)  # E: Revealed type is 'def (a: builtins.int, b: builtins.str, c: builtins.bool) -> __main__.C'
-[builtins fixtures/attr_builtins.pyi]
-[add-module fixtures/attr.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testNestedClassAttrS]
 import attr
@@ -156,5 +148,4 @@ class C:
         x: int = attr.ib()
 reveal_type(C)  # E: Revealed type is 'def (y: Any) -> __main__.C'
 reveal_type(C.D)  # E: Revealed type is 'def (x: builtins.int) -> __main__.C.D'
-[builtins fixtures/attr_builtins.pyi]
-[add-module fixtures/attr.pyi]
+[builtins fixtures/attr.pyi]
