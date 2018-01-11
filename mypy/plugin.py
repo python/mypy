@@ -430,10 +430,10 @@ attr_attrib_makers = {
     'attr.attr': attrib_arguments,
 }
 
+
 def attr_class_maker_callback(ctx: ClassDefContext) -> None:
     """Add necessary dunder methods to classes decorated with attr.s."""
     # TODO(David):
-    # o Support frozen=True?
     # o Support @dataclass
     # o Moar Tests!
 
@@ -444,7 +444,7 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
     # the object.  The most important for type checking purposes are __init__ and all the cmp
     # methods.
     #
-    # See http://www.attrs.org/en/stable/how-does-it-work.html for information on how this works.
+    # See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
 
     def called_function(expr: Expression) -> Optional[str]:
         """Return the full name of the function being called by the expr, or None."""
@@ -484,16 +484,79 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                 return ret
         return default
 
+    def is_class_var(expr: NameExpr) -> bool:
+        if isinstance(expr.node, Var):
+            return expr.node.is_classvar
+        return False
+
     decorator = ctx.reason
 
-    # Read the arguments off of attr.s() or the defaults of attr.s
-    init = get_bool_argument(decorator, "init", attrs_arguments)
-    cmp = get_bool_argument(decorator, "cmp", attrs_arguments)
+    # Step 1. Walk the class body (including the MRO) looking for the attributes.
+
+    class Attribute(NamedTuple('Attribute', [('name', str), ('type', Type), ('has_default', bool),
+                                             ('init', bool), ('context', Context)])):
+
+        def argument(self):
+            # Attrs removes leading underscores when creating the __init__ arguments.
+            return Argument(Var(self.name.strip("_"), self.type), self.type,
+                            EllipsisExpr() if self.has_default else None,
+                            ARG_OPT if self.has_default else ARG_POS)
+
+    attributes = OrderedDict()  # type: OrderedDict[str, Attribute]
+
+    def add_attribute(name: str, typ: Optional[Type], default: bool, init: bool,
+                      context: Context) -> None:
+        if not typ:
+            if ctx.api.options.disallow_untyped_defs:
+                # This is a compromise.  If you don't have a type here then the __init__ will
+                # be untyped. But since the __init__ method doesn't have a line number it's
+                # difficult to point to the correct line number.  So instead we just show the
+                # error in the assignment, which is where you would fix the issue.
+                ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+            typ = AnyType(TypeOfAny.unannotated)
+
+        if name in attributes:
+            # When a subclass overrides an attrib it gets pushed to the end.
+            del attributes[name]
+        attributes[name] = Attribute(name, typ, default, init, context)
+
     auto_attribs = get_bool_argument(decorator, "auto_attribs", attrs_arguments)
 
-    if not init and not cmp:
-        # Nothing to add.
-        return
+    # Walk the mro in reverse looking for those yummy attributes.
+    for info in reversed(ctx.cls.info.mro):
+        for stmt in info.defn.defs.body:
+            if isinstance(stmt, AssignmentStmt) and isinstance(stmt.lvalues[0], NameExpr):
+                lhs = stmt.lvalues[0]
+                name = lhs.name
+                typ = stmt.type
+
+                if called_function(stmt.rvalue) in attr_attrib_makers:
+                    assert isinstance(stmt.rvalue, CallExpr)
+
+                    # Look for default=<something> in the call.  Note: This fails if someone
+                    # passes the _NOTHING sentinel object into attrs.
+                    attr_has_default = bool(get_argument(stmt.rvalue, "default",
+                                                         attrib_arguments))
+
+                    # If the type isn't set through annotation but it is passed through type=
+                    # use that.
+                    type_arg = get_argument(stmt.rvalue, "type", attrib_arguments)
+                    if type_arg and not typ:
+                        try:
+                            un_type = expr_to_unanalyzed_type(type_arg)
+                        except TypeTranslationError:
+                            ctx.api.fail('Invalid argument to type', type_arg)
+                        else:
+                            typ = ctx.api.anal_type(un_type)
+
+                    add_attribute(name, typ, attr_has_default,
+                                  get_bool_argument(stmt.rvalue, "init", attrib_arguments),
+                                  stmt)
+                else:
+                    if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
+                        # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
+                        has_rhs = not isinstance(stmt.rvalue, TempNode)
+                        add_attribute(name, typ, has_rhs, True, stmt)
 
     function_type = ctx.api.named_type('__builtins__.function')
 
@@ -510,94 +573,38 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
         ctx.api.accept(func)
         ctx.cls.info.names[method_name] = SymbolTableNode(MDEF, func)
 
-    if init:
-        # Walk the body looking for assignments.
-        init_args = OrderedDict()  # type: : OrderedDict[str, Argument]
-        init_arg_sources = {}  # type: Dict[str, Context]
+    if get_bool_argument(decorator, "init", attrs_arguments):
+        # Generate the __init__ method.
 
-        def add_init_argument(name: str, typ: Optional[Type], default: bool,
-                              context: Context) -> None:
-            if not typ:
-                if ctx.api.options.disallow_untyped_defs:
-                    # This is a compromise.  If you don't have a type here then the __init__ will
-                    # be untyped. But since the __init__ method doesn't have a line number it's
-                    # difficult to point to the correct line number.  So instead we just show the
-                    # error in the assignment, which is where you would fix the issue.
-                    ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-                typ = AnyType(TypeOfAny.unannotated)
-
-            init_arg = Argument(Var(name, typ), typ,
-                                EllipsisExpr() if default else None,
-                                ARG_OPT if default else ARG_POS)
-            if name in init_args:
-                del init_args[name]
-            init_args[name] = init_arg
-            init_arg_sources[name] = Expression
-
-        def is_class_var(expr: NameExpr) -> bool:
-            if isinstance(expr.node, Var):
-                return expr.node.is_classvar
-            return False
-
-        # Walk the mro in reverse looking for those yummy attributes.
-        for info in reversed(ctx.cls.info.mro):
-            for stmt in info.defn.defs.body:
-                if isinstance(stmt, AssignmentStmt) and isinstance(stmt.lvalues[0], NameExpr):
-                    lhs = stmt.lvalues[0]
-                    # Attrs removes leading underscores when creating the __init__ arguments.
-                    name = lhs.name.lstrip("_")
-                    typ = stmt.type
-
-                    if called_function(stmt.rvalue) in attr_attrib_makers:
-                        assert isinstance(stmt.rvalue, CallExpr)
-
-                        if get_bool_argument(stmt.rvalue, "init", attrib_arguments) is False:
-                            # This attribute doesn't go in init.
-                            continue
-
-                        # Look for default=<something> in the call.  Note: This fails if someone
-                        # passes the _NOTHING sentinel object into attrs.
-                        attr_has_default = bool(get_argument(stmt.rvalue, "default",
-                                                             attrib_arguments))
-
-                        # If the type isn't set through annotation but it is passed through type=
-                        # use that.
-                        type_arg = get_argument(stmt.rvalue, "type", attrib_arguments)
-                        if type_arg and not typ:
-                            try:
-                                un_type = expr_to_unanalyzed_type(type_arg)
-                            except TypeTranslationError:
-                                ctx.api.fail('Invalid argument to type', type_arg)
-                            else:
-                                typ = ctx.api.anal_type(un_type)
-
-                        add_init_argument(name, typ, attr_has_default, stmt)
-                    else:
-                        if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
-                            # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
-                            has_rhs = not isinstance(stmt.rvalue, TempNode)
-                            add_init_argument(name, typ, has_rhs, stmt)
-
-        # Check the init args for correct default-ness.  Note: Has to be done after all the
+        # Check the init args for correct default-ness.  Note: This has to be done after all the
         # attributes for all classes have been read, because subclasses can override parents.
         last_default = False
-        for name, argument in init_args.items():
-            if not argument.initializer and last_default:
+        for name, attribute in attributes.items():
+            if not attribute.has_default and last_default:
                 ctx.api.fail(
                     "Non-default attributes not allowed after default attributes.",
-                    init_arg_sources[name])
-            last_default = bool(argument.initializer)
+                    attribute.context)
+            last_default = attribute.has_default
 
-        add_method('__init__', list(init_args.values()), NoneTyp())
+        add_method('__init__',
+                   [attribute.argument() for attribute in attributes.values()
+                    if attribute.init],
+                   NoneTyp())
 
-    if cmp:
+    if get_bool_argument(decorator, "frozen", attrs_arguments):
+        # If the class is frozen then all the attributes need to be turned into properties.
+        for name in attributes:
+            node = ctx.cls.info.names[name].node
+            assert isinstance(node, Var)
+            node.is_initialized_in_class = False
+            node.is_property = True
+
+    if get_bool_argument(decorator, "cmp", attrs_arguments):
         # Generate cmp methods that look like this:
         #   def __ne__(self, other: '<class name>') -> bool: ...
-        # We use fullname to handle nested classes.
+        # We use fullname to handle nested classes, splitting to remove the module name.
         other_type = UnboundType(ctx.cls.info.fullname().split(".", 1)[1])
         bool_type = ctx.api.named_type('__builtins__.bool')
         args = [Argument(Var('other', other_type), other_type, None, ARG_POS)]
-        for method in ['__ne__', '__eq__',
-                       '__lt__', '__le__',
-                       '__gt__', '__ge__']:
+        for method in ['__ne__', '__eq__', '__lt__', '__le__', '__gt__', '__ge__']:
             add_method(method, args, bool_type)
