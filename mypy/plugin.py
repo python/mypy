@@ -433,13 +433,6 @@ attr_attrib_makers = {
 
 def attr_class_maker_callback(ctx: ClassDefContext) -> None:
     """Add an __init__ method to classes decorated with attr.s."""
-    def get_bool_argument(call: CallExpr, name: str,
-                          default: Optional[bool]) -> Optional[bool]:
-        for arg_name, arg_value in zip(call.arg_names, call.args):
-            if arg_name == name:
-                # TODO: Handle None being returned here.
-                return ctx.api.parse_bool(arg_value)
-        return default
 
     def get_argument(call: CallExpr, name: Optional[str],
                      num: Optional[int]) -> Optional[Expression]:
@@ -450,22 +443,32 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                 return attr_value
         return None
 
+    def get_bool_argument(call: CallExpr, name: str,
+                          default: Optional[bool]) -> Optional[bool]:
+        for arg_name, arg_value in zip(call.arg_names, call.args):
+            if arg_name == name:
+                # TODO: Handle None being returned here.
+                return ctx.api.parse_bool(arg_value)
+        return default
+
     def called_function(expr: Expression) -> Optional[str]:
         if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
             return expr.callee.fullname
         return None
 
     decorator = ctx.reason
+
+    # Default values of attr.s()
+    init = True
+    cmp = True
+    auto_attribs = False
+
     if isinstance(decorator, CallExpr):
-        # Update init and auto_attrib if this was a call.
-        init = get_bool_argument(decorator, "init", True)
-        auto_attribs = get_bool_argument(decorator, "auto_attribs", False)
-        cmp = get_bool_argument(decorator, "cmp", True)
-    else:
-        # Default values of attr.s()
-        init = True
-        cmp = True
-        auto_attribs = False
+        # Read call arguments.
+        init = get_bool_argument(decorator, "init", init)
+        cmp = get_bool_argument(decorator, "cmp", cmp)
+        auto_attribs = get_bool_argument(decorator, "auto_attribs",
+                                         auto_attribs)
 
     if not init and not cmp:
         # Nothing to add.
