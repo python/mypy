@@ -488,7 +488,6 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                     "Non-default attributes not allowed after default attributes.",
                     context)
             if not typ:
-                ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
                 typ = AnyType(TypeOfAny.unannotated)
 
             names.append(name)
@@ -510,6 +509,9 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
 
                 if called_function(stmt.rvalue) in attr_attrib_makers:
                     assert isinstance(stmt.rvalue, CallExpr)
+                    if not stmt.type:
+                        stmt.type = AnyType(TypeOfAny.explicit)
+
                     # Is it an init=False argument?
                     attr_init = get_argument(stmt.rvalue, "init", 5)
                     if attr_init and ctx.api.parse_bool(attr_init) is False:
@@ -517,6 +519,9 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
 
                     # Look for default=  in the call.
                     default = get_argument(stmt.rvalue, "default", 0)
+                    attr_typ = get_argument(stmt.rvalue, "type", 15)
+                    if attr_typ:
+                        import pdb; pdb.set_trace()
                     add_init_argument(
                         name,
                         typ,
