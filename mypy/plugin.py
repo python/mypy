@@ -394,17 +394,6 @@ def int_pow_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-attr_class_makers = {
-    'attr.s',
-    'attr.attrs',
-    'attr.attributes',
-}
-
-attr_attrib_makers = {
-    'attr.ib',
-    'attr.attrib',
-    'attr.attr'
-}
 # These are the argument to the functions with their defaults in their correct order.
 attrib_arguments = OrderedDict([
     ('default', None), ('validator', None), ('repr', True), ('cmp', True), ('hash', None),
@@ -415,17 +404,26 @@ attrs_arguments = OrderedDict([
     ('hash', None), ('init', True), ('slots', False), ('frozen', False), ('str', False),
     ('auto_attribs', False)
 ])
-
+attr_class_makers = {
+    'attr.s': attrs_arguments,
+    'attr.attrs': attrs_arguments,
+    'attr.attributes': attrs_arguments,
+}
+attr_attrib_makers = {
+    'attr.ib': attrib_arguments,
+    'attr.attrib': attrib_arguments,
+    'attr.attr': attrib_arguments,
+}
 
 def attr_class_maker_callback(ctx: ClassDefContext) -> None:
     """Add necessary dunder methods to classes decorated with attr.s."""
     # TODO(David):
-    # o Remove magic numbers
     # o Figure out what to do with type=...
-    # o Cleanup builtins in tests.
     # o Fix inheritance with attribute override.
     # o Handle None from get_bool_argument
     # o Support frozen=True?
+    # o Support @dataclass
+    # o Moar Tests!
 
     # attrs is a package that lets you define classes without writing dull boilerplate code.
     #
@@ -436,27 +434,32 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
     #
     # See http://www.attrs.org/en/stable/how-does-it-work.html for information on how this works.
 
-    def get_argument(call: CallExpr, name: Optional[str],
-                     num: Optional[int]) -> Optional[Expression]:
-        for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
-            if num is not None and not attr_name and i == num:
-                return attr_value
-            if name and attr_name == name:
-                return attr_value
-        return None
-
-    def get_bool_argument(call: CallExpr, name: str,
-                          default: Optional[bool]) -> Optional[bool]:
-        for arg_name, arg_value in zip(call.arg_names, call.args):
-            if arg_name == name:
-                # TODO: Handle None being returned here.
-                return ctx.api.parse_bool(arg_value)
-        return default
-
     def called_function(expr: Expression) -> Optional[str]:
+        """Return the full name of the function being called by the expr, or None."""
         if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
             return expr.callee.fullname
         return None
+
+    def get_argument(call: CallExpr, arg_name: str,
+                     func_args: OrderedDict) -> Optional[Expression]:
+        """Return the """
+        arg_num = list(func_args).index(arg_name)
+        assert arg_num >= 0, "Function doesn't have arg {}".format(arg_name)
+        for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
+            if not attr_name and i == arg_num:
+                return attr_value
+            if attr_name == arg_name:
+                return attr_value
+        return None
+
+    def get_bool_argument(call: CallExpr, arg_name: str, func_args: OrderedDict) -> Optional[bool]:
+        attr_value = get_argument(call, arg_name, func_args)
+        if attr_value:
+            # TODO: Handle None being returned here.
+            return ctx.api.parse_bool(attr_value)
+        ret = func_args[arg_name]
+        assert isinstance(ret, bool), "Default value for {} isn't boolean".format(arg_name)
+        return ret
 
     decorator = ctx.reason
 
@@ -468,10 +471,9 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
     if isinstance(decorator, CallExpr):
         # Read call arguments.
         # TODO handle these returning None (e.g. bool=SOMETHING_ELSE)
-        init = get_bool_argument(decorator, "init", init)
-        cmp = get_bool_argument(decorator, "cmp", cmp)
-        auto_attribs = get_bool_argument(decorator, "auto_attribs",
-                                         auto_attribs)
+        init = get_bool_argument(decorator, "init", attrs_arguments)
+        cmp = get_bool_argument(decorator, "cmp", attrs_arguments)
+        auto_attribs = get_bool_argument(decorator, "auto_attribs", attrs_arguments)
 
     if not init and not cmp:
         # Nothing to add.
@@ -536,19 +538,15 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                     if called_function(stmt.rvalue) in attr_attrib_makers:
                         assert isinstance(stmt.rvalue, CallExpr)
 
-                        # Is it an init=False argument?
-                        attr_init = get_argument(stmt.rvalue, "init", 5)
-                        if attr_init and ctx.api.parse_bool(attr_init) is False:
+                        if get_bool_argument(stmt.rvalue, "init", attrib_arguments) is False:
+                            # This attribute doesn't go in init.
                             continue
 
-                        # Look for default=  in the call.
-                        default = get_argument(stmt.rvalue, "default", 0)
-                        attr_typ = get_argument(stmt.rvalue, "type", 15)
-                        if attr_typ:
-                            # TODO: Can we do something useful with this?
-                            pass
-
-                        add_init_argument(name, typ, bool(default), stmt)
+                        # Look for default=<something> in the call.  Note: This fails if someone
+                        # passes the _NOTHING sentinel object into attrs.
+                        attr_has_default = bool(get_argument(stmt.rvalue, "default",
+                                                             attrib_arguments))
+                        add_init_argument(name, typ, attr_has_default, stmt)
                     else:
                         if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
                             # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
