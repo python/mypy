@@ -1,8 +1,8 @@
-from typing import TypeVar, overload, Callable, Any
+from typing import TypeVar, overload, Callable, Any, Type
 
 _T = TypeVar('_T')
 
-def attr(default: Any = ..., validator: Any = ...) -> Any: ...
+def attr(default: Any = ..., validator: Any = ..., type: Type[_T] = ...) -> Any: ...
 
 @overload
 def attributes(maybe_cls: _T = ..., cmp: bool = ..., init: bool = ...) -> _T: ...

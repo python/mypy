@@ -2,16 +2,18 @@
 
 from collections import OrderedDict
 from abc import abstractmethod
-from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Set, cast, Dict
+from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, cast, Dict
 
 from mypy import messages
+from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
-    Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var, TypeInfo,
+    Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var,
     FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode, ARG_POS,
     ARG_OPT, EllipsisExpr, NameExpr, Node
 )
+from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
-    Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
+    Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
     AnyType, TypeList, UnboundType, TypeOfAny
 )
 from mypy.messages import MessageBuilder
@@ -79,6 +81,15 @@ class SemanticAnalyzerPluginInterface:
     @abstractmethod
     def accept(self, node: Node) -> None:
         raise NotImplementedError
+
+    @abstractmethod
+    def anal_type(self, t: Type, *,
+                  tvar_scope: Optional[TypeVarScope] = None,
+                  allow_tuple_literal: bool = False,
+                  aliasing: bool = False,
+                  third_pass: bool = False) -> Type:
+        raise NotImplementedError
+
 
 
 # A context for a function hook that infers the return type of a function with
@@ -422,8 +433,6 @@ attr_attrib_makers = {
 def attr_class_maker_callback(ctx: ClassDefContext) -> None:
     """Add necessary dunder methods to classes decorated with attr.s."""
     # TODO(David):
-    # o Figure out what to do with type=...
-    # o Handle None from get_bool_argument
     # o Support frozen=True?
     # o Support @dataclass
     # o Moar Tests!
@@ -550,6 +559,18 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                         # passes the _NOTHING sentinel object into attrs.
                         attr_has_default = bool(get_argument(stmt.rvalue, "default",
                                                              attrib_arguments))
+
+                        # If the type isn't set through annotation but it is passed through type=
+                        # use that.
+                        type_arg = get_argument(stmt.rvalue, "type", attrib_arguments)
+                        if type_arg and not typ:
+                            try:
+                                un_type = expr_to_unanalyzed_type(type_arg)
+                            except TypeTranslationError:
+                                ctx.api.fail('Invalid argument to type', type_arg)
+                            else:
+                                typ = ctx.api.anal_type(un_type)
+
                         add_init_argument(name, typ, attr_has_default, stmt)
                     else:
                         if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
