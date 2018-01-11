@@ -136,3 +136,26 @@ class C:
 reveal_type(C)  # E: Revealed type is 'def (y: Any) -> __main__.C'
 reveal_type(C.D)  # E: Revealed type is 'def (x: builtins.int) -> __main__.C.D'
 [builtins fixtures/bool.pyi]
+
+[case testAttrsInheritanceOverride]
+import attr
+
+@attr.s
+class A:
+    a: int = attr.ib()
+    x: int = attr.ib()
+
+@attr.s
+class B(A):
+    b: str = attr.ib()
+    x: int = attr.ib(default='value')
+
+@attr.s
+class C(B):
+    c: bool = attr.ib()  # No error here because the x below overwrite the x above.
+    x: int = attr.ib()
+
+reveal_type(A)  # E: Revealed type is 'def (a: builtins.int, x: builtins.int) -> __main__.A'
+reveal_type(B)  # E: Revealed type is 'def (a: builtins.int, b: builtins.str, x: builtins.int =) -> __main__.B'
+reveal_type(C)  # E: Revealed type is 'def (a: builtins.int, b: builtins.str, c: builtins.bool, x: builtins.int) -> __main__.C'
+[builtins fixtures/bool.pyi]

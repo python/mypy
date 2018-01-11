@@ -2,13 +2,13 @@
 
 from collections import OrderedDict
 from abc import abstractmethod
-from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Set, cast
+from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Set, cast, Dict
 
 from mypy import messages
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var, TypeInfo,
     FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode, ARG_POS,
-    ARG_OPT, EllipsisExpr, NameExpr
+    ARG_OPT, EllipsisExpr, NameExpr, Node
 )
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
@@ -74,6 +74,10 @@ class SemanticAnalyzerPluginInterface:
     @abstractmethod
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def accept(self, node: Node) -> None:
         raise NotImplementedError
 
 
@@ -419,7 +423,6 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
     """Add necessary dunder methods to classes decorated with attr.s."""
     # TODO(David):
     # o Figure out what to do with type=...
-    # o Fix inheritance with attribute override.
     # o Handle None from get_bool_argument
     # o Support frozen=True?
     # o Support @dataclass
@@ -500,16 +503,11 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
 
     if init:
         # Walk the body looking for assignments.
-        names = []  # type: List[str]
-        types = []  # type: List[Type]
-        has_default = set()  # type: Set[str]
+        init_args = OrderedDict()  # type: : OrderedDict[str, Argument]
+        init_arg_sources = {}  # type: Dict[str, Context]
 
         def add_init_argument(name: str, typ: Optional[Type], default: bool,
                               context: Context) -> None:
-            if not default and has_default:
-                ctx.api.fail(
-                    "Non-default attributes not allowed after default attributes.",
-                    context)
             if not typ:
                 if ctx.api.options.disallow_untyped_defs:
                     # This is a compromise.  If you don't have a type here then the __init__ will
@@ -519,11 +517,13 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                     ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
                 typ = AnyType(TypeOfAny.unannotated)
 
-            names.append(name)
-            assert typ is not None
-            types.append(typ)
-            if default:
-                has_default.add(name)
+            init_arg = Argument(Var(name, typ), typ,
+                                EllipsisExpr() if default else None,
+                                ARG_OPT if default else ARG_POS)
+            if name in init_args:
+                del init_args[name]
+            init_args[name] = init_arg
+            init_arg_sources[name] = Expression
 
         def is_class_var(expr: NameExpr) -> bool:
             if isinstance(expr.node, Var):
@@ -557,13 +557,17 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                             has_rhs = not isinstance(stmt.rvalue, TempNode)
                             add_init_argument(name, typ, has_rhs, stmt)
 
-        init_args = [
-            Argument(Var(name, typ), typ,
-                     EllipsisExpr() if name in has_default else None,
-                     ARG_OPT if name in has_default else ARG_POS)
-            for (name, typ) in zip(names, types)
-        ]
-        add_method('__init__', init_args, NoneTyp())
+        # Check the init args for correct default-ness.  Note: Has to be done after all the
+        # attributes for all classes have been read, because subclasses can override parents.
+        last_default = False
+        for name, argument in init_args.items():
+            if not argument.initializer and last_default:
+                ctx.api.fail(
+                    "Non-default attributes not allowed after default attributes.",
+                    init_arg_sources[name])
+            last_default = bool(argument.initializer)
+
+        add_method('__init__', list(init_args.values()), NoneTyp())
 
     if cmp:
         # Generate cmp methods that look like this:
