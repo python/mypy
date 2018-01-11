@@ -631,6 +631,15 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
                     if attribute.init],
                    NoneTyp())
 
+        for stmt in ctx.cls.defs.body:
+            # The implicit first type of cls methods will be wrong because it's based on
+            # the non-existent init.  Set it back to any and accept it to correct it.
+            if isinstance(stmt, Decorator) and stmt.func.is_class:
+                func_type = stmt.func.type
+                if isinstance(func_type, CallableType):
+                    func_type.arg_types[0] = AnyType(TypeOfAny.unannotated)
+                    ctx.api.accept(stmt.func)
+
     if get_bool_argument(decorator, "frozen", attrs_arguments):
         # If the class is frozen then all the attributes need to be turned into properties.
         for name in attributes:
