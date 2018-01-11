@@ -61,6 +61,8 @@ class CheckerPluginInterface:
 class SemanticAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins."""
 
+    options = None  # type: Options
+
     @abstractmethod
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
         raise NotImplementedError
@@ -491,10 +493,10 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                     context)
             if not typ:
                 if ctx.api.options.disallow_untyped_defs:
-                    # This is a compromise.  If you don't have a type here then the init will be untyped.
-                    # But since the __init__ method doesn't have a line number it's difficult to point
-                    # to the correct line number.  So instead we just show the error in the assignment.
-                    # Which is where you would fix the issue.
+                    # This is a compromise.  If you don't have a type here then the __init__ will
+                    # be untyped. But since the __init__ method doesn't have a line number it's
+                    # difficult to point to the correct line number.  So instead we just show the
+                    # error in the assignment, which is where you would fix the issue.
                     ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
                 typ = AnyType(TypeOfAny.unannotated)
 
