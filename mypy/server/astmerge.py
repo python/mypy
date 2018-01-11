@@ -301,7 +301,9 @@ class TypeReplaceVisitor(TypeVisitor[None]):
         if typ.definition:
             # No need to fixup since this is just a cross-reference.
             typ.definition = self.replacements.get(typ.definition, typ.definition)
-        typ.fallback.accept(self)
+        # Fallback can be None for non semantically analyzed callable types.
+        if typ.fallback is not None:
+            typ.fallback.accept(self)
         for tv in typ.variables:
             tv.upper_bound.accept(self)
             for value in tv.values:
