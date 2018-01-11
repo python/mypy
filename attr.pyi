@@ -42,10 +42,10 @@ class Attribute(Generic[_T]):
 # See discussion here: https://github.com/python/mypy/issues/4227
 # tl;dr: Waiting on a fix to https://github.com/python/typing/issues/253
 @overload
-def attr(default: _T, validator: Optional[Union[_ValidatorType[_T], Sequence[_ValidatorType[_T]]]] = ...,
+def attr(default: _T, validator: Union[_ValidatorType[_T], Sequence[_ValidatorType[_T]]] = ...,
          repr: bool = ..., cmp: bool = ..., hash: Optional[bool] = ..., init: bool = ...,
-         convert: Optional[_ConverterType[_T]] = ..., metadata: Mapping = ...,
-         type: Optional[Type[_T]] = ...) -> _T: ...
+         convert: _ConverterType[_T] = ..., metadata: Mapping = ...,
+         type: Type[_T] = ...) -> _T: ...
 @overload
 def attr(default: None = ..., validator: None = ...,
          repr: bool = ..., cmp: bool = ..., hash: Optional[bool] = ..., init: bool = ...,
