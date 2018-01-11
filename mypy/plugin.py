@@ -10,7 +10,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var,
     FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode,
-    ARG_POS, ARG_OPT, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt, FuncBase
+    ARG_POS, ARG_OPT, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt, FuncBase, Statement
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
@@ -464,6 +464,14 @@ attr_attrib_makers = {
 }
 
 
+class LastUpdatedOrderedDict(OrderedDict):
+    """Store items in the order the keys were last added."""
+    def __setitem__(self, key, value):
+        if key in self:
+            del self[key]
+        OrderedDict.__setitem__(self, key, value)
+
+
 def attr_class_maker_callback(
         attrs: AttrClassMaker,
         ctx: ClassDefContext,
@@ -531,9 +539,9 @@ def attr_class_maker_callback(
     class Attribute:
         """An attribute that belongs to this class."""
 
-        def __init__(self, name: str, type: Type,
-                     has_default: bool, init: bool, context: Context) -> None:
-            # I really wanted to use attrs for this.  :)
+        def __init__(self, name: str, type: Optional[Type],
+                     has_default: bool, init: bool,
+                     context: Context) -> None:
             self.name = name
             self.type = type
             self.has_default = has_default
@@ -542,35 +550,20 @@ def attr_class_maker_callback(
 
         def argument(self) -> Argument:
             """Return this attribute as an argument to __init__."""
+            # Convert type not set to Any.
+            _type = self.type or AnyType(TypeOfAny.unannotated)
             # Attrs removes leading underscores when creating the __init__ arguments.
-            return Argument(Var(self.name.strip("_"), self.type), self.type,
+            return Argument(Var(self.name.strip("_"), _type), _type,
                             None,
                             ARG_OPT if self.has_default else ARG_POS)
-
-    attributes = OrderedDict()  # type: OrderedDict[str, Attribute]
-
-    def add_attribute(attr_name: str, attr_type: Optional[Type], default: bool, init: bool,
-                      context: Context) -> None:
-        if not attr_type:
-            if ctx.api.options.disallow_untyped_defs:
-                # This is a compromise.  If you don't have a type here then the __init__ will
-                # be untyped. But since the __init__ method doesn't have a line number it's
-                # difficult to point to the correct line number.  So instead we just show the
-                # error in the assignment, which is where you would fix the issue.
-                ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-            attr_type = AnyType(TypeOfAny.unannotated)
-
-        if attr_name in attributes:
-            # When a subclass overrides an attrib it gets pushed to the end.
-            del attributes[attr_name]
-        attributes[attr_name] = Attribute(attr_name, attr_type, default, init, context)
 
     # auto_attribs means we generate attributes from annotated variables.
     auto_attribs = get_bool_argument(decorator, attrs.auto_attribs)
 
-    # Walk the mro in reverse looking for those yummy attributes.
-    for info in reversed(ctx.cls.info.mro):
-        for stmt in info.defn.defs.body:
+    def get_attributes_for_body(body: List[Statement]) -> List[Attribute]:
+        attributes = LastUpdatedOrderedDict()  # type: OrderedDict[str, Attribute]
+
+        for stmt in body:
             if isinstance(stmt, AssignmentStmt) and isinstance(stmt.lvalues[0], NameExpr):
                 lhs = stmt.lvalues[0]
                 assert isinstance(lhs, NameExpr)
@@ -583,8 +576,8 @@ def attr_class_maker_callback(
                     assert isinstance(stmt.rvalue, CallExpr)
                     attrib = attribs[func_name]
 
-                    # Look for default=<something> in the call.  Note: This fails if someone
-                    # passes the _NOTHING sentinel object into attrs.
+                    # Look for default=<something> in the call.
+                    # TODO: Check for attr.NOTHING
                     attr_has_default = bool(get_argument(stmt.rvalue, attrib.default))
 
                     # If the type isn't set through annotation but it is passed through type=
@@ -603,7 +596,7 @@ def attr_class_maker_callback(
                                 lhs.is_inferred_def = False
 
                     # If the attrib has a convert function take the type of the first argument
-                    # for the init type.
+                    # as the init type.
                     convert = get_argument(stmt.rvalue, attrib.convert)
                     if (convert
                             and isinstance(convert, RefExpr)
@@ -614,14 +607,15 @@ def attr_class_maker_callback(
                             and convert.node.type.arg_types):
                         typ = convert.node.type.arg_types[0]
 
-                    add_attribute(name, typ, attr_has_default,
-                                  get_bool_argument(stmt.rvalue, attrib.init),
-                                  stmt)
-                else:
-                    if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
-                        # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
-                        has_rhs = not isinstance(stmt.rvalue, TempNode)
-                        add_attribute(name, typ, has_rhs, True, stmt)
+                    # Does this even have to go in init?
+                    init = get_bool_argument(stmt.rvalue, attrib.init)
+
+                    attributes[name] = Attribute(name, typ, attr_has_default, init, stmt)
+                elif auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
+                    # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
+                    has_rhs = not isinstance(stmt.rvalue, TempNode)
+                    attributes[name] = Attribute(name, typ, has_rhs, True, stmt)
+
             elif isinstance(stmt, Decorator):
                 # Look for attr specific decorators.  ('x.default' and 'x.validator')
                 remove_me = []
@@ -629,6 +623,7 @@ def attr_class_maker_callback(
                     if (isinstance(func_decorator, MemberExpr)
                             and isinstance(func_decorator.expr, NameExpr)
                             and func_decorator.expr.name in attributes):
+
                         if func_decorator.name == 'default':
                             # This decorator lets you set a default after the fact.
                             attributes[func_decorator.expr.name].has_default = True
@@ -638,10 +633,41 @@ def attr_class_maker_callback(
                             # class creation time.  In order to not trigger a type error later we
                             # just remove them.  This might leave us with a Decorator with no
                             # decorators (Emperor's new clothes?)
+                            # XXX: Subclasses might still need this, sigh.
                             remove_me.append(func_decorator)
 
                 for dec in remove_me:
                     stmt.decorators.remove(dec)
+        return list(attributes.values())
+
+    def get_attributes(info: TypeInfo) -> List[Attribute]:
+        own_attrs = get_attributes_for_body(info.defn.defs.body)
+        super_attrs = []
+        taken_attr_names = {a.name: a for a in own_attrs}
+
+        # Traverse the MRO and collect attributes.
+        for super_info in info.mro[1:-1]:
+            sub_attrs = get_attributes(super_info)
+            for a in sub_attrs:
+                prev_a = taken_attr_names.get(a.name)
+                # Only add an attribute if it hasn't been defined before.  This
+                # allows for overwriting attribute definitions by subclassing.
+                if prev_a is None:
+                    super_attrs.append(a)
+                    taken_attr_names[a.name] = a
+
+        return super_attrs + own_attrs
+
+    attributes = get_attributes(ctx.cls.info)
+
+    if ctx.api.options.disallow_untyped_defs:
+        for attribute in attributes:
+            if attribute.type is None:
+                # This is a compromise.  If you don't have a type here then the __init__ will
+                # be untyped. But since the __init__ method doesn't have a line number it's
+                # difficult to point to the correct line number.  So instead we just show the
+                # error in the assignment, which is where you would fix the issue.
+                ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, attribute.context)
 
     info = ctx.cls.info
     self_type = fill_typevars(info)
@@ -675,7 +701,7 @@ def attr_class_maker_callback(
         # Check the init args for correct default-ness.  Note: This has to be done after all the
         # attributes for all classes have been read, because subclasses can override parents.
         last_default = False
-        for name, attribute in attributes.items():
+        for attribute in attributes:
             if not attribute.has_default and last_default:
                 ctx.api.fail(
                     "Non-default attributes not allowed after default attributes.",
@@ -685,7 +711,7 @@ def attr_class_maker_callback(
         # __init__ gets added to the body so that it can get further semantic analysis.
         # e.g. Forward Reference Resolution.
         add_method('__init__',
-                   [attribute.argument() for attribute in attributes.values()
+                   [attribute.argument() for attribute in attributes
                     if attribute.init],
                    NoneTyp())
 
@@ -699,8 +725,8 @@ def attr_class_maker_callback(
 
     if get_bool_argument(decorator, attrs.frozen):
         # If the class is frozen then all the attributes need to be turned into properties.
-        for name in attributes:
-            node = ctx.cls.info.names[name].node
+        for attribute in attributes:
+            node = ctx.cls.info.names[attribute.name].node
             assert isinstance(node, Var)
             node.is_initialized_in_class = False
             node.is_property = True
