@@ -1,0 +1,86 @@
+[case testUntypedAttrS]
+import attr
+
+@attr.s
+class UnTyped:
+    normal = attr.ib()  # E: Need type annotation for variable
+    _private = attr.ib()  # E: Need type annotation for variable
+    def_arg = attr.ib(18)  # E: Need type annotation for variable
+    _def_kwarg = attr.ib(validator=None, default=18)  # E: Need type annotation for variable
+
+    CLASS_VAR = 18
+
+reveal_type(UnTyped)  # E: Revealed type is 'def (normal: Any, private: Any, def_arg: Any =, def_kwarg: Any =) -> __main__.UnTyped'
+
+UnTyped(1, 2)
+UnTyped('1', '2', '3')
+UnTyped('1', '2', '3', 4)
+UnTyped('1', '2', def_kwarg='5')
+UnTyped('1', '2', def_kwarg='5')
+UnTyped(normal=1, private=2, def_arg=3, def_kwarg=4)
+UnTyped()  # E: Too few arguments for "UnTyped"
+
+[file attr.pyi]
+from typing import TypeVar
+_T = TypeVar('_T')
+def ib(default: _T = ..., validator = ...) -> _T: ...
+def s(cls: _T) -> _T: ...
+
+[case testTypedAttrS]
+import attr
+
+@attr.s
+class Typed:
+    normal: int = attr.ib()
+    _private: int = attr.ib()
+    def_arg: int = attr.ib(18)
+    _def_kwarg: int = attr.ib(validator=None, default=18)
+
+    FOO: int = 18
+
+reveal_type(Typed)  # E: Revealed type is 'def (normal: builtins.int, private: builtins.int, def_arg: builtins.int =, def_kwarg: builtins.int =) -> __main__.Typed'
+
+Typed(1, 2)
+Typed(1, 2, 3)
+Typed(1, 2, 3, 4)
+Typed(1, 2, def_kwarg=5)
+Typed(1, 2, def_kwarg=5)
+Typed(normal=1, private=2, def_arg=3, def_kwarg=4)
+Typed()  # E: Too few arguments for "Typed"
+
+[file attr.pyi]
+from typing import TypeVar
+_T = TypeVar('_T')
+def ib(default: _T = ..., validator = ...) -> _T: ...
+def s(cls: _T) -> _T: ...
+
+[case testAutoAttribAttrS]
+import attr
+import typing
+
+@attr.s(auto_attribs=True)
+class Auto:
+    normal: int
+    _private: int
+    def_arg: int = 18
+    _def_kwarg: int = attr.ib(validator=None, default=18)
+
+    FOO: typing.ClassVar[int] = 18
+
+reveal_type(Auto)  # E: Revealed type is 'def (normal: builtins.int, private: builtins.int, def_arg: builtins.int =, def_kwarg: builtins.int =) -> __main__.Auto'
+
+Auto(1, 2)
+Auto(1, 2, 3)
+Auto(1, 2, 3, 4)
+Auto(1, 2, def_kwarg=5)
+Auto(1, 2, def_kwarg=5)
+Auto(normal=1, private=2, def_arg=3, def_kwarg=4)
+Auto()  # E: Too few arguments for "Auto"
+
+
+[file attr.pyi]
+from typing import TypeVar
+_T = TypeVar('_T')
+def ib(default: _T = ..., validator = ...) -> _T: ...
+def s(cls: _T) -> _T: ...
+

@@ -1684,6 +1684,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             self.analyze_lvalue(lval, explicit_type=s.type is not None)
         self.check_classvar(s)
         s.rvalue.accept(self)
+        #if s.lvalues[0].name == 'FOO':
+        #    import pdb; pdb.set_trace()
         if s.type:
             allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
             s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
