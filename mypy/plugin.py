@@ -461,9 +461,9 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
     decorator = ctx.reason
 
     # Default values of attr.s()
-    init: Optional[bool] = True
-    cmp: Optional[bool] = True
-    auto_attribs: Optional[bool] = False
+    init = True  # type: Optional[bool]
+    cmp: Optional[bool] = True  # type: Optional[bool]
+    auto_attribs = False  # type: Optional[bool]
 
     if isinstance(decorator, CallExpr):
         # Read call arguments.
