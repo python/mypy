@@ -433,14 +433,16 @@ attr_attrib_makers = {
 
 def attr_class_maker_callback(ctx: ClassDefContext) -> None:
     """Add an __init__ method to classes decorated with attr.s."""
-    def get_bool_argument(call: CallExpr, name: str, default: Optional[bool]) -> Optional[bool]:
+    def get_bool_argument(call: CallExpr, name: str,
+                          default: Optional[bool]) -> Optional[bool]:
         for arg_name, arg_value in zip(call.arg_names, call.args):
             if arg_name == name:
                 # TODO: Handle None being returned here.
                 return ctx.api.parse_bool(arg_value)
         return default
 
-    def get_argument(call: CallExpr, name: Optional[str], num: Optional[int]) -> Optional[Expression]:
+    def get_argument(call: CallExpr, name: Optional[str],
+                     num: Optional[int]) -> Optional[Expression]:
         for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
             if num is not None and not attr_name and i == num:
                 return attr_value
