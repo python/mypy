@@ -464,7 +464,7 @@ class Attribute:
 def attr_class_maker_callback(
         attr_classes: Dict[TypeInfo, List[Attribute]],
         ctx: ClassDefContext,
-        auto_attribs_default:bool = False
+        auto_attribs_default: bool = False
 ) -> None:
     """Add necessary dunder methods to classes decorated with attr.s.
 
