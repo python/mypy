@@ -4,7 +4,10 @@ from collections import OrderedDict
 from abc import abstractmethod
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
 
-from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef
+from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, \
+    DictExpr, ClassDef, Argument, Var, TypeInfo, FuncDef, Block, \
+    SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode, \
+    ARG_POS, ARG_OPT, EllipsisExpr
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
     AnyType, TypeList, UnboundType, TypeOfAny
@@ -262,6 +265,11 @@ class DefaultPlugin(Plugin):
             return int_pow_callback
         return None
 
+    def get_class_decorator_hook(self, fullname: str
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        if fullname == 'attr.s':
+            return attr_s_callback
+
 
 def open_callback(ctx: FunctionContext) -> Type:
     """Infer a better return type for 'open'.
@@ -407,7 +415,6 @@ def add_method(
     info.names[method_name] = SymbolTableNode(MDEF, func)
 
 
-
 def attr_s_callback(ctx: ClassDefContext) -> None:
     """Add an __init__ method to classes decorated with attr.s."""
     # TODO: Add __cmp__ methods.
@@ -419,11 +426,19 @@ def attr_s_callback(ctx: ClassDefContext) -> None:
                 return ctx.api.parse_bool(arg_value)
         return default
 
+    def get_argument(call: CallExpr, name: Optional[str], num: Optional[int]):
+        for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
+            if num is not None and i == num:
+                return attr_value
+            if name and attr_name == name:
+                return attr_value
+        return None
+
     def called_function(expr: Expression):
         if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
             return expr.callee.fullname
 
-    decorator = ctx.context
+    decorator = ctx.reason
     if isinstance(decorator, CallExpr):
         # Update init and auto_attrib if this was a call.
         init = get_bool_argument(decorator, "init", True)
@@ -442,43 +457,45 @@ def attr_s_callback(ctx: ClassDefContext) -> None:
     info = ctx.cls.info
 
     # Walk the body looking for assignments.
-    items = []  # type: List[str]
+    names = []  # type: List[str]
     types = []  # type: List[Type]
-    rhs = {}  # type: Dict[str, Expression]
+    has_default = set()  # type: Set[str]
     for stmt in ctx.cls.defs.body:
         if isinstance(stmt, AssignmentStmt):
-            name = stmt.lvalues[0].name
-            # print(name, stmt.type, stmt.rvalue)
-            items.append(name)
-            types.append(None
-                         if stmt.type is None
-                         else ctx.api.anal_type(stmt.type))
-
+            name = stmt.lvalues[0].name.lstrip("_")
+            typ = (AnyType(TypeOfAny.unannotated) if stmt.type is None
+                   else ctx.api.anal_type(stmt.type))
 
             if isinstance(stmt.rvalue, TempNode):
+                print(f"{name}: {typ}")
                 # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
-                if rhs:
+                if has_default:
                     print("DEFAULT ISSUE")
             elif called_function(stmt.rvalue) == 'attr.ib':
                 # Look for a default value in the call.
-                expr = stmt.rvalue
-                print(f"{name} = attr.ib(...)")
+                if get_argument(stmt.rvalue, "default", 0):
+                    has_default.add(name)
+                    print(f"{name} = attr.ib(default=...)")
+                else:
+                    if has_default:
+                        ctx.api.fail("Non-default attributes not allowed after default attributes.", stmt.rvalue)
+                    print(f"{name} = attr.ib()")
+
+                names.append(name)
+                types.append(typ)
             else:
                 print(f"{name} = {stmt.rvalue}")
-                rhs[name] = stmt.rvalue
+                # rhs[name] = stmt.rvalue
 
     any_type = AnyType(TypeOfAny.unannotated)
 
-    import pdb; pdb.set_trace()
+    print(names, types, has_default)
 
-    has_default = {}  # type: Dict[str, Expression]
     args = []
-    for name, table in info.names.items():
-        if isinstance(table.node, Var) and table.type:
-            var = Var(name.lstrip("_"), table.type)
-            default = has_default.get(var.name(), None)
-            kind = ARG_POS if default is None else ARG_OPT
-            args.append(Argument(var, var.type, default, kind))
+    for (name, typ) in zip(names, types):
+        var = Var(name, typ)
+        kind = ARG_OPT if name in has_default else ARG_POS
+        args.append(Argument(var, var.type, EllipsisExpr(), kind))
 
     add_method(
         info=info,
