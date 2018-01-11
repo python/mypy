@@ -528,7 +528,9 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                     default = get_argument(stmt.rvalue, "default", 0)
                     attr_typ = get_argument(stmt.rvalue, "type", 15)
                     if attr_typ:
-                        import pdb; pdb.set_trace()
+                        # TODO: Can we do something useful with this?
+                        pass
+
                     add_init_argument(
                         name,
                         typ,
