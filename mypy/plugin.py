@@ -16,7 +16,7 @@ from mypy.nodes import (
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
-    AnyType, TypeList, UnboundType, TypeOfAny, TypeVarDef
+    AnyType, TypeList, UnboundType, TypeOfAny, TypeVarDef, Overloaded
 )
 from mypy.messages import MessageBuilder
 from mypy.options import Options
@@ -294,8 +294,13 @@ class DefaultPlugin(Plugin):
         if fullname in attr_class_makers:
             return partial(
                 attr_class_maker_callback,
-                attr_class_makers[fullname],
                 self._attr_classes
+            )
+        elif fullname in attr_dataclass_makers:
+            return partial(
+                attr_class_maker_callback,
+                self._attr_classes,
+                auto_attribs_default=True
             )
         return None
 
@@ -418,60 +423,19 @@ def int_pow_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-# Arguments to the attr functions (attr.s and attr.ib) with their defaults.
-ArgumentInfo = NamedTuple(
-    'ArgumentInfo', [
-        ('default', Optional[bool]),
-        ('kwarg_name', Optional[str]),
-        ('index', Optional[int]),
-    ])
-
-AttrClassMaker = NamedTuple(
-    'AttrClassMaker', [
-        ('init', ArgumentInfo),
-        ('frozen', ArgumentInfo),
-        ('cmp', ArgumentInfo),
-        ('auto_attribs', ArgumentInfo)
-    ]
-)
-
-AttribMaker = NamedTuple(
-    'AttribMaker', [
-        ('default', ArgumentInfo),
-        ('init', ArgumentInfo),
-        ('type', ArgumentInfo),
-        ('convert', ArgumentInfo),
-        ('converter', ArgumentInfo),
-    ]
-)
-
-attrs_arguments = AttrClassMaker(
-    cmp=ArgumentInfo(True, 'cmp', 4),
-    init=ArgumentInfo(True, 'init', 6),
-    frozen=ArgumentInfo(False, 'frozen', 8),
-    auto_attribs=ArgumentInfo(False, 'auto_attribs', 10)
-)
-attrib_arguments = AttribMaker(
-    default=ArgumentInfo(None, 'default', 0),
-    init=ArgumentInfo(True, 'init', 5),
-    convert=ArgumentInfo(None, 'convert', 6),
-    type=ArgumentInfo(None, 'type', 8),
-    converter=ArgumentInfo(None, 'converter', 9),
-)
-
-
 # The names of the different functions that create classes or arguments.
 attr_class_makers = {
-    'attr.s': attrs_arguments,
-    'attr.attrs': attrs_arguments,
-    'attr.attributes': attrs_arguments,
-    'attr.dataclass': attrs_arguments._replace(
-        auto_attribs=ArgumentInfo(True, 'auto_attribs', 10)),
+    'attr.s',
+    'attr.attrs',
+    'attr.attributes',
+}
+attr_dataclass_makers = {
+    'attr.dataclass',
 }
 attr_attrib_makers = {
-    'attr.ib': attrib_arguments,
-    'attr.attrib': attrib_arguments,
-    'attr.attr': attrib_arguments,
+    'attr.ib',
+    'attr.attrib',
+    'attr.attr',
 }
 
 
@@ -498,10 +462,9 @@ class Attribute:
 
 
 def attr_class_maker_callback(
-        attrs: AttrClassMaker,
         attr_classes: Dict[TypeInfo, List[Attribute]],
         ctx: ClassDefContext,
-        attribs: Dict[str, AttribMaker] = attr_attrib_makers
+        auto_attribs_default:bool = False
 ) -> None:
     """Add necessary dunder methods to classes decorated with attr.s.
 
@@ -522,35 +485,56 @@ def attr_class_maker_callback(
             return expr.callee.fullname
         return None
 
-    def get_argument(call: CallExpr, arg: ArgumentInfo) -> Optional[Expression]:
+    def get_callable_type(call: CallExpr) -> Optional[CallableType]:
+        """Get the CallableType that's attached to a CallExpr."""
+        callable_type = None
+        if (isinstance(call, CallExpr)
+                and isinstance(call.callee, RefExpr)
+                and isinstance(call.callee.node, Var)
+                and call.callee.node.type):
+            callee_type = call.callee.node.type
+            if isinstance(callee_type, Overloaded):
+                # We take the last overload.
+                callable_type = callee_type.items()[-1]
+            elif isinstance(callee_type, CallableType):
+                callable_type = callee_type
+        return callable_type
+
+    def get_argument(call: CallExpr, name: str) -> Optional[Expression]:
         """Return the expression for the specific argument."""
-        if not arg.kwarg_name and not arg.index:
+        callee = get_callable_type(call)
+        if not callee:
+            return None
+
+        argument = callee.argument_by_name(name)
+        if not argument:
+            return None
+
+        if not argument.name and not argument.pos:
             return None
 
         for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
-            if arg.index is not None and not attr_name and i == arg.index:
+            if argument.pos is not None and not attr_name and i == argument.pos:
                 return attr_value
-            if attr_name == arg.kwarg_name:
+            if attr_name == argument.name:
                 return attr_value
         return None
 
-    def get_bool_argument(expr: Expression, arg: ArgumentInfo) -> bool:
+    def get_bool_argument(expr: Expression, name: str, default: bool) -> bool:
         """Return the value of an argument name in the give Expression.
 
         If it's a CallExpr and the argument is one of the args then return it.
         Otherwise return the default value for the argument.
         """
-        assert arg.default is not None, "{}: default should be True or False".format(arg)
         if isinstance(expr, CallExpr):
-            attr_value = get_argument(expr, arg)
+            attr_value = get_argument(expr, name)
             if attr_value:
                 ret = ctx.api.parse_bool(attr_value)
                 if ret is None:
-                    ctx.api.fail('"{}" argument must be True or False.'.format(
-                        arg.kwarg_name), expr)
-                    return arg.default
+                    ctx.api.fail('"{}" argument must be True or False.'.format(name), expr)
+                    return default
                 return ret
-        return arg.default
+        return default
 
     def is_class_var(expr: NameExpr) -> bool:
         """Return whether the expression is ClassVar[...]"""
@@ -560,10 +544,8 @@ def attr_class_maker_callback(
 
     decorator = ctx.reason
 
-    # Walk the class body (including the MRO) looking for the attributes.
-
-    # auto_attribs means we generate attributes from annotated variables.
-    auto_attribs = get_bool_argument(decorator, attrs.auto_attribs)
+    # auto_attribs means we also generate Attributes from annotated variables.
+    auto_attribs = get_bool_argument(decorator, 'auto_attribs', auto_attribs_default)
 
     def get_attributes_for_body(body: List[Statement]) -> List[Attribute]:
         attributes = OrderedDict()  # type: OrderedDict[str, Attribute]
@@ -577,17 +559,15 @@ def attr_class_maker_callback(
 
                 func_name = called_function(stmt.rvalue)
 
-                if func_name in attribs:
+                if func_name in attr_attrib_makers:
                     assert isinstance(stmt.rvalue, CallExpr)
-                    attrib = attribs[func_name]
-
                     # Look for default=<something> in the call.
                     # TODO: Check for attr.NOTHING
-                    attr_has_default = bool(get_argument(stmt.rvalue, attrib.default))
+                    attr_has_default = bool(get_argument(stmt.rvalue, 'default'))
 
                     # If the type isn't set through annotation but it is passed through type=
                     # use that.
-                    type_arg = get_argument(stmt.rvalue, attrib.type)
+                    type_arg = get_argument(stmt.rvalue, 'type')
                     if type_arg and not typ:
                         try:
                             un_type = expr_to_unanalyzed_type(type_arg)
@@ -602,8 +582,8 @@ def attr_class_maker_callback(
 
                     # If the attrib has a converter function take the type of the first argument
                     # as the init type.
-                    converter = get_argument(stmt.rvalue, attrib.converter)
-                    convert = get_argument(stmt.rvalue, attrib.convert)
+                    converter = get_argument(stmt.rvalue, 'converter')
+                    convert = get_argument(stmt.rvalue, 'convert')
 
                     if convert and converter:
                         ctx.api.fail("Can't pass both `convert` and `converter`.", stmt.rvalue)
@@ -621,7 +601,7 @@ def attr_class_maker_callback(
                         typ = converter.node.type.arg_types[0]
 
                     # Does this even have to go in init?
-                    init = get_bool_argument(stmt.rvalue, attrib.init)
+                    init = get_bool_argument(stmt.rvalue, 'init', True)
 
                     if name in attributes:
                         del attributes[name]
@@ -714,7 +694,7 @@ def attr_class_maker_callback(
         # e.g. Forward Reference Resolution.
         info.defn.defs.body.append(func)
 
-    if get_bool_argument(decorator, attrs.init):
+    if get_bool_argument(decorator, 'init', True):
         # Generate the __init__ method.
 
         # Check the init args for correct default-ness.  Note: This has to be done after all the
@@ -741,7 +721,7 @@ def attr_class_maker_callback(
                 if isinstance(func_type, CallableType):
                     func_type.arg_types[0] = ctx.api.class_type(ctx.cls.info)
 
-    if get_bool_argument(decorator, attrs.frozen):
+    if get_bool_argument(decorator, 'frozen', False):
         # If the class is frozen then all the attributes need to be turned into properties.
         for attribute in attributes:
             node = ctx.cls.info.names[attribute.name].node
@@ -749,7 +729,7 @@ def attr_class_maker_callback(
             node.is_initialized_in_class = False
             node.is_property = True
 
-    if get_bool_argument(decorator, attrs.cmp):
+    if get_bool_argument(decorator, 'cmp', True):
         # Generate cmp methods that look like this:
         #   def __ne__(self, other: '<class name>') -> bool: ...
         # We use fullname to handle nested classes, splitting to remove the module name.
