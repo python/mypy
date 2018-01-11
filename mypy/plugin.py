@@ -458,77 +458,96 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
         # Update init and auto_attrib if this was a call.
         init = get_bool_argument(decorator, "init", True)
         auto_attribs = get_bool_argument(decorator, "auto_attribs", False)
+        cmp = get_bool_argument(decorator, "cmp", True)
     else:
         # Default values of attr.s()
         init = True
+        cmp = True
         auto_attribs = False
 
-    if not init:
+    if not init and not cmp:
+        # Nothing to add.
         return
 
-    # print(f"{ctx.cls.info.fullname()} init={init} auto={auto_attribs}")
-
     info = ctx.cls.info
+    self_type = ctx.api.named_type(info.name())
+    function_type = ctx.api.named_type('__builtins__.function')
 
-    # Walk the body looking for assignments.
-    names = []  # type: List[str]
-    types = []  # type: List[Type]
-    has_default = set()  # type: Set[str]
+    if init:
+        # Walk the body looking for assignments.
+        names = []  # type: List[str]
+        types = []  # type: List[Type]
+        has_default = set()  # type: Set[str]
 
-    def add_init_argument(name: str, typ: Optional[Type], default: bool,
-                          context: Context) -> None:
-        if not default and has_default:
-            ctx.api.fail(
-                "Non-default attributes not allowed after default attributes.",
-                context)
-        if not typ:
-            ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-            typ = AnyType(TypeOfAny.unannotated)
+        def add_init_argument(name: str, typ: Optional[Type], default: bool,
+                              context: Context) -> None:
+            if not default and has_default:
+                ctx.api.fail(
+                    "Non-default attributes not allowed after default attributes.",
+                    context)
+            if not typ:
+                ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                typ = AnyType(TypeOfAny.unannotated)
 
-        names.append(name)
-        assert typ is not None
-        types.append(typ)
-        if default:
-            has_default.add(name)
+            names.append(name)
+            assert typ is not None
+            types.append(typ)
+            if default:
+                has_default.add(name)
 
-    def is_class_var(expr: NameExpr) -> bool:
-        if isinstance(expr.node, Var):
-            return expr.node.is_classvar
-        return False
+        def is_class_var(expr: NameExpr) -> bool:
+            if isinstance(expr.node, Var):
+                return expr.node.is_classvar
+            return False
 
-    for stmt in ctx.cls.defs.body:
-        if isinstance(stmt, AssignmentStmt) and isinstance(stmt.lvalues[0], NameExpr):
-            lhs = stmt.lvalues[0]
-            name = lhs.name.lstrip("_")
-            typ = stmt.type
+        for stmt in ctx.cls.defs.body:
+            if isinstance(stmt, AssignmentStmt) and isinstance(stmt.lvalues[0], NameExpr):
+                lhs = stmt.lvalues[0]
+                name = lhs.name.lstrip("_")
+                typ = stmt.type
 
-            if called_function(stmt.rvalue) in attr_attrib_makers:
-                assert isinstance(stmt.rvalue, CallExpr)
-                # Look for default=  in the call.
-                default = get_argument(stmt.rvalue, "default", 0)
-                add_init_argument(
-                    name,
-                    typ,
-                    bool(default),
-                    stmt)
-            else:
-                if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
-                    # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
-                    has_rhs = not isinstance(stmt.rvalue, TempNode)
-                    add_init_argument(name, typ, has_rhs, stmt)
+                if called_function(stmt.rvalue) in attr_attrib_makers:
+                    assert isinstance(stmt.rvalue, CallExpr)
+                    # Look for default=  in the call.
+                    default = get_argument(stmt.rvalue, "default", 0)
+                    add_init_argument(
+                        name,
+                        typ,
+                        bool(default),
+                        stmt)
+                else:
+                    if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
+                        # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
+                        has_rhs = not isinstance(stmt.rvalue, TempNode)
+                        add_init_argument(name, typ, has_rhs, stmt)
 
-    init_args = [
-        Argument(Var(name, typ), typ, EllipsisExpr(),
-                 ARG_OPT if name in has_default else ARG_POS)
-        for (name, typ) in zip(names, types)
-    ]
+        init_args = [
+            Argument(Var(name, typ), typ,
+                     EllipsisExpr() if name in has_default else None,
+                     ARG_OPT if name in has_default else ARG_POS)
+            for (name, typ) in zip(names, types)
+        ]
 
-    add_method(
-        info=info,
-        method_name='__init__',
-        args=init_args,
-        ret_type=NoneTyp(),
-        self_type=ctx.api.named_type(info.name()),
-        function_type=ctx.api.named_type('__builtins__.function'),
-    )
-    # TODO: Add __cmp__ methods.
+        add_method(
+            info=info,
+            method_name='__init__',
+            args=init_args,
+            ret_type=NoneTyp(),
+            self_type=self_type,
+            function_type=function_type,
+        )
+
+    if cmp:
+        bool_type = ctx.api.named_type('__builtins__.bool')
+        args = [Argument(Var('other', self_type), self_type, None, ARG_POS)]
+        for method in ['__ne__', '__eq__',
+                       '__lt__', '__le__',
+                       '__gt__', '__ge__']:
+            add_method(
+                info=info,
+                method_name=method,
+                args=args,
+                ret_type=bool_type,
+                self_type=self_type,
+                function_type=function_type,
+            )

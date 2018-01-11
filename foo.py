@@ -11,7 +11,7 @@ class Auto:
 
     FOO: typing.ClassVar[int] = 18
 
-reveal_type(Auto)
+# reveal_type(Auto)
 Auto(1, 2, 3)
 
 
@@ -24,7 +24,7 @@ class Typed:
 
     FOO: int = 18
 
-reveal_type(Typed)
+# reveal_type(Typed)
 Typed(1, 2, 3)
 
 
@@ -37,7 +37,19 @@ class UnTyped:
 
     FOO = 18
 
-reveal_type(UnTyped)
-reveal_type(UnTyped.FOO)
+    def __cmp__(self, other):
+        ...
+
+    def __lt__(self, other):
+        ...
+
+
+# reveal_type(UnTyped)
+# reveal_type(UnTyped.FOO)
 UnTyped(1, 2, 3)
 
+x = UnTyped(1, 2, 3)
+y = UnTyped(2, 3, 4)
+
+print(UnTyped(1, 2, 3) == UnTyped(1, 2, 3))
+print(x < y)
