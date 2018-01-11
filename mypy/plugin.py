@@ -3,7 +3,7 @@
 from collections import OrderedDict
 from abc import abstractmethod
 from functools import partial
-from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, cast, Any
+from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, cast, Dict
 
 from mypy import messages
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -409,25 +409,51 @@ def int_pow_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-# Arguments to the attr functions (attr.s and attr.ib) with their defaults in their correct order.
-# These are needed to find the actual value from the CallExpr.
-attrs_arguments = OrderedDict([
-    ('maybe_cls', None), ('these', None), ('repr_ns', None), ('repr', True), ('cmp', True),
-    ('hash', None), ('init', True), ('slots', False), ('frozen', False), ('str', False),
-    ('auto_attribs', False)
-])
-attrib_arguments = OrderedDict([
-    ('default', None), ('validator', None), ('repr', True), ('cmp', True), ('hash', None),
-    ('init', True), ('convert', None), ('metadata', {}), ('type', None)
-])
+# Arguments to the attr functions (attr.s and attr.ib) with their defaults.
+ArgumentInfo = NamedTuple(
+    'ArgumentInfo', [
+        ('default', Optional[bool]),
+        ('kwarg_name', Optional[str]),
+        ('index', Optional[int]),
+    ])
+
+AttrClassMaker = NamedTuple(
+    'AttrClassMaker', [
+        ('init', ArgumentInfo),
+        ('frozen', ArgumentInfo),
+        ('cmp', ArgumentInfo),
+        ('auto_attribs', ArgumentInfo)
+    ]
+)
+
+AttribMaker = NamedTuple(
+    'AttribMaker', [
+        ('default', ArgumentInfo),
+        ('init', ArgumentInfo),
+        ("type", ArgumentInfo),
+    ]
+)
+
+attrs_arguments = AttrClassMaker(
+    cmp=ArgumentInfo(True, 'cmp', 4),
+    init=ArgumentInfo(True, 'init', 6),
+    frozen=ArgumentInfo(False, 'frozen', 8),
+    auto_attribs=ArgumentInfo(False, 'auto_attribs', 10)
+)
+attrib_arguments = AttribMaker(
+    default=ArgumentInfo(None, 'default', 0),
+    init=ArgumentInfo(True, "init", 5),
+    type=ArgumentInfo(None, 'type', 8),
+)
+
 
 # The names of the different functions that create classes or arguments.
-# The right hand side is an OrderedDict of the arguments to the call.
 attr_class_makers = {
     'attr.s': attrs_arguments,
     'attr.attrs': attrs_arguments,
     'attr.attributes': attrs_arguments,
-    'attr.dataclass': OrderedDict(attrs_arguments, auto_attribs=True),
+    'attr.dataclass': attrs_arguments._replace(
+        auto_attribs=ArgumentInfo(True, 'auto_attribs', 10)),
 }
 attr_attrib_makers = {
     'attr.ib': attrib_arguments,
@@ -436,11 +462,14 @@ attr_attrib_makers = {
 }
 
 
-def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
-                              ctx: ClassDefContext) -> None:
+def attr_class_maker_callback(
+        attrs: AttrClassMaker,
+        ctx: ClassDefContext,
+        attribs: Dict[str, AttribMaker] = attr_attrib_makers
+) -> None:
     """Add necessary dunder methods to classes decorated with attr.s.
 
-    Currently supports init=True, cmp=True and frozen=True.
+    Currently supports init=, cmp= and frozen= and auto_attribs=.
     """
     # attrs is a package that lets you define classes without writing dull boilerplate code.
     #
@@ -457,37 +486,35 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
             return expr.callee.fullname
         return None
 
-    def get_argument(call: CallExpr, arg_name: str,
-                     func_args: 'OrderedDict[str, Any]') -> Optional[Expression]:
+    def get_argument(call: CallExpr, arg: ArgumentInfo) -> Optional[Expression]:
         """Return the expression for the specific argument."""
-        arg_num = list(func_args).index(arg_name)
-        assert arg_num >= 0, "Function doesn't have arg {}".format(arg_name)
+        if not arg.kwarg_name and not arg.index:
+            return None
+
         for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
-            if not attr_name and i == arg_num:
+            if arg.index is not None and not attr_name and i == arg.index:
                 return attr_value
-            if attr_name == arg_name:
+            if attr_name == arg.kwarg_name:
                 return attr_value
         return None
 
-    def get_bool_argument(expr: Expression, arg_name: str,
-                          func_args: 'OrderedDict[str, Any]') -> bool:
+    def get_bool_argument(expr: Expression, arg: ArgumentInfo) -> bool:
         """Return the value of an argument name in the give Expression.
 
         If it's a CallExpr and the argument is one of the args then return it.
         Otherwise return the default value for the argument.
         """
-        default = func_args[arg_name]
-        assert isinstance(default, bool), "Default value for {} isn't boolean".format(arg_name)
-
+        assert arg.default is not None, "{}: default should be True or False".format(arg)
         if isinstance(expr, CallExpr):
-            attr_value = get_argument(expr, arg_name, func_args)
+            attr_value = get_argument(expr, arg)
             if attr_value:
                 ret = ctx.api.parse_bool(attr_value)
                 if ret is None:
-                    ctx.api.fail('"{}" argument must be True or False.'.format(arg_name), expr)
-                    return default
+                    ctx.api.fail('"{}" argument must be True or False.'.format(
+                        arg.kwarg_name), expr)
+                    return arg.default
                 return ret
-        return default
+        return arg.default
 
     def is_class_var(expr: NameExpr) -> bool:
         """Return whether the expression is ClassVar[...]"""
@@ -537,7 +564,7 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
         attributes[attr_name] = Attribute(attr_name, attr_type, default, init, context)
 
     # auto_attribs means we generate attributes from annotated variables.
-    auto_attribs = get_bool_argument(decorator, "auto_attribs", attrs_arguments)
+    auto_attribs = get_bool_argument(decorator, attrs.auto_attribs)
 
     # Walk the mro in reverse looking for those yummy attributes.
     for info in reversed(ctx.cls.info.mro):
@@ -549,18 +576,17 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
 
                 func_name = called_function(stmt.rvalue)
 
-                if func_name in attr_attrib_makers:
+                if func_name in attribs:
                     assert isinstance(stmt.rvalue, CallExpr)
-                    func_arguments = attr_attrib_makers[func_name]
+                    attrib = attribs[func_name]
 
                     # Look for default=<something> in the call.  Note: This fails if someone
                     # passes the _NOTHING sentinel object into attrs.
-                    attr_has_default = bool(get_argument(stmt.rvalue, "default",
-                                                         func_arguments))
+                    attr_has_default = bool(get_argument(stmt.rvalue, attrib.default))
 
                     # If the type isn't set through annotation but it is passed through type=
                     # use that.
-                    type_arg = get_argument(stmt.rvalue, "type", func_arguments)
+                    type_arg = get_argument(stmt.rvalue, attrib.type)
                     if type_arg and not typ:
                         try:
                             un_type = expr_to_unanalyzed_type(type_arg)
@@ -570,7 +596,7 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
                             typ = ctx.api.anal_type(un_type)
 
                     add_attribute(name, typ, attr_has_default,
-                                  get_bool_argument(stmt.rvalue, "init", func_arguments),
+                                  get_bool_argument(stmt.rvalue, attrib.init),
                                   stmt)
                 else:
                     if auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
@@ -622,7 +648,7 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
         if add_to_body:
             info.defn.defs.body.append(func)
 
-    if get_bool_argument(decorator, "init", attrs_arguments):
+    if get_bool_argument(decorator, attrs.init):
         # Generate the __init__ method.
 
         # Check the init args for correct default-ness.  Note: This has to be done after all the
@@ -650,7 +676,7 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
                 if isinstance(func_type, CallableType):
                     func_type.arg_types[0] = ctx.api.class_type(ctx.cls.info)
 
-    if get_bool_argument(decorator, "frozen", attrs_arguments):
+    if get_bool_argument(decorator, attrs.frozen):
         # If the class is frozen then all the attributes need to be turned into properties.
         for name in attributes:
             node = ctx.cls.info.names[name].node
@@ -658,7 +684,7 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
             node.is_initialized_in_class = False
             node.is_property = True
 
-    if get_bool_argument(decorator, "cmp", attrs_arguments):
+    if get_bool_argument(decorator, attrs.cmp):
         # Generate cmp methods that look like this:
         #   def __ne__(self, other: '<class name>') -> bool: ...
         # We use fullname to handle nested classes, splitting to remove the module name.
