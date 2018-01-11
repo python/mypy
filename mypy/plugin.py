@@ -442,7 +442,7 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
 
     def get_argument(call: CallExpr, arg_name: str,
                      func_args: OrderedDict) -> Optional[Expression]:
-        """Return the """
+        """Return the expression for the specific argument."""
         arg_num = list(func_args).index(arg_name)
         assert arg_num >= 0, "Function doesn't have arg {}".format(arg_name)
         for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
@@ -452,28 +452,32 @@ def attr_class_maker_callback(ctx: ClassDefContext) -> None:
                 return attr_value
         return None
 
-    def get_bool_argument(call: CallExpr, arg_name: str, func_args: OrderedDict) -> Optional[bool]:
-        attr_value = get_argument(call, arg_name, func_args)
-        if attr_value:
-            # TODO: Handle None being returned here.
-            return ctx.api.parse_bool(attr_value)
-        ret = func_args[arg_name]
-        assert isinstance(ret, bool), "Default value for {} isn't boolean".format(arg_name)
-        return ret
+    def get_bool_argument(expr: Expression, arg_name: str, func_args: OrderedDict) -> bool:
+        """Return the value of an argument name in the give Expression.
+
+        If it's a CallExpr and the argument is one of the args then return it.
+        Otherwise return the default value for the argument.
+        """
+        default = func_args[arg_name]
+        assert isinstance(default, bool), "Default value for {} isn't boolean".format(arg_name)
+
+        if isinstance(expr, CallExpr):
+            attr_value = get_argument(expr, arg_name, func_args)
+            if attr_value:
+                # TODO: Handle None being returned here.
+                ret = ctx.api.parse_bool(attr_value)
+                if ret is None:
+                    ctx.api.fail('"{}" argument must be True or False.'.format(arg_name), expr)
+                    return default
+                return ret
+        return default
 
     decorator = ctx.reason
 
-    # Default values of attr.s()
-    init = True  # type: Optional[bool]
-    cmp = True  # type: Optional[bool]
-    auto_attribs = False  # type: Optional[bool]
-
-    if isinstance(decorator, CallExpr):
-        # Read call arguments.
-        # TODO handle these returning None (e.g. bool=SOMETHING_ELSE)
-        init = get_bool_argument(decorator, "init", attrs_arguments)
-        cmp = get_bool_argument(decorator, "cmp", attrs_arguments)
-        auto_attribs = get_bool_argument(decorator, "auto_attribs", attrs_arguments)
+    # Read the arguments off of attr.s() or the defaults of attr.s
+    init = get_bool_argument(decorator, "init", attrs_arguments)
+    cmp = get_bool_argument(decorator, "cmp", attrs_arguments)
+    auto_attribs = get_bool_argument(decorator, "auto_attribs", attrs_arguments)
 
     if not init and not cmp:
         # Nothing to add.
