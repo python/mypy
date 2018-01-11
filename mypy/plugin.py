@@ -10,8 +10,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var,
     FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode, ARG_POS,
-    ARG_OPT, EllipsisExpr, NameExpr, Node
-)
+    ARG_OPT, EllipsisExpr, NameExpr, Node, Decorator, MemberExpr)
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
@@ -499,10 +498,20 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
 
     # Walk the class body (including the MRO) looking for the attributes.
 
-    class Attribute(NamedTuple('Attribute', [('name', str), ('type', Type), ('has_default', bool),
-                                             ('init', bool), ('context', Context)])):
+    class Attribute:
+        """An attribute that belongs to this class."""
+
+        def __init__(self, name: str, type: Type,
+                     has_default: bool, init: bool, context: Context) -> None:
+            # I really wanted to use attrs for this.  :)
+            self.name = name
+            self.type = type
+            self.has_default = has_default
+            self.init = init
+            self.context = context
 
         def argument(self) -> Argument:
+            """Return this attribute as an argument to __init__."""
             # Attrs removes leading underscores when creating the __init__ arguments.
             return Argument(Var(self.name.strip("_"), self.type), self.type,
                             EllipsisExpr() if self.has_default else None,
@@ -567,6 +576,26 @@ def attr_class_maker_callback(attrs_arguments: 'OrderedDict[str, Any]',
                         # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
                         has_rhs = not isinstance(stmt.rvalue, TempNode)
                         add_attribute(name, typ, has_rhs, True, stmt)
+            elif isinstance(stmt, Decorator):
+                # Look for attr specific decorators.  ('x.default' and 'x.validator')
+                remove_me = []
+                for func_decorator in stmt.decorators:
+                    if (isinstance(func_decorator, MemberExpr)
+                            and isinstance(func_decorator.expr, NameExpr)
+                            and func_decorator.expr.name in attributes):
+                        if func_decorator.name == 'default':
+                            # This decorator lets you set a default after the fact.
+                            attributes[func_decorator.expr.name].has_default = True
+
+                        if func_decorator.name in ('default', 'validator'):
+                            # These are decorators on the attrib object that only exist during
+                            # class creation time.  In order to not trigger a type error later we
+                            # just remove them.  This might leave us with a Decorator with no
+                            # decorators (Emperor's new clothes?)
+                            remove_me.append(func_decorator)
+
+                for dec in remove_me:
+                    stmt.decorators.remove(dec)
 
     function_type = ctx.api.named_type('__builtins__.function')
 
