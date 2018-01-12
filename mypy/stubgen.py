@@ -593,7 +593,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         name = repr(getattr(rvalue.args[0], 'value', '<ERROR>'))
         if isinstance(rvalue.args[1], StrExpr):
             items = repr(rvalue.args[1].value)
-        elif isinstance(rvalue.args[1], ListExpr):
+        elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
             items = '[%s]' % ', '.join(repr(item.value) for item in list_items)
         else:

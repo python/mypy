@@ -569,6 +569,20 @@ _X = namedtuple('_X', ['a', 'b'])
 
 class Y(_X): ...
 
+[case testNamedtupleAltSyntaxFieldsTuples]
+from collections import namedtuple, x
+X = namedtuple('X', ())
+Y = namedtuple('Y', ('a',))
+Z = namedtuple('Z', ('a', 'b', 'c', 'd', 'e'))
+[out]
+from collections import namedtuple
+
+X = namedtuple('X', [])
+
+Y = namedtuple('Y', ['a'])
+
+Z = namedtuple('Z', ['a', 'b', 'c', 'd', 'e'])
+
 [case testArbitraryBaseClass]
 import x
 class D(x.C): ...
