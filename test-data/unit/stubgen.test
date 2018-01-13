@@ -853,3 +853,23 @@ noalias3: bool
 
 -- More features/fixes:
 --   do not export deleted names
+
+[case testFunctionNoReturnInfersReturnNone]
+def f():
+    x = 1
+[out]
+def f() -> None: ...
+
+[case testFunctionReturnNoReturnType]
+def f():
+    return 1
+def g():
+    return
+[out]
+def f(): ...
+def g(): ...
+
+[case testFunctionEllipsisInfersReturnNone]
+def f(): ...
+[out]
+def f() -> None: ...
