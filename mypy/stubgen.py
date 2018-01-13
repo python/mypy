@@ -818,6 +818,7 @@ def has_return_statement(fdef: FuncBase) -> bool:
     class ReturnSeeker(mypy.traverser.TraverserVisitor):
         def __init__(self) -> None:
             self.found = False
+
         def visit_return_stmt(self, o: ReturnStmt) -> None:
             self.found = True
 
