@@ -956,6 +956,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
 
+    def is_namedtuple_classdef(self, defn: ClassDef):
+        return 'typing.NamedTuple' in [ getattr(base_expr, 'fullname', None) for base_expr in defn.base_type_exprs ]
+
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> Optional[TypeInfo]:
         # special case for NamedTuple
         for base_expr in defn.base_type_exprs:
@@ -964,10 +967,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 if base_expr.fullname == 'typing.NamedTuple':
                     node = self.lookup(defn.name, defn)
                     if node is not None:
+                        if self.type or self.is_func_scope():
+                            name = defn.name + '@' + str(defn.line)
+                        else:
+                            name = defn.name
                         node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
                         items, types, default_items = self.check_namedtuple_classdef(defn)
                         info = self.build_namedtuple_typeinfo(
-                            defn.name, items, types, default_items)
+                            name, items, types, default_items)
                         node.node = info
                         defn.info.replaced = info
                         defn.info = info
@@ -1046,7 +1053,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 local_name = defn.info._fullname + '@' + str(defn.line)
                 defn.info._fullname = self.cur_mod_id + '.' + local_name
                 defn.fullname = defn.info._fullname
-                self.globals[local_name] = node
+                if self.type and self.is_namedtuple_classdef(defn):
+                    # Special Case for NamedTuple: store in class because that is what NamedTuples expect.
+                    self.type.names[local_name] = node
+                else:
+                    self.globals[local_name] = node
+
+
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes.
