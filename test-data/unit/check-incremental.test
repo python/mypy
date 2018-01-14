@@ -1925,6 +1925,21 @@ tmp/crash.py:17: error: Revealed type is 'crash.B@13[builtins.int*]'
 main:2: error: Revealed type is 'crash.A@5'
 main:3: error: Revealed type is 'crash.B@13[builtins.int*]'
 
+[case testIncrementalSubclassNamedTuple]
+from a import C
+reveal_type(C().a)
+[file a.py]
+from typing import NamedTuple
+class C:
+    def __init__(self) -> None:
+        class A(NamedTuple):
+            x: int
+        self.a = A(1)
+[out1]
+main:2: error: Revealed type is 'Tuple[builtins.int, fallback=a.C.A@4]'
+[out2]
+main:2: error: Revealed type is 'Tuple[builtins.int, fallback=a.C.A@4]'
+
 [case testGenericMethodRestoreMetaLevel]
 from typing import Dict
 
