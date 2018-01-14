@@ -956,8 +956,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
 
-    def is_namedtuple_classdef(self, defn: ClassDef):
-        return 'typing.NamedTuple' in [ getattr(base_expr, 'fullname', None) for base_expr in defn.base_type_exprs ]
+    def is_namedtuple_classdef(self, defn: ClassDef) -> bool:
+        base_exprs = defn.base_type_exprs
+        return any(getattr(b, 'fullname', None) == 'typing.NamedTuple' for b in base_exprs)
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> Optional[TypeInfo]:
         # special case for NamedTuple
@@ -1054,12 +1055,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 defn.info._fullname = self.cur_mod_id + '.' + local_name
                 defn.fullname = defn.info._fullname
                 if self.type and self.is_namedtuple_classdef(defn):
-                    # Special Case for NamedTuple: store in class because that is what NamedTuples expect.
+                    # Special case for NamedTuple.
                     self.type.names[local_name] = node
                 else:
                     self.globals[local_name] = node
-
-
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes.
