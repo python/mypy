@@ -1606,8 +1606,6 @@ class B(A):
     def __add__(self, x: str) -> A: pass
     @overload
     def __add__(self, x: type) -> A: pass
-[out]
-tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
 
 [case testOverloadedOperatorMethodOverrideWithSwitchedItemOrder]
 from foo import *
@@ -2771,6 +2769,88 @@ reveal_type(f(A()))  # E: Revealed type is 'foo.A'
 reveal_type(f(AChild()))  # E: Revealed type is 'foo.A'
 reveal_type(f(B()))  # E: Revealed type is 'foo.B'
 reveal_type(f(BChild()))  # E: Revealed type is 'foo.B'
+[builtins fixtures/classmethod.pyi]
+[out]
+
+[case testSubtypeWithMoreOverloadsThanSupertypeSucceeds]
+from foo import *
+[file foo.pyi]
+from typing import overload
+
+
+class X: pass
+class Y: pass
+class Z: pass
+
+
+class A:
+    @overload
+    def f(self, x: X) -> X: pass
+    @overload
+    def f(self, y: Y) -> Y: pass
+
+class B(A):
+    @overload
+    def f(self, x: X) -> X: pass
+    @overload
+    def f(self, y: Y) -> Y: pass
+    @overload
+    def f(self, z: Z) -> Z: pass
+[builtins fixtures/classmethod.pyi]
+[out]
+
+[case testSubtypeOverloadCoveringMultipleSupertypeOverloadsSucceeds]
+from foo import *
+[file foo.pyi]
+from typing import overload
+
+
+class A: pass
+class B(A): pass
+class C(A): pass
+class D: pass
+
+
+class Super:
+    @overload
+    def foo(self, a: B) -> C: pass
+    @overload
+    def foo(self, a: C) -> A: pass
+    @overload
+    def foo(self, a: D) -> D: pass
+
+class Sub(Super):
+    @overload
+    def foo(self, a: A) -> C: pass
+    @overload
+    def foo(self, a: D) -> D: pass
+[builtins fixtures/classmethod.pyi]
+[out]
+
+[case testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType]
+from foo import *
+[file foo.pyi]
+from typing import overload
+
+
+class A: pass
+class B(A): pass
+class C: pass
+
+
+class Super:
+    @overload
+    def foo(self, a: A) -> A: pass
+    @overload
+    def foo(self, a: C) -> C: pass
+
+class Sub(Super):
+    @overload  # E: Signature of "foo" incompatible with supertype "Super"
+    def foo(self, a: A) -> A: pass
+    @overload
+    def foo(self, a: B) -> C: pass
+    @overload
+    def foo(self, a: C) -> C: pass
 [builtins fixtures/classmethod.pyi]
 [out]
 
