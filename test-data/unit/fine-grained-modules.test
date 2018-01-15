@@ -619,3 +619,15 @@ import x
 a/b.py:3: error: Revealed type is 'Any'
 ==
 a/b.py:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testDeleteModuleWithinPackageInitIgnored]
+# cmd: mypy x.py a/b.py
+# flags: --follow-imports=skip --ignore-missing-imports
+[file x.py]
+import a.b
+[file a/__init__.py]
+[file a/b.py]
+x = 1
+[delete a/b.py.2]
+[out]
+==

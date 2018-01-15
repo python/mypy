@@ -493,9 +493,13 @@ def delete_module(module_id: str,
         del manager.saved_cache[module_id]
     components = module_id.split('.')
     if len(components) > 1:
-        parent = manager.modules['.'.join(components[:-1])]
-        if components[-1] in parent.names:
-            del parent.names[components[-1]]
+        # Delete reference to module in parent module.
+        parent_id = '.'.join(components[:-1])
+        # If parent module is ignored, it won't be included in the modules dictionary.
+        if parent_id in manager.modules:
+            parent = manager.modules[parent_id]
+            if components[-1] in parent.names:
+                del parent.names[components[-1]]
     return new_graph
 
 
