@@ -137,7 +137,7 @@ class FineGrainedSuite(DataSuite):
         description.
         """
         # TODO: Support defining separately for each incremental step.
-        m = re.search('# cmd: mypy ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
+        m = re.search('# cmd: mypy ([a-zA-Z0-9_./ ]+)$', program_text, flags=re.MULTILINE)
         if m:
             # The test case wants to use a non-default set of files.
             paths = m.group(1).strip().split()
