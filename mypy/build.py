@@ -52,6 +52,7 @@ from mypy.types import Type
 from mypy.version import __version__
 from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
+from mypy.server.deps import get_dependencies
 
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
@@ -1183,6 +1184,7 @@ def compute_hash(text: str) -> str:
 
 
 def write_cache(id: str, path: str, tree: MypyFile,
+                fine_grained_deps: Dict[str, List[str]],
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
                 old_interface_hash: str, source_hash: str,
@@ -1221,7 +1223,9 @@ def write_cache(id: str, path: str, tree: MypyFile,
     assert os.path.dirname(meta_json) == parent
 
     # Serialize data and analyze interface
-    data = tree.serialize()
+    data = {'tree': tree.serialize(),
+            'fine_grained_deps': fine_grained_deps,
+           }
     if manager.options.debug_cache:
         data_str = json.dumps(data, indent=2, sort_keys=True)
     else:
@@ -1523,6 +1527,8 @@ class State:
     # Whether the module has an error or any of its dependencies have one.
     transitive_error = False
 
+    fine_grained_deps = None  # type: Dict[str, Set[str]]
+
     # Type checker used for checking this file.  Use type_checker() for
     # access and to construct this on demand.
     _type_checker = None  # type: Optional[TypeChecker]
@@ -1551,6 +1557,7 @@ class State:
         self.id = id or '__main__'
         self.options = manager.options.clone_for_module(self.id)
         self._type_checker = None
+        self.fine_grained_deps = {}
         if not path and source is None:
             assert id is not None
             file_id = id
@@ -1734,7 +1741,9 @@ class State:
         with open(self.meta.data_json) as f:
             data = json.load(f)
         # TODO: Assert data file wasn't changed.
-        self.tree = MypyFile.deserialize(data)
+        self.tree = MypyFile.deserialize(data['tree'])
+        self.fine_grained_deps = {k: set(v) for k, v in data['fine_grained_deps']}
+
         self.manager.modules[self.id] = self.tree
         self.manager.add_stats(fresh_trees=1)
 
@@ -1977,6 +1986,19 @@ class State:
             elif dep not in self.suppressed and dep in self.manager.missing_modules:
                 self.suppressed.append(dep)
 
+    def find_fine_grained_deps(self) -> None:
+        assert self.tree is not None
+        if '/typeshed/' in self.xpath or self.xpath.startswith('typeshed/'):
+            # We don't track changes to typeshed -- the assumption is that they are only changed
+            # as part of mypy updates, which will invalidate everything anyway.
+            #
+            # TODO: Not a reliable test, as we could have a package named typeshed.
+            # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
+            return
+        self.fine_grained_deps = get_dependencies(target=self.tree,
+                                                  type_map=self.type_map(),
+                                                  python_version=self.options.python_version)
+
     def valid_references(self) -> Set[str]:
         assert self.ancestors is not None
         valid_refs = set(self.dependencies + self.suppressed + self.ancestors)
@@ -2003,6 +2025,7 @@ class State:
         dep_prios = self.dependency_priorities()
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
+            {k: list(v) for k, v in self.fine_grained_deps.items()},
             list(self.dependencies), list(self.suppressed), list(self.child_modules),
             dep_prios, self.interface_hash, self.source_hash, self.ignore_all,
             self.manager)
@@ -2534,6 +2557,8 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
             graph[id].transitive_error = True
     for id in stale:
         graph[id].finish_passes()
+        if manager.options.cache_fine_grained:
+            graph[id].find_fine_grained_deps()
         graph[id].generate_unused_ignore_notes()
         manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
         graph[id].write_cache()
