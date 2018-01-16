@@ -246,7 +246,11 @@ class Server:
         self.file_modified = {}  # type: Dict[str, float]
         for source in sources:
             assert source.path
-            self.file_modified[source.path] = os.stat(source.path).st_mtime
+            try:
+                self.file_modified[source.path] = os.stat(source.path).st_mtime
+            except FileNotFoundError:
+                # Don't crash if passed a non-existent file.
+                pass
         try:
             # TODO: alt_lib_path
             result = mypy.build.build(sources=sources,
@@ -285,10 +289,18 @@ class Server:
         for source in sources:
             path = source.path
             assert path
-            mtime = os.stat(path).st_mtime
-            if path not in self.file_modified or self.file_modified[path] != mtime:
-                self.file_modified[path] = mtime
-                changed.append((source.module, path))
+            try:
+                mtime = os.stat(path).st_mtime
+            except FileNotFoundError:
+                # A non-existent file was included on the command line.
+                #
+                # TODO: Generate error if file is missing (if not ignoring missing imports)
+                if path in self.file_modified:
+                    changed.append((source.module, path))
+            else:
+                if path not in self.file_modified or self.file_modified[path] != mtime:
+                    self.file_modified[path] = mtime
+                    changed.append((source.module, path))
         modules = {source.module for source in sources}
         omitted = [source for source in self.previous_sources if source.module not in modules]
         for source in omitted:
