@@ -2383,6 +2383,13 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
             process_stale_scc(graph, scc, manager)
 
+    # If we are running in fine-grained incremental mode with caching,
+    # we need to always process fresh SCCs.
+    if manager.options.use_fine_grained_cache:
+        for prev_scc in fresh_scc_queue:
+            process_fresh_scc(graph, prev_scc, manager)
+        fresh_scc_queue = []
+
     sccs_left = len(fresh_scc_queue)
     nodes_left = sum(len(scc) for scc in fresh_scc_queue)
     manager.add_stats(sccs_left=sccs_left, nodes_left=nodes_left)

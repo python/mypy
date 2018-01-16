@@ -99,13 +99,16 @@ class Server:
             sys.exit("dmypy: start/restart should not disable incremental mode")
         if options.quick_and_dirty:
             sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
+        if options.use_fine_grained_cache and not options.fine_grained_incremental:
+            sys.exit("dmypy: fine-grained cache can only be used in experimental mode")
         self.options = options
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
         if self.fine_grained:
             options.incremental = True
             options.show_traceback = True
-            options.cache_dir = os.devnull
+            if not options.use_fine_grained_cache:
+                options.cache_dir = os.devnull
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""

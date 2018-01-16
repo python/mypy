@@ -395,6 +395,8 @@ def process_options(args: List[str],
     if server_options:
         parser.add_argument('--experimental', action='store_true', dest='fine_grained_incremental',
                             help="enable fine-grained incremental mode")
+        parser.add_argument('--use-fine-grained-cache', action='store_true',
+                            help="use the cache in fine-grained incremental mode")
 
     report_group = parser.add_argument_group(
         title='report generation',
