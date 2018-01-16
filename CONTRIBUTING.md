@@ -109,6 +109,9 @@ which consist mainly of a reference to
 [PEP 8](https://www.python.org/dev/peps/pep-0008/) -- for the code you
 put in the pull request.
 
+Also, do not squash your commits after you have submitted a pull request, as this
+erases context during review. We can squash commits when the pull request is merged.
+
 You may also find other pages in the
 [Mypy developer guide](https://github.com/python/mypy/wiki/Developer-Guides)
 helpful in developing your change.
