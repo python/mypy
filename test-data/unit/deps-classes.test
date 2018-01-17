@@ -49,3 +49,20 @@ class C:
 [out]
 <m.C.x> -> m.C.__init__
 <m.C> -> m.C
+
+[case testClassNestedWithinFunction]
+class C: pass
+
+def f() -> None:
+    class S1(C): pass
+
+class D:
+    def g(self) -> None:
+        class S2(C): pass
+[out]
+-- TODO: Is it okay to have targets like m.S1@4.__init__?
+<m.C.__init__> -> <m.S1@4.__init__>, <m.S2@8.__init__>
+<m.C> -> m.C, m.D.g, m.f
+<m.D.g> -> m.D.g
+<m.D> -> m.D
+<m.f> -> m.f

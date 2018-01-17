@@ -1534,3 +1534,32 @@ def g() -> None:
     x.f(a)
 [out]
 ==
+
+[case testRefreshSubclassNestedInFunction1]
+from a import C
+def f() -> None:
+    class D(C): pass
+[file a.py]
+class C: pass
+[file a.py.2]
+[out]
+==
+main:1: error: Module 'a' has no attribute 'C'
+
+[case testRefreshSubclassNestedInFunction2]
+from a import C
+def f() -> None:
+    class D(C):
+        def g(self) -> None:
+            super().__init__()
+    d = D()
+[file a.py]
+class C:
+    def __init__(self) -> None: pass
+[file a.py.2]
+class C:
+    def __init__(self, x: int) -> None: pass
+[out]
+==
+main:5: error: Too few arguments for "__init__" of "C"
+main:6: error: Too few arguments for "D"
