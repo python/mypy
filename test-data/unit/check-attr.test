@@ -423,22 +423,32 @@ D() == int
 
 [case testAttrsComplexSuperclass]
 import attr
-
-import attr
 @attr.s
-class C(object):
+class C:
     x: int = attr.ib(default=1)
     y: int = attr.ib()
     @y.default
     def name_does_not_matter(self):
         return self.x + 1
-
-
 @attr.s
 class A(C):
     z: int = attr.ib(default=18)
-
 reveal_type(C)  # E: Revealed type is 'def (x: builtins.int =, y: builtins.int =) -> __main__.C'
 reveal_type(A)  # E: Revealed type is 'def (x: builtins.int =, y: builtins.int =, z: builtins.int =) -> __main__.A'
+[builtins fixtures/list.pyi]
 
+[case testAttrsMultiAssign]
+import attr
+@attr.s
+class A:
+   x, y, z = attr.ib(), attr.ib(type=int), attr.ib(default=17)
+reveal_type(A) # E: Revealed type is 'def (x: Any, y: builtins.int, z: Any =) -> __main__.A'
+[builtins fixtures/list.pyi]
+
+[case testAttrsMultiAssign2]
+import attr
+@attr.s
+class A:
+   x = y = z = attr.ib()
+reveal_type(A) # E: Revealed type is 'def (x: Any, y: Any, z: Any) -> __main__.A'
 [builtins fixtures/list.pyi]

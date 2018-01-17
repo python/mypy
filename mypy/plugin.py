@@ -11,8 +11,7 @@ from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var,
     FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode,
     ARG_OPT, ARG_POS, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt, FuncBase,
-    Statement
-)
+    TupleExpr, ListExpr)
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
@@ -456,7 +455,7 @@ class Attribute:
         # Convert type not set to Any.
         _type = self.type or AnyType(TypeOfAny.unannotated)
         # Attrs removes leading underscores when creating the __init__ arguments.
-        return Argument(Var(self.name.strip("_"), _type), _type,
+        return Argument(Var(self.name.lstrip("_"), _type), _type,
                         None,
                         ARG_OPT if self.has_default else ARG_POS)
 
@@ -468,16 +467,15 @@ def attr_class_maker_callback(
 ) -> None:
     """Add necessary dunder methods to classes decorated with attr.s.
 
-    Currently supports init=, cmp= and frozen= and auto_attribs=.
+    attrs is a package that lets you define classes without writing dull boilerplate code.
+
+    At a quick glance, the decorator searches the class body for assignments of `attr.ib`s (or
+    annotated variables if auto_attribs=True), then depending on how the decorator is called,
+    it will add an __init__ or all the __cmp__ methods.  For frozen=True it will turn the attrs
+    into properties.
+
+    See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
     """
-    # attrs is a package that lets you define classes without writing dull boilerplate code.
-    #
-    # At a quick glance, the decorator searches the class body for assignments of `attr.ib`s (or
-    # annotated variables if auto_attribs=True), then depending on how the decorator is called,
-    # it will add an __init__ or all the __cmp__ methods.  For frozen=True it will turn the attrs
-    # into properties.
-    #
-    # See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
 
     def called_function(expr: Expression) -> Optional[str]:
         """Return the full name of the function being called by the expr, or None."""
@@ -488,8 +486,7 @@ def attr_class_maker_callback(
     def get_callable_type(call: CallExpr) -> Optional[CallableType]:
         """Get the CallableType that's attached to a CallExpr."""
         callable_type = None
-        if (isinstance(call, CallExpr)
-                and isinstance(call.callee, RefExpr)
+        if (isinstance(call.callee, RefExpr)
                 and isinstance(call.callee.node, Var)
                 and call.callee.node.type):
             callee_type = call.callee.node.type
@@ -521,7 +518,7 @@ def attr_class_maker_callback(
         return None
 
     def get_bool_argument(expr: Expression, name: str, default: bool) -> bool:
-        """Return the value of an argument name in the give Expression.
+        """Return the value of an argument name in the given Expression.
 
         If it's a CallExpr and the argument is one of the args then return it.
         Otherwise return the default value for the argument.
@@ -547,114 +544,134 @@ def attr_class_maker_callback(
     # auto_attribs means we also generate Attributes from annotated variables.
     auto_attribs = get_bool_argument(decorator, 'auto_attribs', auto_attribs_default)
 
-    def get_attributes_for_body(body: List[Statement]) -> List[Attribute]:
-        attributes = OrderedDict()  # type: OrderedDict[str, Attribute]
+    # First, walk the body looking for attribute definitions.
+    # They will look like this:
+    #     x = attr.ib()
+    #     x = y = attr.ib()
+    #     x, y = attr.ib(), attr.ib()
+    # or if auto_attribs is enabled also like this:
+    #     x: type
+    #     x: type = default_value
+    own_attrs = OrderedDict()  # type: OrderedDict[str, Attribute]
+    for stmt in ctx.cls.info.defn.defs.body:
+        if isinstance(stmt, AssignmentStmt):
+            for lvalue in stmt.lvalues:
+                lhss = []  # type: List[NameExpr]
+                rvalues = []  # type: List[Expression]
+                # To handle all types of assignments we just convert everything
+                # to a matching lists of lefts and rights.
+                if isinstance(lvalue, (TupleExpr, ListExpr)):
+                    if all(isinstance(item, NameExpr) for item in lvalue.items):
+                        lhss = cast(List[NameExpr], lvalue.items)
+                    if isinstance(stmt.rvalue, (TupleExpr, ListExpr)):
+                        rvalues = stmt.rvalue.items
+                elif isinstance(lvalue, NameExpr):
+                    lhss = [lvalue]
+                    rvalues = [stmt.rvalue]
 
-        for stmt in body:
-            if isinstance(stmt, AssignmentStmt) and isinstance(stmt.lvalues[0], NameExpr):
-                lhs = stmt.lvalues[0]
-                assert isinstance(lhs, NameExpr)
-                name = lhs.name
-                typ = stmt.type
+                if len(lhss) != len(rvalues):
+                    # This means we have some assignment that isn't 1 to 1.
+                    # It can't be an attrib.
+                    continue
 
-                func_name = called_function(stmt.rvalue)
+                for lhs, rvalue in zip(lhss, rvalues):
+                    typ = stmt.type
+                    name = lhs.name
+                    func_name = called_function(rvalue)
 
-                if func_name in attr_attrib_makers:
-                    assert isinstance(stmt.rvalue, CallExpr)
-                    # Look for default=<something> in the call.
-                    # TODO: Check for attr.NOTHING
-                    attr_has_default = bool(get_argument(stmt.rvalue, 'default'))
+                    if func_name in attr_attrib_makers:
+                        assert isinstance(rvalue, CallExpr)
+                        # Look for default=<something> in the call.
+                        # TODO: Check for attr.NOTHING
+                        attr_has_default = bool(get_argument(rvalue, 'default'))
 
-                    # If the type isn't set through annotation but it is passed through type=
-                    # use that.
-                    type_arg = get_argument(stmt.rvalue, 'type')
-                    if type_arg and not typ:
-                        try:
-                            un_type = expr_to_unanalyzed_type(type_arg)
-                        except TypeTranslationError:
-                            ctx.api.fail('Invalid argument to type', type_arg)
-                        else:
-                            typ = ctx.api.anal_type(un_type)
-                            if typ and isinstance(lhs.node, Var) and not lhs.node.type:
-                                # If there is no annotation, add one.
-                                lhs.node.type = typ
-                                lhs.is_inferred_def = False
+                        # If the type isn't set through annotation but it is passed through type=
+                        # use that.
+                        type_arg = get_argument(rvalue, 'type')
+                        if type_arg and not typ:
+                            try:
+                                un_type = expr_to_unanalyzed_type(type_arg)
+                            except TypeTranslationError:
+                                ctx.api.fail('Invalid argument to type', type_arg)
+                            else:
+                                typ = ctx.api.anal_type(un_type)
+                                if typ and isinstance(lhs.node, Var) and not lhs.node.type:
+                                    # If there is no annotation, add one.
+                                    lhs.node.type = typ
+                                    lhs.is_inferred_def = False
 
-                    # If the attrib has a converter function take the type of the first argument
-                    # as the init type.
-                    converter = get_argument(stmt.rvalue, 'converter')
-                    convert = get_argument(stmt.rvalue, 'convert')
+                        # If the attrib has a converter function take the type of the first
+                        # argument as the init type.
+                        # Note: convert is deprecated but works the same as converter.
+                        converter = get_argument(rvalue, 'converter')
+                        convert = get_argument(rvalue, 'convert')
+                        if convert and converter:
+                            ctx.api.fail("Can't pass both `convert` and `converter`.", rvalue)
+                        elif convert:
+                            converter = convert
+                        if (converter
+                                and isinstance(converter, RefExpr)
+                                and converter.node
+                                and isinstance(converter.node, FuncBase)
+                                and converter.node.type
+                                and isinstance(converter.node.type, CallableType)
+                                and converter.node.type.arg_types):
+                            typ = converter.node.type.arg_types[0]
 
-                    if convert and converter:
-                        ctx.api.fail("Can't pass both `convert` and `converter`.", stmt.rvalue)
-                    elif convert:
-                        # Note: Convert is deprecated but works the same.
-                        converter = convert
+                        # Does this even have to go in init.
+                        init = get_bool_argument(rvalue, 'init', True)
 
-                    if (converter
-                            and isinstance(converter, RefExpr)
-                            and converter.node
-                            and isinstance(converter.node, FuncBase)
-                            and converter.node.type
-                            and isinstance(converter.node.type, CallableType)
-                            and converter.node.type.arg_types):
-                        typ = converter.node.type.arg_types[0]
+                        # When attrs are defined twice in the same body we want to use
+                        # the 2nd definition in the 2nd location. So remove it from the
+                        # OrderedDict
+                        if name in own_attrs:
+                            del own_attrs[name]
+                        own_attrs[name] = Attribute(name, typ, attr_has_default, init, stmt)
+                    elif auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
+                        # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
+                        has_rhs = not isinstance(rvalue, TempNode)
+                        if name in own_attrs:
+                            del own_attrs[name]
+                        own_attrs[name] = Attribute(name, typ, has_rhs, True, stmt)
 
-                    # Does this even have to go in init?
-                    init = get_bool_argument(stmt.rvalue, 'init', True)
+        elif isinstance(stmt, Decorator):
+            # Look for attr specific decorators.  ('x.default' and 'x.validator')
+            remove_me = []
+            for func_decorator in stmt.decorators:
+                if (isinstance(func_decorator, MemberExpr)
+                        and isinstance(func_decorator.expr, NameExpr)
+                        and func_decorator.expr.name in own_attrs):
 
-                    if name in attributes:
-                        del attributes[name]
-                    attributes[name] = Attribute(name, typ, attr_has_default, init, stmt)
-                elif auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
-                    # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
-                    has_rhs = not isinstance(stmt.rvalue, TempNode)
-                    if name in attributes:
-                        del attributes[name]
-                    attributes[name] = Attribute(name, typ, has_rhs, True, stmt)
+                    if func_decorator.name == 'default':
+                        # This decorator lets you set a default after the fact.
+                        own_attrs[func_decorator.expr.name].has_default = True
 
-            elif isinstance(stmt, Decorator):
-                # Look for attr specific decorators.  ('x.default' and 'x.validator')
-                remove_me = []
-                for func_decorator in stmt.decorators:
-                    if (isinstance(func_decorator, MemberExpr)
-                            and isinstance(func_decorator.expr, NameExpr)
-                            and func_decorator.expr.name in attributes):
+                    if func_decorator.name in ('default', 'validator'):
+                        # These are decorators on the attrib object that only exist during
+                        # class creation time.  In order to not trigger a type error later we
+                        # just remove them.  This might leave us with a Decorator with no
+                        # decorators (Emperor's new clothes?)
+                        remove_me.append(func_decorator)
 
-                        if func_decorator.name == 'default':
-                            # This decorator lets you set a default after the fact.
-                            attributes[func_decorator.expr.name].has_default = True
+            for dec in remove_me:
+                stmt.decorators.remove(dec)
 
-                        if func_decorator.name in ('default', 'validator'):
-                            # These are decorators on the attrib object that only exist during
-                            # class creation time.  In order to not trigger a type error later we
-                            # just remove them.  This might leave us with a Decorator with no
-                            # decorators (Emperor's new clothes?)
-                            remove_me.append(func_decorator)
+    taken_attr_names = set(own_attrs)
+    super_attrs = []
 
-                for dec in remove_me:
-                    stmt.decorators.remove(dec)
-        return list(attributes.values())
+    # Traverse the MRO and collect attributes.
+    for super_info in ctx.cls.info.mro[1:-1]:
+        if super_info in attr_classes:
+            for a in attr_classes[super_info]:
+                # Only add an attribute if it hasn't been defined before.  This
+                # allows for overwriting attribute definitions by subclassing.
+                if a.name not in taken_attr_names:
+                    super_attrs.append(a)
+                    taken_attr_names.add(a.name)
 
-    def get_attributes(info: TypeInfo) -> List[Attribute]:
-        own_attrs = get_attributes_for_body(info.defn.defs.body)
-        super_attrs = []
-        taken_attr_names = {a.name: a for a in own_attrs}
-
-        # Traverse the MRO and collect attributes.
-        for super_info in info.mro[1:-1]:
-            if super_info in attr_classes:
-                for a in attr_classes[super_info]:
-                    prev_a = taken_attr_names.get(a.name)
-                    # Only add an attribute if it hasn't been defined before.  This
-                    # allows for overwriting attribute definitions by subclassing.
-                    if prev_a is None:
-                        super_attrs.append(a)
-                        taken_attr_names[a.name] = a
-
-        return super_attrs + own_attrs
-
-    attributes = get_attributes(ctx.cls.info)
+    attributes = super_attrs + list(own_attrs.values())
+    # Save the attributes so that subclasses can reuse them.
+    # TODO: Fix caching.
     attr_classes[ctx.cls.info] = attributes
 
     if ctx.api.options.disallow_untyped_defs:
