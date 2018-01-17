@@ -110,3 +110,57 @@ tmp/a.py:1: error: "int" not callable
 [out2]
 tmp/a.py:1: error: "int" not callable
 [out3]
+
+[case testNonExistentFileOnCommandLineFineGrainedIncremental1]
+# cmd: mypy -m a nonexistent
+# NOTE: 'nonexistent' is a magic module name understood by mypy.test.testdmypy
+[file a.py]
+[file a.py.2]
+1()
+[out1]
+mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+[out2]
+mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+
+[case testNonExistentFileOnCommandLineFineGrainedIncremental2]
+# cmd: mypy -m a
+# cmd2: mypy -m a nonexistent
+# NOTE: 'nonexistent' is a magic module name understood by mypy.test.testdmypy
+# TODO: Should generate an error for missing file
+[file a.py]
+[file a.py.2]
+1()
+[out1]
+[out2]
+tmp/a.py:1: error: "int" not callable
+
+[case testNonExistentFileOnCommandLineFineGrainedIncremental3]
+# cmd: mypy -m a
+# cmd2: mypy -m a nonexistent
+# NOTE: 'nonexistent' is a magic module name understood by mypy.test.testdmypy
+# TODO: Should generate an error for missing file
+[file a.py]
+[file nonexistent.py]
+[delete nonexistent.py.2]
+[out1]
+[out2]
+
+[case testNonExistentFileOnCommandLineFineGrainedIncremental4]
+# cmd: mypy -m a nonexistent
+# NOTE: 'nonexistent' is a magic module name understood by mypy.test.testdmypy
+# TODO: Should generate an error for missing file
+[file a.py]
+[file nonexistent.py]
+[delete nonexistent.py.2]
+[out1]
+[out2]
+
+[case testNonExistentFileOnCommandLineFineGrainedIncremental5]
+# cmd: mypy -m a nonexistent_stub
+# NOTE: 'nonexistent_stub' is a magic module name understood by mypy.test.testdmypy
+# TODO: Should generate an error for missing file
+[file a.py]
+[file nonexistent_stub.pyi]
+[delete nonexistent_stub.pyi.2]
+[out1]
+[out2]
