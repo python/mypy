@@ -1,5 +1,6 @@
 Note: if you are reporting a wrong signature of a function or a class in
-the standard library, then typeshed tracker is better suited for this report.
+the standard library, then the typeshed tracker is better suited
+for this report: https://github.com/python/typeshed/issues
 
 Please provide more information to help us understand the issue:
 
