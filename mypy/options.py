@@ -59,7 +59,7 @@ class Options:
         self.mypy_path = []  # type: List[str]
         self.report_dirs = {}  # type: Dict[str, str]
         self.ignore_missing_imports = False
-        self.ignore_missing_stubs = [] # type: List[str]
+        self.ignore_missing_stubs = []  # type: List[str]
         self.follow_imports = 'normal'  # normal|silent|skip|error
 
         # disallow_any options

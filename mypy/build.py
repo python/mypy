@@ -710,7 +710,8 @@ class BuildManager:
         elif moduleinfo.is_third_party_module(target):
             if target not in self.options.ignore_missing_stubs:
                 self.errors.report(line, 0, "No library stub file for module '{}'".format(target))
-                self.errors.report(line, 0, "(To suppress this error add this module to --ignore-missing-stubs)",
+                self.errors.report(
+                    line, 0, "(To suppress this error add this module to --ignore-missing-stubs)",
                     severity='note', only_once=True)
                 self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
         else:
