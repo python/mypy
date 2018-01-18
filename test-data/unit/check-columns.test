@@ -2,7 +2,7 @@
 # flags: --show-column-numbers
 1 +
 [out]
-main:2:4: error: invalid syntax
+main:2:5: error: invalid syntax
 
 
 [case testColumnsNestedFunctions]
@@ -15,8 +15,8 @@ def f() -> 'A':
 class A: pass
 class B: pass
 [out]
-main:5:8: error: Incompatible return value type (got "A", expected "B")
-main:6:4: error: Incompatible return value type (got "B", expected "A")
+main:5:9: error: Incompatible return value type (got "A", expected "B")
+main:6:5: error: Incompatible return value type (got "B", expected "A")
 
 [case testColumnsNestedFunctionsWithFastParse]
 # flags: --show-column-numbers
@@ -28,8 +28,8 @@ def f() -> 'A':
 class A: pass
 class B: pass
 [out]
-main:5:8: error: Incompatible return value type (got "A", expected "B")
-main:6:4: error: Incompatible return value type (got "B", expected "A")
+main:5:9: error: Incompatible return value type (got "A", expected "B")
+main:6:5: error: Incompatible return value type (got "B", expected "A")
 
 
 [case testColumnsMethodDefaultArgumentsAndSignatureAsComment]
@@ -40,28 +40,28 @@ class A:
         pass
 A().f()
 A().f(1)
-A().f('') # E:0: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-A().f(1, 1) # E:0: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
-A().f(1, 'hello', 'hi') # E:0: Too many arguments for "f" of "A"
+A().f('') # E:1: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f(1, 1) # E:1: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
+A().f(1, 'hello', 'hi') # E:1: Too many arguments for "f" of "A"
 
 [case testColumnsMultipleStatementsPerLine]
 # flags: --show-column-numbers
-x = 1
+x = 15
 y = 'hello'
 x = 2; y = x; y += 1
 [out]
-main:4:7: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-main:4:14: error: Unsupported operand types for + ("str" and "int")
+main:4:8: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:4:15: error: Unsupported operand types for + ("str" and "int")
 
 [case testColumnsSimpleIsinstance]
 # flags: --show-column-numbers
 import typing
 def f(x: object, n: int, s: str) -> None:
-    n = x # E:4: Incompatible types in assignment (expression has type "object", variable has type "int")
+    n = x # E:5: Incompatible types in assignment (expression has type "object", variable has type "int")
     if isinstance(x, int):
         n = x
-        s = x # E:8: Incompatible types in assignment (expression has type "int", variable has type "str")
-    n = x # E:4: Incompatible types in assignment (expression has type "object", variable has type "int")
+        s = x # E:9: Incompatible types in assignment (expression has type "int", variable has type "str")
+    n = x # E:5: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 [out]
 
