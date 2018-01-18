@@ -2595,7 +2595,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
         if literal(expr) >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
-            if restriction:
+            # If the current node is deferred, some variables may get Any types that they
+            # otherwise wouldn't have. We don't want to narrow down these since it may
+            # produce invalid inferred Optional[Any] types, at least.
+            if restriction and not (isinstance(known_type, AnyType)
+                                    and self.chk.current_node_deferred):
                 ans = narrow_declared_type(known_type, restriction)
                 return ans
         return known_type
