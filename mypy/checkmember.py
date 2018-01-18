@@ -467,8 +467,12 @@ def analyze_class_attribute_access(itype: Instance,
         return builtin_type('types.ModuleType')
 
     if is_decorated:
-        # TODO: Return type of decorated function. This is quick hack to work around #998.
-        return AnyType(TypeOfAny.special_form)
+        assert isinstance(node.node, Decorator)
+        if node.node.type:
+            return node.node.type
+        else:
+            not_ready_callback(name, context)
+            return AnyType(TypeOfAny.special_form)
     else:
         return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
 
