@@ -3447,3 +3447,22 @@ import m  # No error here
 tmp/m/a.py:1: error: Unsupported operand types for + ("int" and "str")
 [out2]
 tmp/m/a.py:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testDisallowAnyExprIncremental]
+# cmd: mypy -m main
+# flags:  --disallow-any-expr
+
+[file ns.py]
+class Namespace:
+    def __init__(self):
+        self.user = 0
+
+[file main.py]
+import ns
+user = ns.Namespace.user
+
+[out1]
+tmp/main.py:2: error: Expression has type "Any"
+
+[out2]
+tmp/main.py:2: error: Expression has type "Any"
