@@ -86,13 +86,11 @@ class Server:
     def __init__(self, flags: List[str]) -> None:
         """Initialize the server with the desired mypy flags."""
         self.saved_cache = {}  # type: mypy.build.SavedCache
-        if '--experimental' in flags:
-            self.fine_grained = True
-            self.fine_grained_initialized = False
-            flags.remove('--experimental')
-        else:
-            self.fine_grained = False
-        sources, options = mypy.main.process_options(['-i'] + flags, False)
+        self.fine_grained_initialized = False
+        sources, options = mypy.main.process_options(['-i'] + flags,
+                                                     require_targets=False,
+                                                     server_options=True)
+        self.fine_grained = options.fine_grained_incremental
         if sources:
             sys.exit("dmypy: start/restart does not accept sources")
         if options.report_dirs:

@@ -141,6 +141,7 @@ class Options:
         self.debug_cache = False
         self.quick_and_dirty = False
         self.skip_version_check = False
+        self.fine_grained_incremental = False
 
         # Paths of user plugins
         self.plugins = []  # type: List[str]

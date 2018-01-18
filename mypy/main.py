@@ -206,7 +206,8 @@ def invert_flag_name(flag: str) -> str:
 
 
 def process_options(args: List[str],
-                    require_targets: bool = True
+                    require_targets: bool = True,
+                    server_options: bool = False,
                     ) -> Tuple[List[BuildSource], Options]:
     """Parse command line arguments."""
 
@@ -389,6 +390,9 @@ def process_options(args: List[str],
     parser.add_argument('--no-fast-parser', action='store_true',
                         dest='special-opts:no_fast_parser',
                         help=argparse.SUPPRESS)
+    if server_options:
+        parser.add_argument('--experimental', action='store_true', dest='fine_grained_incremental',
+                            help="enable fine-grained incremental mode")
 
     report_group = parser.add_argument_group(
         title='report generation',
