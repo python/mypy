@@ -327,12 +327,12 @@ class AnyType(Type):
         return isinstance(other, AnyType)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'AnyType'}
+        return {'.class': 'AnyType', 'type_of_any': self.type_of_any.name}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'AnyType':
         assert data['.class'] == 'AnyType'
-        return AnyType(TypeOfAny.special_form)
+        return AnyType(TypeOfAny[data['type_of_any']])
 
 
 class UninhabitedType(Type):
