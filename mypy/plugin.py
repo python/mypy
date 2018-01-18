@@ -477,12 +477,6 @@ def attr_class_maker_callback(
     See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
     """
 
-    def called_function(expr: Expression) -> Optional[str]:
-        """Return the full name of the function being called by the expr, or None."""
-        if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
-            return expr.callee.fullname
-        return None
-
     def get_callable_type(call: CallExpr) -> Optional[CallableType]:
         """Get the CallableType that's attached to a CallExpr."""
         callable_type = None
@@ -556,10 +550,10 @@ def attr_class_maker_callback(
     for stmt in ctx.cls.info.defn.defs.body:
         if isinstance(stmt, AssignmentStmt):
             for lvalue in stmt.lvalues:
-                lhss = []  # type: List[NameExpr]
-                rvalues = []  # type: List[Expression]
                 # To handle all types of assignments we just convert everything
                 # to a matching lists of lefts and rights.
+                lhss = []  # type: List[NameExpr]
+                rvalues = []  # type: List[Expression]
                 if isinstance(lvalue, (TupleExpr, ListExpr)):
                     if all(isinstance(item, NameExpr) for item in lvalue.items):
                         lhss = cast(List[NameExpr], lvalue.items)
@@ -577,10 +571,11 @@ def attr_class_maker_callback(
                 for lhs, rvalue in zip(lhss, rvalues):
                     typ = stmt.type
                     name = lhs.name
-                    func_name = called_function(rvalue)
 
-                    if func_name in attr_attrib_makers:
-                        assert isinstance(rvalue, CallExpr)
+                    # Check if the right hand side is a call to an attribute maker.
+                    if (isinstance(rvalue, CallExpr)
+                            and isinstance(rvalue.callee, RefExpr)
+                            and rvalue.callee.fullname in attr_attrib_makers):
                         # Look for default=<something> in the call.
                         # TODO: Check for attr.NOTHING
                         attr_has_default = bool(get_argument(rvalue, 'default'))
