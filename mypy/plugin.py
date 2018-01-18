@@ -646,6 +646,10 @@ def attr_class_maker_callback(
                         # class creation time.  In order to not trigger a type error later we
                         # just remove them.  This might leave us with a Decorator with no
                         # decorators (Emperor's new clothes?)
+                        # TODO: Any way to type-check these?
+                        #       default should be Callable[[], T]
+                        #       validator should be Callable[[Any, 'Attribute', T], Any]
+                        #       where T is the type of the attribute.
                         remove_me.append(func_decorator)
 
             for dec in remove_me:
