@@ -262,6 +262,8 @@ def process_options(args: List[str],
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('--ignore-missing-imports', action='store_true',
                         help="silently ignore imports of missing modules")
+    parser.add_argument('--ignore-missing-stubs', nargs='+', metavar='MODULE', default=[],
+                        help="silently ignore missing library stubs for the specified modules")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
     parser.add_argument('--disallow-any-unimported', default=False, action='store_true',

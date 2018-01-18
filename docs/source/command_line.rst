@@ -10,6 +10,7 @@ flag (or its long form ``--help``)::
   $ mypy -h
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM] [-2]
               [--ignore-missing-imports]
+              [--ignore-missing-stubs MODULE [MODULE ...]]
               [--follow-imports {normal,silent,skip,error}]
               [--disallow-any-{unimported,expr,decorated,explicit,generics}]
               [--disallow-untyped-calls] [--disallow-untyped-defs]
@@ -205,10 +206,8 @@ may want to silence during your initial conquest:
     main.py:2: error: No library stub file for module 'flask'
     main.py:3: error: Cannot find module named 'sir_not_appearing_in_this_film'
 
-  If you see only a few of these you may be able to silence them by
-  putting ``# type: ignore`` on the respective ``import`` statements,
-  but it's usually easier to silence all such errors by using
-  :ref:`--ignore-missing-imports <ignore-missing-imports>`.
+  You can silence these by specifying the module names on the command
+  line by using :ref:`--ignore-missing-stubs <ignore-missing-stubs>`.
 
 - Your project's directory structure may hinder mypy in finding
   certain modules that are part of your project, e.g. modules hidden
@@ -291,6 +290,10 @@ Here are some more useful flags:
 
 - ``--ignore-missing-imports`` suppresses error messages about imports
   that cannot be resolved (see :ref:`follow-imports` for some examples).
+
+.. _ignore-missing-stubs:
+- ``--ignore-missing-stubs MODULE`` suppresses error messages about imports
+  for ``MODULE`` when it can be resolved but it lacks library stub files.
 
 - ``--strict-optional`` enables experimental strict checking of ``Optional[...]``
   types and ``None`` values. Without this option, mypy doesn't generally check the
