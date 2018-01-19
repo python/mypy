@@ -534,6 +534,7 @@ def attr_class_maker_callback(
         return False
 
     decorator = ctx.reason
+    info = ctx.cls.info
 
     # auto_attribs means we also generate Attributes from annotated variables.
     auto_attribs = get_bool_argument(decorator, 'auto_attribs', auto_attribs_default)
@@ -547,7 +548,7 @@ def attr_class_maker_callback(
     #     x: type
     #     x: type = default_value
     own_attrs = OrderedDict()  # type: OrderedDict[str, Attribute]
-    for stmt in ctx.cls.info.defn.defs.body:
+    for stmt in ctx.cls.defs.body:
         if isinstance(stmt, AssignmentStmt):
             for lvalue in stmt.lvalues:
                 # To handle all types of assignments we just convert everything
@@ -659,7 +660,7 @@ def attr_class_maker_callback(
     super_attrs = []
 
     # Traverse the MRO and collect attributes.
-    for super_info in ctx.cls.info.mro[1:-1]:
+    for super_info in info.mro[1:-1]:
         if super_info in attr_classes:
             for a in attr_classes[super_info]:
                 # Only add an attribute if it hasn't been defined before.  This
@@ -671,7 +672,7 @@ def attr_class_maker_callback(
     attributes = super_attrs + list(own_attrs.values())
     # Save the attributes so that subclasses can reuse them.
     # TODO: Fix caching.
-    attr_classes[ctx.cls.info] = attributes
+    attr_classes[info] = attributes
 
     if ctx.api.options.disallow_untyped_defs:
         for attribute in attributes:
@@ -682,7 +683,16 @@ def attr_class_maker_callback(
                 # error in the assignment, which is where you would fix the issue.
                 ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, attribute.context)
 
-    info = ctx.cls.info
+    # Check the init args for correct default-ness.  Note: This has to be done after all the
+    # attributes for all classes have been read, because subclasses can override parents.
+    last_default = False
+    for attribute in attributes:
+        if not attribute.has_default and last_default:
+            ctx.api.fail(
+                "Non-default attributes not allowed after default attributes.",
+                attribute.context)
+        last_default = attribute.has_default
+
     self_type = fill_typevars(info)
     function_type = ctx.api.named_type('__builtins__.function')
 
@@ -712,17 +722,6 @@ def attr_class_maker_callback(
 
     if get_bool_argument(decorator, 'init', True):
         # Generate the __init__ method.
-
-        # Check the init args for correct default-ness.  Note: This has to be done after all the
-        # attributes for all classes have been read, because subclasses can override parents.
-        last_default = False
-        for attribute in attributes:
-            if not attribute.has_default and last_default:
-                ctx.api.fail(
-                    "Non-default attributes not allowed after default attributes.",
-                    attribute.context)
-            last_default = attribute.has_default
-
         add_method(
             '__init__',
             [attribute.argument() for attribute in attributes if attribute.init],
@@ -730,37 +729,35 @@ def attr_class_maker_callback(
         )
 
         for stmt in ctx.cls.defs.body:
-            # The implicit first type of cls methods will be wrong because it's based on
-            # the non-existent init.  Set it correctly.
+            # The type of classmethods will be wrong because it's based on the parent's __init__.
+            # Set it correctly.
             if isinstance(stmt, Decorator) and stmt.func.is_class:
                 func_type = stmt.func.type
                 if isinstance(func_type, CallableType):
-                    func_type.arg_types[0] = ctx.api.class_type(ctx.cls.info)
+                    func_type.arg_types[0] = ctx.api.class_type(info)
 
     if get_bool_argument(decorator, 'frozen', False):
         # If the class is frozen then all the attributes need to be turned into properties.
         for attribute in attributes:
-            node = ctx.cls.info.names[attribute.name].node
+            node = info.names[attribute.name].node
             assert isinstance(node, Var)
             node.is_initialized_in_class = False
             node.is_property = True
 
     if get_bool_argument(decorator, 'cmp', True):
-        # Generate cmp methods that look like this:
-        #   def __ne__(self, other: '<class name>') -> bool: ...
-        # We use fullname to handle nested classes, splitting to remove the module name.
+        # For __ne__ and __eq__ the type is:
+        #     def __ne__(self, other: object) -> bool
         bool_type = ctx.api.named_type('__builtins__.bool')
         object_type = ctx.api.named_type('__builtins__.object')
 
-        # For __ne__ and __eq__ the type is: def __ne__(self, other: object) -> bool
         args = [Argument(Var('other', object_type), object_type, None, ARG_POS)]
         for method in ['__ne__', '__eq__']:
             add_method(method, args, bool_type)
 
         # For the rest we use:
-        #    T = TypeVar('T')
-        #    def __lt__(self: T, other: T) -> bool
-        # This way we comparisons with subclasses will work correctly.
+        #    AT = TypeVar('AT')
+        #    def __lt__(self: AT, other: AT) -> bool
+        # This way comparisons with subclasses will work correctly.
         tvd = TypeVarDef('AT', 'AT', 1, [], object_type)
         tvd_type = TypeVarType(tvd)
         args = [Argument(Var('other', tvd_type), tvd_type, None, ARG_POS)]
