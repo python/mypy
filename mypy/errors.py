@@ -411,8 +411,7 @@ class Errors:
             if file is not None:
                 if self.show_column_numbers and line is not None and line >= 0 \
                         and column is not None and column >= 0:
-                    col = 1 + column
-                    srcloc = '{}:{}:{}'.format(file, line, col)
+                    srcloc = '{}:{}:{}'.format(file, line, 1+column)
                 elif line is not None and line >= 0:
                     srcloc = '{}:{}'.format(file, line)
                 else:
