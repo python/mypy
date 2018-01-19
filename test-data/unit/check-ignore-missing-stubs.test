@@ -1,0 +1,74 @@
+-- Test cases for the --ignore-missing-stubs command line flag
+
+[case testIgnoreMissingStubsErrorOnMissingImport]
+import missing # Expect error here
+[out]
+main:1: error: Cannot find module named 'missing'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testIgnoreMissingStubs_OneModuleCommandLineFail]
+import __dummy_third_party1 # third-party module without type defs
+[out]
+main:1: error: No library stub file for module '__dummy_third_party1'
+main:1: note: (To suppress this error add this module to --ignore-missing-stubs)
+main:1: note: (Stub files are from https://github.com/python/typeshed)
+
+[case testIgnoreMissingStubs_OneModuleCommandLinePass]
+# flags: --ignore-missing-stubs __dummy_third_party1
+import __dummy_third_party1 # third-party module without type defs
+
+[case testIgnoreMissingStubs_TwoModulesCommandLineFail]
+# flags: --ignore-missing-stubs __dummy_third_party1
+import __dummy_third_party1 # third-party module without type defs
+import __dummy_third_party2
+[out]
+main:3: error: No library stub file for module '__dummy_third_party2'
+main:3: note: (To suppress this error add this module to --ignore-missing-stubs)
+main:3: note: (Stub files are from https://github.com/python/typeshed)
+
+[case testIgnoreMissingStubs_TwoModulesCommandLineBothFail]
+import __dummy_third_party1 # third-party module without type defs
+import __dummy_third_party2
+[out]
+main:1: error: No library stub file for module '__dummy_third_party1'
+main:1: note: (To suppress this error add this module to --ignore-missing-stubs)
+main:1: note: (Stub files are from https://github.com/python/typeshed)
+main:2: error: No library stub file for module '__dummy_third_party2'
+
+[case testIgnoreMissingStubs_TwoModulesCommandLinePass]
+# flags: --ignore-missing-stubs __dummy_third_party1 __dummy_third_party2
+import __dummy_third_party1 # third-party module without type defs
+import __dummy_third_party2 # third-party module without type defs
+
+[case testIgnoreMissingStubs_IgnoreOneModule]
+# flags: --config-file tmp/mypy.ini
+import __dummy_third_party1 # third-party module without type defs
+import __dummy_third_party2 # third-party module without type defs
+[file mypy.ini]
+[[mypy]
+ignore_missing_stubs = __dummy_third_party1
+[out]
+main:3: error: No library stub file for module '__dummy_third_party2'
+main:3: note: (To suppress this error add this module to --ignore-missing-stubs)
+main:3: note: (Stub files are from https://github.com/python/typeshed)
+
+[case testIgnoreMissingStubs_IgnoreWrongModule]
+# flags: --config-file tmp/mypy.ini
+import __dummy_third_party1 # third-party module without type defs
+import __dummy_third_party2 # third-party module without type defs
+[file mypy.ini]
+[[mypy]
+ignore_missing_stubs = foo
+[out]
+main:2: error: No library stub file for module '__dummy_third_party1'
+main:2: note: (To suppress this error add this module to --ignore-missing-stubs)
+main:2: note: (Stub files are from https://github.com/python/typeshed)
+main:3: error: No library stub file for module '__dummy_third_party2'
+
+[case testIgnoreMissingStubs_IgnoreBothModules]
+# flags: --config-file tmp/mypy.ini
+import __dummy_third_party1 # third-party module without type defs
+import __dummy_third_party2 # third-party module without type defs
+[file mypy.ini]
+[[mypy]
+ignore_missing_stubs = __dummy_third_party1, __dummy_third_party2

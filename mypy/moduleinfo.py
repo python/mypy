@@ -228,6 +228,7 @@ third_party_modules = {
 
     # for use in tests
     '__dummy_third_party1',
+    '__dummy_third_party2'
 }
 
 # Modules and packages common to Python 2.7 and 3.x.

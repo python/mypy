@@ -28,6 +28,7 @@ typecheck_files = [
     'check-statements.test',
     'check-generics.test',
     'check-dynamic-typing.test',
+    'check-ignore-missing-stubs.test',
     'check-inference.test',
     'check-inference-context.test',
     'check-kwargs.test',

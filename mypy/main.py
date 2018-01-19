@@ -765,6 +765,14 @@ def parse_section(prefix: str, template: Options,
         try:
             if ct is bool:
                 v = section.getboolean(key)  # type: ignore  # Until better stub
+            elif ct is list:
+                value = section.get(key)
+                if value is None:
+                    print("%s: %s: value is None" % (prefix, key), file=sys.stderr)
+                    continue
+                else:
+                    # based on suggestion here: https://stackoverflow.com/a/335754/755934
+                    v = [item.strip() for item in value.split(",")]
             elif callable(ct):
                 try:
                     v = ct(section.get(key))
