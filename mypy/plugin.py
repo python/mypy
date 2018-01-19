@@ -477,6 +477,8 @@ def attr_class_maker_callback(
 
     See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
     """
+    decorator = ctx.reason
+    info = ctx.cls.info
 
     def get_callable_type(call: CallExpr) -> Optional[CallableType]:
         """Get the CallableType that's attached to a CallExpr."""
@@ -512,20 +514,15 @@ def attr_class_maker_callback(
                 return attr_value
         return None
 
-    def get_bool_argument(expr: Expression, name: str, default: bool) -> bool:
-        """Return the value of an argument name in the given Expression.
-
-        If it's a CallExpr and the argument is one of the args then return it.
-        Otherwise return the default value for the argument.
-        """
-        if isinstance(expr, CallExpr):
-            attr_value = get_argument(expr, name)
-            if attr_value:
-                ret = ctx.api.parse_bool(attr_value)
-                if ret is None:
-                    ctx.api.fail('"{}" argument must be True or False.'.format(name), expr)
-                    return default
-                return ret
+    def get_bool_argument(expr: CallExpr, name: str, default: bool) -> bool:
+        """Return the boolean value for an argument to a call or the default if it's not found."""
+        attr_value = get_argument(expr, name)
+        if attr_value:
+            ret = ctx.api.parse_bool(attr_value)
+            if ret is None:
+                ctx.api.fail('"{}" argument must be True or False.'.format(name), expr)
+                return default
+            return ret
         return default
 
     def is_class_var(expr: NameExpr) -> bool:
@@ -534,11 +531,18 @@ def attr_class_maker_callback(
             return expr.node.is_classvar
         return False
 
-    decorator = ctx.reason
-    info = ctx.cls.info
+    def get_decorator_bool_argument(name: str, default: bool) -> bool:
+        """Return the bool argument for the decorator.
+
+        This handles both @attr.s(...) and @attr.s
+        """
+        if isinstance(decorator, CallExpr):
+            return get_bool_argument(decorator, name, default)
+        else:
+            return default
 
     # auto_attribs means we also generate Attributes from annotated variables.
-    auto_attribs = get_bool_argument(decorator, 'auto_attribs', auto_attribs_default)
+    auto_attribs = get_decorator_bool_argument('auto_attribs', auto_attribs_default)
 
     # First, walk the body looking for attribute definitions.
     # They will look like this:
@@ -721,7 +725,7 @@ def attr_class_maker_callback(
         # e.g. Forward Reference Resolution.
         info.defn.defs.body.append(func)
 
-    if get_bool_argument(decorator, 'init', True):
+    if get_decorator_bool_argument('init', True):
         # Generate the __init__ method.
         add_method(
             '__init__',
@@ -737,7 +741,7 @@ def attr_class_maker_callback(
                 if isinstance(func_type, CallableType):
                     func_type.arg_types[0] = ctx.api.class_type(info)
 
-    if get_bool_argument(decorator, 'frozen', False):
+    if get_decorator_bool_argument('frozen', False):
         # If the class is frozen then all the attributes need to be turned into properties.
         for attribute in attributes:
             node = info.names[attribute.name].node
@@ -745,7 +749,7 @@ def attr_class_maker_callback(
             node.is_initialized_in_class = False
             node.is_property = True
 
-    if get_bool_argument(decorator, 'cmp', True):
+    if get_decorator_bool_argument('cmp', True):
         # For __ne__ and __eq__ the type is:
         #     def __ne__(self, other: object) -> bool
         bool_type = ctx.api.named_type('__builtins__.bool')
