@@ -8,7 +8,7 @@ import re
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple, Callable
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple, Callable, Union
 
 from mypy import build
 from mypy import defaults
@@ -205,6 +205,18 @@ def invert_flag_name(flag: str) -> str:
     return '--no-{}'.format(flag[2:])
 
 
+class IgnoreMissingStubsParseAction(argparse.Action):
+    def __call__(self, parser: argparse.ArgumentParser,
+                namespace: argparse.Namespace, values: Union[str, Sequence[Any], None],
+                option_string: str = "") -> None:
+        if not isinstance(values, str):
+            # this should never happen
+            parser.error("%s: %s" % (option_string, "Argument must be of type string"))
+            return  # this should never be reached because parser.error should exit the program
+        modules = [m.strip() for m in values.split(",")]
+        namespace.ignore_missing_stubs = modules
+
+
 def process_options(args: List[str],
                     require_targets: bool = True
                     ) -> Tuple[List[BuildSource], Options]:
@@ -262,7 +274,8 @@ def process_options(args: List[str],
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('--ignore-missing-imports', action='store_true',
                         help="silently ignore imports of missing modules")
-    parser.add_argument('--ignore-missing-stubs', nargs='+', metavar='MODULE', default=[],
+    parser.add_argument('--ignore-missing-stubs', action=IgnoreMissingStubsParseAction,
+                        metavar="MODULE-1[,MODULE-2...]",
                         help="silently ignore missing library stubs for the specified modules")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")

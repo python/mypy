@@ -10,7 +10,7 @@ flag (or its long form ``--help``)::
   $ mypy -h
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM] [-2]
               [--ignore-missing-imports]
-              [--ignore-missing-stubs MODULE [MODULE ...]]
+              [--ignore-missing-stubs MODULE-1[,MODULE-2...]]
               [--follow-imports {normal,silent,skip,error}]
               [--disallow-any-{unimported,expr,decorated,explicit,generics}]
               [--disallow-untyped-calls] [--disallow-untyped-defs]
@@ -292,7 +292,7 @@ Here are some more useful flags:
   that cannot be resolved (see :ref:`follow-imports` for some examples).
 
 .. _ignore-missing-stubs:
-- ``--ignore-missing-stubs MODULE`` suppresses error messages about imports
+- ``--ignore-missing-stubs MODULE-1[,MODULE-2...]`` suppresses error messages about imports
   for ``MODULE`` when it can be resolved but it lacks library stub files.
 
 - ``--strict-optional`` enables experimental strict checking of ``Optional[...]``
