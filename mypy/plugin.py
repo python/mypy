@@ -88,6 +88,7 @@ class SemanticAnalyzerPluginInterface:
                   third_pass: bool = False) -> Type:
         raise NotImplementedError
 
+    @abstractmethod
     def class_type(self, info: TypeInfo) -> Type:
         raise NotImplementedError
 
