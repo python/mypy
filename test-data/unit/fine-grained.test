@@ -1563,3 +1563,39 @@ class C:
 ==
 main:5: error: Too few arguments for "__init__" of "C"
 main:6: error: Too few arguments for "D"
+
+[case testNamedTupleUpdate]
+import b
+[file a.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+x = N(1)
+[file a.py.2]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', str)])
+x = N('hi')
+[file b.py]
+import a
+def f(x: a.N) -> None:
+    pass
+f(a.x)
+[out]
+==
+
+[case testNamedTupleUpdate2]
+import b
+[file a.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+x = N(1)
+[file a.py.2]
+from typing import NamedTuple
+N = NamedTuple('N', [('y', int)])
+x = N(2)
+[file b.py]
+import a
+def f(x: a.N) -> None:
+    pass
+f(a.x)
+[out]
+==
