@@ -648,3 +648,22 @@ class C:
    a: int = attr.ib()  # E: Name 'a' already defined
 reveal_type(C)  # E: Revealed type is 'def (a: builtins.int, b: builtins.int) -> __main__.C'
 [builtins fixtures/bool.pyi]
+
+[case testAttrsNewStyleClassPy2]
+# flags: --py2
+import attr
+@attr.s
+class Good(object):
+    pass
+@attr.s  # E: attrs only works with new-style classes
+class Bad:
+    pass
+[builtins_py2 fixtures/bool.pyi]
+
+[case testAttrsAutoAttribsPy2]
+# flags: --py2
+import attr
+@attr.s(auto_attribs=True)  # E: auto_attribs is not supported in Python 2
+class A(object):
+    x = attr.ib()
+[builtins_py2 fixtures/bool.pyi]

@@ -544,6 +544,15 @@ def attr_class_maker_callback(
     # auto_attribs means we also generate Attributes from annotated variables.
     auto_attribs = get_decorator_bool_argument('auto_attribs', auto_attribs_default)
 
+    if ctx.api.options.python_version[0] < 3:
+        if auto_attribs:
+            ctx.api.fail("auto_attribs is not supported in Python 2", decorator)
+            return
+        if not info.defn.base_type_exprs:
+            # Note: This does not catch subclassing old-style classes.
+            ctx.api.fail("attrs only works with new-style classes", info.defn)
+            return
+
     # First, walk the body looking for attribute definitions.
     # They will look like this:
     #     x = attr.ib()
