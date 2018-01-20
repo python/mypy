@@ -17,7 +17,8 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
-    TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS, OverloadedFuncDef
+    TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS, OverloadedFuncDef, ImportFrom,
+    UNBOUND_IMPORTED
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
@@ -258,6 +259,21 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         for type in e.types:
             self.analyze(type, e)
         super().visit_type_application(e)
+
+    def visit_import_from(self, imp: ImportFrom) -> None:
+        import_id = self.sem.correct_relative_import(imp)
+        module = self.modules.get(import_id)
+        if not module:
+            return
+        for id, as_id in imp.names:
+            my_node = self.sem.globals.get(as_id or id)
+            src_node = module.names.get(id)
+            if my_node and src_node and my_node.kind == UNBOUND_IMPORTED:
+                my_node.kind = src_node.kind
+                my_node.node = src_node.node
+                my_node.type_override = src_node.type_override
+                my_node.normalized = src_node.normalized
+                my_node.alias_tvars = src_node.alias_tvars
 
     # Helpers
 
