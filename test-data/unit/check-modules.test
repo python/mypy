@@ -1947,7 +1947,7 @@ main:3: error: Revealed type is 'Any'
 
 [case testImportCycle]
 from m import One
-reveal_type(One)
+reveal_type(One)  # E: Revealed type is 'def () -> m.one.One'
 [file m/__init__.py]
 from .one import One
 from .two import Two
@@ -1958,5 +1958,3 @@ class One:
 from m import One
 class Two:
     pass
-[out]
-main:2: error: Revealed type is 'def () -> m.one.One'
