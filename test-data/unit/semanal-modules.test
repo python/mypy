@@ -875,30 +875,3 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a* [x.a])
     IntExpr(1)))
-
-[case testImportCycle]
-from m import One
-[file m/__init__.py]
-from .one import One
-from .two import Two
-[file m/one.py]
-class One:
-    pass
-[file m/two.py]
-from m import One
-class Two:
-    pass
-[out]
-MypyFile:1(
-  ImportFrom:1(m, [One]))
-MypyFile:1(
-  tmp/m/one.py
-  ClassDef:1(
-    One
-    PassStmt:2()))
-MypyFile:1(
-  tmp/m/two.py
-  ImportFrom:1(m, [One])
-  ClassDef:2(
-    Two
-    PassStmt:3()))
