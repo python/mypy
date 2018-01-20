@@ -582,6 +582,11 @@ def attr_class_maker_callback(
                     if (isinstance(rvalue, CallExpr)
                             and isinstance(rvalue.callee, RefExpr)
                             and rvalue.callee.fullname in attr_attrib_makers):
+                        if auto_attribs and not stmt.new_syntax:
+                            # auto_attribs requires annotation on every attr.ib.
+                            ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, stmt)
+                            continue
+
                         # Look for default=<something> in the call.
                         # TODO: Check for attr.NOTHING
                         attr_has_default = bool(get_argument(rvalue, 'default'))
@@ -624,15 +629,13 @@ def attr_class_maker_callback(
 
                         # When attrs are defined twice in the same body we want to use
                         # the 2nd definition in the 2nd location. So remove it from the
-                        # OrderedDict
-                        if name in own_attrs:
+                        # OrderedDict.  auto_attribs doesn't work that way.
+                        if not auto_attribs and name in own_attrs:
                             del own_attrs[name]
                         own_attrs[name] = Attribute(name, typ, attr_has_default, init, stmt)
                     elif auto_attribs and typ and stmt.new_syntax and not is_class_var(lhs):
                         # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
                         has_rhs = not isinstance(rvalue, TempNode)
-                        if name in own_attrs:
-                            del own_attrs[name]
                         own_attrs[name] = Attribute(name, typ, has_rhs, True, stmt)
 
         elif isinstance(stmt, Decorator):
