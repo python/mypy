@@ -1471,14 +1471,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         for id, as_id in imp.names:
             node = module.names.get(id) if module else None
             missing = False
+            is_same_module = import_id == self.cur_mod_id
+            is_unbound = node and node.kind == UNBOUND_IMPORTED
             possible_module_id = import_id + '.' + id
 
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
-            if not node or node.kind == UNBOUND_IMPORTED:
+            if not node or is_unbound:
                 mod = self.modules.get(possible_module_id)
                 if mod is not None:
                     node = SymbolTableNode(MODULE_REF, mod)
+                    is_same_module = False
                     self.add_submodules_to_parent_modules(possible_module_id, True)
                 elif possible_module_id in self.missing_modules:
                     missing = True
@@ -1499,7 +1502,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     symbol = SymbolTableNode(GDEF, ast_node)
                     self.add_symbol(name, symbol, imp)
                     return
-            if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
+
+            if node and not node.module_hidden and not (is_unbound and is_same_module):
                 node = self.normalize_type_alias(node, imp)
                 if not node:
                     return
