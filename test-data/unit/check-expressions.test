@@ -1562,7 +1562,7 @@ d5 = dict(a=1, b='') # type: Dict[str, Any]
 
 [case testDictWithoutKeywordArgs]
 from typing import Dict
-d = dict() # E: Need type annotation for variable
+d = dict() # E: Need type annotation for 'd'
 d2 = dict() # type: Dict[int, str]
 dict(undefined) # E: Name 'undefined' is not defined
 [builtins fixtures/dict.pyi]

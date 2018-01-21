@@ -1293,7 +1293,7 @@ class C(Generic[T]): pass
 [out]
 main:4: error: "object" has no attribute "C"
 ==
-main:4: error: Need type annotation for variable
+main:4: error: Need type annotation for 'x'
 
 [case testPartialTypeInNestedClass]
 import a
@@ -1310,9 +1310,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:7: error: Need type annotation for variable
+main:7: error: Need type annotation for 'x'
 ==
-main:7: error: Need type annotation for variable
+main:7: error: Need type annotation for 'x'
 
 [case testRefreshPartialTypeInClass]
 import a
@@ -1327,9 +1327,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:5: error: Need type annotation for variable
+main:5: error: Need type annotation for 'x'
 ==
-main:5: error: Need type annotation for variable
+main:5: error: Need type annotation for 'x'
 
 [case testRefreshTryExcept]
 import a
