@@ -894,7 +894,7 @@ y: List = []  # error
 m.py:3: error: Missing type parameters for generic type
 m.py:5: error: Missing type parameters for generic type
 m.py:6: error: Missing type parameters for generic type
-m.py:8: error: Need type annotation for variable
+m.py:8: error: Need type annotation for 'x'
 m.py:9: error: Missing type parameters for generic type
 
 [case testDisallowAnyGenericsCustomGenericClass]

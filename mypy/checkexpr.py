@@ -145,7 +145,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     partial_types = self.chk.find_partial_types(node)
                     if partial_types is not None and not self.chk.current_node_deferred:
                         context = partial_types[node]
-                        self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                        self.msg.need_annotation_for_var(node, context)
                     result = AnyType(TypeOfAny.special_form)
         elif isinstance(node, FuncDef):
             # Reference to a global function.
