@@ -1787,3 +1787,8 @@ reveal_type(a.__pow__(2)) # E: Revealed type is 'builtins.int'
 reveal_type(a.__pow__(a)) # E: Revealed type is 'Any'
 a.__pow__() # E: Too few arguments for "__pow__" of "int"
 [builtins fixtures/ops.pyi]
+
+[case testTypeAnnotationNeededMultipleAssignment]
+x,y = [],[] # E: Need type annotation for 'x' \
+            # E: Need type annotation for 'y'
+[builtins fixtures/list.pyi]
