@@ -25,7 +25,7 @@ from mypy.types import (
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
-    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT,
+    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode
 )
 
 
@@ -62,7 +62,7 @@ INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpol
 MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
 INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
-NEED_ANNOTATION_FOR_VAR = 'Need type annotation for variable'
+NEED_ANNOTATION_FOR_VAR = 'Need type annotation for variable \"{}\"'
 ITERABLE_EXPECTED = 'Iterable expected'
 ASYNC_ITERABLE_EXPECTED = 'AsyncIterable expected'
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'
@@ -961,6 +961,9 @@ class MessageBuilder:
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
                   ctx)
+
+    def need_annotation_for_var(self, node: SymbolNode, context: Context) -> None:
+        self.fail("Need type annotation for \'{}\'".format(node.name()), context)
 
     def explicit_any(self, ctx: Context) -> None:
         self.fail('Explicit "Any" is not allowed', ctx)
