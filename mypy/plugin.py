@@ -596,6 +596,10 @@ def attr_class_maker_callback(
                             ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, stmt)
                             continue
 
+                        if len(stmt.lvalues) > 1:
+                            ctx.api.fail("Too many names for one attribute", stmt)
+                            continue
+
                         # Look for default=<something> in the call.
                         # TODO: Check for attr.NOTHING
                         attr_has_default = bool(get_argument(rvalue, 'default'))
