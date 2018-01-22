@@ -180,7 +180,7 @@ class Server:
         """Stop daemon."""
         return {}
 
-    last_sources = None
+    last_sources = None  # type: List[mypy.build.BuildSource]
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""

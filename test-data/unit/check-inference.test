@@ -911,6 +911,8 @@ main:5: error: Incompatible types in assignment (expression has type "B", variab
 main:6: error: Incompatible types in assignment (expression has type "C", variable has type "A")
 main:10: error: Need more than 2 values to unpack (3 expected)
 main:12: error: '__main__.B' object is not iterable
+main:14: error: Need type annotation for 'xxx'
+main:14: error: Need type annotation for 'yyy'
 
 [case testInferenceOfFor3]
 
@@ -1403,13 +1405,13 @@ b[{}] = 1
 [out]
 
 [case testInferDictInitializedToEmptyAndUpdatedFromMethod]
-map = {}
+map = {}  # E: Need type annotation for 'map'
 def add() -> None:
     map[1] = 2
 [builtins fixtures/dict.pyi]
 
 [case testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated]
-map = {}
+map = {}  # E: Need type annotation for 'map'
 def add():
     map[1] = 2
 [builtins fixtures/dict.pyi]
@@ -1510,7 +1512,7 @@ x = 1
 [out]
 
 [case testPartiallyInitializedVariableDoesNotEscapeScope2]
-x = None
+x = None  # E: Need type annotation for 'x'
 def f() -> None:
     x = None
     x = 1
@@ -1537,14 +1539,14 @@ main:6: error: Incompatible types in assignment (expression has type "int", vari
 main:7: error: "None" not callable
 
 [case testGlobalInitializedToNoneSetFromFunction]
-a = None
+a = None  # E: Need type annotation for 'a'
 def f():
     global a
     a = 42
 [out]
 
 [case testGlobalInitializedToNoneSetFromMethod]
-a = None
+a = None  # E: Need type annotation for 'a'
 class C:
     def m(self):
         global a
@@ -1923,7 +1925,7 @@ T = TypeVar('T', bound=str)
 
 def f() -> Tuple[T]:
     ...
-x = None
+x = None  # E: Need type annotation for 'x'
 (x,) = f()
 [out]
 
@@ -2001,3 +2003,37 @@ if bool():
     1() # E: "int" not callable
 [builtins fixtures/list.pyi]
 [out]
+
+---
+
+[case testXXX-skip]
+class A:
+    x = {}
+    def f(self) -> None:
+        #global x
+        self.x[0] = ''
+reveal_type(A.x)
+[builtins fixtures/dict.pyi]
+
+[case testYYY-skip]
+a = []
+
+def f() -> None:
+    a[0]
+    reveal_type(a)
+
+a.append(1)
+[builtins fixtures/list.pyi]
+[out]
+x
+
+[case testZZZ-skip]
+a = None
+
+def f() -> None:
+    reveal_type(a)
+reveal_type(a)
+a = ''
+[builtins fixtures/list.pyi]
+[out]
+x
