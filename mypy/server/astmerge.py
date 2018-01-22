@@ -259,7 +259,6 @@ class NodeReplaceVisitor(TraverserVisitor):
         # - declared_metaclass
         # - metaclass_type
         # - _promote
-        # - tuple_type
         # - typeddict_type
         # - replaced
         replace_nodes_in_symbol_table(info.names, self.replacements)
@@ -267,6 +266,8 @@ class NodeReplaceVisitor(TraverserVisitor):
             info.mro[i] = self.fixup(info.mro[i])
         for i, base in enumerate(info.bases):
             self.fixup_type(info.bases[i])
+        if info.tuple_type:
+            self.fixup_type(info.tuple_type)
 
     def replace_statements(self, nodes: List[Statement]) -> List[Statement]:
         result = []
