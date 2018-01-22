@@ -69,6 +69,7 @@ class SemanticAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins."""
 
     options = None  # type: Options
+    msg = None  # type: MessageBuilder
 
     @abstractmethod
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
@@ -534,7 +535,8 @@ def attr_class_maker_callback(
                             and rvalue.callee.fullname in attr_attrib_makers):
                         if auto_attribs and not stmt.new_syntax:
                             # auto_attribs requires annotation on every attr.ib.
-                            ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, stmt)
+                            assert lhs.node is not None
+                            ctx.api.msg.need_annotation_for_var(lhs.node, stmt)
                             continue
 
                         if len(stmt.lvalues) > 1:
@@ -559,6 +561,14 @@ def attr_class_maker_callback(
                                     # If there is no annotation, add one.
                                     lhs.node.type = typ
                                     lhs.is_inferred_def = False
+
+                        if ctx.api.options.disallow_untyped_defs and not typ:
+                            # This is a compromise.  If you don't have a type here then the
+                            # __init__ will be untyped. But since the __init__ is added it's
+                            # pointing at the decorator. So instead we also show the error in the
+                            # assignment, which is where you would fix the issue.
+                            assert lhs.node is not None
+                            ctx.api.msg.need_annotation_for_var(lhs.node, stmt)
 
                         # If the attrib has a converter function take the type of the first
                         # argument as the init type.
@@ -635,15 +645,6 @@ def attr_class_maker_callback(
     # Save the attributes so that subclasses can reuse them.
     # TODO: This doesn't work with incremental mode if the parent class is in a different file.
     attr_classes[info] = attributes
-
-    if ctx.api.options.disallow_untyped_defs:
-        for attribute in attributes:
-            if attribute.type is None:
-                # This is a compromise.  If you don't have a type here then the __init__ will
-                # be untyped. But since the __init__ is added it's pointing at the decorator.
-                # So instead we just show the error in the assignment, which is where you
-                # would fix the issue.
-                ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, attribute.context)
 
     # Check the init args for correct default-ness.  Note: This has to be done after all the
     # attributes for all classes have been read, because subclasses can override parents.

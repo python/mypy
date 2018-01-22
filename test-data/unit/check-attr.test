@@ -76,10 +76,10 @@ A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 import attr
 @attr.s    # E: Function is missing a type annotation for one or more arguments
 class A:
-    a = attr.ib()  # E: Need type annotation for variable
-    _b = attr.ib()  # E: Need type annotation for variable
-    c = attr.ib(18)  # E: Need type annotation for variable
-    _d = attr.ib(validator=None, default=18)   # E: Need type annotation for variable
+    a = attr.ib()  # E: Need type annotation for 'a'
+    _b = attr.ib()  # E: Need type annotation for '_b'
+    c = attr.ib(18)  # E: Need type annotation for 'c'
+    _d = attr.ib(validator=None, default=18)   # E: Need type annotation for '_d'
     E = 18
 [builtins fixtures/bool.pyi]
 
@@ -621,9 +621,9 @@ class A:
    a: int
    b = 17
    # The following forms are not allowed with auto_attribs=True
-   c = attr.ib()  # E: Need type annotation for variable
-   d, e = attr.ib(), attr.ib() # E: Need type annotation for variable
-   f = g = attr.ib()  # E: Need type annotation for variable
+   c = attr.ib()  # E: Need type annotation for 'c'
+   d, e = attr.ib(), attr.ib() # E: Need type annotation for 'd' # E: Need type annotation for 'e'
+   f = g = attr.ib()  # E: Need type annotation for 'f' # E: Need type annotation for 'g'
 [builtins fixtures/bool.pyi]
 
 [case testAttrsRepeatedName]
