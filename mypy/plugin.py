@@ -727,7 +727,9 @@ def _attrs_get_bool_argument(ctx: ClassDefContext, expr: CallExpr,
 
 def _attrs_get_argument(call: CallExpr, name: str) -> Optional[Expression]:
     """Return the expression for the specific argument."""
-    # To do this we find the CallableType of the callee and to find the FormalArgument.
+    # To do this we use the CallableType of the callee to find the FormalArgument,
+    # then walk the actual CallExpr looking for the appropriate argument.
+    #
     # Note: I'm not hard-coding the index so that in the future we can support other
     # attrib and class makers.
     callee_type = None
@@ -749,7 +751,6 @@ def _attrs_get_argument(call: CallExpr, name: str) -> Optional[Expression]:
         return None
     assert argument.name
 
-    # Now walk the actual call to pick off the correct argument.
     for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
         if argument.pos is not None and not attr_name and i == argument.pos:
             return attr_value
