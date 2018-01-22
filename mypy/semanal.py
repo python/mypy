@@ -201,8 +201,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
     type = None  # type: Optional[TypeInfo]
     # Stack of outer classes (the second tuple item contains tvars).
     type_stack = None  # type: List[Optional[TypeInfo]]
-    # Type variables that are bound by the directly enclosing class
-    bound_tvars = None  # type: List[SymbolTableNode]
     # Type variables bound by the current scope, be it class or function
     tvar_scope = None  # type: TypeVarScope
     # Per-module options
@@ -332,9 +330,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
+        self.tvar_scope = TypeVarScope()
         if active_type:
             self.enter_class(active_type.defn.info)
-            # TODO: Bind class type vars
+            for tvar in active_type.defn.type_vars:
+                self.tvar_scope.bind_existing(tvar)
 
         yield
 
@@ -909,7 +909,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             del defn.base_type_exprs[i]
         tvar_defs = []  # type: List[TypeVarDef]
         for name, tvar_expr in declared_tvars:
-            tvar_defs.append(self.tvar_scope.bind(name, tvar_expr))
+            tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+            tvar_defs.append(tvar_def)
         defn.type_vars = tvar_defs
 
     def analyze_typevar_declaration(self, t: Type) -> Optional[TypeVarList]:
@@ -2844,6 +2845,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             var = Var(item)
             var.info = info
             var.is_property = True
+            var._fullname = '{}.{}'.format(self.qualified_name(name), item)
             info.names[item] = SymbolTableNode(MDEF, var)
         return info
 

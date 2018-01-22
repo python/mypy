@@ -13,12 +13,14 @@ import os
 import socket
 import sys
 import time
+import traceback
 
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import mypy.build
 import mypy.errors
 import mypy.main
+import mypy.server.update
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.gclogger import GcLogger
 
@@ -82,6 +84,12 @@ class Server:
     def __init__(self, flags: List[str]) -> None:
         """Initialize the server with the desired mypy flags."""
         self.saved_cache = {}  # type: mypy.build.SavedCache
+        if '--experimental' in flags:
+            self.fine_grained = True
+            self.fine_grained_initialized = False
+            flags.remove('--experimental')
+        else:
+            self.fine_grained = False
         sources, options = mypy.main.process_options(['-i'] + flags, False)
         if sources:
             sys.exit("dmypy: start/restart does not accept sources")
@@ -94,6 +102,10 @@ class Server:
         self.options = options
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
+        if self.fine_grained:
+            options.incremental = True
+            options.show_traceback = True
+            options.cache_dir = os.devnull
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
@@ -128,6 +140,9 @@ class Server:
                 os.unlink(STATUS_FILE)
         finally:
             os.unlink(self.sockname)
+            exc_info = sys.exc_info()
+            if exc_info[0]:
+                traceback.print_exception(*exc_info)  # type: ignore
 
     def create_listening_socket(self) -> socket.socket:
         """Create the socket and set it up for listening."""
@@ -190,6 +205,14 @@ class Server:
 
     def check(self, sources: List[mypy.build.BuildSource],
               alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
+        if self.fine_grained:
+            return self.check_fine_grained(sources)
+        else:
+            return self.check_default(sources, alt_lib_path)
+
+    def check_default(self, sources: List[mypy.build.BuildSource],
+                      alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
+        """Check using the default (per-file) incremental mode."""
         self.last_manager = None
         with GcLogger() as gc_result:
             try:
@@ -211,6 +234,85 @@ class Server:
         if self.last_manager is not None:
             response.update(self.last_manager.stats_summary())
         return response
+
+    def check_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+        """Check using fine-grained incremental mode."""
+        if not self.fine_grained_initialized:
+            return self.initialize_fine_grained(sources)
+        else:
+            return self.fine_grained_increment(sources)
+
+    def initialize_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+        self.file_modified = {}  # type: Dict[str, float]
+        for source in sources:
+            assert source.path
+            try:
+                self.file_modified[source.path] = os.stat(source.path).st_mtime
+            except FileNotFoundError:
+                # Don't crash if passed a non-existent file.
+                pass
+        try:
+            # TODO: alt_lib_path
+            result = mypy.build.build(sources=sources,
+                                      options=self.options)
+        except mypy.errors.CompileError as e:
+            output = ''.join(s + '\n' for s in e.messages)
+            if e.use_stdout:
+                out, err = output, ''
+            else:
+                out, err = '', output
+            return {'out': out, 'err': err, 'status': 2}
+        messages = result.errors
+        manager = result.manager
+        graph = result.graph
+        self.fine_grained_manager = mypy.server.update.FineGrainedBuildManager(manager, graph)
+        status = 1 if messages else 0
+        self.previous_messages = messages[:]
+        self.fine_grained_initialized = True
+        self.previous_sources = sources
+        return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
+
+    def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+        changed = self.find_changed(sources)
+        if not changed:
+            # Nothing changed -- just produce the same result as before.
+            messages = self.previous_messages
+        else:
+            messages = self.fine_grained_manager.update(changed)
+        status = 1 if messages else 0
+        self.previous_messages = messages[:]
+        self.previous_sources = sources
+        return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
+
+    def find_changed(self, sources: List[mypy.build.BuildSource]) -> List[Tuple[str, str]]:
+        changed = []
+        for source in sources:
+            path = source.path
+            assert path
+            try:
+                mtime = os.stat(path).st_mtime
+            except FileNotFoundError:
+                # A non-existent file was included on the command line.
+                #
+                # TODO: Generate error if file is missing (if not ignoring missing imports)
+                if path in self.file_modified:
+                    changed.append((source.module, path))
+            else:
+                if path not in self.file_modified or self.file_modified[path] != mtime:
+                    self.file_modified[path] = mtime
+                    changed.append((source.module, path))
+        modules = {source.module for source in sources}
+        omitted = [source for source in self.previous_sources if source.module not in modules]
+        for source in omitted:
+            path = source.path
+            assert path
+            # Note that a file could be removed from the list of root sources but still continue
+            # to exist on the file system.
+            if not os.path.isfile(path):
+                changed.append((source.module, path))
+                if source.path in self.file_modified:
+                    del self.file_modified[source.path]
+        return changed
 
     def cmd_hang(self) -> Dict[str, object]:
         """Hang for 100 seconds, as a debug hack."""

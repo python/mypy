@@ -420,7 +420,7 @@ class A: pass
 a = None # type: A
 
 def ff() -> None:
-    x = f() # E: Need type annotation for variable
+    x = f() # E: Need type annotation for 'x'
     reveal_type(x) # E: Revealed type is 'Any'
 
 g(None) # Ok
@@ -875,7 +875,7 @@ for x in [A()]:
     b = x # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x
 
-for y in []: # E: Need type annotation for variable
+for y in []: # E: Need type annotation for 'y'
     a = y # E: Cannot determine type of 'y'
     reveal_type(y)  # E: Revealed type is 'Any' \
                     # E: Cannot determine type of 'y'
@@ -922,7 +922,8 @@ for x, y in [[A()]]:
     a = x
     a = y
 
-for e, f in [[]]:  # E: Need type annotation for variable
+for e, f in [[]]:  # E: Need type annotation for 'e' \
+                   # E: Need type annotation for 'f'
     reveal_type(e)  # E: Revealed type is 'Any' \
                     # E: Cannot determine type of 'e'
     reveal_type(f)  # E: Revealed type is 'Any' \
@@ -1237,12 +1238,12 @@ a.append(0)  # E: Argument 1 to "append" of "list" has incompatible type "int"; 
 [out]
 
 [case testInferListInitializedToEmptyAndNotAnnotated]
-a = []  # E: Need type annotation for variable
+a = []  # E: Need type annotation for 'a'
 [builtins fixtures/list.pyi]
 [out]
 
 [case testInferListInitializedToEmptyAndReadBeforeAppend]
-a = []  # E: Need type annotation for variable
+a = []  # E: Need type annotation for 'a'
 if a: pass
 a.xyz
 a.append('')
@@ -1250,7 +1251,7 @@ a.append('')
 [out]
 
 [case testInferListInitializedToEmptyAndIncompleteTypeInAppend]
-a = [] # E: Need type annotation for variable
+a = [] # E: Need type annotation for 'a'
 a.append([])
 a()
 [builtins fixtures/list.pyi]
@@ -1275,7 +1276,7 @@ def f() -> None:
 
 [case testInferListInitializedToEmptyAndNotAnnotatedInFunction]
 def f() -> None:
-    a = []  # E: Need type annotation for variable
+    a = []  # E: Need type annotation for 'a'
 
 def g() -> None: pass
 
@@ -1286,7 +1287,7 @@ a.append(1)
 
 [case testInferListInitializedToEmptyAndReadBeforeAppendInFunction]
 def f() -> None:
-    a = []  # E: Need type annotation for variable
+    a = []  # E: Need type annotation for 'a'
     if a: pass
     a.xyz
     a.append('')
@@ -1303,7 +1304,7 @@ class A:
 
 [case testInferListInitializedToEmptyAndNotAnnotatedInClassBody]
 class A:
-    a = []  # E: Need type annotation for variable
+    a = []  # E: Need type annotation for 'a'
 
 class B:
     a = []
@@ -1323,7 +1324,7 @@ class A:
 [case testInferListInitializedToEmptyAndNotAnnotatedInMethod]
 class A:
     def f(self) -> None:
-        a = []  # E: Need type annotation for variable
+        a = []  # E: Need type annotation for 'a'
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1331,7 +1332,7 @@ class A:
 class A:
     def f(self) -> None:
         # Attributes aren't supported right now.
-        self.a = [] # E: Need type annotation for variable
+        self.a = [] # E: Need type annotation for 'a'
         self.a.append(1)
         self.a.append('')
 [builtins fixtures/list.pyi]
@@ -1342,7 +1343,7 @@ from typing import List
 
 class A:
     def __init__(self) -> None:
-        self.x = [] # E: Need type annotation for variable
+        self.x = [] # E: Need type annotation for 'x'
 
 class B(A):
     @property
@@ -1387,37 +1388,42 @@ a() # E: "Dict[str, int]" not callable
 [out]
 
 [case testInferDictInitializedToEmptyUsingUpdateError]
-a = {}  # E: Need type annotation for variable
+a = {}  # E: Need type annotation for 'a'
 a.update([1, 2])
 a()
 [builtins fixtures/dict.pyi]
 [out]
 
 [case testInferDictInitializedToEmptyAndIncompleteTypeInUpdate]
-a = {} # E: Need type annotation for variable
+a = {} # E: Need type annotation for 'a'
 a[1] = {}
-b = {} # E: Need type annotation for variable
+b = {} # E: Need type annotation for 'b'
 b[{}] = 1
 [builtins fixtures/dict.pyi]
 [out]
 
 [case testInferDictInitializedToEmptyAndUpdatedFromMethod]
 map = {}
+def add() -> None:
+    map[1] = 2
+[builtins fixtures/dict.pyi]
+
+[case testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated]
+map = {}
 def add():
     map[1] = 2
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testSpecialCaseEmptyListInitialization]
 def f(blocks: Any): # E: Name 'Any' is not defined
-    to_process = [] # E: Need type annotation for variable
+    to_process = [] # E: Need type annotation for 'to_process'
     to_process = list(blocks)
 [builtins fixtures/list.pyi]
 [out]
 
 [case testSpecialCaseEmptyListInitialization2]
 def f(blocks: object):
-    to_process = [] # E: Need type annotation for variable
+    to_process = [] # E: Need type annotation for 'to_process'
     to_process = list(blocks) # E: No overload variant of "list" matches argument types [builtins.object]
 [builtins fixtures/list.pyi]
 [out]
@@ -1473,7 +1479,7 @@ x.append('') # E: Argument 1 to "append" of "list" has incompatible type "str"; 
 x = None
 if object():
     # Promote from partial None to partial list.
-    x = []  # E: Need type annotation for variable
+    x = []  # E: Need type annotation for 'x'
     x
 [builtins fixtures/list.pyi]
 
@@ -1482,7 +1488,7 @@ def f() -> None:
     x = None
     if object():
         # Promote from partial None to partial list.
-        x = []  # E: Need type annotation for variable
+        x = []  # E: Need type annotation for 'x'
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1491,7 +1497,7 @@ def f() -> None:
 from typing import TypeVar,  Dict
 T = TypeVar('T')
 def f(*x: T) -> Dict[int, T]: pass
-x = None  # E: Need type annotation for variable
+x = None  # E: Need type annotation for 'x'
 if object():
     x = f()
 [builtins fixtures/dict.pyi]
@@ -1568,7 +1574,7 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
-main:3: error: Need type annotation for variable
+main:3: error: Need type annotation for 'x'
 
 [case testPartialTypeErrorSpecialCase3]
 class A:
@@ -1734,9 +1740,9 @@ o = 1
 
 [case testMultipassAndPartialTypesSpecialCase3]
 def f() -> None:
-    x = {} # E: Need type annotation for variable
+    x = {} # E: Need type annotation for 'x'
     y = o
-    z = {} # E: Need type annotation for variable
+    z = {} # E: Need type annotation for 'z'
 o = 1
 [builtins fixtures/dict.pyi]
 [out]
@@ -1896,7 +1902,7 @@ main:4: error: Unsupported target for indexed assignment
 class C:
     x = None
     def __init__(self) -> None:
-        self.x = []  # E: Need type annotation for variable
+        self.x = []  # E: Need type annotation for 'x'
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1953,13 +1959,13 @@ T = TypeVar('T')
 def f() -> T: pass
 
 class C:
-    x = f() # E: Need type annotation for variable
+    x = f() # E: Need type annotation for 'x'
     def m(self) -> str:
         return 42 # E: Incompatible return value type (got "int", expected "str")
 
 if bool():
     f()
-    1 + '' # E: Unsupported left operand type for + ("int")
+    1() # E: "int" not callable
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1970,13 +1976,13 @@ T = TypeVar('T')
 def f(x: Optional[T] = None) -> T: pass
 
 class C:
-    x = f() # E: Need type annotation for variable
+    x = f() # E: Need type annotation for 'x'
     def m(self) -> str:
         return 42 # E: Incompatible return value type (got "int", expected "str")
 
 if bool():
     f()
-    1 + '' # E: Unsupported left operand type for + ("int")
+    1() # E: "int" not callable
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1986,12 +1992,12 @@ T = TypeVar('T')
 def f(x: List[T]) -> T: pass
 
 class C:
-    x = f([]) # E: Need type annotation for variable
+    x = f([]) # E: Need type annotation for 'x'
     def m(self) -> str:
         return 42 # E: Incompatible return value type (got "int", expected "str")
 
 if bool():
     f([])
-    1 + '' # E: Unsupported left operand type for + ("int")
+    1() # E: "int" not callable
 [builtins fixtures/list.pyi]
 [out]

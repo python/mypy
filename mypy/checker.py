@@ -1940,13 +1940,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # partial type which will be made more specific later. A partial type
             # gets generated in assignment like 'x = []' where item type is not known.
             if not self.infer_partial_type(name, lvalue, init_type):
-                self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                self.msg.need_annotation_for_var(name, context)
                 self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         elif (isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None
               and lvalue.def_var and lvalue.def_var in self.inferred_attribute_types
               and not is_same_type(self.inferred_attribute_types[lvalue.def_var], init_type)):
             # Multiple, inconsistent types inferred for an attribute.
-            self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+            self.msg.need_annotation_for_var(name, context)
             name.type = AnyType(TypeOfAny.from_error)
         else:
             # Infer type of the target.
@@ -2675,6 +2675,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         # Build up a fake FuncDef so we can populate the symbol table.
         func_def = FuncDef('__call__', [], Block([]), callable_type)
+        func_def._fullname = cdef.fullname + '.__call__'
         func_def.info = info
         info.names['__call__'] = SymbolTableNode(MDEF, func_def, callable_type)
 
@@ -3100,7 +3101,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     var.type = NoneTyp()
                 else:
                     if var not in self.partial_reported:
-                        self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                        self.msg.need_annotation_for_var(var, context)
                         self.partial_reported.add(var)
                     var.type = AnyType(TypeOfAny.from_error)
 

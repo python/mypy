@@ -1,6 +1,40 @@
-"""Strip AST from semantic information.
+"""Strip/reset AST in-place to match state after semantic analysis pass 1.
 
-This is used in fine-grained incremental checking to reprocess existing AST nodes.
+Fine-grained incremental mode reruns semantic analysis (passes 2 and 3)
+and type checking for *existing* AST nodes (targets) when changes are
+propagated using fine-grained dependencies.  AST nodes attributes are
+often changed during semantic analysis passes 2 and 3, and running
+semantic analysis again on those nodes would produce incorrect
+results, since these passes aren't idempotent. This pass resets AST
+nodes to reflect the state after semantic analysis pass 1, so that we
+can rerun semantic analysis.
+
+(The above is in contrast to behavior with modules that have source code
+changes, for which we reparse the entire module and reconstruct a fresh
+AST. No stripping is required in this case. Both modes of operation should
+have the same outcome.)
+
+Notes:
+
+* This is currently pretty fragile, as we must carefully undo whatever
+  changes can be made in semantic analysis passes 2 and 3, including changes
+  to symbol tables.
+
+* We reuse existing AST nodes because it makes it relatively straightforward
+  to reprocess only a single target within a module efficiently. If there
+  was a way to parse a single target within a file, in time proportional to
+  the size of the target, we'd rather create fresh AST nodes than strip them.
+  Alas, no such facility exists and building it is non-trivial.
+
+* Currently we don't actually reset all changes, but only those known to affect
+  non-idempotent semantic analysis behavior.
+  TODO: It would be more principled and less fragile to reset everything
+      changed in semantic analysis pass 2 and later.
+
+* Reprocessing may recreate AST nodes (such as Var nodes, and TypeInfo nodes
+  created with assignment statements) that will get different identities from
+  the original AST. Thus running an AST merge is necessary after stripping,
+  even though some identities are preserved.
 """
 
 import contextlib
@@ -9,13 +43,17 @@ from typing import Union, Iterator, Optional
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
-    UNBOUND_IMPORTED, GDEF
+    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF
 )
 from mypy.traverser import TraverserVisitor
 
 
 def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
-    """Strip a fine-grained incremental mode target from semantic information."""
+    """Reset a fine-grained incremental target to state after semantic analysis pass 1.
+
+    NOTE: Currently we opportunistically only reset changes that are known to otherwise
+        cause trouble.
+    """
     visitor = NodeStripVisitor()
     if isinstance(node, MypyFile):
         visitor.strip_file_top_level(node)
@@ -45,6 +83,10 @@ class NodeStripVisitor(TraverserVisitor):
         node.info.abstract_attributes = []
         node.info.mro = []
         node.info.add_type_vars()
+        node.info.tuple_type = None
+        node.info.typeddict_type = None
+        node.info._cache = set()
+        node.info._cache_proper = set()
         node.base_type_exprs.extend(node.removed_base_type_exprs)
         node.removed_base_type_exprs = []
         with self.enter_class(node.info):
@@ -98,20 +140,8 @@ class NodeStripVisitor(TraverserVisitor):
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         node.type = node.unanalyzed_type
-        if node.type and self.is_class_body:
-            # Remove attribute defined in the class body from the class namespace to avoid
-            # bogus "Name already defined" errors.
-            #
-            # TODO: Handle multiple assignment, other lvalues
-            # TODO: What about assignments without type annotations?
-            assert len(node.lvalues) == 1
-            lvalue = node.lvalues[0]
-            assert isinstance(lvalue, NameExpr)
-            assert self.type is not None  # Because self.is_class_body is True
-            del self.type.names[lvalue.name]
         if self.type and not self.is_class_body:
             # TODO: Handle multiple assignment
-            # TODO: Merge with above
             if len(node.lvalues) == 1:
                 lvalue = node.lvalues[0]
                 if isinstance(lvalue, MemberExpr) and lvalue.is_new_def:
@@ -154,6 +184,9 @@ class NodeStripVisitor(TraverserVisitor):
         # Global assignments are processed in semantic analysis pass 1, and we
         # only want to strip changes made in passes 2 or later.
         if not (node.kind == GDEF and node.is_new_def):
+            # Remove defined attributes so that they can recreated during semantic analysis.
+            if node.kind == MDEF and node.is_new_def:
+                self.strip_class_attr(node.name)
             self.strip_ref_expr(node)
 
     def visit_member_expr(self, node: MemberExpr) -> None:
@@ -167,11 +200,13 @@ class NodeStripVisitor(TraverserVisitor):
             # defines an attribute with the same name, and we can't have
             # multiple definitions for an attribute. Defer to the base class
             # definition.
-            if self.type is not None:
-                del self.type.names[node.name]
-            node.is_inferred_def = False
+            self.strip_class_attr(node.name)
             node.def_var = None
         super().visit_member_expr(node)
+
+    def strip_class_attr(self, name: str) -> None:
+        if self.type is not None:
+            del self.type.names[name]
 
     def is_duplicate_attribute_def(self, node: MemberExpr) -> bool:
         if not node.is_inferred_def:
@@ -185,10 +220,16 @@ class NodeStripVisitor(TraverserVisitor):
         node.kind = None
         node.node = None
         node.fullname = None
+        node.is_new_def = False
+        node.is_inferred_def = False
 
     def visit_call_expr(self, node: CallExpr) -> None:
         node.analyzed = None
         super().visit_call_expr(node)
+
+    def visit_super_expr(self, node: SuperExpr) -> None:
+        node.info = None
+        super().visit_super_expr(node)
 
     # TODO: handle more node types
 

@@ -1,19 +1,62 @@
-"""Merge a new version of a module AST to an old version.
+"""Merge a new version of a module AST and symbol table to older versions of those.
 
-See the main entry point merge_asts for details.
+When the source code of a module has a change in fine-grained incremental mode,
+we build a new AST from the updated source. However, other parts of the program
+may have direct references to parts of the old AST (namely, those nodes exposed
+in the module symbol table). The merge operation changes the identities of new
+AST nodes that have a correspondance in the old AST to the old ones so that
+existing cross-references in other modules will continue to point to the correct
+nodes. Also internal cross-references within the new AST are replaced. AST nodes
+that aren't externally visible will get new, distinct object identities. This
+applies to most expression and statement nodes, for example.
+
+We perform this merge operation so that we don't have to update all
+external references (which would be slow and fragile) or always perform
+translation when looking up references (which would be hard to retrofit).
+
+The AST merge operation is performed after semantic analysis. Semantic
+analysis has to deal with potentionally multiple aliases to certain AST
+nodes (in particular, MypyFile nodes). Type checking assumes that we
+don't have multiple variants of a single AST node visible to the type
+checker.
+
+Discussion of some notable special cases:
+
+* If a node is replaced with a different kind of node (say, a function is
+  replaced with a class), we don't perform the merge. Fine-grained dependencies
+  will be used to rebind all references to the node.
+
+* If a function is replaced with another function with an identical signature,
+  call sites continue to point to the same object (by identity) and don't need
+  to be reprocessed. Similary, if a class is replaced with a class that is
+  sufficiently similar (MRO preserved, etc.), class references don't need any
+  processing. A typical incremental update to a file only changes a few
+  externally visible things in a module, and this means that often only few
+  external references need any processing, even if the modified module is large.
+
+* A no-op update of a module should not require any processing outside the
+  module, since all relevant object identities are preserved.
+
+* The AST diff operation (mypy.server.astdiff) and the top-level fine-grained
+  incremental logic (mypy.server.update) handle the cases where the new AST has
+  differences from the old one that may need to be propagated to elsewhere in the
+  program.
+
+See the main entry point merge_asts for more details.
 """
 
 from typing import Dict, List, cast, TypeVar, Optional
 
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
-    FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, MDEF
+    FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
+    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, MDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, TypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded
+    Overloaded, TypeVarDef
 )
 from mypy.util import get_prefix
 
@@ -31,16 +74,31 @@ def merge_asts(old: MypyFile, old_symbols: SymbolTable,
     valid.
     """
     assert new.fullname() == old.fullname()
+    # Find the mapping from new to old node identities for all nodes
+    # whose identities should be preserved.
     replacement_map = replacement_map_from_symbol_table(
         old_symbols, new_symbols, prefix=old.fullname())
+    # Also replace references to the new MypyFile node.
     replacement_map[new] = old
+    # Perform replacements to everywhere within the new AST (not including symbol
+    # tables).
     node = replace_nodes_in_ast(new, replacement_map)
     assert node is old
+    # Also replace AST node references in the *new* symbol table (we'll
+    # continue to use the new symbol table since it has all the new definitions
+    # that have no correspondence in the old AST).
     replace_nodes_in_symbol_table(new_symbols, replacement_map)
 
 
 def replacement_map_from_symbol_table(
         old: SymbolTable, new: SymbolTable, prefix: str) -> Dict[SymbolNode, SymbolNode]:
+    """Create a new-to-old object identity map by comparing two symbol table revisions.
+
+    Both symbol tables must refer to revisions of the same module id. The symbol tables
+    are compared recursively (recursing into nested class symbol tables), but only within
+    the given module prefix. Don't recurse into other modules accessible through the symbol
+    table.
+    """
     replacements = {}  # type: Dict[SymbolNode, SymbolNode]
     for name, node in old.items():
         if (name in new and (node.kind == MDEF
@@ -62,6 +120,12 @@ def replacement_map_from_symbol_table(
 
 def replace_nodes_in_ast(node: SymbolNode,
                          replacements: Dict[SymbolNode, SymbolNode]) -> SymbolNode:
+    """Replace all references to replacement map keys within an AST node, recursively.
+
+    Also replace the *identity* of any nodes that have replacements. Return the
+    *replaced* version of the argument node (which may have a different identity, if
+    it's included in the replacement map).
+    """
     visitor = NodeReplaceVisitor(replacements)
     node.accept(visitor)
     return replacements.get(node, node)
@@ -74,7 +138,8 @@ class NodeReplaceVisitor(TraverserVisitor):
     """Transform some nodes to new identities in an AST.
 
     Only nodes that live in the symbol table may be
-    replaced, which simplifies the implementation some.
+    replaced, which simplifies the implementation some. Also
+    replace all references to the old identities.
     """
 
     def __init__(self, replacements: Dict[SymbolNode, SymbolNode]) -> None:
@@ -93,13 +158,28 @@ class NodeReplaceVisitor(TraverserVisitor):
         node = self.fixup(node)
         if node.type:
             self.fixup_type(node.type)
+        if node.info:
+            node.info = self.fixup(node.info)
         super().visit_func_def(node)
 
+    def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> None:
+        if node.info:
+            node.info = self.fixup(node.info)
+        super().visit_overloaded_func_def(node)
+
     def visit_class_def(self, node: ClassDef) -> None:
-        # TODO additional things like the MRO
+        # TODO additional things?
         node.defs.body = self.replace_statements(node.defs.body)
+        node.info = self.fixup(node.info)
+        for tv in node.type_vars:
+            self.process_type_var_def(tv)
         self.process_type_info(node.info)
         super().visit_class_def(node)
+
+    def process_type_var_def(self, tv: TypeVarDef) -> None:
+        for value in tv.values:
+            self.fixup_type(value)
+        self.fixup_type(tv.upper_bound)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         if node.type:
@@ -123,11 +203,44 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> None:
         super().visit_namedtuple_expr(node)
+        node.info = self.fixup(node.info)
         self.process_type_info(node.info)
 
     def visit_super_expr(self, node: SuperExpr) -> None:
         super().visit_super_expr(node)
+        if node.info is not None:
+            node.info = self.fixup(node.info)
+
+    def visit_newtype_expr(self, node: NewTypeExpr) -> None:
+        if node.info:
+            node.info = self.fixup(node.info)
+            self.process_type_info(node.info)
+        if node.old_type:
+            self.fixup_type(node.old_type)
+        super().visit_newtype_expr(node)
+
+    def visit_lambda_expr(self, node: LambdaExpr) -> None:
+        if node.info:
+            node.info = self.fixup(node.info)
+        super().visit_lambda_expr(node)
+
+    def visit_typeddict_expr(self, node: TypedDictExpr) -> None:
         node.info = self.fixup(node.info)
+        super().visit_typeddict_expr(node)
+
+    def visit_enum_call_expr(self, node: EnumCallExpr) -> None:
+        node.info = self.fixup(node.info)
+        self.process_type_info(node.info)
+        super().visit_enum_call_expr(node)
+
+    # Others
+
+    def visit_var(self, node: Var) -> None:
+        if node.info:
+            node.info = self.fixup(node.info)
+        if node.type:
+            self.fixup_type(node.type)
+        super().visit_var(node)
 
     # Helpers
 
@@ -142,12 +255,19 @@ class NodeReplaceVisitor(TraverserVisitor):
         typ.accept(TypeReplaceVisitor(self.replacements))
 
     def process_type_info(self, info: TypeInfo) -> None:
-        # TODO additional things like the MRO
+        # TODO: Additional things:
+        # - declared_metaclass
+        # - metaclass_type
+        # - _promote
+        # - typeddict_type
+        # - replaced
         replace_nodes_in_symbol_table(info.names, self.replacements)
         for i, item in enumerate(info.mro):
             info.mro[i] = self.fixup(info.mro[i])
         for i, base in enumerate(info.bases):
             self.fixup_type(info.bases[i])
+        if info.tuple_type:
+            self.fixup_type(info.tuple_type)
 
     def replace_statements(self, nodes: List[Statement]) -> List[Statement]:
         result = []
@@ -159,6 +279,8 @@ class NodeReplaceVisitor(TraverserVisitor):
 
 
 class TypeReplaceVisitor(TypeVisitor[None]):
+    """Similar to NodeReplaceVisitor, but for type objects."""
+
     def __init__(self, replacements: Dict[SymbolNode, SymbolNode]) -> None:
         self.replacements = replacements
 
@@ -180,7 +302,9 @@ class TypeReplaceVisitor(TypeVisitor[None]):
         if typ.definition:
             # No need to fixup since this is just a cross-reference.
             typ.definition = self.replacements.get(typ.definition, typ.definition)
-        # TODO: typ.fallback
+        # Fallback can be None for callable types that haven't been semantically analyzed.
+        if typ.fallback is not None:
+            typ.fallback.accept(self)
         for tv in typ.variables:
             tv.upper_bound.accept(self)
             for value in tv.values:
@@ -189,6 +313,7 @@ class TypeReplaceVisitor(TypeVisitor[None]):
     def visit_overloaded(self, t: Overloaded) -> None:
         for item in t.items():
             item.accept(self)
+        t.fallback.accept(self)
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
@@ -199,6 +324,7 @@ class TypeReplaceVisitor(TypeVisitor[None]):
     def visit_tuple_type(self, typ: TupleType) -> None:
         for item in typ.items:
             item.accept(self)
+        typ.fallback.accept(self)
 
     def visit_type_type(self, typ: TypeType) -> None:
         typ.item.accept(self)

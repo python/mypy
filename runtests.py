@@ -213,6 +213,7 @@ PYTEST_FILES = test_path(
     'testtypegen',
     'testparse',
     'testsemanal',
+    'testerrorstream',
     # non-data-driven:
     'testgraph',
     'testinfer',

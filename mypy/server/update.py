@@ -1,49 +1,119 @@
-"""Update build result by incrementally processing changed modules.
+"""Update build by processing changes using fine-grained dependencies.
 
 Use fine-grained dependencies to update targets in other modules that
 may be affected by externally-visible changes in the changed modules.
 
-Terms:
+This forms the core of the fine-grained incremental daemon mode. This
+module is not used at all by the 'classic' (non-daemon) incremental
+mode.
 
-* A 'target' is a function definition or the top level of a module. We
-  refer to targets using their fully qualified name (e.g. 'mod.Cls.attr').
-  Targets are the smallest units of processing during fine-grained
-  incremental checking.
-* A 'trigger' represents the properties of a part of a program, and it
-  gets triggered/activated when these properties change. For example,
-  '<mod.func>' refers to a module-level function, and it gets triggered
-  if the signature of the function changes, or if if the function is
-  removed.
+Here is some motivation for this mode:
 
-Some program state is maintained across multiple build increments:
+* By keeping program state in memory between incremental runs, we
+  only have to process changed modules, not their dependencies. The
+  classic incremental mode has to deserialize the symbol tables of
+  all dependencies of changed modules, which can be slow for large
+  programs.
 
-* The full ASTs of all modules in memory all the time (+ type map).
-* Maintain a fine-grained dependency map, which is from triggers to
-  targets/triggers. The latter determine what other parts of a program
-  need to be processed again due to an externally visible change to a
-  module.
+* Fine-grained dependencies allow processing only the relevant parts
+  of modules indirectly affected by a change. Say, if only one function
+  in a large module is affected by a change in another module, only this
+  function is processed. The classic incremental mode always processes
+  an entire file as a unit, which is typically much slower.
 
-We perform a fine-grained incremental program update like this:
+* It's possible to independently process individual modules within an
+  import cycle (SCC). Small incremental changes can be fast independent
+  of the size of the related SCC. In classic incremental mode, any change
+  within a SCC requires the entire SCC to be processed, which can slow
+  things down considerably.
+
+Some terms:
+
+* A *target* is a function/method definition or the top level of a module.
+  We refer to targets using their fully qualified name (e.g.
+  'mod.Cls.method'). Targets are the smallest units of processing during
+  fine-grained incremental checking.
+
+* A *trigger* represents the properties of a part of a program, and it
+  gets triggered/fired when these properties change. For example,
+  '<mod.func>' refers to a module-level function. It gets triggered if
+  the signature of the function changes, or if the function is removed,
+  for example.
+
+Some program state is maintained across multiple build increments in
+memory:
+
+* The full ASTs of all modules are stored in memory all the time (this
+  includes the type map).
+
+* A fine-grained dependency map is maintained, which maps triggers to
+  affected program locations (these can be targets, triggers, or
+  classes). The latter determine what other parts of a program need to
+  be processed again due to a fired trigger.
+
+Here's a summary of how a fine-grained incremental program update happens:
 
 * Determine which modules have changes in their source code since the
-  previous build.
-* Fully process these modules, creating new ASTs and symbol tables
-  for them. Retain the existing ASTs and symbol tables of modules that
-  have no changes in their source code.
-* Determine which parts of the changed modules have changed. The result
-  is a set of triggered triggers.
-* Using the dependency map, decide which other targets have become
-  stale and need to be reprocessed.
-* Replace old ASTs of the modules that we reprocessed earlier with
-  the new ones, but try to retain the identities of original externally
-  visible AST nodes so that we don't (always) need to patch references
-  in the rest of the program.
-* Semantically analyze and type check the stale targets.
-* Repeat the previous steps until nothing externally visible has changed.
+  previous update.
+
+* Process changed modules one at a time. Perform a separate full update
+  for each changed module, but only report the errors after all modules
+  have been processed, since the intermediate states can generate bogus
+  errors due to only seeing a partial set of changes.
+
+* Each changed module is processed in full. We parse the module, and
+  run semantic analysis to create a new AST and symbol table for the
+  module. Reuse the existing ASTs and symbol tables of modules that
+  have no changes in their source code. At the end of this stage, we have
+  two ASTs and symbol tables for the changed module (the old and the new
+  versions). The latter AST has not yet been type checked.
+
+* Take a snapshot of the old symbol table. This is used later to determine
+  which properties of the module have changed and which triggers to fire.
+
+* Merge the old AST with the new AST, preserving the identities of
+  externally visible AST nodes for which we can find a corresponding node
+  in the new AST. (Look at mypy.server.astmerge for the details.) This
+  way all external references to AST nodes in the changed module will
+  continue to point to the right nodes (assuming they still have a valid
+  target).
+
+* Type check the new module.
+
+* Take another snapshot of the symbol table of the changed module.
+  Look at the differences between the old and new snapshots to determine
+  which parts of the changed modules have changed. The result is a set of
+  fired triggers.
+
+* Using the dependency map and the fired triggers, decide which other
+  targets have become stale and need to be reprocessed.
+
+* Create new fine-grained dependencies for the changed module. We don't
+  garbage collect old dependencies, since extra dependencies are relatively
+  harmless (they take some memory and can theoretically slow things down
+  a bit by causing redundant work). This is implemented in
+  mypy.server.deps.
+
+* Strip the stale AST nodes that we found above. This returns them to a
+  state resembling the end of semantic analysis pass 1. We'll run semantic
+  analysis again on the existing AST nodes, and since semantic analysis
+  is not idempotent, we need to revert some changes made during semantic
+  analysis. This is implemented in mypy.server.aststrip.
+
+* Run semantic analyzer passes 2 and 3 on the stale AST nodes, and type
+  check them. We also need to do the symbol table snapshot comparison
+  dance to find any changes, and we need to merge ASTs to preserve AST node
+  identities.
+
+* If some triggers haven been fired, continue processing and repeat the
+  previous steps until no triggers are fired.
+
+This is module is tested using end-to-end fine-grained incremental mode
+test cases (test-data/unit/fine-grained*.test).
 
 Major todo items:
 
-- Support multiple type checking passes
+- Fully support multiple type checking passes
 """
 
 import os.path
@@ -195,9 +265,9 @@ class FineGrainedBuildManager:
         result = update_single_isolated(module, path, manager, previous_modules)
         if isinstance(result, BlockedUpdate):
             # Blocking error -- just give up
-            module, path, remaining = result
+            module, path, remaining, errors = result
             self.previous_modules = get_module_to_path_map(manager)
-            return manager.errors.messages(), remaining, (module, path), True
+            return errors, remaining, (module, path), True
         assert isinstance(result, NormalUpdate)  # Work around #4124
         module, path, remaining, tree, graph = result
 
@@ -207,7 +277,7 @@ class FineGrainedBuildManager:
             filtered = [trigger for trigger in triggered
                         if not trigger.endswith('__>')]
             print('triggered:', sorted(filtered))
-        self.triggered.extend(triggered)
+        self.triggered.extend(triggered | self.previous_targets_with_errors)
         update_dependencies({module: tree}, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              {module},
@@ -230,7 +300,7 @@ class FineGrainedBuildManager:
         self.previous_modules = get_module_to_path_map(manager)
         self.type_maps = extract_type_maps(graph)
 
-        return manager.errors.messages(), remaining, (module, path), False
+        return manager.errors.new_messages(), remaining, (module, path), False
 
 
 def mark_all_meta_as_memory_only(graph: Dict[str, State],
@@ -271,7 +341,8 @@ NormalUpdate = NamedTuple('NormalUpdate', [('module', str),
 # are similar to NormalUpdate (but there are fewer).
 BlockedUpdate = NamedTuple('BlockedUpdate', [('module', str),
                                              ('path', str),
-                                             ('remaining', List[Tuple[str, str]])])
+                                             ('remaining', List[Tuple[str, str]]),
+                                             ('messages', List[str])])
 
 UpdateResult = Union[NormalUpdate, BlockedUpdate]
 
@@ -318,7 +389,7 @@ def update_single_isolated(module: str,
             remaining_modules = [(module, path)]
         else:
             remaining_modules = []
-        return BlockedUpdate(err.module_with_blocker, path, remaining_modules)
+        return BlockedUpdate(err.module_with_blocker, path, remaining_modules, err.messages)
 
     if not os.path.isfile(path):
         graph = delete_module(module, graph, manager)
@@ -354,7 +425,7 @@ def update_single_isolated(module: str,
         manager.modules.clear()
         manager.modules.update(old_modules)
         del graph[module]
-        return BlockedUpdate(module, path, remaining_modules)
+        return BlockedUpdate(module, path, remaining_modules, err.messages)
     state.semantic_analysis_pass_three()
     state.semantic_analysis_apply_patches()
 
@@ -422,9 +493,13 @@ def delete_module(module_id: str,
         del manager.saved_cache[module_id]
     components = module_id.split('.')
     if len(components) > 1:
-        parent = manager.modules['.'.join(components[:-1])]
-        if components[-1] in parent.names:
-            del parent.names[components[-1]]
+        # Delete reference to module in parent module.
+        parent_id = '.'.join(components[:-1])
+        # If parent module is ignored, it won't be included in the modules dictionary.
+        if parent_id in manager.modules:
+            parent = manager.modules[parent_id]
+            if components[-1] in parent.names:
+                del parent.names[components[-1]]
     return new_graph
 
 
@@ -572,7 +647,7 @@ def update_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
     for id, node in new_modules.items():
         if node is None:
             continue
-        if '/typeshed/' in node.path:
+        if '/typeshed/' in node.path or node.path.startswith('typeshed/'):
             # We don't track changes to typeshed -- the assumption is that they are only changed
             # as part of mypy updates, which will invalidate everything anyway.
             #

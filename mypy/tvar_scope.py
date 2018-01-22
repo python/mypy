@@ -52,7 +52,7 @@ class TypeVarScope:
         """A new scope frame for binding a class. Prohibits *this* class's tvars"""
         return TypeVarScope(self.get_function_scope(), True, self)
 
-    def bind(self, name: str, tvar_expr: TypeVarExpr) -> TypeVarDef:
+    def bind_new(self, name: str, tvar_expr: TypeVarExpr) -> TypeVarDef:
         if self.is_class_scope:
             self.class_id += 1
             i = self.class_id
@@ -69,6 +69,9 @@ class TypeVarScope:
                               column=tvar_expr.column)
         self.scope[tvar_expr.fullname()] = tvar_def
         return tvar_def
+
+    def bind_existing(self, tvar_def: TypeVarDef) -> None:
+        self.scope[tvar_def.fullname] = tvar_def
 
     def get_binding(self, item: Union[str, SymbolTableNode]) -> Optional[TypeVarDef]:
         fullname = item.fullname if isinstance(item, SymbolTableNode) else item
