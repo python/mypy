@@ -2607,3 +2607,10 @@ def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callab
             fail("Duplicate argument '{}' in {}".format(name, description), node)
             break
         seen_names.add(name)
+
+
+def is_class_var(expr: NameExpr) -> bool:
+    """Return whether the expression is ClassVar[...]"""
+    if isinstance(expr.node, Var):
+        return expr.node.is_classvar
+    return False

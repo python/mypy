@@ -110,7 +110,7 @@ class D:
 [case testAttrsSeriousNames]
 from attr import attrib, attrs
 from typing import List
-@attrs
+@attrs(init=True)
 class A:
     a = attrib()
     _b: List[int] = attrib()

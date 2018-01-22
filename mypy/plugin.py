@@ -8,10 +8,13 @@ from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, cast, D
 from mypy import messages
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
-    Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var,
-    FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode,
-    ARG_OPT, ARG_POS, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt, FuncBase,
-    TupleExpr, ListExpr)
+    Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef,
+    Argument, Var,
+    FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt,
+    TempNode,
+    ARG_OPT, ARG_POS, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt,
+    FuncBase,
+    TupleExpr, ListExpr, is_class_var)
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
@@ -477,76 +480,14 @@ def attr_class_maker_callback(
 
     See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
     """
-    decorator = ctx.reason
     info = ctx.cls.info
 
-    def get_callable_type(call: CallExpr) -> Optional[CallableType]:
-        """Get the CallableType that's attached to a CallExpr."""
-        callable_type = None
-        if (isinstance(call.callee, RefExpr)
-                and isinstance(call.callee.node, Var)
-                and call.callee.node.type):
-            callee_type = call.callee.node.type
-            if isinstance(callee_type, Overloaded):
-                # We take the last overload.
-                callable_type = callee_type.items()[-1]
-            elif isinstance(callee_type, CallableType):
-                callable_type = callee_type
-        return callable_type
-
-    def get_argument(call: CallExpr, name: str) -> Optional[Expression]:
-        """Return the expression for the specific argument."""
-        callee = get_callable_type(call)
-        if not callee:
-            return None
-
-        argument = callee.argument_by_name(name)
-        if not argument:
-            return None
-
-        if not argument.name and not argument.pos:
-            return None
-
-        for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
-            if argument.pos is not None and not attr_name and i == argument.pos:
-                return attr_value
-            if attr_name == argument.name:
-                return attr_value
-        return None
-
-    def get_bool_argument(expr: CallExpr, name: str, default: bool) -> bool:
-        """Return the boolean value for an argument to a call or the default if it's not found."""
-        attr_value = get_argument(expr, name)
-        if attr_value:
-            ret = ctx.api.parse_bool(attr_value)
-            if ret is None:
-                ctx.api.fail('"{}" argument must be True or False.'.format(name), expr)
-                return default
-            return ret
-        return default
-
-    def is_class_var(expr: NameExpr) -> bool:
-        """Return whether the expression is ClassVar[...]"""
-        if isinstance(expr.node, Var):
-            return expr.node.is_classvar
-        return False
-
-    def get_decorator_bool_argument(name: str, default: bool) -> bool:
-        """Return the bool argument for the decorator.
-
-        This handles both @attr.s(...) and @attr.s
-        """
-        if isinstance(decorator, CallExpr):
-            return get_bool_argument(decorator, name, default)
-        else:
-            return default
-
     # auto_attribs means we also generate Attributes from annotated variables.
-    auto_attribs = get_decorator_bool_argument('auto_attribs', auto_attribs_default)
+    auto_attribs = _attrs_get_decorator_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
 
     if ctx.api.options.python_version[0] < 3:
         if auto_attribs:
-            ctx.api.fail("auto_attribs is not supported in Python 2", decorator)
+            ctx.api.fail("auto_attribs is not supported in Python 2", ctx.reason)
             return
         if not info.defn.base_type_exprs:
             # Note: This does not catch subclassing old-style classes.
@@ -602,11 +543,11 @@ def attr_class_maker_callback(
 
                         # Look for default=<something> in the call.
                         # TODO: Check for attr.NOTHING
-                        attr_has_default = bool(get_argument(rvalue, 'default'))
+                        attr_has_default = bool(_attrs_get_argument(rvalue, 'default'))
 
                         # If the type isn't set through annotation but it is passed through type=
                         # use that.
-                        type_arg = get_argument(rvalue, 'type')
+                        type_arg = _attrs_get_argument(rvalue, 'type')
                         if type_arg and not typ:
                             try:
                                 un_type = expr_to_unanalyzed_type(type_arg)
@@ -622,8 +563,8 @@ def attr_class_maker_callback(
                         # If the attrib has a converter function take the type of the first
                         # argument as the init type.
                         # Note: convert is deprecated but works the same as converter.
-                        converter = get_argument(rvalue, 'converter')
-                        convert = get_argument(rvalue, 'convert')
+                        converter = _attrs_get_argument(rvalue, 'converter')
+                        convert = _attrs_get_argument(rvalue, 'convert')
                         if convert and converter:
                             ctx.api.fail("Can't pass both `convert` and `converter`.", rvalue)
                         elif convert:
@@ -638,7 +579,7 @@ def attr_class_maker_callback(
                             typ = converter.node.type.arg_types[0]
 
                         # Does this even have to go in init.
-                        init = get_bool_argument(rvalue, 'init', True)
+                        init = _attrs_get_bool_argument(ctx, rvalue, 'init', True)
 
                         # When attrs are defined twice in the same body we want to use
                         # the 2nd definition in the 2nd location. So remove it from the
@@ -668,7 +609,7 @@ def attr_class_maker_callback(
                         # class creation time.  In order to not trigger a type error later we
                         # just remove them.  This might leave us with a Decorator with no
                         # decorators (Emperor's new clothes?)
-                        # TODO: Any way to type-check these?
+                        # TODO: It would be nice to type-check these rather than remove them.
                         #       default should be Callable[[], T]
                         #       validator should be Callable[[Any, 'Attribute', T], Any]
                         #       where T is the type of the attribute.
@@ -680,7 +621,7 @@ def attr_class_maker_callback(
     taken_attr_names = set(own_attrs)
     super_attrs = []
 
-    # Traverse the MRO and collect attributes.
+    # Traverse the MRO and collect attributes from the parents.
     for super_info in info.mro[1:-1]:
         if super_info in attr_classes:
             for a in attr_classes[super_info]:
@@ -692,16 +633,16 @@ def attr_class_maker_callback(
 
     attributes = super_attrs + list(own_attrs.values())
     # Save the attributes so that subclasses can reuse them.
-    # TODO: Fix caching.
+    # TODO: This doesn't work with incremental mode if the parent class is in a different file.
     attr_classes[info] = attributes
 
     if ctx.api.options.disallow_untyped_defs:
         for attribute in attributes:
             if attribute.type is None:
                 # This is a compromise.  If you don't have a type here then the __init__ will
-                # be untyped. But since the __init__ method doesn't have a line number it's
-                # difficult to point to the correct line number.  So instead we just show the
-                # error in the assignment, which is where you would fix the issue.
+                # be untyped. But since the __init__ is added it's pointing at the decorator.
+                # So instead we just show the error in the assignment, which is where you
+                # would fix the issue.
                 ctx.api.fail(messages.NEED_ANNOTATION_FOR_VAR, attribute.context)
 
     # Check the init args for correct default-ness.  Note: This has to be done after all the
@@ -714,36 +655,11 @@ def attr_class_maker_callback(
                 attribute.context)
         last_default = attribute.has_default
 
-    self_type = fill_typevars(info)
-    function_type = ctx.api.named_type('__builtins__.function')
+    adder = MethodAdder(info, ctx.api.named_type('__builtins__.function'))
 
-    def add_method(method_name: str, args: List[Argument], ret_type: Type,
-                   self_type: Type = self_type,
-                   tvd: Optional[TypeVarDef] = None) -> None:
-        """Create a method: def <method_name>(self, <args>) -> <ret_type>): ..."""
-        from mypy.semanal import set_callable_name
-        args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
-        arg_types = [arg.type_annotation for arg in args]
-        arg_names = [arg.variable.name() for arg in args]
-        arg_kinds = [arg.kind for arg in args]
-        assert None not in arg_types
-        signature = CallableType(cast(List[Type], arg_types), arg_kinds, arg_names,
-                                 ret_type, function_type)
-        if tvd:
-            signature.variables = [tvd]
-        func = FuncDef(method_name, args, Block([PassStmt()]))
-        func.info = info
-        func.type = set_callable_name(signature, func)
-        func._fullname = info.fullname() + '.' + method_name
-        func.line = ctx.cls.line
-        info.names[method_name] = SymbolTableNode(MDEF, func)
-        # Add the created methods to the body so that they can get further semantic analysis.
-        # e.g. Forward Reference Resolution.
-        info.defn.defs.body.append(func)
-
-    if get_decorator_bool_argument('init', True):
+    if _attrs_get_decorator_bool_argument(ctx, 'init', True):
         # Generate the __init__ method.
-        add_method(
+        adder.add_method(
             '__init__',
             [attribute.argument() for attribute in attributes if attribute.init],
             NoneTyp()
@@ -757,7 +673,7 @@ def attr_class_maker_callback(
                 if isinstance(func_type, CallableType):
                     func_type.arg_types[0] = ctx.api.class_type(info)
 
-    if get_decorator_bool_argument('frozen', False):
+    if _attrs_get_decorator_bool_argument(ctx, 'frozen', False):
         # If the class is frozen then all the attributes need to be turned into properties.
         for attribute in attributes:
             node = info.names[attribute.name].node
@@ -765,7 +681,7 @@ def attr_class_maker_callback(
             node.is_initialized_in_class = False
             node.is_property = True
 
-    if get_decorator_bool_argument('cmp', True):
+    if _attrs_get_decorator_bool_argument(ctx, 'cmp', True):
         # For __ne__ and __eq__ the type is:
         #     def __ne__(self, other: object) -> bool
         bool_type = ctx.api.named_type('__builtins__.bool')
@@ -773,7 +689,7 @@ def attr_class_maker_callback(
 
         args = [Argument(Var('other', object_type), object_type, None, ARG_POS)]
         for method in ['__ne__', '__eq__']:
-            add_method(method, args, bool_type)
+            adder.add_method(method, args, bool_type)
 
         # For the rest we use:
         #    AT = TypeVar('AT')
@@ -783,4 +699,108 @@ def attr_class_maker_callback(
         tvd_type = TypeVarType(tvd)
         args = [Argument(Var('other', tvd_type), tvd_type, None, ARG_POS)]
         for method in ['__lt__', '__le__', '__gt__', '__ge__']:
-            add_method(method, args, bool_type, self_type=tvd_type, tvd=tvd)
+            adder.add_method(method, args, bool_type,
+                             self_type=tvd_type, tvd=tvd)
+
+
+def _attrs_get_decorator_bool_argument(ctx: ClassDefContext, name: str, default: bool) -> bool:
+    """Return the bool argument for the decorator.
+
+    This handles both @attr.s(...) and @attr.s
+    """
+    if isinstance(ctx.reason, CallExpr):
+        return _attrs_get_bool_argument(ctx, ctx.reason, name, default)
+    else:
+        return default
+
+
+def _attrs_get_bool_argument(ctx: ClassDefContext, expr: CallExpr,
+                             name: str, default: bool) -> bool:
+    """Return the boolean value for an argument to a call or the default if it's not found."""
+    attr_value = _attrs_get_argument(expr, name)
+    if attr_value:
+        ret = ctx.api.parse_bool(attr_value)
+        if ret is None:
+            ctx.api.fail('"{}" argument must be True or False.'.format(name), expr)
+            return default
+        return ret
+    return default
+
+
+def _attrs_get_argument(call: CallExpr, name: str) -> Optional[Expression]:
+    """Return the expression for the specific argument."""
+    # To do this we find the CallableType of the callee and to find the FormalArgument.
+    # Note: I'm not hard-coding the index so that in the future we can support other
+    # attrib and class makers.
+    callee_type = None
+    if (isinstance(call.callee, RefExpr)
+            and isinstance(call.callee.node, Var)
+            and call.callee.node.type):
+        callee_node_type = call.callee.node.type
+        if isinstance(callee_node_type, Overloaded):
+            # We take the last overload.
+            callee_type = callee_node_type.items()[-1]
+        elif isinstance(callee_node_type, CallableType):
+            callee_type = callee_node_type
+
+    if not callee_type:
+        return None
+
+    argument = callee_type.argument_by_name(name)
+    if not argument:
+        return None
+    assert argument.name
+
+    # Now walk the actual call to pick off the correct argument.
+    for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
+        if argument.pos is not None and not attr_name and i == argument.pos:
+            return attr_value
+        if attr_name == argument.name:
+            return attr_value
+    return None
+
+
+class MethodAdder:
+    """Helper to add methods to a TypeInfo.
+
+    info: The TypeInfo on which we will add methods.
+    function_type: The type of __builtins__.function that will be used as the
+                   fallback for all methods added.
+    """
+
+    # TODO: Combine this with the code build_namedtuple_typeinfo to support both.
+
+    def __init__(self, info: TypeInfo, function_type: Instance) -> None:
+        self.info = info
+        self.self_type = fill_typevars(info)
+        self.function_type = function_type
+
+    def add_method(self,
+                   method_name: str, args: List[Argument], ret_type: Type,
+                   self_type: Optional[Type] = None,
+                   tvd: Optional[TypeVarDef] = None) -> None:
+        """Add a method: def <method_name>(self, <args>) -> <ret_type>): ... to info.
+
+        self_type: The type to use for the self argument or None to use the inferred self type.
+        tvd: If the method is generic these should be the type variables.
+        """
+        from mypy.semanal import set_callable_name
+        self_type = self_type if self_type is not None else self.self_type
+        args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
+        arg_types = [arg.type_annotation for arg in args]
+        arg_names = [arg.variable.name() for arg in args]
+        arg_kinds = [arg.kind for arg in args]
+        assert None not in arg_types
+        signature = CallableType(cast(List[Type], arg_types), arg_kinds, arg_names,
+                                 ret_type, self.function_type)
+        if tvd:
+            signature.variables = [tvd]
+        func = FuncDef(method_name, args, Block([PassStmt()]))
+        func.info = self.info
+        func.type = set_callable_name(signature, func)
+        func._fullname = self.info.fullname() + '.' + method_name
+        func.line = self.info.line
+        self.info.names[method_name] = SymbolTableNode(MDEF, func)
+        # Add the created methods to the body so that they can get further semantic analysis.
+        # e.g. Forward Reference Resolution.
+        self.info.defn.defs.body.append(func)
