@@ -32,6 +32,7 @@ if sys.platform != 'win32':
 else:
     dmypy_files = []  # type: List[str]
 
+
 # By default we complain about missing files. This is a special module prefix
 # for which we allow non-existence. This is used for testing missing files.
 NON_EXISTENT_PREFIX = 'nonexistent'
