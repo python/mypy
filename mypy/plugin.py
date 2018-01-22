@@ -5,16 +5,12 @@ from abc import abstractmethod
 from functools import partial
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, cast, Dict
 
-from mypy import messages
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
-    Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef,
-    Argument, Var,
-    FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt,
-    TempNode,
-    ARG_OPT, ARG_POS, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt,
-    FuncBase,
-    TupleExpr, ListExpr, is_class_var)
+    Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var, FuncDef,
+    Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode, ARG_OPT, ARG_POS,
+    NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt, FuncBase, TupleExpr, ListExpr, is_class_var
+)
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
