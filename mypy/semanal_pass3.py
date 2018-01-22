@@ -268,12 +268,22 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         for id, as_id in imp.names:
             my_node = self.sem.globals.get(as_id or id)
             src_node = module.names.get(id)
+            # Fixup remaining UNBOUND_IMPORTED nodes from import cycles
             if my_node and src_node and my_node.kind == UNBOUND_IMPORTED:
                 my_node.kind = src_node.kind
                 my_node.node = src_node.node
                 my_node.type_override = src_node.type_override
                 my_node.normalized = src_node.normalized
                 my_node.alias_tvars = src_node.alias_tvars
+
+    def visit_name_expr(self, expr: NameExpr) -> None:
+        # Fixup remaining UNBOUND_IMPORTED nodes from import cycles
+        if expr.kind == UNBOUND_IMPORTED:
+            n = self.sem.lookup(expr.name, expr)
+            if n:
+                expr.kind = n.kind
+                expr.node = n.node
+                expr.fullname = n.fullname
 
     # Helpers
 
