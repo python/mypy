@@ -1293,7 +1293,7 @@ class C(Generic[T]): pass
 [out]
 main:4: error: "object" has no attribute "C"
 ==
-main:4: error: Need type annotation for variable
+main:4: error: Need type annotation for 'x'
 
 [case testPartialTypeInNestedClass]
 import a
@@ -1310,9 +1310,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:7: error: Need type annotation for variable
+main:7: error: Need type annotation for 'x'
 ==
-main:7: error: Need type annotation for variable
+main:7: error: Need type annotation for 'x'
 
 [case testRefreshPartialTypeInClass]
 import a
@@ -1327,9 +1327,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:5: error: Need type annotation for variable
+main:5: error: Need type annotation for 'x'
 ==
-main:5: error: Need type annotation for variable
+main:5: error: Need type annotation for 'x'
 
 [case testRefreshTryExcept]
 import a
@@ -1493,5 +1493,109 @@ def f(o: object) -> None:
     if callable(o):
         o()
 [builtins fixtures/callable.pyi]
+[out]
+==
+
+[case testRefreshFunctionalNamedTuple]
+import a
+
+[file a.py]
+from typing import NamedTuple
+from b import L
+
+A = NamedTuple('A', [])
+a: A
+
+def g() -> None:
+    x = L(A())
+    x.f(a)
+
+[file b.pyi]
+from typing import TypeVar, Generic, overload
+
+T = TypeVar('T')
+
+class L(Generic[T]):
+    def __init__(self, x: T) -> None: pass
+    @overload
+    def f(self) -> None: pass
+    @overload
+    def f(self, a: T) -> None: pass
+
+[file a.py.2]
+from typing import NamedTuple
+from b import L
+
+A = NamedTuple('A', [])
+a: A
+
+def g() -> None:
+    x = L(A())
+    x.f(a)
+[out]
+==
+
+[case testRefreshSubclassNestedInFunction1]
+from a import C
+def f() -> None:
+    class D(C): pass
+[file a.py]
+class C: pass
+[file a.py.2]
+[out]
+==
+main:1: error: Module 'a' has no attribute 'C'
+
+[case testRefreshSubclassNestedInFunction2]
+from a import C
+def f() -> None:
+    class D(C):
+        def g(self) -> None:
+            super().__init__()
+    d = D()
+[file a.py]
+class C:
+    def __init__(self) -> None: pass
+[file a.py.2]
+class C:
+    def __init__(self, x: int) -> None: pass
+[out]
+==
+main:5: error: Too few arguments for "__init__" of "C"
+main:6: error: Too few arguments for "D"
+
+[case testNamedTupleUpdate]
+import b
+[file a.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+x = N(1)
+[file a.py.2]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', str)])
+x = N('hi')
+[file b.py]
+import a
+def f(x: a.N) -> None:
+    pass
+f(a.x)
+[out]
+==
+
+[case testNamedTupleUpdate2]
+import b
+[file a.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+x = N(1)
+[file a.py.2]
+from typing import NamedTuple
+N = NamedTuple('N', [('y', int)])
+x = N(2)
+[file b.py]
+import a
+def f(x: a.N) -> None:
+    pass
+f(a.x)
 [out]
 ==

@@ -203,6 +203,7 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> None:
         super().visit_namedtuple_expr(node)
+        node.info = self.fixup(node.info)
         self.process_type_info(node.info)
 
     def visit_super_expr(self, node: SuperExpr) -> None:
@@ -258,7 +259,6 @@ class NodeReplaceVisitor(TraverserVisitor):
         # - declared_metaclass
         # - metaclass_type
         # - _promote
-        # - tuple_type
         # - typeddict_type
         # - replaced
         replace_nodes_in_symbol_table(info.names, self.replacements)
@@ -266,6 +266,8 @@ class NodeReplaceVisitor(TraverserVisitor):
             info.mro[i] = self.fixup(info.mro[i])
         for i, base in enumerate(info.bases):
             self.fixup_type(info.bases[i])
+        if info.tuple_type:
+            self.fixup_type(info.tuple_type)
 
     def replace_statements(self, nodes: List[Statement]) -> List[Statement]:
         result = []
@@ -300,7 +302,9 @@ class TypeReplaceVisitor(TypeVisitor[None]):
         if typ.definition:
             # No need to fixup since this is just a cross-reference.
             typ.definition = self.replacements.get(typ.definition, typ.definition)
-        # TODO: typ.fallback
+        # Fallback can be None for callable types that haven't been semantically analyzed.
+        if typ.fallback is not None:
+            typ.fallback.accept(self)
         for tv in typ.variables:
             tv.upper_bound.accept(self)
             for value in tv.values:
@@ -309,6 +313,7 @@ class TypeReplaceVisitor(TypeVisitor[None]):
     def visit_overloaded(self, t: Overloaded) -> None:
         for item in t.items():
             item.accept(self)
+        t.fallback.accept(self)
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
@@ -319,6 +324,7 @@ class TypeReplaceVisitor(TypeVisitor[None]):
     def visit_tuple_type(self, typ: TupleType) -> None:
         for item in typ.items:
             item.accept(self)
+        typ.fallback.accept(self)
 
     def visit_type_type(self, typ: TypeType) -> None:
         typ.item.accept(self)

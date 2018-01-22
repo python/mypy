@@ -116,7 +116,7 @@ def get_dependencies_of_target(module_id: str,
     """Get dependencies of a target -- don't recursive into nested targets."""
     # TODO: Add tests for this function.
     visitor = DependencyVisitor(type_map, python_version)
-    visitor.enter_file_scope(module_id)
+    visitor.scope.enter_file(module_id)
     if isinstance(target, MypyFile):
         # Only get dependencies of the top-level of the module. Don't recurse into
         # functions.
@@ -127,12 +127,12 @@ def get_dependencies_of_target(module_id: str,
     elif isinstance(target, FuncBase) and target.info:
         # It's a method.
         # TODO: Methods in nested classes.
-        visitor.enter_class_scope(target.info)
+        visitor.scope.enter_class(target.info)
         target.accept(visitor)
-        visitor.leave_scope()
+        visitor.scope.leave()
     else:
         target.accept(visitor)
-    visitor.leave_scope()
+    visitor.scope.leave()
     return visitor.map
 
 
@@ -140,12 +140,7 @@ class DependencyVisitor(TraverserVisitor):
     def __init__(self,
                  type_map: Dict[Expression, Type],
                  python_version: Tuple[int, int]) -> None:
-        # Stack of names of targets being processed. For stack targets we use the
-        # surrounding module.
-        self.target_stack = []  # type: List[str]
-        # Stack of names of targets being processed, including class targets.
-        self.full_target_stack = []  # type: List[str]
-        self.scope_stack = []  # type: List[Union[None, TypeInfo, FuncDef]]
+        self.scope = Scope()
         self.type_map = type_map
         self.python2 = python_version[0] == 2
         self.map = {}  # type: Dict[str, Set[str]]
@@ -165,20 +160,14 @@ class DependencyVisitor(TraverserVisitor):
     #   type variable with value restriction
 
     def visit_mypy_file(self, o: MypyFile) -> None:
-        self.enter_file_scope(o.fullname())
+        self.scope.enter_file(o.fullname())
         self.is_package_init_file = o.is_package_init_file()
         super().visit_mypy_file(o)
-        self.leave_scope()
+        self.scope.leave()
 
     def visit_func_def(self, o: FuncDef) -> None:
-        if not isinstance(self.current_scope(), FuncDef):
-            # Not a nested function, so create a new target.
-            new_scope = True
-            target = self.enter_function_scope(o)
-        else:
-            # Treat nested functions as components of the parent function target.
-            new_scope = False
-            target = self.current_target()
+        self.scope.enter_function(o)
+        target = self.scope.current_target()
         if o.type:
             if self.is_class and isinstance(o.type, FunctionLike):
                 signature = bind_self(o.type)  # type: Type
@@ -191,15 +180,15 @@ class DependencyVisitor(TraverserVisitor):
             for base in non_trivial_bases(o.info):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
         super().visit_func_def(o)
-        if new_scope:
-            self.leave_scope()
+        self.scope.leave()
 
     def visit_decorator(self, o: Decorator) -> None:
         self.add_dependency(make_trigger(o.func.fullname()))
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
-        target = self.enter_class_scope(o.info)
+        self.scope.enter_class(o.info)
+        target = self.scope.current_full_target()
         self.add_dependency(make_trigger(target), target)
         old_is_class = self.is_class
         self.is_class = True
@@ -226,15 +215,15 @@ class DependencyVisitor(TraverserVisitor):
                                     target=make_trigger(info.fullname() + '.' + name))
             self.add_dependency(make_trigger(base_info.fullname() + '.__init__'),
                                 target=make_trigger(info.fullname() + '.__init__'))
-        self.leave_scope()
+        self.scope.leave()
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
             # TODO: as_id
-            self.add_dependency(make_trigger(id), self.current_target())
+            self.add_dependency(make_trigger(id), self.scope.current_target())
 
     def visit_import_from(self, o: ImportFrom) -> None:
-        module_id, _ = correct_relative_import(self.current_module_id(),
+        module_id, _ = correct_relative_import(self.scope.current_module_id(),
                                                o.relative,
                                                o.id,
                                                self.is_package_init_file)
@@ -260,7 +249,7 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, NamedTupleExpr):
             # Depend on types of named tuple items.
             info = rvalue.analyzed.info
-            prefix = '%s.%s' % (self.current_full_target(), info.name())
+            prefix = '%s.%s' % (self.scope.current_full_target(), info.name())
             for name, symnode in info.names.items():
                 if not name.startswith('_') and isinstance(symnode.node, Var):
                     typ = symnode.node.type
@@ -293,7 +282,8 @@ class DependencyVisitor(TraverserVisitor):
                 # global variable.
                 lvalue_type = self.get_non_partial_lvalue_type(lvalue)
                 type_triggers = get_type_triggers(lvalue_type)
-                attr_trigger = make_trigger('%s.%s' % (self.full_target_stack[-1], lvalue.name))
+                attr_trigger = make_trigger('%s.%s' % (self.scope.current_full_target(),
+                                                       lvalue.name))
                 for type_trigger in type_triggers:
                     self.add_dependency(type_trigger, attr_trigger)
         elif isinstance(lvalue, MemberExpr):
@@ -515,7 +505,7 @@ class DependencyVisitor(TraverserVisitor):
             # anyway.
             return
         if target is None:
-            target = self.current_target()
+            target = self.scope.current_target()
         self.map.setdefault(trigger, set()).add(target)
 
     def add_type_dependencies(self, typ: Type, target: Optional[str] = None) -> None:
@@ -569,50 +559,77 @@ class DependencyVisitor(TraverserVisitor):
         if typ:
             self.add_attribute_dependency(typ, '__iter__')
 
+
+class Scope:
+    """Track which target we are processing at any given time."""
+
+    def __init__(self) -> None:
+        self.module = None  # type: Optional[str]
+        self.classes = []  # type: List[TypeInfo]
+        self.function = None  # type: Optional[FuncDef]
+        # Number of nested scopes ignored (that don't get their own separate targets)
+        self.ignored = 0
+
     def current_module_id(self) -> str:
-        return self.target_stack[0]
-
-    def enter_file_scope(self, prefix: str) -> None:
-        """Enter a module target scope."""
-        assert not self.target_stack
-        self.target_stack.append(prefix)
-        self.full_target_stack.append(prefix)
-        self.scope_stack.append(None)
-
-    def enter_function_scope(self, fdef: FuncDef) -> str:
-        """Enter a function target scope."""
-        target = '%s.%s' % (self.full_target_stack[-1], fdef.name())
-        self.target_stack.append(target)
-        self.full_target_stack.append(target)
-        self.scope_stack.append(fdef)
-        return target
-
-    def enter_class_scope(self, info: TypeInfo) -> str:
-        """Enter a class target scope."""
-        # Duplicate the previous top non-class target (it can't be a class but since the
-        # depths of all stacks must agree we need something).
-        self.target_stack.append(self.target_stack[-1])
-        full_target = '%s.%s' % (self.full_target_stack[-1], info.name())
-        self.full_target_stack.append(full_target)
-        self.scope_stack.append(info)
-        return full_target
-
-    def leave_scope(self) -> None:
-        """Leave a target scope."""
-        self.target_stack.pop()
-        self.full_target_stack.pop()
-        self.scope_stack.pop()
+        assert self.module
+        return self.module
 
     def current_target(self) -> str:
         """Return the current target (non-class; for a class return enclosing module)."""
-        return self.target_stack[-1]
+        assert self.module
+        target = self.module
+        if self.function:
+            if self.classes:
+                target += '.' + '.'.join(c.name() for c in self.classes)
+            target += '.' + self.function.name()
+        return target
 
     def current_full_target(self) -> str:
         """Return the current target (may be a class)."""
-        return self.full_target_stack[-1]
+        assert self.module
+        target = self.module
+        if self.classes:
+            target += '.' + '.'.join(c.name() for c in self.classes)
+        if self.function:
+            target += '.' + self.function.name()
+        return target
 
-    def current_scope(self) -> Optional[Node]:
-        return self.scope_stack[-1]
+    def enter_file(self, prefix: str) -> None:
+        self.module = prefix
+        self.classes = []
+        self.function = None
+        self.ignored = 0
+
+    def enter_function(self, fdef: FuncDef) -> None:
+        if not self.function:
+            self.function = fdef
+        else:
+            # Nested functions are part of the topmost function target.
+            self.ignored += 1
+
+    def enter_class(self, info: TypeInfo) -> None:
+        """Enter a class target scope."""
+        if not self.function:
+            self.classes.append(info)
+        else:
+            # Classes within functions are part of the enclosing function target.
+            self.ignored += 1
+
+    def leave(self) -> None:
+        """Leave the innermost scope (can be any kind of scope)."""
+        if self.ignored:
+            # Leave a scope that's included in the enclosing target.
+            self.ignored -= 1
+        elif self.function:
+            # Function is always the innermost target.
+            self.function = None
+        elif self.classes:
+            # Leave the innermost class.
+            self.classes.pop()
+        else:
+            # Leave module.
+            assert self.module
+            self.module = None
 
 
 def get_type_triggers(typ: Type) -> List[str]:

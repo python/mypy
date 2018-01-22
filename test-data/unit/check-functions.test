@@ -1391,7 +1391,7 @@ if g(C()):
     def f(x: B) -> B: pass
 
 [case testRedefineFunctionDefinedAsVariableInitializedToEmptyList]
-f = [] # E: Need type annotation for variable
+f = [] # E: Need type annotation for 'f'
 if object():
     def f(): pass # E: Incompatible redefinition
 f()
@@ -2200,7 +2200,7 @@ def make_list() -> List[T]: pass
 
 l: List[int] = make_list()
 
-bad = make_list()  # E: Need type annotation for variable
+bad = make_list()  # E: Need type annotation for 'bad'
 [builtins fixtures/list.pyi]
 
 [case testAnonymousArgumentError]

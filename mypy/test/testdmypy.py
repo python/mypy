@@ -28,9 +28,20 @@ if sys.platform != 'win32':
         'check-enum.test',
         'check-incremental.test',
         'check-newtype.test',
+        'check-dmypy-fine-grained.test',
     ]
 else:
     dmypy_files = []  # type: List[str]
+
+
+# By default we complain about missing files. This is a special module prefix
+# for which we allow non-existence. This is used for testing missing files.
+NON_EXISTENT_PREFIX = 'nonexistent'
+
+# If this suffix is used together with NON_EXISTENT_PREFIX, the non-existent
+# file is a .pyi file. Since the file doesn't exist, we can't automatically
+# figure out the extension.
+STUB_SUFFIX = '_stub'
 
 
 class TypeCheckSuite(DataSuite):
@@ -72,16 +83,8 @@ class TypeCheckSuite(DataSuite):
         assert incremental_step >= 1
         build.find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
-        module_data = self.parse_module(original_program_text, incremental_step)
 
-        if incremental_step == 1:
-            # In run 1, copy program text to program file.
-            for module_name, program_path, program_text in module_data:
-                if module_name == '__main__':
-                    with open(program_path, 'w') as f:
-                        f.write(program_text)
-                    break
-        elif incremental_step > 1:
+        if incremental_step > 1:
             # In runs 2+, copy *.[num] files to * files.
             for dn, dirs, files in os.walk(os.curdir):
                 for file in files:
@@ -101,10 +104,23 @@ class TypeCheckSuite(DataSuite):
                 # Use retries to work around potential flakiness on Windows (AppVeyor).
                 retry_on_error(lambda: os.remove(path))
 
+        module_data = self.parse_module(original_program_text, incremental_step)
+
+        if incremental_step == 1:
+            # In run 1, copy program text to program file.
+            for module_name, program_path, program_text in module_data:
+                if module_name == '__main__' and program_text is not None:
+                    with open(program_path, 'w') as f:
+                        f.write(program_text)
+                    break
+
         # Parse options after moving files (in case mypy.ini is being moved).
         options = self.parse_options(original_program_text, testcase, incremental_step)
         if incremental_step == 1:
-            self.server = dmypy_server.Server([])  # TODO: Fix ugly API
+            server_options = []  # type: List[str]
+            if 'fine-grained' in testcase.file:
+                server_options.append('--experimental')
+            self.server = dmypy_server.Server(server_options)  # TODO: Fix ugly API
             self.server.options = options
 
         assert self.server is not None  # Set in step 1 and survives into next steps
@@ -160,7 +176,7 @@ class TypeCheckSuite(DataSuite):
                     ', '.join(expected_normalized),
                     name))
 
-    def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
+    def verify_cache(self, module_data: List[Tuple[str, str, Optional[str]]], a: List[str],
                      manager: build.BuildManager) -> None:
         # There should be valid cache metadata for each module except
         # those in error_paths; for those there should not be.
@@ -222,7 +238,7 @@ class TypeCheckSuite(DataSuite):
 
     def parse_module(self,
                      program_text: str,
-                     incremental_step: int) -> List[Tuple[str, str, str]]:
+                     incremental_step: int) -> List[Tuple[str, str, Optional[str]]]:
         """Return the module and program names for a test case.
 
         Normally, the unit tests will parse the default ('__main__')
@@ -251,13 +267,23 @@ class TypeCheckSuite(DataSuite):
             # module. Look up the module and give it as the thing to
             # analyze.
             module_names = m.group(1)
-            out = []
+            out = []  # type: List[Tuple[str, str, Optional[str]]]
             for module_name in module_names.split(' '):
                 path = build.find_module(module_name, [test_temp_dir])
-                assert path is not None, "Can't find ad hoc case file"
-                with open(path) as f:
-                    program_text = f.read()
-                out.append((module_name, path, program_text))
+                if path is None and module_name.startswith(NON_EXISTENT_PREFIX):
+                    # This is a special name for a file that we don't want to exist.
+                    assert '.' not in module_name  # TODO: Packages not supported here
+                    if module_name.endswith(STUB_SUFFIX):
+                        fnam = '{}.pyi'.format(module_name)
+                    else:
+                        fnam = '{}.py'.format(module_name)
+                    path = os.path.join(test_temp_dir, fnam)
+                    out.append((module_name, path, None))
+                else:
+                    assert path is not None, "Can't find ad hoc case file for %r" % module_name
+                    with open(path) as f:
+                        program_text = f.read()
+                    out.append((module_name, path, program_text))
             return out
         else:
             return [('__main__', 'main', program_text)]
