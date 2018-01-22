@@ -7,9 +7,10 @@ from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, cast, D
 
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
-    Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var, FuncDef,
-    Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode, ARG_OPT, ARG_POS,
-    NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt, FuncBase, TupleExpr, ListExpr, is_class_var
+    Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef, Argument, Var,
+    FuncDef, Block, SymbolTableNode, MDEF, CallExpr, RefExpr, AssignmentStmt, TempNode,
+    ARG_OPT, ARG_POS, NameExpr, Decorator, MemberExpr, TypeInfo, PassStmt, FuncBase, TupleExpr,
+    ListExpr, is_class_var
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
