@@ -131,6 +131,60 @@ b.py:2: error: Cannot find module named 'a'
 b.py:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 b.py:3: error: Cannot find module named 'c'
 
+[case testAddPackage1]
+import p.a
+p.a.f(1)
+[file p/__init__.py.2]
+[file p/a.py.2]
+def f(x: str) -> None: pass
+[out]
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddPackage2]
+import p
+p.f(1)
+[file p/__init__.py.2]
+from p.a import f
+[file p/a.py.2]
+def f(x: str) -> None: pass
+[out]
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddPackage3]
+import p.a
+p.a.f(1)
+[file p/__init__.py.2]
+[file p/a.py.3]
+def f(x: str) -> None: pass
+[out]
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+==
+main:1: error: Cannot find module named 'p.a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Module has no attribute "a"
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+[builtins fixtures/module.pyi]
+
+[case testAddPackage4-skip]
+# TODO: Currently crashing (https://github.com/python/mypy/issues/4477)
+import p.a
+p.a.f(1)
+[file p/a.py.2]
+def f(x: str) -> None: pass
+[file p/__init__.py.3]
+[out]
+TODO
+
 
 -- Delete file
 -- -----------
@@ -541,12 +595,73 @@ a.py:1: error: Cannot find module named 'm.x'
 a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 a.py:2: error: Module has no attribute "x"
 
+[case testDeletePackage1]
+import p.a
+p.a.f(1)
+[file p/__init__.py]
+[file p/a.py]
+def f(x: str) -> None: pass
+[delete p/__init__.py.2]
+[delete p/a.py.2]
+def f(x: str) -> None: pass
+[out]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+==
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+
+[case testDeletePackage2]
+import p
+p.f(1)
+[file p/__init__.py]
+from p.a import f
+[file p/a.py]
+def f(x: str) -> None: pass
+[delete p/__init__.py.2]
+[delete p/a.py.2]
+[out]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+==
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+
+[case testDeletePackage3]
+import p.a
+p.a.f(1)
+[file p/__init__.py]
+[file p/a.py]
+def f(x: str) -> None: pass
+[delete p/a.py.2]
+[delete p/__init__.py.3]
+[builtins fixtures/module.pyi]
+[out]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+==
+main:1: error: Cannot find module named 'p.a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Module has no attribute "a"
+==
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+
+[case testDeletePackage4-skip]
+# TODO: Currently crashing (https://github.com/python/mypy/issues/4477)
+import p.a
+p.a.f(1)
+[file p/a.py]
+def f(x: str) -> None: pass
+[file p/__init__.py]
+[delete p/__init__.py.2]
+[delete p/a.py.3]
+[out]
+TODO
+
 -- TODO:
 -- - add one file which imports another new file, blocking error in new file
 -- - arbitrary blocking errors
--- - packages
---   - add two files that form a package
---   - delete two files that form a package
 -- - order of processing makes a difference
 -- - mix of modify, add and delete in one iteration
 
