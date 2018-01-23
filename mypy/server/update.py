@@ -225,7 +225,7 @@ class FineGrainedBuildManager:
             messages, remaining, (next_id, next_path), blocker = result
             changed_modules = [(id, path) for id, path in changed_modules
                                if id != next_id]
-            changed_modules = dedupe_modules(changed_modules + remaining)
+            changed_modules = dedupe_modules(remaining + changed_modules)
             if blocker:
                 self.blocking_error = (next_id, next_path)
                 self.stale = changed_modules
@@ -284,7 +284,7 @@ class FineGrainedBuildManager:
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              {module},
                                              self.previous_targets_with_errors,
-                                             graph)
+                                             self.manager.modules)
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = manager.errors.targets()
@@ -408,7 +408,10 @@ def update_single_isolated(module: str,
         remaining_modules = changed_modules
         # The remaining modules haven't been processed yet so drop them.
         for id, _ in remaining_modules:
-            del manager.modules[id]
+            if id in old_modules:
+                manager.modules[id] = old_modules[id]
+            else:
+                del manager.modules[id]
             del graph[id]
         if DEBUG:
             print('--> %r (newly imported)' % module)
