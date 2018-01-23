@@ -810,12 +810,11 @@ def reprocess_nodes(manager: BuildManager,
     old_symbols = {name: names.copy() for name, names in old_symbols.items()}
 
     def key(node: DeferredNode) -> int:
-        # Unlike for modules which are soreted by name within SCC,
-        # nodes within the same module are sprted by line number, because
+        # Unlike modules which are sorted by name within SCC,
+        # nodes within the same module are sorted by line number, because
         # this is how they are processed in normal mode.
         return node.node.line
 
-    # Sort nodes by full name so that the order of processing is deterministic.
     nodes = sorted(nodeset, key=key)
 
     # TODO: ignore_all argument to set_file_ignored_lines
