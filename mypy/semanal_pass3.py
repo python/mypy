@@ -279,7 +279,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
     def visit_name_expr(self, expr: NameExpr) -> None:
         # Fixup remaining UNBOUND_IMPORTED nodes from import cycles
         if expr.kind == UNBOUND_IMPORTED:
-            n = self.sem.lookup(expr.name, expr)
+            n = self.sem.lookup(expr.name, expr, suppress_errors=True)
             if n:
                 expr.kind = n.kind
                 expr.node = n.node
