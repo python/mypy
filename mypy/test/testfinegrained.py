@@ -30,6 +30,8 @@ from mypy.test.helpers import assert_string_arrays_equal, parse_options
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type
+from mypy.server.mergecheck import check_consistency
+
 import pytest  # type: ignore  # no pytest in typeshed
 
 
@@ -80,6 +82,7 @@ class FineGrainedSuite(DataSuite):
         fine_grained_manager = None
         if not self.use_cache:
             fine_grained_manager = FineGrainedBuildManager(manager, graph)
+            # check_consistency(fine_grained_manager)
 
         steps = testcase.find_steps()
         all_triggered = []
@@ -107,6 +110,7 @@ class FineGrainedSuite(DataSuite):
                 fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
             new_messages = fine_grained_manager.update(modules)
+            # check_consistency(fine_grained_manager)
             all_triggered.append(fine_grained_manager.triggered)
             new_messages = normalize_messages(new_messages)
 

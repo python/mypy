@@ -1333,3 +1333,27 @@ target:
     C: TypeInfo<3>
     D: TypeInfo<5>
     NewType: Var<4>
+
+[case testCallable_symtable]
+import target
+[file target.py]
+def g(o: object) -> None:
+    if callable(o):
+        pass
+[file target.py.next]
+def g(o: object) -> None:
+    if callable(o):
+        o()
+[builtins fixtures/callable.pyi]
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    <callable subtype of object>: TypeInfo<1>
+    g: FuncDef<2>
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    <callable subtype of object>: TypeInfo<1>
+    g: FuncDef<2>

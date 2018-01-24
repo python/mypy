@@ -216,13 +216,13 @@ def f(a: m.A) -> None:
     a.f()
 [file m.py]
 class A:
-    def f(self) -> None: pass
+    def f(self) -> None: 1
 [file m.py.2]
 class A:
-    def g(self) -> None: pass
+    def g(self) -> None: 2
 [file m.py.3]
 class A:
-    def f(self) -> None: pass
+    def f(self) -> None: 3
 [out]
 ==
 main:3: error: "A" has no attribute "f"
