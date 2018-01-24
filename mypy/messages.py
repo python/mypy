@@ -635,13 +635,15 @@ class MessageBuilder:
             elif arg_kind == ARG_STAR2:
                 arg_type_str = '**' + arg_type_str
 
-            # For call expressions with keyword arguments, use the keyword argument.
+            # For function calls with keyword arguments, use the argument name instead of the
+            # number.
             arg_name = context.arg_names[n - 1] if isinstance(context, CallExpr) else None
             if arg_name:
                 message_format = 'Argument "{}" {}has incompatible type {}; expected {}'
             else:
                 message_format = 'Argument {} {}has incompatible type {}; expected {}'
                 arg_name = n
+
             msg = message_format.format(
                 arg_name, target, self.quote_type_string(arg_type_str),
                 self.quote_type_string(expected_type_str))

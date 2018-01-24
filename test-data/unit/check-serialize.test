@@ -168,7 +168,7 @@ from b import f
 f('', z=1)           # Line 2
 f(1, 2, z=1)         # 3
 f(1, y=1, z=1)       # 4
-f(1, '', 2, '', z=1) # 5testKeywordVarArgsAndCommentSignaturetestKeywordVarArgsAndCommentSignature
+f(1, '', 2, '', z=1) # 5
 f(1, '', z='')       # 6
 f(1, '', zz='', z=1) # 7
 f(1, '', z=1, foo=1) # 8
