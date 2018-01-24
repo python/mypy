@@ -1564,6 +1564,26 @@ class C:
 main:5: error: Too few arguments for "__init__" of "C"
 main:6: error: Too few arguments for "D"
 
+[case testInferAttributeTypeAndMultipleStaleTargets]
+import a
+
+class A:
+    def g(self) -> None:
+        a.x
+        self.x = 1
+
+    def f(self) -> None:
+        a.x
+        b = self.x
+        self.x = 1
+
+[file a.py]
+x = 0
+[file a.py.2]
+x = ''
+[out]
+==
+
 [case testNamedTupleUpdate]
 import b
 [file a.py]

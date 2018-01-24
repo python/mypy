@@ -809,20 +809,12 @@ def reprocess_nodes(manager: BuildManager,
     old_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
     old_symbols = {name: names.copy() for name, names in old_symbols.items()}
 
-    def key(node: DeferredNode) -> str:
-        fullname = node.node.fullname()
-        if fullname is None:
-            if isinstance(node.node, FuncDef):
-                info = node.node.info
-            elif isinstance(node.node, OverloadedFuncDef):
-                info = node.node.items[0].info
-            else:
-                assert False, "'None' fullname for %s instance" % type(node.node)
-            assert info is not None
-            fullname = '%s.%s' % (info.fullname(), node.node.name())
-        return fullname
+    def key(node: DeferredNode) -> int:
+        # Unlike modules which are sorted by name within SCC,
+        # nodes within the same module are sorted by line number, because
+        # this is how they are processed in normal mode.
+        return node.node.line
 
-    # Sort nodes by full name so that the order of processing is deterministic.
     nodes = sorted(nodeset, key=key)
 
     # TODO: ignore_all argument to set_file_ignored_lines
