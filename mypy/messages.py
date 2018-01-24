@@ -642,7 +642,7 @@ class MessageBuilder:
                 message_format = 'Argument "{}" {}has incompatible type {}; expected {}'
             else:
                 message_format = 'Argument {} {}has incompatible type {}; expected {}'
-                arg_name = n
+                arg_name = str(n)
 
             msg = message_format.format(
                 arg_name, target, self.quote_type_string(arg_type_str),
