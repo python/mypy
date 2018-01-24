@@ -23,6 +23,8 @@ import mypy.main
 import mypy.server.update
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.gclogger import GcLogger
+from mypy.fscache import FileSystemCache
+from mypy.fswatcher import FileSystemWatcher
 
 
 def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
@@ -243,14 +245,11 @@ class Server:
             return self.fine_grained_increment(sources)
 
     def initialize_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
-        self.file_modified = {}  # type: Dict[str, float]
-        for source in sources:
-            assert source.path
-            try:
-                self.file_modified[source.path] = os.stat(source.path).st_mtime
-            except FileNotFoundError:
-                # Don't crash if passed a non-existent file.
-                pass
+        self.fscache = FileSystemCache(self.options.python_version)
+        self.fswatcher = FileSystemWatcher(self.fscache)
+        self.update_sources(sources)
+        # Stores the initial state of sources as a side effect.
+        self.fswatcher.find_changed()
         try:
             # TODO: alt_lib_path
             result = mypy.build.build(sources=sources,
@@ -270,9 +269,11 @@ class Server:
         self.previous_messages = messages[:]
         self.fine_grained_initialized = True
         self.previous_sources = sources
+        self.fscache.flush()
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+        self.update_sources(sources)
         changed = self.find_changed(sources)
         if not changed:
             # Nothing changed -- just produce the same result as before.
@@ -282,36 +283,26 @@ class Server:
         status = 1 if messages else 0
         self.previous_messages = messages[:]
         self.previous_sources = sources
+        self.fscache.flush()
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
+    def update_sources(self, sources: List[mypy.build.BuildSource]) -> None:
+        paths = [source.path for source in sources if source.path is not None]
+        self.fswatcher.add_watched_paths(paths)
+
     def find_changed(self, sources: List[mypy.build.BuildSource]) -> List[Tuple[str, str]]:
-        changed = []
-        for source in sources:
-            path = source.path
-            assert path
-            try:
-                mtime = os.stat(path).st_mtime
-            except FileNotFoundError:
-                # A non-existent file was included on the command line.
-                #
-                # TODO: Generate error if file is missing (if not ignoring missing imports)
-                if path in self.file_modified:
-                    changed.append((source.module, path))
-            else:
-                if path not in self.file_modified or self.file_modified[path] != mtime:
-                    self.file_modified[path] = mtime
-                    changed.append((source.module, path))
+        changed_paths = self.fswatcher.find_changed()
+        changed = [(source.module, source.path)
+                   for source in sources
+                   if source.path in changed_paths]
         modules = {source.module for source in sources}
         omitted = [source for source in self.previous_sources if source.module not in modules]
         for source in omitted:
             path = source.path
             assert path
-            # Note that a file could be removed from the list of root sources but still continue
-            # to exist on the file system.
-            if not os.path.isfile(path):
+            # Note that a file could be removed from the list of root sources but have no changes.
+            if path in changed_paths:
                 changed.append((source.module, path))
-                if source.path in self.file_modified:
-                    del self.file_modified[source.path]
         return changed
 
     def cmd_hang(self) -> Dict[str, object]:

@@ -114,6 +114,8 @@ test cases (test-data/unit/fine-grained*.test).
 Major todo items:
 
 - Fully support multiple type checking passes
+- Use mypy.fscache to access file system
+- Don't use load_graph() and update the import graph incrementally
 """
 
 import os.path
