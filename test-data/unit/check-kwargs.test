@@ -10,14 +10,14 @@ f(o=None()) # E: "None" not callable
 import typing
 def f(a: 'A') -> None: pass
 f(a=A())
-f(a=object()) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
+f(a=object()) # E: Argument "a" to "f" has incompatible type "object"; expected "A"
 class A: pass
 
 [case testTwoKeywordArgumentsNotInOrder]
 import typing
 def f(a: 'A', b: 'B') -> None: pass
-f(b=A(), a=A()) # E: Argument 1 to "f" has incompatible type "A"; expected "B"
-f(b=B(), a=B()) # E: Argument 2 to "f" has incompatible type "B"; expected "A"
+f(b=A(), a=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "B"
+f(b=B(), a=B()) # E: Argument "a" to "f" has incompatible type "B"; expected "A"
 f(a=A(), b=B())
 f(b=B(), a=A())
 class A: pass
@@ -30,10 +30,10 @@ f(a=A())
 f(b=B())
 f(c=C())
 f(b=B(), c=C())
-f(a=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "Optional[A]"
-f(b=A()) # E: Argument 1 to "f" has incompatible type "A"; expected "Optional[B]"
-f(c=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "Optional[C]"
-f(b=B(), c=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "Optional[C]"
+f(a=B()) # E: Argument "a" to "f" has incompatible type "B"; expected "Optional[A]"
+f(b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
+f(c=B()) # E: Argument "c" to "f" has incompatible type "B"; expected "Optional[C]"
+f(b=B(), c=A()) # E: Argument "c" to "f" has incompatible type "A"; expected "Optional[C]"
 class A: pass
 class B: pass
 class C: pass
@@ -41,7 +41,7 @@ class C: pass
 [case testBothPositionalAndKeywordArguments]
 import typing
 def f(a: 'A', b: 'B') -> None: pass
-f(A(), b=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
+f(A(), b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "B"
 f(A(), b=B())
 class A: pass
 class B: pass
@@ -182,7 +182,7 @@ f(A(), b=B())
 f(A(), A(), b=B())
 f(B())      # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(A(), B()) # E: Argument 2 to "f" has incompatible type "B"; expected "A"
-f(b=A())    # E: Argument 1 to "f" has incompatible type "A"; expected "Optional[B]"
+f(b=A())    # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -197,8 +197,8 @@ f(b=B())
 f(*a, b=B())
 f(A(), *a, b=B())
 f(A(), B())   # E: Argument 2 to "f" has incompatible type "B"; expected "A"
-f(A(), b=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "Optional[B]"
-f(*a, b=A())  # E: Argument 2 to "f" has incompatible type "A"; expected "Optional[B]"
+f(A(), b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
+f(*a, b=A())  # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -238,7 +238,7 @@ def f( **kwargs: 'A') -> None: pass
 f()
 f(x=A())
 f(y=A(), z=A())
-f(x=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
+f(x=B()) # E: Argument "x" to "f" has incompatible type "B"; expected "A"
 f(A())   # E: Too many arguments for "f"
 # Perhaps a better message would be "Too many *positional* arguments..."
 class A: pass
@@ -334,7 +334,7 @@ class A: pass
 import typing
 def f(x): # type: (int) -> str # N: "f" defined here
     pass
-f(x='') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+f(x='') # E: Argument "x" to "f" has incompatible type "str"; expected "int"
 f(x=0)
 f(y=0) # E: Unexpected keyword argument "y" for "f"
 
@@ -343,7 +343,7 @@ import typing
 class A:
     def f(self, x): # type: (int) -> str  # N: "f" of "A" defined here
         pass
-A().f(x='') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f(x='') # E: Argument "x" to "f" of "A" has incompatible type "str"; expected "int"
 A().f(x=0)
 A().f(y=0) # E: Unexpected keyword argument "y" for "f" of "A"
 
@@ -353,8 +353,8 @@ def f(**kwargs): # type: (**int) -> None
     pass
 f(z=1)
 f(x=1, y=1)
-f(x='', y=1) # E: Argument 1 to "f" has incompatible type "str"; expected "int"
-f(x=1, y='') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
+f(x='', y=1) # E: Argument "x" to "f" has incompatible type "str"; expected "int"
+f(x=1, y='') # E: Argument "y" to "f" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testCallsWithStars]
