@@ -575,6 +575,7 @@ def attr_class_maker_callback(
                         if convert and converter:
                             ctx.api.fail("Can't pass both `convert` and `converter`.", rvalue)
                         elif convert:
+                            ctx.api.fail("convert is deprecated, use converter", rvalue)
                             converter = convert
                         if (converter
                                 and isinstance(converter, RefExpr)

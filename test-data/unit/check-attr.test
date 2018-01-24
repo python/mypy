@@ -493,7 +493,7 @@ def convert(s:int) -> str:
 
 @attr.s
 class C:
-    x: str = attr.ib(convert=convert)
+    x: str = attr.ib(convert=convert)  # E: convert is deprecated, use converter
 
 # Because of the convert the __init__ takes an int, but the variable is a str.
 reveal_type(C)  # E: Revealed type is 'def (x: builtins.int) -> __main__.C'
