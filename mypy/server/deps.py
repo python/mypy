@@ -198,7 +198,7 @@ class DependencyVisitor(TraverserVisitor):
         for base in o.info.bases:
             self.add_type_dependencies(base, target=target)
         if o.info.tuple_type:
-            self.add_type_dependencies(base, target=make_trigger(target))
+            self.add_type_dependencies(o.info.tuple_type, target=make_trigger(target))
         # TODO: Add dependencies based on remaining TypeInfo attributes.
         super().visit_class_def(o)
         self.is_class = old_is_class
