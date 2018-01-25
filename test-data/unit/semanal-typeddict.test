@@ -46,8 +46,8 @@ MypyFile:1(
   ImportFrom:1(mypy_extensions, [TypedDict])
   ClassDef:2(
     A
-    BaseTypeExpr(
-      NameExpr(TypedDict [mypy_extensions.TypedDict]))
+    BaseType(
+      typing.Mapping[builtins.str, builtins.str])
     ExpressionStmt:3(
       StrExpr(foo))
     AssignmentStmt:4(

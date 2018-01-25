@@ -306,13 +306,13 @@ def snapshot_definition(node: Optional[SymbolNode],
         #   type_vars
         #   bases
         #   _promote
-        #   typeddict_type
         attrs = (node.is_abstract,
                  node.is_enum,
                  node.fallback_to_any,
                  node.is_named_tuple,
                  node.is_newtype,
                  snapshot_optional_type(node.tuple_type),
+                 snapshot_optional_type(node.typeddict_type),
                  [base.fullname() for base in node.mro])
         prefix = node.fullname()
         symbol_table = snapshot_symbol_table(prefix, node.names)

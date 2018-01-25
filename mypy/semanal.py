@@ -1325,6 +1325,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     fields, types, required_keys = self.check_typeddict_classdef(defn)
                     info = self.build_typeddict_typeinfo(defn.name, fields, types, required_keys)
                     defn.info.replaced = info
+                    defn.info = info
                     node.node = info
                     defn.analyzed = TypedDictExpr(info)
                     defn.analyzed.line = defn.line
@@ -1360,6 +1361,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 required_keys.update(new_required_keys)
                 info = self.build_typeddict_typeinfo(defn.name, keys, types, required_keys)
                 defn.info.replaced = info
+                defn.info = info
                 node.node = info
                 defn.analyzed = TypedDictExpr(info)
                 defn.analyzed.line = defn.line
