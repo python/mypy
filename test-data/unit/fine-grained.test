@@ -1619,3 +1619,53 @@ def f(x: a.N) -> None:
 f(a.x)
 [out]
 ==
+
+[case testNamedTupleUpdate3]
+import c
+[file a.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+x = N(1)
+[file a.py.2]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', str)])
+x = N('hi')
+[file b.py]
+import a
+from typing import NamedTuple
+M = NamedTuple('M', [('z', 'a.N')])
+x = M(a.x)
+[file c.py]
+import a
+import b
+from typing import Tuple
+def lol(n: Tuple[Tuple[int]]) -> None:
+    pass
+def f(x: b.M) -> None:
+    lol(x)
+f(b.x)
+lol(b.x)
+[out]
+==
+c.py:7: error: Argument 1 to "lol" has incompatible type "M"; expected "Tuple[Tuple[int]]"
+c.py:9: error: Argument 1 to "lol" has incompatible type "M"; expected "Tuple[Tuple[int]]"
+
+[case testNamedTupleUpdate4]
+import b
+[file a.py]
+from typing import NamedTuple
+class N(NamedTuple):
+    x: int
+x = N(1)
+[file a.py.2]
+from typing import NamedTuple
+class N(NamedTuple):
+    x: str
+x = N('hi')
+[file b.py]
+import a
+def f(x: a.N) -> None:
+    pass
+f(a.x)
+[out]
+==

@@ -150,7 +150,6 @@ class DependencyVisitor(TraverserVisitor):
     # TODO (incomplete):
     #   from m import *
     #   await
-    #   named tuples
     #   TypedDict
     #   protocols
     #   metaclasses
@@ -198,6 +197,8 @@ class DependencyVisitor(TraverserVisitor):
         # Add dependencies to base types.
         for base in o.info.bases:
             self.add_type_dependencies(base, target=target)
+        if o.info.tuple_type:
+            self.add_type_dependencies(o.info.tuple_type, target=make_trigger(target))
         # TODO: Add dependencies based on remaining TypeInfo attributes.
         super().visit_class_def(o)
         self.is_class = old_is_class
@@ -237,7 +238,6 @@ class DependencyVisitor(TraverserVisitor):
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         # TODO: Implement all assignment special forms, including these:
         #   TypedDict
-        #   NamedTuple
         #   Enum
         #   type aliases
         rvalue = o.rvalue
@@ -255,6 +255,7 @@ class DependencyVisitor(TraverserVisitor):
                     typ = symnode.node.type
                     if typ:
                         self.add_type_dependencies(typ)
+                        self.add_type_dependencies(typ, target=make_trigger(prefix))
                         attr_target = make_trigger('%s.%s' % (prefix, name))
                         self.add_type_dependencies(typ, target=attr_target)
         else:
