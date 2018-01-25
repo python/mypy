@@ -20,7 +20,39 @@ class A: pass
 <m.N.__init__> -> m.f
 <m.N.a> -> m.f
 <m.N> -> m.f
-<a.A> -> <m.N.a>, m
+<a.A> -> <m.N.a>, <m.N>, m
+
+[case testNamedTuple2]
+from typing import NamedTuple, Any, Tuple
+from a import A, B
+N = NamedTuple('N', [('a', 'Tuple[A, B]')])
+
+def f(a: Any) -> None:
+    n = N(a)
+    n.a
+[file a.py]
+class A: pass
+class B: pass
+[out]
+<m.N.__init__> -> m.f
+<m.N.a> -> m.f
+<m.N> -> m.f
+<a.A> -> <m.N.a>, <m.N>, m
+<a.B> -> <m.N.a>, <m.N>, m
+
+[case namedTuple3]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+x = N(1)
+M = NamedTuple('M', [('z', 'N')])
+y = M(x)
+[out]
+<m.M.__init__> -> m
+<m.M> -> <m.y>, m
+<m.N.__init__> -> m
+<m.N> -> <m.M.z>, <m.M>, <m.x>, <m.y>, m
+<m.x> -> m
+<m.y> -> m
 
 [case testIfFalseInClassBody]
 class A:

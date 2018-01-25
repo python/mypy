@@ -150,7 +150,6 @@ class DependencyVisitor(TraverserVisitor):
     # TODO (incomplete):
     #   from m import *
     #   await
-    #   named tuples
     #   TypedDict
     #   protocols
     #   metaclasses
@@ -237,7 +236,6 @@ class DependencyVisitor(TraverserVisitor):
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         # TODO: Implement all assignment special forms, including these:
         #   TypedDict
-        #   NamedTuple
         #   Enum
         #   type aliases
         rvalue = o.rvalue
@@ -255,6 +253,7 @@ class DependencyVisitor(TraverserVisitor):
                     typ = symnode.node.type
                     if typ:
                         self.add_type_dependencies(typ)
+                        self.add_type_dependencies(typ, target=make_trigger(prefix))
                         attr_target = make_trigger('%s.%s' % (prefix, name))
                         self.add_type_dependencies(typ, target=attr_target)
         else:
