@@ -1649,3 +1649,23 @@ lol(b.x)
 ==
 c.py:7: error: Argument 1 to "lol" has incompatible type "M"; expected "Tuple[Tuple[int]]"
 c.py:9: error: Argument 1 to "lol" has incompatible type "M"; expected "Tuple[Tuple[int]]"
+
+[case testNamedTupleUpdate4]
+import b
+[file a.py]
+from typing import NamedTuple
+class N(NamedTuple):
+    x: int
+x = N(1)
+[file a.py.2]
+from typing import NamedTuple
+class N(NamedTuple):
+    x: str
+x = N('hi')
+[file b.py]
+import a
+def f(x: a.N) -> None:
+    pass
+f(a.x)
+[out]
+==
