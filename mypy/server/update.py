@@ -283,8 +283,7 @@ class FineGrainedBuildManager:
         update_dependencies({module: tree}, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              {module},
-                                             self.previous_targets_with_errors,
-                                             self.manager.modules)
+                                             self.previous_targets_with_errors)
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = manager.errors.targets()
@@ -718,8 +717,7 @@ def propagate_changes_using_dependencies(
         deps: Dict[str, Set[str]],
         triggered: Set[str],
         up_to_date_modules: Set[str],
-        targets_with_errors: Set[str],
-        modules: Iterable[str]) -> None:
+        targets_with_errors: Set[str]) -> None:
     # TODO: Multiple type checking passes
     num_iter = 0
 
@@ -734,7 +732,7 @@ def propagate_changes_using_dependencies(
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
         for target in targets_with_errors:
-            id = module_prefix(modules, target)
+            id = module_prefix(manager.modules, target)
             if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
