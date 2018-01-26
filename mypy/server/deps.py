@@ -267,7 +267,7 @@ class DependencyVisitor(TraverserVisitor):
             for i in range(len(items) - 1):
                 lvalue = items[i]
                 rvalue = items[i + 1]
-                if isinstance(lvalue, (TupleExpr, ListExpr)):
+                if isinstance(lvalue, TupleExpr):
                     self.add_attribute_dependency_for_expr(rvalue, '__iter__')
             if o.type:
                 for trigger in get_type_triggers(o.type):
@@ -299,7 +299,7 @@ class DependencyVisitor(TraverserVisitor):
                 for attr_trigger in self.attribute_triggers(object_type, lvalue.name):
                     for type_trigger in type_triggers:
                         self.add_dependency(type_trigger, attr_trigger)
-        elif isinstance(lvalue, (ListExpr, TupleExpr)):
+        elif isinstance(lvalue, TupleExpr):
             for item in lvalue.items:
                 self.process_lvalue(item)
         # TODO: star lvalue
@@ -338,7 +338,7 @@ class DependencyVisitor(TraverserVisitor):
         self.add_attribute_dependency_for_expr(o.expr, '__iter__')
         self.add_attribute_dependency_for_expr(o.expr, '__getitem__')
         self.process_lvalue(o.index)
-        if isinstance(o.index, (TupleExpr, ListExpr)):
+        if isinstance(o.index, TupleExpr):
             # Process multiple assignment to index variables.
             item_type = o.inferred_item_type
             if item_type:
