@@ -1754,7 +1754,7 @@ def foo(x: Point) -> int:
 ==
 b.py:3: error: Unsupported operand types for + ("int" and "str")
 
-[case testTypedDictUpdate]
+[case testTypedDictUpdate2]
 import b
 [file a.py]
 from mypy_extensions import TypedDict
