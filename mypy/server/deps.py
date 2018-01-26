@@ -373,8 +373,9 @@ class DependencyVisitor(TraverserVisitor):
             self.add_dependency(make_trigger(o.fullname))
 
         # If this is a reference to a type, generate a dependency to its
-        # constructor. This will be spurious in cases like isinstance
-        # calls and except statements, but that's no big deal.
+        # constructor.
+        # TODO: avoid generating spurious dependencies for isinstancce checks,
+        # except statements, class attribute reference, etc, if perf problem.
         typ = self.type_map.get(o)
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             class_name = typ.type_object().fullname()
