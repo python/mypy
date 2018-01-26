@@ -225,7 +225,7 @@ class FineGrainedBuildManager:
             messages, remaining, (next_id, next_path), blocker = result
             changed_modules = [(id, path) for id, path in changed_modules
                                if id != next_id]
-            changed_modules = dedupe_modules(changed_modules + remaining)
+            changed_modules = dedupe_modules(remaining + changed_modules)
             if blocker:
                 self.blocking_error = (next_id, next_path)
                 self.stale = changed_modules
@@ -283,8 +283,7 @@ class FineGrainedBuildManager:
         update_dependencies({module: tree}, self.deps, graph, self.options)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              {module},
-                                             self.previous_targets_with_errors,
-                                             graph)
+                                             self.previous_targets_with_errors)
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = manager.errors.targets()
@@ -408,7 +407,10 @@ def update_single_isolated(module: str,
         remaining_modules = changed_modules
         # The remaining modules haven't been processed yet so drop them.
         for id, _ in remaining_modules:
-            del manager.modules[id]
+            if id in old_modules:
+                manager.modules[id] = old_modules[id]
+            else:
+                del manager.modules[id]
             del graph[id]
         if DEBUG:
             print('--> %r (newly imported)' % module)
@@ -715,8 +717,7 @@ def propagate_changes_using_dependencies(
         deps: Dict[str, Set[str]],
         triggered: Set[str],
         up_to_date_modules: Set[str],
-        targets_with_errors: Set[str],
-        modules: Iterable[str]) -> None:
+        targets_with_errors: Set[str]) -> None:
     # TODO: Multiple type checking passes
     num_iter = 0
 
@@ -731,7 +732,7 @@ def propagate_changes_using_dependencies(
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
         for target in targets_with_errors:
-            id = module_prefix(modules, target)
+            id = module_prefix(manager.modules, target)
             if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()

@@ -746,3 +746,50 @@ x = 1
 [delete a/b.py.2]
 [out]
 ==
+
+[case testAddImport]
+import what.b
+[file aaa/__init__.py]
+[file aaa/z.py]
+def foo(x: int) -> None:
+    pass
+[file aaa/z.py.2]
+import config
+def foo() -> None:
+    pass
+[file what/__init__.py]
+[file what/b.py]
+import config
+import aaa.z
+def main() -> None:
+    aaa.z.foo(5)
+[file what/b.py.2]
+import aaa.z
+def main() -> None:
+    aaa.z.foo()
+[file config.py]
+[out]
+==
+
+[case testAddImport2]
+import what.b
+[file aaa/__init__.py]
+[file aaa/z.py]
+def foo(x: int) -> None:
+    pass
+[file aaa/z.py.2]
+def foo() -> None:
+    pass
+[file what/__init__.py]
+[file what/b.py]
+import aaa.z
+def main() -> None:
+    aaa.z.foo(5)
+[file what/b.py.2]
+import config
+import aaa.z
+def main() -> None:
+    aaa.z.foo()
+[file config.py]
+[out]
+==
