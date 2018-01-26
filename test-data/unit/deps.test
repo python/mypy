@@ -337,6 +337,8 @@ def f(x: object) -> None:
         x.g()
 [builtins fixtures/isinstancelist.pyi]
 [out]
+-- The dependency on the ctor is basically spurious but not a problem
+<m.A.__init__> -> m.f
 <m.A.g> -> m.f
 <m.A> -> m.A, m.f
 
@@ -353,6 +355,8 @@ def f(x: A) -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 <m.A> -> <m.f>, m.A, m.f
+-- The dependency on the ctor is basically spurious but not a problem
+<m.B.__init__> -> m.f
 <m.B> -> m.B, m.f
 
 [case testAttributeWithClassType1]
