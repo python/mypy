@@ -655,6 +655,42 @@ class A:
 ==
 main:4: error: Too few arguments for "A"
 
+[case testConstructorSignatureChanged2]
+from typing import Callable
+import m
+
+def use(x: Callable[[], m.A]) -> None:
+    x()
+def f() -> None:
+    use(m.A)
+[file m.py]
+class A:
+    def __init__(self) -> None: pass
+[file m.py.2]
+class A:
+    def __init__(self, x: int) -> None: pass
+[out]
+==
+-- This is a bad error message
+main:7: error: Argument 1 to "use" has incompatible type "Type[A]"; expected "Callable[[], A]"
+
+[case testConstructorSignatureChanged3]
+from a import C
+class D(C):
+    def g(self) -> None:
+        super().__init__()
+D()
+[file a.py]
+class C:
+    def __init__(self) -> None: pass
+[file a.py.2]
+class C:
+    def __init__(self, x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "__init__" of "C"
+main:5: error: Too few arguments for "D"
+
 [case testConstructorAdded]
 import m
 
@@ -699,6 +735,21 @@ class B(A): pass
 [out]
 ==
 main:4: error: Too few arguments for "B"
+
+[case testSuperField]
+from a import C
+class D(C):
+    def g(self) -> int:
+        return super().x
+[file a.py]
+class C:
+    def __init__(self) -> None: self.x = 12
+[file a.py.2]
+class C:
+    def __init__(self) -> None: self.x = 'ar'
+[out]
+==
+main:4: error: Incompatible return value type (got "str", expected "int")
 
 [case testImportFrom]
 from m import f

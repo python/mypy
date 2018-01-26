@@ -87,7 +87,8 @@ from mypy.nodes import (
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
-    TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, Var, NamedTupleExpr, LDEF, MDEF, GDEF,
+    TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr,
+    LDEF, MDEF, GDEF,
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -154,7 +155,6 @@ class DependencyVisitor(TraverserVisitor):
     #   protocols
     #   metaclasses
     #   type aliases
-    #   super()
     #   functional enum
     #   type variable with value restriction
 
@@ -368,9 +368,18 @@ class DependencyVisitor(TraverserVisitor):
 
     # Expressions
 
-    # TODO
-    #   dependency on __init__ (e.g. ClassName())
-    #   super()
+    def process_global_ref_expr(self, o: RefExpr) -> None:
+        if o.fullname is not None:
+            self.add_dependency(make_trigger(o.fullname))
+
+        # If this is a reference to a type, generate a dependency to its
+        # constructor.
+        # TODO: avoid generating spurious dependencies for isinstancce checks,
+        # except statements, class attribute reference, etc, if perf problem.
+        typ = self.type_map.get(o)
+        if isinstance(typ, FunctionLike) and typ.is_type_obj():
+            class_name = typ.type_object().fullname()
+            self.add_dependency(make_trigger(class_name + '.__init__'))
 
     def visit_name_expr(self, o: NameExpr) -> None:
         if o.kind == LDEF:
@@ -381,17 +390,13 @@ class DependencyVisitor(TraverserVisitor):
             # Direct reference to member is only possible in the scope that
             # defined the name, so no dependency is required.
             return
-        if o.fullname is not None:
-            trigger = make_trigger(o.fullname)
-            self.add_dependency(trigger)
+        self.process_global_ref_expr(o)
 
     def visit_member_expr(self, e: MemberExpr) -> None:
         super().visit_member_expr(e)
         if e.kind is not None:
             # Reference to a module attribute
-            if e.fullname is not None:
-                trigger = make_trigger(e.fullname)
-                self.add_dependency(trigger)
+            self.process_global_ref_expr(e)
         else:
             # Reference to a non-module attribute
             if e.expr not in self.type_map:
@@ -401,12 +406,13 @@ class DependencyVisitor(TraverserVisitor):
             typ = self.type_map[e.expr]
             self.add_attribute_dependency(typ, e.name)
 
+    def visit_super_expr(self, e: SuperExpr) -> None:
+        super().visit_super_expr(e)
+        if e.info is not None:
+            self.add_dependency(make_trigger(e.info.fullname() + '.' + e.name))
+
     def visit_call_expr(self, e: CallExpr) -> None:
         super().visit_call_expr(e)
-        callee_type = self.type_map.get(e.callee)
-        if isinstance(callee_type, FunctionLike) and callee_type.is_type_obj():
-            class_name = callee_type.type_object().fullname()
-            self.add_dependency(make_trigger(class_name + '.__init__'))
 
     def visit_cast_expr(self, e: CastExpr) -> None:
         super().visit_cast_expr(e)

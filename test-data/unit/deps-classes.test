@@ -115,3 +115,35 @@ class D:
 <m.D.g> -> m.D.g
 <m.D> -> m.D
 <m.f> -> m.f
+
+[case testClassSuper]
+class C:
+    def __init__(self, x: int) -> None: pass
+    def foo(self) -> None: pass
+
+class D(C):
+    def __init__(self, x: int) -> None:
+        super().__init__(x)
+        super().foo()
+[out]
+<m.C.__init__> -> <m.D.__init__>, m.D.__init__
+<m.C.foo> -> <m.D.foo>
+<m.C> -> m, m.C, m.D
+<m.D.__init__> -> m.D.__init__
+<m.D.foo> -> m.D.__init__
+<m.D> -> m.D
+
+[case testClassMissingInit]
+class C:
+    def __init__(self, x: int) -> None: pass
+
+class D(C):
+    pass
+
+def foo() -> None:
+    D(6)
+[out]
+<m.C.__init__> -> <m.D.__init__>
+<m.C> -> m, m.C, m.D
+<m.D.__init__> -> m.foo
+<m.D> -> m.D, m.foo
