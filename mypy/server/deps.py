@@ -261,7 +261,7 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypedDictExpr):
             # Depend on the underlying typeddict type
             info = rvalue.analyzed.info
-            assert(info.typeddict_type is not None)
+            assert info.typeddict_type is not None
             prefix = '%s.%s' % (self.scope.current_full_target(), info.name())
             self.add_type_dependencies(info.typeddict_type, target=make_trigger(prefix))
         else:

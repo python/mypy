@@ -592,3 +592,29 @@ p = Point(dict(x=42, y='lurr'))
 [out]
 __main__.Point
 __main__.p
+
+[case testTypedDict3]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int})
+p = Point(dict(x=42))
+[builtins fixtures/dict.pyi]
+[out]
+__main__.Point
+__main__.p
+
+[case testTypedDict4]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int}, total=False)
+p = Point(dict(x=42, y=1337))
+[builtins fixtures/dict.pyi]
+[out]
+__main__.Point
+__main__.p
