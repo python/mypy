@@ -235,7 +235,7 @@ def _build(sources: List[BuildSource],
     if alt_lib_path:
         lib_path.insert(0, alt_lib_path)
 
-    reports = Reports(data_dir, options.report_dirs)
+    reports = Reports(data_dir, options.report_dirs, options)
     source_set = BuildSourceSet(sources)
     errors = Errors(options.show_error_context, options.show_column_numbers)
     plugin = load_plugins(options, errors)
