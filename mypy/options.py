@@ -178,7 +178,9 @@ class Options:
         return not self == other
 
     def __repr__(self) -> str:
-        return 'Options({})'.format(pprint.pformat(self.__dict__))
+        d = dict(self.__dict__)
+        del d['clone_cache']
+        return 'Options({})'.format(pprint.pformat(d))
 
     def clone_for_module(self, module: str) -> 'Options':
         """Create an Options object that incorporates per-module options.
