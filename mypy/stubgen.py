@@ -457,7 +457,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 annotation = ""
             if arg_.initializer:
                 initializer = '...'
-                if kind in (ARG_NAMED, ARG_NAMED_OPT) and '*' not in args:
+                if kind in (ARG_NAMED, ARG_NAMED_OPT) and not any(arg.startswith('*') for arg in args):
                     args.append('*')
                 if not annotation:
                     typename = self.get_str_type_of_node(arg_.initializer, True)
