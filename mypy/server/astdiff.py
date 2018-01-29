@@ -152,6 +152,8 @@ class IdenticalTypeVisitor(TypeVisitor[bool]):
         if isinstance(self.right, TypedDictType):
             if left.items.keys() != self.right.items.keys():
                 return False
+            if left.required_keys != self.right.required_keys:
+                return False
             for (_, left_item_type, right_item_type) in left.zip(self.right):
                 if not is_identical_type(left_item_type, right_item_type):
                     return False
@@ -306,13 +308,13 @@ def snapshot_definition(node: Optional[SymbolNode],
         #   type_vars
         #   bases
         #   _promote
-        #   typeddict_type
         attrs = (node.is_abstract,
                  node.is_enum,
                  node.fallback_to_any,
                  node.is_named_tuple,
                  node.is_newtype,
                  snapshot_optional_type(node.tuple_type),
+                 snapshot_optional_type(node.typeddict_type),
                  [base.fullname() for base in node.mro])
         prefix = node.fullname()
         symbol_table = snapshot_symbol_table(prefix, node.names)
@@ -407,7 +409,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
     def visit_typeddict_type(self, typ: TypedDictType) -> SnapshotItem:
         items = tuple((key, snapshot_type(item_type))
                       for key, item_type in typ.items.items())
-        return ('TypedDictType', items)
+        required = tuple(sorted(typ.required_keys))
+        return ('TypedDictType', items, required)
 
     def visit_union_type(self, typ: UnionType) -> SnapshotItem:
         # Sort and remove duplicates so that we can use equality to test for

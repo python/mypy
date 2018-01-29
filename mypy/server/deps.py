@@ -87,7 +87,7 @@ from mypy.nodes import (
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
-    TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr,
+    TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
     LDEF, MDEF, GDEF,
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
@@ -151,7 +151,6 @@ class DependencyVisitor(TraverserVisitor):
     # TODO (incomplete):
     #   from m import *
     #   await
-    #   TypedDict
     #   protocols
     #   metaclasses
     #   type aliases
@@ -199,6 +198,8 @@ class DependencyVisitor(TraverserVisitor):
             self.add_type_dependencies(base, target=target)
         if o.info.tuple_type:
             self.add_type_dependencies(o.info.tuple_type, target=make_trigger(target))
+        if o.info.typeddict_type:
+            self.add_type_dependencies(o.info.typeddict_type, target=make_trigger(target))
         # TODO: Add dependencies based on remaining TypeInfo attributes.
         super().visit_class_def(o)
         self.is_class = old_is_class
@@ -237,7 +238,6 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         # TODO: Implement all assignment special forms, including these:
-        #   TypedDict
         #   Enum
         #   type aliases
         rvalue = o.rvalue
@@ -258,6 +258,12 @@ class DependencyVisitor(TraverserVisitor):
                         self.add_type_dependencies(typ, target=make_trigger(prefix))
                         attr_target = make_trigger('%s.%s' % (prefix, name))
                         self.add_type_dependencies(typ, target=attr_target)
+        elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypedDictExpr):
+            # Depend on the underlying typeddict type
+            info = rvalue.analyzed.info
+            assert info.typeddict_type is not None
+            prefix = '%s.%s' % (self.scope.current_full_target(), info.name())
+            self.add_type_dependencies(info.typeddict_type, target=make_trigger(prefix))
         else:
             # Normal assignment
             super().visit_assignment_stmt(o)
@@ -703,8 +709,11 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:
-        # TODO: implement
-        return []
+        triggers = []
+        for item in typ.items.values():
+            triggers.extend(get_type_triggers(item))
+        triggers.extend(get_type_triggers(typ.fallback))
+        return triggers
 
     def visit_unbound_type(self, typ: UnboundType) -> List[str]:
         return []

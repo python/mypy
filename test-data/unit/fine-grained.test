@@ -1720,3 +1720,59 @@ def f(x: a.N) -> None:
 f(a.x)
 [out]
 ==
+
+[case testTypedDictRefresh]
+[builtins fixtures/dict.pyi]
+import a
+[file a.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file a.py.2]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[out]
+==
+
+[case testTypedDictUpdate]
+import b
+[file a.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file a.py.2]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': str})
+p = Point(dict(x=42, y='lurr'))
+[file b.py]
+from a import Point
+def foo(x: Point) -> int:
+    return x['x'] + x['y']
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testTypedDictUpdate2]
+import b
+[file a.py]
+from mypy_extensions import TypedDict
+class Point(TypedDict):
+    x: int
+    y: int
+p = Point(dict(x=42, y=1337))
+[file a.py.2]
+from mypy_extensions import TypedDict
+class Point(TypedDict):
+    x: int
+    y: str
+p = Point(dict(x=42, y='lurr'))
+[file b.py]
+from a import Point
+def foo(x: Point) -> int:
+    return x['x'] + x['y']
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:3: error: Unsupported operand types for + ("int" and "str")
