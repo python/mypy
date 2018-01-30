@@ -2,9 +2,9 @@
 
 import os
 from abc import abstractmethod
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence,
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence, DefaultDict
 )
 
 import mypy.strconv
@@ -194,6 +194,8 @@ class MypyFile(SymbolNode):
     path = ''
     # Top-level definitions and statements
     defs = None  # type: List[Statement]
+    # Type alias dependencies as mapping from node to set of alias full names
+    alias_deps = None  # type: DefaultDict[Union[MypyFile, FuncItem, ClassDef], Set[str]]
     # Is there a UTF-8 BOM at the start?
     is_bom = False
     names = None  # type: SymbolTable
@@ -213,6 +215,7 @@ class MypyFile(SymbolNode):
         self.line = 1  # Dummy line number
         self.imports = imports
         self.is_bom = is_bom
+        self.alias_deps = defaultdict(set)
         if ignored_lines:
             self.ignored_lines = ignored_lines
         else:
@@ -2331,6 +2334,10 @@ class SymbolTableNode:
     normalized = False  # type: bool
     # Was this defined by assignment to self attribute?
     implicit = False  # type: bool
+    # Is this node refers to other node via node aliasing?
+    # (This is currently used for simple aliases like `A = int` instead of .type_override)
+    is_aliasing = False  # type: bool
+    alias_depends_on = None  # type: Set[str]
 
     def __init__(self,
                  kind: int,
@@ -2349,6 +2356,7 @@ class SymbolTableNode:
         self.alias_tvars = alias_tvars
         self.implicit = implicit
         self.module_hidden = module_hidden
+        self.alias_depends_on = set()
 
     @property
     def fullname(self) -> Optional[str]:

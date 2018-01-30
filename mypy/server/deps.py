@@ -79,7 +79,7 @@ dependency map significantly without significant benefit.
 Test cases for this module live in 'test-data/unit/deps*.test'.
 """
 
-from typing import Dict, List, Set, Optional, Tuple, Union
+from typing import Dict, List, Set, Optional, Tuple, Union, DefaultDict
 
 from mypy.checkmember import bind_self
 from mypy.nodes import (
@@ -88,7 +88,7 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF,
+    LDEF, MDEF, GDEF, FuncItem,
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -106,6 +106,7 @@ def get_dependencies(target: MypyFile,
                      python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get all dependencies of a node, recursively."""
     visitor = DependencyVisitor(type_map, python_version)
+    visitor.alias_deps = target.alias_deps
     target.accept(visitor)
     return visitor.map
 
@@ -138,6 +139,7 @@ def get_dependencies_of_target(module_id: str,
 
 
 class DependencyVisitor(TraverserVisitor):
+    alias_deps = None  # type: Optional[DefaultDict[Union[MypyFile, FuncItem, ClassDef], Set[str]]]
     def __init__(self,
                  type_map: Dict[Expression, Type],
                  python_version: Tuple[int, int]) -> None:
@@ -160,6 +162,9 @@ class DependencyVisitor(TraverserVisitor):
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.scope.enter_file(o.fullname())
         self.is_package_init_file = o.is_package_init_file()
+        if o in self.alias_deps:
+            for alias in self.alias_deps[o]:
+                self.add_dependency(make_trigger(alias))
         super().visit_mypy_file(o)
         self.scope.leave()
 
@@ -177,6 +182,9 @@ class DependencyVisitor(TraverserVisitor):
         if o.info:
             for base in non_trivial_bases(o.info):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
+        if self.alias_deps and o in self.alias_deps:
+            for alias in self.alias_deps[o]:
+                self.add_dependency(make_trigger(alias))
         super().visit_func_def(o)
         self.scope.leave()
 
@@ -202,6 +210,9 @@ class DependencyVisitor(TraverserVisitor):
             self.add_type_dependencies(o.info.typeddict_type, target=make_trigger(target))
         # TODO: Add dependencies based on remaining TypeInfo attributes.
         super().visit_class_def(o)
+        if self.alias_deps and o in self.alias_deps:
+            for alias in self.alias_deps[o]:
+                self.add_dependency(make_trigger(alias))
         self.is_class = old_is_class
         info = o.info
         for name, node in info.names.items():

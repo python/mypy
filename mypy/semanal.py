@@ -597,9 +597,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 assert isinstance(defn.type, CallableType)
                 # Signature must be analyzed in the surrounding scope so that
                 # class-level imported names and type variables are in scope.
-                defn.type = self.type_analyzer().visit_callable_type(defn.type, nested=False)
+                analyzer = self.type_analyzer()
+                defn.type = analyzer.visit_callable_type(defn.type, nested=False)
+                if analyzer.aliases_used:
+                    self.cur_mod_node.alias_deps[defn].update(analyzer.aliases_used)
                 self.check_function_signature(defn)
                 if isinstance(defn, FuncDef):
+                    assert isinstance(defn.type, CallableType)
                     defn.type = set_callable_name(defn.type, defn)
             for arg in defn.arguments:
                 if arg.initializer:
@@ -1679,7 +1683,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                                aliasing=aliasing,
                                allow_tuple_literal=allow_tuple_literal,
                                third_pass=third_pass)
-        return t.accept(a)
+        tp = t.accept(a)
+        if a.aliases_used:
+            if self.is_class_scope():
+                assert self.type is not None, "Type not set at class scope"
+                self.cur_mod_node.alias_deps[self.type.defn].update(a.aliases_used)
+            elif self.is_func_scope():
+                self.cur_mod_node.alias_deps[self.function_stack[-1]].update(a.aliases_used)
+            else:
+                self.cur_mod_node.alias_deps[self.cur_mod_node].update(a.aliases_used)
+        return tp
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
@@ -1755,7 +1768,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         return Instance(fb_info, [])
 
     def analyze_alias(self, rvalue: Expression,
-                      warn_bound_tvar: bool = False) -> Tuple[Optional[Type], List[str]]:
+                      warn_bound_tvar: bool = False) -> Tuple[Optional[Type], List[str], Set[str]]:
         """Check if 'rvalue' represents a valid type allowed for aliasing
         (e.g. not a type variable). If yes, return the corresponding type and a list of
         qualified type variable names for generic aliases.
@@ -1776,11 +1789,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                                  global_scope=global_scope,
                                  warn_bound_tvar=warn_bound_tvar)
         if res:
+            tp, depends_on = res
             alias_tvars = [name for (name, _) in
-                           res.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]
+                           tp.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]
         else:
+            tp = None
             alias_tvars = []
-        return res, alias_tvars
+            depends_on = set()
+        return tp, alias_tvars, depends_on
 
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed.
@@ -1809,11 +1825,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # annotations (see the second rule).
             return
         rvalue = s.rvalue
-        res, alias_tvars = self.analyze_alias(rvalue, warn_bound_tvar=True)
+        res, alias_tvars, depends_on = self.analyze_alias(rvalue, warn_bound_tvar=True)
         if not res:
             return
         node = self.lookup(lvalue.name, lvalue)
         assert node is not None
+        node.alias_depends_on = depends_on.copy()
+        node.alias_depends_on.add(lvalue.fullname)  # To avoid extra attributes on SymbolTableNode
+                                                    # we add the fullname of alias to what it depends on.
         if not lvalue.is_inferred_def:
             # Type aliases can't be re-defined.
             if node and (node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo)):
@@ -1830,6 +1849,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # For simple (on-generic) aliases we use aliasing TypeInfo's
             # to allow using them in runtime context where it makes sense.
             node.node = res.type
+            node.is_aliasing = True
             if isinstance(rvalue, RefExpr):
                 sym = self.lookup_type_node(rvalue)
                 if sym:
@@ -3439,12 +3459,20 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         elif isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
             # Special form -- subscripting a generic type alias.
             # Perform the type substitution and create a new alias.
-            res, alias_tvars = self.analyze_alias(expr)
+            res, alias_tvars, depends_on = self.analyze_alias(expr)
             assert res is not None, "Failed analyzing already defined alias"
             expr.analyzed = TypeAliasExpr(res, alias_tvars, fallback=self.alias_fallback(res),
                                           in_runtime=True)
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
+            if depends_on:  # for situations like `L = LongGeneric; x = L[int]()`
+                if self.is_class_scope():
+                    assert self.type is not None, "Type not set at class scope"
+                    self.cur_mod_node.alias_deps[self.type.defn].update(depends_on)
+                elif self.is_func_scope():
+                    self.cur_mod_node.alias_deps[self.function_stack[-1]].update(depends_on)
+                else:
+                    self.cur_mod_node.alias_deps[self.cur_mod_node].update(depends_on)
         elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.

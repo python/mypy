@@ -1776,3 +1776,40 @@ def foo(x: Point) -> int:
 [out]
 ==
 b.py:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testBasicAliasUpdate]
+import b
+[file a.py]
+N = int
+x = 1
+[file a.py.2]
+N = str
+x = 'hi'
+[file b.py]
+import a
+def f(x: a.N) -> None:
+    pass
+f(a.x)
+[out]
+==
+
+[case testBasicAliasUpdateGeneric]
+import b
+[file a.py]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+D = Dict[int, T]
+x = {1: 1}
+[file a.py.2]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+D = Dict[str, T]
+x = {'hi': 1}
+[file b.py]
+import a
+def f(x: a.D[int]) -> None:
+    pass
+f(a.x)
+[builtins fixtures/dict.pyi]
+[out]
+==
