@@ -735,7 +735,7 @@ def _attrs_get_argument(call: CallExpr, name: str) -> Optional[Expression]:
     # attrib and class makers.
     callee_type = None
     if (isinstance(call.callee, RefExpr)
-            and isinstance(call.callee.node, Var)
+            and isinstance(call.callee.node, (Var, FuncBase))
             and call.callee.node.type):
         callee_node_type = call.callee.node.type
         if isinstance(callee_node_type, Overloaded):
