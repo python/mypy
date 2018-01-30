@@ -755,6 +755,8 @@ def parse_section(prefix: str, template: Options,
                         print("%s: Unrecognized report type: %s" % (prefix, orig_key),
                               file=sys.stderr)
                     continue
+                if key.startswith('x_'):
+                    continue  # Don't complain about `x_blah` flags
                 print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
                       file=sys.stderr)
                 continue
