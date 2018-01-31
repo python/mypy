@@ -106,7 +106,7 @@ def get_dependencies(target: MypyFile,
                      python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get all dependencies of a node, recursively."""
     visitor = DependencyVisitor(type_map, python_version)
-    visitor.alias_deps = target.alias_deps
+    visitor.alias_deps = set() #target.alias_deps
     target.accept(visitor)
     return visitor.map
 
@@ -119,7 +119,7 @@ def get_dependencies_of_target(module_id: str,
     """Get dependencies of a target -- don't recursive into nested targets."""
     # TODO: Add tests for this function.
     visitor = DependencyVisitor(type_map, python_version)
-    visitor.alias_deps = module_tree.alias_deps
+    visitor.alias_deps = set() #module_tree.alias_deps
     visitor.scope.enter_file(module_id)
     if isinstance(target, MypyFile):
         # Only get dependencies of the top-level of the module. Don't recurse into
