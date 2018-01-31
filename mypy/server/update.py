@@ -280,7 +280,7 @@ class FineGrainedBuildManager:
                         if not trigger.endswith('__>')]
             print('triggered:', sorted(filtered))
         self.triggered.extend(triggered | self.previous_targets_with_errors)
-        update_dependencies({module: tree}, self.deps, graph, self.options)
+        collect_dependencies({module: tree}, self.deps, graph)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              {module},
                                              self.previous_targets_with_errors)
@@ -319,7 +319,7 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
                          options: Options) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
     deps = {}  # type: Dict[str, Set[str]]
-    update_dependencies(manager.modules, deps, graph, options)
+    collect_dependencies(manager.modules, deps, graph)
     return deps
 
 
@@ -644,24 +644,14 @@ def find_import_line(node: MypyFile, target: str) -> Optional[int]:
     return None
 
 
-def update_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
-                        deps: Dict[str, Set[str]],
-                        graph: Dict[str, State],
-                        options: Options) -> None:
+def collect_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
+                         deps: Dict[str, Set[str]],
+                         graph: Dict[str, State]) -> None:
     for id, node in new_modules.items():
         if node is None:
             continue
-        if '/typeshed/' in node.path or node.path.startswith('typeshed/'):
-            # We don't track changes to typeshed -- the assumption is that they are only changed
-            # as part of mypy updates, which will invalidate everything anyway.
-            #
-            # TODO: Not a reliable test, as we could have a package named typeshed.
-            # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
-            continue
-        module_deps = get_dependencies(target=node,
-                                       type_map=graph[id].type_map(),
-                                       python_version=options.python_version)
-        for trigger, targets in module_deps.items():
+        graph[id].compute_fine_grained_deps()
+        for trigger, targets in graph[id].fine_grained_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
 
