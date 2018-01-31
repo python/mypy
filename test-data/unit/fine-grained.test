@@ -1813,3 +1813,205 @@ f(a.x)
 [builtins fixtures/dict.pyi]
 [out]
 ==
+
+[case testAliasFineNormalMod]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+A = str
+[file b.py]
+import a
+x: a.A = int()
+[out]
+==
+b.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineNormalFunc]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+A = str
+[file b.py]
+import a
+def f(x: a.A):
+    x = int()
+[out]
+==
+b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineNormalClass]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+A = str
+[file b.py]
+import a
+class C:
+    x: a.A
+c = C()
+c.x = int()
+[out]
+==
+b.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineNormalClassBases]
+import b
+[file a.py]
+import c
+A = c.BaseI
+[file a.py.2]
+import c
+A = c.BaseS
+[file b.py]
+import a
+class C(a.A):
+    x = int()
+[file c.py]
+class BaseI:
+    x: int
+class BaseS:
+    x: str
+[out]
+==
+b.py:3: error: Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
+
+[case testAliasFineGenericMod]
+import b
+[file a.py]
+from typing import Dict
+A = Dict[str, int]
+[file a.py.2]
+from typing import Dict
+A = Dict[str, str]
+[file b.py]
+import a
+x: a.A = {str(): int()}
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:2: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
+
+[case testAliasFineGenericFunc]
+import b
+[file a.py]
+from typing import Dict
+A = Dict[str, int]
+[file a.py.2]
+from typing import Dict
+A = Dict[str, str]
+[file b.py]
+import a
+def f(x: a.A):
+    pass
+reveal_type(f)
+[builtins fixtures/dict.pyi]
+[out]
+b.py:4: error: Revealed type is 'def (x: builtins.dict[builtins.str, builtins.int]) -> Any'
+==
+b.py:4: error: Revealed type is 'def (x: builtins.dict[builtins.str, builtins.str]) -> Any'
+
+[case testAliasFineForwardMod]
+import b
+[file b.py]
+x: A = int()
+A = int
+[file b.py.2]
+x: A = int()
+A = str
+[out]
+==
+b.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineForwardFunc]
+import b
+[file b.py]
+def f(x: A):
+    x = int()
+A = int
+[file b.py.2]
+def f(x: A):
+    x = int()
+A = str
+[out]
+==
+b.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineChainedFunc]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+A = str
+[file aa.py]
+import a
+B = a.A
+[file b.py]
+import aa
+def f(x: aa.B):
+    x = int()
+[out]
+==
+b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineChainedClass]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+A = str
+[file aa.py]
+import a
+B = a.A
+[file b.py]
+import aa
+class C:
+    x: aa.B
+c = C()
+c.x = int()
+[out]
+==
+b.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineNestedMod]
+import b
+[file a.py]
+from typing import Dict
+A = Dict[str, int]
+[file a.py.2]
+from typing import Dict
+A = Dict[str, str]
+[file aa.py]
+from typing import Dict
+import a
+B = Dict[str, a.A]
+[file b.py]
+import aa
+x: aa.B = {'first': {str(): int()}}
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:2: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
+
+[case testAliasFineNestedFunc]
+import b
+[file a.py]
+from typing import Dict
+A = Dict[str, int]
+[file a.py.2]
+from typing import Dict
+A = Dict[str, str]
+[file aa.py]
+from typing import Dict
+import a
+B = Dict[str, a.A]
+[file b.py]
+import aa
+def f(x: aa.B):
+    x = {'first': {str(): int()}}
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:3: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"

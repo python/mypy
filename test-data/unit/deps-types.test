@@ -151,3 +151,150 @@ def h() -> None:
 <m.f> -> m, m.h
 <m.ff> -> m, m.h
 <m.g> -> m.f
+
+[case testAliasDepsNormalMod]
+A = int
+x: A
+[out]
+<m.A> -> m
+<m.x> -> m
+
+[case testAliasDepsNormalFunc]
+A = int
+def f(x: A) -> None:
+    pass
+[out]
+<m.A> -> m, m.f
+
+[case testAliasDepsNormalClass]
+from a import A
+class C:
+    x: A
+[file a.py]
+A = int
+[out]
+<m.C> -> m.C
+<a.A> -> m
+
+[case testAliasDepsNormalClassBases]
+from a import A
+class C(A):
+    pass
+[file a.py]
+A = int
+[out]
+<m.C> -> m.C
+<a.A> -> m
+
+[case testAliasDepsGenericMod]
+from typing import Dict
+A = Dict[int, str]
+x: A
+[builtins fixtures/dict.pyi]
+[out]
+<m.A> -> m
+<m.x> -> m
+
+[case testAliasDepsGenericFunc]
+from typing import Dict
+A = Dict[str, int]
+def f(x: A) -> None:
+    pass
+[builtins fixtures/dict.pyi]
+[out]
+<m.A> -> m, m.f
+
+[case testAliasDepsGenericClass]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+A = Dict[str, T]
+class C:
+    x: A[int]
+[builtins fixtures/dict.pyi]
+[out]
+<m.A> -> m
+<m.C> -> m.C
+
+[case testAliasDepsForwardMod]
+x: A
+A = int
+[out]
+<m.A> -> m
+<m.x> -> m
+
+[case testAliasDepsForwardFunc]
+def f(x: A) -> None:
+    pass
+A = int
+[out]
+<m.A> -> m, m.f
+
+[case testAliasDepsForwardClass]
+class C:
+    x: A
+A = int
+[out]
+<m.A> -> m
+<m.C> -> m.C
+
+[case testAliasDepsChainedMod]
+A = int
+B = A
+x: B
+[out]
+<m.A> -> m
+<m.B> -> m
+<m.x> -> m
+
+[case testAliasDepsChainedFunc]
+A = int
+B = A
+def f(x: B) -> None:
+    pass
+[out]
+<m.A> -> m, m.f
+<m.B> -> m, m.f
+
+[case testAliasDepsChainedClass]
+A = int
+B = A
+class C(B):
+    pass
+[out]
+<m.A> -> m
+<m.B> -> m
+<m.C> -> m.C
+
+[case testAliasDepsNestedMod]
+from typing import Dict
+A = Dict[str, int]
+B = Dict[str, A]
+x: B
+[builtins fixtures/dict.pyi]
+[out]
+<m.A> -> m
+<m.B> -> m
+<m.x> -> m
+
+[case testAliasDepsNestedFunc]
+from typing import Dict
+A = Dict[str, int]
+B = Dict[str, A]
+def f(x: B) -> None:
+    pass
+[builtins fixtures/dict.pyi]
+[out]
+<m.A> -> m, m.f
+<m.B> -> m, m.f
+
+[case testAliasDepsNestedClass]
+from typing import Dict
+A = Dict[str, int]
+B = Dict[str, A]
+class C:
+    x: B
+[builtins fixtures/dict.pyi]
+[out]
+<m.A> -> m
+<m.B> -> m
+<m.C> -> m.C

@@ -1070,7 +1070,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
         for base_expr in defn.base_type_exprs:
             try:
-                base = self.expr_to_analyzed_type(base_expr)
+                base = self.expr_to_analyzed_type(base_expr, from_bases=defn)
             except TypeTranslationError:
                 self.fail('Invalid base class', base_expr)
                 info.fallback_to_any = True
@@ -1182,7 +1182,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             return
         defn.metaclass = metas.pop()
 
-    def expr_to_analyzed_type(self, expr: Expression) -> Type:
+    def expr_to_analyzed_type(self, expr: Expression, *,
+                              from_bases: Optional[ClassDef] = None) -> Type:
         if isinstance(expr, CallExpr):
             expr.accept(self)
             info = self.check_namedtuple(expr)
@@ -1194,7 +1195,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             fallback = Instance(info, [])
             return TupleType(info.tuple_type.items, fallback=fallback)
         typ = expr_to_unanalyzed_type(expr)
-        return self.anal_type(typ)
+        return self.anal_type(typ, from_bases=from_bases)
 
     def verify_base_classes(self, defn: ClassDef) -> bool:
         info = defn.info
@@ -1678,13 +1679,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
                   aliasing: bool = False,
-                  third_pass: bool = False) -> Type:
+                  third_pass: bool = False,
+                  from_bases: Optional[ClassDef] = None) -> Type:
         a = self.type_analyzer(tvar_scope=tvar_scope,
                                aliasing=aliasing,
                                allow_tuple_literal=allow_tuple_literal,
                                third_pass=third_pass)
         tp = t.accept(a)
         if a.aliases_used:
+            if from_bases is not None:
+                self.cur_mod_node.alias_deps[from_bases].update(a.aliases_used)
+                return tp
             if self.is_class_scope():
                 assert self.type is not None, "Type not set at class scope"
                 self.cur_mod_node.alias_deps[self.type.defn].update(a.aliases_used)
@@ -1833,6 +1838,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         node.alias_depends_on = depends_on.copy()
         node.alias_depends_on.add(lvalue.fullname)  # To avoid extra attributes on SymbolTableNode
                                                     # we add the fullname of alias to what it depends on.
+        if depends_on:
+            if self.is_class_scope():
+                assert self.type is not None, "Type not set at class scope"
+                self.cur_mod_node.alias_deps[self.type.defn].update(depends_on)
+            elif self.is_func_scope():
+                self.cur_mod_node.alias_deps[self.function_stack[-1]].update(depends_on)
+            else:
+                self.cur_mod_node.alias_deps[self.cur_mod_node].update(depends_on)
         if not lvalue.is_inferred_def:
             # Type aliases can't be re-defined.
             if node and (node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo)):

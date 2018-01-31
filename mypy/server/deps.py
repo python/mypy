@@ -112,12 +112,14 @@ def get_dependencies(target: MypyFile,
 
 
 def get_dependencies_of_target(module_id: str,
+                               module_tree: MypyFile,
                                target: Node,
                                type_map: Dict[Expression, Type],
                                python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get dependencies of a target -- don't recursive into nested targets."""
     # TODO: Add tests for this function.
     visitor = DependencyVisitor(type_map, python_version)
+    visitor.alias_deps = module_tree.alias_deps
     visitor.scope.enter_file(module_id)
     if isinstance(target, MypyFile):
         # Only get dependencies of the top-level of the module. Don't recurse into
@@ -155,7 +157,6 @@ class DependencyVisitor(TraverserVisitor):
     #   await
     #   protocols
     #   metaclasses
-    #   type aliases
     #   functional enum
     #   type variable with value restriction
 

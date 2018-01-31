@@ -2517,7 +2517,6 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         graph[id].semantic_analysis()
     for id in stale:
         graph[id].semantic_analysis_pass_three()
-        # print(graph[id].tree.alias_deps)
     for id in fresh:
         graph[id].calculate_mros()
     for id in stale:

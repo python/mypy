@@ -361,7 +361,8 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
             self.generate_type_patches(node, indicator, warn)
-            self.cur_mod_node.alias_deps[self.cur_node].update(analyzer.aliases_used)
+            if analyzer.aliases_used:
+                self.cur_mod_node.alias_deps[self.cur_node].update(analyzer.aliases_used)
 
     def analyze_types(self, types: List[Type], node: Node) -> None:
         # Similar to above but for nodes with multiple types.
