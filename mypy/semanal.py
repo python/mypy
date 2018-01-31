@@ -1793,12 +1793,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                                  in_dynamic_func=dynamic,
                                  global_scope=global_scope,
                                  warn_bound_tvar=warn_bound_tvar)
+        tp = None  # type: Optional[Type]
         if res:
             tp, depends_on = res
             alias_tvars = [name for (name, _) in
                            tp.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]
         else:
-            tp = None
             alias_tvars = []
             depends_on = set()
         return tp, alias_tvars, depends_on
@@ -1836,8 +1836,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         node = self.lookup(lvalue.name, lvalue)
         assert node is not None
         node.alias_depends_on = depends_on.copy()
-        node.alias_depends_on.add(lvalue.fullname)  # To avoid extra attributes on SymbolTableNode
-                                                    # we add the fullname of alias to what it depends on.
+        if lvalue.fullname is not None:
+            # To avoid extra attributes on SymbolTableNode we add the fullname
+            # of alias to what it depends on.
+            node.alias_depends_on.add(lvalue.fullname)
         if depends_on:
             if self.is_class_scope():
                 assert self.type is not None, "Type not set at class scope"

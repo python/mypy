@@ -141,7 +141,8 @@ def get_dependencies_of_target(module_id: str,
 
 
 class DependencyVisitor(TraverserVisitor):
-    alias_deps = None  # type: Optional[DefaultDict[Union[MypyFile, FuncItem, ClassDef], Set[str]]]
+    alias_deps = None  # type: DefaultDict[Union[MypyFile, FuncItem, ClassDef], Set[str]]
+
     def __init__(self,
                  type_map: Dict[Expression, Type],
                  python_version: Tuple[int, int]) -> None:
@@ -183,7 +184,7 @@ class DependencyVisitor(TraverserVisitor):
         if o.info:
             for base in non_trivial_bases(o.info):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
-        if self.alias_deps and o in self.alias_deps:
+        if o in self.alias_deps:
             for alias in self.alias_deps[o]:
                 self.add_dependency(make_trigger(alias))
         super().visit_func_def(o)
@@ -211,7 +212,7 @@ class DependencyVisitor(TraverserVisitor):
             self.add_type_dependencies(o.info.typeddict_type, target=make_trigger(target))
         # TODO: Add dependencies based on remaining TypeInfo attributes.
         super().visit_class_def(o)
-        if self.alias_deps and o in self.alias_deps:
+        if o in self.alias_deps:
             for alias in self.alias_deps[o]:
                 self.add_dependency(make_trigger(alias))
         self.is_class = old_is_class

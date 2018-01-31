@@ -1975,7 +1975,7 @@ c.x = int()
 ==
 b.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testAliasFineNestedMod]
+[case testAliasFineNestedMod-skip]
 import b
 [file a.py]
 from typing import Dict
@@ -1995,7 +1995,7 @@ x: aa.B = {'first': {str(): int()}}
 ==
 b.py:2: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
 
-[case testAliasFineNestedFunc]
+[case testAliasFineNestedFunc-skip]
 import b
 [file a.py]
 from typing import Dict
