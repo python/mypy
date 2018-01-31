@@ -1184,7 +1184,7 @@ def compute_hash(text: str) -> str:
 
 
 def write_cache(id: str, path: str, tree: MypyFile,
-                fine_grained_deps: Dict[str, List[str]],
+                serialized_fine_grained_deps: Dict[str, List[str]],
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
                 old_interface_hash: str, source_hash: str,
@@ -1224,7 +1224,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Serialize data and analyze interface
     data = {'tree': tree.serialize(),
-            'fine_grained_deps': fine_grained_deps,
+            'fine_grained_deps': serialized_fine_grained_deps,
             }
     if manager.options.debug_cache:
         data_str = json.dumps(data, indent=2, sort_keys=True)
@@ -1986,7 +1986,7 @@ class State:
             elif dep not in self.suppressed and dep in self.manager.missing_modules:
                 self.suppressed.append(dep)
 
-    def find_fine_grained_deps(self) -> None:
+    def compute_fine_grained_deps(self) -> None:
         assert self.tree is not None
         if '/typeshed/' in self.xpath or self.xpath.startswith('typeshed/'):
             # We don't track changes to typeshed -- the assumption is that they are only changed
@@ -2558,7 +2558,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
     for id in stale:
         graph[id].finish_passes()
         if manager.options.cache_fine_grained:
-            graph[id].find_fine_grained_deps()
+            graph[id].compute_fine_grained_deps()
         graph[id].generate_unused_ignore_notes()
         manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
         graph[id].write_cache()

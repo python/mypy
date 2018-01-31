@@ -650,7 +650,7 @@ def collect_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
     for id, node in new_modules.items():
         if node is None:
             continue
-        graph[id].find_fine_grained_deps()
+        graph[id].compute_fine_grained_deps()
         for trigger, targets in graph[id].fine_grained_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
