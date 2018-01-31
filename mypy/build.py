@@ -1742,7 +1742,7 @@ class State:
             data = json.load(f)
         # TODO: Assert data file wasn't changed.
         self.tree = MypyFile.deserialize(data['tree'])
-        self.fine_grained_deps = {k: set(v) for k, v in data['fine_grained_deps']}
+        self.fine_grained_deps = {k: set(v) for k, v in data['fine_grained_deps'].items()}
 
         self.manager.modules[self.id] = self.tree
         self.manager.add_stats(fresh_trees=1)
