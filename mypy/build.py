@@ -1225,7 +1225,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     # Serialize data and analyze interface
     data = {'tree': tree.serialize(),
             'fine_grained_deps': fine_grained_deps,
-           }
+            }
     if manager.options.debug_cache:
         data_str = json.dumps(data, indent=2, sort_keys=True)
     else:
