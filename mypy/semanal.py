@@ -1690,14 +1690,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             if from_bases is not None:
                 self.cur_mod_node.alias_deps[from_bases].update(a.aliases_used)
                 return tp
-            if self.is_class_scope():
-                assert self.type is not None, "Type not set at class scope"
-                self.cur_mod_node.alias_deps[self.type.defn].update(a.aliases_used)
-            elif self.is_func_scope():
-                self.cur_mod_node.alias_deps[self.function_stack[-1]].update(a.aliases_used)
-            else:
-                self.cur_mod_node.alias_deps[self.cur_mod_node].update(a.aliases_used)
+            self.add_alias_deps(a.aliases_used)
         return tp
+
+    def add_alias_deps(self, aliases_used: Set[str]) -> None:
+        """Add full names of type aliases on which the current node depends.
+
+        This is used by fine-grained incremental mode to re-chek the corresponding nodes.
+        """
+        if self.is_class_scope():
+            assert self.type is not None, "Type not set at class scope"
+            self.cur_mod_node.alias_deps[self.type.defn].update(aliases_used)
+        elif self.is_func_scope():
+            self.cur_mod_node.alias_deps[self.function_stack[-1]].update(aliases_used)
+        else:
+            self.cur_mod_node.alias_deps[self.cur_mod_node].update(aliases_used)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
@@ -1841,13 +1848,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # of alias to what it depends on.
             node.alias_depends_on.add(lvalue.fullname)
         if depends_on:
-            if self.is_class_scope():
-                assert self.type is not None, "Type not set at class scope"
-                self.cur_mod_node.alias_deps[self.type.defn].update(depends_on)
-            elif self.is_func_scope():
-                self.cur_mod_node.alias_deps[self.function_stack[-1]].update(depends_on)
-            else:
-                self.cur_mod_node.alias_deps[self.cur_mod_node].update(depends_on)
+            self.add_alias_deps(depends_on)
         if not lvalue.is_inferred_def:
             # Type aliases can't be re-defined.
             if node and (node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo)):
@@ -3481,13 +3482,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
             if depends_on:  # for situations like `L = LongGeneric; x = L[int]()`
-                if self.is_class_scope():
-                    assert self.type is not None, "Type not set at class scope"
-                    self.cur_mod_node.alias_deps[self.type.defn].update(depends_on)
-                elif self.is_func_scope():
-                    self.cur_mod_node.alias_deps[self.function_stack[-1]].update(depends_on)
-                else:
-                    self.cur_mod_node.alias_deps[self.cur_mod_node].update(depends_on)
+                self.add_alias_deps(depends_on)
         elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
