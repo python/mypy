@@ -349,7 +349,7 @@ def split_lines(*streams: bytes) -> List[str]:
     return [
         s.rstrip('\n\r')
         for stream in streams
-        for s in str(stream, 'utf8').splitlines()
+        for s in stream.decode('utf8').splitlines()
     ]
 
 

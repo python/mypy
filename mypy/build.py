@@ -806,7 +806,7 @@ VIRTUALENV_SITE_PACKAGES = '"from distutils.sysconfig import get_python_lib;prin
 
 
 def call_python(python: str, command: str) -> str:
-    return check_output(python + ' -c ' + command).decode(sys.stdout.encoding)
+    return check_output([python, '-c', command]).decode(sys.stdout.encoding)
 
 
 def get_package_dirs(python: Optional[str]) -> List[str]:
