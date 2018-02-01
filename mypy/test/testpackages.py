@@ -24,11 +24,14 @@ class TestPackages(TestCase):
             f.write(SIMPLE_PROGRAM)
 
     def tearDown(self) -> None:
-        os.remove('simple.py')
+        try:
+            os.remove('simple.py')
+        except PermissionError:
+            pass
 
     @contextmanager
     def installed_package(self, pkg: str) -> Generator[None, None, None]:
-        """Context manager to install a package in test-data/packages/pkg/.
+        """Context manager to install a package from test-data/packages/pkg/.
         Uninstalls the package afterward."""
         working_dir = os.path.join(package_path, pkg)
         out, lines = run([sys.executable, '-m', 'pip', 'install', '.'],
@@ -48,26 +51,27 @@ class TestPackages(TestCase):
         """Tests checking information based on installed packages.
         This test CANNOT be split up, concurrency means that simultaneously
         installing/uninstalling will break tests"""
+
         with self.installed_package('typedpkg_stubs'):
             out, err, ret = run_mypy(['simple.py'])
-            assert ret == 1
-            assert err == ''
             assert \
                 out == "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
+            assert ret == 1
+            assert err == ''
 
         with self.installed_package('typedpkg'):
             out, err, ret = run_mypy(['simple.py'])
+            assert out == "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
             assert ret == 1
             assert err == ''
-            assert out == "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
 
         with self.installed_package('typedpkg'):
             with self.installed_package('typedpkg_stubs'):
                 out, err, ret = run_mypy(['simple.py'])
-                assert ret == 1
-                assert err == ''
                 assert \
                     out == "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
+                assert ret == 1
+                assert err == ''
 
 
 if __name__ == '__main__':

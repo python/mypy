@@ -858,9 +858,8 @@ def find_module(id: str, lib_path_arg: Iterable[str],
         # that only once and cache it for when we look for modules like 'foo.bar.blah'
         # that will require the same subdirectory.
 
-        if dir_chain not in find_module_dir_cache:
-            dirs = []
-
+        dirs = find_module_dir_cache.get(dir_chain, [])
+        if not dirs:
             # Regular packages on the PATH
             for pathitem in lib_path:
                 # e.g., '/usr/lib/python3.4/foo/bar'
@@ -872,20 +871,20 @@ def find_module(id: str, lib_path_arg: Iterable[str],
                 if isdir:
                     dirs.append(dir)
 
-            # Third-party stub/typed packages
-            for pkg_dir in package_dirs:
-                stub_name = components[0] + '_stubs'
-                typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
-                stub_typed_file = os.path.join(pkg_dir, stub_name, 'py.typed')
-                if os.path.isfile(stub_typed_file):
-                    components[0] = stub_name
-                    rest = components[:-1]
-                    path = os.path.join(pkg_dir, *rest)
-                    if os.path.isdir(path):
-                        dirs.append(path)
-                elif os.path.isfile(typed_file):
-                    path = os.path.join(pkg_dir, dir_chain)
+        # Third-party stub/typed packages
+        for pkg_dir in package_dirs:
+            stub_name = components[0] + '_stubs'
+            typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
+            stub_typed_file = os.path.join(pkg_dir, stub_name, 'py.typed')
+            if os.path.isfile(stub_typed_file):
+                components[0] = stub_name
+                rest = components[:-1]
+                path = os.path.join(pkg_dir, *rest)
+                if os.path.isdir(path):
                     dirs.append(path)
+            elif os.path.isfile(typed_file):
+                path = os.path.join(pkg_dir, dir_chain)
+                dirs.append(path)
 
             find_module_dir_cache[dir_chain] = dirs
         candidate_base_dirs = find_module_dir_cache[dir_chain]
@@ -918,9 +917,9 @@ def find_module(id: str, lib_path_arg: Iterable[str],
 
     #  If we searched for items with a base directory of site-packages/ we need to
     # remove it to avoid searching it for non-typed ids.
-    if len(find_module_dir_cache[dir_chain]) > 0 and \
-            find_module_dir_cache[dir_chain][-1] in package_dirs:
-        find_module_dir_cache[dir_chain].pop()
+    for dir in package_dirs:
+        if dir + os.sep in find_module_dir_cache[dir_chain]:
+            find_module_dir_cache[dir_chain].remove(dir + os.sep)
 
     return find_module_cache[id]
 
@@ -1601,8 +1600,10 @@ class State:
                 file_id = '__builtin__'
             path = find_module(file_id, manager.lib_path, manager.options.python)
             if path:
-                if any((path.startswith(d) for d in package_dirs_cache)):
-                    self.ignore_all = True
+                if os.path.isabs(path):
+                    for d in package_dirs_cache:
+                        if os.path.commonpath([d, path]) == d:
+                            self.ignore_all = True
                 # For non-stubs, look at options.follow_imports:
                 # - normal (default) -> fully analyze
                 # - silent -> analyze but silence errors
