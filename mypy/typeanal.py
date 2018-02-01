@@ -2,6 +2,7 @@
 
 from collections import OrderedDict
 from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Dict, Union
+
 from itertools import chain
 
 from contextlib import contextmanager

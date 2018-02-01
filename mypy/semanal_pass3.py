@@ -11,7 +11,7 @@ belongs to a module involved in an import loop.
 
 from collections import OrderedDict
 from contextlib import contextmanager
-from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple
+from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple, Iterator
 
 from mypy import messages, experiments
 from mypy.nodes import (
@@ -70,7 +70,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             self.accept(file_node)
 
     @contextmanager
-    def enter_scope(self, node: Union[MypyFile, ClassDef, FuncItem]) -> None:
+    def enter_scope(self, node: Union[MypyFile, ClassDef, FuncItem]) -> Iterator[None]:
         old_node = self.cur_node
         self.cur_node = node
         try:

@@ -146,7 +146,7 @@ class DependencyVisitor(TraverserVisitor):
     def __init__(self,
                  type_map: Dict[Expression, Type],
                  python_version: Tuple[int, int],
-                 alias_deps: DefaultDict[Union[MypyFile, FuncItem, ClassDef], Set[str]]) -> None:
+                 alias_deps: 'DefaultDict[Union[MypyFile, FuncItem, ClassDef], Set[str]]') -> None:
         self.scope = Scope()
         self.type_map = type_map
         self.python2 = python_version[0] == 2
