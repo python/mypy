@@ -109,8 +109,7 @@ def get_dependencies(target: MypyFile,
                      type_map: Dict[Expression, Type],
                      python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get all dependencies of a node, recursively."""
-    visitor = DependencyVisitor(type_map, python_version)
-    visitor.alias_deps = target.alias_deps
+    visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
     target.accept(visitor)
     return visitor.map
 
@@ -122,8 +121,7 @@ def get_dependencies_of_target(module_id: str,
                                python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get dependencies of a target -- don't recursive into nested targets."""
     # TODO: Add tests for this function.
-    visitor = DependencyVisitor(type_map, python_version)
-    visitor.alias_deps = module_tree.alias_deps
+    visitor = DependencyVisitor(type_map, python_version, module_tree.alias_deps)
     visitor.scope.enter_file(module_id)
     if isinstance(target, MypyFile):
         # Only get dependencies of the top-level of the module. Don't recurse into
@@ -145,14 +143,23 @@ def get_dependencies_of_target(module_id: str,
 
 
 class DependencyVisitor(TraverserVisitor):
-    alias_deps = None  # type: DefaultDict[Union[MypyFile, FuncItem, ClassDef], Set[str]]
-
     def __init__(self,
                  type_map: Dict[Expression, Type],
-                 python_version: Tuple[int, int]) -> None:
+                 python_version: Tuple[int, int],
+                 alias_deps: DefaultDict[Union[MypyFile, FuncItem, ClassDef], Set[str]]) -> None:
         self.scope = Scope()
         self.type_map = type_map
         self.python2 = python_version[0] == 2
+        # This attribute holds a mapping from target to names of type aliases
+        # it depends on. These need to be processed specially, since they are
+        # only present in expanded form in symbol tables. For example, after:
+        #    A = List[int]
+        #    x: A
+        # The module symbol table will just have a Var `x` with type `List[int]`,
+        # and the dependency of `x` on `A` is lost. Therefore the alias dependencies
+        # are preserved at alias expansion points in `semanal.py`, stored as an attribute
+        # on MypyFile, and then passed here.
+        self.alias_deps = alias_deps
         self.map = {}  # type: Dict[str, Set[str]]
         self.is_class = False
         self.is_package_init_file = False
@@ -168,9 +175,7 @@ class DependencyVisitor(TraverserVisitor):
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.scope.enter_file(o.fullname())
         self.is_package_init_file = o.is_package_init_file()
-        if o in self.alias_deps:
-            for alias in self.alias_deps[o]:
-                self.add_dependency(make_trigger(alias))
+        self.add_type_alias_deps(o)
         super().visit_mypy_file(o)
         self.scope.leave()
 
@@ -188,9 +193,7 @@ class DependencyVisitor(TraverserVisitor):
         if o.info:
             for base in non_trivial_bases(o.info):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
-        if o in self.alias_deps:
-            for alias in self.alias_deps[o]:
-                self.add_dependency(make_trigger(alias))
+        self.add_type_alias_deps(o)
         super().visit_func_def(o)
         self.scope.leave()
 
@@ -216,9 +219,7 @@ class DependencyVisitor(TraverserVisitor):
             self.add_type_dependencies(o.info.typeddict_type, target=make_trigger(target))
         # TODO: Add dependencies based on remaining TypeInfo attributes.
         super().visit_class_def(o)
-        if o in self.alias_deps:
-            for alias in self.alias_deps[o]:
-                self.add_dependency(make_trigger(alias))
+        self.add_type_alias_deps(o)
         self.is_class = old_is_class
         info = o.info
         for name, node in info.names.items():
@@ -522,6 +523,12 @@ class DependencyVisitor(TraverserVisitor):
         self.add_iter_dependency(e.expr)
 
     # Helpers
+
+    def add_type_alias_deps(self, o: Union[MypyFile, FuncItem, ClassDef]) -> None:
+        """Add dependencies from type aliases to the current target."""
+        if o in self.alias_deps:
+            for alias in self.alias_deps[o]:
+                self.add_dependency(make_trigger(alias))
 
     def add_dependency(self, trigger: str, target: Optional[str] = None) -> None:
         """Add dependency from trigger to a target.

@@ -64,7 +64,8 @@ def analyze_type_alias(node: Expression,
                        in_dynamic_func: bool = False,
                        global_scope: bool = True,
                        warn_bound_tvar: bool = False) -> Optional[Tuple[Type, Set[str]]]:
-    """Return type if node is valid as a type alias rvalue.
+    """If `node` is valid as a type alias rvalue, return the resulting type and a set of
+    full names of type aliases it depends on (directly or indirectly).
 
     Return None otherwise. 'node' must have been semantically analyzed.
     """
@@ -172,6 +173,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.is_typeshed_stub = is_typeshed_stub
         self.warn_bound_tvar = warn_bound_tvar
         self.third_pass = third_pass
+        # Names of type aliases encountered while analysing a type will be collected here.
+        # (This also recursively includes the names of aliases they depend on.)
         self.aliases_used = set()  # type: Set[str]
 
     def visit_unbound_type(self, t: UnboundType) -> Type:

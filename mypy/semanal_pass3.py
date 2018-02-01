@@ -10,6 +10,7 @@ belongs to a module involved in an import loop.
 """
 
 from collections import OrderedDict
+from contextlib import contextmanager
 from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple
 
 from mypy import messages, experiments
@@ -60,10 +61,22 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         self.is_typeshed_file = self.errors.is_typeshed_file(fnam)
         self.sem.cur_mod_id = file_node.fullname()
         self.cur_mod_node = file_node
+        # This variable tracks the current scope node: a module, a class definition,
+        # or a function. It is used to, e.g., correctly determine target of a fine-grained
+        # dependency.
         self.cur_node = file_node  # type: Union[MypyFile, FuncItem, ClassDef]
         self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
             self.accept(file_node)
+
+    @contextmanager
+    def enter_scope(self, node: Union[MypyFile, ClassDef, FuncItem]) -> None:
+        old_node = self.cur_node
+        self.cur_node = node
+        try:
+            yield
+        finally:
+            self.cur_node = old_node
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
@@ -94,11 +107,9 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         if not self.recurse_into_functions:
             return
         self.errors.push_function(fdef.name())
-        old_node = self.cur_node
-        self.cur_node = fdef
-        self.analyze(fdef.type, fdef)
-        super().visit_func_def(fdef)
-        self.cur_node = old_node
+        with self.enter_scope(fdef):
+            self.analyze(fdef.type, fdef)
+            super().visit_func_def(fdef)
         self.errors.pop_function()
 
     def visit_overloaded_func_def(self, fdef: OverloadedFuncDef) -> None:
@@ -139,10 +150,8 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             elif isinstance(tdef.analyzed, NamedTupleExpr):
                 self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed, warn=True)
                 self.analyze_info(tdef.analyzed.info)
-        old_node = self.cur_node
-        self.cur_node = tdef
-        super().visit_class_def(tdef)
-        self.cur_node = old_node
+        with self.enter_scope(tdef):
+            super().visit_class_def(tdef)
 
     def visit_decorator(self, dec: Decorator) -> None:
         """Try to infer the type of the decorated function.
