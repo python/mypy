@@ -1131,6 +1131,11 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     if not stat.S_ISREG(st.st_mode):
         manager.log('Metadata abandoned for {}: file {} does not exist'.format(id, path))
         return None
+
+    if manager.options.use_fine_grained_cache:
+        manager.log('Using potentially stale metadata for {}'.format(id))
+        return meta
+
     size = st.st_size
     if size != meta.size:
         manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
