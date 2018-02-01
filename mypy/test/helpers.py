@@ -314,7 +314,6 @@ def retry_on_error(func: Callable[[], Any], max_wait: float = 1.0) -> None:
             time.sleep(wait_time)
 
 
-            
 def parse_options(program_text: str, testcase: DataDrivenTestCase,
                   incremental_step: int) -> Options:
     """Parse comments like '# flags: --foo' in a test case."""

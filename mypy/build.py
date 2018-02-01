@@ -801,8 +801,10 @@ def is_file(path: str) -> bool:
     return res
 
 
-USER_SITE_PACKAGES = '"import site;print(site.getusersitepackages());print(*site.getsitepackages(), sep=\'\\n\')"'
-VIRTUALENV_SITE_PACKAGES = '"from distutils.sysconfig import get_python_lib;print(get_python_lib())"'
+USER_SITE_PACKAGES = \
+    '"import site;print(site.getusersitepackages());print(*site.getsitepackages(), sep=\'\\n\')"'
+VIRTUALENV_SITE_PACKAGES = \
+    '"from distutils.sysconfig import get_python_lib;print(get_python_lib())"'
 
 
 def call_python(python: str, command: str) -> str:
@@ -1601,8 +1603,11 @@ class State:
             path = find_module(file_id, manager.lib_path, manager.options.python)
             if path:
                 if os.path.isabs(path):
-                    for d in package_dirs_cache:
-                        if os.path.commonpath([d, path]) == d:
+                    for dir in package_dirs_cache:
+                        # if dir is /foo and path is /foo/bar, the next character after
+                        # the prefix is /
+                        dir_len = len(dir)
+                        if path[dir_len:dir_len + 1] == os.sep:
                             self.ignore_all = True
                 # For non-stubs, look at options.follow_imports:
                 # - normal (default) -> fully analyze

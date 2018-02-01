@@ -246,7 +246,8 @@ def process_options(args: List[str],
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y')
     parser.add_argument('--python', action='store',
-                        help="Python executable whose installed packages will be used in typechecking.")
+                        help="Python executable whose installed packages will be"
+                             " used in typechecking.")
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
                         help="typecheck special-cased code for the given OS platform "
                         "(defaults to sys.platform).")

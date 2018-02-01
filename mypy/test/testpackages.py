@@ -66,5 +66,6 @@ class TestPackages(TestCase):
                 assert err == ''
         os.remove('simple.py')
 
+
 if __name__ == '__main__':
     main()
