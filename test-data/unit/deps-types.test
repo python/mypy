@@ -152,149 +152,255 @@ def h() -> None:
 <m.ff> -> m, m.h
 <m.g> -> m.f
 
+-- Type aliases
+
 [case testAliasDepsNormalMod]
-A = int
+from mod import I
+A = I
 x: A
+[file mod.py]
+class I: pass
 [out]
 <m.A> -> m
 <m.x> -> m
+<mod.I.__init__> -> m
+<mod.I> -> <m.A>, <m.x>, m
 
 [case testAliasDepsNormalFunc]
-A = int
+from mod import I
+A = I
 def f(x: A) -> None:
     pass
+[file mod.py]
+class I: pass
 [out]
 <m.A> -> m, m.f
+<mod.I.__init__> -> m
+<mod.I> -> <m.A>, <m.f>, m, m.f
 
 [case testAliasDepsNormalClass]
 from a import A
 class C:
     x: A
 [file a.py]
-A = int
+from mod import I
+A = I
+[file mod.py]
+class I: pass
 [out]
 <m.C> -> m.C
 <a.A> -> m
+<mod.I> -> <m.C.x>, m
 
 [case testAliasDepsNormalClassBases]
 from a import A
 class C(A):
     pass
 [file a.py]
-A = int
+from mod import I
+A = I
+[file mod.py]
+class I: pass
 [out]
 <m.C> -> m.C
 <a.A> -> m
+<mod.I.__init__> -> <m.C.__init__>
+<mod.I> -> m, m.C
 
 [case testAliasDepsGenericMod]
-from typing import Dict
-A = Dict[int, str]
+from mod import I, S, D
+A = D[I, S]
 x: A
-[builtins fixtures/dict.pyi]
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
 [out]
 <m.A> -> m
 <m.x> -> m
+<mod.D> -> <m.A>, <m.x>, m
+<mod.I> -> <m.A>, <m.x>, m
+<mod.S> -> <m.A>, <m.x>, m
 
 [case testAliasDepsGenericFunc]
-from typing import Dict
-A = Dict[str, int]
+from mod import I, S, D
+A = D[S, I]
 def f(x: A) -> None:
     pass
-[builtins fixtures/dict.pyi]
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
 [out]
 <m.A> -> m, m.f
+<mod.D> -> <m.A>, <m.f>, m, m.f
+<mod.I> -> <m.A>, <m.f>, m, m.f
+<mod.S> -> <m.A>, <m.f>, m, m.f
 
 [case testAliasDepsGenericClass]
-from typing import Dict, TypeVar
-T = TypeVar('T')
-A = Dict[str, T]
+from mod import I, D, S, T
+A = D[S, T]
 class C:
-    x: A[int]
-[builtins fixtures/dict.pyi]
+    x: A[I]
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
 [out]
 <m.A> -> m
 <m.C> -> m.C
+<mod.D> -> <m.A>, <m.C.x>, m
+<mod.I> -> <m.C.x>, m
+<mod.S> -> <m.A>, <m.C.x>, m
+<mod.T> -> <m.A>, m
 
 [case testAliasDepsForwardMod]
+from mod import I
 x: A
-A = int
+A = I
+[file mod.py]
+from typing import TypeVar, Generic
+class I: pass
 [out]
 <m.A> -> m
 <m.x> -> m
+<mod.I.__init__> -> m
+<mod.I> -> <m.A>, <m.x>, m
 
 [case testAliasDepsForwardFunc]
+from mod import I
 def f(x: A) -> None:
     pass
-A = int
+A = I
+[file mod.py]
+class I: pass
 [out]
 <m.A> -> m, m.f
+<mod.I.__init__> -> m
+<mod.I> -> <m.A>, <m.f>, m, m.f
 
 [case testAliasDepsForwardClass]
+from mod import I
 class C:
     x: A
-A = int
+A = I
+[file mod.py]
+class I: pass
 [out]
 <m.A> -> m
 <m.C> -> m.C
+<mod.I.__init__> -> m
+<mod.I> -> <m.A>, <m.C.x>, m
 
 [case testAliasDepsChainedMod]
-A = int
+from mod import I
+A = I
 B = A
 x: B
+[file mod.py]
+class I: pass
 [out]
 <m.A> -> m
 <m.B> -> m
 <m.x> -> m
+<mod.I.__init__> -> m
+<mod.I> -> <m.A>, <m.B>, <m.x>, m
 
 [case testAliasDepsChainedFunc]
-A = int
+from mod import I
+A = I
 B = A
 def f(x: B) -> None:
     pass
+[file mod.py]
+class I: pass
 [out]
 <m.A> -> m, m.f
 <m.B> -> m, m.f
+<mod.I.__init__> -> m
+<mod.I> -> <m.A>, <m.B>, <m.f>, m, m.f
 
 [case testAliasDepsChainedClass]
-A = int
+from mod import I
+A = I
 B = A
 class C(B):
     pass
+[file mod.py]
+class I: pass
 [out]
 <m.A> -> m
 <m.B> -> m
 <m.C> -> m.C
+<mod.I.__init__> -> <m.C.__init__>, m
+<mod.I> -> <m.A>, <m.B>, m, m.C
 
 [case testAliasDepsNestedMod]
-from typing import Dict
-A = Dict[str, int]
-B = Dict[str, A]
+from mod import I, S, D
+A = D[S, I]
+B = D[S, A]
 x: B
-[builtins fixtures/dict.pyi]
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
 [out]
 <m.A> -> m
 <m.B> -> m
 <m.x> -> m
+<mod.D> -> <m.A>, <m.B>, <m.x>, m
+<mod.I> -> <m.A>, <m.B>, <m.x>, m
+<mod.S> -> <m.A>, <m.B>, <m.x>, m
 
 [case testAliasDepsNestedFunc]
-from typing import Dict
-A = Dict[str, int]
-B = Dict[str, A]
+from mod import I, S, D
+A = D[S, I]
+B = D[S, A]
 def f(x: B) -> None:
     pass
-[builtins fixtures/dict.pyi]
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
 [out]
 <m.A> -> m, m.f
 <m.B> -> m, m.f
+<mod.D> -> <m.A>, <m.B>, <m.f>, m, m.f
+<mod.I> -> <m.A>, <m.B>, <m.f>, m, m.f
+<mod.S> -> <m.A>, <m.B>, <m.f>, m, m.f
 
 [case testAliasDepsNestedClass]
-from typing import Dict
-A = Dict[str, int]
-B = Dict[str, A]
+from mod import I, S, D
+A = D[S, I]
+B = D[S, A]
 class C:
     x: B
-[builtins fixtures/dict.pyi]
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
 [out]
 <m.A> -> m
 <m.B> -> m
 <m.C> -> m.C
+<mod.D> -> <m.A>, <m.B>, <m.C.x>, m
+<mod.I> -> <m.A>, <m.B>, <m.C.x>, m
+<mod.S> -> <m.A>, <m.B>, <m.C.x>, m

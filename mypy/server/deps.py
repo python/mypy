@@ -92,7 +92,7 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, FuncItem,
+    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr,
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -257,7 +257,6 @@ class DependencyVisitor(TraverserVisitor):
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         # TODO: Implement all assignment special forms, including these:
         #   Enum
-        #   type aliases
         rvalue = o.rvalue
         if isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypeVarExpr):
             # TODO: Support type variable value restriction
@@ -282,6 +281,17 @@ class DependencyVisitor(TraverserVisitor):
             assert info.typeddict_type is not None
             prefix = '%s.%s' % (self.scope.current_full_target(), info.name())
             self.add_type_dependencies(info.typeddict_type, target=make_trigger(prefix))
+        elif isinstance(rvalue, IndexExpr) and isinstance(rvalue.analyzed, TypeAliasExpr):
+            assert len(o.lvalues) == 1
+            lvalue = o.lvalues[0]
+            assert isinstance(lvalue, NameExpr)
+            attr_trigger = make_trigger('%s.%s' % (self.scope.current_full_target(),
+                                                   lvalue.name))
+            self.add_type_dependencies(rvalue.analyzed.type,
+                                       attr_trigger)
+            for tvar in rvalue.analyzed.tvars:
+                self.add_dependency(make_trigger(tvar), target=attr_trigger)
+            self.add_dependency(attr_trigger)
         else:
             # Normal assignment
             super().visit_assignment_stmt(o)
