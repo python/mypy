@@ -131,7 +131,7 @@ class Options:
         self.scripts_are_modules = False
 
         # Config file name
-        self.config_file = 'setup.cfg'  # type: Optional[str]
+        self.config_file = None  # type: Optional[str]
 
         # Write junit.xml to given file
         self.junit_xml = None  # type: Optional[str]
