@@ -562,6 +562,7 @@ def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
                 # There is no corresponding JSON so create partial "memory-only" metadata.
                 assert state.path
                 dep_prios = state.dependency_priorities()
+                dep_lines = state.dependency_lines()
                 meta = memory_only_cache_meta(
                     id,
                     state.path,
@@ -569,6 +570,7 @@ def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
                     state.suppressed,
                     list(state.child_modules),
                     dep_prios,
+                    dep_lines,
                     state.source_hash,
                     state.ignore_all,
                     manager)
@@ -584,6 +586,7 @@ def memory_only_cache_meta(id: str,
                            suppressed: List[str],
                            child_modules: List[str],
                            dep_prios: List[int],
+                           dep_lines: List[int],
                            source_hash: str,
                            ignore_all: bool,
                            manager: BuildManager) -> CacheMeta:
@@ -603,6 +606,7 @@ def memory_only_cache_meta(id: str,
             'child_modules': child_modules,
             'options': options.select_options_affecting_cache(),
             'dep_prios': dep_prios,
+            'dep_lines': dep_lines,
             'interface_hash': '',
             'version_id': manager.version_id,
             'ignore_all': ignore_all,
