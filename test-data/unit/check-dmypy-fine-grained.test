@@ -97,7 +97,7 @@ tmp/a.py:1: error: invalid syntax
 tmp/b.py:2: error: Incompatible return value type (got "str", expected "int")
 [out3]
 
-[case testNoOpUpdateFineGrainedIncremental]
+[case testNoOpUpdateFineGrainedIncremental1]
 # cmd: mypy -m a
 [file a.py]
 1()
@@ -110,6 +110,23 @@ tmp/a.py:1: error: "int" not callable
 [out2]
 tmp/a.py:1: error: "int" not callable
 [out3]
+
+[case testNoOpUpdateFineGrainedIncremental2]
+# cmd: mypy -m a
+[file a.py]
+1()
+[file a.py.2]
+1()
+[file a.py.3]
+x = 1
+[file a.py.4]
+x = 1
+[out1]
+tmp/a.py:1: error: "int" not callable
+[out2]
+tmp/a.py:1: error: "int" not callable
+[out3]
+[out4]
 
 [case testNonExistentFileOnCommandLineFineGrainedIncremental1]
 # cmd: mypy -m a nonexistent

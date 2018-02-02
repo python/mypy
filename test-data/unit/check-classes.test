@@ -1978,7 +1978,7 @@ class C:
 
 x = C(foo=12)
 x.a # E: "C" has no attribute "a"
-C(foo='') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+C(foo='') # E: Argument "foo" to "C" has incompatible type "str"; expected "int"
 [builtins fixtures/__new__.pyi]
 
 [case testConstructInstanceWithDynamicallyTyped__new__]

@@ -206,7 +206,8 @@ def invert_flag_name(flag: str) -> str:
 
 
 def process_options(args: List[str],
-                    require_targets: bool = True
+                    require_targets: bool = True,
+                    server_options: bool = False,
                     ) -> Tuple[List[BuildSource], Options]:
     """Parse command line arguments."""
 
@@ -319,6 +320,8 @@ def process_options(args: List[str],
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
+    parser.add_argument('--cache-fine-grained', action='store_true',
+                        help="include fine-grained dependency information in the cache")
     parser.add_argument('--skip-version-check', action='store_true',
                         help="allow using cache written by older mypy version")
     add_invertible_flag('--strict-optional', default=False, strict_flag=True,
@@ -389,6 +392,9 @@ def process_options(args: List[str],
     parser.add_argument('--no-fast-parser', action='store_true',
                         dest='special-opts:no_fast_parser',
                         help=argparse.SUPPRESS)
+    if server_options:
+        parser.add_argument('--experimental', action='store_true', dest='fine_grained_incremental',
+                            help="enable fine-grained incremental mode")
 
     report_group = parser.add_argument_group(
         title='report generation',
@@ -755,6 +761,8 @@ def parse_section(prefix: str, template: Options,
                         print("%s: Unrecognized report type: %s" % (prefix, orig_key),
                               file=sys.stderr)
                     continue
+                if key.startswith('x_'):
+                    continue  # Don't complain about `x_blah` flags
                 print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
                       file=sys.stderr)
                 continue
