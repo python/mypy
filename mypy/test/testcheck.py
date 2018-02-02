@@ -11,7 +11,7 @@ from mypy.build import BuildSource, find_module_clear_caches
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
-    assert_string_arrays_equal, normalize_error_messages, AssertionFailure,
+    assert_string_arrays_equal, normalize_error_messages,
     retry_on_error, update_testcase_output, parse_options
 )
 from mypy.errors import CompileError
@@ -245,8 +245,8 @@ class TypeCheckSuite(DataSuite):
         modules.update({module_name: path for module_name, path, text in module_data})
         missing_paths = self.find_missing_cache_files(modules, manager)
         if not missing_paths.issubset(error_paths):
-            raise AssertionFailure("cache data discrepancy %s != %s" %
-                                   (missing_paths, error_paths))
+            raise AssertionError("cache data discrepancy %s != %s" %
+                                 (missing_paths, error_paths))
 
     def find_error_paths(self, a: List[str]) -> Set[str]:
         hits = set()

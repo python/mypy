@@ -658,12 +658,12 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
 class DataSuite:
     # option fields - class variables
     files = None  # type: List[str]
-    base_path = '.'  # type: str
-    optional_out = False  # type: bool
-    native_sep = False  # type: bool
+    base_path = '.'
+    optional_out = False
+    native_sep = False
 
     # Assigned from MypyDataCase.runtest
-    update_data = False  # type: bool
+    update_data = False
 
     def setup(self) -> None:
         """Setup fixtures (ad-hoc)"""

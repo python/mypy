@@ -1,7 +1,7 @@
 """Tests for the mypy parser."""
 
 from mypy import defaults
-from mypy.test.helpers import assert_string_arrays_equal, AssertionFailure
+from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.parse import parse
 from mypy.errors import CompileError
@@ -59,7 +59,7 @@ def test_parse_error(testcase: DataDrivenTestCase) -> None:
         # Compile temporary file. The test file contains non-ASCII characters.
         parse(bytes('\n'.join(testcase.input), 'utf-8'), INPUT_FILE_NAME, '__main__', None,
               Options())
-        raise AssertionFailure('No errors reported')
+        raise AssertionError('No errors reported')
     except CompileError as e:
         assert e.module_with_blocker == '__main__'
         # Verify that there was a compile error and that the error messages

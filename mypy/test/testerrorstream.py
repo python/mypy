@@ -5,7 +5,7 @@ import os
 
 from mypy import defaults, build
 from mypy.test.config import test_temp_dir
-from mypy.test.helpers import assert_string_arrays_equal, AssertionFailure
+from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.build import BuildSource
 from mypy.errors import CompileError

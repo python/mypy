@@ -11,7 +11,6 @@ import sys
 
 from typing import List
 
-from mypy.test.helpers import AssertionFailure
 from mypy.test.config import test_temp_dir
 from mypy.test.data import fix_cobertura_filename
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -65,7 +64,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     if testcase.output_files:
         for path, expected_content in testcase.output_files:
             if not os.path.exists(path):
-                raise AssertionFailure(
+                raise AssertionError(
                     'Expected file {} was not produced by test case'.format(path))
             with open(path, 'r') as output_file:
                 actual_output_content = output_file.read().splitlines()

@@ -8,6 +8,9 @@ from typing import List, Dict, Tuple, Callable, Any, Optional
 from mypy import defaults
 
 import pytest  # type: ignore  # no pytest in typeshed
+
+# Exporting Suite as alias to TestCase for backwards compatibility
+# TODO: avoid aliasing - import and subclass TestCase directly
 from unittest import TestCase as Suite
 
 from mypy.main import process_options
@@ -89,7 +92,7 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
             # long lines.
             show_align_message(expected[first_diff], actual[first_diff])
 
-        raise AssertionFailure(msg)
+        raise AssertionError(msg)
 
 
 def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> None:
@@ -254,24 +257,17 @@ def retry_on_error(func: Callable[[], Any], max_wait: float = 1.0) -> None:
                 raise
             time.sleep(wait_time)
 
-
-class AssertionFailure(Exception):
-    """Exception used to signal failed test cases."""
-    def __init__(self, s: Optional[str] = None) -> None:
-        if s:
-            super().__init__(s)
-        else:
-            super().__init__()
+# TODO: assert_true and assert_false are redundant - use plain assert
 
 
 def assert_true(b: bool, msg: Optional[str] = None) -> None:
     if not b:
-        raise AssertionFailure(msg)
+        raise AssertionError(msg)
 
 
 def assert_false(b: bool, msg: Optional[str] = None) -> None:
     if b:
-        raise AssertionFailure(msg)
+        raise AssertionError(msg)
 
 
 def good_repr(obj: object) -> str:
@@ -288,7 +284,7 @@ def good_repr(obj: object) -> str:
 
 def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
     if a != b:
-        raise AssertionFailure(fmt.format(good_repr(a), good_repr(b)))
+        raise AssertionError(fmt.format(good_repr(a), good_repr(b)))
 
 
 def typename(t: type) -> str:
@@ -300,7 +296,7 @@ def typename(t: type) -> str:
 
 def assert_type(typ: type, value: object) -> None:
     if type(value) != typ:
-        raise AssertionFailure('Invalid type {}, expected {}'.format(
+        raise AssertionError('Invalid type {}, expected {}'.format(
             typename(type(value)), typename(typ)))
 
 
