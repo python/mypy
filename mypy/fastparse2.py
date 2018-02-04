@@ -41,8 +41,9 @@ from mypy.types import (
 from mypy import experiments
 from mypy import messages
 from mypy.errors import Errors
-from mypy.fastparse import TypeConverter, parse_type_comment
+from mypy.fastparse import TypeConverter, parse_type_comment, parse_docstring
 from mypy.options import Options
+from mypy.plugin import Plugin
 
 try:
     from typed_ast import ast27
@@ -81,7 +82,8 @@ def parse(source: Union[str, bytes],
           fnam: str,
           module: Optional[str],
           errors: Optional[Errors] = None,
-          options: Optional[Options] = None) -> MypyFile:
+          options: Optional[Options] = None,
+          plugin: Optional[Plugin] = None) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
@@ -93,6 +95,8 @@ def parse(source: Union[str, bytes],
         raise_on_error = True
     if options is None:
         options = Options()
+    if plugin is None:
+        plugin = Plugin(options)
     errors.set_file(fnam, module)
     is_stub_file = fnam.endswith('.pyi')
     try:
@@ -101,6 +105,7 @@ def parse(source: Union[str, bytes],
         tree = ASTConverter(options=options,
                             is_stub=is_stub_file,
                             errors=errors,
+                            plugin=plugin,
                             ).visit(ast)
         assert isinstance(tree, MypyFile)
         tree.path = fnam
@@ -144,13 +149,15 @@ class ASTConverter(ast27.NodeTransformer):
     def __init__(self,
                  options: Options,
                  is_stub: bool,
-                 errors: Errors) -> None:
+                 errors: Errors,
+                 plugin: Plugin) -> None:
         self.class_nesting = 0
         self.imports = []  # type: List[ImportBase]
 
         self.options = options
         self.is_stub = is_stub
         self.errors = errors
+        self.plugin = plugin
 
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, blocker=True)
@@ -301,8 +308,9 @@ class ASTConverter(ast27.NodeTransformer):
         args, decompose_stmts = self.transform_args(n.args, n.lineno)
 
         arg_kinds = [arg.kind for arg in args]
-        arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
-        arg_names = [None if argument_elide_name(name) else name for name in arg_names]
+        real_names = [arg.variable.name() for arg in args]  # type: List[str]
+        arg_names = [None if argument_elide_name(name) else name
+                     for name in real_names]  # type: List[Optional[str]]
         if special_function_elide_names(n.name):
             arg_names = [None] * len(arg_names)
 
@@ -310,35 +318,52 @@ class ASTConverter(ast27.NodeTransformer):
         if (n.decorator_list and any(is_no_type_check_decorator(d) for d in n.decorator_list)):
             arg_types = [None] * len(args)
             return_type = None
-        elif n.type_comment is not None and len(n.type_comment) > 0:
-            try:
-                func_type_ast = ast3.parse(n.type_comment, '<func_type>', 'func_type')
-                assert isinstance(func_type_ast, ast3.FunctionType)
-                # for ellipsis arg
-                if (len(func_type_ast.argtypes) == 1 and
-                        isinstance(func_type_ast.argtypes[0], ast3.Ellipsis)):
-                    arg_types = [a.type_annotation
-                                 if a.type_annotation is not None
-                                 else AnyType(TypeOfAny.unannotated)
-                                 for a in args]
-                else:
-                    # PEP 484 disallows both type annotations and type comments
-                    if any(a.type_annotation is not None for a in args):
-                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
-                    arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated) for
-                                 a in converter.translate_expr_list(func_type_ast.argtypes)]
-                return_type = converter.visit(func_type_ast.returns)
-
-                # add implicit self type
-                if self.in_class() and len(arg_types) < len(args):
-                    arg_types.insert(0, AnyType(TypeOfAny.special_form))
-            except SyntaxError:
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
-                arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
-                return_type = AnyType(TypeOfAny.from_error)
         else:
-            arg_types = [a.type_annotation for a in args]
-            return_type = converter.visit(None)
+            doc_types = None  # type: Optional[Tuple[List[Type], Type]]
+            docstring_hook = self.plugin.get_docstring_parser_hook()
+            if docstring_hook is not None:
+                doc = ast27.get_docstring(n, clean=False)
+                if doc:
+                    doc_types = parse_docstring(docstring_hook, doc.decode('unicode-escape'),
+                                                real_names, n.lineno, self.errors)
+
+            if n.type_comment is not None and len(n.type_comment) > 0:
+                if doc_types is not None:
+                    # PEP 484 disallows both type annotations and type comments
+                    self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
+                try:
+                    func_type_ast = ast3.parse(n.type_comment, '<func_type>', 'func_type')
+                    assert isinstance(func_type_ast, ast3.FunctionType)
+                    # for ellipsis arg
+                    if (len(func_type_ast.argtypes) == 1 and
+                            isinstance(func_type_ast.argtypes[0], ast3.Ellipsis)):
+                        arg_types = [a.type_annotation
+                                     if a.type_annotation is not None
+                                     else AnyType(TypeOfAny.unannotated)
+                                     for a in args]
+                    else:
+                        # PEP 484 disallows both type annotations and type comments
+                        if any(a.type_annotation is not None for a in args):
+                            self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
+                        arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated) for
+                                     a in converter.translate_expr_list(func_type_ast.argtypes)]
+                    return_type = converter.visit(func_type_ast.returns)
+
+                    # add implicit self type
+                    if self.in_class() and len(arg_types) < len(args):
+                        arg_types.insert(0, AnyType(TypeOfAny.special_form))
+                except SyntaxError:
+                    self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
+                    arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
+                    return_type = AnyType(TypeOfAny.from_error)
+            elif doc_types is not None:
+                # PEP 484 disallows both type annotations and type comments
+                if any(a.type_annotation is not None for a in args):
+                    self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
+                arg_types, return_type = doc_types
+            else:
+                arg_types = [a.type_annotation for a in args]
+                return_type = converter.visit(None)
 
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)

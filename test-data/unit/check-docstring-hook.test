@@ -1,0 +1,169 @@
+[case testFunctionDocstringHook]
+# flags: --config-file tmp/mypy.ini
+def f(x):
+    """
+    x: int
+    return: str
+    """
+    return 1  # E: Incompatible return value type (got "int", expected "str")
+f('')  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/docstring.py
+
+[case testMethodDocstringHook]
+# flags: --config-file tmp/mypy.ini
+class A:
+    def f(self, x):
+        """
+        x: int
+        return: str
+        """
+        self.f('')  # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+        return 1  # E: Incompatible return value type (got "int", expected "str")
+A().f('')  # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/docstring.py
+
+[case testSparseDocstringAnnotations]
+# flags: --config-file tmp/mypy.ini
+def f(x, y):
+    """
+    x: int
+    """
+    return 1
+f('', 1)  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/docstring.py
+
+[case testInvalidDocstringAnnotation]
+# flags: --config-file tmp/mypy.ini
+def f(x):
+    """
+    x: B/A/D
+    return: None
+    """
+    return None
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/docstring.py
+[out]
+main:3: error: invalid type comment or annotation
+
+[case testDuplicateTypeSignaturesAnnotations]
+# flags: --config-file tmp/mypy.ini
+def f(x: int):
+    """
+    x: int
+    """
+    return None
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/docstring.py
+[out]
+main:2: error: Function has duplicate type signatures
+
+[case testDuplicateTypeSignaturesComments]
+# flags: --config-file tmp/mypy.ini
+def f(x):
+    # type: (int) -> None
+    """
+    x: int
+    """
+    return None
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/docstring.py
+[out]
+main:2: error: Function has duplicate type signatures
+
+[case testDuplicateTypeSignaturesMultiComments]
+# flags: --config-file tmp/mypy.ini
+def f(x  # type: int
+      ):
+    # type: (...) -> None
+    """
+    x: int
+    """
+    return None
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/docstring.py
+[out]
+main:2: error: Function has duplicate type signatures
+
+-- Python 2.7
+-- -------------------------
+
+[case testFunctionDocstringHook27]
+# flags: --config-file tmp/mypy.ini --python-version 2.7
+def f(x):
+    """
+    x: int
+    return: str
+    """
+    return 1  # E: Incompatible return value type (got "int", expected "str")
+f('')  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/docstring.py
+
+[case testMethodDocstringHook27]
+# flags: --config-file tmp/mypy.ini --python-version 2.7
+class A:
+    def f(self, x):
+        """
+        x: int
+        return: str
+        """
+        self.f('')  # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+        return 1  # E: Incompatible return value type (got "int", expected "str")
+A().f('')  # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/docstring.py
+
+[case testInvalidDocstringAnnotation27]
+# flags: --config-file tmp/mypy.ini --python-version 2.7
+def f(x):
+    """
+    x: B/A/D
+    return: None
+    """
+    return None
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/docstring.py
+[out]
+main:3: error: invalid type comment or annotation
+
+[case testDuplicateTypeSignaturesComments27]
+# flags: --config-file tmp/mypy.ini --python-version 2.7
+def f(x):
+    # type: (int) -> None
+    """
+    x: int
+    """
+    return None
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/docstring.py
+[out]
+main:2: error: Function has duplicate type signatures
+
+[case testDuplicateTypeSignaturesMultiComments27]
+# flags: --config-file tmp/mypy.ini --python-version 2.7
+def f(x  # type: int
+      ):
+    # type: (...) -> None
+    """
+    x: int
+    """
+    return None
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/docstring.py
+[out]
+main:2: error: Function has duplicate type signatures

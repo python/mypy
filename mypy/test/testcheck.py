@@ -75,6 +75,7 @@ typecheck_files = [
     'check-incomplete-fixture.test',
     'check-custom-plugin.test',
     'check-default-plugin.test',
+    'check-docstring-hook.test',
 ]
 
 

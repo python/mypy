@@ -8,6 +8,7 @@ from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.parse import parse
 from mypy.errors import CompileError
 from mypy.options import Options
+from mypy.plugin import Plugin
 
 
 class ParserSuite(DataSuite):
@@ -35,7 +36,8 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
                   fnam='main',
                   module='__main__',
                   errors=None,
-                  options=options)
+                  options=options,
+                  plugin=Plugin(options))
         a = str(n).split('\n')
     except CompileError as e:
         a = e.messages
@@ -59,8 +61,9 @@ class ParseErrorSuite(DataSuite):
 def test_parse_error(testcase: DataDrivenTestCase) -> None:
     try:
         # Compile temporary file. The test file contains non-ASCII characters.
+        options = Options()
         parse(bytes('\n'.join(testcase.input), 'utf-8'), INPUT_FILE_NAME, '__main__', None,
-              Options())
+              options, Plugin(options))
         raise AssertionFailure('No errors reported')
     except CompileError as e:
         assert e.module_with_blocker == '__main__'

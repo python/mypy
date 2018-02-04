@@ -67,6 +67,7 @@ from mypy.stubutil import is_c_module, write_header
 from mypy.options import Options as MypyOptions
 from mypy.types import Type, TypeStrVisitor, AnyType, CallableType, UnboundType, NoneTyp, TupleType
 from mypy.visitor import NodeVisitor
+from mypy.plugin import Plugin
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('no_import', bool),
@@ -204,8 +205,9 @@ def generate_stub(path: str,
         source = f.read()
     options = MypyOptions()
     options.python_version = pyversion
+    plugin = Plugin(options)
     try:
-        ast = mypy.parse.parse(source, fnam=path, module=module, errors=None, options=options)
+        ast = mypy.parse.parse(source, fnam=path, module=module, errors=None, options=options, plugin=plugin)
     except mypy.errors.CompileError as e:
         # Syntax error!
         for m in e.messages:
