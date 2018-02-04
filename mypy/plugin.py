@@ -4,9 +4,7 @@ from abc import abstractmethod
 from functools import partial
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 
-from mypy.attrs_plugin import (
-    attr_class_makers, attr_dataclass_makers, attr_class_maker_callback, Attribute
-)
+import mypy.attrs_plugin
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef,
     TypeInfo
@@ -264,7 +262,7 @@ class DefaultPlugin(Plugin):
 
     def __init__(self, options: Options) -> None:
         super().__init__(options)
-        self._attr_classes = {}  # type: Dict[TypeInfo, List[Attribute]]
+        self._attr_classes = {}  # type: Dict[TypeInfo, List[mypy.attrs_plugin.Attribute]]
 
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
@@ -290,14 +288,14 @@ class DefaultPlugin(Plugin):
 
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
-        if fullname in attr_class_makers:
+        if fullname in mypy.attrs_plugin.attr_class_makers:
             return partial(
-                attr_class_maker_callback,
+                mypy.attrs_plugin.attr_class_maker_callback,
                 self._attr_classes
             )
-        elif fullname in attr_dataclass_makers:
+        elif fullname in mypy.attrs_plugin.attr_dataclass_makers:
             return partial(
-                attr_class_maker_callback,
+                mypy.attrs_plugin.attr_class_maker_callback,
                 self._attr_classes,
                 auto_attribs_default=True
             )
